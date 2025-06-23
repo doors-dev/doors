@@ -1,0 +1,113 @@
+export const arrayDiff = (a: Array<string>, b: Array<string>): [Array<string>, Array<string>] => {
+    const setA = new Set(a)
+    const setB = new Set(b)
+    const inANotB = [...setA].filter(item => !setB.has(item))
+    const inBNotA = [...setB].filter(item => !setA.has(item))
+    return [inANotB, inBNotA]
+}
+
+export const arraysEqual = (a: Array<string>, b: Array<string>, ordered = true) => {
+    return a.length === b.length && a.every((val, i) => ordered ? val === b[i] : b.includes(val))
+}
+
+export const date = (date: Date) => {
+    const pad = (num: number, l = 2) => String(num).padStart(l, "0")
+    const year = date.getFullYear()
+    const month = pad(date.getMonth() + 1)
+    const day = pad(date.getDate())
+    const hours = pad(date.getHours())
+    const minutes = pad(date.getMinutes())
+    const seconds = pad(date.getSeconds())
+    const milliseconds = pad(date.getMilliseconds(), 3)
+    const timeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`
+    const offset = Math.abs(date.getTimezoneOffset())
+    const offsetMinutes = offset % 60
+    const offsetHours = Math.floor(offset / 60)
+    const offsetSign = date.getTimezoneOffset() >= 0 ? "-" : "+"
+    const offsetString = offsetSign + pad(offsetHours) + ":" + pad(offsetMinutes)
+    return timeString + offsetString
+}
+
+export const doorId = (nodeId: number) => {
+    return `d00r/${nodeId}`
+}
+
+export const nodeId = (doorId: string) => {
+    return Number(doorId.slice(5))
+}
+
+export const fetchOptForm = (data: FormData) => {
+    return {
+        body: data,
+        headers: {},
+    }
+}
+
+export const fetchOptJson = (data: any) => {
+    return {
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json;charset=UTF-8' }
+    }
+}
+
+export const fetchOpt = (data: any) => {
+    const result = {
+        body: null as any,
+        headers: {} as { [key: string]: string },
+    }
+    if (data === undefined || data === null) {
+        return result
+    }
+    if (data instanceof FormData) {
+        result.body = data
+        return result
+    }
+    if (data instanceof URLSearchParams) {
+        result.body = data
+        result.headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8'
+        return result
+    }
+    if (data instanceof Blob) {
+        result.body = data
+        if (data.type) {
+            result.headers['Content-Type'] = data.type
+        }
+        return result
+    }
+    if (data instanceof File) {
+        result.body = data
+        result.headers['Content-Type'] = data.type || 'application/octet-stream'
+        return result
+    }
+    if (typeof ReadableStream !== 'undefined' && data instanceof ReadableStream) {
+        result.body = data
+        result.headers['Content-Type'] = 'application/octet-stream'
+        return result
+    }
+    if (
+        data instanceof ArrayBuffer ||
+        ArrayBuffer.isView(data)
+    ) {
+        result.body = data
+        result.headers['Content-Type'] = 'application/octet-stream'
+        return result
+    }
+    result.body = JSON.stringify(data)
+    result.headers['Content-Type'] = 'application/json;charset=UTF-8'
+    return result
+}
+
+export const randDelay = (): Promise<void> => {
+    const min = 50
+    const max = 300
+    const delay = Math.floor(Math.random() * (max - min + 1)) + min
+    return new Promise(resolve => setTimeout(resolve, delay))
+}
+
+
+export const splitClass = (str: string | undefined): Array<string> => {
+    if (!str) {
+        return []
+    }
+    return str.split(" ").map(str => str.trim()).filter(str => !!str)
+}

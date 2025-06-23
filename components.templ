@@ -1,0 +1,108 @@
+package doors
+
+import (
+	"context"
+	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/doors/internal/router"
+	"net/http"
+)
+
+// Title renders a <title> element that updates dynamically based on a Beam value.
+//
+// It outputs a standard HTML <title> tag, and includes the necessary script bindings
+// to ensure the title updates reactively when the Beam changes on the server.
+//
+// Example:
+//
+//	@Title(beam, func(p Path) string {
+//	    name := getName(p.id)
+//	    return "item card "+name
+//	})
+//
+// Parameters:
+//   - b: a Beam providing the input value (usualy page path Beam)
+//   - cast: a function that maps the Beam value to a title string.
+//
+// Returns:
+//   - A templ.Component that renders a <title> element with remote call script.
+templ Title[M any](b Beam[M], cast func(M) string) {
+	{{
+	titleBeam := NewBeamExt(b, cast, func(new string, old string) bool {
+		return new != old
+	})
+	var cancel TryCancel
+	title, _ := titleBeam.ReadAndSub(ctx, func(ctx context.Context, title string) bool {
+		if cancel != nil {
+			cancel()
+		}
+		cancel, _ = Call(ctx, CallConf{
+			Name: "changeTitle",
+			Arg:  templ.EscapeString(title),
+		})
+		return false
+	})
+	}}
+	<title>{ title }</title>
+	@Script() {
+		<script>
+            $d.on("changeTitle", (title) => { document.title = title });
+        </script>
+	}
+}
+
+func inlineName(attr templ.Attributes, ext string) string {
+	name := "inline"
+	dataName, ok := attr["data-name"]
+	if ok {
+		dataNameStr, ok := dataName.(string)
+		if ok {
+			name = dataNameStr
+		}
+	}
+	return name + "." + ext
+}
+
+templ scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode) {
+	{{
+	name := inlineName(i.Attrs, "js")
+	}}
+	if inline && mode != resources.InlineModeHost {
+		@renderRaw("script", i.Attrs, i.Content())
+	} else if mode == resources.InlineModeHost {
+		{{ i.Attrs["src"] = router.ResourcePath(i.Resource(), name) }}
+		<script { i.Attrs... }></script>
+	} else {
+		<script { A(ctx, ARaw(i.Attrs), ARawSrc {
+        Once: true,
+        Name: name,
+        Handler: func(w http.ResponseWriter, r *http.Request) {
+            i.Serve(w, r)
+        },
+    })... }></script>
+	}
+}
+
+templ styleRender(i *resources.InlineResource, inline bool, mode resources.InlineMode) {
+	{{
+	name := inlineName(i.Attrs, "css")
+	}}
+	if inline && mode != resources.InlineModeHost {
+		@renderRaw("style", i.Attrs, i.Content())
+	} else if mode == resources.InlineModeHost {
+		{{
+	i.Attrs["href"] = router.ResourcePath(i.Resource(), name)
+		}}
+		<link rel="stylesheet" { i.Attrs... }/>
+	} else {
+		<link
+			rel="stylesheet"
+			{ A(ctx, ARaw(i.Attrs), ARawFileHref {
+        Name: name,
+        Once: false,
+        Handler: func(w http.ResponseWriter, r *http.Request) {
+            i.Serve(w, r)
+        },
+    })... }
+		/>
+	}
+}
