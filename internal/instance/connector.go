@@ -184,7 +184,7 @@ func (l *connector) cancelCall(seq uint) {
 }
 
 func (l *connector) resetTouchTimer() {
-	d := l.ttl / 4
+	d := min(l.ttl / 4, 15 * time.Second)
 	if l.touchTimer != nil {
 		l.touchTimer.Stop()
 		l.touchTimer.Reset(d)
