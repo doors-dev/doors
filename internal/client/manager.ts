@@ -150,6 +150,11 @@ class Source {
     activate() {
         if (this.source) return
         this.source = new EventSource(`/d00r/${id}`)
+        this.source.onerror = async () => {
+            this.deactivate()
+            await randDelay()
+            this.activate()
+        }
         this.source.addEventListener("suspend", () => this.manager.suspended())
         this.source.addEventListener("unauthorized", () => this.manager.gone())
         this.source.addEventListener("gone", () => this.manager.gone())
