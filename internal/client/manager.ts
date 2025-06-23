@@ -151,6 +151,9 @@ class Source {
         if (this.source) return
         this.source = new EventSource(`/d00r/${id}`)
         this.source.onerror = async () => {
+            if (this.source?.readyState !== EventSource.CLOSED) {
+                return
+            }
             this.deactivate()
             await randDelay()
             this.activate()
