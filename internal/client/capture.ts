@@ -1,5 +1,5 @@
 import { id } from './params'
-import manager from './manager'
+import ctrl from './controller'
 import captures from './captures'
 import indicator, { IndicatorEntry } from './indicator'
 
@@ -122,7 +122,6 @@ class Process {
                 return
             }
             if (r.status === 401 || r.status === 410) {
-                manager.gone()
                 task.rej(new CaptureErr(captureErrTypes.stale, r))
             } else if (r.status === 400) {
                 task.rej(new CaptureErr(captureErrTypes.format))
@@ -419,6 +418,9 @@ export function attach(parent: HTMLElement | DocumentFragment | Document) {
                 } catch (err: any) {
                     if (err.isDebounce?.() || err.isBlocked?.()) {
                         return
+                    }
+                    if (err.isStale) {
+                        ctrl.gone()
                     }
                     console.error(err)
                 }

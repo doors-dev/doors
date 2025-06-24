@@ -64,16 +64,17 @@ func (n *Node) isActive() bool {
 	return n.core != nil && !n.suspended
 }
 
-func (n *Node) commitWriteErr(c *commitCall) {
+func (n *Node) commitWriteErr(c *commitCall) bool {
 	n.lock()
 	defer n.unlock()
 	if n.suspended {
-		return
+		return false
 	}
 	if c.id != n.commitCounter {
-		return
+		return false
 	}
 	n.bufferedCall = c
+	return true
 }
 
 func (n *Node) commitResult(id uint, err error) {

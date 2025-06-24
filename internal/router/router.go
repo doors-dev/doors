@@ -2,9 +2,11 @@ package router
 
 import (
 	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/a-h/templ"
@@ -16,18 +18,18 @@ import (
 )
 
 func NewRouter() *Router {
+	conf := &common.SystemConf{}
+	common.InitDefaults(conf)
 	return &Router{
-		pool:           shredder.NewPool(32),
-		sess:          sync.Map{},
+		pool:           shredder.NewPool(conf.InstanceGoroutineLimit),
+		sess:           sync.Map{},
 		adapters:       make(map[string]path.AnyAdapter),
 		pageRoutes:     make(map[string]anyPageRoute),
 		pageRouteOrder: make([]string, 0),
-		instLimit:      6,
 		fallback:       nil,
 		dirs:           make([]*static, 0),
-		instanceTTL:    3 * time.Minute,
 		registry:       resources.NewRegistry(),
-		csp:            &common.CSP{},
+		conf:           conf,
 	}
 }
 
@@ -80,21 +82,19 @@ func (s *sessionHooks) onDelete(id string) {
 }
 
 type Router struct {
-	instLimit           int
-	sess               sync.Map
-	adapters            map[string]path.AnyAdapter
-	pageRoutes          map[string]anyPageRoute
-	pageRouteOrder      []string
-	fallback            http.Handler
-	dirs                []*static
-	pool                *shredder.Pool
-	errPage             ErrorPageComponent
-	instanceTTL         time.Duration
-	sessionHooks        *sessionHooks
-	sessionExpire       time.Duration
-	sessionCookieExpire time.Duration
-	registry            *resources.Registry
-	csp                 *common.CSP
+	sess           sync.Map
+	adapters       map[string]path.AnyAdapter
+	pageRoutes     map[string]anyPageRoute
+	pageRouteOrder []string
+	fallback       http.Handler
+	dirs           []*static
+	pool           *shredder.Pool
+	errPage        ErrorPageComponent
+	sessionHooks   *sessionHooks
+	registry       *resources.Registry
+	csp            *common.CSP
+	conf           *common.SystemConf
+	used           atomic.Bool
 }
 
 func (rr *Router) Gzip() bool {
@@ -115,10 +115,14 @@ func (rr *Router) Spawner() *shredder.Spawner {
 
 func (rr *Router) RemoveSession(id string) {
 	rr.sess.Delete(id)
-    rr.sessionHooks.onDelete(id)
+	rr.sessionHooks.onDelete(id)
 }
 func (rr *Router) Adapters() map[string]path.AnyAdapter {
 	return rr.adapters
+}
+
+func (rr *Router) Conf() *common.SystemConf {
+	return rr.conf
 }
 
 func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *instance.Session) {
@@ -126,10 +130,10 @@ func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *
 	if s != nil {
 		return false, s
 	}
-	s = instance.NewSession(rr, rr.instLimit, rr.sessionExpire)
+	s = instance.NewSession(rr)
 	var expires time.Time
-	if rr.sessionCookieExpire != 0 {
-		expires = time.Now().Add(rr.sessionCookieExpire)
+	if rr.conf.SessionCookieExpiration != 0 {
+		expires = time.Now().Add(rr.conf.SessionCookieExpiration)
 	}
 	cookie := &http.Cookie{
 		Name:     "d00r",
@@ -140,7 +144,7 @@ func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *
 		Expires:  expires,
 	}
 	rr.sess.Store(s.Id(), s)
-    rr.sessionHooks.onCreate(s.Id())
+	rr.sessionHooks.onCreate(s.Id())
 	http.SetCookie(w, cookie)
 	return true, s
 }
@@ -169,6 +173,10 @@ func (rr *Router) addPage(page anyPageRoute) {
 }
 
 func (rr *Router) Use(mods ...Mod) {
+	if rr.used.Load() {
+		slog.Error("IMPORTANT! Router mod used after first request is handled, ignoring mod.")
+		return
+	}
 	for _, r := range mods {
 		r.apply(rr)
 	}

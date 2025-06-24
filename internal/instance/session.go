@@ -19,22 +19,22 @@ type ScriptOptions struct {
 type router interface {
 	ImportRegistry() *resources.Registry
 	CSP() *common.CSP
-	Gzip() bool
 	Adapters() map[string]path.AnyAdapter
 	RemoveSession(string)
+	Conf() *common.SystemConf
 	Spawner() *shredder.Spawner
 }
 
-func NewSession(r router, limit int, expiration time.Duration) *Session {
+func NewSession(r router) *Session {
 	sess := &Session{
 		store:     ctxstore.NewStore(),
 		id:        common.RandId(),
 		instances: make(map[string]AnyInstance),
 		mu:        sync.Mutex{},
 		router:    r,
-		limiter:   newLimiter(limit),
+		limiter:   newLimiter(r.Conf().InstanceGoroutineLimit),
 	}
-	sess.SetExpiration(expiration)
+	sess.SetExpiration(r.Conf().SessionExpiration)
 	return sess
 
 }
@@ -68,7 +68,7 @@ func (sess *Session) AddInstance(inst AnyInstance) bool {
 	toSuspend := sess.limiter.add(inst.Id())
 	sess.mu.Unlock()
 	if toSuspend != "" {
-		sess.instances[toSuspend].kill(true)
+		sess.instances[toSuspend].end(causeSuspend)
 	}
 	return true
 }
@@ -147,6 +147,6 @@ func (sess *Session) cleanup() {
 		sess.expire.Stop()
 	}
 	for id := range sess.instances {
-		sess.instances[id].kill(false)
+		sess.instances[id].end(causeKilled)
 	}
 }

@@ -111,3 +111,66 @@ export const splitClass = (str: string | undefined): Array<string> => {
     }
     return str.split(" ").map(str => str.trim()).filter(str => !!str)
 }
+
+const delayReset = 1000
+const maxDelay = 12_000
+const zeroThreshold = 300
+const step = 200
+const jitterMult = 0.4
+
+export class ProgressiveDelay {
+    private marker = 0
+    private fee = 0
+    private limited = false
+    private resetMarker() {
+        this.marker = Date.now()
+    }
+    private resetFee() {
+        this.fee = 0
+        this.limited = false
+    }
+    private increaseFee() {
+        if (this.limited) {
+            return
+        }
+        this.fee++
+    }
+    private diff() {
+        const diff = Date.now() - this.marker
+        if (diff <= zeroThreshold) {
+            return 0
+        }
+        return diff
+    }
+    private delay(): number {
+        let delay = step * Math.pow(2, this.fee)
+        if (delay > maxDelay) {
+            this.limited = true
+            delay = maxDelay
+        }
+        const jitter = Math.random() * delay * jitterMult
+        return delay - delay * (jitterMult / 2) + jitter
+    }
+    reset() {
+        this.resetFee()
+    }
+    wait(): Promise<void> {
+        return new Promise(res => {
+            const diff = this.diff()
+            if (diff >= delayReset) {
+                this.resetMarker()
+                this.resetFee()
+                res()
+                return
+            }
+            if (diff == 0) {
+                this.increaseFee()
+            }
+            setTimeout(() => {
+                this.resetMarker()
+                res()
+            }, this.delay())
+        })
+    }
+}
+

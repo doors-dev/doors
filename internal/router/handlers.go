@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -108,7 +107,6 @@ func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
 	opt := &instance.Options{
 		Detached: false,
 		Rerouted: false,
-		TTL:      rr.instanceTTL,
 	}
 main:
 	for {
@@ -196,54 +194,6 @@ main:
 	return true
 }
 
-func (rr *Router) initPush(r *http.Request, instanceId string) common.EventReceiver {
-	tx, rx := common.NewEventChannel(r.Context())
-	sess := rr.getSession(r)
-	if sess == nil {
-		tx.Tx(common.UnauthorizedEvent{})
-		tx.Close()
-		return rx
-	}
-	inst, ok := sess.GetInstance(instanceId)
-	if !ok {
-		tx.Tx(common.GoneEvent{})
-		tx.Close()
-		return rx
-	}
-	inst.Connect(tx)
-	return rx
-}
-
-func (rr *Router) servePush(w http.ResponseWriter, r *http.Request, instanceId string) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache, no-store")
-	w.Header().Set("Connection", "keep-alive")
-	f := w.(http.Flusher)
-	rx := rr.initPush(r, instanceId)
-	for {
-		e, ok := rx.Rx()
-		if !ok {
-			break
-		}
-		err := common.WriteEvent(e, w)
-		if err != nil {
-			println(err.Error())
-			break
-		}
-		f.Flush()
-	}
-}
-
-func (rr *Router) tryServePush(w http.ResponseWriter, r *http.Request) bool {
-	matches := instanceRegexp.FindStringSubmatch(r.URL.Path)
-	if len(matches) == 0 {
-		return false
-	}
-	instanceId := matches[1]
-	rr.servePush(w, r, instanceId)
-	return true
-}
-
 func (rr *Router) servePut(w http.ResponseWriter, r *http.Request, instanceId string) {
 	sess := rr.getSession(r)
 	if sess == nil {
@@ -255,19 +205,7 @@ func (rr *Router) servePut(w http.ResponseWriter, r *http.Request, instanceId st
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	decoder := json.NewDecoder(r.Body)
-	callResponse := &instance.CallResponse{}
-	err := decoder.Decode(callResponse)
-	if err != nil {
-		println(err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if !inst.CallResponse(callResponse) {
-		w.WriteHeader(http.StatusGone)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
+	inst.Connect(w, r)
 }
 
 func (rr *Router) tryServePut(w http.ResponseWriter, r *http.Request) bool {
@@ -339,9 +277,6 @@ func (rr *Router) tryServeGet(w http.ResponseWriter, r *http.Request) bool {
 	if rr.tryServeImport(w, r) {
 		return true
 	}
-	if rr.tryServePush(w, r) {
-		return true
-	}
 	if rr.tryServeDir(w, r) {
 		return true
 	}
@@ -352,6 +287,7 @@ func (rr *Router) tryServeGet(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (rr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	rr.used.Store(true)
 	if rr.tryServeHook(w, r) {
 		return
 	}

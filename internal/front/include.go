@@ -42,16 +42,18 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 			return err
 		}
 	}
+	conf := inst.ClientConf()
 	_, err := w.Write(fmt.Appendf(nil,
-		"<script src=\"/%s.js\" id=\"%s\" data-root=\"%d\" data-ttl=\"%d\"></script>",
+		"<script src=\"/%s.js\" id=\"%s\" data-root=\"%d\" data-ttl=\"%d\" data-sleep=\"%d\" data-request=\"%d\"></script>",
 		script.HashString(),
 		inst.Id(),
 		node.Id(),
-		inst.TTL().Milliseconds(),
+		conf.TTL.Milliseconds(),
+		conf.SleepTimeout.Milliseconds(),
+		conf.RequestTimeout.Milliseconds(),
 	))
 	return err
 
 }
-
 
 var Include = include{}

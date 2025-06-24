@@ -7,7 +7,11 @@ import (
 )
 
 type Writable interface {
-    Destroy() 
+	Destroy()
+	Write(io.Writer) error
+}
+
+type JsonWritable interface {
 	WriteJson(io.Writer) error
 }
 
@@ -15,33 +19,22 @@ var bo = []byte("[")
 var bc = []byte("]")
 var comma = []byte(",")
 
-
-
-type WritableAny struct {
+type JsonWritableAny struct {
 	V any
 }
 
-func (wa WritableAny) Destroy() {
-
-}
-
-func (wa WritableAny) WriteJson(w io.Writer) error {
+func (wa JsonWritableAny) WriteJson(w io.Writer) error {
 	buf, err := json.Marshal(wa.V)
-    if err != nil {
-        log.Fatalf("Can't marshal")
-    }
-    _, err = w.Write(buf)
+	if err != nil {
+		log.Fatalf("Can't marshal")
+	}
+	_, err = w.Write(buf)
 	return err
 }
 
-type Writables []Writable
+type JsonWritables []JsonWritable
 
-func (a Writables) Destroy() {
-    for _, writable := range a {
-        writable.Destroy()
-    }
-}
-func (a Writables) WriteJson(w io.Writer) error {
+func (a JsonWritables) WriteJson(w io.Writer) error {
 	_, err := w.Write(bo)
 	if err != nil {
 		return err
@@ -68,20 +61,19 @@ type WritableRenderMap struct {
 	Index uint64
 }
 
-
 func (wrm *WritableRenderMap) Destroy() {
-    wrm.Rm.Destroy()
+	wrm.Rm.Destroy()
 }
-func (wrm *WritableRenderMap) WriteJson(w io.Writer) error {
-	return wrm.Rm.RenderJson(w, wrm.Index)
+func (wrm *WritableRenderMap) Write(w io.Writer) error {
+	return wrm.Rm.Render(w, wrm.Index)
 }
 
-type WritableRaw []byte
+type JsonWritabeRaw []byte
 
-func (wr WritableRaw) Destroy() {
+func (j JsonWritabeRaw) WriteJson(w io.Writer) error {
+	_, err := w.Write(j)
+	return err
 }
-func (wr WritableRaw) WriteJson(w io.Writer) error {
-    _, err := w.Write(([]byte)(wr))
-    return err
-}
+
+
 

@@ -2,7 +2,6 @@ package doors
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
@@ -151,31 +150,22 @@ func NewRouter() Router {
 	return router.NewRouter()
 }
 
-func SetFallback(handler http.Handler) Mod {
-	return router.SetFallback(handler)
-}
-
-func SetInstanceLimitPerSession(n int) Mod {
-	return router.SetInstanceLimit(n)
+func ServeFallback(handler http.Handler) Mod {
+	return router.ServeFallback(handler)
 }
 
 func SetGoroutineLimitPerInstance(n int) Mod {
 	return router.SetGoroutineLimit(n)
 }
 
-func SetInstanceTTL(duration time.Duration) Mod {
-	return router.SetInstanceTTL(duration)
-}
 func SetSessionHooks(create func(id string), delete func(id string)) Mod {
 	return router.SetSessionHooks(create, delete)
 }
 
-func SetSessionExpire(d time.Duration) Mod {
-	return router.SetSessionExpire(d)
-}
+type SystemConf = common.SystemConf
 
-func SetSessionCookieExpire(d time.Duration) Mod {
-	return router.SetSessionCookieExpire(d)
+func SetSystemConf(conf SystemConf) Mod {
+	return router.SetSystemConf(conf)
 }
 
 func SetErrorPage(page func(message string) templ.Component) Mod {

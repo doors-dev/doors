@@ -13,8 +13,9 @@ type Caller interface {
 
 type Call interface {
 	Name() string
-	Args() []common.Writable
-	OnWriteErr()
+	Arg() common.JsonWritable
+	Payload() (common.Writable, bool)
+	OnWriteErr() bool
 	OnResult(error)
 }
 
@@ -26,34 +27,40 @@ func (n *nodeCaller) Call() (Call, bool) {
 }
 
 type commitCall struct {
-	name string
-	args []common.Writable
-	id   uint
-	node *Node
+	name    string
+	arg     common.JsonWritable
+	payload common.Writable
+	id      uint
+	node    *Node
 }
 
 func (c *commitCall) Name() string {
 	return c.name
 }
 
-func (c *commitCall) Args() []common.Writable {
-	return c.args
+func (c *commitCall) Arg() common.JsonWritable {
+	return c.arg
+}
+
+func (c *commitCall) Payload() (common.Writable, bool) {
+	return c.payload, true
 }
 
 func (c *commitCall) OnResult(err error) {
 	c.node.commitResult(c.id, err)
-	for _, writable := range c.args {
-		writable.Destroy()
+	if c.payload == nil {
+		return
 	}
+	c.payload.Destroy()
 }
 
-func (c *commitCall) OnWriteErr() {
-	c.node.commitWriteErr(c)
+func (c *commitCall) OnWriteErr() bool {
+	return c.node.commitWriteErr(c)
 }
 
 type jsCall struct {
 	name      string
-	arg       common.WritableRaw
+	arg       common.JsonWritabeRaw
 	core      *core
 	hookEntry *HookEntry
 	done      atomic.Bool
@@ -71,7 +78,7 @@ func (j *jsCall) cancel() bool {
 	}
 	j.core.removeJsCall(j)
 	j.hookEntry.Cancel()
-    return true
+	return true
 }
 
 func (j *jsCall) Call() (Call, bool) {
@@ -85,8 +92,12 @@ func (j *jsCall) Name() string {
 	return "call"
 }
 
-func (j *jsCall) Args() []common.Writable {
-	return []common.Writable{common.WritableAny{j.name}, j.arg, common.WritableAny{j.hookEntry.NodeId}, common.WritableAny{j.hookEntry.HookId}}
+func (j *jsCall) Arg() common.JsonWritable {
+	return common.JsonWritables([]common.JsonWritable{common.JsonWritableAny{j.name}, j.arg, common.JsonWritableAny{j.hookEntry.NodeId}, common.JsonWritableAny{j.hookEntry.HookId}})
+}
+
+func (k *jsCall) Payload() (common.Writable, bool) {
+	return nil, false
 }
 
 func (j *jsCall) OnResult(err error) {
@@ -98,9 +109,10 @@ func (j *jsCall) OnResult(err error) {
 		return
 	}
 	slog.Error("Call failed", slog.String("call_name", j.name), slog.String("js_error", err.Error()))
-    j.hookEntry.cancel(err)
+	j.hookEntry.cancel(err)
 
 }
 
-func (j *jsCall) OnWriteErr() {
+func (j *jsCall) OnWriteErr() bool {
+	return !j.done.Load()
 }

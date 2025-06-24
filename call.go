@@ -97,6 +97,6 @@ func Call(ctx context.Context, conf CallConf) (TryCancel, bool) {
 		slog.Error("Call arg marshaling error", slog.String("call_name", conf.Name), slog.String("json_error", err.Error()))
 		return nil, false
 	}
-	cancel, ok := n.RegisterCallHook(ctx, conf.Name, (common.WritableRaw)(arg), call)
+	cancel, ok := n.RegisterCallHook(ctx, conf.Name, (common.JsonWritabeRaw)(arg), call)
 	return cancel, ok
 }

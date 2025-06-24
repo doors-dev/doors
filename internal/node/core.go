@@ -16,7 +16,7 @@ type Core interface {
 	Id() uint64
 	Kill()
 	RegisterAttrHook(ctx context.Context, h *AttrHook) (*HookEntry, bool)
-	RegisterCallHook(ctx context.Context, name string, arg common.WritableRaw, hook *CallHook) (TryCancel, bool)
+	RegisterCallHook(ctx context.Context, name string, arg common.JsonWritabeRaw, hook *CallHook) (TryCancel, bool)
 }
 
 type instance interface {
@@ -89,7 +89,7 @@ func (c *core) isRoot() bool {
 
 type TryCancel = func() bool
 
-func (c *core) RegisterCallHook(ctx context.Context, name string, arg common.WritableRaw, hook *CallHook) (TryCancel, bool) {
+func (c *core) RegisterCallHook(ctx context.Context, name string, arg common.JsonWritabeRaw, hook *CallHook) (TryCancel, bool) {
 	entry, ok := c.node.addHook(ctx, hook)
 	if !ok {
 		return nil, false
@@ -193,10 +193,11 @@ func (c *core) renderUpdateCall(content templ.Component, ch chan<- Call, commitI
 			}
 			ch <- &commitCall{
 				name: "node_update",
-				args: []common.Writable{common.WritableAny{c.id}, &common.WritableRenderMap{
+				arg:  common.JsonWritableAny{c.id},
+				payload: &common.WritableRenderMap{
 					Rm:    rm,
 					Index: c.id,
-				}},
+				},
 				id:   commitId,
 				node: c.node,
 			}
@@ -226,10 +227,11 @@ func (c *core) renderReplaceCall(content templ.Component, ch chan<- Call, commit
 		}
 		ch <- &commitCall{
 			name: "node_replace",
-			args: []common.Writable{common.WritableAny{c.id}, &common.WritableRenderMap{
+			arg:  common.JsonWritableAny{c.id},
+			payload: &common.WritableRenderMap{
 				Rm:    rm,
 				Index: c.id,
-			}},
+			},
 			id:   commitId,
 			node: c.node,
 		}
@@ -239,7 +241,7 @@ func (c *core) renderReplaceCall(content templ.Component, ch chan<- Call, commit
 func (c *core) renderRemoveCall(ch chan<- Call, commitId uint) {
 	ch <- &commitCall{
 		name: "node_remove",
-		args: []common.Writable{common.WritableAny{c.id}},
+		arg:  common.JsonWritableAny{c.id},
 		id:   commitId,
 		node: c.node,
 	}

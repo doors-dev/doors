@@ -4,11 +4,11 @@ import navigator from "./navigator"
 import { doorId } from "./lib"
 
 export default {
-    relocate: (path: string) => {
+    relocate: ([path]:[string]) => {
         window.location.href = path
     },
 
-    call: async (name: string, arg: any, nodeId: number, hookId: number) => {
+    call: async ([name, arg, nodeId, hookId]:[string, any, number, number]) => {
         const entry = door.getHandler(nodeId, name)
         if (!entry) {
             throw new Error(`Handler ${name} not found`)
@@ -22,7 +22,7 @@ export default {
         }
     },
 
-    set_path: (p: string, replace: boolean) => {
+    set_path: ([p, replace]:[string, boolean]) => {
         if (replace) {
             navigator.replace(p)
             return

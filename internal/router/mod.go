@@ -3,7 +3,6 @@ package router
 import (
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/common"
@@ -59,20 +58,23 @@ func ServeDir(prefix string, root http.FileSystem) Mod {
 	})
 }
 
-func SetFallback(handler http.Handler) Mod {
+func ServeFallback(handler http.Handler) Mod {
 	return anyMod(func(rr *Router) {
 		rr.fallback = handler
 	})
 }
 
-func SetInstanceLimit(n int) Mod {
-	if n < 1 {
-		common.BadPanic("At least 1")
-	}
+
+
+func SetSystemConf(conf common.SystemConf) Mod {
 	return anyMod(func(rr *Router) {
-		rr.instLimit = n
+		common.InitDefaults(&conf)
+		rr.conf = &conf
+		rr.registry.Gzip = !conf.ServerDisableGzip
+		rr.pool.Tune(conf.InstanceGoroutineLimit)
 	})
 }
+
 
 func SetGoroutineLimit(n int) Mod {
 	if n < 1 {
@@ -83,11 +85,6 @@ func SetGoroutineLimit(n int) Mod {
 	})
 }
 
-func SetInstanceTTL(duration time.Duration) Mod {
-	return anyMod(func(rr *Router) {
-		rr.instanceTTL = duration
-	})
-}
 
 func SetErrorPage(page ErrorPageComponent) Mod {
 	return anyMod(func(rr *Router) {
@@ -104,23 +101,6 @@ func SetSessionHooks(create func(id string), delete func(id string)) Mod {
 	})
 }
 
-func SetSessionExpire(d time.Duration) Mod {
-	return anyMod(func(rr *Router) {
-		rr.sessionExpire = d
-	})
-}
-
-func SetSessionCookieExpire(d time.Duration) Mod {
-	return anyMod(func(rr *Router) {
-		rr.sessionCookieExpire = d
-	})
-}
-
-func SetGzip(enable bool) Mod {
-	return anyMod(func(rr *Router) {
-		rr.registry.Gzip = enable
-	})
-}
 
 func SetBuildProfiles(profiles resources.BuildProfiles) Mod {
 	return anyMod(func(rr *Router) {

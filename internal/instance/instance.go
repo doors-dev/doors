@@ -3,6 +3,7 @@ package instance
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -20,9 +21,8 @@ type AnyInstance interface {
 	Serve(http.ResponseWriter, int) error
 	UpdatePath(m any, adapter path.AnyAdapter) bool
 	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request) bool
-	Connect(common.EventSender)
-	kill(suspend bool)
-	CallResponse(*CallResponse) bool
+	Connect(w http.ResponseWriter, r *http.Request)
+	end(endCause)
 }
 
 type Page[M any] interface {
@@ -32,7 +32,6 @@ type Page[M any] interface {
 type Options struct {
 	Detached bool
 	Rerouted bool
-	TTL      time.Duration
 }
 
 func NewInstance[M any](sess *Session, page Page[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
@@ -44,6 +43,7 @@ func NewInstance[M any](sess *Session, page Page[M], adapter *path.Adapter[M], m
 		opt:     opt,
 		session: sess,
 	}
+	inst.resetKillTimer()
 	return inst, sess.AddInstance(inst)
 }
 
@@ -59,6 +59,28 @@ type Instance[M any] struct {
 	session  *Session
 	ctx      context.Context
 	included atomic.Bool
+	killTimer  *time.Timer
+}
+
+func (inst *Instance[M]) resetKillTimer() bool {
+	if inst.killTimer != nil {
+		stopped := inst.killTimer.Stop()
+		if !stopped {
+			return false
+		}
+		inst.killTimer.Reset(inst.conf().InstanceTTL)
+		return true
+	}
+	inst.killTimer = time.AfterFunc(inst.conf().InstanceTTL, func() {
+		inst.end(causeKilled)
+	})
+	return true
+}
+
+
+
+func (inst *Instance[M]) conf() *common.SystemConf {
+	return inst.session.router.Conf()
 }
 
 func (inst *Instance[M]) include() bool {
@@ -67,15 +89,6 @@ func (inst *Instance[M]) include() bool {
 
 func (inst *Instance[M]) getSession() coreSession {
 	return inst.session
-}
-
-func (inst *Instance[M]) CallResponse(r *CallResponse) bool {
-	inst.mu.RLock()
-	defer inst.mu.RUnlock()
-	if inst.killed || inst.core == nil {
-		return false
-	}
-	return inst.core.connector.CallResponse(r)
 }
 
 func (inst *Instance[M]) TriggerHook(nodeId uint64, hookId uint64, w http.ResponseWriter, r *http.Request) bool {
@@ -88,17 +101,21 @@ func (inst *Instance[M]) TriggerHook(nodeId uint64, hookId uint64, w http.Respon
 	return inst.core.TriggerHook(nodeId, hookId, w, r)
 }
 
-func (inst *Instance[M]) Connect(conn common.EventSender) {
+func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {
 	inst.mu.RLock()
-	defer inst.mu.RUnlock()
 	if inst.killed || inst.core == nil {
-		conn.Tx(common.GoneEvent{})
-		conn.Close()
+		inst.mu.RUnlock()
+		w.WriteHeader(http.StatusGone)
 		return
 	}
-	inst.core.connector.Connect(conn)
+	inst.resetKillTimer()
+	inst.mu.RUnlock()
+	inst.core.solitaire.Connect(w, r)
 }
 
+func (inst *Instance[M]) syncError(err error) {
+	inst.end(causeSyncError)
+}
 func (inst *Instance[M]) Serve(w http.ResponseWriter, code int) error {
 	inst.mu.Lock()
 	if inst.killed {
@@ -109,11 +126,11 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, code int) error {
 		log.Fatal("Instance rendered twice")
 	}
 	spawner := inst.session.router.Spawner()
-	inst.core = newCore[M](inst, newConnector(inst, inst.opt.TTL), spawner)
+	inst.core = newCore[M](inst, newSolitaire(inst, common.GetSolitaireConf(inst.conf())), spawner)
 	inst.mu.Unlock()
 	err := inst.core.serve(w, inst.page.Render(inst.beam), code)
 	if err != nil {
-		defer inst.kill(true)
+		defer inst.end(causeKilled)
 	}
 	return err
 }
@@ -122,7 +139,7 @@ func (inst *Instance[M]) Id() string {
 	return inst.id
 }
 
-func (inst *Instance[M]) kill(suspend bool) {
+func (inst *Instance[M]) end(cause endCause) {
 	inst.mu.Lock()
 	if inst.killed {
 		inst.mu.Unlock()
@@ -134,9 +151,20 @@ func (inst *Instance[M]) kill(suspend bool) {
 		inst.mu.Unlock()
 		return
 	}
-	inst.core.kill(suspend)
+	inst.core.end(cause)
 }
 
-func (inst *Instance[M]) end() {
-	inst.kill(true)
+
+
+
+type endCause int
+const (
+	causeKilled endCause = iota
+	causeSuspend 
+	causeSyncError
+)
+
+func (c endCause) Error() string {
+	return fmt.Sprint("cause: ", int(c))
 }
+

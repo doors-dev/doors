@@ -31,18 +31,19 @@ type coreInstance[M any] interface {
 	setupPathSync(context.Context)
 	newLink(context.Context, any) (*Link, error)
 	relocate(any) error
-	end()
+	end(endCause)
 	include() bool
+	conf() *common.SystemConf
 }
 
-func newCore[M any](inst coreInstance[M], connector *connector, spawner *shredder.Spawner) *core[M] {
+func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredder.Spawner) *core[M] {
 	return &core[M]{
 		instance:     inst,
 		gen:          common.NewPrima(),
 		hooksMu:      sync.Mutex{},
 		hooks:        make(map[uint64]map[uint64]*node.NodeHook),
 		spawner:      spawner,
-		connector:    connector,
+		solitaire:    solitaire,
 		cspCollector: inst.getSession().getRouter().CSP().NewCollector(),
 	}
 }
@@ -54,7 +55,7 @@ type Core interface {
 	SessionId() string
 	Relocate(context.Context, any) error
 	Include() bool
-	TTL() time.Duration
+	ClientConf() *common.ClientConf
 	Id() string
 	NewId() uint64
 	NewLink(context.Context, any) (*Link, error)
@@ -70,11 +71,19 @@ type core[M any] struct {
 	hooks            map[uint64]map[uint64]*node.NodeHook
 	root             node.Core
 	cinema           *node.Cinema
-	connector        *connector
+	solitaire        *solitaire
 	spawner          *shredder.Spawner
 	cspCollectorUsed atomic.Bool
 	cspCollector     *common.CSPCollector
 	nonce            string
+}
+
+func (c *core[M]) SleepTimeout() time.Duration {
+	return c.instance.conf().ClientHiddenSleepTimer
+}
+
+func (c *core[M]) ClientConf() *common.ClientConf {
+	return common.GetClientConf(c.instance.conf())
 }
 
 func (c *core[M]) InlineNonce() (string, bool) {
@@ -121,16 +130,13 @@ func (c *core[M]) SessionEnd() {
 }
 
 func (c *core[M]) End() {
-	c.instance.end()
+	c.instance.end(causeKilled)
 }
 
 func (c *core[M]) SessionExpire(d time.Duration) {
 	c.instance.getSession().SetExpiration(d)
 }
 
-func (c *core[M]) TTL() time.Duration {
-	return c.connector.ttl
-}
 
 func (c *core[M]) Id() string {
 	return c.instance.Id()
@@ -143,8 +149,8 @@ func (c *core[M]) Include() bool {
 func (c *core[M]) NewLink(ctx context.Context, m any) (*Link, error) {
 	return c.instance.newLink(ctx, m)
 }
-func (c *core[M]) kill(suspend bool) {
-	c.connector.Kill(suspend)
+func (c *core[M]) end(cause endCause) {
+	c.solitaire.End(cause)
 	if c.root != nil {
 		c.root.Kill()
 	}
@@ -156,7 +162,7 @@ func (c *core[M]) Thread() *shredder.Thread {
 }
 
 func (c *core[M]) Call(caller node.Caller) {
-	c.connector.Call(caller)
+	c.solitaire.Call(caller)
 }
 
 func (c *core[M]) Setup(root node.Core, cinema *node.Cinema, ctx context.Context) {
@@ -200,7 +206,7 @@ func (c *core[M]) serve(w http.ResponseWriter, content templ.Component, code int
 		w.Header().Add("Content-Security-Policy", header)
 	}
 	defer rm.Destroy()
-	if c.instance.getSession().getRouter().Gzip() {
+	if !c.instance.conf().ServerDisableGzip {
 		w.Header().Set("Content-Encoding", "gzip")
 		w.WriteHeader(code)
 		writer := gzip.NewWriter(w)
