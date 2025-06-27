@@ -344,19 +344,22 @@ class Connection {
         const reader = response.body!.getReader()
         let confirmed = false
         while (true) {
-            var result: ReadableStreamReadResult<Uint8Array<ArrayBufferLike>>
+            let result: ReadableStreamReadResult<Uint8Array>
             try {
                 result = await reader.read()
             } catch (e) {
                 break
             }
-            if (!confirmed) {
-                confirmed = true
-                this.ctrl.tracker.confirm(results)
-            }
             const { done, value } = result
             if (done) {
                 break
+            }
+            if(value.length == 0) {
+                continue
+            }
+            if (!confirmed) {
+                confirmed = true
+                this.ctrl.tracker.confirm(results)
             }
             this.onChunk(value)
         }
