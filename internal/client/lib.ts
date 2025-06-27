@@ -174,3 +174,26 @@ export class ProgressiveDelay {
     }
 }
 
+
+export class AbortTimer {
+    private abortController = new AbortController()
+    private interval: number
+    constructor(timeout: number) {
+        const tick = 0.05 * timeout
+        const deadline = Date.now() + timeout - tick / 2
+        this.interval = setInterval(() => {
+            if (Date.now() < deadline) {
+                return
+            }
+            this.abort()
+        }, tick)
+
+    }
+    abort() {
+        clearInterval(this.interval)
+        this.abortController.abort()
+    }
+    get signal() {
+        return this.abortController.signal
+    }
+}

@@ -1,6 +1,6 @@
 import { id, sleepAfter, ttl, requestTimeout } from "./params"
 import calls from "./calls"
-import { ProgressiveDelay } from "./lib"
+import { ProgressiveDelay, AbortTimer } from "./lib"
 import { attach } from "./capture"
 
 
@@ -220,23 +220,16 @@ class RequestErr extends Error {
 
 class Connection {
     private status: SyncStatus = connectorStatus.length
-    private abortController = new AbortController();
-    private timeout: number
+    private abortTimer: AbortTimer
     constructor(private ctrl: Controller) {
-        this.timeout = setTimeout(() => {
-            this.abortController.abort()
-        }, requestTimeout)
+        this.abortTimer = new AbortTimer(requestTimeout)
         this.run()
     }
     private offset = 0
     private buf = new Uint8Array(4)
     private package: Package | undefined
     abort() {
-        if (this.abortController.signal.aborted) {
-            return
-        }
-        clearTimeout(this.timeout)
-        this.abortController.abort()
+        this.abortTimer.abort()
     }
     private onChunk(data: Uint8Array) {
         if (data.length == 0) {
@@ -318,7 +311,7 @@ class Connection {
         const gaps = this.ctrl.desk.gaps()
         try {
             response = await fetch("/d00r/" + id, {
-                signal: this.abortController.signal,
+                signal: this.abortTimer.signal,
                 method: "PUT",
                 headers: {
                     Accept: "application/octet-stream",
@@ -331,7 +324,7 @@ class Connection {
             })
         } catch (e) {
             this.ctrl.tracker.cancel(results)
-            if (this.abortController.signal.aborted) {
+            if (this.abortTimer.signal.aborted) {
                 this.ctrl.done(this)
                 return
             }
@@ -348,8 +341,8 @@ class Connection {
             this.ctrl.done(this, new RequestErr(response.status))
             return
         }
-        this.ctrl.tracker.confirm(results)
         const reader = response.body!.getReader()
+        let confirmed = false
         while (true) {
             var result: ReadableStreamReadResult<Uint8Array<ArrayBufferLike>>
             try {
@@ -357,11 +350,18 @@ class Connection {
             } catch (e) {
                 break
             }
+            if (!confirmed) {
+                confirmed = true
+                this.ctrl.tracker.confirm(results)
+            }
             const { done, value } = result
             if (done) {
                 break
             }
             this.onChunk(value)
+        }
+        if (!confirmed) {
+            this.ctrl.tracker.cancel(results)
         }
         this.ctrl.done(this)
     }
@@ -460,7 +460,7 @@ class Controller {
     private ready() {
         this.loaded = true
         attach(document)
-        if(this.state == state.dead) {
+        if (this.state == state.dead) {
             return
         }
         this.collect()
@@ -522,7 +522,7 @@ class Controller {
     }
     private reloaded = false
     private reload() {
-        if(this.reloaded) {
+        if (this.reloaded) {
             return
         }
         this.reloaded = true
