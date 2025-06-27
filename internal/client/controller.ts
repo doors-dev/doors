@@ -305,6 +305,10 @@ class Connection {
             this.package!.appendData(data)
         }
     }
+    private done(e?:Error) {
+        this.abortTimer.abort()
+        this.ctrl.done(this, e)
+    }
     private async run() {
         let response: Response
         const results = this.ctrl.tracker.results()
@@ -325,7 +329,7 @@ class Connection {
         } catch (e) {
             this.ctrl.tracker.cancel(results)
             if (this.abortTimer.signal.aborted) {
-                this.ctrl.done(this)
+                this.done()
                 return
             }
             this.ctrl.done(this, new NetworkErr())
@@ -333,12 +337,13 @@ class Connection {
         }
         if (response.status === 401 || response.status === 410) {
             this.ctrl.tracker.cancel(results)
+            this.abortTimer.abort()
             this.ctrl.gone()
             return
         }
         if (!response.ok) {
             this.ctrl.tracker.cancel(results)
-            this.ctrl.done(this, new RequestErr(response.status))
+            this.done(new RequestErr(response.status))
             return
         }
         const reader = response.body!.getReader()
@@ -366,7 +371,7 @@ class Connection {
         if (!confirmed) {
             this.ctrl.tracker.cancel(results)
         }
-        this.ctrl.done(this)
+        this.done()
     }
 }
 
@@ -562,7 +567,7 @@ class Controller {
     gone() {
         this.signal(signals.killed)
     }
-    done(connection: Connection, e?: Error) {
+    done(connection: Connection, e: Error | undefined) {
         this.connections.delete(connection)
         if (this.connections.size != 0 || this.state != state.active) {
             return
