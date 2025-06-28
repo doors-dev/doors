@@ -28,7 +28,7 @@ type focusEventHook struct {
 	//
 	// The function receives a typed EventRequest[FocusEvent] and should return true
 	// when the hook is considered complete and can be removed.
-	On func(context.Context, EventRequest[FocusEvent]) bool
+	On func(context.Context, REvent[FocusEvent]) bool
 }
 
 func (p *focusEventHook) init(event string, ctx context.Context, n node.Core, _ instance.Core, attrs *front.Attrs) {
@@ -111,7 +111,7 @@ type ARawSubmit struct {
 	//
 	// It receives a RawFormRequest and should return true (is done)
 	// when processing is complete and the hook can be removed.
-	On func(context.Context, RawFormRequest) bool
+	On func(context.Context, RRawForm) bool
 }
 
 func (s ARawSubmit) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -180,7 +180,7 @@ type ASubmit[D any] struct {
 	//
 	// It receives a typed FormRequest[D] and should return true (is done)
 	// when processing is complete and the hook can be removed.
-	On func(context.Context, FormRequest[D]) bool
+	On func(context.Context, RForm[D]) bool
 }
 
 func (s ASubmit[V]) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -261,7 +261,7 @@ type AChange struct {
 	//
 	// It receives a typed EventRequest[ChangeEvent] and should return true
 	// when the hook is complete and can be removed.
-	On func(context.Context, EventRequest[ChangeEvent]) bool
+	On func(context.Context, REvent[ChangeEvent]) bool
 }
 
 func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {

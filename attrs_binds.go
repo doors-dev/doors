@@ -11,7 +11,7 @@ import (
 )
 
 type AHook[I any, O any] struct {
-	On        func(ctx context.Context, r HookRequest[I]) (O, bool)
+	On        func(ctx context.Context, r RHook[I]) (O, bool)
 	Name      string
 	Mode      HookMode
 	Indicator []Indicate
@@ -65,7 +65,7 @@ func (h *AHook[I, O]) handle(ctx context.Context, w http.ResponseWriter, r *http
 
 type ARawHook struct {
 	Name      string
-	On        func(ctx context.Context, r RawHookRequest) bool
+	On        func(ctx context.Context, r RRawHook) bool
 	Mode      HookMode
 	Indicator []Indicate
 }

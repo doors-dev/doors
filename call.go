@@ -34,7 +34,7 @@ type CallConf struct {
 
 	// Trigger is an optional backend handler that is called when the frontend responds.
 	// Use this to handle data returned by the frontend, such as result values or side effects.
-	Trigger func(context.Context, CallRequest)
+	Trigger func(context.Context, RCall)
 
 	// Cancel is called if the context becomes invalid before the call is delivered,
 	// or if the call is canceled explicitly.

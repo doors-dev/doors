@@ -169,7 +169,7 @@ type eventAttr[E any] struct {
 	mark      string
 	mode      HookMode
 	indicate []Indicate
-	on        func(context.Context, EventRequest[E]) bool
+	on        func(context.Context, REvent[E]) bool
 }
 
 func (p *eventAttr[E]) init(attrs *front.Attrs) {

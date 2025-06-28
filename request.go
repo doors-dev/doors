@@ -7,8 +7,8 @@ import (
 	"net/url"
 )
 
-// BaseRequest provides common cookie-related methods for all request types.
-type BaseRequest interface {
+// R provides common cookie-related methods for all request types.
+type R interface {
 	// SetCookie sets an HTTP cookie in the response.
 	SetCookie(name string, cookie *http.Cookie)
 
@@ -16,33 +16,33 @@ type BaseRequest interface {
 	GetCookie(name string) (*http.Cookie, error)
 }
 
-// EventRequest wraps a DOM event sent from the frontend.
+// REvent wraps a DOM event sent from the frontend.
 //
 // It includes basic request handling via BaseRequest and provides access
 // to the decoded event payload of type E.
-type EventRequest[E any] interface {
-	BaseRequest
+type REvent[E any] interface {
+	R
 
 	// Event returns the event payload.
 	Event() E
 }
 
-// FormRequest provides access to decoded form data sent from the client.
+// RForm provides access to decoded form data sent from the client.
 //
 // It includes cookie support and exposes structured form input via the Data method.
-type FormRequest[D any] interface {
-	BaseRequest
+type RForm[D any] interface {
+	R
 
 	// Data returns the parsed form data as a typed value.
 	Data() D
 }
 
 
-// RawFormRequest gives access to low-level multipart form data parsing.
+// RRawForm gives access to low-level multipart form data parsing.
 //
 // It is used when custom handling of form or file inputs is required.
-type RawFormRequest interface {
-	BaseRequest
+type RRawForm interface {
+	R
 
 	// Reader returns a multipart.Reader for streaming multipart form data.
 	Reader() (*multipart.Reader, error)
@@ -68,19 +68,19 @@ type ParsedForm interface {
 }
 
 
-type CallRequest interface {
-	RawFormRequest
+type RCall interface {
+	RRawForm
 	W() http.ResponseWriter
 	Body() io.ReadCloser
 }
 
-type HookRequest[D any] interface {
-    BaseRequest
+type RHook[D any] interface {
+    R
     Data() D
 }
 
-type RawHookRequest interface {
-	RawFormRequest
+type RRawHook interface {
+	RRawForm
 	W() http.ResponseWriter
 	Body() io.ReadCloser
 }
