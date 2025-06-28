@@ -21,8 +21,8 @@ type Page[M any] interface {
 
 type PageRoute = router.Response
 
-type PageRequest[M any] interface {
-	BaseRequest
+type RPage[M any] interface {
+	R
 	GetModel() M
 	RequestHeader() http.Header
 	ResponseHeader() http.Header
@@ -116,7 +116,7 @@ func (r *pageRequest[M]) PageFuncStatus(f func(SourceBeam[M]) templ.Component, s
 	return r.PageStatus(pageFunc[M](f), status)
 }
 
-func ServePage[M any](handler func(PageRouter[M], PageRequest[M]) PageRoute) Mod {
+func ServePage[M any](handler func(PageRouter[M], RPage[M]) PageRoute) Mod {
 	return router.RoutePage(func(r *router.Request[M]) router.Response {
 		pr := &pageRequest[M]{
 			r: r,

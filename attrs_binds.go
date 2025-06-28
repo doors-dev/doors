@@ -65,7 +65,7 @@ func (h *AHook[I, O]) handle(ctx context.Context, w http.ResponseWriter, r *http
 
 type ARawHook struct {
 	Name      string
-	On        func(ctx context.Context, r RawHookRequest) bool
+	On        func(ctx context.Context, r RRawHook) bool
 	Mode      HookMode
 	Indicator []Indicate
 }

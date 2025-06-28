@@ -31,7 +31,7 @@ type pointerEventHook struct {
 	// On is the required backend handler for the click event.
 	// It receives a typed EventRequest[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
-	On func(context.Context, EventRequest[PointerEvent]) bool
+	On func(context.Context, REvent[PointerEvent]) bool
 }
 
 func (p *pointerEventHook) init(event string, ctx context.Context, n node.Core, _ instance.Core, attrs *front.Attrs) {

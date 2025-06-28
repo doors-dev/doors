@@ -31,7 +31,7 @@ type keyEventHook struct {
 	// On is the required backend handler for the click event.
 	// It receives a typed EventRequest[KeyboardEvent] and should return true
 	// when the hook is considered complete and can be removed.
-	On func(context.Context, EventRequest[KeyboardEvent]) bool
+	On func(context.Context, REvent[KeyboardEvent]) bool
 }
 
 func (k *keyEventHook) init(event string, ctx context.Context, n node.Core, _ instance.Core, attrs *front.Attrs) {
