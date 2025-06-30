@@ -7,7 +7,7 @@ import "github.com/doors-dev/doors/internal/beam"
 // When used in a render cycle, it is guaranteed that a Node and all of its children
 // will observe the exact same value for a given Beam. This ensures stable and predictable
 // rendering behavior, even when multiple components depend on the same reactive source.
-type Beam[T any] =  beam.Beam[T]
+type Beam[T any] = beam.Beam[T]
 
 // SourceBeam represents a writable, reactive data stream that allows both observation and mutation.
 // It embeds Beam[T], supporting subscription, reading, and lifecycle consistency as described in Beam.
@@ -34,19 +34,18 @@ func NewSourceBeam[T any](init T, distinct bool) SourceBeam[T] {
 
 // NewSourceBeamExt creates a new SourceBeam with a custom update condition.
 //
-// Unlike NewSourceBeam, which uses reflect.DeepEqual to suppress duplicate updates,
+// Unlike NewSourceBeam, which uses == check to suppress duplicate updates,
 // this version accepts an updateIf function to determine whether a new value should
 // be propagated to subscribers.
 //
 // The updateIf function receives pointers to the new and previous values and should
-// return true if the new value is considered different and should be emitted.
+// return true if the new value is considered different.
 //
-// This is useful for performance-sensitive use cases or when structural equality
-// isn't the right measure for change detection.
 //
 // Parameters:
 //   - init: the initial value for the SourceBeam.
-//   - updateIf: a custom function to determine if a new value should trigger propagation.
+//   - updateIf: a custom function to determine if a new value should trigger propagation
+//   or nil to tiggger every time
 //
 // Returns:
 //   - A new SourceBeam[T] instance that uses updateIf for update comparisons.
@@ -60,7 +59,7 @@ func NewSourceBeamExt[T any](init T, updateIf func(new *T, old *T) bool) SourceB
 // will receive updates whenever the source beam updates.
 //
 // If distinct is true, the derived beam will only emit updates when the casted value changes,
-// using reflect.DeepEqual to compare with the previous value. This avoids redundant updates
+// using == to compare with the previous value. This avoids redundant updates
 // when the output is structurally identical.
 //
 // Parameters:
@@ -70,7 +69,7 @@ func NewSourceBeamExt[T any](init T, updateIf func(new *T, old *T) bool) SourceB
 //
 // Returns:
 //   - A new Beam[T2] that tracks transformed updates from the source.
-func NewBeam[T any, T2 any](source Beam[T], cast func(T) T2, distinct bool) Beam[T2] {
+func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2, distinct bool) Beam[T2] {
 	return beam.NewBeam(source, cast, distinct)
 }
 

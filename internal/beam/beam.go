@@ -2,7 +2,6 @@ package beam
 
 import (
 	"context"
-	"reflect"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/node"
@@ -72,16 +71,19 @@ func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, updateIf func(ne
 			return &v2
 		},
 		upd: func(new *T2, old *T2) bool {
+			if updateIf == nil {
+				return true
+			}
 			return updateIf(*new, *old)
 		},
 	}
 }
 
-func NewBeam[T any, T2 any](source Beam[T], cast func(T) T2, distinct bool) Beam[T2] {
+func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2, distinct bool) Beam[T2] {
 	var upd func(*T2, *T2) bool = nil
 	if distinct {
 		upd = func(new *T2, old *T2) bool {
-			return !reflect.DeepEqual(new, old)
+			return *new != *old
 		}
 	}
 	return &beam[T, T2]{
@@ -109,8 +111,6 @@ type beam[T any, T2 any] struct {
 	upd    func(new *T2, old *T2) bool
 	null   T2
 }
-
-
 
 func (b *beam[T, T2]) addWatcher(ctx context.Context, w node.Watcher) bool {
 	return b.source.addWatcher(ctx, w)
