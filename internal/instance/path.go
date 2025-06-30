@@ -98,7 +98,7 @@ func (inst *Instance[M]) setupPathSync(ctx context.Context) {
 			path: loc.String(),
 			err:  nil,
 		}
-	}, true)
+	})
 	v, _ := beam.ReadAndSub(ctx, func(ctx context.Context, p path) bool {
 
 		if p.err != nil {

@@ -34,10 +34,10 @@ type Options struct {
 	Rerouted bool
 }
 
-func NewInstance[M any](sess *Session, page Page[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
+func NewInstance[M comparable](sess *Session, page Page[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
 	inst := &Instance[M]{
 		id:      common.RandId(),
-		beam:    beam.NewSourceBeam(*m, true),
+		beam:    beam.NewSourceBeam(*m),
 		adapter: adapter,
 		page:    page,
 		opt:     opt,

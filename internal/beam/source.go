@@ -3,7 +3,6 @@ package beam
 import (
 	"context"
 	"errors"
-	"reflect"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -20,12 +19,12 @@ type instance interface {
 
 type SourceBeam[T any] interface {
 	Beam[T]
-    // Update sets a new value in the source and propagates it to all subscribers and derived beams.
+	// Update sets a new value in the source and propagates it to all subscribers and derived beams.
 	//
 	// Returns true if the context is still valid and the update was accepted;
 	// false if the context was canceled before the update.
 	Update(context.Context, T) bool
-    // XUpdate performs an extended update of the value and returns a channel
+	// XUpdate performs an extended update of the value and returns a channel
 	// that signals when the update has been fully propagated to all subscribers.
 	//
 	// If there are no active subscribers, the channel is closed immediately.
@@ -34,13 +33,13 @@ type SourceBeam[T any] interface {
 	// Returns:
 	//   - A receive-only channel that yields a single error or closes silently.
 	//   - A boolean indicating whether the update was accepted (context still valid).
-    XUpdate(context.Context, T) (<-chan error, bool)
-    // Mutate allows modifying the current value using the provided function.
+	XUpdate(context.Context, T) (<-chan error, bool)
+	// Mutate allows modifying the current value using the provided function.
 	// The function receives a pointer to the current value and returns true to apply the changes.
 	//
 	// If the context is canceled before mutation, the function is not invoked and false is returned.
 	Mutate(context.Context, func(*T) bool) bool
-    // XMutate performs an extended mutation. It behaves like Mutate, but also returns
+	// XMutate performs an extended mutation. It behaves like Mutate, but also returns
 	// a channel that signals when the mutation has been fully propagated to all subscribers.
 	//
 	// If the mutation function is not applied (returns false or context is canceled), the channel is closed.
@@ -50,7 +49,7 @@ type SourceBeam[T any] interface {
 	//   - A receive-only channel that yields a single error or closes silently.
 	//   - A boolean indicating whether the mutation was accepted.
 	XMutate(context.Context, func(*T) bool) (<-chan error, bool)
-    // Latest returns the most recently set or mutated value.
+	// Latest returns the most recently set or mutated value.
 	// Unlike Read, this does not depend on context and always returns latest value directly.
 	Latest() T
 }
@@ -66,7 +65,7 @@ type source[T any] struct {
 	mu     sync.RWMutex
 }
 
-func NewSourceBeamExt[T any](init T, updateIf func(new *T, old *T) bool) SourceBeam[T] {
+func NewSourceBeamExt[T any](init T, distinct func(new *T, old *T) bool) SourceBeam[T] {
 	return &source[T]{
 		seq: 1,
 		values: map[uint]*T{
@@ -75,16 +74,13 @@ func NewSourceBeamExt[T any](init T, updateIf func(new *T, old *T) bool) SourceB
 		inst: nil,
 		id:   0,
 		init: sync.Once{},
-		upd:  updateIf,
+		upd:  distinct,
 	}
 }
 
-func NewSourceBeam[T any](init T, distinct bool) SourceBeam[T] {
-	var upd func(*T, *T) bool = nil
-	if distinct {
-		upd = func(new *T, old *T) bool {
-			return !reflect.DeepEqual(new, old)
-		}
+func NewSourceBeam[T comparable](init T) SourceBeam[T] {
+	upd := func(new *T, old *T) bool {
+		return *new != *old
 	}
 	return NewSourceBeamExt(init, upd)
 }

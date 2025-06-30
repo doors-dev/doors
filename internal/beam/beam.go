@@ -61,7 +61,7 @@ type Beam[T any] interface {
 	sync(uint, *shredder.Collector[func()]) (*T, bool)
 }
 
-func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, updateIf func(new T2, old T2) bool) Beam[T2] {
+func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(new *T2, old *T2) bool) Beam[T2] {
 	return &beam[T, T2]{
 		source: source,
 		values: make(map[uint]*entry[T2]),
@@ -70,21 +70,13 @@ func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, updateIf func(ne
 			v2 := cast(*v)
 			return &v2
 		},
-		upd: func(new *T2, old *T2) bool {
-			if updateIf == nil {
-				return true
-			}
-			return updateIf(*new, *old)
-		},
+		upd: distinct,
 	}
 }
 
-func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2, distinct bool) Beam[T2] {
-	var upd func(*T2, *T2) bool = nil
-	if distinct {
-		upd = func(new *T2, old *T2) bool {
-			return *new != *old
-		}
+func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
+	upd := func(new *T2, old *T2) bool {
+		return *new != *old
 	}
 	return &beam[T, T2]{
 		source: source,

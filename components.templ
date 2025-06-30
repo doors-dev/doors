@@ -27,9 +27,7 @@ import (
 //   - A templ.Component that renders a <title> element with remote call script.
 templ Title[M any](b Beam[M], cast func(M) string) {
 	{{
-	titleBeam := NewBeamExt(b, cast, func(new string, old string) bool {
-		return new != old
-	})
+	titleBeam := NewBeam(b, cast)
 	var cancel TryCancel
 	title, _ := titleBeam.ReadAndSub(ctx, func(ctx context.Context, title string) bool {
 		if cancel != nil {

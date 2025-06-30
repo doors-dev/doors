@@ -15,7 +15,7 @@ type Response interface {
 	marker() responseMarker
 }
 
-type Request[M any] struct {
+type Request[M comparable] struct {
 	Model   *M
 	W       http.ResponseWriter
 	R       *http.Request
@@ -31,7 +31,7 @@ func (pr *StaticPage) marker() responseMarker {
 	return responseMarker{}
 }
 
-type PageResponse[M any] struct {
+type PageResponse[M comparable] struct {
 	Page    instance.Page[M]
 	Status  int
 	Model   *M
@@ -74,7 +74,7 @@ func (pr *RerouteResponse) marker() responseMarker {
 	return responseMarker{}
 }
 
-type pageRoute[M any] struct {
+type pageRoute[M comparable] struct {
 	adapter *path.Adapter[M]
 	handler func(r *Request[M]) Response
 }
@@ -124,7 +124,7 @@ func (pr *pageRoute[M]) apply(rr *Router) {
 	rr.addPage(pr)
 }
 
-func RoutePage[M any](handler func(r *Request[M]) Response) Mod {
+func RoutePage[M comparable](handler func(r *Request[M]) Response) Mod {
 	adapter, err := path.NewAdapter[M]()
 	if err != nil {
 		log.Fatal(err.Error())

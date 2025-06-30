@@ -18,59 +18,50 @@ type SourceBeam[T any] = beam.SourceBeam[T]
 
 // NewSourceBeam creates a new SourceBeam with the given initial value.
 //
-// If distinct is true, updates or mutations will only trigger propagation when
-// the value has actually changed — as determined by reflect.DeepEqual.
-// This helps avoid unnecessary updates when the value remains structurally identical.
-//
 // Parameters:
-//   - init: the initial value of the beam.
 //   - distinct: if true, updates are only propagated when the value differs from the previous one.
 //
 // Returns:
 //   - A new SourceBeam[T] instance
-func NewSourceBeam[T any](init T, distinct bool) SourceBeam[T] {
-	return beam.NewSourceBeam(init, distinct)
+func NewSourceBeam[T comparable](init T) SourceBeam[T] {
+	return beam.NewSourceBeam(init)
 }
 
-// NewSourceBeamExt creates a new SourceBeam with a custom update condition.
+// NewSourceBeamExt creates a new SourceBeam with a custom distinct condition.
 //
 // Unlike NewSourceBeam, which uses == check to suppress duplicate updates,
-// this version accepts an updateIf function to determine whether a new value should
+// this version accepts function to determine whether a new value should
 // be propagated to subscribers.
 //
-// The updateIf function receives pointers to the new and previous values and should
-// return true if the new value is considered different.
+// The distinct function receives pointers to the new and previous values and should
+// return true if the new value is considered different. 
 //
 //
 // Parameters:
 //   - init: the initial value for the SourceBeam.
-//   - updateIf: a custom function to determine if a new value should trigger propagation
-//   or nil to tiggger every time
+//   - distinct: a custom function to determine if a new value should trigger propagation
+//   or nil to tigger every time
 //
 // Returns:
-//   - A new SourceBeam[T] instance that uses updateIf for update comparisons.
-func NewSourceBeamExt[T any](init T, updateIf func(new *T, old *T) bool) SourceBeam[T] {
-	return beam.NewSourceBeamExt(init, updateIf)
+//   - A new SourceBeam[T] instance that uses distinct function for update comparisons.
+func NewSourceBeamExt[T any](init T, distinct func(new *T, old *T) bool) SourceBeam[T] {
+	return beam.NewSourceBeamExt(init, distinct)
 }
 
 // NewBeam derives a new Beam[T2] from an existing Beam[T] by applying a transformation function.
 //
 // The cast function maps values from the source beam to the derived beam. The derived beam
-// will receive updates whenever the source beam updates.
+// watcher will receive updates whenever the source beam updates and old value != new value
 //
-// If distinct is true, the derived beam will only emit updates when the casted value changes,
-// using == to compare with the previous value. This avoids redundant updates
-// when the output is structurally identical.
 //
 // Parameters:
 //   - source: the source Beam[T] to derive from.
 //   - cast: a function that transforms the source value of type T into type T2.
-//   - distinct: if true, suppresses duplicate values based on deep equality.
 //
 // Returns:
 //   - A new Beam[T2] that tracks transformed updates from the source.
-func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2, distinct bool) Beam[T2] {
-	return beam.NewBeam(source, cast, distinct)
+func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
+	return beam.NewBeam(source, cast)
 }
 
 // NewBeamExt derives a new Beam[T2] from an existing Beam[T] using a custom projection and update comparison.
@@ -78,17 +69,18 @@ func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2, distinct boo
 // The cast function transforms the source value of type T into type T2. The derived Beam will emit updates
 // whenever the source changes, but only if the updateIf function returns true.
 //
-// The updateIf function receives pointers to the new and previous values (casted) and should return true
+// The distinct function receives pointers to the new and previous values (casted) and should return true
 // to allow the new value to propagate, or false to suppress it. This allows fine-grained control over
-// update emission beyond reflect.DeepEqual.
+// update emission beyond just ==.
 //
 // Parameters:
 //   - source: the source Beam[T] to derive from.
 //   - cast: a function to transform T → T2.
-//   - updateIf: a function to determine whether to emit an update, given the new and previous values.
+//   - distinct: a custom function to determine if a new value should trigger propagation
+//   or nil to tigger every time
 //
 // Returns:
 //   - A new Beam[T2] that updates only when updateIf returns true.
-func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, updateIf func(new T2, old T2) bool) Beam[T2] {
-	return beam.NewBeamExt(source, cast, updateIf)
+func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(new *T2, old *T2) bool) Beam[T2] {
+	return beam.NewBeamExt(source, cast, distinct)
 }

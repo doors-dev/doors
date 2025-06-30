@@ -15,20 +15,20 @@ func Include() templ.Component {
 
 type Mod = router.Mod
 
-type Page[M any] interface {
+type Page[M comparable] interface {
 	Render(SourceBeam[M]) templ.Component
 }
 
 type PageRoute = router.Response
 
-type RPage[M any] interface {
+type RPage[M comparable] interface {
 	R
 	GetModel() M
 	RequestHeader() http.Header
 	ResponseHeader() http.Header
 }
 
-type PageRouter[M any] interface {
+type PageRouter[M comparable] interface {
 	Page(page Page[M]) PageRoute
 	PageStatus(page Page[M], status int) PageRoute
 	PageFunc(pageFunc func(SourceBeam[M]) templ.Component) PageRoute
@@ -38,7 +38,7 @@ type PageRouter[M any] interface {
 	RedirectStatus(model any, status int) PageRoute
 }
 
-type pageRequest[M any] struct {
+type pageRequest[M comparable] struct {
 	r *router.Request[M]
 }
 
@@ -116,7 +116,7 @@ func (r *pageRequest[M]) PageFuncStatus(f func(SourceBeam[M]) templ.Component, s
 	return r.PageStatus(pageFunc[M](f), status)
 }
 
-func ServePage[M any](handler func(PageRouter[M], RPage[M]) PageRoute) Mod {
+func ServePage[M comparable](handler func(PageRouter[M], RPage[M]) PageRoute) Mod {
 	return router.RoutePage(func(r *router.Request[M]) router.Response {
 		pr := &pageRequest[M]{
 			r: r,

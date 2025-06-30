@@ -55,9 +55,7 @@ func Title[M any](b Beam[M], cast func(M) string) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 
-		titleBeam := NewBeamExt(b, cast, func(new string, old string) bool {
-			return new != old
-		})
+		titleBeam := NewBeam(b, cast)
 		var cancel TryCancel
 		title, _ := titleBeam.ReadAndSub(ctx, func(ctx context.Context, title string) bool {
 			if cancel != nil {
@@ -76,7 +74,7 @@ func Title[M any](b Beam[M], cast func(M) string) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 45, Col: 15}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 43, Col: 15}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
