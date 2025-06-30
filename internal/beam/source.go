@@ -35,7 +35,7 @@ type SourceBeam[T any] interface {
 	//   - A boolean indicating whether the update was accepted (context still valid).
 	XUpdate(context.Context, T) (<-chan error, bool)
 	// Mutate allows modifying the current value using the provided function.
-	// The function receives a pointer to the current value and returns true to apply the changes.
+	// The function receives a pointer to the copy of a current value and returns true to apply the changes.
 	//
 	// If the context is canceled before mutation, the function is not invoked and false is returned.
 	Mutate(context.Context, func(*T) bool) bool
@@ -61,11 +61,11 @@ type source[T any] struct {
 	inst   instance
 	id     uint64
 	init   sync.Once
-	upd    func(new *T, old *T) bool
+	upd    func(new T, old T) bool
 	mu     sync.RWMutex
 }
 
-func NewSourceBeamExt[T any](init T, distinct func(new *T, old *T) bool) SourceBeam[T] {
+func NewSourceBeamExt[T any](init T, distinct func(new T, old T) bool) SourceBeam[T] {
 	return &source[T]{
 		seq: 1,
 		values: map[uint]*T{
@@ -79,8 +79,8 @@ func NewSourceBeamExt[T any](init T, distinct func(new *T, old *T) bool) SourceB
 }
 
 func NewSourceBeam[T comparable](init T) SourceBeam[T] {
-	upd := func(new *T, old *T) bool {
-		return *new != *old
+	upd := func(new T, old T) bool {
+		return new != old
 	}
 	return NewSourceBeamExt(init, upd)
 }
@@ -101,7 +101,7 @@ func (s *source[T]) sync(seq uint, _ *shredder.Collector[func()]) (*T, bool) {
 
 func (s *source[T]) update(ctx context.Context, v *T) (<-chan error, bool) {
 	return s.applyMutation(ctx, func(l *T) (*T, bool) {
-		if s.upd != nil && !s.upd(l, v) {
+		if s.upd != nil && !s.upd(*l, *v) {
 			return nil, false
 		}
 		return v, true
@@ -122,7 +122,7 @@ func (s *source[T]) mutate(ctx context.Context, m func(*T) bool) (<-chan error, 
 	return s.applyMutation(ctx, func(l *T) (*T, bool) {
 		copy := *l
 		apply := m(&copy)
-		if !apply || (s.upd != nil && !s.upd(l, &copy)) {
+		if !apply || (s.upd != nil && !s.upd(*l, copy)) {
 			return nil, false
 		}
 		return &copy, true

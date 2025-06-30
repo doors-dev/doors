@@ -44,7 +44,7 @@ func NewSourceBeam[T comparable](init T) SourceBeam[T] {
 //
 // Returns:
 //   - A new SourceBeam[T] instance that uses distinct function for update comparisons.
-func NewSourceBeamExt[T any](init T, distinct func(new *T, old *T) bool) SourceBeam[T] {
+func NewSourceBeamExt[T any](init T, distinct func(new T, old T) bool) SourceBeam[T] {
 	return beam.NewSourceBeamExt(init, distinct)
 }
 
@@ -81,6 +81,6 @@ func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
 //
 // Returns:
 //   - A new Beam[T2] that updates only when updateIf returns true.
-func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(new *T2, old *T2) bool) Beam[T2] {
+func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(new T2, old T2) bool) Beam[T2] {
 	return beam.NewBeamExt(source, cast, distinct)
 }

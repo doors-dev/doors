@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,10 +35,12 @@ type Options struct {
 	Rerouted bool
 }
 
-func NewInstance[M comparable](sess *Session, page Page[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
+func NewInstance[M any](sess *Session, page Page[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
 	inst := &Instance[M]{
-		id:      common.RandId(),
-		beam:    beam.NewSourceBeam(*m),
+		id: common.RandId(),
+		beam: beam.NewSourceBeamExt(*m, func(new, old M) bool {
+			return !reflect.DeepEqual(new, old)
+		}),
 		adapter: adapter,
 		page:    page,
 		opt:     opt,
@@ -48,18 +51,18 @@ func NewInstance[M comparable](sess *Session, page Page[M], adapter *path.Adapte
 }
 
 type Instance[M any] struct {
-	mu       sync.RWMutex
-	killed   bool
-	id       string
-	beam     beam.SourceBeam[M]
-	adapter  *path.Adapter[M]
-	page     Page[M]
-	opt      *Options
-	core     *core[M]
-	session  *Session
-	ctx      context.Context
-	included atomic.Bool
-	killTimer  *time.Timer
+	mu        sync.RWMutex
+	killed    bool
+	id        string
+	beam      beam.SourceBeam[M]
+	adapter   *path.Adapter[M]
+	page      Page[M]
+	opt       *Options
+	core      *core[M]
+	session   *Session
+	ctx       context.Context
+	included  atomic.Bool
+	killTimer *time.Timer
 }
 
 func (inst *Instance[M]) resetKillTimer() bool {
@@ -76,8 +79,6 @@ func (inst *Instance[M]) resetKillTimer() bool {
 	})
 	return true
 }
-
-
 
 func (inst *Instance[M]) conf() *common.SystemConf {
 	return inst.session.router.Conf()
@@ -154,17 +155,14 @@ func (inst *Instance[M]) end(cause endCause) {
 	inst.core.end(cause)
 }
 
-
-
-
 type endCause int
+
 const (
 	causeKilled endCause = iota
-	causeSuspend 
+	causeSuspend
 	causeSyncError
 )
 
 func (c endCause) Error() string {
 	return fmt.Sprint("cause: ", int(c))
 }
-

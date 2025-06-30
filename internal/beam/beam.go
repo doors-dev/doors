@@ -61,7 +61,7 @@ type Beam[T any] interface {
 	sync(uint, *shredder.Collector[func()]) (*T, bool)
 }
 
-func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(new *T2, old *T2) bool) Beam[T2] {
+func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(new T2, old T2) bool) Beam[T2] {
 	return &beam[T, T2]{
 		source: source,
 		values: make(map[uint]*entry[T2]),
@@ -75,8 +75,8 @@ func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(ne
 }
 
 func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
-	upd := func(new *T2, old *T2) bool {
-		return *new != *old
+	upd := func(new T2, old T2) bool {
+		return new != old
 	}
 	return &beam[T, T2]{
 		source: source,
@@ -100,7 +100,7 @@ type beam[T any, T2 any] struct {
 	values map[uint]*entry[T2]
 	mu     sync.Mutex
 	cast   func(*T) *T2
-	upd    func(new *T2, old *T2) bool
+	upd    func(new T2, old T2) bool
 	null   T2
 }
 
@@ -164,7 +164,7 @@ func (b *beam[T, T2]) syncEntry(seq uint, c *shredder.Collector[func()]) *entry[
 			updated: true,
 		}
 	}
-	if !b.upd(newVal, prevVal) {
+	if !b.upd(*newVal, *prevVal) {
 		return &entry[T2]{
 			val:     prevVal,
 			updated: false,
