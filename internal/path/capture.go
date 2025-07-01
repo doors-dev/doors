@@ -64,7 +64,7 @@ func newFloat64Capture(f field) (*capture, error) {
 			return nil
 		},
 		get: func(m any) string {
-			v := reflect.ValueOf(m)
+			v := reflect.ValueOf(m).Elem()
 			num := v.Field(f.i).Float()
 			return strconv.FormatFloat(num, 'f', -1, 64)
 		},
@@ -124,14 +124,7 @@ func newToEndCapture(f field) (*capture, error) {
 		}
 	} else if f.f.Type.Kind() == reflect.Slice && f.f.Type.Elem().Kind() == reflect.String {
 		set = func(m any, value string) error {
-			vals := make([]string, 0)
-			for part := range strings.SplitSeq(string(value), "/") {
-				value, error := url.QueryUnescape(part)
-				if error != nil {
-					return error
-				}
-				vals = append(vals, value)
-			}
+			vals := strings.Split(value, "/")
 			v := reflect.ValueOf(m).Elem()
 			v.Field(f.i).Set(reflect.ValueOf(vals))
 			return nil
@@ -139,11 +132,7 @@ func newToEndCapture(f field) (*capture, error) {
 		get = func(m any) string {
 			v := reflect.ValueOf(m).Elem()
 			values := v.Field(f.i).Interface().([]string)
-			parts := make([]string, len(values))
-			for _, part := range values {
-				parts = append(parts, url.QueryEscape(part))
-			}
-			return strings.Join(parts, "/")
+			return strings.Join(values, "/")
 		}
 	} else {
 		return nil, errors.New("Capture to end must me string or []string")

@@ -12,22 +12,32 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/node"
 )
-func newDeck(conf *common.SolitaireConf) *deck {
+
+func newDeck(queueLimit int, issueLimit int) *deck {
 	return &deck{
-		conf:   conf,
-		issued: make(map[uint64]*issuedCall),
+		issueLimit: issueLimit,
+		queueLimit: queueLimit,
+		issued:     make(map[uint64]*issuedCall),
 	}
 }
 
 type deck struct {
-	conf         *common.SolitaireConf
+	issueLimit   int
+	queueLimit   int
 	seq          uint64
 	top          *card
 	bottom       *card
 	issued       map[uint64]*issuedCall
 	mu           sync.Mutex
-	deckSize     uint
+	deckSize     int
 	latestReport uint64
+}
+
+func (d *deck) PendingCount() int {
+	return len(d.issued)
+}
+func (d *deck) QueueLength() int {
+	return d.deckSize
 }
 
 func (d *deck) Pending() bool {
@@ -40,7 +50,7 @@ type writeResult int
 
 const (
 	nothingToWrite writeResult = iota
-	pendingLimit 
+	pendingLimit
 	writeOk
 	writeErr
 	writeSyncErr
@@ -49,7 +59,7 @@ const (
 func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
 	for {
 		d.mu.Lock()
-		if len(d.issued) == d.conf.Pending {
+		if len(d.issued) == d.issueLimit {
 			d.mu.Unlock()
 			return pendingLimit, nil
 		}
@@ -61,6 +71,7 @@ func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
 		header := newHeader(card.startSeq, card.endSeq)
 		if card.isFiller() {
 			if err := header.writeOnly(w); err != nil {
+				d.skipRange(card.startSeq, card.endSeq)
 				return writeErr, err
 			}
 			return writeOk, nil
@@ -159,6 +170,7 @@ func (d *deck) OnReport(s *report) error {
 				d.skipSeq(seq)
 				continue
 			}
+			delete(d.issued, seq)
 			isRelevant := call.call.OnWriteErr()
 			if isRelevant {
 				if err := d.restore(seq, call.caller, call.call); err != nil {
@@ -193,7 +205,7 @@ func (d *deck) insertTail(n *card) {
 
 func (d *deck) inc() error {
 	d.deckSize += 1
-	if d.deckSize > d.conf.Queue {
+	if d.deckSize > d.queueLimit {
 		return errors.New("call queue limit reached")
 	}
 	return nil
@@ -239,11 +251,16 @@ func (d *deck) cutTop() *card {
 	if d.top == nil {
 		d.bottom = nil
 	}
-	d.dec()
+	if !card.isFiller() {
+		d.dec()
+	}
 	return card
 }
 
 func (d *deck) cancelCut(n *card) error {
+	if n.isFiller() {
+		panic("Cannot cancel filler cut")
+	}
 	if d.top == nil {
 		d.top = n
 		d.bottom = n
@@ -301,7 +318,7 @@ type card struct {
 
 func (s *card) extractRestored(seq uint64, h head) *card {
 	if s.seq() == seq {
-		if s.call != nil {
+		if s.call == nil {
 			slog.Error("Attempt to respond to non issued card")
 			return nil
 		}
@@ -360,7 +377,9 @@ func (c *card) skipSeq(seq uint64, h head) {
 		return
 	}
 	if seq < c.startSeq-1 {
-		h.setTail(newFillerCard(seq))
+		filler := newFillerCard(seq)
+		filler.setTail(c)
+		h.setTail(filler)
 		return
 	}
 	if seq > c.endSeq {
@@ -438,7 +457,6 @@ func (i *issuedCall) write(h header, w io.Writer) error {
 	return err
 }
 
-
 type gap struct {
 	start uint64
 	end   uint64
@@ -465,36 +483,6 @@ func (m *gap) UnmarshalJSON(data []byte) error {
 		return nil
 	} else {
 		m.end = m.start
-	}
-	return nil
-}
-
-type ready struct {
-	seq uint64
-	err error
-}
-
-func (m *ready) UnmarshalJSON(data []byte) error {
-	var parts []json.RawMessage
-	err := json.Unmarshal(data, &parts)
-	if err != nil {
-		return err
-	}
-	if len(parts) == 0 {
-		return errors.New("empty result array")
-	}
-	err = json.Unmarshal(parts[0], &m.seq)
-	if err != nil {
-		return err
-	}
-	if len(parts) > 1 {
-		var message string
-		err = json.Unmarshal(parts[1], &message)
-		if err != nil {
-			return err
-		}
-		m.err = errors.New(message)
-		return nil
 	}
 	return nil
 }

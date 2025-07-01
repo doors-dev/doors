@@ -21,7 +21,7 @@ func newSolitaire(inst solitaireInstance, conf *common.SolitaireConf) *solitaire
 	return &solitaire{
 		conf: conf,
 		inst: inst,
-		deck: newDeck(conf),
+		deck: newDeck(conf.Queue, conf.Pending),
 	}
 }
 

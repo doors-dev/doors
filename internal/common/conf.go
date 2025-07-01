@@ -22,7 +22,7 @@ type SolitaireConf struct {
 	RollSize        int
 	RollTime        time.Duration
 	RollPendingTime time.Duration
-	Queue           uint
+	Queue           int
 	Pending         int
 }
 
@@ -32,7 +32,7 @@ func GetSolitaireConf(s *SystemConf) *SolitaireConf {
 		RollSize:        s.SolitaireRollSize,
 		RollTime:        s.SolitaireRequestTimeout / 2,
 		RollPendingTime: s.SolitaireRollPendingTime,
-		Queue:           uint(s.SolitaireQueue),
+		Queue:           s.SolitaireQueue,
 		Pending:         s.SolitairePending,
 	}
 }

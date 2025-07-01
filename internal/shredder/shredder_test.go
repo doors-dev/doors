@@ -110,7 +110,6 @@ func TestInternal(t *testing.T) {
 			})
 		})
 		t.Write(func(t *Thread) {
-			testWait(100)
 			ch <- 4
 		})
 	})

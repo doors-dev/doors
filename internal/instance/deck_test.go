@@ -1,0 +1,367 @@
+package instance
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"testing"
+)
+
+func testCounters(t *testing.T, d *deck, queue int, pending int) {
+	if d.QueueLength() != queue {
+		t.Fatal("Wrong queue length:", queue, d.QueueLength())
+	}
+	if d.PendingCount() != pending {
+		t.Fatal("Wrong pending count:", pending, d.PendingCount())
+	}
+}
+
+func testNothing(t *testing.T, deck *deck, w io.Writer) {
+	r, _ := deck.WriteNext(w)
+	if r != nothingToWrite {
+		t.Fatal("queue must be empty")
+	}
+}
+
+func testWriteAndCheck(t *testing.T, deck *deck, w *testWriter, start uint64, end uint64, arg int) {
+	if deck != nil {
+		r, _ := deck.WriteNext(w)
+		if r != writeOk {
+			t.Fatal("nothingToWrite")
+		}
+	}
+	p, err := w.readPackage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.startSeq != start || p.endSeq != end || p.arg != arg {
+		t.Fatal("wrong expectations: start ", start, p.startSeq, " end:", end, p.endSeq, " arg:", arg, p.arg)
+	}
+}
+
+type testCalls [10]*testCall
+
+func (t testCalls) get(i int) *testCall {
+	return t[i-1]
+}
+
+func (t testCalls) cancel(i int) {
+	t[i-1].cancel = true
+}
+
+func (t testCalls) insertWrite(deck *deck, w io.Writer, insertCount int, writeCount int) error {
+	for i := range insertCount {
+		err := deck.Insert(t[i])
+		if err != nil {
+			return err
+		}
+	}
+	for i := range writeCount {
+		r, err := deck.WriteNext(w)
+		if r != writeOk {
+			return errors.Join(err, errors.New("write err "+fmt.Sprint(i, r)))
+		}
+	}
+	return nil
+}
+
+func newTestCalls() testCalls {
+	var ps [10]*testCall
+	for i := range 10 {
+		ps[i] = &testCall{
+			arg:       i + 1,
+			resultErr: nil,
+		}
+	}
+	return ps
+}
+
+func TestRange(t *testing.T) {
+	deck := newDeck(10, 11)
+	w := &testWriter{}
+	ps := newTestCalls()
+	ps.insertWrite(deck, w, 10, 10)
+	testCounters(t, deck, 0, 10)
+	testNothing(t, deck, w)
+
+	for i := range 10 {
+		p, err := w.readPackage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if p.arg != i+1 {
+			t.Fatal("Wrong arg")
+		}
+	}
+	testNothing(t, deck, w)
+}
+
+func TestRetry(t *testing.T) {
+	deck := newDeck(1, 1)
+	w := &testWriter{}
+	deck.Insert(&testCall{
+		arg:     123,
+		payload: "123",
+	})
+	testCounters(t, deck, 1, 0)
+	w.errNextWrite = true
+	r, _ := deck.WriteNext(w)
+	testCounters(t, deck, 1, 0)
+	if r != writeErr {
+		t.Fatal("Expect error")
+	}
+	r, _ = deck.WriteNext(w)
+	if r != writeOk {
+		t.Fatal("Write errored")
+	}
+	p, err := w.readPackage()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if p.arg != 123 {
+		t.Fatal("wrong arg")
+	}
+}
+
+func TestSkip(t *testing.T) {
+	deck := newDeck(5, 6)
+	w := &testWriter{}
+	ps := newTestCalls()
+	ps.cancel(1)
+	ps.cancel(3)
+	ps.cancel(4)
+	ps.cancel(5)
+	err := ps.insertWrite(deck, w, 5, 2)
+	testCounters(t, deck, 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testWriteAndCheck(t, nil, w, 1, 2, 2)
+	testCounters(t, deck, 0, 1)
+	testWriteAndCheck(t, nil, w, 3, 5, 0)
+	testCounters(t, deck, 0, 1)
+	testNothing(t, deck, w)
+}
+
+func TestReportResult(t *testing.T) {
+	deck := newDeck(5, 6)
+	w := &testWriter{}
+	ps := newTestCalls()
+	err := ps.insertWrite(deck, w, 5, 5)
+	testCounters(t, deck, 0, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	re := "test"
+	rep := &report{
+		Gaps: []gap{},
+		Results: map[uint64]*string{
+			1: nil,
+			2: &re,
+			3: &re,
+			4: nil,
+			5: &re,
+		},
+	}
+	err = deck.OnReport(rep)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testCounters(t, deck, 0, 0)
+	if ps[0].resultErr != nil {
+		t.Fatal("wrong result")
+	}
+	if ps[3].resultErr != nil {
+		t.Fatal("wrong result")
+	}
+	if ps[1].resultErr.Error() != re {
+		t.Fatal("wrong result")
+	}
+	if ps[2].resultErr.Error() != re {
+		t.Fatal("wrong result")
+	}
+	if ps[4].resultErr.Error() != re {
+		t.Fatal("wrong result")
+	}
+}
+
+func TestReportGap(t *testing.T) {
+	deck := newDeck(6, 7)
+	w := &testWriter{}
+	ps := newTestCalls()
+	err := ps.insertWrite(deck, w, 6, 5)
+	testCounters(t, deck, 1, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = w.skip(5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := `{
+	"gaps":[[2,4]],
+	"results":{"1":null}
+	}`
+	rep := &report{}
+	err = json.Unmarshal([]byte(s), rep)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ps.cancel(2)
+	err = deck.OnReport(rep)
+	testCounters(t, deck, 3, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ps.cancel(4)
+	testWriteAndCheck(t, deck, w, 2, 2, 0)
+	testCounters(t, deck, 3, 1)
+	testWriteAndCheck(t, deck, w, 3, 3, 3)
+	testCounters(t, deck, 2, 2)
+	w.errNextWrite = true
+	r, err := deck.WriteNext(w)
+	if r != writeErr {
+		t.Fatal("write must fail")
+	}
+	testCounters(t, deck, 1, 2)
+	w.errNextWrite = true
+	r, err = deck.WriteNext(w)
+	if r != writeErr {
+		t.Fatal("write must fail")
+	}
+	testCounters(t, deck, 1, 2)
+	testWriteAndCheck(t, deck, w, 4, 4, 0)
+	testCounters(t, deck, 1, 2)
+	testWriteAndCheck(t, deck, w, 6, 6, 6)
+	testCounters(t, deck, 0, 3)
+}
+
+func TestExtraction(t *testing.T) {
+	deck := newDeck(6, 7)
+	w := &testWriter{}
+	ps := newTestCalls()
+	err := ps.insertWrite(deck, w, 5, 4)
+	testCounters(t, deck, 1, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = w.skip(4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := &report{
+		Gaps: []gap{{
+			start: 3,
+			end:   4,
+		}},
+		Results: map[uint64]*string{
+			1: nil,
+		},
+	}
+	deck.OnReport(rep)
+	testCounters(t, deck, 3, 1)
+	rep = &report{
+		Gaps: []gap{{
+			start: 4,
+			end:   4,
+		}},
+		Results: map[uint64]*string{
+			2: nil,
+			3: nil,
+		},
+	}
+	deck.OnReport(rep)
+	testCounters(t, deck, 2, 0)
+	testWriteAndCheck(t, deck, w, 4, 4, 4)
+	testCounters(t, deck, 1, 1)
+	testWriteAndCheck(t, deck, w, 5, 5, 5)
+	testCounters(t, deck, 0, 2)
+}
+
+func TestSkipTail(t *testing.T) {
+	deck := newDeck(6, 7)
+	w := &testWriter{}
+	ps := newTestCalls()
+	err := ps.insertWrite(deck, w, 4, 3)
+	testCounters(t, deck, 1, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = w.skip(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := &report{
+		Gaps: []gap{{
+			start: 1,
+			end:   1,
+		}},
+		Results: map[uint64]*string{},
+	}
+	deck.OnReport(rep)
+	testCounters(t, deck, 2, 2)
+	ps.cancel(3)
+	rep = &report{
+		Gaps: []gap{{
+			start: 3,
+			end:   3,
+		}},
+		Results: map[uint64]*string{},
+	}
+	err = deck.OnReport(rep)
+	testCounters(t, deck, 2, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testWriteAndCheck(t, deck, w, 1, 1, 1)
+	testCounters(t, deck, 1, 2)
+	testWriteAndCheck(t, deck, w, 3, 4, 4)
+	testCounters(t, deck, 0, 3)
+}
+
+
+func TestLimits(t *testing.T) {
+	deck := newDeck(6, 6)
+	w := &testWriter{}
+	ps := newTestCalls()
+	err := ps.insertWrite(deck, w, 6, 0)
+	testCounters(t, deck, 6, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = deck.Insert(ps.get(7))
+	testCounters(t, deck, 7, 0)
+	if err == nil {
+		t.Fatal("must hit queue limit")
+	}
+	testWriteAndCheck(t, deck, w, 1, 1, 1)
+	testWriteAndCheck(t, deck, w, 2, 2, 2)
+	testCounters(t, deck, 5, 2)
+	err = deck.Insert(ps.get(8))
+	if err != nil {
+		t.Fatal("there must be space")
+	}
+	testCounters(t, deck, 6, 2)
+	testWriteAndCheck(t, deck, w, 3, 3, 3)
+	testCounters(t, deck, 5, 3)
+	testWriteAndCheck(t, deck, w, 4, 4, 4)
+	testCounters(t, deck, 4, 4)
+	testWriteAndCheck(t, deck, w, 5, 5, 5)
+	testCounters(t, deck, 3, 5)
+	testWriteAndCheck(t, deck, w, 6, 6, 6)
+	testCounters(t, deck, 2, 6)
+	r, _ := deck.WriteNext(w)
+	if r != pendingLimit {
+		t.Fatal("must reach pending limit")
+	}
+	deck.OnReport(&report{
+		Gaps:    []gap{},
+		Results: map[uint64]*string{1: nil},
+	})
+	r, _ = deck.WriteNext(w)
+	if r != writeOk {
+		t.Fatal("must be available")
+	}
+	testCounters(t, deck, 1, 6)
+}
