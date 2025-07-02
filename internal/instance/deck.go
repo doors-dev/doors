@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -108,15 +107,15 @@ func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
 	}
 }
 
-func (d *deck) extractRestored(seq uint64) *card {
+func (d *deck) extractRestored(seq uint64) (*card, error) {
 	if d.top == nil {
-		return nil
+		return nil, nil
 	}
-	card := d.top.extractRestored(seq, d)
+	card, err := d.top.extractRestored(seq, d)
 	if card != nil {
 		d.dec()
 	}
-	return card
+	return card, err
 }
 
 func (d *deck) OnReport(s *report) error {
@@ -135,7 +134,10 @@ func (d *deck) OnReport(s *report) error {
 		}
 		call, ok := d.issued[seq]
 		if !ok {
-			card := d.extractRestored(seq)
+			card, err := d.extractRestored(seq)
+			if err != nil {
+				return err
+			}
 			if card == nil {
 				continue
 			}
@@ -156,7 +158,7 @@ func (d *deck) OnReport(s *report) error {
 	if first.start <= d.latestReport {
 		return errors.New("gap after report")
 	}
-	prevEnd := uint64(0)
+	prevEnd := d.latestReport
 	for _, gap := range s.Gaps {
 		if gap.end < gap.start {
 			return errors.New("gap range issue")
@@ -164,6 +166,7 @@ func (d *deck) OnReport(s *report) error {
 		if prevEnd >= gap.start {
 			return errors.New("gap overlap")
 		}
+		prevEnd = gap.end
 		for seq := gap.start; seq <= gap.end; seq++ {
 			call, ok := d.issued[seq]
 			if !ok {
@@ -316,17 +319,19 @@ type card struct {
 	call     node.Call
 }
 
-func (s *card) extractRestored(seq uint64, h head) *card {
+func (s *card) extractRestored(seq uint64, h head) (*card, error) {
 	if s.seq() == seq {
+		if s.isFiller() {
+			return nil, nil
+		}
 		if s.call == nil {
-			slog.Error("Attempt to respond to non issued card")
-			return nil
+			return nil, errors.New("Attempt to respond to non issued card")
 		}
 		h.setTail(s.tail)
-		return s
+		return s, nil
 	}
 	if seq < s.seq() || s.tail == nil {
-		return nil
+		return nil, nil
 	}
 	return s.tail.extractRestored(seq, s)
 }

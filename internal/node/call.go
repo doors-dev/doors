@@ -43,6 +43,9 @@ func (c *commitCall) Arg() common.JsonWritable {
 }
 
 func (c *commitCall) Payload() (common.Writable, bool) {
+	if c.payload == nil {
+		return nil, false
+	}
 	return c.payload, true
 }
 

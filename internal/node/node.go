@@ -248,11 +248,15 @@ func (n *Node) Render(ctx context.Context, w io.Writer) error {
 }
 
 func (n *Node) staticRender(ctx context.Context, w io.Writer) error {
-	var err error
-	if n.content != nil {
-		err = n.content.Render(ctx, w)
+	if n.content == nil {
+		return nil
 	}
-	return common.RenderError(err.Error()).Render(ctx, w)
+	err := n.content.Render(ctx, w)
+	if err != nil {
+		return common.RenderError(err.Error()).Render(ctx, w)
+	}
+	return nil
+
 }
 
 func (n *Node) lock() {

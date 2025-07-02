@@ -1,0 +1,83 @@
+package test
+
+import (
+	"context"
+	"github.com/doors-dev/doors"
+)
+
+type DynamicFragment struct {
+	n1 doors.Node
+	n2 doors.Node
+}
+
+func (f *DynamicFragment) setBeam(_ doors.SourceBeam[PathNode]) {
+
+}
+
+templ (f *DynamicFragment) Render() {
+	{{ f.n1.Update(ctx, marker("init")) }}
+	@f.n1
+	<button
+		id="update"
+		{ doors.A(ctx, doors.AClick {
+        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            f.n1.Update(ctx, marker("updated"))
+            return true
+        },
+
+    }) ... }
+	>
+		U
+	</button>
+	<button
+		id="replace"
+		{ doors.A(ctx, doors.AClick {
+        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            f.n2.Update(ctx, marker("replaced"))
+            f.n1.Replace(ctx, &f.n2)
+            return true
+        },
+
+    }) ... }
+	>
+		Rp
+	</button>
+	<button
+		id="remove"
+		{ doors.A(ctx, doors.AClick {
+        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            f.n2.Remove(ctx)
+            return true
+        },
+
+    }) ... }
+	>
+		Remove
+	</button>
+}
+
+type BeforeFragment struct {
+	nodeInit     doors.Node
+	nodeUpdate   doors.Node
+	nodeRemoved  doors.Node
+	nodeReplaced doors.Node
+}
+
+func (f *BeforeFragment) setBeam(_ doors.SourceBeam[PathNode]) {
+
+}
+
+templ (f *BeforeFragment) Render() {
+	@f.nodeInit {
+		@marker("init")
+	}
+	{{ f.nodeUpdate.Update(ctx, marker("updated")) }}
+	@f.nodeUpdate
+	{{ f.nodeRemoved.Update(ctx, marker("removed")) }}
+	{{ f.nodeRemoved.Remove(ctx) }}
+	@f.nodeRemoved
+	{{ f.nodeReplaced.Replace(ctx, marker("replaced")) }}
+	@f.nodeReplaced {
+		@marker("#initReplaced")
+	}
+}

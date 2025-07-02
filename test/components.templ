@@ -1,0 +1,40 @@
+package test
+
+import (
+	"github.com/doors-dev/doors"
+	"net/http"
+)
+
+templ marker(id string) {
+	<div id={ id }></div>
+}
+
+type page[P any] interface {
+	h1() string
+	content(doors.SourceBeam[P]) templ.Component
+	head(doors.SourceBeam[P]) templ.Component
+}
+
+templ Document[P any](p page[P], b doors.SourceBeam[P]) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			@doors.Include()
+			<link
+				rel="icon"
+				type="image/png"
+				{ doors.A(ctx, doors.ARawFileHref{
+                Handler: func(w http.ResponseWriter, r *http.Request) {
+                },
+                })... }
+			/>
+			@p.head(b)
+		</head>
+		<body>
+			<h1>{ p.h1() }</h1>
+			@p.content(b)
+		</body>
+	</html>
+}

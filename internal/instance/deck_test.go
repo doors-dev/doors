@@ -320,7 +320,6 @@ func TestSkipTail(t *testing.T) {
 	testCounters(t, deck, 0, 3)
 }
 
-
 func TestLimits(t *testing.T) {
 	deck := newDeck(6, 6)
 	w := &testWriter{}
@@ -364,4 +363,98 @@ func TestLimits(t *testing.T) {
 		t.Fatal("must be available")
 	}
 	testCounters(t, deck, 1, 6)
+}
+
+func TestReportNonIssued(t *testing.T) {
+	deck := newDeck(6, 6)
+	w := &testWriter{}
+	ps := newTestCalls()
+	err := ps.insertWrite(deck, w, 6, 4)
+	testCounters(t, deck, 2, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := &report{
+		Gaps: []gap{},
+		Results: map[uint64]*string{
+			5: nil,
+		},
+	}
+	err = deck.OnReport(rep)
+	if err == nil {
+		t.Fatal("must error - reported non issued")
+	}
+	rep = &report{
+		Gaps: []gap{},
+		Results: map[uint64]*string{
+			7: nil,
+		},
+	}
+	err = deck.OnReport(rep)
+	if err == nil {
+		t.Fatal("must error - reported non overflow")
+	}
+	testCounters(t, deck, 2, 4)
+}
+func TestReport(t *testing.T) {
+	deck := newDeck(7, 7)
+	w := &testWriter{}
+	ps := newTestCalls()
+	err := ps.insertWrite(deck, w, 7, 7)
+	testCounters(t, deck, 0, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := &report{
+		Gaps: []gap{{
+			start: 2,
+			end:   7,
+		}},
+		Results: map[uint64]*string{
+			3: nil,
+		},
+	}
+	err = deck.OnReport(rep)
+	if err == nil {
+		t.Fatal("must error - reported  overflow")
+	}
+	testCounters(t, deck, 0, 6)
+	rep = &report{
+		Gaps: []gap{{
+			start: 2,
+			end:   3,
+		}},
+		Results: map[uint64]*string{},
+	}
+	err = deck.OnReport(rep)
+	if err == nil {
+		t.Fatal("must error - reported gap after result")
+	}
+	rep = &report{
+		Gaps: []gap{{
+			start: 4,
+			end:   5,
+		}, {
+			start: 5,
+			end:   6,
+		}},
+		Results: map[uint64]*string{},
+	}
+	err = deck.OnReport(rep)
+	if err == nil {
+		t.Fatal("must error - reported gap overlap")
+	}
+	testCounters(t, deck, 2, 4)
+	rep = &report{
+		Gaps: []gap{{
+			start: 6,
+			end:   5,
+		}},
+		Results: map[uint64]*string{},
+	}
+	err = deck.OnReport(rep)
+	if err == nil {
+		t.Fatal("must error - reported gap order")
+	}
+	testCounters(t, deck, 2, 4)
 }

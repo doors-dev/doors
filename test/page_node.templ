@@ -1,0 +1,37 @@
+package test
+
+import "github.com/doors-dev/doors"
+
+type PathNode struct {
+	Vh bool `path:""`
+	Vs bool `path:"/a"`
+	Vp bool `path:"/a/:P"`
+	P  string
+}
+
+type NodeFragment interface {
+	setBeam(b doors.SourceBeam[PathNode])
+	doors.Fragment
+}
+
+type PageNode struct {
+	f NodeFragment
+}
+
+func (p *PageNode) h1() string {
+	return "Page Node"
+}
+
+templ (p *PageNode) head(doors.SourceBeam[PathNode]) {
+}
+
+templ (p *PageNode) content(b doors.SourceBeam[PathNode]) {
+	if p.f != nil {
+		{{ p.f.setBeam(b) }}
+		@doors.F(p.f)
+	}
+}
+
+templ (p *PageNode) Render(b doors.SourceBeam[PathNode]) {
+	@Document(p, b)
+}
