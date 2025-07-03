@@ -56,6 +56,7 @@ type Core interface {
 	ClientConf() *common.ClientConf
 	Id() string
 	NewId() uint64
+	Cinema() *node.Cinema
 	NewLink(context.Context, any) (*Link, error)
 	SessionExpire(d time.Duration)
 	SessionEnd()
@@ -117,9 +118,13 @@ func (c *core[M]) Relocate(ctx context.Context, model any) error {
 	return c.instance.relocate(model)
 } */
 
+func (c *core[M]) Cinema() *node.Cinema {
+	return c.cinema
+}
+/*
 func (c *core[M]) Sync(ctx context.Context, screenId uint64, seq uint, collector *shredder.Collector[func()]) {
 	c.cinema.InitSync(ctx, screenId, seq, collector)
-}
+} */
 
 func (c *core[M]) NewId() uint64 {
 	return c.gen.Gen()

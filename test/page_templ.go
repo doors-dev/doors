@@ -13,29 +13,30 @@ import "github.com/doors-dev/doors"
 type noBeam struct {
 }
 
-func (f noBeam) setBeam(_ doors.SourceBeam[PathNode]) {}
+func (f noBeam) setBeam(_ doors.SourceBeam[Path]) {}
 
-type PathNode struct {
+type Path struct {
 	Vh bool `path:""`
 	Vs bool `path:"/a"`
 	Vp bool `path:"/a/:P"`
 	P  string
 }
 
-type NodeFragment interface {
-	setBeam(b doors.SourceBeam[PathNode])
+type Fragment interface {
+	setBeam(b doors.SourceBeam[Path])
 	doors.Fragment
 }
 
-type PageNode struct {
-	f NodeFragment
+type Page struct {
+	f      Fragment
+	header string
 }
 
-func (p *PageNode) h1() string {
-	return "Page Node"
+func (p *Page) h1() string {
+	return p.header
 }
 
-func (p *PageNode) head(doors.SourceBeam[PathNode]) templ.Component {
+func (p *Page) head(doors.SourceBeam[Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -60,7 +61,7 @@ func (p *PageNode) head(doors.SourceBeam[PathNode]) templ.Component {
 	})
 }
 
-func (p *PageNode) content(b doors.SourceBeam[PathNode]) templ.Component {
+func (p *Page) content(b doors.SourceBeam[Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -92,7 +93,7 @@ func (p *PageNode) content(b doors.SourceBeam[PathNode]) templ.Component {
 	})
 }
 
-func (p *PageNode) Render(b doors.SourceBeam[PathNode]) templ.Component {
+func (p *Page) Render(b doors.SourceBeam[Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

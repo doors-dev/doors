@@ -124,6 +124,36 @@ func TestInternal(t *testing.T) {
 	})
 	testCheckOrder(ch, t)
 }
+func TestStarwing(t *testing.T) {
+	ch := make(chan int, 10)
+	s := testSpawner(10)
+	t1 := s.NewThead()
+	t1.Read(func(t *Thread) {
+		ch <- 1
+		testWait(100)
+	})
+	t1.WriteStarving(func(t *Thread) {
+		ch <- 3
+	})
+	t1.Read(func(t *Thread) {
+		testWait(50)
+		ch <- 2
+	})
+	t1.WriteStarving(func(t *Thread) {
+		ch <- 4
+	})
+	t1.Write(func(t *Thread) {
+		ch <- 5
+	})
+	t1.Read(func(t *Thread) {
+		ch <- 6
+	})
+	t1.Write(func(t *Thread) {
+		ch <- 7
+		close(ch)
+	})
+	testCheckOrder(ch, t) 
+}
 
 func TestJoin(t *testing.T) {
 	ch := make(chan int, 10)
@@ -158,6 +188,39 @@ func TestJoin(t *testing.T) {
 	testCheckOrder(ch, t)
 }
 
+func TestJoinInstant(t *testing.T) {
+	ch := make(chan int, 10)
+	s := testSpawner(10)
+	t1 := s.NewThead()
+	t2 := s.NewThead()
+	t3 := s.NewThead()
+	t3.Write(func(t *Thread) {
+		testWait(50)
+		ch <- 2
+	})
+	t3.Read(func(t *Thread) {
+		testWait(200)
+		ch <- 6
+	})
+	t1.Write(func(t *Thread) {
+		testWait(100)
+		ch <- 3
+	})
+	t2.Read(func(t *Thread) {
+		ch <- 1
+	})
+	t2.WriteInstant(func(t *Thread) {
+		ch <- 4
+		t.WriteInstant(func(t *Thread) {
+			ch <- 5
+		}, R(t3))
+	}, W(t1))
+	t2.Write(func(t *Thread) {
+		close(ch)
+	}, W(t3))
+	testCheckOrder(ch, t)
+}
+/*
 func TestCollector(t *testing.T) {
 	ch := make(chan int, 10)
 	s := testSpawner(10)
@@ -189,7 +252,9 @@ func TestCollector(t *testing.T) {
 		close(ch)
 	})
 	testCheckOrder(ch, t)
-}
+} */
+
+
 func TestKill1(t *testing.T) {
 	ch := make(chan bool, 10)
 	order := make(chan int, 10)

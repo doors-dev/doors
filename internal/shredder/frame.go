@@ -14,6 +14,14 @@ type frame struct {
 	threads common.Set[*Thread]
 }
 
+func (f *frame) setNext(next *frame) {
+	if f.next == nil {
+		f.next = next
+		return
+	}
+	f.next.setNext(next)
+}
+
 func (f *frame) listThreads() []*Thread {
 	f.mu.Lock()
 	defer f.mu.Unlock()

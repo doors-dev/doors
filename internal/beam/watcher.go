@@ -2,12 +2,12 @@ package beam
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"sync/atomic"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxwg"
 	"github.com/doors-dev/doors/internal/node"
-	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type watcher[T any] struct {
@@ -45,14 +45,14 @@ func (w *watcher[T]) Cancel() {
 	w.s.UnregWatcher(w.id)
 }
 
-func (w *watcher[T]) Sync(ctx context.Context, seq uint, c *shredder.Collector[func()]) {
+func (w *watcher[T]) Sync(ctx context.Context, seq uint, c *common.Collector) {
 	<-w.init
 	if w.done.Load() {
 		return
 	}
 	v, updated := w.beam.sync(seq, c)
 	if v == nil {
-		log.Fatal("Update sync logic error")
+		panic("update sync logic error:" + fmt.Sprint(seq))
 	}
 	if !updated {
 		return
@@ -74,7 +74,7 @@ func (w *watcher[T]) Init(ctx context.Context, s *node.Screen, id uint, seq uint
 	w.ctx = ctx
 	v, _ := w.beam.sync(seq, nil)
 	if v == nil {
-		log.Fatal("Init sync logic error")
+		panic("init sync logic error:" + fmt.Sprint(seq))
 	}
 	return func() {
 		defer close(w.init)

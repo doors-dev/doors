@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/node"
-	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type Cancel = func()
@@ -58,7 +58,7 @@ type Beam[T any] interface {
 	// Allows handling custom logic on initialization, updates, and cancellation.
 	AddWatcher(ctx context.Context, w Watcher[T]) (Cancel, bool)
 	addWatcher(ctx context.Context, w node.Watcher) bool
-	sync(uint, *shredder.Collector[func()]) (*T, bool)
+	sync(uint, *common.Collector) (*T, bool)
 }
 
 func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(new T2, old T2) bool) Beam[T2] {
@@ -108,13 +108,13 @@ func (b *beam[T, T2]) addWatcher(ctx context.Context, w node.Watcher) bool {
 	return b.source.addWatcher(ctx, w)
 }
 
-func (b *beam[T, T2]) syncEntry(seq uint, c *shredder.Collector[func()]) *entry[T2] {
+func (b *beam[T, T2]) syncEntry(seq uint, c *common.Collector) *entry[T2] {
 	e, has := b.values[seq]
 	if has {
 		return e
 	}
 	if c != nil {
-		c.Put(func() {
+		c.Push(func() {
 			b.mu.Lock()
 			defer b.mu.Unlock()
 			for s := range b.values {
@@ -177,7 +177,7 @@ func (b *beam[T, T2]) syncEntry(seq uint, c *shredder.Collector[func()]) *entry[
 
 }
 
-func (b *beam[T, T2]) sync(seq uint, c *shredder.Collector[func()]) (*T2, bool) {
+func (b *beam[T, T2]) sync(seq uint, c *common.Collector) (*T2, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	entry := b.syncEntry(seq, c)

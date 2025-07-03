@@ -148,7 +148,7 @@ func (th *Thread) readTask(t task) bool {
 		f := frame.start(false)
 		defer f()
 	} else {
-		th.tail.next = frame
+		th.tail.setNext(frame)
 	}
 	th.writing = false
 	th.tail = frame
@@ -156,6 +156,34 @@ func (th *Thread) readTask(t task) bool {
 	return true
 }
 
+func (th *Thread) writeTask(t task, tryStarve bool) bool {
+	th.mu.Lock()
+	if th.killed {
+		th.mu.Unlock()
+		return false
+	}
+	frame := &frame{
+		mu:      sync.Mutex{},
+		next:    nil,
+		parent:  th,
+		threads: common.NewSet[*Thread](),
+		tasks:   []task{t},
+	}
+	if th.tail == nil {
+		f := frame.start(false)
+		defer f()
+	} else {
+		th.tail.setNext(frame)
+	}
+	if !th.writing && tryStarve {
+		th.mu.Unlock()
+		return true
+	}
+	th.writing = true
+	th.tail = frame
+	th.mu.Unlock()
+	return true
+}/*
 func (th *Thread) writeTask(t task) bool {
 	th.mu.Lock()
 	if th.killed {
@@ -174,21 +202,37 @@ func (th *Thread) writeTask(t task) bool {
 		f := frame.start(false)
 		defer f()
 	} else {
-		th.tail.next = frame
+		th.tail.setNext(frame)
 	}
 	th.tail = frame
 	th.mu.Unlock()
 	return true
-}
+} */
 
 func (th *Thread) Read(f func(*Thread), joined ...*JoinedThread) {
-	th.execute(f, R(th), joined)
+	th.executeMulti(f, R(th), joined)
 }
 
+func (th *Thread) WriteStarving(f func(*Thread), joined ...*JoinedThread) {
+	th.executeMulti(f, WS(th), joined)
+}
 func (th *Thread) Write(f func(*Thread), joined ...*JoinedThread) {
-	th.execute(f, W(th), joined)
+	th.executeMulti(f, W(th), joined)
+}
+func (th *Thread) ReadInstant(f func(*Thread), joined ...*JoinedThread) {
+	th.executeInstant(f, R(th), joined)
 }
 
-func (th *Thread) execute(f func(*Thread), self *JoinedThread, joined []*JoinedThread) {
-	runTask(th.spawner, f, append([]*JoinedThread{self}, joined...))
+func (th *Thread) WriteInstant(f func(*Thread), joined ...*JoinedThread) {
+	th.executeInstant(f, W(th), joined)
+}
+func (th *Thread) WriteInstantStarving(f func(*Thread), joined ...*JoinedThread) {
+	th.executeInstant(f, WS(th), joined)
+}
+
+func (th *Thread) executeMulti(f func(*Thread), self *JoinedThread, joined []*JoinedThread) {
+	runMultiTask(th.spawner, f, append([]*JoinedThread{self}, joined...))
+}
+func (th *Thread) executeInstant(f func(*Thread), self *JoinedThread, joined []*JoinedThread) {
+	runInstantTask(th.spawner, f, append([]*JoinedThread{self}, joined...))
 }

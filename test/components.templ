@@ -1,12 +1,18 @@
 package test
 
 import (
+	"context"
+	"fmt"
 	"github.com/doors-dev/doors"
 	"net/http"
 )
 
 templ report(value string) {
-	<div id="report">{ value }</div>
+	@reportId(0, value)
+}
+
+templ reportId(id int, value string) {
+	<div id={ fmt.Sprintf("report-%d", id) }>{ value }</div>
 }
 
 templ marker(id string) {
@@ -41,4 +47,40 @@ templ Document[P any](p page[P], b doors.SourceBeam[P]) {
 			@p.content(b)
 		</body>
 	</html>
+}
+
+func newReporter(size int) *reporter {
+	reports := make([]*doors.Node, size)
+	for i := range size {
+		reports[i] = &doors.Node{}
+	}
+	return &reporter{
+		reports: reports,
+	}
+}
+
+type reporter struct {
+	reports []*doors.Node
+}
+
+func (r *reporter) update(ctx context.Context, i int, content string) {
+	r.reports[i].Update(ctx, reportId(i, content))
+}
+
+templ (r *reporter) Render() {
+	for _, report := range r.reports {
+		@report
+	}
+}
+
+templ button(id string, handler func(context.Context) bool) {
+	<button
+		id={ id }
+		{ doors.A(ctx, doors.AClick {
+        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            return handler(ctx)
+        },
+
+    }) ... }
+	>{ id }</button>
 }

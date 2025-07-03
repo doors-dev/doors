@@ -1,5 +1,4 @@
 package test
-
 import (
 	"testing"
 
@@ -8,8 +7,10 @@ import (
 
 func TestNodeLoadPage(t *testing.T) {
 	bro := newBro(
-		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
-			return pr.Page(&PageNode{})
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
+				header: "Page Node",
+			})
 		}),
 	)
 	page := bro.page(t, "/")
@@ -23,8 +24,8 @@ func TestNodeLoadPage(t *testing.T) {
 
 func TestNodeInitialContent(t *testing.T) {
 	bro := newBro(
-		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
-			return pr.Page(&PageNode{
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
 				f: &BeforeFragment{},
 			})
 		}),
@@ -37,8 +38,8 @@ func TestNodeInitialContent(t *testing.T) {
 
 func TestNodeUpdatedBefore(t *testing.T) {
 	bro := newBro(
-		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
-			return pr.Page(&PageNode{
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
 				f: &BeforeFragment{},
 			})
 		}),
@@ -50,8 +51,8 @@ func TestNodeUpdatedBefore(t *testing.T) {
 }
 func TestNodeRemovedBefore(t *testing.T) {
 	bro := newBro(
-		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
-			return pr.Page(&PageNode{
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
 				f: &BeforeFragment{},
 			})
 		}),
@@ -63,8 +64,8 @@ func TestNodeRemovedBefore(t *testing.T) {
 }
 func TestNodeReplacedBefore(t *testing.T) {
 	bro := newBro(
-		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
-			return pr.Page(&PageNode{
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
 				f: &BeforeFragment{},
 			})
 		}),
@@ -78,8 +79,8 @@ func TestNodeReplacedBefore(t *testing.T) {
 }
 func TestNodeDynamic(t *testing.T) {
 	bro := newBro(
-		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
-			return pr.Page(&PageNode{
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
 				f: &DynamicFragment{},
 			})
 		}),
@@ -100,8 +101,8 @@ func TestNodeDynamic(t *testing.T) {
 
 func TestEmbedded(t *testing.T) {
 	bro := newBro(
-		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
-			return pr.Page(&PageNode{
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
 				f: &EmbeddedFragment{},
 			})
 		}),
@@ -119,8 +120,8 @@ func TestEmbedded(t *testing.T) {
 
 func TestEmbeddedRemove(t *testing.T) {
 	bro := newBro(
-		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
-			return pr.Page(&PageNode{
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
 				f: &EmbeddedFragment{},
 			})
 		}),
@@ -139,8 +140,8 @@ func TestEmbeddedRemove(t *testing.T) {
 
 func TestUpdateX(t *testing.T) {
 	bro := newBro(
-		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
-			return pr.Page(&PageNode{
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
 				f: &FragmentX{},
 			})
 		}),

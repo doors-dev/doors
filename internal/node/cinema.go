@@ -11,7 +11,7 @@ import (
 
 type Watcher interface {
 	GetId() uint
-	Sync(context.Context, uint, *shredder.Collector[func()])
+	Sync(context.Context, uint, *common.Collector)
 	Cancel()
 	Init(context.Context, *Screen, uint, uint) func()
 }
@@ -19,13 +19,15 @@ type Watcher interface {
 type screenCinema interface {
 	tryKill(uint64)
 	isRoot() bool
+	nodeId() uint64
+	newThread() *shredder.Thread
 }
 
-func newScreen(id uint64, cinema screenCinema, thread *shredder.Thread, coreThread *shredder.Thread) *Screen {
+func newScreen(id uint64, cinema screenCinema, coreThread *shredder.Thread) *Screen {
 	return &Screen{
 		id:         id,
 		mu:         sync.Mutex{},
-		thread:     thread,
+		thread:     cinema.newThread(),
 		coreThread: coreThread,
 		watchers:   make(map[uint]Watcher),
 		children:   common.NewSet[*Screen](),
@@ -53,7 +55,7 @@ func (s *Screen) kill(init bool) {
 			s.parent.removeChild(s)
 		}
 		s.mu.Lock()
-        wathchers := s.watchersSlice()
+		wathchers := s.watchersSlice()
 		s.mu.Unlock()
 		for _, watcher := range wathchers {
 			watcher.Cancel()
@@ -74,6 +76,69 @@ func (s *Screen) tryKill() bool {
 	})
 }
 
+func (s *Screen) syncChild(syncThread *shredder.Thread, ctx context.Context, seq uint, c *common.Collector) {
+	s.thread.WriteInstant(func(t *shredder.Thread) {
+		var children []*Screen
+		t.Write(func(t *shredder.Thread) {
+			if t == nil {
+				return
+			}
+			var watchers []Watcher
+			watchers, children = s.commit(seq)
+			for _, w := range watchers {
+				t.Read(func(t *shredder.Thread) {
+					w.Sync(ctx, seq, c)
+				})
+			}
+		}, shredder.R(s.coreThread))
+		t.Write(func(t *shredder.Thread) {
+			if t == nil {
+				return
+			}
+			for _, screen := range children {
+				screen.syncChild(syncThread, ctx, seq, c)
+			}
+		})
+	}, shredder.R(syncThread))
+}
+
+func (s *Screen) initSync(ctx context.Context, seq uint, after func()) {
+	c := common.NewCollector()
+	c.Push(after)
+	s.thread.Write(func(t *shredder.Thread) {
+		syncThread := s.cinema.newThread()
+		var children []*Screen
+		t.Write(func(t *shredder.Thread) {
+			if t == nil {
+				return
+			}
+			var watchers []Watcher
+			watchers, children = s.commit(seq)
+			for _, w := range watchers {
+				t.Read(func(t *shredder.Thread) {
+					w.Sync(ctx, seq, c)
+				})
+			}
+		}, shredder.R(s.coreThread))
+		t.Write(func(t *shredder.Thread) {
+			if t == nil {
+				return
+			}
+			for _, screen := range children {
+				screen.syncChild(syncThread, ctx, seq, c)
+			}
+		})
+		t.Write(func(t *shredder.Thread) {
+			if t == nil {
+				return
+			}
+			syncThread.WriteStarving(func(_ *shredder.Thread) {
+				c.Apply()
+			})
+		})
+	})
+}
+/*
 func (s *Screen) sync(ctx context.Context, seq uint, sourceCollector *shredder.Collector[func()]) {
 	sourceCollector.Read(func(c *shredder.Collector[func()]) {
 		if c == nil {
@@ -81,6 +146,7 @@ func (s *Screen) sync(ctx context.Context, seq uint, sourceCollector *shredder.C
 		}
 		var children []*Screen
 		c.Write(func(c *shredder.Collector[func()]) {
+			println("STARTED_", s.cinema.nodeId(), s.id, seq)
 			if c == nil {
 				return
 			}
@@ -91,6 +157,9 @@ func (s *Screen) sync(ctx context.Context, seq uint, sourceCollector *shredder.C
 					w.Sync(ctx, seq, c)
 				})
 			}
+			c.Write(func(c *shredder.Collector[func()]) {
+				println("FINISHED", s.cinema.nodeId(), s.id, seq)
+			})
 		}, shredder.W(s.thread), shredder.R(s.coreThread))
 		c.Write(func(c *shredder.Collector[func()]) {
 			if c == nil {
@@ -102,7 +171,7 @@ func (s *Screen) sync(ctx context.Context, seq uint, sourceCollector *shredder.C
 		})
 	})
 }
-
+*/
 func (s *Screen) watchersSlice() []Watcher {
 	slice := make([]Watcher, len(s.watchers))
 	i := 0
@@ -110,7 +179,7 @@ func (s *Screen) watchersSlice() []Watcher {
 		slice[i] = s.watchers[id]
 		i += 1
 	}
-    return slice
+	return slice
 }
 
 func (s *Screen) commit(seq uint) ([]Watcher, []*Screen) {
@@ -173,13 +242,14 @@ func (s *Screen) isEmpty() bool {
 	return len(s.watchers) == 0 && s.children.IsEmpty()
 }
 
-func newCinema(parent *Cinema, inst instance, coreThread *shredder.Thread) *Cinema {
+func newCinema(parent *Cinema, inst instance, coreThread *shredder.Thread, nodeId uint64) *Cinema {
 	return &Cinema{
 		mu:         sync.Mutex{},
 		coreThread: coreThread,
 		inst:       inst,
 		parent:     parent,
 		screens:    make(map[uint64]*Screen),
+		id:         nodeId,
 	}
 }
 
@@ -190,6 +260,15 @@ type Cinema struct {
 	inst       instance
 	parent     *Cinema
 	screens    map[uint64]*Screen
+	id         uint64
+}
+
+func (ss *Cinema) newThread() *shredder.Thread {
+	return ss.inst.Thread()
+}
+
+func (ss *Cinema) nodeId() uint64 {
+	return ss.id
 }
 
 func (ss *Cinema) AddWatcher(ctx context.Context, screenId uint64, w Watcher, lastSeq uint) bool {
@@ -222,7 +301,7 @@ func (ss *Cinema) ensure(id uint64, lastSeq uint) (*Screen, bool) {
 	}
 	screen, ok := ss.screens[id]
 	if !ok {
-		screen = newScreen(id, ss, ss.inst.Thread(), ss.coreThread)
+		screen = newScreen(id, ss, ss.coreThread)
 		ss.screens[id] = screen
 		if !ss.isRoot() {
 			ok := ss.parent.addChild(id, screen, lastSeq)
@@ -252,6 +331,20 @@ func (ss *Cinema) tryKill(id uint64) {
 	}
 }
 
+func (ss *Cinema) InitSync(ctx context.Context, id uint64, seq uint, after func()) {
+	if !ss.isRoot() {
+		log.Fatal("Only root node can init sync")
+	}
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
+	s, ok := ss.screens[id]
+	if !ok {
+		after()
+		return
+	}
+	s.initSync(ctx, seq, after)
+}
+/*
 func (ss *Cinema) InitSync(ctx context.Context, id uint64, seq uint, c *shredder.Collector[func()]) {
 	if !ss.isRoot() {
 		log.Fatal("Only root node can init sync")
@@ -263,7 +356,7 @@ func (ss *Cinema) InitSync(ctx context.Context, id uint64, seq uint, c *shredder
 		return
 	}
 	s.sync(ctx, seq, c)
-}
+} */
 
 func (ss *Cinema) kill(init bool) {
 	ss.mu.Lock()

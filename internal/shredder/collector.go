@@ -1,5 +1,7 @@
 package shredder
 
+/*
+
 type collector[T any] struct {
 	collection *collection[T]
 	collect    func(item T)
@@ -107,7 +109,7 @@ func (c *Collector[T]) execute(f func(*Collector[T]), self *JoinedThread, thread
 	c.thread.mu.Lock()
 	collection := c.collection.branch()
 	c.thread.mu.Unlock()
-	runTask(c.thread.spawner, func(t *Thread) {
+	runMultiTask(c.thread.spawner, func(t *Thread) {
 		var collector *Collector[T]
 		if t != nil {
 			collector = &Collector[T]{
@@ -119,4 +121,4 @@ func (c *Collector[T]) execute(f func(*Collector[T]), self *JoinedThread, thread
 	},
 		append([]*JoinedThread{self}, threads...),
 	)
-}
+} */

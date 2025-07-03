@@ -117,9 +117,12 @@ func testContent(t *testing.T, page *rod.Page, selector string, content string) 
 }
 
 func testReport(t *testing.T, page *rod.Page, content string) {
-	testContent(t, page, "#report", content)
+	testReportId(t, page, 0, content)
 }
 
+func testReportId(t *testing.T, page *rod.Page, id int, content string) {
+	testContent(t, page, fmt.Sprintf("#report-%d", id), content)
+}
 func text(s string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		_, err := w.Write([]byte(s))

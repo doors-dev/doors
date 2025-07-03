@@ -45,7 +45,7 @@ func newCore(node *Node, ctx context.Context, id uint64) *core {
 		id = inst.NewId()
 	}
 	thread := inst.Thread()
-	cinema := newCinema(parentCinema, inst, thread)
+	cinema := newCinema(parentCinema, inst, thread, id)
 	return &core{
 		node:      node,
 		id:        id,

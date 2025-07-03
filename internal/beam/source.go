@@ -2,7 +2,6 @@ package beam
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -13,8 +12,8 @@ import (
 
 type instance interface {
 	Thread() *shredder.Thread
+	Cinema() *node.Cinema
 	NewId() uint64
-	Sync(context.Context, uint64, uint, *shredder.Collector[func()])
 }
 
 type SourceBeam[T any] interface {
@@ -92,7 +91,7 @@ func (s *source[T]) Latest() T {
 	return *value
 }
 
-func (s *source[T]) sync(seq uint, _ *shredder.Collector[func()]) (*T, bool) {
+func (s *source[T]) sync(seq uint, _ *common.Collector) (*T, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	value, ok := s.values[seq]
@@ -141,9 +140,6 @@ func (s *source[T]) Mutate(ctx context.Context, m func(*T) bool) bool {
 func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) (<-chan error, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if ctx.Err() != nil {
-		return nil, false
-	}
 	ch := make(chan error, 1)
 	ctx = common.ClearBlockingCtx(ctx)
 	new, update := m(s.values[s.seq])
@@ -160,11 +156,49 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) (<
 		close(ch)
 		return ch, true
 	}
+	cinema := s.inst.Cinema()
 	done := ctxwg.Add(ctx)
-	thread := s.inst.Thread()
+	cinema.InitSync(ctx, s.id, seq, func() {
+		defer done()
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		delete(s.values, seq-1)
+		ch <- nil
+		close(ch)
+	})
+	return ch, true
+
+}
+
+/*
+func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) (<-chan error, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if ctx.Err() != nil {
+		return nil, false
+	}
+	ch := make(chan error, 1)
+	ctx = common.ClearBlockingCtx(ctx)
+	new, update := m(s.values[s.seq])
+	if !update {
+		close(ch)
+		return ch, true
+	}
+	s.seq += 1
+	seq := s.seq
+	println("ADDING SEQ", seq, s.id)
+	s.values[seq] = new
+	if s.inst == nil {
+		delete(s.values, seq-1)
+		ch <- nil
+		close(ch)
+		return ch, true
+	}
+	done := ctxwg.Add(ctx)
 	shredder.Collect(
 		shredder.W(thread),
 		func(c *shredder.Collector[func()]) {
+			println("INTING SEQ", seq, s.id)
 			if c == nil {
 				return
 			}
@@ -183,12 +217,13 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) (<
 		}
 		s.mu.Lock()
 		defer s.mu.Unlock()
+		println("REMOVING SEQ", seq-1, s.id)
 		delete(s.values, seq-1)
 		ch <- nil
 		close(ch)
 	})
 	return ch, true
-}
+} */
 
 func (s *source[T]) addWatcher(ctx context.Context, w node.Watcher) bool {
 	cinema := ctx.Value(common.CinemaCtxKey).(*node.Cinema)

@@ -26,7 +26,7 @@ templ (f *FragmentX) Render() {
         On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
             ch, ok := f.n.XUpdate(ctx, marker("updated"))
             if !ok {
-                f.rep(ctx, "false update")
+               f.rep(ctx, "false update")
                 return true
             }
             err, ok := <- ch
