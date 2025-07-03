@@ -125,12 +125,14 @@ func (inst *Instance[M]) UpdatePath(m any, adapter path.AnyAdapter) bool {
 		println(err.Error())
 		return false
 	}
-	inst.core.Call(&relocateCaller{
-		location: location,
+	inst.core.Call(&LocationAssign{
+		Origin: true,
+		Href:   location.String(),
 	})
 	return true
 }
 
+/*
 func (inst *Instance[M]) relocate(m any) error {
 	name := path.GetAdapterName(m)
 	adapter, ok := inst.session.router.Adapters()[name]
@@ -145,4 +147,4 @@ func (inst *Instance[M]) relocate(m any) error {
 		location: location,
 	})
 	return nil
-}
+} */

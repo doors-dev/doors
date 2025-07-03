@@ -131,7 +131,7 @@ export class Navigator {
         try {
             const r = await fetch(path, {
                 method: "GET",
-                headers: { "d00r": this.id },
+                headers: { "D00r": this.id },
             });
             if (!r.ok) {
                 throw new Error("code " + r.status);

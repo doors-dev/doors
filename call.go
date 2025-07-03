@@ -22,11 +22,11 @@ import (
 //   - Name: the name of the frontend JavaScript function to call.
 //   - Arg: the argument to pass to the function (must be JSON-serializable).
 //   - Trigger: optional. Called when the frontend responds to the function call.
-//              The handler receives a CallRequest, which can read data from the frontend.
+//     The handler receives a CallRequest, which can read data from the frontend.
 //   - Cancel: optional. Called if the call is invalidated before it reaches the frontend,
-//             or if manually canceled using the returned TryCancel function.
+//     or if manually canceled using the returned TryCancel function.
 type CallConf struct {
-    // Name of the JavaScript call handler handler  (must be registered on the frontend).
+	// Name of the JavaScript call handler handler  (must be registered on the frontend).
 	Name string
 
 	// Arg is the value passed to the frontend function. It is serialized as JSON.
@@ -66,16 +66,16 @@ type TryCancel func() bool
 //
 // Example:
 //
-//     // Go (backend):
-//     d.Call(ctx, d.CallConf{
-//         Name: "alert",
-//         Arg:  "Hello",
-//     })
+//	// Go (backend):
+//	d.Call(ctx, d.CallConf{
+//	    Name: "alert",
+//	    Arg:  "Hello",
+//	})
 //
-//     // JavaScript (frontend):
-//     <script>
-//     $D.on(document.currentScript, "alert", (message) => alert(message))
-//     </script>
+//	// JavaScript (frontend):
+//	<script>
+//	$D.on(document.currentScript, "alert", (message) => alert(message))
+//	</script>
 //
 // Notes:
 //   - The Name must match the identifier registered via `$D.on(...)` in frontend JavaScript.
@@ -87,7 +87,7 @@ func Call(ctx context.Context, conf CallConf) (TryCancel, bool) {
 	call := &node.CallHook{
 		Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 			if conf.Trigger != nil {
-				conf.Trigger(ctx, &request{w: w, r: r})
+				conf.Trigger(ctx, &request{w: w, r: r, ctx: ctx})
 			}
 		},
 		Cancel: conf.Cancel,

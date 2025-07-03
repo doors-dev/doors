@@ -3,12 +3,39 @@ import { capture, attach } from "./capture"
 import navigator from "./navigator"
 import { doorId } from "./lib"
 
-export default {
-    relocate: ([path]:[string]) => {
-        window.location.href = path
-    },
+const task = (f: () => void) => {
+    setTimeout(f, 0)
+}
 
-    call: async ([name, arg, nodeId, hookId]:[string, any, number, number]) => {
+export default {
+    location_reload: () => {
+        task(() => {
+            location.reload()
+        })
+    },
+    location_replace: ([href, origin]: [string, boolean]) => {
+        let url: URL
+        if (origin) {
+            url = new URL(href, window.location.origin);
+        } else {
+            url = new URL(href)
+        }
+        task(() => {
+            location.replace(url.toString())
+        })
+    },
+    location_assign: ([href, origin]: [string, boolean]) => {
+        let url: URL
+        if (origin) {
+            url = new URL(href, window.location.origin);
+        } else {
+            url = new URL(href)
+        }
+        task(() => {
+            location.assign(url.toString())
+        })
+    },
+    call: async ([name, arg, nodeId, hookId]: [string, any, number, number]) => {
         const entry = door.getHandler(nodeId, name)
         if (!entry) {
             throw new Error(`Handler ${name} not found`)
@@ -22,7 +49,7 @@ export default {
         }
     },
 
-    set_path: ([p, replace]:[string, boolean]) => {
+    set_path: ([p, replace]: [string, boolean]) => {
         if (replace) {
             navigator.replace(p)
             return

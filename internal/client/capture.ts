@@ -1,5 +1,6 @@
 import { id } from './params'
 import ctrl from './controller'
+import calls from './calls'
 import captures from './captures'
 import indicator, { IndicatorEntry } from './indicator'
 
@@ -110,14 +111,34 @@ class Process {
         }
     }
 
+    private afterHook(name: string, arg: any) {
+        try {
+            const fn = (calls as any)[name]
+            if (!fn) {
+                console.error(`after hook callable [${name}] not found`)
+                return
+            }
+            const result = fn(arg)
+            if (result && result instanceof Promise) {
+                result.then().catch(e => console.error("after hook  err", e))
+            }
+        } catch (e) {
+            console.error("after hook  err", e)
+        }
+    }
+
     hook(task: Task, done: () => void) {
         const indicatorId = indicator.start(task.arg?.target, task.hook!.indicator)
-
         fetch(`/d00r/${id}/${task.hook!.id}`, {
             method: "POST",
             ...task.fetch,
         }).then(r => {
             if (r.ok) {
+                const after = r.headers.get("D00r-After")
+                if (after) {
+                    const [name, arg] = JSON.parse(after)
+                    this.afterHook(name, arg)
+                }
                 task.res(r)
                 return
             }
@@ -416,13 +437,16 @@ export function attach(parent: HTMLElement | DocumentFragment | Document) {
                 try {
                     await capture(name, e, opt, hook)
                 } catch (err: any) {
-                    if (err.isDebounce?.() || err.isBlocked?.()) {
+                    if (!(err instanceof CaptureErr)) {
+                        console.error("unknown error in capture:", err)
                         return
                     }
-                    if (err.isStale) {
+                    if (err.isDebounce() || err.isBlocked() || err.isDone()) {
+                        return
+                    }
+                    if (err.isStale()) {
                         ctrl.gone()
                     }
-                    console.error(err)
                 }
             })
         }

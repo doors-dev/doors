@@ -2,10 +2,8 @@ package instance
 
 import (
 	"sync/atomic"
-
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/node"
-	"github.com/doors-dev/doors/internal/path"
 )
 
 type setPathCaller struct {
@@ -39,6 +37,65 @@ func (t *setPathCaller) OnWriteErr() bool {
 	return !t.canceled.Load()
 }
 
+type LocatinReload struct {
+}
+
+func (l *LocatinReload) Call() (node.Call, bool) {
+	return &anyCall{
+		name: "location_reload",
+		arg:  []any{},
+	}, true
+}
+
+type LocationReplace struct {
+	Href   string
+	Origin bool
+}
+
+type LocationAssign struct {
+	Href   string
+	Origin bool
+}
+
+func (l *LocationAssign) Call() (node.Call, bool) {
+	return &anyCall{
+		name: "location_assign",
+		arg:  []any{l.Href, l.Origin},
+	}, true
+}
+
+func (l *LocationReplace) Call() (node.Call, bool) {
+	return &anyCall{
+		name: "location_replace",
+		arg:  []any{l.Href, l.Origin},
+	}, true
+}
+
+type anyCall struct {
+	name string
+	arg  []any
+}
+
+func (t *anyCall) Arg() common.JsonWritable {
+	arg := make(common.JsonWritables, len(t.arg))
+	for i, v := range t.arg {
+		arg[i] = common.JsonWritableAny{v}
+	}
+	return arg
+}
+func (t *anyCall) Name() string {
+	return t.name
+}
+func (t *anyCall) Payload() (common.Writable, bool) {
+	return nil, false
+}
+
+func (t *anyCall) OnWriteErr() bool {
+	return true
+}
+func (t *anyCall) OnResult(error) {}
+
+/*
 type relocateCaller struct {
 	location *path.Location
 }
@@ -60,3 +117,4 @@ func (t *relocateCaller) OnWriteErr() bool    {
 	return true
 }
 func (t *relocateCaller) OnResult(error) {}
+*/

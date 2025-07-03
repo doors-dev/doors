@@ -201,6 +201,7 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		request: request{
 			r: r,
 			w: w,
+			ctx: ctx,
 		},
 		e: &e,
 	})

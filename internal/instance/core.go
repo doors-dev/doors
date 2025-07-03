@@ -30,7 +30,6 @@ type coreInstance[M any] interface {
 	Id() string
 	setupPathSync(context.Context)
 	newLink(context.Context, any) (*Link, error)
-	relocate(any) error
 	end(endCause)
 	include() bool
 	conf() *common.SystemConf
@@ -53,7 +52,6 @@ type Core interface {
 	CSPCollector() (*common.CSPCollector, bool)
 	ImportRegistry() *resources.Registry
 	SessionId() string
-	Relocate(context.Context, any) error
 	Include() bool
 	ClientConf() *common.ClientConf
 	Id() string
@@ -61,6 +59,7 @@ type Core interface {
 	NewLink(context.Context, any) (*Link, error)
 	SessionExpire(d time.Duration)
 	SessionEnd()
+	Call(caller node.Caller)
 	End()
 }
 
@@ -109,13 +108,14 @@ func (c *core[M]) SessionId() string {
 	return c.instance.getSession().Id()
 }
 
+/*
 func (c *core[M]) Relocate(ctx context.Context, model any) error {
 
 	if ctx.Err() != nil {
 		return errors.New("context not active")
 	}
 	return c.instance.relocate(model)
-}
+} */
 
 func (c *core[M]) Sync(ctx context.Context, screenId uint64, seq uint, collector *shredder.Collector[func()]) {
 	c.cinema.InitSync(ctx, screenId, seq, collector)
@@ -136,7 +136,6 @@ func (c *core[M]) End() {
 func (c *core[M]) SessionExpire(d time.Duration) {
 	c.instance.getSession().SetExpiration(d)
 }
-
 
 func (c *core[M]) Id() string {
 	return c.instance.Id()

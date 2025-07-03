@@ -1,11 +1,20 @@
 package doors
 
 import (
+	"context"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+
+	"github.com/doors-dev/doors/internal/front"
 )
+
+type RAfter interface {
+	LocationAssignAfter(model any) error
+	LocationReplaceAfter(model any) error
+	LocationReloadAfter()
+}
 
 // R provides common cookie-related methods for all request types.
 type R interface {
@@ -25,6 +34,7 @@ type REvent[E any] interface {
 
 	// Event returns the event payload.
 	Event() E
+	RAfter
 }
 
 // RForm provides access to decoded form data sent from the client.
@@ -35,8 +45,8 @@ type RForm[D any] interface {
 
 	// Data returns the parsed form data as a typed value.
 	Data() D
+	RAfter
 }
-
 
 // RRawForm gives access to low-level multipart form data parsing.
 //
@@ -50,6 +60,7 @@ type RRawForm interface {
 	// ParseForm parses the request form data into a ParsedForm.
 	// maxMemory controls how much memory is used for non-file parts.
 	ParseForm(maxMemory int) (ParsedForm, error)
+	RAfter
 }
 
 // ParsedForm provides access to the contents of a parsed multipart form.
@@ -67,16 +78,17 @@ type ParsedForm interface {
 	Form() *multipart.Form
 }
 
-
 type RCall interface {
 	RRawForm
 	W() http.ResponseWriter
 	Body() io.ReadCloser
+	RAfter
 }
 
 type RHook[D any] interface {
-    R
-    Data() D
+	R
+	Data() D
+	RAfter
 }
 
 type RRawHook interface {
@@ -86,8 +98,48 @@ type RRawHook interface {
 }
 
 type request struct {
-	w http.ResponseWriter
-	r *http.Request
+	w   http.ResponseWriter
+	r   *http.Request
+	ctx context.Context
+}
+
+func (r *request) setAfter(a *front.After) {
+	err := a.Set(r.w.Header())
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (r *request) LocationReloadAfter() {
+	after := front.After{
+		Name: "location_reload",
+	}
+	r.setAfter(&after)
+}
+
+func (r *request) LocationAssignAfter(a any) error {
+	l, err := NewLocation(r.ctx, a)
+	if err != nil {
+		return err
+	}
+	after := front.After{
+		Name: "location_assign",
+		Arg:  []any{l.String(), true},
+	}
+	r.setAfter(&after)
+	return nil
+}
+func (r *request) LocationReplaceAfter(a any) error {
+	l, err := NewLocation(r.ctx, a)
+	if err != nil {
+		return err
+	}
+	after := front.After{
+		Name: "location_replace",
+		Arg:  []any{l.String(), true},
+	}
+	r.setAfter(&after)
+	return nil
 }
 
 func (r *request) Body() io.ReadCloser {

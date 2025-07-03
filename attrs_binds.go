@@ -30,7 +30,7 @@ func (h AHook[I, O]) Init(ctx context.Context, n node.Core, _ instance.Core, att
 	}
 	attr.SetHook(h.Name, &front.Hook{
 		Mode:      h.Mode,
-		Indicate: h.Indicator,
+		Indicate:  h.Indicator,
 		HookEntry: entry,
 	})
 }
@@ -50,6 +50,7 @@ func (h *AHook[I, O]) handle(ctx context.Context, w http.ResponseWriter, r *http
 		request: request{
 			w: w,
 			r: r,
+			ctx: ctx,
 		},
 	})
 	enc := json.NewEncoder(w)
@@ -83,15 +84,16 @@ func (h ARawHook) Init(ctx context.Context, n node.Core, _ instance.Core, attr *
 	}
 	attr.SetHook(h.Name, &front.Hook{
 		Mode:      h.Mode,
-		Indicate: h.Indicator,
+		Indicate:  h.Indicator,
 		HookEntry: entry,
 	})
 }
 
 func (h *ARawHook) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 	return h.On(ctx, &request{
-		r: r,
-		w: w,
+		r:   r,
+		w:   w,
+		ctx: ctx,
 	})
 }
 
@@ -108,6 +110,6 @@ type ADataMap map[string]any
 
 func (dm ADataMap) Init(_ context.Context, n node.Core, _ instance.Core, attr *front.Attrs) {
 	for name := range dm {
-        attr.SetData(name, dm[name])
+		attr.SetData(name, dm[name])
 	}
 }

@@ -10,6 +10,11 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "github.com/doors-dev/doors"
 
+type noBeam struct {
+}
+
+func (f noBeam) setBeam(_ doors.SourceBeam[PathNode]) {}
+
 type PathNode struct {
 	Vh bool `path:""`
 	Vs bool `path:"/a"`

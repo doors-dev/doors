@@ -11,9 +11,53 @@ import (
 	"github.com/doors-dev/doors/internal/path"
 )
 
-func UserRelocate(ctx context.Context, model any) error {
+func UserLocationReload(ctx context.Context) {
 	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
-	return inst.Relocate(ctx, model)
+	inst.Call(&instance.LocatinReload{})
+}
+
+func UserLocationAssignRaw(ctx context.Context, url string) {
+	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst.Call(&instance.LocationAssign{
+		Href:   url,
+		Origin: false,
+	})
+
+}
+func UserLocationReplaceRaw(ctx context.Context, url string) {
+	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst.Call(&instance.LocationReplace{
+		Href:   url,
+		Origin: false,
+	})
+}
+
+func UserLocationReplace(ctx context.Context, model any) error {
+	l, err := NewLocation(ctx, model)
+	if err != nil {
+		return err
+	}
+
+	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst.Call(&instance.LocationReplace{
+		Href:   l.String(),
+		Origin: true,
+	})
+	return nil
+}
+
+func UserLocationAssign(ctx context.Context, model any) error {
+	l, err := NewLocation(ctx, model)
+	if err != nil {
+		return err
+	}
+
+	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst.Call(&instance.LocationAssign{
+		Href:   l.String(),
+		Origin: true,
+	})
+	return nil
 }
 
 func UserSessionExpire(ctx context.Context, d time.Duration) {

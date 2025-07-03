@@ -2,33 +2,9 @@ package test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/doors-dev/doors"
-	"github.com/go-rod/rod"
 )
-
-func testMust(t *testing.T, page *rod.Page, selector string) {
-	_, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("must: element ", selector, " not found")
-	}
-}
-func testMustNot(t *testing.T, page *rod.Page, selector string) {
-	_, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err == nil {
-		t.Fatal("must not: element ", selector, " found")
-	}
-}
-
-func click(t *testing.T, page *rod.Page, selector string) {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("click: element ", selector, " not found")
-	}
-	el.MustClick()
-	<-time.After(100 * time.Millisecond)
-}
 
 func TestNodeLoadPage(t *testing.T) {
 	bro := newBro(
@@ -120,4 +96,67 @@ func TestNodeDynamic(t *testing.T) {
 	testMust(t, page, "#replaced")
 	click(t, page, "#remove")
 	testMustNot(t, page, "#replaced")
+}
+
+func TestEmbedded(t *testing.T) {
+	bro := newBro(
+		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
+			return pr.Page(&PageNode{
+				f: &EmbeddedFragment{},
+			})
+		}),
+	)
+	page := bro.page(t, "/")
+	defer bro.close()
+	defer page.Close()
+	testMust(t, page, "#init")
+	click(t, page, "#clear")
+	testMustNot(t, page, "#init")
+	click(t, page, "#replace")
+	testMustNot(t, page, "#temp")
+	testMust(t, page, "#replaced")
+}
+
+func TestEmbeddedRemove(t *testing.T) {
+	bro := newBro(
+		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
+			return pr.Page(&PageNode{
+				f: &EmbeddedFragment{},
+			})
+		}),
+	)
+	page := bro.page(t, "/")
+	defer bro.close()
+	defer page.Close()
+	testMust(t, page, "#init")
+	click(t, page, "#clear")
+	testMustNot(t, page, "#init")
+	click(t, page, "#remove")
+	click(t, page, "#replace")
+	testMustNot(t, page, "#temp")
+	testMustNot(t, page, "#replaced")
+}
+
+func TestUpdateX(t *testing.T) {
+	bro := newBro(
+		doors.ServePage(func(pr doors.PageRouter[PathNode], r doors.RPage[PathNode]) doors.PageRoute {
+			return pr.Page(&PageNode{
+				f: &FragmentX{},
+			})
+		}),
+	)
+	page := bro.page(t, "/")
+	defer bro.close()
+	defer page.Close()
+	testMust(t, page, "#init")
+	click(t, page, "#updatex")
+	testReport(t, page, "ok")
+	testMustNot(t, page, "#init")
+	testMust(t, page, "#updated")
+	click(t, page, "#removex")
+	testReport(t, page, "ok")
+	testMustNot(t, page, "#updated")
+	click(t, page, "#updatex")
+	testReport(t, page, "false update")
+
 }

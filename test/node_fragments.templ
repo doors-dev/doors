@@ -5,13 +5,123 @@ import (
 	"github.com/doors-dev/doors"
 )
 
+type FragmentX struct {
+	report doors.Node
+	n      doors.Node
+	noBeam
+}
+
+func (f *FragmentX) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, report(s))
+}
+
+templ (f *FragmentX) Render() {
+	@f.n {
+		@marker("init")
+	}
+	@f.report
+	<button
+		id="updatex"
+		{ doors.A(ctx, doors.AClick {
+        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            ch, ok := f.n.XUpdate(ctx, marker("updated"))
+            if !ok {
+                f.rep(ctx, "false update")
+                return true
+            }
+            err, ok := <- ch
+            if !ok {
+                f.rep(ctx, "channel closed")
+                return true
+            }
+            if err != nil {
+                f.rep(ctx, "channel err: "+err.Error())
+                return true
+            } 
+            f.rep(ctx, "ok")
+            return false
+        },
+
+    }) ... }
+	>C</button>
+	<button
+		id="removex"
+		{ doors.A(ctx, doors.AClick {
+        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            ch, ok := f.n.XRemove(ctx)
+            if !ok {
+                f.rep(ctx, "false remove")
+                return true
+            }
+            err, ok := <- ch
+            if !ok {
+                f.rep(ctx, "channel closed")
+                return true
+            }
+            if err != nil {
+                f.rep(ctx, "channel err: "+err.Error())
+                return true
+            } 
+            f.rep(ctx, "ok")
+            return true
+        },
+
+    }) ... }
+	>R</button>
+}
+
+type EmbeddedFragment struct {
+	n1 doors.Node
+	n2 doors.Node
+	n3 doors.Node
+	noBeam
+}
+
+templ (f *EmbeddedFragment) Render() {
+	@f.n1 {
+		@f.n2 {
+			@marker("init")
+		}
+	}
+	@f.n3
+	<button
+		id="clear"
+		{ doors.A(ctx, doors.AClick {
+        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            f.n1.Clear(ctx)
+            return true
+        },
+
+    }) ... }
+	>C</button>
+	<button
+		id="remove"
+		{ doors.A(ctx, doors.AClick {
+        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            f.n2.Remove(ctx)
+            return true
+        },
+
+    }) ... }
+	>C</button>
+	<button
+		id="replace"
+		{ doors.A(ctx, doors.AClick {
+        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            f.n2.Update(ctx, marker("replaced"))
+            f.n3.Update(ctx, marker("temp"))
+            f.n3.Replace(ctx, &f.n2)
+            return true
+        },
+
+    }) ... }
+	>C</button>
+}
+
 type DynamicFragment struct {
 	n1 doors.Node
 	n2 doors.Node
-}
-
-func (f *DynamicFragment) setBeam(_ doors.SourceBeam[PathNode]) {
-
+	noBeam
 }
 
 templ (f *DynamicFragment) Render() {
@@ -61,10 +171,7 @@ type BeforeFragment struct {
 	nodeUpdate   doors.Node
 	nodeRemoved  doors.Node
 	nodeReplaced doors.Node
-}
-
-func (f *BeforeFragment) setBeam(_ doors.SourceBeam[PathNode]) {
-
+	noBeam
 }
 
 templ (f *BeforeFragment) Render() {

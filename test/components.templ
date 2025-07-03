@@ -5,6 +5,10 @@ import (
 	"net/http"
 )
 
+templ report(value string) {
+	<div id="report">{ value }</div>
+}
+
 templ marker(id string) {
 	<div id={ id }></div>
 }

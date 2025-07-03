@@ -180,7 +180,7 @@ main:
 		}
 		break
 	}
-	instId := r.Header.Get("d00r")
+	instId := r.Header.Get("D00r")
 	if page == nil {
 		if instId != "" {
 			w.WriteHeader(http.StatusNotFound)
