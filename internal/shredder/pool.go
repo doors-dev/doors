@@ -22,7 +22,6 @@ func (s *Spawner) NewThead() *Thread {
 		main:    nil,
 		heads:   make([]threadHead, 0),
 		spawner: s,
-		writing: false,
 		killed:  false,
 		tail:    nil,
 	}

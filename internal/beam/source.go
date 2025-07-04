@@ -91,7 +91,7 @@ func (s *source[T]) Latest() T {
 	return *value
 }
 
-func (s *source[T]) sync(seq uint, _ *common.Collector) (*T, bool) {
+func (s *source[T]) sync(seq uint, _ *common.FuncCollector) (*T, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	value, ok := s.values[seq]
@@ -158,8 +158,12 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) (<
 	}
 	cinema := s.inst.Cinema()
 	done := ctxwg.Add(ctx)
-	cinema.InitSync(ctx, s.id, seq, func() {
+	syncThread := s.inst.Thread()
+	c := common.NewFuncCollector()
+	cinema.InitSync(syncThread, ctx, s.id, seq, c)
+	syncThread.WriteStarving(func(t *shredder.Thread) {
 		defer done()
+		c.Apply()
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		delete(s.values, seq-1)
@@ -169,61 +173,6 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) (<
 	return ch, true
 
 }
-
-/*
-func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) (<-chan error, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if ctx.Err() != nil {
-		return nil, false
-	}
-	ch := make(chan error, 1)
-	ctx = common.ClearBlockingCtx(ctx)
-	new, update := m(s.values[s.seq])
-	if !update {
-		close(ch)
-		return ch, true
-	}
-	s.seq += 1
-	seq := s.seq
-	println("ADDING SEQ", seq, s.id)
-	s.values[seq] = new
-	if s.inst == nil {
-		delete(s.values, seq-1)
-		ch <- nil
-		close(ch)
-		return ch, true
-	}
-	done := ctxwg.Add(ctx)
-	shredder.Collect(
-		shredder.W(thread),
-		func(c *shredder.Collector[func()]) {
-			println("INTING SEQ", seq, s.id)
-			if c == nil {
-				return
-			}
-			s.inst.Sync(ctx, s.id, seq, c)
-		},
-		func(f func()) {
-			f()
-		},
-	)
-	thread.Write(func(t *shredder.Thread) {
-		defer done()
-		if t == nil {
-			ch <- errors.New("instance killed")
-			close(ch)
-			return
-		}
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		println("REMOVING SEQ", seq-1, s.id)
-		delete(s.values, seq-1)
-		ch <- nil
-		close(ch)
-	})
-	return ch, true
-} */
 
 func (s *source[T]) addWatcher(ctx context.Context, w node.Watcher) bool {
 	cinema := ctx.Value(common.CinemaCtxKey).(*node.Cinema)

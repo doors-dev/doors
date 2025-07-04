@@ -12,6 +12,7 @@ type frame struct {
 	parent  *Thread
 	tasks   []task
 	threads common.Set[*Thread]
+	writing bool
 }
 
 func (f *frame) setNext(next *frame) {

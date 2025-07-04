@@ -17,7 +17,6 @@ type Thread struct {
 	killed  bool
 	running bool
 	spawner *Spawner
-	writing bool
 	tail    *frame
 	after   func()
 }
@@ -113,6 +112,9 @@ func (t *Thread) frameDone(frame *frame) {
 		return
 	}
 	if frame.next != nil {
+		if t.tail == frame {
+			t.tail = frame.next
+		}
 		f := frame.next.start(t.killed)
 		defer f()
 		t.mu.Unlock()
@@ -132,7 +134,7 @@ func (th *Thread) readTask(t task) bool {
 		th.mu.Unlock()
 		return false
 	}
-	if th.tail != nil && !th.writing {
+	if th.tail != nil && !th.tail.writing {
 		f := th.tail.add(t, false)
 		defer f()
 		th.mu.Unlock()
@@ -150,7 +152,6 @@ func (th *Thread) readTask(t task) bool {
 	} else {
 		th.tail.setNext(frame)
 	}
-	th.writing = false
 	th.tail = frame
 	th.mu.Unlock()
 	return true
@@ -168,22 +169,23 @@ func (th *Thread) writeTask(t task, tryStarve bool) bool {
 		parent:  th,
 		threads: common.NewSet[*Thread](),
 		tasks:   []task{t},
+		writing: true,
 	}
 	if th.tail == nil {
 		f := frame.start(false)
+		th.tail = frame
 		defer f()
-	} else {
-		th.tail.setNext(frame)
-	}
-	if !th.writing && tryStarve {
 		th.mu.Unlock()
 		return true
 	}
-	th.writing = true
+	defer th.mu.Unlock()
+	th.tail.setNext(frame)
+	if !th.tail.writing && tryStarve {
+		return true
+	}
 	th.tail = frame
-	th.mu.Unlock()
 	return true
-}/*
+} /*
 func (th *Thread) writeTask(t task) bool {
 	th.mu.Lock()
 	if th.killed {

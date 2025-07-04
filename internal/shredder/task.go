@@ -22,7 +22,6 @@ func runInstantTask(s *Spawner, f func(*Thread), threads []*JoinedThread) {
 			main:    f,
 			heads:   make([]threadHead, len(threads)),
 			spawner: s,
-			writing: false,
 			tail:    nil,
 		},
 	}
@@ -80,7 +79,6 @@ func runMultiTask(s *Spawner, f func(*Thread), threads []*JoinedThread) {
 			main:    f,
 			heads:   make([]threadHead, len(threads)),
 			spawner: s,
-			writing: false,
 			tail:    nil,
 		},
 	}

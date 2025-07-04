@@ -45,7 +45,7 @@ func (w *watcher[T]) Cancel() {
 	w.s.UnregWatcher(w.id)
 }
 
-func (w *watcher[T]) Sync(ctx context.Context, seq uint, c *common.Collector) {
+func (w *watcher[T]) Sync(ctx context.Context, seq uint, c *common.FuncCollector) {
 	<-w.init
 	if w.done.Load() {
 		return

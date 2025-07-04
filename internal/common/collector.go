@@ -2,30 +2,30 @@ package common
 
 import "sync"
 
-func NewCollector() *Collector {
-	return &Collector{
+func NewFuncCollector() *FuncCollector {
+	return &FuncCollector{
 		collection: make([]func(), 0),
 	}
 }
 
-type Collector struct {
+type FuncCollector struct {
 	mu         sync.Mutex
 	collection []func()
 }
 
-func (c *Collector) Push(f func()) {
+func (c *FuncCollector) Add(f func()) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.collection = append(c.collection, f)
 }
 
-func (c *Collector) Collect() []func() {
+func (c *FuncCollector) Collect() []func() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.collection
 }
 
-func (c *Collector) Apply() {
+func (c *FuncCollector) Apply() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, f := range c.collection {
