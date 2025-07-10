@@ -2,11 +2,12 @@ package node
 
 import (
 	"context"
-	"io"
-	"sync"
-
+	"errors"
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
+	"io"
+	"log/slog"
+	"sync"
 )
 
 type nodeMode int
@@ -156,7 +157,7 @@ func (n *Node) update(ctx context.Context, content templ.Component) (<-chan erro
 	}
 	if n.isActive() {
 		n.core.kill(true)
-		n.core = newCore(n, n.core.parentCtx, n.core.id)
+		n.core = newCore(n, n.core.parentCtx, n.core.instance, n.core.id)
 	}
 	ch := n.commit(ctx, content)
 	return ch, true
@@ -216,35 +217,52 @@ func (n *Node) resetCommits() {
 
 func (n *Node) Render(ctx context.Context, w io.Writer) error {
 	n.lock()
+	defer n.unlock()
 	if n.mode == removed {
-		n.unlock()
 		return nil
 	}
 	if n.mode == static {
-		n.unlock()
 		return n.staticRender(ctx, w)
+	}
+	inst, instOk := ctx.Value(common.InstanceCtxKey).(instance)
+	rm, rmOk := ctx.Value(common.RenderMapCtxKey).(*common.RenderMap)
+	if !instOk || !rmOk {
+		panic(errors.New("Node rendered outside doors context"))
+	}
+	var id uint64
+	if n.core != nil {
+		id = n.core.id
+	} else {
+		id = inst.NewId()
+	}
+	rw, ok := rm.Writer(id)
+	if !ok {
+		return common.RenderErrorLog(ctx, w, "Dynamic node rendered twice", slog.Uint64("node_id", id))
 	}
 	n.resetCommits()
 	children := templ.GetChildren(ctx)
 	ctx = templ.ClearChildren(ctx)
-	defer n.unlock()
 	n.suspended = false
 	if n.core != nil {
 		n.core.kill(true)
 		if !n.core.isRoot() {
 			n.core.parent.removeChild(n)
 		}
-		n.core = newCore(n, ctx, n.core.id)
-	} else {
-		n.core = newCore(n, ctx, noId)
 	}
+	n.core = newCore(n, ctx, inst, id)
 	commit := n.commitBuffer
 	n.commitBuffer = nil
-	core := n.core
-	if !core.isRoot() {
-		core.parent.addChild(n)
+	if !n.core.isRoot() {
+		n.core.parent.addChild(n)
 	}
-	return n.core.render(ctx, w, children, n.content, commit)
+	if w != nil {
+		err := rw.Holdplace(w)
+		if err != nil {
+			return common.RenderErrorLog(ctx, w, err.Error(), slog.Uint64("node_id", id))
+		}
+	}
+	n.core.render(ctx, rm, rw, children, n.content, commit)
+	return nil
 }
 
 func (n *Node) staticRender(ctx context.Context, w io.Writer) error {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -15,20 +16,24 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 )
 
-type bro struct {
+type Bro struct {
+	p       int
+	b       *rod.Browser
 	r       doors.Router
 	s       *http.Server
 	closeCh chan struct{}
+	l       net.Listener
 }
 
-func (s *bro) close() {
+func (s *Bro) Close() {
 	s.s.Close()
 	<-s.closeCh
+	s.l.Close()
 }
 
-func (s *bro) page(t *testing.T, path string) *rod.Page {
+func (s *Bro) Page(t *testing.T, path string) *rod.Page {
 	t.Helper()
-	page := browser.MustPage("")
+	page := s.b.MustPage("")
 	var err string
 	wait := page.EachEvent(
 		func(e *proto.NetworkResponseReceived) bool {
@@ -54,45 +59,63 @@ func (s *bro) page(t *testing.T, path string) *rod.Page {
 	return page
 }
 
-func (s *bro) url(path string) string {
-	return fmt.Sprintf("http://localhost:8088%s", path)
+func (s *Bro) url(path string) string {
+	return fmt.Sprintf("http://localhost:%d%s", s.p, path)
 }
 
-func newBro(mods ...doors.Mod) *bro {
+func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
+	return NewBro(b,
+		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+			return pr.Page(&Page{
+				F: f(),
+			})
+		}),
+	)
+}
+
+func NewBro(browser *rod.Browser, mods ...doors.Mod) *Bro {
 	r := doors.NewRouter()
 	r.Use(mods...)
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		log.Fatalf("Error starting listner: %v\n", err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	println("Started on port", port)
 	s := &http.Server{
-		Addr:    ":8088",
 		Handler: r,
 	}
 	ch := make(chan struct{}, 0)
 	go func() {
-		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.Serve(listener); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Error starting server: %v\n", err)
 		}
 		close(ch)
 	}()
-	return &bro{
+	return &Bro{
+		p:       port,
+		l:       listener,
+		b:       browser,
 		r:       r,
 		s:       s,
 		closeCh: ch,
 	}
 }
 
-func testMust(t *testing.T, page *rod.Page, selector string) {
+func TestMust(t *testing.T, page *rod.Page, selector string) {
 	_, err := page.Timeout(200 * time.Millisecond).Element(selector)
 	if err != nil {
 		t.Fatal("must: element ", selector, " not found")
 	}
 }
-func testMustNot(t *testing.T, page *rod.Page, selector string) {
+func TestMustNot(t *testing.T, page *rod.Page, selector string) {
 	_, err := page.Timeout(200 * time.Millisecond).Element(selector)
 	if err == nil {
 		t.Fatal("must not: element ", selector, " found")
 	}
 }
 
-func click(t *testing.T, page *rod.Page, selector string) {
+func Click(t *testing.T, page *rod.Page, selector string) {
 	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
 	if err != nil {
 		t.Fatal("click: element ", selector, " not found")
@@ -101,7 +124,7 @@ func click(t *testing.T, page *rod.Page, selector string) {
 	<-time.After(100 * time.Millisecond)
 }
 
-func testContent(t *testing.T, page *rod.Page, selector string, content string) {
+func TestContent(t *testing.T, page *rod.Page, selector string, content string) {
 	page = page.Timeout(200 * time.Millisecond)
 	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
 	if err != nil {
@@ -116,16 +139,21 @@ func testContent(t *testing.T, page *rod.Page, selector string, content string) 
 	}
 }
 
-func testReport(t *testing.T, page *rod.Page, content string) {
-	testReportId(t, page, 0, content)
+func TestReport(t *testing.T, page *rod.Page, content string) {
+	TestReportId(t, page, 0, content)
 }
 
-func testReportId(t *testing.T, page *rod.Page, id int, content string) {
-	testContent(t, page, fmt.Sprintf("#report-%d", id), content)
+func TestReportId(t *testing.T, page *rod.Page, id int, content string) {
+	TestContent(t, page, fmt.Sprintf("#report-%d", id), content)
 }
-func text(s string) templ.Component {
+func Text(s string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		_, err := w.Write([]byte(s))
 		return err
 	})
+}
+
+func Count(page *rod.Page, s string) int {
+	elements := page.MustElements(s)
+	return len(elements)
 }

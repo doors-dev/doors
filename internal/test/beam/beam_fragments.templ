@@ -1,0 +1,182 @@
+package beam
+
+import (
+	"context"
+	"fmt"
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+)
+
+type state struct {
+	Int int
+	Str string
+}
+type BeamDeriveFragment struct {
+	r *test.Reporter
+	b doors.SourceBeam[state]
+	n doors.Node
+	test.NoBeam
+}
+
+templ (f *BeamDeriveFragment) content() {
+	{{d := doors.NewBeam(f.b, func(s state) int {
+	return s.Int
+})
+	}}
+	{{
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
+	}}
+	{{
+	n1 := doors.Node{}
+	n2 := doors.Node{}
+	f.b.Mutate(ctx, func(s *state) bool {
+		s.Int = s.Int + 1
+		return true
+	})
+	r, _ := d.Read(ctx)
+	}}
+	@test.ReportId(1, fmt.Sprint(r))
+	@n1 {
+		{{
+	f.b.Mutate(ctx, func(s *state) bool {
+		s.Int = s.Int + 1
+		return true
+	})
+	r, _ := d.Read(ctx)
+		}}
+		@test.ReportId(2, fmt.Sprint(r))
+		{{ n3 := doors.Node{} }}
+		{{
+	d.Sub(ctx, func(ctx context.Context, s int) bool {
+		n3.Update(ctx, test.ReportId(4, fmt.Sprint(s)))
+		return false
+	})
+		}}
+		@n3
+	}
+	@n2 {
+		{{
+	f.b.Mutate(ctx, func(s *state) bool {
+		s.Int = s.Int + 1
+		return true
+	})
+	r, _ := f.b.Read(ctx)
+		}}
+		@test.ReportId(3, fmt.Sprint(r.Int))
+	}
+	@doors.F(f.r)
+}
+
+templ (f *BeamDeriveFragment) Render() {
+	@f.n {
+		@f.content()
+	}
+	@test.Button("reload", func(ctx context.Context) bool {
+		f.n.Update(ctx, f.content())
+		return true
+	})
+}
+
+type BeamConsistentFragment struct {
+	r *test.Reporter
+	b doors.SourceBeam[state]
+	n doors.Node
+	test.NoBeam
+}
+
+templ (f *BeamConsistentFragment) content() {
+	{{
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
+	}}
+	{{
+	n1 := doors.Node{}
+	n2 := doors.Node{}
+	f.b.Mutate(ctx, func(s *state) bool {
+		s.Int = s.Int + 1
+		return true
+	})
+	r, _ := f.b.Read(ctx)
+	}}
+	@test.ReportId(1, fmt.Sprint(r.Int))
+	@n1 {
+		{{
+	f.b.Mutate(ctx, func(s *state) bool {
+		s.Int = s.Int + 1
+		return true
+	})
+	r, _ := f.b.Read(ctx)
+		}}
+		@test.ReportId(2, fmt.Sprint(r.Int))
+		{{ n3 := doors.Node{} }}
+		{{
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		n3.Update(ctx, test.ReportId(4, fmt.Sprint(s.Int)))
+		return false
+	})
+		}}
+		@n3
+	}
+	@n2 {
+		{{
+	f.b.Mutate(ctx, func(s *state) bool {
+		s.Int = s.Int + 1
+		return true
+	})
+	r, _ := f.b.Read(ctx)
+		}}
+		@test.ReportId(3, fmt.Sprint(r.Int))
+	}
+	@doors.F(f.r)
+}
+
+templ (f *BeamConsistentFragment) Render() {
+	@f.n {
+		@f.content()
+	}
+	@test.Button("reload", func(ctx context.Context) bool {
+		f.n.Update(ctx, f.content())
+		return true
+	})
+}
+
+type BeamUpdateFragment struct {
+	r *test.Reporter
+	b doors.SourceBeam[state]
+	test.NoBeam
+}
+
+templ (f *BeamUpdateFragment) Render() {
+	{{
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
+	}}
+	@test.Button("update", func(ctx context.Context) bool {
+		f.b.Update(ctx, state{
+			Int: 1,
+		})
+		return true
+	})
+	@test.Button("mutate", func(ctx context.Context) bool {
+		f.b.Mutate(ctx, func(s *state) bool {
+			s.Int = s.Int + 1
+			return true
+		})
+		return true
+	})
+	@test.Button("mutate-cancel", func(ctx context.Context) bool {
+		f.b.Mutate(ctx, func(s *state) bool {
+			s.Int = s.Int + 1
+			return false
+		})
+		return true
+	})
+	@doors.F(f.r)
+}

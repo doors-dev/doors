@@ -7,15 +7,15 @@ import (
 	"net/http"
 )
 
-templ report(value string) {
-	@reportId(0, value)
+templ Report(value string) {
+	@ReportId(0, value)
 }
 
-templ reportId(id int, value string) {
+templ ReportId(id int, value string) {
 	<div id={ fmt.Sprintf("report-%d", id) }>{ value }</div>
 }
 
-templ marker(id string) {
+templ Marker(id string) {
 	<div id={ id }></div>
 }
 
@@ -49,31 +49,31 @@ templ Document[P any](p page[P], b doors.SourceBeam[P]) {
 	</html>
 }
 
-func newReporter(size int) *reporter {
+func NewReporter(size int) *Reporter {
 	reports := make([]*doors.Node, size)
 	for i := range size {
 		reports[i] = &doors.Node{}
 	}
-	return &reporter{
+	return &Reporter{
 		reports: reports,
 	}
 }
 
-type reporter struct {
+type Reporter struct {
 	reports []*doors.Node
 }
 
-func (r *reporter) update(ctx context.Context, i int, content string) {
-	r.reports[i].Update(ctx, reportId(i, content))
+func (r *Reporter) Update(ctx context.Context, i int, content string) {
+	r.reports[i].Update(ctx, ReportId(i, content))
 }
 
-templ (r *reporter) Render() {
+templ (r *Reporter) Render() {
 	for _, report := range r.reports {
 		@report
 	}
 }
 
-templ button(id string, handler func(context.Context) bool) {
+templ Button(id string, handler func(context.Context) bool) {
 	<button
 		id={ id }
 		{ doors.A(ctx, doors.AClick {

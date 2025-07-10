@@ -1,6 +1,9 @@
-package test
+package node
 
 import (
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"testing"
 
@@ -9,8 +12,10 @@ import (
 
 var browser *rod.Browser
 
-// TestMain: Setup and teardown for all tests in this package
 func TestMain(m *testing.M) {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	browser = rod.New().MustConnect()
 	defer browser.MustClose()
 	code := m.Run()

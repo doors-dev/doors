@@ -1,0 +1,94 @@
+package attr
+
+import (
+	"context"
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+)
+
+type callFragment struct {
+	data string
+	test.NoBeam
+	r *test.Reporter
+}
+
+func (d *callFragment) attr(ctx context.Context) templ.Attributes {
+	return doors.A(ctx, doors.AHook[string, int]{
+		Name: "myHook",
+		On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
+			d.r.Update(ctx, 0, r.Data())
+			doors.Call(ctx, doors.CallConf{
+				Name: "myCall",
+				Arg:  len(r.Data()),
+			})
+			return len(r.Data()), true
+		},
+	}, doors.AData{
+		Name:  "myData",
+		Value: d.data,
+	})
+}
+
+templ (f *callFragment) Render() {
+	@doors.F(f.r)
+	<div id="target"></div>
+	@doors.Script() {
+		<script { f.attr(ctx)... }>
+        $d.on("myCall", (data) => {
+            document.getElementById("target").innerHTML = `${data}`
+        })
+        await $d.hook("myHook", $d.data("myData"))
+        </script>
+	}
+}
+
+type hookFragment struct {
+	data string
+	test.NoBeam
+	r *test.Reporter
+}
+
+func (d *hookFragment) attr(ctx context.Context) templ.Attributes {
+	return doors.A(ctx, doors.AHook[string, int]{
+		Name: "myHook",
+		On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
+			d.r.Update(ctx, 0, r.Data())
+			return len(r.Data()), true
+		},
+	}, doors.AData{
+		Name:  "myData",
+		Value: d.data,
+	})
+}
+
+templ (f *hookFragment) Render() {
+	@doors.F(f.r)
+	<div id="target"></div>
+	@doors.Script() {
+		<script { f.attr(ctx)... }>
+        const a = await $d.hook("myHook", $d.data("myData"))
+        document.getElementById("target").innerHTML = `${a}`
+        </script>
+	}
+}
+
+type dataFragment struct {
+	data string
+	test.NoBeam
+}
+
+func (d *dataFragment) attr(ctx context.Context) templ.Attributes {
+	return doors.A(ctx, doors.AData{
+		Name:  "myData",
+		Value: d.data,
+	})
+}
+
+templ (f *dataFragment) Render() {
+	<div id="target"></div>
+	@doors.Script() {
+		<script { f.attr(ctx)... }>
+        document.getElementById("target").innerHTML = $d.data("myData")
+        </script>
+	}
+}

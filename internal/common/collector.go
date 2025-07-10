@@ -19,12 +19,6 @@ func (c *FuncCollector) Add(f func()) {
 	c.collection = append(c.collection, f)
 }
 
-func (c *FuncCollector) Collect() []func() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.collection
-}
-
 func (c *FuncCollector) Apply() {
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -109,6 +109,7 @@ func (t *Thread) spawn() bool {
 func (t *Thread) frameDone(frame *frame) {
 	t.mu.Lock()
 	if !frame.isDone() {
+		t.mu.Unlock()
 		return
 	}
 	if frame.next != nil {

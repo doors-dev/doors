@@ -45,9 +45,9 @@ type RenderMap struct {
 }
 
 func (r *RenderMap) Destroy() {
-    r.mu.Lock()
-    defer r.mu.Unlock()
-    r.m = nil
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.m = nil
 }
 
 func (r *RenderMap) RenderBuf(w io.Writer, buf []byte) error {
@@ -167,12 +167,19 @@ func (r *RenderMap) render(w io.Writer, index uint64, json bool) error {
 	return r.renderBuf(w, buf, json)
 }
 
-func (r *RenderMap) Writer(index uint64) *RenderWriter {
+func (r *RenderMap) Writer(index uint64) (*RenderWriter, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, ok := r.m[index]
+	if ok {
+		return nil, false
+	}
+	r.m[index] = nil
 	return &RenderWriter{
 		index: index,
 		buf:   &bytes.Buffer{},
 		rm:    r,
-	}
+	}, true
 }
 
 func (r *RenderMap) submit(w *RenderWriter) {
@@ -210,7 +217,7 @@ func (rw *RenderWriter) SubmitError(err error, args ...any) {
 }
 
 func (rw *RenderWriter) Len() int {
-    return rw.buf.Len()
+	return rw.buf.Len()
 }
 
 func (w *RenderWriter) Write(b []byte) (int, error) {

@@ -1,0 +1,38 @@
+package components
+
+import (
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+)
+
+templ head(b doors.SourceBeam[test.Path]) {
+	@doors.Title(b, func(p test.Path) string {
+		if p.Vh {
+			return "home"
+		}
+		if p.Vs {
+			return "s"
+		}
+		return p.P
+	})
+}
+
+type LinksFragment struct {
+	test.NoBeam
+    Param string
+}
+
+templ (f *LinksFragment) Render() {
+	<a id="param" { doors.A(ctx, doors.AHref {
+        Model: test.Path {
+            Vp: true,
+            P: f.Param,
+        },
+    })... } >param</a>
+	<a id="string" { doors.A(ctx, doors.AHref {
+        Model: test.Path {
+            Vs: true,
+            P: f.Param,
+        },
+    })... } >string</a>
+}

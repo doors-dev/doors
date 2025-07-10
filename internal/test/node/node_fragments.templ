@@ -1,30 +1,69 @@
-package test
+package node
 
 import (
 	"context"
+	"fmt"
 	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
 )
+
+type FragmentMany struct {
+	n doors.Node
+	test.NoBeam
+}
+
+templ (f *FragmentMany) sample() {
+	<div class="sample">sample</div>
+}
+
+templ (f *FragmentMany) manyNodes() {
+	for i := range 2 {
+        {{ println(i) }}
+		<span style="display:none">{ fmt.Sprint(i) }</span>
+		@f.n
+	}
+}
+
+templ (f *FragmentMany) replaced() {
+	{{ f.n.Replace(ctx, f.sample()) }}
+	for i := range 100 {
+		<span style="display:none">{ fmt.Sprint(i) }</span>
+		@f.n
+	}
+}
+
+templ (f *FragmentMany) Render() {
+	{{ f.n.Update(ctx, f.sample()) }}
+	{{ n := doors.Node{} }}
+	@n {
+		@f.manyNodes()
+	}
+	@test.Button("replace", func(ctx context.Context) bool {
+		n.Update(ctx, f.replaced())
+		return true
+	})
+}
 
 type FragmentX struct {
 	report doors.Node
 	n      doors.Node
-	noBeam
+	test.NoBeam
 }
 
 func (f *FragmentX) rep(ctx context.Context, s string) {
-	f.report.Update(ctx, report(s))
+	f.report.Update(ctx, test.Report(s))
 }
 
 templ (f *FragmentX) Render() {
 	@f.n {
-		@marker("init")
+		@test.Marker("init")
 	}
 	@f.report
 	<button
 		id="updatex"
 		{ doors.A(ctx, doors.AClick {
         On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            ch, ok := f.n.XUpdate(ctx, marker("updated"))
+            ch, ok := f.n.XUpdate(ctx, test.Marker("updated"))
             if !ok {
                f.rep(ctx, "false update")
                 return true
@@ -74,13 +113,13 @@ type EmbeddedFragment struct {
 	n1 doors.Node
 	n2 doors.Node
 	n3 doors.Node
-	noBeam
+	test.NoBeam
 }
 
 templ (f *EmbeddedFragment) Render() {
 	@f.n1 {
 		@f.n2 {
-			@marker("init")
+			@test.Marker("init")
 		}
 	}
 	@f.n3
@@ -108,8 +147,8 @@ templ (f *EmbeddedFragment) Render() {
 		id="replace"
 		{ doors.A(ctx, doors.AClick {
         On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            f.n2.Update(ctx, marker("replaced"))
-            f.n3.Update(ctx, marker("temp"))
+            f.n2.Update(ctx, test.Marker("replaced"))
+            f.n3.Update(ctx, test.Marker("temp"))
             f.n3.Replace(ctx, &f.n2)
             return true
         },
@@ -121,17 +160,17 @@ templ (f *EmbeddedFragment) Render() {
 type DynamicFragment struct {
 	n1 doors.Node
 	n2 doors.Node
-	noBeam
+	test.NoBeam
 }
 
 templ (f *DynamicFragment) Render() {
-	{{ f.n1.Update(ctx, marker("init")) }}
+	{{ f.n1.Update(ctx, test.Marker("init")) }}
 	@f.n1
 	<button
 		id="update"
 		{ doors.A(ctx, doors.AClick {
         On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            f.n1.Update(ctx, marker("updated"))
+            f.n1.Update(ctx, test.Marker("updated"))
             return true
         },
 
@@ -143,7 +182,7 @@ templ (f *DynamicFragment) Render() {
 		id="replace"
 		{ doors.A(ctx, doors.AClick {
         On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            f.n2.Update(ctx, marker("replaced"))
+            f.n2.Update(ctx, test.Marker("replaced"))
             f.n1.Replace(ctx, &f.n2)
             return true
         },
@@ -171,20 +210,20 @@ type BeforeFragment struct {
 	nodeUpdate   doors.Node
 	nodeRemoved  doors.Node
 	nodeReplaced doors.Node
-	noBeam
+	test.NoBeam
 }
 
 templ (f *BeforeFragment) Render() {
 	@f.nodeInit {
-		@marker("init")
+		@test.Marker("init")
 	}
-	{{ f.nodeUpdate.Update(ctx, marker("updated")) }}
+	{{ f.nodeUpdate.Update(ctx, test.Marker("updated")) }}
 	@f.nodeUpdate
-	{{ f.nodeRemoved.Update(ctx, marker("removed")) }}
+	{{ f.nodeRemoved.Update(ctx, test.Marker("removed")) }}
 	{{ f.nodeRemoved.Remove(ctx) }}
 	@f.nodeRemoved
-	{{ f.nodeReplaced.Replace(ctx, marker("replaced")) }}
+	{{ f.nodeReplaced.Replace(ctx, test.Marker("replaced")) }}
 	@f.nodeReplaced {
-		@marker("#initReplaced")
+		@test.Marker("#initReplaced")
 	}
 }

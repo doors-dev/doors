@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"sync"
 
 	"github.com/a-h/templ"
@@ -30,20 +29,11 @@ type instance interface {
 	Call(Caller)
 }
 
-const noId uint64 = ^uint64(0)
-
-func newCore(node *Node, ctx context.Context, id uint64) *core {
-	inst, ok := ctx.Value(common.InstanceCtxKey).(instance)
-	if !ok {
-		panic(errors.New("Node rendered outside doors context"))
-	}
+func newCore(node *Node, ctx context.Context, inst instance, id uint64) *core {
 	parent, _ := ctx.Value(common.NodeCtxKey).(*core)
 	parentCinema, _ := ctx.Value(common.CinemaCtxKey).(*Cinema)
 	ctx = context.WithValue(ctx, common.RenderMapCtxKey, nil)
 	ctx = context.WithValue(ctx, common.ThreadCtxKey, nil)
-	if id == noId {
-		id = inst.NewId()
-	}
 	thread := inst.Thread()
 	cinema := newCinema(parentCinema, inst, thread, id)
 	return &core{
@@ -168,7 +158,7 @@ func (c *core) renderUpdateCall(content templ.Component, ch chan<- Call, commitI
 			return
 		}
 		rm := common.NewRenderMap()
-		rw := rm.Writer(c.id)
+		rw, _ := rm.Writer(c.id)
 		var err error
 		t.Write(func(t *shredder.Thread) {
 			if t == nil || content == nil {
@@ -209,7 +199,7 @@ func (c *core) renderUpdateCall(content templ.Component, ch chan<- Call, commitI
 func (c *core) renderReplaceCall(content templ.Component, ch chan<- Call, commitId uint) {
 	thread := c.instance.Thread()
 	rm := common.NewRenderMap()
-	rw := rm.Writer(c.id)
+	rw, _ := rm.Writer(c.id)
 	var err error
 	thread.Write(func(t *shredder.Thread) {
 		if content == nil {
@@ -248,16 +238,8 @@ func (c *core) renderRemoveCall(ch chan<- Call, commitId uint) {
 	close(ch)
 }
 
-func (c *core) render(ctx context.Context, w io.Writer, children templ.Component, content templ.Component, commit *commit) error {
-	rm := ctx.Value(common.RenderMapCtxKey).(*common.RenderMap)
+func (c *core) render(ctx context.Context, rm *common.RenderMap, rw *common.RenderWriter, children templ.Component, content templ.Component, commit *commit) {
 	thread := ctx.Value(common.ThreadCtxKey).(*shredder.Thread)
-	rw := rm.Writer(c.id)
-	if w != nil {
-		err := rw.Holdplace(w)
-		if err != nil {
-			return err
-		}
-	}
 	thread.Read(func(t *shredder.Thread) {
 		if t == nil {
 			rw.SubmitEmpty()
@@ -299,7 +281,6 @@ func (c *core) render(ctx context.Context, w io.Writer, children templ.Component
 		})
 
 	}, shredder.W(c.thread))
-	return nil
 }
 
 func (c *core) writeRender(ctx context.Context, rw *common.RenderWriter, children templ.Component, content templ.Component) (bool, error) {
