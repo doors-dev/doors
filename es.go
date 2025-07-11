@@ -16,6 +16,19 @@ type ESJSX struct {
 	Dev          bool
 }
 
+func ESJSXPreact() ESJSX {
+	return ESJSX{
+		Factory:  "h",
+		Fragment: "Fragment",
+	}
+}
+
+func ESJSXReact() ESJSX {
+	return ESJSX{
+		JSX: api.JSXAutomatic,
+	}
+}
+
 type ESBuildOptions struct {
 	External []string
 	Minify   bool

@@ -16,6 +16,8 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 )
 
+var Host string
+
 type Bro struct {
 	p       int
 	b       *rod.Browser
@@ -81,6 +83,7 @@ func NewBro(browser *rod.Browser, mods ...doors.Mod) *Bro {
 		log.Fatalf("Error starting listner: %v\n", err)
 	}
 	port := listener.Addr().(*net.TCPAddr).Port
+	Host = fmt.Sprintf("http://localhost:%d", port)
 	println("Started on port", port)
 	s := &http.Server{
 		Handler: r,

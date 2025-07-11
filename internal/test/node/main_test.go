@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 	browser = rod.New().MustConnect()
-	defer browser.MustClose()
 	code := m.Run()
+	browser.MustClose()
 	os.Exit(code)
 }

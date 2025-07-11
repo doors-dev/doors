@@ -1,0 +1,129 @@
+package imports
+
+import (
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"io/fs"
+)
+templ styleBytesHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportStyleBytes{
+		Content: styleRawBytes,
+	})
+}
+
+templ styleExternalHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportStyleExternal{
+		Href: test.Host + "/module/style.css",
+	})
+}
+
+templ styleHostedHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportStyleHosted{
+		Href: "/module/style.css",
+	})
+}
+
+templ styleHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportStyle{
+        Path: modulePath +"/style.css",
+	})
+}
+
+templ moduleExternalHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportModuleExternal{
+		Specifier: "module",
+		Src:       test.Host + "/module/index.js",
+	})
+}
+
+templ moduleBundleHostHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportModuleHosted{
+		Specifier: "module",
+		Src:       "/module/index.js",
+	})
+}
+
+templ moduleBundleFSHead(_b doors.SourceBeam[test.Path]) {
+	{{ moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src") }}
+	@doors.Imports(doors.ImportModuleBundleFS{
+		Specifier: "module",
+		FS:        moduleBundleDir,
+		Entry:     "index.ts",
+	})
+}
+
+templ moduleRawBytesHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportModuleRawBytes{
+		Specifier: "module",
+		Content:   moduleRawBytes,
+	})
+}
+
+templ moduleRawHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportModuleRaw{
+		Specifier: "module",
+		Path:      modulePath + "/index.js",
+	})
+}
+
+templ moduleBytesHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportModuleBytes{
+		Specifier: "module",
+		Content:   moduleBytes,
+	})
+}
+
+templ moduleHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportModule{
+		Specifier: "module",
+		Path:      modulePath + "/index.ts",
+		Load:      true,
+	})
+}
+
+templ reactHead(_b doors.SourceBeam[test.Path]) {
+	@doors.Imports(doors.ImportModuleBundle{
+		Specifier: "preact",
+		Entry:     preactPath + "/index.tsx",
+		Name:      "preact",
+	}, doors.ImportModuleBundle{
+		Specifier: "react",
+		Entry:     reactPath + "/index.tsx",
+		Profile:   "react",
+	})
+}
+
+type ModuleFragment struct {
+	test.NoBeam
+}
+
+templ (f *ModuleFragment) Render() {
+	<div id="report-0"></div>
+	@doors.Script() {
+		<script>
+            const module = await import("module")
+            document.getElementById("report-0").innerHTML = module.test()
+        </script>
+	}
+}
+
+type ReactFragment struct {
+	test.NoBeam
+}
+
+templ (f *ReactFragment) Render() {
+	<div id="preact"></div>
+	@doors.Script() {
+		<script>
+            const app = await import("preact")
+            app.init(document.getElementById("preact"))
+        </script>
+	}
+	<div id="react"></div>
+	@doors.Script() {
+		<script>
+            const app = await import("react")
+            app.init(document.getElementById("react"))
+        </script>
+	}
+}

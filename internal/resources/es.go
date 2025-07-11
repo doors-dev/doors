@@ -88,7 +88,6 @@ func BundleFS(fs fs.FS, entry string, o api.BuildOptions) ([]byte, error) {
 
 func Transform(path string, o api.BuildOptions) ([]byte, error) {
 	o.EntryPoints = []string{path}
-	o.Bundle = true
 	return buildES(&o)
 }
 

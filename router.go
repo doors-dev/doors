@@ -1,7 +1,9 @@
 package doors
 
 import (
+	"io/fs"
 	"net/http"
+	"os"
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
@@ -129,8 +131,15 @@ func ServeDirPath(prefix string, localPath string) Mod {
 	return router.ServeDirPath(prefix, localPath)
 }
 
-func ServeDir(prefix string, root http.FileSystem) Mod {
-	return router.ServeDir(prefix, root)
+func ServeFS(prefix string, fs fs.FS) Mod {
+	httpFS := http.FS(fs)
+	return router.ServeDir(prefix, httpFS)
+}
+
+func ServeDir(prefix string, path string) Mod {
+	fs := os.DirFS(path)
+	httpFS := http.FS(fs)
+	return router.ServeDir(prefix, httpFS)
 }
 
 func ServeFile(path string, localPath string) Mod {

@@ -57,8 +57,7 @@ func (m ImportModule) init(im *importMap, r *resources.Registry, c *common.CSPCo
 	if err != nil {
 		return err
 	}
-	// c.ScriptHash(s.Hash())
-	path := importPath(s, m.Name, m.Path, "js")
+	path := importPath(s, m.Path, m.Name, "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
 	}
@@ -123,7 +122,7 @@ func (m ImportModuleRaw) init(im *importMap, r *resources.Registry, c *common.CS
 		return err
 	}
 	// c.ScriptHash(s.Hash())
-	path := importPath(s, m.Name, m.Path, "js")
+	path := importPath(s, m.Path, m.Name, "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
 	}
@@ -154,7 +153,7 @@ func (m ImportModuleRawBytes) init(im *importMap, r *resources.Registry, c *comm
 		return err
 	}
 	// c.ScriptHash(s.Hash())
-	path := importPath(s, m.Name, "", "js")
+	path := importPath(s, "", m.Name, "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
 	}
@@ -186,7 +185,7 @@ func (m ImportModuleBundle) init(im *importMap, r *resources.Registry, c *common
 		return err
 	}
 	// c.ScriptHash(s.Hash())
-	path := importPath(s, m.Name, "", "js")
+	path := importPath(s, "", m.Name, "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
 	}
@@ -221,7 +220,7 @@ func (m ImportModuleBundleFS) init(im *importMap, r *resources.Registry, c *comm
 		return err
 	}
 	// c.ScriptHash(s.Hash())
-	path := importPath(s, m.Name, "", "js")
+	path := importPath(s, "", m.Name, "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
 	}
@@ -231,17 +230,17 @@ func (m ImportModuleBundleFS) init(im *importMap, r *resources.Registry, c *comm
 	return nil
 }
 
-type ImportHostedModule struct {
+type ImportModuleHosted struct {
 	Specifier string
 	Load      bool
 	Src       string
 }
 
-func (m ImportHostedModule) print() string {
+func (m ImportModuleHosted) print() string {
 	return "local module " + m.Src
 }
 
-func (m ImportHostedModule) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportModuleHosted) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
 	//	c.ScriptSource(m.Src)
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, m.Src)
@@ -252,17 +251,17 @@ func (m ImportHostedModule) init(im *importMap, r *resources.Registry, c *common
 	return nil
 }
 
-type ImportExternalModule struct {
+type ImportModuleExternal struct {
 	Specifier string
 	Load      bool
 	Src       string
 }
 
-func (m ImportExternalModule) print() string {
+func (m ImportModuleExternal) print() string {
 	return "external module " + m.Src
 }
 
-func (m ImportExternalModule) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportModuleExternal) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
 	c.ScriptSource(m.Src)
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, m.Src)
@@ -273,29 +272,29 @@ func (m ImportExternalModule) init(im *importMap, r *resources.Registry, c *comm
 	return nil
 }
 
-type ImportHostedStyle struct {
+type ImportStyleHosted struct {
 	Href string
 }
 
-func (m ImportHostedStyle) print() string {
+func (m ImportStyleHosted) print() string {
 	return "local style " + m.Href
 }
 
-func (m ImportHostedStyle) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportStyleHosted) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
 	// c.StyleSource(m.Href)
 	im.addRender(importStyle(m.Href))
 	return nil
 }
 
-type ImportExternalStyle struct {
+type ImportStyleExternal struct {
 	Href string
 }
 
-func (m ImportExternalStyle) print() string {
+func (m ImportStyleExternal) print() string {
 	return "external style " + m.Href
 }
 
-func (m ImportExternalStyle) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportStyleExternal) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
 	c.StyleSource(m.Href)
 	im.addRender(importStyle(m.Href))
 	return nil
@@ -316,7 +315,7 @@ func (m ImportStyle) init(im *importMap, r *resources.Registry, c *common.CSPCol
 		return err
 	}
 	// c.StyleHash(s.Hash())
-	path := importPath(s, m.Name, m.Path, "css")
+	path := importPath(s, m.Path, m.Name, "css")
 	im.addRender(importStyle(path))
 	return nil
 }
@@ -337,7 +336,7 @@ func (m ImportStyleBytes) init(im *importMap, r *resources.Registry, c *common.C
 	}
 	// c.StyleHash(s.Hash())
 	path := importPath(s, m.Name, "", "css")
-	im.addRender(importScript(path))
+	im.addRender(importStyle(path))
 	return nil
 }
 
