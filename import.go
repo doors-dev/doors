@@ -231,17 +231,17 @@ func (m ImportModuleBundleFS) init(im *importMap, r *resources.Registry, c *comm
 	return nil
 }
 
-type ImportLocalModule struct {
+type ImportHostedModule struct {
 	Specifier string
 	Load      bool
 	Src       string
 }
 
-func (m ImportLocalModule) print() string {
+func (m ImportHostedModule) print() string {
 	return "local module " + m.Src
 }
 
-func (m ImportLocalModule) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportHostedModule) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
 	//	c.ScriptSource(m.Src)
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, m.Src)
@@ -273,15 +273,15 @@ func (m ImportExternalModule) init(im *importMap, r *resources.Registry, c *comm
 	return nil
 }
 
-type ImportLocalStyle struct {
+type ImportHostedStyle struct {
 	Href string
 }
 
-func (m ImportLocalStyle) print() string {
+func (m ImportHostedStyle) print() string {
 	return "local style " + m.Href
 }
 
-func (m ImportLocalStyle) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportHostedStyle) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
 	// c.StyleSource(m.Href)
 	im.addRender(importStyle(m.Href))
 	return nil

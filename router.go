@@ -161,6 +161,9 @@ func SetGoroutineLimitPerInstance(n int) Mod {
 func SetSessionHooks(create func(id string), delete func(id string)) Mod {
 	return router.SetSessionHooks(create, delete)
 }
+func SetESProfiles(p ESProfiles) Mod {
+	return router.SetBuildProfiles(p)
+}
 
 type SystemConf = common.SystemConf
 

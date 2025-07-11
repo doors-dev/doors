@@ -1,6 +1,11 @@
 package doors
 
-import "github.com/evanw/esbuild/pkg/api"
+import (
+	"github.com/doors-dev/doors/internal/resources"
+	"github.com/evanw/esbuild/pkg/api"
+)
+
+type ESProfiles = resources.BuildProfiles
 
 type ESJSX struct {
 	JSX          api.JSX
