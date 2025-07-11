@@ -37,7 +37,7 @@ func (n *Node) addHook(ctx context.Context, h Hook) (*HookEntry, bool) {
 		return nil, false
 	}
 	hookId := n.core.instance.NewId()
-	hook := newHook(common.ClearBlockingCtx(ctx), h)
+	hook := newHook(common.ClearBlockingCtx(ctx), h, n.core.instance)
 	n.core.instance.RegisterHook(n.core.id, hookId, hook)
 	return &HookEntry{
 		NodeId: n.core.id,

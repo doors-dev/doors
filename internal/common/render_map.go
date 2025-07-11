@@ -163,6 +163,10 @@ func (r *RenderMap) render(w io.Writer, index uint64, json bool) error {
 		r.mu.Unlock()
 		return RenderErrorLog(context.Background(), w, "node "+fmt.Sprint(index)+" not found")
 	}
+	if buf == nil {
+		r.mu.Unlock()
+		return RenderErrorLog(context.Background(), w, "node "+fmt.Sprint(index)+" not submitted, bug")
+	}
 	r.mu.Unlock()
 	return r.renderBuf(w, buf, json)
 }
@@ -185,7 +189,11 @@ func (r *RenderMap) Writer(index uint64) (*RenderWriter, bool) {
 func (r *RenderMap) submit(w *RenderWriter) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.m[w.index] = w.buf.Bytes()
+	b := w.buf.Bytes()
+	if b == nil {
+		b = make([]byte, 0)
+	}
+	r.m[w.index] = b
 }
 
 type RenderWriter struct {

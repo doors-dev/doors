@@ -22,7 +22,7 @@ type router interface {
 	Adapters() map[string]path.AnyAdapter
 	RemoveSession(string)
 	Conf() *common.SystemConf
-	Spawner() *shredder.Spawner
+	Spawner(shredder.OnPanic) *shredder.Spawner
 }
 
 func NewSession(r router) *Session {

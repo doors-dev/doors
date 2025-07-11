@@ -109,8 +109,8 @@ func (rr *Router) ImportRegistry() *resources.Registry {
 	return rr.registry
 }
 
-func (rr *Router) Spawner() *shredder.Spawner {
-	return rr.pool.Spawner()
+func (rr *Router) Spawner(op shredder.OnPanic) *shredder.Spawner {
+	return rr.pool.Spawner(op)
 }
 
 func (rr *Router) RemoveSession(id string) {

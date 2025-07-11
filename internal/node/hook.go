@@ -7,6 +7,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxwg"
+	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type Done = bool
@@ -75,12 +76,14 @@ type NodeHook struct {
 	ch      chan struct{}
 	err     error
 	ctx     context.Context
+	op      shredder.OnPanic
 }
 
-func newHook(ctx context.Context, h Hook) *NodeHook {
+func newHook(ctx context.Context, h Hook, op shredder.OnPanic) *NodeHook {
 	return &NodeHook{
 		hook: h,
 		ctx:  ctx,
+		op:   op,
 	}
 }
 
@@ -109,19 +112,26 @@ func (h *NodeHook) Trigger(w http.ResponseWriter, r *http.Request) (Done, bool) 
 	h.mu.Lock()
 	if h.done {
 		h.mu.Unlock()
-        close(ch)
+		close(ch)
 		return false, false
 	}
 	h.counter += 1
 	h.mu.Unlock()
 	ctx := ctxwg.Insert(h.ctx)
 	ctx = common.SetBlockingCtx(ctx)
-	done := h.hook.trigger(ctx, w, r)
-	if done {
+	done, err := common.CatchValue(func() bool {
+		return h.hook.trigger(ctx, w, r)
+	})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		defer h.op.OnPanic(err)
+	}
+	if done || err != nil {
 		h.mu.Lock()
-		h.done = done
+		h.done = true
 		h.mu.Unlock()
 	}
+	done = done || err != nil
 	close(ch)
 	ctxwg.Wait(ctx)
 	h.mu.Lock()

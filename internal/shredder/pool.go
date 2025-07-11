@@ -14,6 +14,7 @@ type Spawner struct {
 	queue  []func()
 	ch     chan struct{}
 	killed bool
+	op     OnPanic
 }
 
 func (s *Spawner) NewThead() *Thread {
@@ -45,7 +46,7 @@ func (s *Spawner) Go(f func()) bool {
 	}
 	s.queue = append(s.queue, f)
 	s.notify()
-    return true
+	return true
 }
 
 func (s *Spawner) notify() {
@@ -98,7 +99,10 @@ func (s *Spawner) run() {
 						doneCh = nil
 					}
 				}()
-				f()
+				err := common.Catch(f)
+				if err != nil {
+					s.op.OnPanic(err)
+				}
 			})
 		}
 	}
@@ -151,7 +155,11 @@ func (p *Pool) done() {
 	p.adjust()
 }
 
-func (p *Pool) Spawner() *Spawner {
+type OnPanic interface {
+	OnPanic(error)
+}
+
+func (p *Pool) Spawner(op OnPanic) *Spawner {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.spawnerCount += 1
@@ -160,6 +168,7 @@ func (p *Pool) Spawner() *Spawner {
 		mu:    sync.Mutex{},
 		pool:  p,
 		queue: make([]func(), 0),
+		op:    op,
 	}
 	go s.run()
 	return s

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"runtime/debug"
 	"time"
 	"unsafe"
 
@@ -91,4 +92,24 @@ func Hash(input []byte) string {
 	hash := crypto.SHA3_224.New()
 	hash.Write(input)
 	return base58.Encode(hash.Sum(nil)[0:12])
+}
+
+func Catch(f func()) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v\n%s", r, debug.Stack())
+		}
+	}()
+	f()
+	return
+}
+
+func CatchValue[V any](f func() V) (value V, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v\n%s", r, debug.Stack())
+		}
+	}()
+	value = f()
+	return
 }

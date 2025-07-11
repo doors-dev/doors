@@ -19,6 +19,7 @@ type Core interface {
 }
 
 type instance interface {
+	OnPanic(error)
 	Setup(Core, *Cinema, context.Context)
 	Thread() *shredder.Thread
 	CancelHooks(uint64, error)

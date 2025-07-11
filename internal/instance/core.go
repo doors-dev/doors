@@ -33,6 +33,7 @@ type coreInstance[M any] interface {
 	end(endCause)
 	include() bool
 	conf() *common.SystemConf
+	OnPanic(error)
 }
 
 func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredder.Spawner) *core[M] {
@@ -76,6 +77,12 @@ type core[M any] struct {
 	cspCollectorUsed atomic.Bool
 	cspCollector     *common.CSPCollector
 	nonce            string
+}
+
+
+
+func (c *core[M]) OnPanic(err error) {
+	c.instance.OnPanic(err)
 }
 
 func (c *core[M]) SleepTimeout() time.Duration {

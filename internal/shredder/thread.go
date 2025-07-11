@@ -96,13 +96,15 @@ func (t *Thread) spawn() bool {
 	}
 	t.running = true
 	return t.spawner.Go(func() {
+		defer func() {
+			t.mu.Lock()
+			t.running = false
+			defer t.mu.Unlock()
+			if t.tail == nil {
+				t.done()
+			}
+		}()
 		t.main(t)
-		t.mu.Lock()
-		t.running = false
-		defer t.mu.Unlock()
-		if t.tail == nil {
-			t.done()
-		}
 	})
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sync"
@@ -126,7 +127,7 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, code int) error {
 		inst.mu.Unlock()
 		log.Fatal("Instance rendered twice")
 	}
-	spawner := inst.session.router.Spawner()
+	spawner := inst.session.router.Spawner(inst)
 	inst.core = newCore[M](inst, newSolitaire(inst, common.GetSolitaireConf(inst.conf())), spawner)
 	inst.mu.Unlock()
 	err := inst.core.serve(w, inst.page.Render(inst.beam), code)
@@ -134,6 +135,11 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, code int) error {
 		defer inst.end(causeKilled)
 	}
 	return err
+}
+
+func (inst *Instance[M]) OnPanic(err error) {
+	slog.Error(err.Error(), slog.String("type", "panic"), slog.String("instance_id", inst.id))
+	inst.end(causeKilled)
 }
 
 func (inst *Instance[M]) Id() string {

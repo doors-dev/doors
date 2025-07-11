@@ -36,9 +36,15 @@ func testThread(limit int) *Thread {
 	return s.NewThead()
 }
 
+type dummy struct{}
+
+func (d dummy) OnPanic(err error) {
+	panic(err)
+}
+
 func testSpawner(limit int) *Spawner {
 	p := NewPool(limit)
-	return p.Spawner()
+	return p.Spawner(dummy{})
 }
 
 func TestWrite(t *testing.T) {
