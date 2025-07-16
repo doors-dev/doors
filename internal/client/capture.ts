@@ -262,7 +262,7 @@ class DebounceState {
     private doneHook: (() => void) | null = null
     private durationTimer: any = null
     private limitTimer: any = null
-    private task: any = null
+    private task: Task | null = null
 
     constructor(private process: Process, private runtime: Runtime) { }
 
@@ -286,7 +286,7 @@ class DebounceState {
         const [duration] = task.hook!.mode.args
         clearTimeout(this.durationTimer)
         if (this.task) {
-            this.task.promise.rej(new CaptureErr(captureErrTypes.debounce))
+            this.task.rej(new CaptureErr(captureErrTypes.debounce))
         }
         this.task = task
         this.durationTimer = setTimeout(() => this.fire(), duration)
@@ -305,7 +305,7 @@ class DebounceState {
         clearTimeout(this.durationTimer)
         const task = this.task
         this.task = null
-        this.process.hook(task, done)
+        this.process.hook(task!, done)
     }
 }
 

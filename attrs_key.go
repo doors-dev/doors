@@ -43,6 +43,7 @@ func (k *keyEventHook) init(event string, ctx context.Context, n node.Core, _ in
 			PreventDefault:  k.PreventDefault,
 			StopPropagation: k.StopPropagation,
 		},
+		mode:     k.Mode,
 		mark:      k.Mark,
 		indicate: k.Indicate,
 		on:        k.On,

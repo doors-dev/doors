@@ -38,15 +38,16 @@ func (p *pointerEventHook) init(event string, ctx context.Context, n node.Core, 
 
 	(&eventAttr[PointerEvent]{
 		capture: &front.PointerCapture{
-            Event: event,
+			Event:           event,
 			StopPropagation: p.StopPropagation,
 			PreventDefault:  p.PreventDefault,
 		},
-		node:      n,
-		ctx:       ctx,
-		mark:      p.Mark,
+		node:     n,
+		mode:     p.Mode,
+		ctx:      ctx,
+		mark:     p.Mark,
 		indicate: p.Indicate,
-		on:        p.On,
+		on:       p.On,
 	}).init(attrs)
 }
 

@@ -1,6 +1,9 @@
 package front
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 type HookMode interface {
 	MarshalJSON() ([]byte, error)
@@ -49,7 +52,7 @@ func Butter() HookMode {
 	}
 }
 
-func Debounce(duration int, limit int) HookMode {
+func Debounce(duration time.Duration, limit time.Duration) HookMode {
 	if duration <= 0 {
 		return &hookMode{
 			value: "",
@@ -61,6 +64,6 @@ func Debounce(duration int, limit int) HookMode {
 	}
 	return &hookMode{
 		value: "debounce",
-		args:  []any{duration, limit},
+		args:  []any{duration.Milliseconds(), limit.Milliseconds()},
 	}
 }

@@ -115,7 +115,7 @@ func ModeButter() HookMode {
 //
 //	ModeDebounce(300 * time.Millisecond, 1 * time.Second)
 func ModeDebounce(duration time.Duration, limit time.Duration) HookMode {
-	return front.Debounce(int(duration.Milliseconds()), int(limit.Milliseconds()))
+	return front.Debounce(duration, limit)
 }
 
 type Indicate = front.Indicate
@@ -158,18 +158,16 @@ func IndicateClassRemoveQueryParent(query string, class string) Indicate {
 	return front.IndicateClassRemove(front.SelectParentQuery(query), class)
 }
 
-
-
 var noAttrs []*front.Attr = make([]*front.Attr, 0)
 
 type eventAttr[E any] struct {
-	node      node.Core
-	ctx       context.Context
-	capture   front.Capture
-	mark      string
-	mode      HookMode
+	node     node.Core
+	ctx      context.Context
+	capture  front.Capture
+	mark     string
+	mode     HookMode
 	indicate []Indicate
-	on        func(context.Context, REvent[E]) bool
+	on       func(context.Context, REvent[E]) bool
 }
 
 func (p *eventAttr[E]) init(attrs *front.Attrs) {
@@ -182,7 +180,7 @@ func (p *eventAttr[E]) init(attrs *front.Attrs) {
 	attrs.AppendCapture(p.capture, &front.Hook{
 		Mark:      p.mark,
 		Mode:      p.mode,
-		Indicate: p.indicate,
+		Indicate:  p.indicate,
 		HookEntry: entry,
 	})
 }
@@ -199,8 +197,8 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 	w.WriteHeader(200)
 	return p.on(ctx, &eventRequest[E]{
 		request: request{
-			r: r,
-			w: w,
+			r:   r,
+			w:   w,
 			ctx: ctx,
 		},
 		e: &e,

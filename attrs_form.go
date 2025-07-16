@@ -39,6 +39,7 @@ func (p *focusEventHook) init(event string, ctx context.Context, n node.Core, _ 
 		node:     n,
 		ctx:      ctx,
 		mark:     p.Mark,
+		mode:     p.Mode,
 		indicate: p.Indicate,
 		on:       p.On,
 	}).init(attrs)
@@ -273,6 +274,7 @@ func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attr
 		ctx:      ctx,
 		mark:     p.Mark,
 		indicate: p.Indicate,
+		mode:     p.Mode,
 		on:       p.On,
 	}).init(attrs)
 }
@@ -294,6 +296,7 @@ func (p AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs
 		node:     n,
 		ctx:      ctx,
 		mark:     p.Mark,
+		mode:     p.Mode,
 		indicate: p.Indicate,
 		on:       p.On,
 	}).init(attrs)

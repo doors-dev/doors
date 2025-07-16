@@ -42,8 +42,11 @@ export default {
         }
         const [handler, response] = entry
         const result = await handler(arg)
-        const hook = [nodeId, hookId, ["butter"], null, ""]
-        const requestResponse = await capture("default", result, null, hook)
+        let requestResponse: any = undefined
+        if (hookId !== null) {
+            const hook = [nodeId, hookId, ["butter"], null, ""]
+            requestResponse = await capture("default", result, null, hook)
+        }
         if (response) {
             await response(requestResponse)
         }
