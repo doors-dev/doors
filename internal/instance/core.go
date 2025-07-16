@@ -67,7 +67,7 @@ type Core interface {
 
 type core[M any] struct {
 	instance         coreInstance[M]
-	gen              *common.Prima
+	gen              *common.Primea
 	hooksMu          sync.Mutex
 	hooks            map[uint64]map[uint64]*node.NodeHook
 	root             node.Core

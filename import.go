@@ -314,7 +314,6 @@ func (m ImportStyle) init(im *importMap, r *resources.Registry, c *common.CSPCol
 	if err != nil {
 		return err
 	}
-	// c.StyleHash(s.Hash())
 	path := importPath(s, m.Path, m.Name, "css")
 	im.addRender(importStyle(path))
 	return nil

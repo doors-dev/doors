@@ -268,8 +268,28 @@ type AChange struct {
 
 func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[ChangeEvent]{
-		capture: &front.ChangeCapture{
-			Event: "change",
+		capture:  &front.ChangeCapture{},
+		node:     n,
+		ctx:      ctx,
+		mark:     p.Mark,
+		indicate: p.Indicate,
+		on:       p.On,
+	}).init(attrs)
+}
+
+type InputEvent = front.InputEvent
+type AInput struct {
+	Mark         string
+	Mode         HookMode
+	Indicate     []Indicate
+	On           func(context.Context, REvent[InputEvent]) bool
+	ExcludeValue bool
+}
+
+func (p AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	(&eventAttr[InputEvent]{
+		capture: &front.InputCapture{
+			ExcludeValue: p.ExcludeValue,
 		},
 		node:     n,
 		ctx:      ctx,

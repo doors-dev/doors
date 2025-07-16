@@ -13,23 +13,23 @@ const (
 	increment  uint64 = 1442695040888963407
 )
 
-type Prima struct {
+type Primea struct {
 	counter atomic.Uint64
 }
 
-func NewPrima() *Prima {
+func NewPrima() *Primea {
 	var b [8]byte
 	_, err := rand.Read(b[:])
 	if err != nil {
 		panic(err)
 	}
 	seed := binary.NativeEndian.Uint64(b[:]) 
-	p := &Prima{}
+	p := &Primea{}
     p.counter.Store(seed)
 	return p
 }
 
-func (p *Prima) Gen() uint64 {
+func (p *Primea) Gen() uint64 {
     c := p.counter.Add(1)
     _, lo := bits.Mul64(c, multiplier)
 	lo, _ = bits.Add64(lo, increment, 0)

@@ -5,6 +5,9 @@ interface EventOpt {
     preventDefault?: boolean;
     stopPropagation?: boolean;
 }
+interface InputOpt {
+    excludeValue: boolean;
+}
 
 function applyEventOpt(event: Event, opt: EventOpt): void {
     if (opt.preventDefault) {
@@ -116,7 +119,14 @@ export default {
         };
         return fetchOptJson(obj);
     },
-
+    input(event: InputEvent, opt: InputOpt) {
+        return fetchOptJson({
+            type: event.type,
+            data: event.data,
+            ...opt.excludeValue === true ? {} : getInputValues(event.target as HTMLInputElement | HTMLSelectElement),
+            timestamp: date(new Date()),
+        });
+    },
     change(event: Event) {
         return fetchOptJson({
             type: event.type,

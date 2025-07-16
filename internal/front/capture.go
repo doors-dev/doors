@@ -71,13 +71,24 @@ func (c *FocusCapture) Listen() string {
 }
 
 type ChangeCapture struct {
-    Event string `json:"-"`
 }
 
 func (c *ChangeCapture) Name() string {
-    return c.Event
+    return "change"
 }
 
 func (c *ChangeCapture) Listen() string {
     return "change"
+}
+
+type InputCapture struct {
+	ExcludeValue bool `json:"excludeValue"`
+}
+
+func (c *InputCapture) Name() string {
+    return "input"
+}
+
+func (c *InputCapture) Listen() string {
+    return "input"
 }
