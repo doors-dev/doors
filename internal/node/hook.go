@@ -26,23 +26,6 @@ func (h HookEntry) cancel(err error) {
 	h.inst.CancelHook(h.NodeId, h.HookId, err)
 }
 
-type CallHook struct {
-	Trigger func(ctx context.Context, w http.ResponseWriter, r *http.Request)
-	Cancel  func(ctx context.Context, err error)
-}
-
-func (s *CallHook) trigger(ctx context.Context, w http.ResponseWriter, r *http.Request) Done {
-	if s.Trigger != nil {
-		s.Trigger(ctx, w, r)
-	}
-	return true
-}
-
-func (c *CallHook) cancel(ctx context.Context, err error) {
-	if c.Cancel != nil {
-		c.cancel(ctx, err)
-	}
-}
 
 type AttrHook struct {
 	Trigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done

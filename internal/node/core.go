@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
@@ -15,7 +14,7 @@ type Core interface {
 	Id() uint64
 	Kill()
 	RegisterAttrHook(ctx context.Context, h *AttrHook) (*HookEntry, bool)
-	RegisterCallHook(ctx context.Context, name string, arg common.JsonWritabeRaw, hook *CallHook) (TryCancel, bool)
+	RegisterClientCall(ctx context.Context, call *ClientCall) (TryCancel, bool)
 }
 
 type instance interface {
@@ -38,39 +37,37 @@ func newCore(node *Node, ctx context.Context, inst instance, id uint64) *core {
 	thread := inst.Thread()
 	cinema := newCinema(parentCinema, inst, thread, id)
 	return &core{
-		node:      node,
-		id:        id,
-		instance:  inst,
-		parent:    parent,
-		thread:    thread,
-		cinema:    cinema,
-		children:  common.NewSet[*Node](),
-		parentCtx: ctx,
-		jsCallsMu: sync.Mutex{},
-		jsCalls:   common.NewSet[*jsCall](),
+		node:        node,
+		id:          id,
+		instance:    inst,
+		parent:      parent,
+		thread:      thread,
+		cinema:      cinema,
+		children:    common.NewSet[*Node](),
+		parentCtx:   ctx,
+		clientCalls: common.NewSet[*clientCall](),
 	}
 }
 
 type core struct {
-	node      *Node
-	id        uint64
-	instance  instance
-	parent    *core
-	thread    *shredder.Thread
-	cinema    *Cinema
-	children  common.Set[*Node]
-	parentCtx context.Context
-	cancel    context.CancelFunc
-	jsCallsMu sync.Mutex
-	jsCalls   common.Set[*jsCall]
+	node        *Node
+	id          uint64
+	instance    instance
+	parent      *core
+	thread      *shredder.Thread
+	cinema      *Cinema
+	children    common.Set[*Node]
+	parentCtx   context.Context
+	cancel      context.CancelFunc
+	clientCalls common.Set[*clientCall]
 }
 
-func (c *core) removeJsCall(j *jsCall) {
+func (c *core) removeClientCall(cc *clientCall) {
 	c.thread.Write(func(t *shredder.Thread) {
 		if t == nil {
 			return
 		}
-		c.jsCalls.Remove(j)
+		c.clientCalls.Remove(cc)
 	})
 }
 
@@ -78,8 +75,33 @@ func (c *core) isRoot() bool {
 	return c.parent == nil
 }
 
-type TryCancel = func() bool
+type TryCancel = func()
 
+func (c *core) RegisterClientCall(ctx context.Context, call *ClientCall) (TryCancel, bool) {
+	cc := &clientCall{
+		call: call,
+		core: c,
+	}
+	if call.Trigger != nil {
+		entry, ok := c.node.addHook(ctx, cc)
+		if !ok {
+			return nil, false
+		}
+		cc.hookEntry = entry
+	}
+	c.thread.Write(func(t *shredder.Thread) {
+		if t == nil {
+			cc.kill()
+		}
+		c.clientCalls.Add(cc)
+	})
+	c.instance.Call(cc)
+	return func() {
+		cc.cancelCall(nil)
+	}, true
+}
+
+/*
 func (c *core) RegisterCallHook(ctx context.Context, name string, arg common.JsonWritabeRaw, hook *CallHook) (TryCancel, bool) {
 	entry, ok := c.node.addHook(ctx, hook)
 	if !ok {
@@ -95,12 +117,12 @@ func (c *core) RegisterCallHook(ctx context.Context, name string, arg common.Jso
 		if t == nil {
 			call.kill()
 		}
-		c.jsCalls.Add(call)
+		c.clientCalls.Add(call)
 	})
 	c.instance.Call(call)
 	return call.cancel, true
 
-}
+} */
 
 func (c *core) RegisterAttrHook(ctx context.Context, h *AttrHook) (*HookEntry, bool) {
 	return c.node.addHook(ctx, h)
@@ -123,7 +145,7 @@ func (c *core) kill(init bool) {
 		for child := range c.children.Iter() {
 			child.suspend()
 		}
-		for call := range c.jsCalls.Iter() {
+		for call := range c.clientCalls.Iter() {
 			call.kill()
 		}
 	})

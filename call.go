@@ -41,6 +41,29 @@ type CallConf struct {
 	Cancel func(context.Context, error)
 }
 
+func (conf *CallConf) clientCall() (*node.ClientCall, bool) {
+	arg, err := json.Marshal(conf.Arg)
+	if err != nil {
+		slog.Error("Call arg marshaling error", slog.String("call_name", conf.Name), slog.String("json_error", err.Error()))
+		return nil, false
+	}
+	return &node.ClientCall{
+		Name:    conf.Name,
+		Arg:     (common.JsonWritabeRaw)(arg),
+		Trigger: conf.triggerFunc(),
+		Cancel:  conf.Cancel,
+	}, true
+}
+
+func (c *CallConf) triggerFunc() func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if c.Trigger == nil {
+		return nil
+	}
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		c.Trigger(ctx, &request{w: w, r: r, ctx: ctx})
+	}
+}
+
 // TryCancel is a function that attempts to cancel a pending frontend call.
 //
 // It returns true if the call was still pending and has now been canceled.
@@ -82,21 +105,12 @@ type TryCancel func() bool
 //   - The Arg is serialized to JSON and passed as the first argument to the JS handler.
 //   - Use `document` instead of `document.currentScript` to register globally.
 //   - To handle a frontend response, set the Trigger field in CallConf
-func Call(ctx context.Context, conf CallConf) (TryCancel, bool) {
+func Call(ctx context.Context, conf CallConf) (func(), bool) {
 	n := ctx.Value(common.NodeCtxKey).(node.Core)
-	call := &node.CallHook{
-		Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-			if conf.Trigger != nil {
-				conf.Trigger(ctx, &request{w: w, r: r, ctx: ctx})
-			}
-		},
-		Cancel: conf.Cancel,
-	}
-	arg, err := json.Marshal(conf.Arg)
-	if err != nil {
-		slog.Error("Call arg marshaling error", slog.String("call_name", conf.Name), slog.String("json_error", err.Error()))
+	call, ok := conf.clientCall()
+	if !ok {
 		return nil, false
 	}
-	cancel, ok := n.RegisterCallHook(ctx, conf.Name, (common.JsonWritabeRaw)(arg), call)
+	cancel, ok := n.RegisterClientCall(ctx, call)
 	return cancel, ok
 }

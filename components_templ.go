@@ -56,7 +56,7 @@ func Title[M any](b Beam[M], cast func(M) string) templ.Component {
 		ctx = templ.ClearChildren(ctx)
 
 		titleBeam := NewBeam(b, cast)
-		var cancel TryCancel
+		var cancel func()
 		title, _ := titleBeam.ReadAndSub(ctx, func(ctx context.Context, title string) bool {
 			if cancel != nil {
 				cancel()

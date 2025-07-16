@@ -17,14 +17,12 @@ func moveTo(page *rod.Page, id string) (float64, float64) {
 }
 
 func TestPointer(t *testing.T) {
-	println("DDDD")
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &pointerFragment{
 			r: test.NewReporter(3),
 		}
 	})
 	page := bro.Page(t, "/")
-	println(page.MustHTML())
 	test.TestReportId(t, page, 0, "")
 	x, y := moveTo(page, "down")
 	page.Mouse.MustDown(proto.InputMouseButtonLeft)
