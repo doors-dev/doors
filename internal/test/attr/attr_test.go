@@ -1,5 +1,4 @@
 package attr
-
 import "github.com/doors-dev/doors/internal/test"
 import "github.com/doors-dev/doors/internal/common"
 import "testing"
@@ -8,6 +7,7 @@ import "fmt"
 
 func TestData(t *testing.T) {
 	data := common.RandId()
+
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &dataFragment{
 			data: data,
@@ -47,4 +47,4 @@ func TestCall(t *testing.T) {
 	defer page.Close()
 	test.TestContent(t, page, "#target", fmt.Sprint(len(data)))
 	test.TestReport(t, page, data)
-}
+} 

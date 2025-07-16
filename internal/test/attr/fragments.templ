@@ -6,6 +6,95 @@ import (
 	"github.com/doors-dev/doors/internal/test"
 )
 
+type pointerFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+templ (f *pointerFragment) Render() {
+	{{ f.r.Update(ctx, 0, "") }}
+	@doors.F(f.r)
+	<div
+		id="down"
+		{ doors.A(ctx, doors.APointerDown {
+                        On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+                            f.r.Update(ctx, 0, "DOWN")
+                         f.r.Update(ctx, 1, test.Float(r.Event().PageX))
+                         f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+                            return false
+                        },
+                })... }
+	>PointerDown</div>
+	<div
+		id="up"
+		{ doors.A(ctx, doors.APointerUp {
+                        On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+                            f.r.Update(ctx, 0, "UP")
+                         f.r.Update(ctx, 1, test.Float(r.Event().PageX))
+                         f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+                            return false
+                        },
+                })... }
+	>PointerUp</div>
+	<div
+		id="enter"
+		{ doors.A(ctx, doors.APointerEnter {
+                        On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+                         f.r.Update(ctx, 0, "ENTER")
+                         f.r.Update(ctx, 1, test.Float(r.Event().PageX))
+                         f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+                            return false
+                        },
+                })... }
+	>PointerEnter</div>
+	<div id="beforeLeave">beforeLeave</div>
+	<div
+		id="leave"
+		{ doors.A(ctx, doors.APointerLeave {
+                        On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+                         f.r.Update(ctx, 0, "LEAVE")
+                         f.r.Update(ctx, 1, test.Float(r.Event().PageX))
+                         f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+                            return false
+                        },
+                })... }
+	>PointerLeave</div>
+	<div
+		id="move"
+		{ doors.A(ctx, doors.APointerMove {
+                        On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+                         f.r.Update(ctx, 0, "MOVE")
+                         f.r.Update(ctx, 1, test.Float(r.Event().PageX))
+                         f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+                            return false
+                        },
+                })... }
+	>PointerMove</div>
+	<div
+		id="over"
+		{ doors.A(ctx, doors.APointerOver {
+                        On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+                         f.r.Update(ctx, 0, "OVER")
+                         f.r.Update(ctx, 1, test.Float(r.Event().PageX))
+                         f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+                            return false
+                        },
+                })... }
+	>Over</div>
+	<div id="beforeOut">beforeOut</div>
+	<div
+		id="out"
+		{ doors.A(ctx, doors.APointerOut {
+                        On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+                         f.r.Update(ctx, 0, "OUT")
+                         f.r.Update(ctx, 1, test.Float(r.Event().PageX))
+                         f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+                            return false
+                        },
+                })... }
+	>Out</div>
+}
+
 type callFragment struct {
 	data string
 	test.NoBeam

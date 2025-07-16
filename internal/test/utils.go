@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -17,6 +18,10 @@ import (
 )
 
 var Host string
+
+func Float(f float64) string {
+	return strconv.FormatFloat(f, 'f', -1, 64)
+}
 
 type Bro struct {
 	p       int
