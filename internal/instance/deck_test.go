@@ -210,15 +210,15 @@ func TestReportGap(t *testing.T) {
 	}
 	ps.cancel(2)
 	err = deck.OnReport(rep)
-	testCounters(t, deck, 3, 1)
+	testCounters(t, deck, 4, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ps.cancel(4)
-	testWriteAndCheck(t, deck, w, 2, 2, 0)
-	testCounters(t, deck, 3, 1)
-	testWriteAndCheck(t, deck, w, 3, 3, 3)
+	testWriteAndCheck(t, deck, w, 2, 3, 3)
 	testCounters(t, deck, 2, 2)
+	testWriteAndCheck(t, deck, w, 4, 4, 0)
+	testCounters(t, deck, 1, 2)
 	w.errNextWrite = true
 	r, err := deck.WriteNext(w)
 	if r != writeErr {
@@ -230,8 +230,6 @@ func TestReportGap(t *testing.T) {
 	if r != writeErr {
 		t.Fatal("write must fail")
 	}
-	testCounters(t, deck, 1, 2)
-	testWriteAndCheck(t, deck, w, 4, 4, 0)
 	testCounters(t, deck, 1, 2)
 	testWriteAndCheck(t, deck, w, 6, 6, 6)
 	testCounters(t, deck, 0, 3)
@@ -310,12 +308,12 @@ func TestSkipTail(t *testing.T) {
 		Results: map[uint64]*string{},
 	}
 	err = deck.OnReport(rep)
-	testCounters(t, deck, 2, 1)
+	testCounters(t, deck, 3, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	testWriteAndCheck(t, deck, w, 1, 1, 1)
-	testCounters(t, deck, 1, 2)
+	testCounters(t, deck, 2, 2)
 	testWriteAndCheck(t, deck, w, 3, 4, 4)
 	testCounters(t, deck, 0, 3)
 }

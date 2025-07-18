@@ -61,7 +61,7 @@ type Core interface {
 	NewLink(context.Context, any) (*Link, error)
 	SessionExpire(d time.Duration)
 	SessionEnd()
-	Call(caller node.Caller)
+	Call(call common.Call)
 	End()
 }
 
@@ -70,16 +70,13 @@ type core[M any] struct {
 	gen              *common.Primea
 	hooksMu          sync.Mutex
 	hooks            map[uint64]map[uint64]*node.NodeHook
-	root             node.Core
-	cinema           *node.Cinema
+	root             *node.Root
 	solitaire        *solitaire
 	spawner          *shredder.Spawner
 	cspCollectorUsed atomic.Bool
 	cspCollector     *common.CSPCollector
 	nonce            string
 }
-
-
 
 func (c *core[M]) OnPanic(err error) {
 	c.instance.OnPanic(err)
@@ -116,22 +113,11 @@ func (c *core[M]) SessionId() string {
 	return c.instance.getSession().Id()
 }
 
-/*
-func (c *core[M]) Relocate(ctx context.Context, model any) error {
-
-	if ctx.Err() != nil {
-		return errors.New("context not active")
-	}
-	return c.instance.relocate(model)
-} */
 
 func (c *core[M]) Cinema() *node.Cinema {
-	return c.cinema
+	return c.root.Cinema()
 }
-/*
-func (c *core[M]) Sync(ctx context.Context, screenId uint64, seq uint, collector *shredder.Collector[func()]) {
-	c.cinema.InitSync(ctx, screenId, seq, collector)
-} */
+
 
 func (c *core[M]) NewId() uint64 {
 	return c.gen.Gen()
@@ -172,42 +158,20 @@ func (c *core[M]) Thread() *shredder.Thread {
 	return c.spawner.NewThead()
 }
 
-func (c *core[M]) Call(caller node.Caller) {
-	c.solitaire.Call(caller)
-}
-
-func (c *core[M]) Setup(root node.Core, cinema *node.Cinema, ctx context.Context) {
-	c.root = root
-	c.cinema = cinema
-	c.instance.setupPathSync(ctx)
+func (c *core[M]) Call(call common.Call) {
+	c.solitaire.Call(call)
 }
 
 func (c *core[M]) serve(w http.ResponseWriter, content templ.Component, code int) error {
-	n := node.Node{}
-	ch := make(chan error, 0)
-	rm := common.NewRenderMap()
-	thread := c.spawner.NewThead()
-	thread.Write(func(t *shredder.Thread) {
-		if t == nil {
-			return
-		}
-		ctx := context.WithValue(context.Background(), common.InstanceCtxKey, c)
-		ctx = c.instance.getSession().getStorage().Inject(ctx)
-		ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
-		ctx = context.WithValue(ctx, common.RenderMapCtxKey, rm)
-		ctx = context.WithValue(ctx, common.AdaptersCtxKey, c.instance.getSession().getRouter().Adapters())
-		n.Update(ctx, content)
-		n.Render(ctx, nil)
-	})
-	thread.Write(func(t *shredder.Thread) {
-		if t == nil {
-			ch <- errors.New("instance killed before render")
-		}
-		close(ch)
-	})
-	err, ok := <-ch
-	if ok {
-		return err
+	ctx := context.WithValue(context.Background(), common.InstanceCtxKey, c)
+	ctx = context.WithValue(ctx, common.AdaptersCtxKey, c.instance.getSession().getRouter().Adapters())
+
+	c.root = node.NewRoot(ctx, c)
+
+	ch := c.root.Render(content)
+	render, ok := <-ch
+	if !ok {
+		return errors.New("instance killed before render")
 	}
 	if c.cspCollector != nil {
 		c.cspCollectorUsed.Store(true)
@@ -216,18 +180,31 @@ func (c *core[M]) serve(w http.ResponseWriter, content templ.Component, code int
 		header := c.cspCollector.Generate()
 		w.Header().Add("Content-Security-Policy", header)
 	}
-	defer rm.Destroy()
-	if !c.instance.conf().ServerDisableGzip {
+	gz := !c.instance.conf().ServerDisableGzip
+
+	if gz {
 		w.Header().Set("Content-Encoding", "gzip")
-		w.WriteHeader(code)
-		writer := gzip.NewWriter(w)
-		err = rm.Render(writer, c.root.Id())
-		if err != nil {
-			return err
-		}
-		return writer.Close()
 	}
-	w.WriteHeader(code)
-	err = rm.Render(w, c.root.Id())
-	return err
+
+	if render.Err() != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(code)
+	}
+
+	var err error
+	if gz {
+		writer := gzip.NewWriter(w)
+		err = render.Write(writer)
+		if err == nil {
+			err = writer.Close()
+		}
+	} else {
+		err = render.Write(w)
+	}
+	if err != nil {
+		return err
+	}
+	c.instance.setupPathSync(c.root.Ctx())
+	return nil
 }

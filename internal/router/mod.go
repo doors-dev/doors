@@ -1,11 +1,12 @@
 package router
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
-	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/resources"
 )
 
 type Mod interface {
@@ -78,7 +79,7 @@ func SetSystemConf(conf common.SystemConf) Mod {
 
 func SetGoroutineLimit(n int) Mod {
 	if n < 1 {
-		common.BadPanic("At least 1")
+		panic(errors.New("At least 1"))
 	}
 	return anyMod(func(rr *Router) {
 		rr.pool.Tune(n)

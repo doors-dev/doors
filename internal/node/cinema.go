@@ -305,20 +305,6 @@ func (ss *Cinema) InitSync(syncThread *shredder.Thread, ctx context.Context, id 
 	s.sync(syncThread, ctx, seq, c)
 }
 
-/*
-func (ss *Cinema) InitSync(ctx context.Context, id uint64, seq uint, c *shredder.Collector[func()]) {
-	if !ss.isRoot() {
-		log.Fatal("Only root node can init sync")
-	}
-	ss.mu.Lock()
-	defer ss.mu.Unlock()
-	s, ok := ss.screens[id]
-	if !ok {
-		return
-	}
-	s.sync(ctx, seq, c)
-} */
-
 func (ss *Cinema) kill(init bool) {
 	ss.mu.Lock()
 	if ss.killed {

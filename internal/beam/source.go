@@ -175,7 +175,7 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) (<
 }
 
 func (s *source[T]) addWatcher(ctx context.Context, w node.Watcher) bool {
-	cinema := ctx.Value(common.CinemaCtxKey).(*node.Cinema)
+	cinema := ctx.Value(common.NodeCtxKey).(node.Core).Cinema()
 	inst := ctx.Value(common.InstanceCtxKey).(instance)
 	s.init.Do(func() {
 		s.inst = inst

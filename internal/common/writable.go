@@ -6,6 +6,16 @@ import (
 	"log"
 )
 
+type WritableNone struct{}
+
+func (w WritableNone) Destroy() {
+
+}
+
+func (w WritableNone) Write(io.Writer) error {
+	return nil
+}
+
 type Writable interface {
 	Destroy()
 	Write(io.Writer) error
@@ -74,6 +84,3 @@ func (j JsonWritabeRaw) WriteJson(w io.Writer) error {
 	_, err := w.Write(j)
 	return err
 }
-
-
-

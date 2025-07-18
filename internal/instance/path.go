@@ -132,19 +132,3 @@ func (inst *Instance[M]) UpdatePath(m any, adapter path.AnyAdapter) bool {
 	return true
 }
 
-/*
-func (inst *Instance[M]) relocate(m any) error {
-	name := path.GetAdapterName(m)
-	adapter, ok := inst.session.router.Adapters()[name]
-	if !ok {
-		return errors.New("Adapter for " + name + " not found")
-	}
-	location, err := adapter.EncodeAny(m)
-	if err != nil {
-		return err
-	}
-	inst.core.Call(&relocateCaller{
-		location: location,
-	})
-	return nil
-} */

@@ -32,6 +32,7 @@ func TestHook(t *testing.T) {
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
+	<-time.After(100 * time.Millisecond)
 	test.TestContent(t, page, "#target", fmt.Sprint(len(data)))
 	test.TestReport(t, page, data)
 }

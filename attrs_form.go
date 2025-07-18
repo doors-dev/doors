@@ -19,10 +19,10 @@ type focusEventHook struct {
 
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, etc.
-	Mode HookMode
+	Scope []Scope
 
-	// Indicate specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
-	Indicate []Indicate
+	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	Indicator []Indicator
 
 	// On is the required backend handler that runs when the event is triggered.
 	//
@@ -31,17 +31,18 @@ type focusEventHook struct {
 	On func(context.Context, REvent[FocusEvent]) bool
 }
 
-func (p *focusEventHook) init(event string, ctx context.Context, n node.Core, _ instance.Core, attrs *front.Attrs) {
+func (p *focusEventHook) init(event string, ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[FocusEvent]{
 		capture: &front.FocusCapture{
 			Event: event,
 		},
-		node:     n,
-		ctx:      ctx,
-		mark:     p.Mark,
-		mode:     p.Mode,
-		indicate: p.Indicate,
-		on:       p.On,
+		node:      n,
+		ctx:       ctx,
+		inst:      inst,
+		mark:      p.Mark,
+		scope:     p.Scope,
+		indicator: p.Indicator,
+		on:        p.On,
 	}).init(attrs)
 }
 
@@ -102,11 +103,11 @@ type ARawSubmit struct {
 
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, ModeFrame, etc.
-	Mode HookMode
+	Scope []Scope
 
-	// Indicate specifies how to visually indicate the hook is running
+	// Indicator specifies how to visually indicate the hook is running
 	// (e.g., by applying a class, attribute, or replacing content). Optional.
-	Indicate []Indicate
+	Indicator []Indicator
 
 	// On is the required backend handler for the form submission.
 	//
@@ -124,8 +125,8 @@ func (s ARawSubmit) Init(ctx context.Context, n node.Core, inst instance.Core, a
 	}
 	attrs.AppendCapture(&front.FormCapture{}, &front.Hook{
 		Mark:      s.Mark,
-		Mode:      s.Mode,
-		Indicate:  s.Indicate,
+		Scope:     front.IntoScopeSet(inst, s.Scope),
+		Indicate: front.IntoIndicate(s.Indicator),
 		HookEntry: entry,
 	})
 }
@@ -172,11 +173,11 @@ type ASubmit[D any] struct {
 
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, ModeFrame, etc.
-	Mode HookMode
+	Scope []Scope
 
-	// Indicate specifies how to visually indicate the hook is running
+	// Indicator specifies how to visually indicate the hook is running
 	// (e.g., by applying a class, attribute, or replacing content). Optional.
-	Indicate []Indicate
+	Indicator []Indicator
 
 	// On is the required backend handler for the form submission.
 	//
@@ -194,8 +195,8 @@ func (s ASubmit[V]) Init(ctx context.Context, n node.Core, inst instance.Core, a
 	}
 	attrs.AppendCapture(&front.FormCapture{}, &front.Hook{
 		Mark:      s.Mark,
-		Mode:      s.Mode,
-		Indicate:  s.Indicate,
+		Scope:     front.IntoScopeSet(inst, s.Scope),
+		Indicate: front.IntoIndicate(s.Indicator),
 		HookEntry: entry,
 	})
 }
@@ -254,11 +255,11 @@ type AChange struct {
 
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, ModeFrame, etc.
-	Mode HookMode
+	Scope []Scope
 
-	// Indicate specifies how to visually indicate the hook is running
+	// Indicator specifies how to visually indicate the hook is running
 	// (e.g., by applying a class, attribute, or replacing content). Optional.
-	Indicate []Indicate
+	Indicator []Indicator
 
 	// On is the required backend handler for the change event.
 	//
@@ -269,21 +270,22 @@ type AChange struct {
 
 func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[ChangeEvent]{
-		capture:  &front.ChangeCapture{},
-		node:     n,
-		ctx:      ctx,
-		mark:     p.Mark,
-		indicate: p.Indicate,
-		mode:     p.Mode,
-		on:       p.On,
+		capture:   &front.ChangeCapture{},
+		node:      n,
+		ctx:       ctx,
+		mark:      p.Mark,
+		indicator: p.Indicator,
+		inst:      inst,
+		scope:     p.Scope,
+		on:        p.On,
 	}).init(attrs)
 }
 
 type InputEvent = front.InputEvent
 type AInput struct {
 	Mark         string
-	Mode         HookMode
-	Indicate     []Indicate
+	Scope        []Scope
+	Indicator    []Indicator
 	On           func(context.Context, REvent[InputEvent]) bool
 	ExcludeValue bool
 }
@@ -293,11 +295,12 @@ func (p AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs
 		capture: &front.InputCapture{
 			ExcludeValue: p.ExcludeValue,
 		},
-		node:     n,
-		ctx:      ctx,
-		mark:     p.Mark,
-		mode:     p.Mode,
-		indicate: p.Indicate,
-		on:       p.On,
+		node:      n,
+		inst:      inst,
+		ctx:       ctx,
+		mark:      p.Mark,
+		scope:     p.Scope,
+		indicator: p.Indicator,
+		on:        p.On,
 	}).init(attrs)
 }

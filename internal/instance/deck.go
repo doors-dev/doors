@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/node"
 )
 
 func newDeck(queueLimit int, issueLimit int) *deck {
@@ -75,34 +74,29 @@ func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
 			}
 			return writeOk, nil
 		}
-		call, isRelevant := card.caller.Call()
-		if !isRelevant {
+		data := card.call.Data()
+		if data == nil {
 			d.mu.Lock()
 			d.skipRange(card.startSeq, card.endSeq)
 			d.mu.Unlock()
 			continue
 		}
 		issuedCall := &issuedCall{
-			call:   call,
-			caller: card.caller,
+			data: data,
+			call: card.call,
 		}
 		err := issuedCall.write(header, w)
 		if err != nil {
-			isRelevant = call.OnWriteErr()
 			d.mu.Lock()
-			if !isRelevant {
-				d.skipRange(card.startSeq, card.endSeq)
-			} else {
-				if err := d.cancelCut(card); err != nil {
-					return writeSyncErr, err
-				}
+			defer d.mu.Unlock()
+			if err := d.cancelCut(card); err != nil {
+				return writeSyncErr, err
 			}
-			d.mu.Unlock()
 			return writeErr, err
 		}
 		d.mu.Lock()
+		defer d.mu.Unlock()
 		d.issued[card.seq()] = issuedCall
-		d.mu.Unlock()
 		return writeOk, nil
 	}
 }
@@ -141,11 +135,11 @@ func (d *deck) OnReport(s *report) error {
 			if card == nil {
 				continue
 			}
-			card.call.OnResult(resultErr)
+			card.call.Result(resultErr)
 			continue
 		}
 		delete(d.issued, seq)
-		call.call.OnResult(resultErr)
+		call.call.Result(resultErr)
 	}
 	if len(s.Gaps) == 0 {
 		return nil
@@ -174,24 +168,19 @@ func (d *deck) OnReport(s *report) error {
 				continue
 			}
 			delete(d.issued, seq)
-			isRelevant := call.call.OnWriteErr()
-			if isRelevant {
-				if err := d.restore(seq, call.caller, call.call); err != nil {
-					return err
-				}
-			} else {
-				d.skipSeq(seq)
+			if err := d.restore(seq, call.call); err != nil {
+				return err
 			}
 		}
 	}
 	return nil
 }
 
-func (d *deck) Insert(caller node.Caller) error {
+func (d *deck) Insert(call common.Call) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.seq += 1
-	node := newCard(d.seq, caller)
+	node := newCard(d.seq, call)
 	d.insertTail(node)
 	return d.inc()
 }
@@ -217,8 +206,8 @@ func (d *deck) dec() {
 	d.deckSize -= 1
 }
 
-func (d *deck) restore(seq uint64, caller node.Caller, call node.Call) error {
-	n := newRestoredCard(seq, caller, call)
+func (d *deck) restore(seq uint64, call common.Call) error {
+	n := newRestoredCard(seq, call)
 	if d.top == nil {
 		d.top = n
 		d.bottom = n
@@ -285,28 +274,26 @@ type head interface {
 	setTail(*card)
 }
 
-func newRestoredCard(seq uint64, caller node.Caller, call node.Call) *card {
+func newRestoredCard(seq uint64, call common.Call) *card {
 	return &card{
 		startSeq: seq,
 		endSeq:   seq,
-		caller:   caller,
 		call:     call,
+		restored: true,
 	}
 }
 
-func newCard(seq uint64, caller node.Caller) *card {
+func newCard(seq uint64, call common.Call) *card {
 	return &card{
 		startSeq: seq,
 		endSeq:   seq,
-		caller:   caller,
-		call:     nil,
+		call:     call,
 	}
 }
 func newFillerCard(seq uint64) *card {
 	return &card{
 		startSeq: seq,
 		endSeq:   seq,
-		caller:   nil,
 		call:     nil,
 	}
 }
@@ -314,9 +301,9 @@ func newFillerCard(seq uint64) *card {
 type card struct {
 	startSeq uint64
 	endSeq   uint64
-	caller   node.Caller
+	call     common.Call
 	tail     *card
-	call     node.Call
+	restored bool
 }
 
 func (s *card) extractRestored(seq uint64, h head) (*card, error) {
@@ -324,7 +311,7 @@ func (s *card) extractRestored(seq uint64, h head) (*card, error) {
 		if s.isFiller() {
 			return nil, nil
 		}
-		if s.call == nil {
+		if !s.restored {
 			return nil, errors.New("Attempt to respond to non issued card")
 		}
 		h.setTail(s.tail)
@@ -341,7 +328,7 @@ func (s *card) seq() uint64 {
 }
 
 func (sn *card) isFiller() bool {
-	return sn.caller == nil
+	return sn.call == nil
 }
 
 func (sn *card) insert(n *card, h head) error {
@@ -441,22 +428,20 @@ func (h header) write(w io.Writer) error {
 }
 
 type issuedCall struct {
-	caller node.Caller
-	call   node.Call
+	call common.Call
+	data *common.CallData
 }
 
 func (i *issuedCall) write(h header, w io.Writer) error {
-	header := append(h, common.JsonWritableAny{i.call.Name()}, i.call.Arg())
+	header := append(h, common.JsonWritableAny{i.data.Name}, i.data.Arg)
 	err := header.write(w)
 	if err != nil {
 		return err
 	}
-	payload, has := i.call.Payload()
-	if has {
-		err = payload.Write(w)
-		if err != nil {
-			return err
-		}
+	payload := i.data.Payload
+	err = payload.Write(w)
+	if err != nil {
+		return err
 	}
 	_, err = w.Write(terminator)
 	return err

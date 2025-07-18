@@ -10,7 +10,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/node"
 )
 
 type testCall struct {
@@ -20,40 +19,33 @@ type testCall struct {
 	cancel    bool
 }
 
-func (t *testCall) Destroy() {}
 
+
+func (t *testCall) Destroy() {
+
+}
 
 func (t *testCall) Write(w io.Writer) error {
 	_, err := w.Write([]byte(t.payload))
 	return err
 }
 
-func (t *testCall) Payload() (common.Writable, bool) {
-	if t.payload == "" {
-		return nil, false
+func (t *testCall) Data() *common.CallData {
+	if t.cancel {
+		return nil
 	}
-	return t, true
+	return &common.CallData {
+		Name: "test",
+		Arg: common.JsonWritableAny{t.arg},
+		Payload: t,
+	}
 }
 
-func (t *testCall) Call() (node.Call, bool) {
-	return t, !t.cancel
-}
 
-func (t *testCall) OnWriteErr() bool {
-	return !t.cancel
-}
-
-func (t *testCall) OnResult(err error) {
+func (t *testCall) Result(err error) {
 	t.resultErr = err
 }
 
-func (t *testCall) Name() string {
-	return "test"
-}
-
-func (t *testCall) Arg() common.JsonWritable {
-	return common.JsonWritableAny{t.arg}
-}
 
 type testPackage struct {
 	isSignal bool

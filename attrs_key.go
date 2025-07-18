@@ -23,10 +23,10 @@ type keyEventHook struct {
 
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, etc.
-	Mode HookMode
+	Scope []Scope
 
-	// Indicate specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
-	Indicate []Indicate
+	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	Indicator []Indicator
 
 	// On is the required backend handler for the click event.
 	// It receives a typed EventRequest[KeyboardEvent] and should return true
@@ -34,7 +34,7 @@ type keyEventHook struct {
 	On func(context.Context, REvent[KeyboardEvent]) bool
 }
 
-func (k *keyEventHook) init(event string, ctx context.Context, n node.Core, _ instance.Core, attrs *front.Attrs) {
+func (k *keyEventHook) init(event string, ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[KeyboardEvent]{
 		node: n,
 		ctx:  ctx,
@@ -43,10 +43,11 @@ func (k *keyEventHook) init(event string, ctx context.Context, n node.Core, _ in
 			PreventDefault:  k.PreventDefault,
 			StopPropagation: k.StopPropagation,
 		},
-		mode:     k.Mode,
-		mark:      k.Mark,
-		indicate: k.Indicate,
-		on:        k.On,
+		inst:     inst,
+		scope:    k.Scope,
+		mark:     k.Mark,
+		indicator: k.Indicator,
+		on:       k.On,
 	}).init(attrs)
 }
 

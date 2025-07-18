@@ -26,7 +26,7 @@ class $D {
         if (hook === undefined) {
             throw new CaptureErr(captureErrTypes.notFound, name)
         }
-        return await capture("default", arg, null, hook)
+        return await capture("default", undefined, arg, undefined, hook)
     }
 
     async hook(name: string, arg: any): Promise<any> {

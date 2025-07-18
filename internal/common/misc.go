@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto"
 	"crypto/rand"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/a-h/templ"
 	"github.com/mr-tron/base58"
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
@@ -63,10 +65,6 @@ func RandId() string {
 	return base58.Encode(randomBytes)
 }
 
-func BadPanic(v any) {
-	//defer log.Fatal("Critical error, execution stopped")
-	panic(v)
-}
 
 func Zip(input []byte) ([]byte, error) {
 	var buf bytes.Buffer
@@ -112,4 +110,14 @@ func CatchValue[V any](f func() V) (value V, err error) {
 	}()
 	value = f()
 	return
+}
+
+var nopPointer = uintptr(reflect.ValueOf(templ.NopComponent).UnsafePointer())
+
+func GetChildren(ctx context.Context) (context.Context, templ.Component, bool) {
+	c := templ.GetChildren(ctx)
+	if uintptr(reflect.ValueOf(c).UnsafePointer()) == nopPointer {
+		return ctx, nil, false
+	}
+	return templ.ClearChildren(ctx), c, true
 }

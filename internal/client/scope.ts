@@ -3,12 +3,9 @@ import captures from './captures'
 import indicator, { IndicatorEntry } from './indicator'
 import { requestTimeout, id } from './params'
 import { AbortTimer } from './lib'
+import calls from './calls'
 
-export type ScopeSet = {
-    id: number,
-    type: keyof typeof newScope,
-    opt: any,
-}
+export type ScopeSet = [keyof typeof newScope, string, any]
 
 
 export class Hook {
@@ -17,23 +14,55 @@ export class Hook {
     private promise: Promise<Response>
     private scopeStack: Array<Scope> = []
     private abortTimer: AbortTimer | null = null
-    constructor(private params: { hookId: number, body: any, event?: Event, scopeQueue: Array<ScopeSet>, indicator: Array<IndicatorEntry> }) {
+    private fetch: any = {}
+    private scopeQueue: Array<ScopeSet>
+    constructor(private params: { nodeId: number, hookId: number, event?: Event, scopeQueue: Array<ScopeSet>, indicator: Array<IndicatorEntry>, mark: string }) {
         this.promise = new Promise((res, rej) => {
             this.res = res
             this.rej = rej
         })
         if (!this.params.scopeQueue || this.params.scopeQueue.length == 0) {
-            this.params.scopeQueue = [{ id: -1, type: "free", opt: undefined }]
+            this.scopeQueue = [["free", "", undefined]]
+        } else {
+            this.scopeQueue = [...this.params.scopeQueue]
         }
+
     }
-    wait() {
+    capture(name: string, opt: any, arg: any) {
+        const captureFunction = captures[name]
+        if (!captureFunction) {
+            this.err(new CaptureErr(captureErrTypes.notFound, name))
+            return this.promise
+        }
+        try {
+            this.fetch = captureFunction(arg, opt)
+        } catch (e) {
+            this.rej(new CaptureErr(captureErrTypes.capture, e))
+            return this.promise
+        }
+        r.submit(this)
         return this.promise
     }
     nextScope() {
-        return this.params.scopeQueue.shift()
+        return this.scopeQueue.shift()
     }
     stackScope(scope: Scope) {
         this.scopeStack.unshift(scope)
+    }
+    private afterHook(name: string, arg: any) {
+        try {
+            const fn = (calls as any)[name]
+            if (!fn) {
+                console.error(`after hook callable [${name}] not found`)
+                return
+            }
+            const result = fn(arg)
+            if (result && result instanceof Promise) {
+                result.then().catch(e => console.error("after hook  err", e))
+            }
+        } catch (e) {
+            console.error("after hook  err", e)
+        }
     }
     execute() {
         let target: Element | null = null
@@ -42,18 +71,18 @@ export class Hook {
         }
         const indicatorId = indicator.start(target, this.params.indicator)
         this.abortTimer = new AbortTimer(requestTimeout)
-        fetch(`/d00r/${id}/${this.params.hookId}/`, {
+        fetch(`/d00r/${id}/${this.params.nodeId}/${this.params.hookId}`, {
             method: "POST",
             signal: this.abortTimer.signal,
-            ...this.params.body,
+            ...this.fetch,
         }).then(r => {
+            this.abortTimer!.clean()
             if (r.ok) {
-                /*
-                 const after = r.headers.get("D00r-After")
-                 if (after) {
-                     const [name, arg] = JSON.parse(after)
-                     // this.afterHook(name, arg)
-                 } */
+                const after = r.headers.get("D00r-After")
+                if (after) {
+                    const [name, arg] = JSON.parse(after)
+                    this.afterHook(name, arg)
+                }
                 this.ok(r)
                 return
             }
@@ -69,13 +98,13 @@ export class Hook {
                 this.rej(new CaptureErr(captureErrTypes.other, r))
             }
         }).catch(e => {
+            this.abortTimer!.clean()
             if (this.abortTimer!.status == "aborted") {
                 this.rej(new CaptureErr(captureErrTypes.blocked))
                 return
             }
             this.err(new CaptureErr(captureErrTypes.network, e))
         }).finally(() => {
-            this.abortTimer!.abort()
             indicator.end(indicatorId)
         })
     }
@@ -106,11 +135,11 @@ export class Hook {
 
 
 class Runtime {
-    private scopes = new Map<number, Scope>()
+    private scopes = new Map<string, Scope>()
     constructor() {
 
     }
-    public done(id: number) {
+    public done(id: string) {
         this.scopes.delete(id)
     }
     public submit(hook: Hook) {
@@ -118,19 +147,20 @@ class Runtime {
         this.next(hook, set)
     }
     public next(hook: Hook, set: ScopeSet) {
-        let scope = this.scopes.get(set.id)
+        const [type, id, opt] = set
+        let scope = this.scopes.get(id)
         if (!scope) {
-            scope = newScope[set.type](this, set.id)
-            this.scopes.set(set.id, scope)
+            scope = newScope[type](this, id)
+            this.scopes.set(id, scope)
         }
-        scope.submit(hook, set.opt)
+        scope.submit(hook, opt)
     }
 }
 
 
 abstract class Scope {
     private counter = 0
-    constructor(protected runtime: Runtime, protected id: number) {
+    constructor(protected runtime: Runtime, protected id: string) {
 
     }
     protected get size() {
@@ -165,14 +195,12 @@ abstract class Scope {
 
 
 const newScope = {
-    "debounce": (runtime: Runtime, id: number) => new DebounceScope(runtime, id),
-    "blocking": (runtime: Runtime, id: number) => new BlockingScope(runtime, id),
-    "serial": (runtime: Runtime, id: number) => new SerialScope(runtime, id),
-    "frame": (runtime: Runtime, id: number) => new FrameScope(runtime, id),
-    "latest": (runtime: Runtime, id: number) => new LatestScope(runtime, id),
-    "free": (runtime: Runtime, id: number) => new FreeScope(runtime, id),
-
-
+    "debounce": (runtime: Runtime, id: string) => new DebounceScope(runtime, id),
+    "blocking": (runtime: Runtime, id: string) => new BlockingScope(runtime, id),
+    "serial": (runtime: Runtime, id: string) => new SerialScope(runtime, id),
+    "frame": (runtime: Runtime, id: string) => new FrameScope(runtime, id),
+    "latest": (runtime: Runtime, id: string) => new LatestScope(runtime, id),
+    "free": (runtime: Runtime, id: string) => new FreeScope(runtime, id),
 } as const;
 
 class DebounceScope extends Scope {
@@ -317,6 +345,4 @@ class FreeScope extends Scope {
 }
 
 const r = new Runtime()
-export default function submit(hook: Hook) {
-    r.submit(hook)
-}
+

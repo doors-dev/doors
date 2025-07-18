@@ -113,7 +113,7 @@ func NewPool(limit int) *Pool {
 	size := runtime.NumCPU()
 	ants, err := ants.NewMultiPool(size, limit, ants.LeastTasks)
 	if err != nil {
-		common.BadPanic(err)
+		panic(err)
 	}
 	return &Pool{
 		size:  size,

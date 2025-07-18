@@ -1,60 +1,40 @@
 package node
 
 import (
+	"context"
+	"errors"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/common/ctxwg"
 )
 
-type Caller interface {
-	Call() (Call, bool)
-}
-
-type Call interface {
-	Name() string
-	Arg() common.JsonWritable
-	Payload() (common.Writable, bool)
-	OnWriteErr() bool
-	OnResult(error)
-}
-
-type nodeCaller Node
-
-func (n *nodeCaller) Call() (Call, bool) {
-	call, ok := <-(*Node)(n).call()
-	return call, ok
-}
-
-type commitCall struct {
+type nodeCall struct {
+	ctx     context.Context
 	name    string
+	ch      chan error
 	arg     common.JsonWritable
 	payload common.Writable
-	id      uint
-	node    *Node
+	done    ctxwg.Done
 }
 
-func (c *commitCall) Name() string {
-	return c.name
+func (n *nodeCall) stale() {
+	n.Result(errors.New("stale"))
 }
 
-func (c *commitCall) Arg() common.JsonWritable {
-	return c.arg
+func (n *nodeCall) Result(err error) {
+	n.ch <- err
+	close(n.ch)
+	n.done()
 }
 
-func (c *commitCall) Payload() (common.Writable, bool) {
-	if c.payload == nil {
-		return nil, false
+func (n *nodeCall) Data() *common.CallData {
+	if n.ctx.Err() != nil {
+		n.stale()
+		return nil
 	}
-	return c.payload, true
-}
-
-func (c *commitCall) OnResult(err error) {
-	c.node.commitResult(c.id, err)
-	if c.payload == nil {
-		return
+	return &common.CallData{
+		Name:    n.name,
+		Arg:     n.arg,
+		Payload: n.payload,
 	}
-	c.payload.Destroy()
-}
-
-func (c *commitCall) OnWriteErr() bool {
-	return c.node.commitWriteErr(c)
 }

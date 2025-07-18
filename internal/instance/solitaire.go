@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/node"
 )
 
 type solitaireInstance interface {
@@ -32,8 +31,8 @@ type solitaire struct {
 	connection atomic.Pointer[conn]
 }
 
-func (s *solitaire) Call(caller node.Caller) {
-	err := s.deck.Insert(caller)
+func (s *solitaire) Call(call common.Call) {
+	err := s.deck.Insert(call)
 	if err != nil {
 		s.inst.syncError(err)
 		return
@@ -305,24 +304,14 @@ type touch struct {
 	fired bool
 }
 
-func (t *touch) Call() (node.Call, bool) {
+func (t *touch) Data() *common.CallData {
 	if t.fired {
-		return nil, false
+		return nil
 	}
-	t.fired = true
-	return t, true
+	return &common.CallData{
+		Name: "touch",
+		Arg: make(common.JsonWritables, 0),
+		Payload: common.WritableNone{},
+	}
 }
-func (t *touch) Name() string {
-	return "touch"
-}
-
-func (t *touch) Arg() common.JsonWritable {
-	return make(common.JsonWritables, 0)
-}
-func (t *touch) Payload() (common.Writable, bool) {
-	return nil, false
-}
-func (t *touch) OnWriteErr() bool {
-	return false
-}
-func (t *touch) OnResult(error) {}
+func (t *touch) Result(error) {}

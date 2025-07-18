@@ -306,7 +306,7 @@ class Connection {
         }
     }
     private done(e?:Error) {
-        this.abortTimer.abort()
+        this.abortTimer.clean()
         this.ctrl.done(this, e)
     }
     private async run() {

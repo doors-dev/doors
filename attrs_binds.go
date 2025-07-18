@@ -13,11 +13,11 @@ import (
 type AHook[I any, O any] struct {
 	On        func(ctx context.Context, r RHook[I]) (O, bool)
 	Name      string
-	Mode      HookMode
-	Indicator []Indicate
+	Scope     []Scope
+	Indicator []Indicator
 }
 
-func (h AHook[I, O]) Init(ctx context.Context, n node.Core, _ instance.Core, attr *front.Attrs) {
+func (h AHook[I, O]) Init(ctx context.Context, n node.Core, inst instance.Core, attr *front.Attrs) {
 	if h.On == nil {
 		println("Hook withoud handler")
 		return
@@ -29,8 +29,8 @@ func (h AHook[I, O]) Init(ctx context.Context, n node.Core, _ instance.Core, att
 		return
 	}
 	attr.SetHook(h.Name, &front.Hook{
-		Mode:      h.Mode,
-		Indicate:  h.Indicator,
+		Scope:     front.IntoScopeSet(inst, h.Scope),
+		Indicate:  front.IntoIndicate(h.Indicator),
 		HookEntry: entry,
 	})
 }
@@ -48,8 +48,8 @@ func (h *AHook[I, O]) handle(ctx context.Context, w http.ResponseWriter, r *http
 	output, done := h.On(ctx, &formHookRequest[I]{
 		data: &input,
 		request: request{
-			w: w,
-			r: r,
+			w:   w,
+			r:   r,
 			ctx: ctx,
 		},
 	})
@@ -67,11 +67,11 @@ func (h *AHook[I, O]) handle(ctx context.Context, w http.ResponseWriter, r *http
 type ARawHook struct {
 	Name      string
 	On        func(ctx context.Context, r RRawHook) bool
-	Mode      HookMode
-	Indicator []Indicate
+	Scope     []Scope
+	Indicator []Indicator
 }
 
-func (h ARawHook) Init(ctx context.Context, n node.Core, _ instance.Core, attr *front.Attrs) {
+func (h ARawHook) Init(ctx context.Context, n node.Core, inst instance.Core, attr *front.Attrs) {
 	if h.On == nil {
 		println("Hook withoud handler")
 		return
@@ -83,8 +83,8 @@ func (h ARawHook) Init(ctx context.Context, n node.Core, _ instance.Core, attr *
 		return
 	}
 	attr.SetHook(h.Name, &front.Hook{
-		Mode:      h.Mode,
-		Indicate:  h.Indicator,
+		Scope:     front.IntoScopeSet(inst, h.Scope),
+		Indicate:  front.IntoIndicate(h.Indicator),
 		HookEntry: entry,
 	})
 }

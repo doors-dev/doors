@@ -203,6 +203,9 @@ export class AbortTimer {
         }
         return "aborted"
     }
+    clean() {
+        clearInterval(this.interval)
+    }
     abort() {
         clearInterval(this.interval)
         this.abortController.abort()

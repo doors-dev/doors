@@ -143,7 +143,8 @@ func Sub[T any](beam Beam[T], render func(T) templ.Component) templ.Component {
 	return E(func(ctx context.Context) templ.Component {
 		node := &Node{}
 		ok := beam.Sub(ctx, func(ctx context.Context, v T) bool {
-			return !node.Update(ctx, render(v))
+			node.Update(ctx, render(v))
+			return false
 		})
 		if !ok {
 			return nil
@@ -167,12 +168,14 @@ func Inject[T any](beam Beam[T]) templ.Component {
 		ctx = templ.ClearChildren(ctx)
 		node := &Node{}
 		ok := beam.Sub(ctx, func(ctx context.Context, v T) bool {
-			return !node.Update(
+			node.Update(
 				ctx,
 				templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 					ctx = context.WithValue(ctx, beam, &v)
 					return children.Render(ctx, w)
-				}))
+				}),
+			)
+			return false
 		})
 		if !ok {
 			return nil

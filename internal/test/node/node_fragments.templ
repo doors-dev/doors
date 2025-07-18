@@ -17,7 +17,7 @@ templ (f *FragmentMany) sample() {
 }
 
 templ (f *FragmentMany) manyNodes() {
-	for i := range 2 {
+	for i := range 20 {
 		<span style="display:none">{ fmt.Sprint(i) }</span>
 		@f.n
 	}
@@ -62,11 +62,7 @@ templ (f *FragmentX) Render() {
 		id="updatex"
 		{ doors.A(ctx, doors.AClick {
         On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            ch, ok := f.n.XUpdate(ctx, test.Marker("updated"))
-            if !ok {
-               f.rep(ctx, "false update")
-                return true
-            }
+            ch := f.n.XUpdate(ctx, test.Marker("updated"))
             err, ok := <- ch
             if !ok {
                 f.rep(ctx, "channel closed")
@@ -86,11 +82,7 @@ templ (f *FragmentX) Render() {
 		id="removex"
 		{ doors.A(ctx, doors.AClick {
         On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            ch, ok := f.n.XRemove(ctx)
-            if !ok {
-                f.rep(ctx, "false remove")
-                return true
-            }
+            ch := f.n.XRemove(ctx)
             err, ok := <- ch
             if !ok {
                 f.rep(ctx, "channel closed")
@@ -120,23 +112,24 @@ templ (f *EmbeddedFragment) Render() {
 		@f.n2 {
 			@test.Marker("init")
 		}
+        @test.Marker("static")
 	}
 	@f.n3
 	<button
-		id="clear"
+		id="remove"
 		{ doors.A(ctx, doors.AClick {
         On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            f.n1.Clear(ctx)
+            f.n2.Remove(ctx)
             return true
         },
 
     }) ... }
 	>C</button>
 	<button
-		id="remove"
+		id="clear"
 		{ doors.A(ctx, doors.AClick {
         On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            f.n2.Remove(ctx)
+            f.n1.Clear(ctx)
             return true
         },
 
@@ -223,6 +216,6 @@ templ (f *BeforeFragment) Render() {
 	@f.nodeRemoved
 	{{ f.nodeReplaced.Replace(ctx, test.Marker("replaced")) }}
 	@f.nodeReplaced {
-		@test.Marker("#initReplaced")
+		@test.Marker("initReplaced")
 	}
 }

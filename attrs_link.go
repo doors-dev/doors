@@ -32,64 +32,62 @@ func (q pathMatch) pathMatch() pathMatch {
 	return q
 }
 
-type ActiveQueryMatcher interface {
+type QueryMatcher interface {
 	queryMatch() queryMatch
 }
 
-type ActivePathMatcher interface {
+type PathMatcher interface {
 	pathMatch() pathMatch
 }
 
 type activeMatchers struct{}
 
-func ActivePathFull() ActivePathMatcher {
+func PathMatcherFull() PathMatcher {
 	return pathMatch([]any{"full"})
 }
 
-func ActivePathStarts() ActivePathMatcher {
+func PathMatcherStarts() PathMatcher {
 	return pathMatch([]any{"starts"})
 }
 
-func ActivePathParts(n int) ActivePathMatcher {
+func PathMatcherParts(n int) PathMatcher {
 	return pathMatch([]any{"parts", n})
 }
-func ActiveQueryAll() ActiveQueryMatcher {
+func QueryMatcherAll() QueryMatcher {
 	return queryMatch([]any{"all"})
 }
 
-func ActiveQueryIgnore() ActiveQueryMatcher {
+func QueryMatcherIgnore() QueryMatcher {
 	return queryMatch([]any{"ignore"})
 }
 
-func ActiveQuerySome(params ...string) ActiveQueryMatcher {
+func QueryMatcherSome(params ...string) QueryMatcher {
 	return queryMatch([]any{"some", params})
 }
 
 type Active struct {
-	PathMatcher  ActivePathMatcher
-	QueryMatcher ActiveQueryMatcher
-	Indicate   []Indicate
+	PathMatcher  PathMatcher
+	QueryMatcher QueryMatcher
+	Indicator    []Indicator
 }
-
 
 type AHref struct {
 	Active          Active
-	Indicate       []Indicate
 	StopPropagation bool
 	Model           any
 }
 
 func (h *AHref) active() []any {
-    if h.Active.Indicate == nil || len(h.Active.Indicate) == 0 {
-        return nil
-    }
+	if h.Active.Indicator == nil || len(h.Active.Indicator) == 0 {
+		return nil
+	}
 	if common.IsNill(h.Active.QueryMatcher) {
-		h.Active.QueryMatcher = ActiveQueryAll()
+		h.Active.QueryMatcher = QueryMatcherAll()
 	}
 	if common.IsNill(h.Active.PathMatcher) {
-		h.Active.PathMatcher = ActivePathFull()
+		h.Active.PathMatcher = PathMatcherFull()
 	}
-	return []any{h.Active.PathMatcher, h.Active.QueryMatcher, h.Active.Indicate}
+	return []any{h.Active.PathMatcher, h.Active.QueryMatcher, front.IntoIndicate(h.Active.Indicator)}
 }
 
 func (h AHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -112,7 +110,7 @@ func (h AHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs 
 		attrs.AppendCapture(&front.LinkCapture{
 			StopPropagation: h.StopPropagation,
 		}, &front.Hook{
-			Mode:      ModeBlock(),
+			Scope:     []*ScopeSet{front.LatestScope("link")},
 			HookEntry: entry,
 		})
 	}

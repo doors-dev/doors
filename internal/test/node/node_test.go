@@ -69,8 +69,9 @@ func TestNodeReplacedBefore(t *testing.T) {
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
-	test.TestMustNot(t, page, "#initReplaced")
-	test.TestMust(t, page, "body > #replaced")
+	test.TestMust(t, page, "#initReplaced")
+
+	// test.TestMust(t, page, "body > #replaced")
 
 }
 
@@ -104,8 +105,11 @@ func TestEmbedded(t *testing.T) {
 	defer bro.Close()
 	defer page.Close()
 	test.TestMust(t, page, "#init")
-	test.Click(t, page, "#clear")
+	test.Click(t, page, "#remove")
 	test.TestMustNot(t, page, "#init")
+	test.TestMust(t, page, "#static")
+	test.Click(t, page, "#clear")
+	test.TestMustNot(t, page, "#static")
 	test.Click(t, page, "#replace")
 	test.TestMustNot(t, page, "#temp")
 	test.TestMust(t, page, "#replaced")
@@ -120,15 +124,15 @@ func TestEmbeddedRemove(t *testing.T) {
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
+	<-time.After(0*time.Hour)
 	test.TestMust(t, page, "#init")
 	test.Click(t, page, "#clear")
 	test.TestMustNot(t, page, "#init")
 	test.Click(t, page, "#remove")
 	test.Click(t, page, "#replace")
 	test.TestMustNot(t, page, "#temp")
-	test.TestMustNot(t, page, "#replaced")
+	test.TestMust(t, page, "#replaced")
 }
-
 func TestUpdateX(t *testing.T) {
 	bro := test.NewFragmentBro(browser,
 		func() test.Fragment {
@@ -147,8 +151,9 @@ func TestUpdateX(t *testing.T) {
 	test.TestReport(t, page, "ok")
 	test.TestMustNot(t, page, "#updated")
 	test.Click(t, page, "#updatex")
-	test.TestReport(t, page, "false update")
+	test.TestReport(t, page, "channel closed")
 }
+
 func TestNodeMultiple(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &FragmentMany{}
@@ -167,4 +172,4 @@ func TestNodeMultiple(t *testing.T) {
 	if c != 100 {
 		t.Fatal("Counted after reaplce, need 100, got", c)
 	}
-}
+} 

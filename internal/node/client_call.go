@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 	"sync/atomic"
@@ -27,20 +26,20 @@ func (c *ClientCall) cancel(ctx context.Context, err error) {
 type clientCall struct {
 	done      atomic.Bool
 	call      *ClientCall
-	core      *core
+	tracker   *tracker
 	hookEntry *HookEntry
 	ctx       context.Context
 }
 
 func (cc *clientCall) kill() {
-	cc.cancelCall(errors.New("context killed"))
+	cc.cancelCall(nil)
 }
 
 func (cc *clientCall) makeDone() bool {
 	if cc.done.Swap(true) {
 		return false
 	}
-	cc.core.removeClientCall(cc)
+	cc.tracker.removeClientCall(cc)
 	return true
 }
 
@@ -71,23 +70,27 @@ func (cc *clientCall) cancelCall(err error) {
 	return
 }
 
-func (j *clientCall) Name() string {
-	return "call"
-}
-
-func (j *clientCall) Arg() common.JsonWritable {
-	hook := common.JsonWritableAny{nil}
-	if j.hookEntry != nil {
-		hook = common.JsonWritableAny{j.hookEntry.HookId}
+func (cc *clientCall) Data() *common.CallData {
+	if cc.done.Load() {
+		return nil
 	}
-	return common.JsonWritables([]common.JsonWritable{common.JsonWritableAny{j.call.Name}, j.call.Arg, common.JsonWritableAny{j.core.id}, hook})
+	return &common.CallData{
+		Name:    "call",
+		Arg:     cc.arg(),
+		Payload: common.WritableNone{},
+	}
+
 }
 
-func (k *clientCall) Payload() (common.Writable, bool) {
-	return nil, false
+func (cc *clientCall) arg() common.JsonWritable {
+	hook := common.JsonWritableAny{nil}
+	if cc.hookEntry != nil {
+		hook = common.JsonWritableAny{cc.hookEntry.HookId}
+	}
+	return common.JsonWritables([]common.JsonWritable{common.JsonWritableAny{cc.call.Name}, cc.call.Arg, common.JsonWritableAny{cc.tracker.Id()}, hook})
 }
 
-func (cc *clientCall) OnResult(err error) {
+func (cc *clientCall) Result(err error) {
 	if err != nil {
 		slog.Error("Call failed", slog.String("call_name", cc.call.Name), slog.String("js_error", err.Error()))
 		cc.cancelCall(err)
@@ -97,12 +100,4 @@ func (cc *clientCall) OnResult(err error) {
 		return
 	}
 	cc.makeDone()
-}
-
-func (cc *clientCall) OnWriteErr() bool {
-	return !cc.done.Load()
-}
-
-func (cc *clientCall) Call() (Call, bool) {
-	return cc, !cc.done.Load()
 }

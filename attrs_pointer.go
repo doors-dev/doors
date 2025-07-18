@@ -23,10 +23,10 @@ type pointerEventHook struct {
 
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, etc.
-	Mode HookMode
+	Scope []Scope
 
-	// Indicate specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
-	Indicate []Indicate
+	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	Indicator []Indicator
 
 	// On is the required backend handler for the click event.
 	// It receives a typed EventRequest[PointerEvent] and should return true
@@ -34,7 +34,7 @@ type pointerEventHook struct {
 	On func(context.Context, REvent[PointerEvent]) bool
 }
 
-func (p *pointerEventHook) init(event string, ctx context.Context, n node.Core, _ instance.Core, attrs *front.Attrs) {
+func (p *pointerEventHook) init(event string, ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 
 	(&eventAttr[PointerEvent]{
 		capture: &front.PointerCapture{
@@ -42,12 +42,13 @@ func (p *pointerEventHook) init(event string, ctx context.Context, n node.Core, 
 			StopPropagation: p.StopPropagation,
 			PreventDefault:  p.PreventDefault,
 		},
-		node:     n,
-		mode:     p.Mode,
-		ctx:      ctx,
-		mark:     p.Mark,
-		indicate: p.Indicate,
-		on:       p.On,
+		inst:      inst,
+		node:      n,
+		scope:     p.Scope,
+		ctx:       ctx,
+		mark:      p.Mark,
+		indicator: p.Indicator,
+		on:        p.On,
 	}).init(attrs)
 }
 
