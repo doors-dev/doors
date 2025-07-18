@@ -178,6 +178,7 @@ export class ProgressiveDelay {
 export class AbortTimer {
     private abortController = new AbortController()
     private interval: number
+    private _expired = false
     constructor(timeout: number) {
         const tick = 0.05 * timeout
         const deadline = Date.now() + timeout - tick / 2
@@ -185,9 +186,22 @@ export class AbortTimer {
             if (Date.now() < deadline) {
                 return
             }
+            if (this.signal.aborted) {
+                return
+            }
+            this._expired = true
             this.abort()
         }, tick)
 
+    }
+    get status(): "running" | "aborted" | "expired" {
+        if (!this.signal.aborted) {
+            return "running"
+        }
+        if (this._expired) {
+            return "expired"
+        }
+        return "aborted"
     }
     abort() {
         clearInterval(this.interval)
@@ -197,3 +211,14 @@ export class AbortTimer {
         return this.abortController.signal
     }
 }
+
+export interface ReadonlySet<T> {
+    readonly size: number;
+    has(value: T): boolean;
+    entries(): IterableIterator<[T, T]>;
+    keys(): IterableIterator<T>;
+    values(): IterableIterator<T>;
+    forEach(callbackfn: (value: T, value2: T, set: ReadonlySet<T>) => void, thisArg?: any): void;
+    [Symbol.iterator](): IterableIterator<T>;
+}
+

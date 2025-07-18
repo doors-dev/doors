@@ -15,28 +15,25 @@ interface Indication {
 }
 
 function newIndicator(
-    target: HTMLElement,
+    target: Element | null,
     indicators: IndicatorEntry[]
-): Map<HTMLElement, Indication> | undefined {
-    const indications = new Map<HTMLElement, Indication>()
+): Map<Element, Indication> | undefined {
+    const indications = new Map<Element, Indication>()
 
     for (const entry of indicators) {
         const [[selectorType, query], kind, param1, param2] = entry
-        let el: HTMLElement | null = target
-
+        let el = target
         if (selectorType === "query") {
             el = document.querySelector(query!)
-            if (!el) {
-                continue
-            }
         }
         if (selectorType === "parent_query") {
-            el = target.parentElement!.closest(query!)
-            if (!el) {
-                continue
+            if (el && el.parentElement) {
+                el = el.parentElement.closest(query!)
             }
         }
-
+        if (!el) {
+            continue
+        }
         let indication = indications.get(el)
         if (!indication) {
             indication = {
@@ -47,7 +44,6 @@ function newIndicator(
             }
             indications.set(el, indication)
         }
-
         switch (kind) {
             case "attr":
                 indication.attrs.set(param1, param2!)
@@ -76,7 +72,7 @@ class ElementIndicator {
     private active: [number, Indication] | null = null
     private queue: [number, Indication][] = []
 
-    constructor(private el: HTMLElement) { }
+    constructor(private el: Element) { }
 
     private applyNext(
         id: number,
@@ -199,11 +195,11 @@ class ElementIndicator {
 }
 
 class IndicationController {
-    private indicators = new Map<number, Map<HTMLElement, Indication>>()
-    private elements = new WeakMap<HTMLElement, ElementIndicator>()
+    private indicators = new Map<number, Map<Element, Indication>>()
+    private elements = new WeakMap<Element, ElementIndicator>()
     private counter = 0
 
-    start(target: HTMLElement, indicators: IndicatorEntry[] | null): number | undefined {
+    start(target: Element | null, indicators: IndicatorEntry[] | null): number | undefined {
         if (!indicators || indicators.length === 0) {
             return undefined
         }
