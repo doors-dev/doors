@@ -110,3 +110,7 @@ func NewLocation(ctx context.Context, model any) (Location, error) {
 	}
 	return *location, nil
 }
+
+func RandId() string {
+	return common.RandId()
+}

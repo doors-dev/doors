@@ -122,7 +122,6 @@ class ElementIndicator {
     }
 
     end(id: number): boolean {
-
         const [activeId, activeIndication] = this.active!
         if (id !== activeId) {
             this.queue = this.queue.filter(([queueId]) => id !== queueId)
@@ -232,7 +231,6 @@ class IndicationController {
             }
             const element = this.elements.get(el)
             if (!element) continue
-
             const done = element.end(id)
             if (done) {
                 this.elements.delete(el)

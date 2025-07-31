@@ -10,16 +10,58 @@ import (
 	"github.com/doors-dev/doors/internal/front"
 )
 
+type afterFunc func(context.Context) (*front.After, error)
+
+func (a afterFunc) after(ctx context.Context) (*front.After, error) {
+	return a(ctx)
+}
+
+type After interface {
+	after(context.Context) (*front.After, error)
+}
+
+func AfterLocationReload() After {
+	return afterFunc(func(context.Context) (*front.After, error) {
+		return &front.After{
+			Name: "location_reload",
+		}, nil
+	})
+}
+
+func AfterLocationAssign(model any) After {
+	return afterFunc(func(ctx context.Context) (*front.After, error) {
+		l, err := NewLocation(ctx, model)
+		if err != nil {
+			return nil, err
+		}
+		return &front.After{
+			Name: "location_assign",
+			Arg:  []any{l.String(), true},
+		}, nil
+	})
+}
+
+func AfterLocationReplace(model any) After {
+	return afterFunc(func(ctx context.Context) (*front.After, error) {
+		l, err := NewLocation(ctx, model)
+		if err != nil {
+			return nil, err
+		}
+		return &front.After{
+			Name: "location_replace",
+			Arg:  []any{l.String(), true},
+		}, nil
+	})
+}
+
 type RAfter interface {
-	LocationAssignAfter(model any) error
-	LocationReplaceAfter(model any) error
-	LocationReloadAfter()
+	After(After) error
 }
 
 // R provides common cookie-related methods for all request types.
 type R interface {
 	// SetCookie sets an HTTP cookie in the response.
-	SetCookie(name string, cookie *http.Cookie)
+	SetCookie(cookie *http.Cookie)
 
 	// GetCookie retrieves a cookie from the request by name.
 	GetCookie(name string) (*http.Cookie, error)
@@ -103,49 +145,23 @@ type request struct {
 	ctx context.Context
 }
 
-func (r *request) setAfter(a *front.After) {
-	err := a.Set(r.w.Header())
+
+func (r *request) After(a After) error {
+	after, err := a.after(r.ctx)
+	if err != nil {
+		return err
+	}
+	err = after.Set(r.w.Header())
 	if err != nil {
 		panic(err)
 	}
-}
-
-func (r *request) LocationReloadAfter() {
-	after := front.After{
-		Name: "location_reload",
-	}
-	r.setAfter(&after)
-}
-
-func (r *request) LocationAssignAfter(a any) error {
-	l, err := NewLocation(r.ctx, a)
-	if err != nil {
-		return err
-	}
-	after := front.After{
-		Name: "location_assign",
-		Arg:  []any{l.String(), true},
-	}
-	r.setAfter(&after)
-	return nil
-}
-func (r *request) LocationReplaceAfter(a any) error {
-	l, err := NewLocation(r.ctx, a)
-	if err != nil {
-		return err
-	}
-	after := front.After{
-		Name: "location_replace",
-		Arg:  []any{l.String(), true},
-	}
-	r.setAfter(&after)
 	return nil
 }
 
 func (r *request) Body() io.ReadCloser {
 	return r.r.Body
 }
-func (r *request) SetCookie(name string, cookie *http.Cookie) {
+func (r *request) SetCookie(cookie *http.Cookie) {
 	http.SetCookie(r.w, cookie)
 }
 func (r *request) GetCookie(name string) (*http.Cookie, error) {

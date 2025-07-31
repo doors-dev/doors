@@ -2,6 +2,7 @@ package doors
 
 import (
 	"context"
+	"fmt"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
 	"net/http"
@@ -28,7 +29,7 @@ import (
 templ Title[M any](b Beam[M], cast func(M) string) {
 	{{
 	titleBeam := NewBeam(b, cast)
-	var cancel func() 
+	var cancel func()
 	title, _ := titleBeam.ReadAndSub(ctx, func(ctx context.Context, title string) bool {
 		if cancel != nil {
 			cancel()
@@ -103,4 +104,9 @@ templ styleRender(i *resources.InlineResource, inline bool, mode resources.Inlin
     })... }
 		/>
 	}
+}
+
+templ Text(v any) {
+	{{ str := fmt.Sprint(v) }}
+	{ str }
 }

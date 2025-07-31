@@ -17,20 +17,20 @@ func Include() templ.Component {
 
 type Mod = router.Mod
 
-type Page[M comparable] interface {
+type Page[M any] interface {
 	Render(SourceBeam[M]) templ.Component
 }
 
 type PageRoute = router.Response
 
-type RPage[M comparable] interface {
+type RPage[M any] interface {
 	R
 	GetModel() M
 	RequestHeader() http.Header
 	ResponseHeader() http.Header
 }
 
-type PageRouter[M comparable] interface {
+type PageRouter[M any] interface {
 	Page(page Page[M]) PageRoute
 	PageStatus(page Page[M], status int) PageRoute
 	PageFunc(pageFunc func(SourceBeam[M]) templ.Component) PageRoute
@@ -40,7 +40,7 @@ type PageRouter[M comparable] interface {
 	RedirectStatus(model any, status int) PageRoute
 }
 
-type pageRequest[M comparable] struct {
+type pageRequest[M any] struct {
 	r *router.Request[M]
 }
 
@@ -58,7 +58,7 @@ func (r *pageRequest[M]) GetCookie(name string) (*http.Cookie, error) {
 	return r.r.R.Cookie(name)
 }
 
-func (r *pageRequest[M]) SetCookie(name string, cookie *http.Cookie) {
+func (r *pageRequest[M]) SetCookie(cookie *http.Cookie) {
 	http.SetCookie(r.r.W, cookie)
 }
 
@@ -118,7 +118,7 @@ func (r *pageRequest[M]) PageFuncStatus(f func(SourceBeam[M]) templ.Component, s
 	return r.PageStatus(pageFunc[M](f), status)
 }
 
-func ServePage[M comparable](handler func(PageRouter[M], RPage[M]) PageRoute) Mod {
+func ServePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Mod {
 	return router.RoutePage(func(r *router.Request[M]) router.Response {
 		pr := &pageRequest[M]{
 			r: r,

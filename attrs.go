@@ -11,6 +11,8 @@ import (
 	"github.com/doors-dev/doors/internal/node"
 )
 
+type Attr = front.Attr
+
 // A constructs a set of HTML attributes.
 //
 // These attributes enable backend-connected interactivity — such as pointer events,
@@ -39,7 +41,7 @@ import (
 //
 // Returns:
 //   - A templ.Attributes object that can be spread into a templ element.
-func A(ctx context.Context, attrs ...front.Attr) templ.Attributes {
+func A(ctx context.Context, attrs ...Attr) templ.Attributes {
 	return front.A(ctx, attrs...)
 }
 
@@ -89,7 +91,6 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		w.WriteHeader(400)
 		return false
 	}
-	w.WriteHeader(200)
 	return p.on(ctx, &eventRequest[E]{
 		request: request{
 			r:   r,
@@ -99,3 +100,4 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		e: &e,
 	})
 }
+

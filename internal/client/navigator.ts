@@ -7,17 +7,21 @@ type PathMatchType = "full" | "starts" | "parts";
 type QueryMatchType = "all" | "some";
 
 
+type State = {
+    indicator: number | undefined,
+    url: URL,
+}
+
 export class Navigator {
-    private lastActivated: string | null = null;
-    private indications = new WeakMap<HTMLElement, number | undefined>()
+    private state = new WeakMap<Element, State>()
     constructor(
         private id: string,
     ) {
         window.addEventListener('popstate', async () => {
-            await this.update(this.pagePath());
+            await this.update(this.urlCurrent());
         });
 
-        document.addEventListener("DOMContentLoaded", () => this.activateLinks(this.pagePath()));
+        document.addEventListener("DOMContentLoaded", () => this.activateLinks(this.urlCurrent()));
     }
 
     private searchEqual(
@@ -50,24 +54,18 @@ export class Navigator {
     }
 
 
-    public activateInside(e: HTMLElement | DocumentFragment): void {
-        this.activateLinks(this.lastActivated!, e)
+    public activateInside(e: Element | DocumentFragment): void {
+        this.activateLinks(this.urlCurrent(), e)
     }
 
     private trim(path: string): string {
         return path.replace(/^\/+|\/+$/g, "")
     }
 
-    private activateLinks(path: string, parent: any = document): void {
-        if (parent === document) {
-            if (path === this.lastActivated) {
-                return
-            }
-            this.lastActivated = path;
-        }
-        const links = document.querySelectorAll('[data-d00r-active]');
-        const newUrl = new URL(path, window.location.origin);
+    private activateLinks(newUrl: URL, parent: any = document): void {
+        const links = parent.querySelectorAll('[data-d00r-active]');
         links.forEach(linkElement => {
+            const state = this.state.get(linkElement)
             const link = linkElement as HTMLAnchorElement
             const attr = link.getAttribute("data-d00r-active");
             if (!attr) {
@@ -75,6 +73,9 @@ export class Navigator {
             }
             const href = link.getAttribute("href")
             if (href === null) {
+                return
+            }
+            if (!!state && this.urlAreEqual(state.url, newUrl)) {
                 return
             }
             const [pathMatchTuple, queryMatchTuple, indicators]: any = JSON.parse(attr);
@@ -100,36 +101,19 @@ export class Navigator {
             } else if (match && queryMatch === "some" && queryMatchArg) {
                 match = this.searchEqual(newUrl.searchParams, url.searchParams, queryMatchArg);
             }
-            const prevIndicator = this.indications.get(link)
+            const prevIndicator = state?.indicator
             if (match) {
-                this.indications.set(link, indicator.start(link, indicators))
+                this.state.set(link, { indicator: indicator.start(link, indicators), url: newUrl })
+            } else {
+                this.state.set(link, { indicator: undefined, url: newUrl })
             }
             indicator.end(prevIndicator)
-            /*
-             *
-            const activeClasses = splitClass(activeClass)
-            const activeRemoveClasses = splitClass(activeRemoveClass)
-            if (match) {
-                for (const c of activeClasses) {
-                    target.classList.add(c);
-                }
-                for (const c of activeRemoveClasses) {
-                    target.classList.remove(c);
-                }
-                return;
-            }
-            for (const c of activeClasses) {
-                target.classList.remove(c);
-            }
-            for (const c of activeRemoveClasses) {
-                target.classList.add(c);
-            } */
         });
     }
 
-    private async update(path: string): Promise<void> {
+    private async update(url: URL): Promise<void> {
         try {
-            const r = await fetch(path, {
+            const r = await fetch(this.urlToStr(url), {
                 method: "GET",
                 headers: { "D00r": this.id },
             });
@@ -138,33 +122,37 @@ export class Navigator {
             }
         } catch (e) {
             console.error(e);
-            window.location.href = path;
+            window.location.href = this.urlToStr(url);
         }
     }
 
-    private pagePath(): string {
-        const path = window.location.pathname;
-        const query = window.location.search;
-        return path + (query ? (path.endsWith("/") ? query : "/" + query) : "");
+    private urlCurrent(): URL {
+        return new URL(window.location.href)
+    }
+    private urlToStr(url: URL): string {
+        return url.pathname + (url.search ? (url.pathname.endsWith("/") ? url.search : "/" + url.search) : "")
     }
 
-    public async forceUpdate(path: string): Promise<void> {
-        await this.update(path);
+    private urlAreEqual(url1: URL, url2: URL) {
+        return url1.pathname === url2.pathname && this.searchEqual(url1.searchParams, url2.searchParams)
     }
 
     public push(path: string): void {
-        this.activateLinks(path);
-        if (window.location.pathname === path) {
-            return;
+        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
+        const newUrl = new URL(path, window.location.origin);
+        if (this.urlAreEqual(currentUrl, newUrl)) {
+            return
         }
+        this.activateLinks(newUrl);
         history.pushState(null, '', path);
     }
-
     public replace(path: string): void {
-        this.activateLinks(path);
-        if (window.location.pathname === path) {
-            return;
+        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
+        const newUrl = new URL(path, window.location.origin);
+        if (this.urlAreEqual(currentUrl, newUrl)) {
+            return
         }
+        this.activateLinks(newUrl);
         history.replaceState(null, '', path);
     }
 

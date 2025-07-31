@@ -24,6 +24,9 @@ func (n *nodeCall) stale() {
 func (n *nodeCall) Result(err error) {
 	n.ch <- err
 	close(n.ch)
+	if n.payload != nil {
+		n.payload.Destroy()
+	}
 	n.done()
 }
 
