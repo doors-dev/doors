@@ -305,7 +305,7 @@ class Connection {
             this.package!.appendData(data)
         }
     }
-    private done(e?:Error) {
+    private done(e?: Error) {
         this.abortTimer.clean()
         this.ctrl.done(this, e)
     }
@@ -359,7 +359,7 @@ class Connection {
             if (done) {
                 break
             }
-            if(value.length == 0) {
+            if (value.length == 0) {
                 continue
             }
             if (!confirmed) {
@@ -445,6 +445,9 @@ class Controller {
     desk = new Solitaire()
     tracker = new Tracker()
     constructor() {
+        window.addEventListener("pagehide", () => {
+            this.sleep()
+        })
         document.addEventListener("visibilitychange", () => {
             if (!document.hidden) {
                 this.showed()
@@ -491,6 +494,15 @@ class Controller {
         this.connections.add(new Connection(this))
     }
     private sleepTimer: any = null
+    private sleep() {
+        clearTimeout(this.sleepTimer)
+        this.sleepTimer = null
+        if (this.state != state.active) {
+            return
+        }
+        this.state = state.sleep
+        this.closeConnections()
+    }
     private hidden() {
         if (this.state != state.active) {
             return
@@ -499,13 +511,10 @@ class Controller {
             return
         }
         this.sleepTimer = setTimeout(() => {
-            if (this.state != state.active) {
-                return
-            }
-            this.state = state.sleep
-            this.closeConnections()
+            this.sleep()
         }, sleepAfter)
     }
+
     private closeConnections() {
         for (const connection of this.connections) {
             connection.abort()
