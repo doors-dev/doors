@@ -1,0 +1,22 @@
+doors Early Preview License
+
+Copyright (c) 2025 doors dev LLC
+
+This software is provided as an early preview for evaluation and 
+feedback purposes only.
+
+PERMITTED USES:
+- Evaluation and testing
+- Development and experimentation
+- Providing feedback to doors dev LLC
+
+RESTRICTIONS:
+- NO production or commercial use
+- NO redistribution
+- NO warranty or support provided
+- Subject to change without notice
+
+This preview license will be replaced with commercial licensing 
+terms before the official release of doors.
+
+For questions: alex@doors.dev
