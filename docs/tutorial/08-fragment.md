@@ -98,7 +98,7 @@ func (c *catalogPage) Body() templ.Component {
 
 ## 3. Categories menu
 
-To enable switch between categories we add `aside` with navigation
+To enable a switch between categories, we add `aside` with navigation
 
 `./catalog/cat.templ`
 
@@ -192,6 +192,7 @@ templ (c *categoryFragment) style() {
             .cat .content {
                 display: flex;
                 flex-direction: column;
+                align-items: flex-start;
             }
        </style>
 	}
@@ -385,6 +386,7 @@ templ (c *categoryFragment) style() {
             .cat .content {
                 display: flex;
                 flex-direction: column;
+                align-items: flex-start;
             }
         </style>
 	}

@@ -18,11 +18,9 @@ type pointerEventHook struct {
 	PreventDefault bool
 
 	// Mark is an optional identifier that appears in frontend hook lifecycle events.
-	// Use it to filter events like `hook:start` or `hook:end` in JavaScript.
 	Mark string
 
-	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
-	// See ModeDefault, ModeBlock, etc.
+	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
 	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.

@@ -7,6 +7,11 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 )
 
+func (n *Node) Reload(ctx context.Context) {
+	n.reload(ctx)
+}
+
+
 func (n *Node) Update(ctx context.Context, content templ.Component) {
 	n.update(ctx, content)
 }
@@ -23,6 +28,12 @@ func (n *Node) Remove(ctx context.Context) {
 
 func (n *Node) Clear(ctx context.Context) {
 	n.Update(ctx, nil)
+}
+
+func (n *Node) XReload(ctx context.Context) <-chan error {
+	common.LogBlockingWarning(ctx, "Node", "XUpdate")
+	ctx = common.ClearBlockingCtx(ctx)
+	return n.reload(ctx)
 }
 
 func (n *Node) XUpdate(ctx context.Context, content templ.Component) <-chan error {

@@ -72,6 +72,16 @@ func (n *Node) suspend(parent *tracker) {
 	n.container = nil
 }
 
+func (n *Node) reload(ctx context.Context) <-chan error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if n.container == nil {
+		return closedCh
+	}
+	n.container.inst.CancelHooks(n.container.id, nil)
+	return n.container.update(ctx, n.content)
+}
+
 func (n *Node) update(ctx context.Context, content templ.Component) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
