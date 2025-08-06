@@ -28,20 +28,25 @@ func importPath(r *resources.Resource, path string, name string, ext string) str
 		fileName = name + "." + fileName
 	}
 	return router.ResourcePath(r, fileName)
-
 }
 
+// Import represents a resource that can be imported into a web page.
+// Imports can be JavaScript modules, CSS stylesheets, or external resources.
+// They are processed during rendering to generate appropriate HTML tags and import maps.
 type Import interface {
 	print() string
 	init(*importMap, *resources.Registry, *common.CSPCollector) error
 }
 
+// ImportModule imports a JavaScript/TypeScript file, processes it through esbuild,
+// and makes it available as an ES module. The module can be added to the import map
+// with a specifier name and/or loaded directly via script tag.
 type ImportModule struct {
-	Specifier string
-	Path      string
-	Profile   string
-	Load      bool
-	Name      string
+	Specifier string // Import map specifier name (optional)
+	Path      string // File system path to the module
+	Profile   string // Build profile for esbuild options
+	Load      bool   // Whether to load the module immediately via script tag
+	Name      string // Custom name for the generated file (optional)
 }
 
 func (m ImportModule) print() string {
@@ -67,12 +72,14 @@ func (m ImportModule) init(im *importMap, r *resources.Registry, c *common.CSPCo
 	return nil
 }
 
+// ImportModuleBytes imports JavaScript/TypeScript content from a byte slice,
+// processes it through esbuild, and makes it available as an ES module.
 type ImportModuleBytes struct {
-	Specifier string
-	Content   []byte
-	Profile   string
-	Load      bool
-	Name      string
+	Specifier string // Import map specifier name (optional)
+	Content   []byte // Module source code
+	Profile   string // Build profile for esbuild options
+	Load      bool   // Whether to load the module immediately via script tag
+	Name      string // Custom name for the generated file
 }
 
 func (m ImportModuleBytes) print() string {
@@ -89,7 +96,6 @@ func (m ImportModuleBytes) init(im *importMap, r *resources.Registry, c *common.
 	if err != nil {
 		return err
 	}
-	// c.ScriptHash(s.Hash())
 	path := importPath(s, m.Name, "", "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
@@ -100,11 +106,13 @@ func (m ImportModuleBytes) init(im *importMap, r *resources.Registry, c *common.
 	return nil
 }
 
+// ImportModuleRaw imports a JavaScript file without any processing or transformation.
+// The file is served as-is without going through esbuild.
 type ImportModuleRaw struct {
-	Specifier string
-	Path      string
-	Load      bool
-	Name      string
+	Specifier string // Import map specifier name (optional)
+	Path      string // File system path to the module
+	Load      bool   // Whether to load the module immediately via script tag
+	Name      string // Custom name for the generated file (optional)
 }
 
 func (m ImportModuleRaw) print() string {
@@ -121,7 +129,6 @@ func (m ImportModuleRaw) init(im *importMap, r *resources.Registry, c *common.CS
 	if err != nil {
 		return err
 	}
-	// c.ScriptHash(s.Hash())
 	path := importPath(s, m.Path, m.Name, "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
@@ -132,11 +139,13 @@ func (m ImportModuleRaw) init(im *importMap, r *resources.Registry, c *common.CS
 	return nil
 }
 
+// ImportModuleRawBytes imports JavaScript content from a byte slice without
+// any processing or transformation. The content is served as-is.
 type ImportModuleRawBytes struct {
-	Specifier string
-	Content   []byte
-	Load      bool
-	Name      string
+	Specifier string // Import map specifier name (optional)
+	Content   []byte // Raw JavaScript content
+	Load      bool   // Whether to load the module immediately via script tag
+	Name      string // Custom name for the generated file
 }
 
 func (m ImportModuleRawBytes) print() string {
@@ -152,7 +161,6 @@ func (m ImportModuleRawBytes) init(im *importMap, r *resources.Registry, c *comm
 	if err != nil {
 		return err
 	}
-	// c.ScriptHash(s.Hash())
 	path := importPath(s, "", m.Name, "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
@@ -163,12 +171,14 @@ func (m ImportModuleRawBytes) init(im *importMap, r *resources.Registry, c *comm
 	return nil
 }
 
+// ImportModuleBundle creates a bundled JavaScript module from an entry point,
+// bundling all local imports and dependencies into a single file using esbuild.
 type ImportModuleBundle struct {
-	Specifier string
-	Entry     string
-	Profile   string
-	Load      bool
-	Name      string
+	Specifier string // Import map specifier name (optional)
+	Entry     string // Entry point file for the bundle
+	Profile   string // Build profile for esbuild options
+	Load      bool   // Whether to load the module immediately via script tag
+	Name      string // Custom name for the generated file (optional)
 }
 
 func (m ImportModuleBundle) print() string {
@@ -184,7 +194,6 @@ func (m ImportModuleBundle) init(im *importMap, r *resources.Registry, c *common
 	if err != nil {
 		return err
 	}
-	// c.ScriptHash(s.Hash())
 	path := importPath(s, "", m.Name, "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
@@ -195,14 +204,17 @@ func (m ImportModuleBundle) init(im *importMap, r *resources.Registry, c *common
 	return nil
 }
 
+// ImportModuleBundleFS creates a bundled JavaScript module from a file system entry point,
+// bundling all local imports and dependencies into a single file using esbuild.
+// This is useful for embedding assets or working with embed.FS.
 type ImportModuleBundleFS struct {
-	CacheKey  string
-	Specifier string
-	FS        fs.FS
-	Entry     string
-	Profile   string
-	Load      bool
-	Name      string
+	CacheKey  string // Unique cache key for this filesystem/bundle combination
+	Specifier string // Import map specifier name (optional)
+	FS        fs.FS  // File system to read from
+	Entry     string // Entry point file within the filesystem
+	Profile   string // Build profile for esbuild options
+	Load      bool   // Whether to load the module immediately via script tag
+	Name      string // Custom name for the generated file (optional)
 }
 
 func (m ImportModuleBundleFS) print() string {
@@ -211,7 +223,6 @@ func (m ImportModuleBundleFS) print() string {
 
 func (m ImportModuleBundleFS) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
 	if m.Specifier == "" && !m.Load {
-
 		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.print()))
 		return nil
 	}
@@ -219,7 +230,6 @@ func (m ImportModuleBundleFS) init(im *importMap, r *resources.Registry, c *comm
 	if err != nil {
 		return err
 	}
-	// c.ScriptHash(s.Hash())
 	path := importPath(s, "", m.Name, "js")
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, path)
@@ -230,10 +240,13 @@ func (m ImportModuleBundleFS) init(im *importMap, r *resources.Registry, c *comm
 	return nil
 }
 
+// ImportModuleHosted imports a JavaScript module that is hosted locally
+// but not processed by the build system. The Src should be a full path
+// starting from the application root.
 type ImportModuleHosted struct {
-	Specifier string
-	Load      bool
-	Src       string
+	Specifier string // Import map specifier name (optional)
+	Load      bool   // Whether to load the module immediately via script tag
+	Src       string // Full path to the hosted module
 }
 
 func (m ImportModuleHosted) print() string {
@@ -241,7 +254,6 @@ func (m ImportModuleHosted) print() string {
 }
 
 func (m ImportModuleHosted) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
-	//	c.ScriptSource(m.Src)
 	if m.Specifier != "" {
 		im.addImport(m.Specifier, m.Src)
 	}
@@ -251,10 +263,12 @@ func (m ImportModuleHosted) init(im *importMap, r *resources.Registry, c *common
 	return nil
 }
 
+// ImportModuleExternal imports a JavaScript module from an external URL.
+// This adds the URL to the Content Security Policy script sources.
 type ImportModuleExternal struct {
-	Specifier string
-	Load      bool
-	Src       string
+	Specifier string // Import map specifier name (optional)
+	Load      bool   // Whether to load the module immediately via script tag
+	Src       string // External URL to the module
 }
 
 func (m ImportModuleExternal) print() string {
@@ -272,8 +286,11 @@ func (m ImportModuleExternal) init(im *importMap, r *resources.Registry, c *comm
 	return nil
 }
 
+// ImportStyleHosted imports a CSS stylesheet that is hosted locally
+// but not processed by the build system. The Href should be a full path
+// starting from the application root.
 type ImportStyleHosted struct {
-	Href string
+	Href string // Full path to the hosted stylesheet
 }
 
 func (m ImportStyleHosted) print() string {
@@ -281,13 +298,14 @@ func (m ImportStyleHosted) print() string {
 }
 
 func (m ImportStyleHosted) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
-	// c.StyleSource(m.Href)
 	im.addRender(importStyle(m.Href))
 	return nil
 }
 
+// ImportStyleExternal imports a CSS stylesheet from an external URL.
+// This adds the URL to the Content Security Policy style sources.
 type ImportStyleExternal struct {
-	Href string
+	Href string // External URL to the stylesheet
 }
 
 func (m ImportStyleExternal) print() string {
@@ -300,9 +318,11 @@ func (m ImportStyleExternal) init(im *importMap, r *resources.Registry, c *commo
 	return nil
 }
 
+// ImportStyle imports a CSS file, processes it (minification), and makes it
+// available as a stylesheet link in the HTML head.
 type ImportStyle struct {
-	Path string
-	Name string
+	Path string // File system path to the CSS file
+	Name string // Custom name for the generated file (optional)
 }
 
 func (m ImportStyle) print() string {
@@ -319,9 +339,11 @@ func (m ImportStyle) init(im *importMap, r *resources.Registry, c *common.CSPCol
 	return nil
 }
 
+// ImportStyleBytes imports CSS content from a byte slice, processes it
+// (minification), and makes it available as a stylesheet link.
 type ImportStyleBytes struct {
-	Content []byte
-	Name    string
+	Content []byte // CSS source code
+	Name    string // Custom name for the generated file
 }
 
 func (m ImportStyleBytes) print() string {
@@ -333,7 +355,6 @@ func (m ImportStyleBytes) init(im *importMap, r *resources.Registry, c *common.C
 	if err != nil {
 		return err
 	}
-	// c.StyleHash(s.Hash())
 	path := importPath(s, m.Name, "", "css")
 	im.addRender(importStyle(path))
 	return nil
@@ -380,6 +401,19 @@ func (i *importMap) addRender(component templ.Component) {
 	i.renders = append(i.renders, component)
 }
 
+// Imports generates the HTML import map and resource loading tags for the specified imports.
+// This component should be placed in the HTML head section and can only be used once per page.
+// It processes all import entries, builds an ES modules import map, and generates the necessary
+// script and link tags for loading resources.
+//
+// The function handles:
+//   - ES module import map generation
+//   - JavaScript and CSS resource processing
+//   - Content Security Policy header updates
+//   - Automatic resource caching and optimization
+//
+// Import entries are processed in order, and any errors are logged while continuing
+// with the remaining entries.
 func Imports(entries ...Import) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		instance := ctx.Value(common.InstanceCtxKey).(instance.Core)

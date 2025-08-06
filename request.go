@@ -6,7 +6,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-
 	"github.com/doors-dev/doors/internal/front"
 )
 
@@ -16,10 +15,14 @@ func (a afterFunc) after(ctx context.Context) (*front.After, error) {
 	return a(ctx)
 }
 
+// After represents a client-side action to execute after a request completes.
+// After actions can perform navigation, page reloads, or other browser operations.
 type After interface {
 	after(context.Context) (*front.After, error)
 }
 
+// AfterLocationReload creates an After action that reloads the current page.
+// This triggers a full page refresh in the browser.
 func AfterLocationReload() After {
 	return afterFunc(func(context.Context) (*front.After, error) {
 		return &front.After{
@@ -28,6 +31,9 @@ func AfterLocationReload() After {
 	})
 }
 
+// AfterLocationAssign creates an After action that navigates to a new URL.
+// This adds the new URL to the browser's history stack. The model parameter
+// is used to generate the target URL using the application's routing system.
 func AfterLocationAssign(model any) After {
 	return afterFunc(func(ctx context.Context) (*front.After, error) {
 		l, err := NewLocation(ctx, model)
@@ -41,6 +47,9 @@ func AfterLocationAssign(model any) After {
 	})
 }
 
+// AfterLocationReplace creates an After action that replaces the current URL.
+// This navigates to a new URL without adding an entry to the browser's history stack.
+// The model parameter is used to generate the target URL using the application's routing system.
 func AfterLocationReplace(model any) After {
 	return afterFunc(func(ctx context.Context) (*front.After, error) {
 		l, err := NewLocation(ctx, model)
@@ -54,89 +63,76 @@ func AfterLocationReplace(model any) After {
 	})
 }
 
+// RAfter provides the ability to set an After action to execute client-side
+// after the request completes.
 type RAfter interface {
 	After(After) error
 }
 
-// R provides common cookie-related methods for all request types.
+// R provides basic request functionality including cookie management.
 type R interface {
-	// SetCookie sets an HTTP cookie in the response.
 	SetCookie(cookie *http.Cookie)
-
-	// GetCookie retrieves a cookie from the request by name.
 	GetCookie(name string) (*http.Cookie, error)
 }
 
-// REvent wraps a DOM event sent from the frontend.
-//
-// It includes basic request handling via BaseRequest and provides access
-// to the decoded event payload of type E.
+// REvent represents a request context for event handlers with typed event data.
+// The generic type E represents the structure of the event data.
 type REvent[E any] interface {
 	R
-
-	// Event returns the event payload.
-	Event() E
+	Event() E // Returns the event data
 	RAfter
 }
 
-// RForm provides access to decoded form data sent from the client.
-//
-// It includes cookie support and exposes structured form input via the Data method.
+// RForm represents a request context for form submissions with typed form data.
+// The generic type D represents the structure of the parsed form data.
 type RForm[D any] interface {
 	R
-
-	// Data returns the parsed form data as a typed value.
-	Data() D
+	Data() D // Returns the parsed form data
 	RAfter
 }
 
-// RRawForm gives access to low-level multipart form data parsing.
-//
-// It is used when custom handling of form or file inputs is required.
+// RRawForm provides access to raw multipart form data and parsing capabilities.
+// This is used when you need direct access to the form parsing process or
+// when working with file uploads.
 type RRawForm interface {
 	R
-
-	// Reader returns a multipart.Reader for streaming multipart form data.
-	Reader() (*multipart.Reader, error)
-
-	// ParseForm parses the request form data into a ParsedForm.
-	// maxMemory controls how much memory is used for non-file parts.
-	ParseForm(maxMemory int) (ParsedForm, error)
+	Reader() (*multipart.Reader, error)    // Returns a multipart reader for streaming
+	ParseForm(maxMemory int) (ParsedForm, error) // Parses form data with memory limit
 	RAfter
 }
 
-// ParsedForm provides access to the contents of a parsed multipart form.
+// ParsedForm provides access to parsed form data including values and files.
 type ParsedForm interface {
-	// FormValues returns the parsed URL-encoded form values.
-	FormValues() url.Values
-
-	// FormValue returns the first value for the given key.
-	FormValue(key string) string
-
-	// FormFile returns the uploaded file associated with the given key.
-	FormFile(key string) (multipart.File, *multipart.FileHeader, error)
-
-	// Form returns the full multipart.Form object.
-	Form() *multipart.Form
+	FormValues() url.Values                                              // Returns all form values
+	FormValue(key string) string                                         // Returns a single form value
+	FormFile(key string) (multipart.File, *multipart.FileHeader, error) // Returns an uploaded file
+	Form() *multipart.Form                                               // Returns the underlying multipart form
 }
 
+// RCall represents a request context for direct HTTP calls with full access
+// to the response writer and request body. This provides the most control
+// over the HTTP request/response cycle.
 type RCall interface {
 	RRawForm
-	W() http.ResponseWriter
-	Body() io.ReadCloser
+	W() http.ResponseWriter // Returns the response writer
+	Body() io.ReadCloser    // Returns the request body
 	RAfter
 }
 
+// RHook represents a request context for hook handlers with typed data.
+// The generic type D represents the structure of the hook data.
 type RHook[D any] interface {
 	R
-	Data() D
+	Data() D // Returns the hook data
 	RAfter
 }
 
+// RRawHook provides access to raw request data for hook handlers without
+// automatic data parsing. This gives full control over request processing.
 type RRawHook interface {
 	RRawForm
-	W() http.ResponseWriter
-	Body() io.ReadCloser
+	W() http.ResponseWriter // Returns the response writer
+	Body() io.ReadCloser    // Returns the request body
 }
 
 type request struct {
@@ -144,7 +140,6 @@ type request struct {
 	r   *http.Request
 	ctx context.Context
 }
-
 
 func (r *request) After(a After) error {
 	after, err := a.after(r.ctx)
@@ -161,18 +156,22 @@ func (r *request) After(a After) error {
 func (r *request) Body() io.ReadCloser {
 	return r.r.Body
 }
+
 func (r *request) SetCookie(cookie *http.Cookie) {
 	http.SetCookie(r.w, cookie)
 }
+
 func (r *request) GetCookie(name string) (*http.Cookie, error) {
 	return r.r.Cookie(name)
 }
+
 func (r *request) ParseForm(maxMemory int) (ParsedForm, error) {
 	if maxMemory <= 0 {
 		maxMemory = defaultMaxMemory
 	}
 	return r, r.r.ParseMultipartForm(int64(maxMemory))
 }
+
 func (r *request) Reader() (*multipart.Reader, error) {
 	return r.r.MultipartReader()
 }
@@ -180,15 +179,19 @@ func (r *request) Reader() (*multipart.Reader, error) {
 func (r *request) FormValues() url.Values {
 	return r.r.Form
 }
+
 func (r *request) Form() *multipart.Form {
 	return r.r.MultipartForm
 }
+
 func (r *request) FormValue(key string) string {
 	return r.r.FormValue(key)
 }
+
 func (r *request) FormFile(key string) (multipart.File, *multipart.FileHeader, error) {
 	return r.r.FormFile(key)
 }
+
 func (r *request) W() http.ResponseWriter {
 	return r.w
 }

@@ -16,47 +16,53 @@ type Beam[T any] interface {
 	// Sub subscribes to the value stream. The onValue callback is called immediately
 	// with the current value (in the same goroutine), and again on every update.
 	//
-	// The subscription continues as long as:
-	//   - The context is not canceled
-	//   - The onValue function returns false
+	// The subscription continues until:
+	//   - The context is canceled
+	//   - The onValue function returns true (indicating done)
 	//
-	// Returns true if the context is still valid at the time of subscription;
-	// false means the subscription did not start and no value will be emitted.
+	// Returns true if the subscription was successfully established;
+	// false means the context was already canceled.
 	Sub(ctx context.Context, onValue func(context.Context, T) bool) bool
 
-	// SubExt is an extended version of Sub. It behaves the same, but also:
-	//   - Accepts an onCancel callback, which is invoked when the subscription is canceled
-	//     due to context cancellation.
-	//   - Returns a Cancel function, which can be used to programmatically stop the subscription.
+	// SubExt is an extended version of Sub that provides additional control.
+	// It behaves the same as Sub, but also:
+	//   - Accepts an onCancel callback, invoked when the subscription ends due to context cancellation
+	//   - Returns a Cancel function for manual subscription termination
 	//
-	// Returns the Cancel function and a boolean indicating whether the subscription was started.
+	// Returns the Cancel function and a boolean indicating whether the subscription was established.
 	SubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (Cancel, bool)
 
-	// ReadAndSub first returns the current value, and then subscribes to updates.
-	// The onValue function is invoked on every subsequent update, like Sub.
+	// ReadAndSub returns the current value and then subscribes to future updates.
+	// The onValue function is invoked on every subsequent update.
 	//
 	// Returns the initial value and a boolean:
-	//   - If true, the value is valid and subscription was established.
-	//   - If false, the value is undefined and subscription did not start (context was canceled).
+	//   - If true, the value is valid and subscription was established
+	//   - If false, the context was canceled and the returned value is undefined
 	ReadAndSub(ctx context.Context, onValue func(context.Context, T) bool) (T, bool)
 
-	// ReadAndSubExt behaves like ReadAndSub, but also:
-	//   - Accepts an onCancel callback triggered when the subscription ends due to context cancellation.
-	//   - Returns a Cancel function to allow manual termination.
+	// ReadAndSubExt behaves like ReadAndSub with extended control options.
+	// It provides the same functionality as ReadAndSub, but also:
+	//   - Accepts an onCancel callback for handling cancellation events
+	//   - Returns a Cancel function for manual termination
 	//
-	// Returns the initial value, a Cancel function, and a boolean indicating success.
+	// Returns the initial value, Cancel function, and success boolean.
 	// If the boolean is false, the value is undefined and no subscription was established.
 	ReadAndSubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, Cancel, bool)
 
-	// Read returns the current value of the Beam.
+	// Read returns the current value of the Beam without establishing a subscription.
 	//
-	// If the returned boolean is true, the value is valid.
-	// If false, the context was already canceled and the value is undefined.
+	// Returns the current value and a boolean:
+	//   - If true, the value is valid
+	//   - If false, the context was canceled and the value is undefined
 	Read(ctx context.Context) (T, bool)
 
-	// AddWatcher attaches a Watcher with full lifecycle control.
-	// Allows handling custom logic on initialization, updates, and cancellation.
+	// AddWatcher attaches a Watcher for full lifecycle control over subscription events.
+	// Watchers receive separate callbacks for initialization, updates, and cancellation,
+	// allowing for more sophisticated subscription management.
+	//
+	// Returns a Cancel function and a boolean indicating whether the watcher was added.
 	AddWatcher(ctx context.Context, w Watcher[T]) (Cancel, bool)
+
 	addWatcher(ctx context.Context, w node.Watcher) bool
 	sync(uint, *common.FuncCollector) (*T, bool)
 }

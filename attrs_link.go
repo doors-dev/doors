@@ -191,7 +191,11 @@ func (s *ASrc) handle(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return s.Once
 }
 
-type AFileHref ASrc
+type AFileHref struct {
+	Path string
+	Once bool
+	Name string
+}
 
 func (s AFileHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	link, ok := (*ASrc)(&s).init(ctx, n, inst)
@@ -201,7 +205,11 @@ func (s AFileHref) Init(ctx context.Context, n node.Core, inst instance.Core, at
 	attrs.Set("href", link)
 }
 
-type ARawFileHref ARawSrc
+type ARawFileHref struct {
+	Once    bool
+	Name    string
+	Handler func(w http.ResponseWriter, r *http.Request)
+}
 
 func (s ARawFileHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	link, ok := (*ARawSrc)(&s).init(ctx, n, inst)

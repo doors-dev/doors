@@ -13,6 +13,37 @@ import (
 	"github.com/doors-dev/doors/internal/resources"
 )
 
+// Node represents a dynamic placeholder in the DOM tree that can be updated,
+// replaced, or removed at runtime.
+//
+// It is a fundamental building block of the framework, used to manage dynamic HTML content.
+// All changes made to a Node are automatically synchronized with the frontend DOM.
+//
+// A Node is itself a templ.Component and can be used directly in templates:
+//
+//	@node
+//	// or
+//	@node {
+//	    // initial HTML content
+//	}
+//
+// Nodes start inactive and become active when rendered. Operations on inactive nodes
+// are stored virtually and applied when the node becomes active. If a node is removed
+// or replaced, it becomes inactive again, but operations continue to update its virtual
+// state for potential future rendering.
+//
+// The context used when rendering a Node's content follows the Node's lifecycle.
+// This allows you to safely use `ctx.Done()` inside background goroutines
+// that depend on the Node's presence in the DOM.
+//
+// Extended methods (prefixed with X) return a channel that can be used to track
+// when operations complete. The channel receives nil on success or an error on failure,
+// then closes. For inactive nodes, the channel closes immediately without sending a value.
+//
+// During a single render cycle, Nodes and their children are guaranteed to observe
+// consistent state (Beam), ensuring stable and predictable rendering.
+type Node = node.Node
+
 // Fragment is a helper interface for defining composable, stateful, and code-interactive components.
 //
 // A Fragment groups fields, methods, and rendering logic into a reusable unit.
@@ -23,7 +54,7 @@ import (
 //
 // A Fragment can be stored in a variable, rendered once, and later updated by calling custom methods.
 // These methods typically encapsulate internal Node updates — such as a Refresh() function
-// that re-renders part of the fragment’s content manually.
+// that re-renders part of the fragment's content manually.
 //
 // By default, a Fragment is static — its output does not change after rendering.
 // To enable dynamic behavior, use a root-level Node to support targeted updates.
@@ -31,7 +62,7 @@ import (
 // Example:
 //
 //	type Counter struct {
-//	    node  Node
+//	    node  doors.Node
 //	    count int
 //	}
 //
@@ -43,8 +74,8 @@ import (
 //	    @c.node {
 //	        @c.display()
 //	    }
-//	    <button { d.A(ctx, d.Click{
-//	        On: func(ctx context.Context, _ d.EventRequest[d.PointerEvent]) bool {
+//	    <button { doors.A(ctx, doors.AClick{
+//	        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 //	            c.count++
 //	            c.Refresh(ctx)
 //	            return false
@@ -69,7 +100,7 @@ type Fragment interface {
 // Example:
 //
 //	templ Demo() {
-//	    @F(&Counter{})
+//	    @doors.F(&Counter{})
 //	}
 func F(f Fragment) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
@@ -77,44 +108,7 @@ func F(f Fragment) templ.Component {
 	})
 }
 
-// Node represents a dynamic placeholder in the DOM tree that can be updated,
-// replaced, or removed at runtime.
-//
-// It is a fundamental building block of the framework, used to manage and update dynamic HTML content.
-// All changes made to a Node are automatically synchronized with the frontend DOM.
-// If synchronization is slower than the update rate (e.g., due to network latency),
-// operations may overwrite each other. In such cases, only the latest state will be propagated,
-// ensuring the frontend eventually reflects the correct result.
-//
-// Remove and Replace are terminal operations — once invoked, the Node becomes static
-// and behaves like a regular templ.Component. No further updates or mutations are accepted.
-//
-// A Node is itself a templ.Component and can be used directly in templates:
-//
-//	@node
-//	// or
-//	@node {
-//	    // initial HTML content
-//	}
-//
-// Nodes remain valid even if they have not yet been rendered, or were removed due to a parent
-// being unmounted. Updates in such cases are deferred and automatically applied the next time
-// the Node is rendered. If the same Node is rendered multiple times on the page, the previously
-// rendered instance will be silently removed.
-//
-// The context used when rendering a Node's content follows the Node's lifecycle.
-// This allows you to safely use `ctx.Done()` inside background goroutines
-// that depend on the Node's presence in the DOM.
-//
-// Extended methods (prefixed with X) return a channel that is closed once the operation
-// is confirmed by the frontend, allowing for safe coordination, sequencing, or error handling.
-//
-// During a single render cycle, Nodes and their children are guaranteed to observe
-// consistent Beam values, ensuring stable and predictable rendering.
-type Node = node.Node
-
-// Sub is a helper component that wraps a Node whose content updates reactively
-// based on the current value of the provided Beam.
+// Sub creates a reactive component that automatically updates when a Beam value changes.
 //
 // It subscribes to the Beam and re-renders the inner content whenever the value changes.
 // The render function is called with the current Beam value and must return a templ.Component.
@@ -128,17 +122,17 @@ type Node = node.Node
 //	}
 //
 //	templ demo(beam Beam[int]) {
-//	    @Sub(beam, func(v int) templ.Component {
+//	    @doors.Sub(beam, func(v int) templ.Component {
 //	        return display(v)
 //	    })
 //	}
 //
 // Parameters:
-//   - beam: the reactive Beam to observe.
-//   - render: a function that maps the current Beam value to a templ.Component.
+//   - beam: the reactive Beam to observe
+//   - render: a function that maps the current Beam value to a templ.Component
 //
 // Returns:
-//   - A templ.Component that updates as the Beam value changes.
+//   - A templ.Component that updates reactively as the Beam value changes
 func Sub[T any](beam Beam[T], render func(T) templ.Component) templ.Component {
 	return E(func(ctx context.Context) templ.Component {
 		node := &Node{}
@@ -153,6 +147,12 @@ func Sub[T any](beam Beam[T], render func(T) templ.Component) templ.Component {
 	})
 }
 
+// Extract retrieves a Beam value that was previously injected into the context.
+// This is used in conjunction with Inject to pass Beam values down the component tree.
+//
+// Returns the injected value and a boolean indicating whether the extraction was successful.
+// If the beam was not injected or the context doesn't contain the value, returns the zero
+// value and false.
 func Extract[T any](ctx context.Context, beam Beam[T]) (T, bool) {
 	ref, ok := ctx.Value(beam).(*T)
 	if !ok || ref == nil {
@@ -162,6 +162,18 @@ func Extract[T any](ctx context.Context, beam Beam[T]) (T, bool) {
 	return *ref, false
 }
 
+// Inject creates a reactive component that injects Beam values into the context for child components.
+//
+// It subscribes to the Beam and re-renders its children whenever the value changes,
+// making the current value available to child components via Extract().
+//
+// This enables passing reactive values down the component tree without explicit prop drilling.
+//
+// Example:
+//
+//	@Inject(userBeam) {
+//	    @UserProfile() // Can use Extract(ctx, userBeam) to get current user
+//	}
 func Inject[T any](beam Beam[T]) templ.Component {
 	return E(func(ctx context.Context) templ.Component {
 		children := templ.GetChildren(ctx)
@@ -184,15 +196,14 @@ func Inject[T any](beam Beam[T]) templ.Component {
 	})
 }
 
-// E is a helper component that evaluates the provided function at render time
-// and returns the resulting templ.Component.
+// E evaluates the provided function at render time and returns the resulting templ.Component.
 //
 // This is useful when rendering logic is complex or better expressed in plain Go code,
-// rather than templ syntax.
+// rather than templ syntax. The function is called with the current render context.
 //
 // Example:
 //
-//	@E(func(ctx context.Context) templ.Component {
+//	@doors.E(func(ctx context.Context) templ.Component {
 //	    user, err := db.Get(id)
 //	    if err != nil {
 //	        return RenderError(err)
@@ -201,10 +212,10 @@ func Inject[T any](beam Beam[T]) templ.Component {
 //	})
 //
 // Parameters:
-//   - f: a function that returns a templ.Component, given the current render context.
+//   - f: a function that returns a templ.Component, given the current render context
 //
 // Returns:
-//   - A templ.Component produced by evaluating f during rendering.
+//   - A templ.Component produced by evaluating f during rendering
 func E(f func(context.Context) templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		content := f(ctx)
@@ -218,31 +229,28 @@ func E(f func(context.Context) templ.Component) templ.Component {
 // Go starts a goroutine at render time using a blocking-safe context tied to the component's lifecycle.
 //
 // The goroutine runs only if the component is rendered. The context is canceled when the component
-// is unmounted, but you must explicitly listen to ctx.Done() to stop work.
+// is unmounted, allowing for proper cleanup. You must explicitly listen to ctx.Done() to stop work.
 //
-// The context allows safe blocking, making it safe to use with X* operations (e.g., XUpdate, XRemove).
+// The context allows safe blocking operations, making it safe to use with X* operations (e.g., XUpdate, XRemove).
 //
 // Example:
 //
-//	@Go(func(ctx context.Context) {
+//	@doors.Go(func(ctx context.Context) {
 //	    for {
-//	        ch, ok := node.XUpdate(ctx, content())
-//	        if !ok {
-//	            return
-//	        }
 //	        select {
-//	        case err := <-ch:
-//	            log.Println("confirmed update:", err)
+//	        case <-time.After(time.Second):
+//	            node.Update(ctx, currentTime())
 //	        case <-ctx.Done():
 //	            return
 //	        }
 //	    }
+//	})
 //
 // Parameters:
-//   - f: a function to run in a goroutine, scoped to the component's render lifecycle.
+//   - f: a function to run in a goroutine, scoped to the component's render lifecycle
 //
 // Returns:
-//   - A non-visual templ.Component that starts the goroutine when rendered.
+//   - A non-visual templ.Component that starts the goroutine when rendered
 func Go(f func(context.Context)) templ.Component {
 	return E(func(ctx context.Context) templ.Component {
 		ctx = common.SetBlockingCtx(ctx)
@@ -255,17 +263,59 @@ type script struct {
 	mode resources.InlineMode
 }
 
+// Script converts inline script content to an external resource.
+// The JavaScript/TypeScript content is processed by esbuild and served as an external
+// resource with a src attribute. This is the default mode - the resource is publicly
+// accessible as a static asset.
+//
+// The script content is automatically wrapped in an anonymous async function to support
+// await and protect the global context. A special $d variable is provided to access
+// frontend framework functions.
+//
+// The content must be wrapped in <script> tags. TypeScript is supported by adding
+// type="text/typescript" attribute.
+//
+// Example:
+//
+//	@Script() {
+//	    <script>
+//	        console.log("Hello from [not] inline script!");
+//	        // $d provides access to framework functions
+//	        // await is supported due to async wrapper
+//	        await $d.hook("hello","world");
+//	    </script>
+//	}
+//
+// Or with TypeScript:
+//
+//	@Script() {
+//	    <script type="text/typescript">
+//	        const message: string = "TypeScript works!";
+//	        console.log(message);
+//	    </script>
+//	}
 func Script() templ.Component {
 	return script{
 		mode: resources.InlineModeHost,
 	}
 }
 
+// ScriptLocal converts inline script content to an external resource that is served
+// securely within the current context scope. The script is processed and served with
+// a src attribute, but not exposed as a publicly accessible static asset.
+// The script content is wrapped in an anonymous async function and provides the $d variable.
+// The content must be wrapped in <script> tags.
 func ScriptLocal() templ.Component {
 	return script{
 		mode: resources.InlineModeLocal,
 	}
 }
+
+// ScriptLocalNoCache converts inline script content to an external resource within
+// the current context scope without caching. The script is processed on every render
+// and served with a src attribute, but not exposed as a static resource.
+// The script content is wrapped in an anonymous async function and provides the $d variable.
+// The content must be wrapped in <script> tags.
 func ScriptLocalNoCache() templ.Component {
 	return script{
 		mode: resources.InlineModeNoCache,
@@ -299,17 +349,42 @@ type style struct {
 	mode resources.InlineMode
 }
 
+// Style converts inline CSS content to an external resource.
+// The CSS is minified and served as an external resource with an href attribute.
+// This is the default mode - the resource is publicly accessible as a static asset.
+//
+// The content must be wrapped in <style> tags.
+//
+// Example:
+//
+//	@Style() {
+//	    <style>
+//	        .my-class {
+//	            color: blue;
+//	            font-size: 14px;
+//	        }
+//	    </style>
+//	}
 func Style() templ.Component {
 	return style{
 		mode: resources.InlineModeHost,
 	}
 }
 
+// StyleLocal converts inline CSS content to an external resource that is served
+// securely within the current context scope. The CSS is processed and served with
+// an href attribute, but not exposed as a publicly accessible static asset.
+// The content must be wrapped in <style> tags.
 func StyleLocal() templ.Component {
 	return style{
 		mode: resources.InlineModeLocal,
 	}
 }
+
+// StyleLocalNoCache converts inline CSS content to an external resource within
+// the current context scope without caching. The CSS is processed on every render
+// and served with an href attribute, but not exposed as a static resource.
+// The content must be wrapped in <style> tags.
 func StyleLocalNoCache() templ.Component {
 	return style{
 		mode: resources.InlineModeNoCache,
@@ -362,4 +437,18 @@ func renderRaw(tag string, attrs templ.Attributes, content []byte) templ.Compone
 	})
 }
 
-
+// Text converts any value to a component with escaped string using default formats.
+//
+// Example:
+//
+//	@Text("Hello <world>")  // Output: Hello &lt;world&gt;
+//	@Text(42)               // Output: 42
+//	@Text(user.Name)        // Output: John
+func Text(value any) templ.Component {
+	str := fmt.Sprint(value)
+	escaped := templ.EscapeString(str)
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		_, err := w.Write(common.AsBytes(escaped))
+		return err
+	})
+}

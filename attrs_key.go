@@ -17,13 +17,13 @@ type keyEventHook struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is an optional identifier that appears in frontend hook lifecycle events.
+	// Mark is used to identify hook error on the frontend
 	Mark string
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
-	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
 
 	// On is the required backend handler for the click event.
@@ -41,16 +41,36 @@ func (k *keyEventHook) init(event string, ctx context.Context, n node.Core, inst
 			PreventDefault:  k.PreventDefault,
 			StopPropagation: k.StopPropagation,
 		},
-		inst:     inst,
-		scope:    k.Scope,
-		mark:     k.Mark,
+		inst:      inst,
+		scope:     k.Scope,
+		mark:      k.Mark,
 		indicator: k.Indicator,
-		on:       k.On,
+		on:        k.On,
 	}).init(attrs)
 }
 
 // AKeyDown is an attribute struct used with A(ctx, ...) to handle 'keydown' events via backend hooks.
-type AKeyDown keyEventHook
+type AKeyDown struct {
+	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	StopPropagation bool
+
+	// PreventDefault, if true, prevents the browser's default action for the event.
+	PreventDefault bool
+
+	// Mark is an optional identifier that appears in frontend hook lifecycle events.
+	Mark string
+
+	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	Scope []Scope
+
+	// Indicator specifies how to visually indicate that the hook is running.
+	Indicator []Indicator
+
+	// On is the required backend handler for the click event.
+	// It receives a typed EventRequest[KeyboardEvent] and should return true
+	// when the hook is considered complete and can be removed.
+	On func(context.Context, REvent[KeyboardEvent]) bool
+}
 
 func (k AKeyDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*keyEventHook)(&k)
@@ -58,7 +78,27 @@ func (k AKeyDown) Init(ctx context.Context, n node.Core, inst instance.Core, att
 }
 
 // AKeyUp is an attribute struct used with A(ctx, ...) to handle 'keyup' events via backend hooks.
-type AKeyUp keyEventHook
+type AKeyUp struct {
+	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	StopPropagation bool
+
+	// PreventDefault, if true, prevents the browser's default action for the event.
+	PreventDefault bool
+
+	// Mark is an optional identifier that appears in frontend hook lifecycle events.
+	Mark string
+
+	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	Scope []Scope
+
+	// Indicator specifies how to visually indicate that the hook is running.
+	Indicator []Indicator
+
+	// On is the required backend handler for the click event.
+	// It receives a typed EventRequest[KeyboardEvent] and should return true
+	// when the hook is considered complete and can be removed.
+	On func(context.Context, REvent[KeyboardEvent]) bool
+}
 
 func (k AKeyUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*keyEventHook)(&k)
