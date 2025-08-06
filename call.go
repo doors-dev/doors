@@ -37,7 +37,7 @@ type CallConf struct {
 	Trigger func(context.Context, RCall)
 
 	// Cancel is called if the context becomes invalid before the call is delivered,
-	// or if the call is canceled explicitly.
+	// or if the call is canceled explicitly. Optional.
 	Cancel func(context.Context, error)
 }
 
@@ -64,11 +64,6 @@ func (c *CallConf) triggerFunc() func(ctx context.Context, w http.ResponseWriter
 	}
 }
 
-// TryCancel is a function that attempts to cancel a pending frontend call.
-//
-// It returns true if the call was still pending and has now been canceled.
-// Returns false if the call was already delivered or canceled automatically.
-type TryCancel func() bool
 
 // Call sends a backend-initiated JavaScript function call to the frontend.
 //
@@ -84,7 +79,7 @@ type TryCancel func() bool
 //   - conf: the configuration specifying the function name, argument, and optional handlers.
 //
 // Returns:
-//   - TryCancel: a function to cancel the pending call (usually ignored).
+//   - a function to cancel the pending call (usually ignored).
 //   - ok: false if the call couldn't be registered or marshaling failed.
 //
 // Example:
@@ -96,9 +91,11 @@ type TryCancel func() bool
 //	})
 //
 //	// JavaScript (frontend):
-//	<script>
-//	$D.on(document.currentScript, "alert", (message) => alert(message))
-//	</script>
+//  $doors.Script() {
+//		<script>
+//			$d.on("alert", (message) => alert(message))
+//		</script>
+// } 
 //
 // Notes:
 //   - The Name must match the identifier registered via `$D.on(...)` in frontend JavaScript.

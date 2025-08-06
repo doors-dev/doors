@@ -25,8 +25,8 @@ type Attr = front.Attr
 //
 // Example:
 //
-//	<button { A(ctx, AClick{
-//	    On: func(ctx context.Context, _ d.EventRequest[d.PointerEvent]) bool {
+//	<button { doors.A(ctx, doors.AClick{
+//	    On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 //	        log.Println("Clicked")
 //	        return false
 //	    },

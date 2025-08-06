@@ -18,38 +18,52 @@ type instance interface {
 
 type SourceBeam[T any] interface {
 	Beam[T]
-	// Update sets a new value in the source and propagates it to all subscribers and derived beams.
+
+	
+	// Update sets a new value and propagates it to all subscribers and derived beams.
+	// The update is applied only if it passes the source's distinct function (if configured).
 	//
-	// Returns true if the context is still valid and the update was accepted;
+	// Returns true if the context is valid and the update was accepted;
 	// false if the context was canceled before the update.
 	Update(context.Context, T) bool
-	// XUpdate performs an extended update of the value and returns a channel
-	// that signals when the update has been fully propagated to all subscribers.
+
+	// XUpdate performs an update and returns a channel that signals when the update
+	// has been fully propagated to all subscribers. This allows coordination of
+	// dependent operations that must wait for the update to complete.
 	//
-	// If there are no active subscribers, the channel is closed immediately.
-	// If the instance has been terminated, the returned error will be non-nil.
+	// The returned channel receives nil on successful propagation or an error if
+	// the operation failed, then closes. If there are no active subscribers,
+	// the channel closes immediately.
 	//
-	// Returns:
-	//   - A receive-only channel that yields a single error or closes silently.
-	//   - A boolean indicating whether the update was accepted (context still valid).
+	// Returns the completion channel and a boolean indicating whether the update was accepted.
 	XUpdate(context.Context, T) (<-chan error, bool)
+
 	// Mutate allows modifying the current value using the provided function.
-	// The function receives a pointer to the copy of a current value and returns true to apply the changes.
+	// The function receives a copy of the current value and returns true to apply changes.
+	// The mutation is applied only if the function returns true and the result
+	// passes the source's distinct function (if configured).
 	//
-	// If the context is canceled before mutation, the function is not invoked and false is returned.
+	// Returns true if the context is valid and the mutation was applied;
+	// false if the context was canceled or the mutation function returned false.
 	Mutate(context.Context, func(*T) bool) bool
-	// XMutate performs an extended mutation. It behaves like Mutate, but also returns
-	// a channel that signals when the mutation has been fully propagated to all subscribers.
+
+	// XMutate performs a mutation and returns a channel that signals when the mutation
+	// has been fully propagated to all subscribers. This is useful for coordinating
+	// operations that depend on the mutation being complete.
 	//
-	// If the mutation function is not applied (returns false or context is canceled), the channel is closed.
-	// If no subscribers are present, the channel is closed immediately.
+	// The returned channel receives nil on successful propagation or an error if
+	// the operation failed, then closes. If the mutation is not applied or there
+	// are no active subscribers, the channel closes immediately.
 	//
-	// Returns:
-	//   - A receive-only channel that yields a single error or closes silently.
-	//   - A boolean indicating whether the mutation was accepted.
+	// Returns the completion channel and a boolean indicating whether the mutation was accepted.
 	XMutate(context.Context, func(*T) bool) (<-chan error, bool)
-	// Latest returns the most recently set or mutated value.
-	// Unlike Read, this does not depend on context and always returns latest value directly.
+
+	// Latest returns the most recently set or mutated value without requiring a context.
+	// This provides direct access to the current state and is not affected by
+	// context cancellation, unlike Read.
+	//
+	// WARNING: Latest() does not participate in render cycle consistency guarantees.
+	// During rendering, use Read() to ensure consistent values across the component tree.
 	Latest() T
 }
 

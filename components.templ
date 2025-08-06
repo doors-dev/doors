@@ -2,7 +2,6 @@ package doors
 
 import (
 	"context"
-	"fmt"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
 	"net/http"
@@ -15,7 +14,7 @@ import (
 //
 // Example:
 //
-//	@Title(beam, func(p Path) string {
+//	@doors.Title(beam, func(p Path) string {
 //	    name := getName(p.id)
 //	    return "item card "+name
 //	})
@@ -106,7 +105,3 @@ templ styleRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 	}
 }
 
-templ Text(v any) {
-	{{ str := fmt.Sprint(v) }}
-	{ str }
-}
