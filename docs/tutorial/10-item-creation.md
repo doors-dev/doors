@@ -399,14 +399,10 @@ templ (c *categoryFragment) cat(cat driver.Cat) {
 		<h1>{ cat.Name }</h1>
 		<p>{ cat.Desc } </p>
 	</hgroup>
-	// local node
-	{{ itemsNode := doors.Node{} }}
 	if c.authorized {
 		<p>
 		  // pass node reload function 
-			@createItem(cat, func(ctx context.Context) {
-				c.itemsNode.Reload(ctx)
-			})
+			@createItem(cat, c.itemsNode.Reload)
 		</p>
 	}
 	// render list inside node
@@ -593,9 +589,7 @@ templ (c *categoryFragment) cat(cat driver.Cat) {
 	</hgroup>
 	if c.authorized {
 		<p>
-			@createItem(cat, func(ctx context.Context) {
-				c.itemsNode.Reload(ctx)
-			})
+			@createItem(cat, c.itemsNode.Reload)
 		</p>
 	}
 	@c.itemsNode {

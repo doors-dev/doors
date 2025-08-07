@@ -26,4 +26,3 @@ Run in your project dir:
 
 Open https://localhost:8443/ , then edit `<h1>`  content in your `./home/page.templ` ,  page should be automatically reloaded with the new version.
 
-
