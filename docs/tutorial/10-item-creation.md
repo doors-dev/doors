@@ -17,15 +17,14 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 			<thead>
 				<tr>
 					<th scope="col">Name</th>
-					<th scope="col">Description</th>
 					<th scope="col">Rating</th>
 				</tr>
 			</thead>
 			<tbody>
 				for _, item := range items {
 					<tr>
-						<td>{ item.Name }</td>
-						<td>{ item.Desc }</td>
+						<td><a { doors.A(ctx, c.itemHref(cat.Id, item.Id))... }>{ item.Name }</a></td>
+
 						<td>
 							// helper component to display any as text (default formatting)
 							@doors.Text(item.Rating)
@@ -36,12 +35,23 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 		</table>
 	}
 }
+
+func (c *categoryFragment) itemHref(catId string, itemId int) doors.Attr {
+	return doors.AHref{
+		Model: Path{
+			IsItem: true,
+			CatId:  catId,
+			ItemId: itemId,
+		},
+	}
+}
+
 ```
 
 `./catalog/cat.templ`
 
 ```templ
-templ (c *categoryFragment) content(cat driver.Cat) {
+templ (c *categoryFragment) cat(cat driver.Cat) {
 	<hgroup>
 		<h1>{ cat.Name }</h1>
 		<p>{ cat.Desc } </p>
@@ -180,23 +190,21 @@ templ (c *categoryFragment) content(cat driver.Cat) {
 
 ```templ
 // second argument to constructor
-func newCategoryFragment(b doors.Beam[Path], authorized bool) *categoryFragment {
+func newCategoryFragment(path doors.Beam[Path], authorized bool) *categoryFragment {
 	return &categoryFragment{
 		// set authorized
 		authorized: authorized,
-		catId: doors.NewBeam(b, func(p Path) string {
-			return p.CatId
-		}),
+		path:       path,
 	}
 }
 
 type categoryFragment struct {
 	// new field
 	authorized bool
-	catId      doors.Beam[string]
+	path       doors.SourceBeam[Path]
 }
 
-templ (c *categoryFragment) content(cat driver.Cat) {
+templ (c *categoryFragment) cat(cat driver.Cat) {
 	<hgroup>
 		<h1>{ cat.Name }</h1>
 		<p>{ cat.Desc } </p>
@@ -255,12 +263,14 @@ import (
 
 func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 	return p.Page(&catalogPage{
-        // the same as on home page
+    // the same as on home page
 		session: common.GetSession(r),
 	})
 }
 
 ```
+
+> The form now opens only if the user is authorized.
 
 ## 4. Handle Form Submission
 
@@ -285,12 +295,14 @@ templ (c *createItemFragment) form() {
 						Name
 						<input
 							name="name"
+							required="true"
 						/>
 					</label>
 					<label>
 						Description
 						<textarea
 							name="desc"
+							required="true"
 						></textarea>
 					</label>
 				</fieldset>
@@ -375,7 +387,14 @@ func (c *createItemFragment) submit() doors.Attr {
 `./catalog/cat.templ`
 
 ```templ
-templ (c *categoryFragment) content(cat driver.Cat) {
+type categoryFragment struct {
+	authorized bool
+	path       doors.SourceBeam[Path]
+	// add new field 
+	itemsNode  doors.Node
+}
+
+templ (c *categoryFragment) cat(cat driver.Cat) {
 	<hgroup>
 		<h1>{ cat.Name }</h1>
 		<p>{ cat.Desc } </p>
@@ -386,12 +405,12 @@ templ (c *categoryFragment) content(cat driver.Cat) {
 		<p>
 		  // pass node reload function 
 			@createItem(cat, func(ctx context.Context) {
-				itemsNode.Reload(ctx)
+				c.itemsNode.Reload(ctx)
 			})
 		</p>
 	}
 	// render list inside node
-	@itemsNode {
+	@c.itemsNode {
 		@c.listItems(cat)
 	}
 }
@@ -465,12 +484,14 @@ templ (c *createItemFragment) form() {
 						Name
 						<input
 							name="name"
+							required="true"
 						/>
 					</label>
 					<label>
 						Description
 						<textarea
 							name="desc"
+							required="true"
 						></textarea>
 					</label>
 				</fieldset>
@@ -525,18 +546,17 @@ import (
 	"github.com/doors-dev/doors"
 )
 
-func newCategoryFragment(b doors.Beam[Path], authorized bool) *categoryFragment {
+func newCategoryFragment(path doors.SourceBeam[Path], authorized bool) *categoryFragment {
 	return &categoryFragment{
 		authorized: authorized,
-		catId: doors.NewBeam(b, func(p Path) string {
-			return p.CatId
-		}),
+		path:       path,
 	}
 }
 
 type categoryFragment struct {
 	authorized bool
-	catId      doors.Beam[string]
+	path       doors.SourceBeam[Path]
+	itemsNode  doors.Node
 }
 
 templ (c *categoryFragment) Render() {
@@ -546,31 +566,39 @@ templ (c *categoryFragment) Render() {
 			@c.nav()
 		</aside>
 		<div class="content">
-			@doors.Sub(c.catId, func(catId string) templ.Component {
-				cat, ok := driver.Cats.Get(catId)
-				if !ok {
-					return c.notFound()
-				}
-				return c.content(cat)
-			})
+			@c.content()
 		</div>
 	</div>
 }
 
-templ (c *categoryFragment) content(cat driver.Cat) {
+func (c *categoryFragment) content() templ.Component {
+	return doors.Sub(
+		doors.NewBeam(c.path, func(p Path) string {
+			return p.CatId
+		}),
+		func(catId string) templ.Component {
+			cat, ok := driver.Cats.Get(catId)
+			if !ok {
+				return c.notFound()
+			}
+			return c.cat(cat)
+		},
+	)
+}
+
+templ (c *categoryFragment) cat(cat driver.Cat) {
 	<hgroup>
 		<h1>{ cat.Name }</h1>
 		<p>{ cat.Desc } </p>
 	</hgroup>
-	{{ itemsNode := doors.Node{} }}
 	if c.authorized {
 		<p>
 			@createItem(cat, func(ctx context.Context) {
-				itemsNode.Reload(ctx)
+				c.itemsNode.Reload(ctx)
 			})
 		</p>
 	}
-	@itemsNode {
+	@c.itemsNode {
 		@c.listItems(cat)
 	}
 }
@@ -584,15 +612,14 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 			<thead>
 				<tr>
 					<th scope="col">Name</th>
-					<th scope="col">Description</th>
 					<th scope="col">Rating</th>
 				</tr>
 			</thead>
 			<tbody>
 				for _, item := range items {
 					<tr>
-						<td>{ item.Name }</td>
-						<td>{ item.Desc }</td>
+						<td><a { doors.A(ctx, c.itemHref(cat.Id, item.Id))... }>{ item.Name }</a></td>
+
 						<td>
 							@doors.Text(item.Rating)
 						</td>
@@ -600,6 +627,16 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 				}
 			</tbody>
 		</table>
+	}
+}
+
+func (c *categoryFragment) itemHref(catId string, itemId int) doors.Attr {
+	return doors.AHref{
+		Model: Path{
+			IsItem: true,
+			CatId:  catId,
+			ItemId: itemId,
+		},
 	}
 }
 
@@ -652,6 +689,7 @@ func (c *categoryFragment) backHref() doors.Attr {
 		},
 	}
 }
+
 ```
 
 `./catalog/page.templ`

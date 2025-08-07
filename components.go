@@ -226,6 +226,16 @@ func E(f func(context.Context) templ.Component) templ.Component {
 	})
 }
 
+
+// Run runs function at render time
+// useful for intitialization logic
+func Run(f func(context.Context)) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, _ io.Writer) error {
+		f(ctx)
+		return nil
+	})
+}
+
 // Go starts a goroutine at render time using a blocking-safe context tied to the component's lifecycle.
 //
 // The goroutine runs only if the component is rendered. The context is canceled when the component

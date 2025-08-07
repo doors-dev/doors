@@ -203,21 +203,19 @@ templ (c *categoryFragment) style() {
 
 ## 4. Dynamic Content
 
-#### Derive CatId Beam
+#### Inject Path Beam
 
 `./catalog/cat.templ`
 
 ```templ
-func newCategoryFragment(b doors.Beam[Path]) *categoryFragment {
+func newCategoryFragment(path doors.Beam[Path]) *categoryFragment {
 	return &categoryFragment{
-		catId: doors.NewBeam(b, func(p Path) string {
-			return p.CatId
-		}),
+		path: path,
 	}
 }
 
 type categoryFragment struct {
-	catId doors.Beam[string]
+		path doors.SourceBeam[Path]
 }
 ```
 
@@ -251,20 +249,31 @@ templ (c *categoryFragment) Render() {
 			@c.nav()
 		</aside>
 		<div class="content">
-			// subscribe to our beam
-			@doors.Sub(c.catId, func(catId string) templ.Component {
-				// query cat
-				cat, ok := driver.Cats.Get(catId)
-				if !ok {
-					return c.notFound()
-				}
-				return c.content(cat)
-			})
+		  // render component
+			@c.content()
 		</div>
 	</div>
 }
 
-templ (c *categoryFragment) content(cat driver.Cat) {
+func (c *categoryFragment) content() templ.Component {
+  // subscribe component
+	return doors.Sub(
+	  // to derived beam
+		doors.NewBeam(c.path, func(p Path) string {
+			return p.CatId
+		}),
+		func(catId string) templ.Component {
+			cat, ok := driver.Cats.Get(catId)
+			if !ok {
+				return c.notFound()
+			}
+			return c.cat(cat)
+		},
+	)
+}
+
+
+templ (c *categoryFragment) cat(cat driver.Cat) {
 	<hgroup>
 		<h1>{ cat.Name }</h1>
 		<p>{ cat.Desc } </p>
@@ -334,16 +343,14 @@ import (
 	"github.com/doors-dev/doors"
 )
 
-func newCategoryFragment(b doors.Beam[Path]) *categoryFragment {
+func newCategoryFragment(path doors.Beam[Path]) *categoryFragment {
 	return &categoryFragment{
-		catId: doors.NewBeam(b, func(p Path) string {
-			return p.CatId
-		}),
+		path: path,
 	}
 }
 
 type categoryFragment struct {
-	catId doors.Beam[string]
+	path       doors.SourceBeam[Path]
 }
 
 templ (c *categoryFragment) Render() {
@@ -353,18 +360,27 @@ templ (c *categoryFragment) Render() {
 			@c.nav()
 		</aside>
 		<div class="content">
-			@doors.Sub(c.catId, func(catId string) templ.Component {
-				cat, ok := driver.Cats.Get(catId)
-				if !ok {
-					return c.notFound()
-				}
-				return c.content(cat)
-			})
+			@c.content()
 		</div>
 	</div>
 }
 
-templ (c *categoryFragment) content(cat driver.Cat) {
+func (c *categoryFragment) content() templ.Component {
+	return doors.Sub(
+		doors.NewBeam(c.path, func(p Path) string {
+			return p.CatId
+		}),
+		func(catId string) templ.Component {
+			cat, ok := driver.Cats.Get(catId)
+			if !ok {
+				return c.notFound()
+			}
+			return c.cat(cat)
+		},
+	)
+}
+
+templ (c *categoryFragment) cat(cat driver.Cat) {
 	<hgroup>
 		<h1>{ cat.Name }</h1>
 		<p>{ cat.Desc } </p>
