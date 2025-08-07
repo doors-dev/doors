@@ -1,0 +1,10 @@
+name: Test
+
+on: push
+
+jobs:
+  test:
+    runs-on: doors-docs
+    steps:
+    - run: echo "Hello World" > test.txt
+    - run: cat test.txt
