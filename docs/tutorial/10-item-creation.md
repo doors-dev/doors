@@ -8,7 +8,7 @@ Add item listing to category fragment.
 
 ```templ
 templ (c *categoryFragment) listItems(cat driver.Cat) {
-  // show the first page, we will deal with pagination later
+	// show the first page, we will deal with pagination later
 	{{ items := driver.Items.List(cat.Id, 0) }}
 	if len(items) == 0 {
 		No Items 
@@ -27,7 +27,7 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 						<td>{ item.Name }</td>
 						<td>{ item.Desc }</td>
 						<td>
-						  // helper component to display any as text (default formatting)
+							// helper component to display any as text (default formatting)
 							@doors.Text(item.Rating)
 						</td>
 					</tr>
@@ -36,7 +36,6 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 		</table>
 	}
 }
-
 ```
 
 `./catalog/cat.templ`
@@ -72,14 +71,14 @@ import (
 
 // we can return templ.Component directly from the constructor for cleaner code
 func createItem(cat driver.Cat) templ.Component {
-  // wrap in fragment render
+    // wrap in fragment render
 	return doors.F(&createItemFragment{
 		cat:    cat
 	})
 }
 
 type createItemFragment struct {
-  // current category
+    // current category
 	cat    driver.Cat
 	// node to show pop up with form
 	node   doors.Node
@@ -145,7 +144,7 @@ templ (c *createItemFragment) form() {
 func (c *createItemFragment) closeForm() doors.Attr {
 	return doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-		  // clear the nodes content
+		    // clear the nodes content
 			c.node.Clear(ctx)
 			return true
 		},
@@ -156,7 +155,7 @@ func (c *createItemFragment) closeForm() doors.Attr {
 
 `./catalog/cat.templ`
 
-```temp
+```templ
 templ (c *categoryFragment) content(cat driver.Cat) {
 	<hgroup>
 		<h1>{ cat.Name }</h1>
@@ -183,7 +182,7 @@ templ (c *categoryFragment) content(cat driver.Cat) {
 // second argument to constructor
 func newCategoryFragment(b doors.Beam[Path], authorized bool) *categoryFragment {
 	return &categoryFragment{
-    // set authorized 
+		// set authorized
 		authorized: authorized,
 		catId: doors.NewBeam(b, func(p Path) string {
 			return p.CatId
@@ -192,9 +191,9 @@ func newCategoryFragment(b doors.Beam[Path], authorized bool) *categoryFragment 
 }
 
 type categoryFragment struct {
-  // new field
-	authorized  bool
-	catId       doors.Beam[string]
+	// new field
+	authorized bool
+	catId      doors.Beam[string]
 }
 
 templ (c *categoryFragment) content(cat driver.Cat) {
@@ -205,8 +204,8 @@ templ (c *categoryFragment) content(cat driver.Cat) {
 	// add "authorization" to the create action
 	if c.authorized {
 		<p>
-		 		@createItem(cat)
-		 </p>
+			@createItem(cat)
+		</p>
 	}
 	@c.listItems(cat)
 }
@@ -246,7 +245,7 @@ func (c *catalogPage) Body() templ.Component {
 
 `./catalog/handler.go`
 
-```go
+```templ
 package catalog
 
 import (
@@ -256,7 +255,7 @@ import (
 
 func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 	return p.Page(&catalogPage{
-    // the same as on home page
+        // the same as on home page
 		session: common.GetSession(r),
 	})
 }
@@ -270,7 +269,6 @@ func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 `./catalog/create_item.templ`
 
 ```templ
-
 templ (c *createItemFragment) form() {
 	<dialog open>
 		<article>
@@ -310,7 +308,7 @@ type itemFormData struct {
 
 func (c *createItemFragment) submit() doors.Attr {
 	return doors.ASubmit[itemFormData]{
-	  // indicate busy
+	    // indicate busy
 		Indicator: doors.IndicatorAttrQuery("#item-create", "aria-busy", "true"),
 		On: func(ctx context.Context, r doors.RForm[itemFormData]) bool {
 			item := driver.Item{

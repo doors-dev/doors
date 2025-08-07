@@ -47,8 +47,8 @@ var testMainHref = doors.AHref{
 }
 
 templ category() {
-	 <h1>Category</h1>
-   <a { doors.A(ctx, testMainHref )... }>Go back</a>
+	<h1>Category</h1>
+	<a { doors.A(ctx, testMainHref )... }>Go back</a>
 }
 
 
@@ -62,14 +62,14 @@ templ category() {
 
 ```templ
 type catalogPage struct {
-  // add field
+	// add field
 	beam doors.SourceBeam[Path]
 }
 
 func (c *catalogPage) Render(b doors.SourceBeam[Path]) templ.Component {
-    // save it
-		c.beam = b
-    return common.Template(c)
+	// save it
+	c.beam = b
+	return common.Template(c)
 }
 
 ```
@@ -79,27 +79,25 @@ Now we can use `Beam` with Path Model inside Body(). Let's enable dynamic update
 `./catalog/page.templ`
 
 ```templ
-
 templ (c *catalogPage) Body() {
-    // {{ ... }} used write regular golang code inside templ
-	{{ 
-  // initialize dynamic element
-  node := doors.Node{} 
-  // subscribe to our beam
-  c.beam.Sub(ctx, func(ctx context.Context, p Path) bool {
-      // depending on path variant marker set Node content
-      if p.IsMain {
-          node.Update(ctx, main())
-      } else {
-          node.Update(ctx, category())
-      }
-      // false means not done, keep sub active
-      return false
-  })
+	// {{ ... }} used write regular golang code inside templ
+	{{
+	// initialize dynamic element
+	node := doors.Node{}
+	// subscribe to our beam
+	c.beam.Sub(ctx, func(ctx context.Context, p Path) bool {
+		// depending on path variant marker set Node content
+		if p.IsMain {
+			node.Update(ctx, main())
+		} else {
+			node.Update(ctx, category())
+		}
+		// false means not done, keep sub active
+		return false
+	})
 	}}
 	@node
 }
-
 
 ```
 

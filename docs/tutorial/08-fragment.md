@@ -6,7 +6,7 @@
 
 `./catalog/main.go`
 
-```teml
+```templ
 package catalog
 
 import (
@@ -14,29 +14,30 @@ import (
 	"github.com/derstruct/doors-starter/driver"
 )
 
+
 // helper function to prepare href attribute for category link
 func catHref(cat driver.Cat) doors.Attr {
-    return doors.AHref {
-        Model: Path {
-            IsCat: true,
-            CatId: cat.Id,
-        },
-    }
+	return doors.AHref{
+		Model: Path{
+			IsCat: true,
+			CatId: cat.Id,
+		},
+	}
 }
 
 templ main() {
 	<h1>Catalog</h1>
-	  // query and iterate categories list
-		for _, cat := range driver.Cats.List() {
-        <article>
-            <header>
-                // link
-                <a { doors.A(ctx, catHref(cat))... }>
-                    { cat.Name }
-                </a>
-            </header>
-            { cat.Desc }
-        </article>
+	// query and iterate categories list
+	for _, cat := range driver.Cats.List() {
+		<article>
+			<header>
+				// link
+				<a { doors.A(ctx, catHref(cat))... }>
+					{ cat.Name }
+				</a>
+			</header>
+			{ cat.Desc }
+		</article>
 	}
 }
 
@@ -59,7 +60,7 @@ func newCategoryFragment() *categoryFragment {
 	return &categoryFragment{}
 }
 
-type categoryFragment struct {}
+type categoryFragment struct{}
 
 // fragment must have render method
 templ (c *categoryFragment) Render() {
@@ -119,11 +120,11 @@ type categoryFragment struct{}
 templ (c *categoryFragment) Render() {
 	<div>
 		<aside>
-		    // nav component
-        @c.nav()
-    </aside>
+			// nav component
+			@c.nav()
+		</aside>
 		<div>
-		   // main content
+			// main content
 			<h1>Category</h1>
 		</div>
 	</div>
@@ -139,15 +140,15 @@ templ (c *categoryFragment) nav() {
 }
 
 func (c *categoryFragment) catHref(cat driver.Cat) doors.Attr {
-    return doors.AHref{
-        Model: Path{
-            IsCat: true,
-            CatId: cat.Id,
-        },
-        Active: doors.Active{
-            Indicator: doors.IndicatorClass("contrast"),
-        },
-    }
+	return doors.AHref{
+		Model: Path{
+			IsCat: true,
+			CatId: cat.Id,
+		},
+		Active: doors.Active{
+			Indicator: doors.IndicatorClass("contrast"),
+		},
+	}
 }
 
 func (c *categoryFragment) backHref() doors.Attr {
@@ -183,7 +184,7 @@ templ (c *categoryFragment) style() {
   // style helper component
   // doors minifies styles, but does not apply any scoping
 	@doors.Style() {
-		   <style>
+       <style>
             .cat {
                 display: flex;
                 flex-direction: row;
@@ -206,7 +207,7 @@ templ (c *categoryFragment) style() {
 
 `./catalog/cat.templ`
 
-```go
+```templ
 func newCategoryFragment(b doors.Beam[Path]) *categoryFragment {
 	return &categoryFragment{
 		catId: doors.NewBeam(b, func(p Path) string {
@@ -222,17 +223,17 @@ type categoryFragment struct {
 
 `./catalog/page.templ`
 
-```go
+```templ
 func (c *catalogPage) Body() templ.Component {
-    b := doors.NewBeam(c.beam, func(p Path) bool {
-        return p.IsMain
-    })
-    return doors.Sub(b, func(isMain bool) templ.Component {
-      if isMain {
-        return main()
-      }
-      return doors.F(newCategoryFragment(c.beam))
-    })
+	b := doors.NewBeam(c.beam, func(p Path) bool {
+		return p.IsMain
+	})
+	return doors.Sub(b, func(isMain bool) templ.Component {
+		if isMain {
+			return main()
+		}
+		return doors.F(newCategoryFragment(c.beam))
+	})
 }
 ```
 
@@ -250,9 +251,9 @@ templ (c *categoryFragment) Render() {
 			@c.nav()
 		</aside>
 		<div class="content">
-		  // subscribe to our beam
+			// subscribe to our beam
 			@doors.Sub(c.catId, func(catId string) templ.Component {
-			  // query cat
+				// query cat
 				cat, ok := driver.Cats.Get(catId)
 				if !ok {
 					return c.notFound()
@@ -273,7 +274,6 @@ templ (c *categoryFragment) content(cat driver.Cat) {
 templ (c *categoryFragment) notFound() {
 	<h1>Category Not Found</h1>
 }
-
 ```
 
 ## Conclusion

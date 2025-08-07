@@ -139,14 +139,14 @@ We also need to write a handler function to serve our home page when the path ma
 
 `./home/handler.go`
 
-```go
+```templ
 package home
 
 import "github.com/doors-dev/doors"
 
 // pr provides routing options, r - http request wrapper
 func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
-  // just serve our home page
+	// just serve our home page
 	return p.Page(&homePage{})
 }
 

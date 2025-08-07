@@ -18,12 +18,12 @@ Let's add a new pages path model.
 package common
 
 type CatalogPath struct {
-	IsMain    bool `path:"/catalog"` // show categories
-	IsCat     bool `path:"/catalog/:CatId"` // show items of category
-	IsItem    bool `path:"/catalog/:CatId/:ItemId"` // show item
-	CatId     string 
-	ItemId    int
-  Page      *int `query:"page"` // query param for pagination (used pointer to avoid 0 default value)
+    IsMain    bool `path:"/catalog"` // show categories
+    IsCat     bool `path:"/catalog/:CatId"` // show items of category
+    IsItem    bool `path:"/catalog/:CatId/:ItemId"` // show item
+    CatId     string 
+    ItemId    int
+    Page      *int `query:"page"` // query param for pagination (used pointer to avoid 0 default value)
 }
 
 // prev one, keep it
@@ -50,25 +50,25 @@ type catalogPage struct {
 }
 
 templ (c *catalogPage) Head() {
-	<title>catalog</title>
+    <title>catalog</title>
 }
 
 templ (c *catalogPage) Body() {
-	<h1>Catalog</h1>
+    <h1>Catalog</h1>
 }
 
 /*
 Instead of doing this:
 
 templ (c *catalogPage) Render(b doors.SourceBeam[Path]) {
-	@common.Template(c)
+@common.Template(c)
 }
 
 Because there is only one component `common.Template(c)`, we can return it directly:
 */
 
 func (c *catalogPage) Render(b doors.SourceBeam[Path]) templ.Comonent {
-	return common.Template(c)
+    return common.Template(c)
 }
 ```
 
@@ -126,7 +126,6 @@ package common
 
 import "github.com/doors-dev/doors"
 
-
 type Page interface {
 	Head() templ.Component
 	Body() templ.Component
@@ -139,11 +138,9 @@ templ Template(p Page) {
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<meta name="color-scheme" content="light dark"/>
-			
 			// add CDN styles 
-			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-			
-      @doors.Include()
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			@doors.Include()
 			@p.Head()
 		</head>
 		<body>
@@ -151,7 +148,6 @@ templ Template(p Page) {
 		</body>
 	</html>
 }
-
 ```
 
 ## 5. Menu 
@@ -182,15 +178,16 @@ include it in our template
 
 ```templ
 /* ... */
+
 templ Template(p Page) {
 	/* ... */
 	<body>
-	    // PicoCSS container
-	    <main class="container">
-	        // our menu component
-          @menu()
-				  @p.Body()
-			</main>
+		// PicoCSS container
+		<main class="container">
+			// our menu component
+			@menu()
+			@p.Body()
+		</main>
 	</body>
 	/* ... */
 }
@@ -246,9 +243,9 @@ templ menu() {
 			<li><strong>doors tutorial</strong></li>
 		</ul>
 		<ul>
-       // construct attributes, add href
+			// construct attributes, add href
 			<li><a { doors.A(ctx, homeMenuHref)... }>home</a></li>
-      <li><a { doors.A(ctx, catalogMenuHref)... }>catalog</a></li>
+			<li><a { doors.A(ctx, catalogMenuHref)... }>catalog</a></li>
 		</ul>
 	</nav>
 }

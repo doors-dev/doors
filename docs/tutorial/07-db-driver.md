@@ -16,7 +16,7 @@ Basic CRUD for categories+items and session management.
 
 `./driver/init.go`
 
-```go
+```templ
 package driver
 
 import (
@@ -45,7 +45,7 @@ func init() {
 
 `./driver/cats.go`
 
-```go
+```templ
 package driver
 
 import (
@@ -181,7 +181,7 @@ func (c *CatsDriver) Update(cat Cat) bool {
 
 `./driver/items.go`
 
-```go
+```templ
 pakage driver
 
 import (
@@ -301,7 +301,7 @@ func (d *ItemsDriver) removeItemsByCat(catId string) {
 
 `./driver/sessions.go`
 
-```go
+```templ
 package driver
 
 import (

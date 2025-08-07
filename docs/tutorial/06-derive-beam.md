@@ -38,7 +38,7 @@ templ (c *catalogPage) Body() {
 
 For cleaner code, we can convert it to a regular function (because the template has one component, we can just return it)
 
-```go
+```templ
 func(c * catalogPage) Body() templ.Component {
     b := doors.NewBeam(c.beam, func(p Path) bool {
         return p.IsMain

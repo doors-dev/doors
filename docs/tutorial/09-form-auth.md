@@ -6,7 +6,7 @@ We cannot simply grant anyone the ability to populate our catalog. Let's add a l
 
 `./home/login.templ`
 
-```
+```templ
 package home
 
 type loginFragment struct {
@@ -41,7 +41,7 @@ templ (l *loginFragment) Render() {
 
 ```templ
 templ (h *homePage) Body() {
-  // render fragment
+	// render fragment
 	@doors.F(&loginFragment{})
 }
 
@@ -55,7 +55,7 @@ Okay, now we can see the form on the home page, but it doesn't do anything.
 
 `./home/login.templ`
 
-```go
+```templ
 type loginData struct {
 	Login    string `form:"login"`
 	Password string `form:"password"`
@@ -70,23 +70,23 @@ type loginData struct {
 
 ```templ
 func (l *loginFragment) submit() doors.Attr {
-  // submit attribute with loginData as form data
+	// submit attribute with loginData as form data
 	return doors.ASubmit[loginData]{
 		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
-      // debug print
+			// debug print
 			fmt.Printf("%+v\n", r.Data())
-			
-			// imitation of something happening 
+
+			// imitation of something happening
 			<-time.After(time.Second)
 
-      // not done, keep active
+			// not done, keep active
 			return false
 		},
 	}
 }
 
 templ (l *loginFragment) Render() {
-  // construct attributes with submit handler
+	// construct attributes with submit handler
 	<form { doors.A(ctx, l.submit() )... }>
 		<fieldset>
 			<label>
@@ -125,11 +125,11 @@ That's what **scopes** are here for.
 
 #### Scope
 
-```go
+```templ
 func (l *loginFragment) submit() doors.Attr {
 	return doors.ASubmit[loginData]{
-    // blocks new submission, until the previous one is processed  
-    Scope: doors.ScopeBlocking(),
+		// blocks new submission, until the previous one is processed
+		Scope: doors.ScopeBlocking(),
 		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
 			fmt.Printf("%+v\n", r.Data())
 			<-time.After(time.Second)
@@ -147,13 +147,13 @@ Let's tell the user that something is happening during our form processing. [Pic
 
 ##### Specify Id for the submit button
 
-```html
+```templ
 <button id="login-submit" role="submit">Log In</button>
 ```
 
 ##### Set up hook pending indication
 
-```go
+```templ
 func (l *loginFragment) submit() doors.Attr {
 	return doors.ASubmit[loginData]{
 		// query element with id login-submit and set attr area-busy to true during hook execution
@@ -176,7 +176,7 @@ func (l *loginFragment) submit() doors.Attr {
 > ```go
 > func (l *loginFragment) submit() doors.Attr {
 > 	return doors.ASubmit[loginData]{
->     // advanced indicator control
+>       // advanced indicator control
 > 		Indicator: []doors.Indicator{
 > 			doors.AttrIndicator{
 > 				Selector: doors.SelectorQuery("#login-submit"),
@@ -280,9 +280,9 @@ type loginData struct {
 
 In the form handler function
 
-`./home/login.teml`
+`./home/login.templ`
 
-```go
+```templ
 const sessionDuration = time.Hour * 24
 
 func (l *loginFragment) submit() doors.Attr {
@@ -295,28 +295,27 @@ func (l *loginFragment) submit() doors.Attr {
 				return false
 			}
 
-      // store session to db
+			// store session to db
 			session := driver.Sessions.Add(r.Data().Login, sessionDuration)
 
-      // set session cookie
+			// set session cookie
 			r.SetCookie(&http.Cookie{
 				Name:     "session",
 				Value:    session.Token,
-			  Expires:  time.Now().Add(sessionDuration),
+				Expires:  time.Now().Add(sessionDuration),
 				HttpOnly: true,
 			})
 
-      // reload the page after hook
-      r.After(doors.AfterLocationReload())
+			// reload the page after hook
+			r.After(doors.AfterLocationReload())
 
-      // frameworks internal session cannot outlive yours!
-      doors.UserSessionExpire(ctx, sessionDuration)
+			// frameworks internal session cannot outlive yours!
+			doors.UserSessionExpire(ctx, sessionDuration)
 
 			return true
 		},
 	}
 }
-
 ```
 
 > `r.After(doors.After)` allows you to specify an action to execute on the front-end after the hook request is finished. `doors.AfterLocationReload()` is useful for situations when you need to reinitialize the page after hook execution.
@@ -347,7 +346,7 @@ templ (h *homePage) Body() {
 
 `./home/handler.go`
 
-```go
+```templ
 package home
 
 import (
@@ -355,22 +354,22 @@ import (
 	"github.com/doors-dev/doors"
 )
 
+
 func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 	c, err := r.GetCookie("session")
 	if err != nil {
 		return p.Page(&homePage{})
 	}
-  // get session by cookie value
+	// get session by cookie value
 	s, found := driver.Sessions.Get(c.Value)
 	if !found {
 		return p.Page(&homePage{})
 	}
-  // if there is a session, set it to home page properties
+	// if there is a session, set it to home page properties
 	return p.Page(&homePage{
 		session: &s,
 	})
 }
-
 ```
 
 > The handler function is the page's entry point. **It's the only place where you must care about authorization**.  
@@ -379,7 +378,7 @@ Let's refactor the session extraction to an external function, so we can reuse i
 
 `./common/utils.go`
 
-```go
+```templ
 package common
 
 import (
@@ -404,7 +403,7 @@ func GetSession(r doors.R) *driver.Session {
 
 `./home/handler.go`
 
-```go
+```templ
 package home
 
 import (
@@ -442,7 +441,7 @@ templ (h *homePage) Body() {
 func (h *homePage) logout() doors.Attr {
 	return doors.AClick{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-		  // clean cookies
+			// clean cookies
 			r.SetCookie(&http.Cookie{
 				Name:   "session",
 				Path:   "/",
@@ -454,8 +453,6 @@ func (h *homePage) logout() doors.Attr {
 		},
 	}
 }
-
-
 ```
 
 > **It's very important to call UserSessionEnd(ctx) on logout to ensure that no pages are left running under the authorized user.**

@@ -1,1 +1,4 @@
 *.out
+temp.templ
+temp.go
+temp_templ.go
