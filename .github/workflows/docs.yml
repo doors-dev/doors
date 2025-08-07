@@ -1,10 +1,17 @@
-name: Test
+name: Deploy Documentation
 
-on: push
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'  
 
 jobs:
-  test:
-    runs-on: doors-docs
+  deploy-docs:
+    runs-on: doors-docs 
+    
     steps:
-    - run: echo "Hello World" > test.txt
-    - run: cat test.txt
+    - name: Deploy documentation
+      run: |
+        cd /home/runner/host
+        echo "export TAG=${{ github.ref_name }}" > .env
+        sudo systemctl restart docs-service
