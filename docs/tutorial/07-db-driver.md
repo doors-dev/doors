@@ -220,7 +220,21 @@ type ItemsDriver struct {
 	db *sql.DB
 }
 
-const onPage = 10
+const onPage = 5
+
+func (d *ItemsDriver) CountPages(catId string) int {
+	var total int
+	err := d.db.QueryRow("SELECT COUNT(*) FROM items WHERE cat = ?", catId).Scan(&total)
+	if err != nil {
+		panic(err)
+	}
+	pages := total / onPage
+	if total%onPage > 0 {
+		pages += 1
+	}
+	return pages
+}
+
 
 func (d *ItemsDriver) List(catId string, page int) []Item {
 	offset := page * onPage

@@ -147,6 +147,8 @@ func (c *categoryFragment) catHref(cat driver.Cat) doors.Attr {
 		},
 		Active: doors.Active{
 			Indicator: doors.IndicatorClass("contrast"),
+			// we don't want page query param to affect 
+      QueryMatcher: doors.QueryMatcherIgnore(),
 		},
 	}
 }
@@ -425,6 +427,7 @@ func (c *categoryFragment) catHref(cat driver.Cat) doors.Attr {
         },
         Active: doors.Active{
             Indicator: doors.IndicatorClass("contrast"),
+            QueryMatcher: doors.QueryMatcherIgnore(),
         },
     }
 }

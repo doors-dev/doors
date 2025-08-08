@@ -2,7 +2,7 @@ module github.com/doors-dev/doors
 
 go 1.24.1
 
-require github.com/a-h/templ v0.3.856
+require github.com/a-h/templ v0.3.924
 
 require github.com/go-playground/form/v4 v4.2.1
 

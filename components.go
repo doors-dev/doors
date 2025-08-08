@@ -147,20 +147,6 @@ func Sub[T any](beam Beam[T], render func(T) templ.Component) templ.Component {
 	})
 }
 
-// Extract retrieves a Beam value that was previously injected into the context.
-// This is used in conjunction with Inject to pass Beam values down the component tree.
-//
-// Returns the injected value and a boolean indicating whether the extraction was successful.
-// If the beam was not injected or the context doesn't contain the value, returns the zero
-// value and false.
-func Extract[T any](ctx context.Context, beam Beam[T]) (T, bool) {
-	ref, ok := ctx.Value(beam).(*T)
-	if !ok || ref == nil {
-		var t T
-		return t, false
-	}
-	return *ref, false
-}
 
 // Inject creates a reactive component that injects Beam values into the context for child components.
 //
@@ -171,10 +157,10 @@ func Extract[T any](ctx context.Context, beam Beam[T]) (T, bool) {
 //
 // Example:
 //
-//	@Inject(userBeam) {
-//	    @UserProfile() // Can use Extract(ctx, userBeam) to get current user
+//	@Inject("user", userBeam) {
+//	    @UserProfile() // Can use ctx.Value("user").(User) to get current user
 //	}
-func Inject[T any](beam Beam[T]) templ.Component {
+func Inject[T any](key any, beam Beam[T]) templ.Component {
 	return E(func(ctx context.Context) templ.Component {
 		children := templ.GetChildren(ctx)
 		ctx = templ.ClearChildren(ctx)
@@ -183,7 +169,7 @@ func Inject[T any](beam Beam[T]) templ.Component {
 			node.Update(
 				ctx,
 				templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-					ctx = context.WithValue(ctx, beam, &v)
+					ctx = context.WithValue(ctx, key, v)
 					return children.Render(ctx, w)
 				}),
 			)
@@ -225,7 +211,6 @@ func E(f func(context.Context) templ.Component) templ.Component {
 		return content.Render(ctx, w)
 	})
 }
-
 
 // Run runs function at render time
 // useful for intitialization logic
