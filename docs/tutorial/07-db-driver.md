@@ -220,7 +220,7 @@ type ItemsDriver struct {
 	db *sql.DB
 }
 
-const onPage = 5
+const onPage = 6
 
 func (d *ItemsDriver) CountPages(catId string) int {
 	var total int

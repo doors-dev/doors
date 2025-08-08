@@ -13,28 +13,38 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 	if len(items) == 0 {
 		No Items 
 	} else {
-		<table>
-			<thead>
-				<tr>
-					<th scope="col">Name</th>
-					<th scope="col">Rating</th>
-				</tr>
-			</thead>
-			<tbody>
-				for _, item := range items {
-					<tr>
-						<td><a { doors.A(ctx, c.itemHref(cat.Id, item.Id))... }>{ item.Name }</a></td>
-
-						<td>
-							// helper component to display any as text (default formatting)
-							@doors.Text(item.Rating)
-						</td>
-					</tr>
-				}
-			</tbody>
-		</table>
+	    // split between two columns
+		  <div class="grid">
+				<div>
+					for i, item := range items {
+						if i % 2 == 0 {
+							@c.item(item)
+						}
+					}
+				</div>
+				<div>
+					for i, item := range items {
+						if i % 2 == 1 {
+							@c.item(item)
+						}
+					}
+				</div>
+		 </div>
 	}
 }
+
+templ (c *categoryFragment) item(item driver.Item) {
+	<article>
+		<header>
+			<a { doors.A(ctx, c.itemHref(item.Cat, item.Id))... }>{ item.Name }</a> 
+		</header>
+		<kbd>
+        Rating 
+				@doors.Text(item.Rating)
+    </kbd>
+	</article>
+}
+
 
 func (c *categoryFragment) itemHref(catId string, itemId int) doors.Attr {
 	return doors.AHref{
@@ -58,6 +68,29 @@ templ (c *categoryFragment) cat(cat driver.Cat) {
 	</hgroup>
 	// add listing
 	@c.listItems(cat)
+}
+
+// also update styles 
+templ (c *categoryFragment) style() {
+	@doors.Style() {
+		<style>
+            .cat {
+                display: flex;
+                flex-direction: row;
+                gap: calc(var(--pico-typography-spacing-vertical) * 3);
+            }
+            .cat .content {
+                display: flex;
+                flex-direction: column;
+                align-items: start;
+                flex-grow: 1; /* here */
+            }
+            /* and here */
+            .cat .grid {
+                width: 100%;
+            }
+        </style>
+	}
 }
 
 ```
@@ -225,7 +258,7 @@ templ (c *categoryFragment) cat(cat driver.Cat) {
 
 `./catalog/page.templ`
 
-```go
+```templ
 
 type catalogPage struct {
 	beam    doors.SourceBeam[Path]
@@ -602,27 +635,37 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 	if len(items) == 0 {
 		No Items 
 	} else {
-		<table>
-			<thead>
-				<tr>
-					<th scope="col">Name</th>
-					<th scope="col">Rating</th>
-				</tr>
-			</thead>
-			<tbody>
-				for _, item := range items {
-					<tr>
-						<td><a { doors.A(ctx, c.itemHref(cat.Id, item.Id))... }>{ item.Name }</a></td>
-
-						<td>
-							@doors.Text(item.Rating)
-						</td>
-					</tr>
-				}
-			</tbody>
-		</table>
+			 <div class="grid">
+				<div>
+					for i, item := range items {
+						if i % 2 == 0 {
+							@c.item(item)
+						}
+					}
+				</div>
+				<div>
+					for i, item := range items {
+						if i % 2 == 1 {
+							@c.item(item)
+						}
+					}
+				</div>
+			</div>
 	}
 }
+
+templ (c *categoryFragment) item(item driver.Item) {
+	<article>
+		<header>
+			<a { doors.A(ctx, c.itemHref(item.Cat, item.Id))... }>{ item.Name }</a> 
+		</header>
+		<kbd>
+        Rating 
+				@doors.Text(item.Rating)
+    </kbd>
+	</article>
+}
+
 
 func (c *categoryFragment) itemHref(catId string, itemId int) doors.Attr {
 	return doors.AHref{
@@ -637,7 +680,6 @@ func (c *categoryFragment) itemHref(catId string, itemId int) doors.Attr {
 templ (c *categoryFragment) notFound() {
 	<h1>Category Not Found</h1>
 }
-
 templ (c *categoryFragment) style() {
 	@doors.Style() {
 		<style>
@@ -650,6 +692,10 @@ templ (c *categoryFragment) style() {
                 display: flex;
                 flex-direction: column;
                 align-items: start;
+                flex-grow: 1;
+            }
+            .cat .grid {
+                width: 100%;
             }
         </style>
 	}
@@ -672,6 +718,7 @@ func (c *categoryFragment) catHref(cat driver.Cat) doors.Attr {
 		},
 		Active: doors.Active{
 			Indicator: doors.IndicatorClass("contrast"),
+			QueryMatcher: doors.QueryMatcherIgnore(),
 		},
 	}
 }

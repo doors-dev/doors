@@ -46,7 +46,6 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 		var err error
 		t.Write(func(t *shredder.Thread) {
 			if t == nil || ctx.Err() != nil {
-				rw.SubmitEmpty()
 				return
 			}
 			ctx = context.WithValue(ctx, common.NodeCtxKey, tracker)
@@ -103,7 +102,6 @@ func (c *container) replace(userCtx context.Context, content templ.Component) <-
 
 	thread.Write(func(t *shredder.Thread) {
 		if t == nil || c.parentCtx.Err() != nil {
-			call.stale()
 			return
 		}
 		ctx := context.WithValue(c.parentCtx, common.RenderMapCtxKey, rm)
@@ -189,9 +187,6 @@ func (c *container) update(userCtx context.Context, content templ.Component) <-c
 	return call.ch
 }
 
-func (n *container) empty(userCtx context.Context) <-chan error {
-	return n.update(userCtx, nil)
-}
 
 func (n *container) remove(userCtx context.Context) <-chan error {
 	return n.replace(userCtx, nil)

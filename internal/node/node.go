@@ -125,7 +125,6 @@ func (n *Node) replace(ctx context.Context, content templ.Component) <-chan erro
 
 func (n *Node) Render(ctx context.Context, w io.Writer) error {
 	n.mu.Lock()
-	defer n.mu.Unlock()
 	if n.container != nil {
 		n.parent.removeChild(n)
 		n.container.remove(ctx)
@@ -137,14 +136,17 @@ func (n *Node) Render(ctx context.Context, w io.Writer) error {
 		n.mode = dynamic
 	}
 	if n.mode == removed {
+		n.mu.Unlock()
 		return nil
 	}
 	if n.mode == static {
+		n.mu.Unlock()
 		if n.content == nil {
 			return nil
 		}
 		return n.content.Render(ctx, w)
 	}
+	defer n.mu.Unlock()
 	n.parent = ctx.Value(common.NodeCtxKey).(*tracker)
 	if n.parent != nil {
 		n.parent.addChild(n)
@@ -163,7 +165,7 @@ func (n *Node) Render(ctx context.Context, w io.Writer) error {
 		inst:         inst,
 		parentCtx:    ctx,
 		parentCinema: parentCinema,
-		node: n,
+		node:         n,
 	}
 	return n.container.render(thread, rm, w, n.content)
 }
