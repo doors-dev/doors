@@ -38,9 +38,7 @@ func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceId s
 	found = inst.TriggerHook(nodeId, hookId, w, r)
 	if !found {
 		w.WriteHeader(http.StatusForbidden)
-		return
 	}
-	return
 }
 
 func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {

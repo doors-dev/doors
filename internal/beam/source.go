@@ -19,7 +19,6 @@ type instance interface {
 type SourceBeam[T any] interface {
 	Beam[T]
 
-	
 	// Update sets a new value and propagates it to all subscribers and derived beams.
 	// The update is applied only if it passes the source's distinct function (if configured).
 	//
@@ -101,8 +100,7 @@ func NewSourceBeam[T comparable](init T) SourceBeam[T] {
 func (s *source[T]) Latest() T {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	value, _ := s.values[s.seq]
-	return *value
+	return *s.values[s.seq]
 }
 
 func (s *source[T]) sync(seq uint, _ *common.FuncCollector) (*T, bool) {

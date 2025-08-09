@@ -54,13 +54,11 @@ func (s ARaw) Init(ctx context.Context, _ node.Core, _ instance.Core, attrs *fro
 	attrs.SetRaw(templ.Attributes(s))
 }
 
-var noAttrs []*front.Attr = make([]*front.Attr, 0)
-
 type eventAttr[E any] struct {
 	node      node.Core
 	ctx       context.Context
 	capture   front.Capture
-	mark      string
+	onError   []OnError
 	scope     []Scope
 	indicator []Indicator
 	inst      instance.Core
@@ -75,7 +73,7 @@ func (p *eventAttr[E]) init(attrs *front.Attrs) {
 		return
 	}
 	attrs.AppendCapture(p.capture, &front.Hook{
-		Mark:      p.mark,
+		Error:     front.IntoErrorAction(p.onError),
 		Scope:     front.IntoScopeSet(p.inst, p.scope),
 		Indicate:  front.IntoIndicate(p.indicator),
 		HookEntry: entry,
@@ -100,4 +98,3 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		e: &e,
 	})
 }
-

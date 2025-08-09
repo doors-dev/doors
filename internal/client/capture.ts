@@ -1,5 +1,7 @@
 import ctrl from './controller'
 import { Hook } from './scope'
+import indicator from './indicator'
+import door from './door'
 
 export const captureErrTypes = {
     blocked: "blocked",
@@ -15,6 +17,7 @@ export const captureErrTypes = {
 } as const
 
 export class CaptureErr extends Error {
+    public meta: any
     constructor(public type: string, private opt?: any) {
         let message: string
         switch (type) {
@@ -74,14 +77,13 @@ export class CaptureErr extends Error {
 }
 
 export function capture(name: string, opt: any, arg: any, event: Event | undefined, hook: any): Promise<Response> {
-    const [nodeId, hookId, scopeQueue, indicator, mark] = hook
+    const [nodeId, hookId, scopeQueue, indicator] = hook
     const h = new Hook({
         nodeId,
         hookId,
         event: event,
         scopeQueue,
         indicator,
-        mark
     })
     return h.capture(name, opt, arg)
 }
@@ -104,6 +106,36 @@ export function attach(parent: HTMLElement | DocumentFragment | Document) {
                     }
                     if (err.isStale()) {
                         ctrl.gone()
+                        return
+                    }
+                    const onErr = hook[4]
+                    if (!onErr || onErr.length == 0) {
+                        console.error("capture execution error", err)
+                        return
+                    }
+                    const nodeId = hook[0]
+                    for (const [type, args] of onErr) {
+                        if (type == "indicator") {
+                            const [duration, indications] = args
+                            const id = indicator.start(element, indications)
+                            if (id) {
+                                setTimeout(() => indicator.end(id), duration)
+                            }
+                        }
+                        if (type == "call") {
+                            const [name, meta] = args
+                            err.meta = meta
+                            const handler = door.getHandler(nodeId, name)
+                            if (!handler) {
+                                console.error("error handeling call " + name + " not found")
+                                return
+                            }
+                            try {
+                                await handler[0](err)
+                            } catch (e) {
+                                console.error("error handeling call " + name + " failed", e)
+                            }
+                        }
                     }
                 }
             })

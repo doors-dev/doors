@@ -45,7 +45,6 @@ type Screen struct {
 	parent     *Screen
 	children   common.Set[*Screen]
 	seq        uint
-	delMark    bool
 	cinema     screenCinema
 }
 
@@ -76,31 +75,6 @@ func (s *Screen) tryKill() bool {
 	})
 }
 
-func (s *Screen) syncChild(syncThread *shredder.Thread, ctx context.Context, seq uint, c *common.FuncCollector) {
-	s.thread.WriteInstant(func(t *shredder.Thread) {
-		var children []*Screen
-		t.Write(func(t *shredder.Thread) {
-			if t == nil {
-				return
-			}
-			var watchers []Watcher
-			watchers, children = s.commit(seq)
-			for _, w := range watchers {
-				t.Read(func(t *shredder.Thread) {
-					w.Sync(ctx, seq, c)
-				})
-			}
-		}, shredder.R(s.coreThread))
-		t.Write(func(t *shredder.Thread) {
-			if t == nil {
-				return
-			}
-			for _, screen := range children {
-				screen.syncChild(syncThread, ctx, seq, c)
-			}
-		})
-	}, shredder.R(syncThread))
-}
 
 func (s *Screen) sync(syncThread *shredder.Thread, ctx context.Context, seq uint, c *common.FuncCollector) {
 	s.thread.WriteInstant(func(t *shredder.Thread) {

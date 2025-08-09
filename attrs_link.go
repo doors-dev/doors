@@ -40,8 +40,6 @@ type PathMatcher interface {
 	pathMatch() pathMatch
 }
 
-type activeMatchers struct{}
-
 func PathMatcherFull() PathMatcher {
 	return pathMatch([]any{"full"})
 }
@@ -75,10 +73,12 @@ type AHref struct {
 	Active          Active
 	StopPropagation bool
 	Model           any
+	Indicator       []Indicator
+	OnError         []OnError
 }
 
 func (h *AHref) active() []any {
-	if h.Active.Indicator == nil || len(h.Active.Indicator) == 0 {
+	if len(h.Active.Indicator) == 0 {
 		return nil
 	}
 	if common.IsNill(h.Active.QueryMatcher) {
@@ -111,6 +111,8 @@ func (h AHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs 
 			StopPropagation: h.StopPropagation,
 		}, &front.Hook{
 			Scope:     []*ScopeSet{front.LatestScope("link")},
+			Indicate:  front.IntoIndicate(h.Indicator),
+			Error:     front.IntoErrorAction(h.OnError),
 			HookEntry: entry,
 		})
 	}

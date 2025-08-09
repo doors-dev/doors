@@ -10,8 +10,6 @@ import (
 
 type Cancel = func()
 
-type isDone = bool
-
 type Beam[T any] interface {
 	// Sub subscribes to the value stream. The onValue callback is called immediately
 	// with the current value (in the same goroutine), and again on every update.

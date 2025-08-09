@@ -63,7 +63,7 @@ func (s *Spawner) run() {
 	for {
 		s.mu.Lock()
 		if !s.killed && len(s.queue) == 0 {
-			ch := make(chan struct{}, 0)
+			ch := make(chan struct{})
 			s.ch = ch
 			s.mu.Unlock()
 			<-ch
@@ -86,7 +86,7 @@ func (s *Spawner) run() {
 			}
 			counter += 1
 			if counter == s.pool.limit {
-				doneCh = make(chan struct{}, 0)
+				doneCh = make(chan struct{})
 			}
 			mu.Unlock()
 			s.pool.ants.Submit(func() {

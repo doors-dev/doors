@@ -25,7 +25,7 @@ func newWatcher[T any](beam Beam[T], w Watcher[T]) *watcher[T] {
 	return &watcher[T]{
 		beam: beam,
 		w:    w,
-		init: make(chan struct{}, 0),
+		init: make(chan struct{}),
 		done: atomic.Bool{},
 		s:    nil,
 		id:   0,
@@ -64,7 +64,6 @@ func (w *watcher[T]) Sync(ctx context.Context, seq uint, c *common.FuncCollector
 		w.s.UnregWatcher(w.id)
 		return
 	}
-	return
 }
 
 func (w *watcher[T]) Init(ctx context.Context, s *node.Screen, id uint, seq uint) func() {

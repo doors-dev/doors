@@ -17,9 +17,6 @@ type keyEventHook struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -30,6 +27,9 @@ type keyEventHook struct {
 	// It receives a typed EventRequest[KeyboardEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[KeyboardEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (k *keyEventHook) init(event string, ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -43,7 +43,7 @@ func (k *keyEventHook) init(event string, ctx context.Context, n node.Core, inst
 		},
 		inst:      inst,
 		scope:     k.Scope,
-		mark:      k.Mark,
+		onError:   k.OnError,
 		indicator: k.Indicator,
 		on:        k.On,
 	}).init(attrs)
@@ -57,9 +57,6 @@ type AKeyDown struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is an optional identifier that appears in frontend hook lifecycle events.
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -70,6 +67,9 @@ type AKeyDown struct {
 	// It receives a typed EventRequest[KeyboardEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[KeyboardEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (k AKeyDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -85,9 +85,6 @@ type AKeyUp struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is an optional identifier that appears in frontend hook lifecycle events.
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -98,6 +95,9 @@ type AKeyUp struct {
 	// It receives a typed EventRequest[KeyboardEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[KeyboardEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (k AKeyUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {

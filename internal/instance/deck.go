@@ -1,7 +1,6 @@
 package instance
 
 import (
-	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -413,14 +412,10 @@ func (h header) writeOnly(w io.Writer) error {
 }
 
 func (h header) write(w io.Writer) error {
-	buffer := &bytes.Buffer{}
-	enc := json.NewEncoder(buffer)
-	enc.SetEscapeHTML(false)
-	err := enc.Encode(h)
+	bytes, err := common.MarshalJSON(h)
 	if err != nil {
 		panic("Json writable is not writable")
 	}
-	bytes := common.StripN(buffer.Bytes())
 	length := uint32(len(bytes))
 	err = binary.Write(w, binary.BigEndian, length)
 	if err != nil {

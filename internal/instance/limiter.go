@@ -23,7 +23,6 @@ func (p *player) shift() {
 	p.normalize()
 	p.limiter.players[p.id] = p
 	p.leader.shift()
-	return
 }
 
 func (p *player) isAlive() bool {
@@ -49,6 +48,7 @@ func (p *player) promote(new *player, debuff bool) {
 	if !p.hasLeader() {
 		p.leader = new
 		new.reset()
+		new.hp = new.hp / 2
 		return
 	}
 	p.leader.promote(new, debuff)

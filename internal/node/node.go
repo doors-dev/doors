@@ -163,7 +163,7 @@ func (n *Node) Render(ctx context.Context, w io.Writer) error {
 	n.container = &container{
 		id:           inst.NewId(),
 		inst:         inst,
-		parentCtx:    ctx,
+		parentCtx:    parentCtx,
 		parentCinema: parentCinema,
 		node:         n,
 	}

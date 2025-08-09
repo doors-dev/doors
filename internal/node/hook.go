@@ -47,10 +47,6 @@ type Hook interface {
 	cancel(ctx context.Context, err error)
 }
 
-type doneErr struct {
-	err error
-}
-
 type NodeHook struct {
 	hook    Hook
 	mu      sync.Mutex
@@ -85,7 +81,7 @@ func (h *NodeHook) Cancel(err error) {
 
 func (h *NodeHook) Trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
 	h.mu.Lock()
-	ch := make(chan struct{}, 0)
+	ch := make(chan struct{})
 	prevCh := h.ch
 	h.ch = ch
 	h.mu.Unlock()

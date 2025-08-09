@@ -124,7 +124,7 @@ func (c *conn) wait() waitResult {
 			return waitReturn
 		}
 	}
-	dur := c.deadline.Sub(time.Now())
+	dur := time.Until(c.deadline)
 	if dur <= 0 {
 		return waitZombie
 	}
@@ -195,7 +195,7 @@ func (c *conn) Run() {
 				}
 			} else {
 				if c.zombie || !c.writer.somethingWritten() {
-					ch := make(chan struct{}, 0)
+					ch := make(chan struct{})
 					waitChannel = &ch
 					continue
 				}

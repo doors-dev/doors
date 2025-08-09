@@ -78,7 +78,6 @@ type core[M any] struct {
 	spawner          *shredder.Spawner
 	cspCollectorUsed atomic.Bool
 	cspCollector     *common.CSPCollector
-	nonce            string
 }
 
 func (c *core[M]) OnPanic(err error) {

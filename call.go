@@ -42,7 +42,7 @@ type CallConf struct {
 }
 
 func (conf *CallConf) clientCall() (*node.ClientCall, bool) {
-	arg, err := json.Marshal(conf.Arg)
+	arg, err := common.MarshalJSON(conf.Arg)
 	if err != nil {
 		slog.Error("Call arg marshaling error", slog.String("call_name", conf.Name), slog.String("json_error", err.Error()))
 		return nil, false

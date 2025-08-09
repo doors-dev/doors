@@ -17,9 +17,6 @@ type pointerEventHook struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -30,6 +27,9 @@ type pointerEventHook struct {
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (p *pointerEventHook) init(event string, ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -44,7 +44,7 @@ func (p *pointerEventHook) init(event string, ctx context.Context, n node.Core, 
 		node:      n,
 		scope:     p.Scope,
 		ctx:       ctx,
-		mark:      p.Mark,
+		onError:   p.OnError,
 		indicator: p.Indicator,
 		on:        p.On,
 	}).init(attrs)
@@ -58,9 +58,6 @@ type AClick struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -71,6 +68,9 @@ type AClick struct {
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (c AClick) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -86,9 +86,6 @@ type APointerDown struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -99,6 +96,9 @@ type APointerDown struct {
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (c APointerDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -114,9 +114,6 @@ type APointerUp struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -127,6 +124,9 @@ type APointerUp struct {
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (c APointerUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -142,9 +142,6 @@ type APointerMove struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -155,6 +152,9 @@ type APointerMove struct {
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (c APointerMove) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -178,9 +178,6 @@ type APointerOut struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -191,6 +188,9 @@ type APointerOut struct {
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (c APointerOut) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -206,9 +206,6 @@ type APointerEnter struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -219,6 +216,9 @@ type APointerEnter struct {
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (c APointerEnter) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -234,9 +234,6 @@ type APointerLeave struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -247,6 +244,9 @@ type APointerLeave struct {
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (c APointerLeave) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -262,9 +262,6 @@ type APointerCancel struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
-	// Mark is used to identify hook error on the frontend
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -275,6 +272,9 @@ type APointerCancel struct {
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (c APointerCancel) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {

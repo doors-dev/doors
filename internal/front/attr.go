@@ -1,9 +1,7 @@
 package front
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -29,14 +27,10 @@ type Attrs struct {
 }
 
 func (a *Attrs) marshal(value any) (string, error) {
-	buf := &bytes.Buffer{}
-	enc := json.NewEncoder(buf)
-	enc.SetEscapeHTML(false)
-	err := enc.Encode(value)
+	b, err := common.MarshalJSON(value)
 	if err != nil {
 		return "", err
 	}
-	b := common.StripN(buf.Bytes())
 	return common.AsString(&b), nil
 }
 
@@ -97,7 +91,7 @@ func (a *Attrs) SetData(name string, data any) {
 }
 
 func (a *Attrs) AppendCapture(capture Capture, hook *Hook) {
-	a.AppendArray(fmt.Sprintf("data-d00r-capture"), []any{capture.Listen(), capture.Name(), capture, hook})
+	a.AppendArray("data-d00r-capture", []any{capture.Listen(), capture.Name(), capture, hook})
 }
 
 type Attr interface {
@@ -116,4 +110,3 @@ func A(ctx context.Context, attr ...Attr) templ.Attributes {
 	}
 	return attrs.render()
 }
-

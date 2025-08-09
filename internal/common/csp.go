@@ -154,9 +154,7 @@ func (c *CSP) collected(directive string, collected *collectedCSP, user []string
 		value := fmt.Sprintf("'sha256-%s'", base64.StdEncoding.EncodeToString(hash))
 		parts = append(parts, value)
 	}
-	for _, source := range collected.sources {
-		parts = append(parts, source)
-	}
+	parts = append(parts, collected.sources...)
 	if c.InlineLocal {
 		value := fmt.Sprintf("'nonce-%s'", nonce)
 		parts = append(parts, value)
@@ -169,8 +167,8 @@ func (c *CSP) simple(directive string, mandatory []string, user []string, def []
 		return ""
 	}
 	hasUser := user != nil
-	hasDefault := def != nil && len(def) > 0
-	hasMandatory := mandatory != nil && len(mandatory) > 0
+	hasDefault := len(def) > 0
+	hasMandatory := len(mandatory) > 0
 	if user == nil && !hasMandatory && !hasDefault {
 		return ""
 	}

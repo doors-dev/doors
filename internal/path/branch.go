@@ -18,7 +18,7 @@ func newBranch(path string, marker field) (*branch, error) {
 		atoms:  make([]*atom, 0),
 	}
 	a := newAtom()
-	for _, r := range []rune(path) {
+	for _, r := range path {
 		switch r {
 		case ':':
 			err := a.capturePart()

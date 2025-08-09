@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"log"
 	"reflect"
@@ -18,6 +19,20 @@ import (
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
 )
+
+var bytesNull = []byte("null")
+
+func MarshalJSON(value any) ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(value)
+	if err != nil {
+		return bytesNull, err
+	}
+	b := StripN(buf.Bytes())
+	return b, nil
+}
 
 func Ts() {
 	fmt.Println(time.Now().UnixNano() / int64(time.Millisecond))
@@ -64,7 +79,6 @@ func RandId() string {
 	}
 	return base58.Encode(randomBytes)
 }
-
 
 func Zip(input []byte) ([]byte, error) {
 	var buf bytes.Buffer

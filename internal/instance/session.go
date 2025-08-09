@@ -46,7 +46,6 @@ type Session struct {
 	id        string
 	instances map[string]AnyInstance
 	router    router
-	expireCh  *chan struct{}
 	limiter   *limiter
 	expire    *time.Timer
 }

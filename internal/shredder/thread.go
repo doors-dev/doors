@@ -21,16 +21,6 @@ type Thread struct {
 	after   func()
 }
 
-func (t *Thread) addHead(head threadHead) bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.spawner == nil {
-		return false
-	}
-	t.heads = append([]threadHead{head}, t.heads...)
-	return true
-}
-
 func (t *Thread) IsDone() bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()

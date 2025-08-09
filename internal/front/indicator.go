@@ -6,8 +6,8 @@ type SelectorMode string
 
 const (
 	SelectModeTarget      SelectorMode = "target"
-	SelectModeQuery                    = "query"
-	SelectModeParentQuery              = "parent_query"
+	SelectModeQuery       SelectorMode = "query"
+	SelectModeParentQuery SelectorMode = "parent_query"
 )
 
 type Selector struct {

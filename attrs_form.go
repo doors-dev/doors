@@ -13,9 +13,6 @@ import (
 type FocusEvent = front.FocusEvent
 
 type focusEventHook struct {
-	// Mark is an optional identifier that appears in frontend hook lifecycle events.
-	Mark string
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -27,6 +24,9 @@ type focusEventHook struct {
 	// The function receives a typed EventRequest[FocusEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[FocusEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (p *focusEventHook) init(event string, ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -37,7 +37,7 @@ func (p *focusEventHook) init(event string, ctx context.Context, n node.Core, in
 		node:      n,
 		ctx:       ctx,
 		inst:      inst,
-		mark:      p.Mark,
+		onError:   p.OnError,
 		scope:     p.Scope,
 		indicator: p.Indicator,
 		on:        p.On,
@@ -95,10 +95,6 @@ func (f AFocusOut) Init(ctx context.Context, n node.Core, inst instance.Core, at
 //	    },
 //	})... }>
 type ARawSubmit struct {
-	// Mark is an optional identifier that appears in frontend hook lifecycle events.
-	// Use it to filter events like `hook:start` or `hook:end` in JavaScript.
-	Mark string
-
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, ModeFrame, etc.
 	Scope []Scope
@@ -112,6 +108,8 @@ type ARawSubmit struct {
 	// It receives a RawFormRequest and should return true (is done)
 	// when processing is complete and the hook can be removed.
 	On func(context.Context, RRawForm) bool
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (s ARawSubmit) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -122,9 +120,9 @@ func (s ARawSubmit) Init(ctx context.Context, n node.Core, inst instance.Core, a
 		return
 	}
 	attrs.AppendCapture(&front.FormCapture{}, &front.Hook{
-		Mark:      s.Mark,
+		Error:     front.IntoErrorAction(s.OnError),
 		Scope:     front.IntoScopeSet(inst, s.Scope),
-		Indicate: front.IntoIndicate(s.Indicator),
+		Indicate:  front.IntoIndicate(s.Indicator),
 		HookEntry: entry,
 	})
 }
@@ -165,10 +163,6 @@ type ASubmit[D any] struct {
 	// Defaults to 8 MB if zero.
 	MaxMemory int
 
-	// Mark is an optional identifier that appears in frontend hook lifecycle events.
-	// Use it to filter events like `hook:start` or `hook:end` in JavaScript.
-	Mark string
-
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, ModeFrame, etc.
 	Scope []Scope
@@ -182,6 +176,9 @@ type ASubmit[D any] struct {
 	// It receives a typed FormRequest[D] and should return true (is done)
 	// when processing is complete and the hook can be removed.
 	On func(context.Context, RForm[D]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (s ASubmit[V]) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -192,9 +189,9 @@ func (s ASubmit[V]) Init(ctx context.Context, n node.Core, inst instance.Core, a
 		return
 	}
 	attrs.AppendCapture(&front.FormCapture{}, &front.Hook{
-		Mark:      s.Mark,
+		Error:     front.IntoErrorAction(s.OnError),
 		Scope:     front.IntoScopeSet(inst, s.Scope),
-		Indicate: front.IntoIndicate(s.Indicator),
+		Indicate:  front.IntoIndicate(s.Indicator),
 		HookEntry: entry,
 	})
 }
@@ -247,10 +244,6 @@ type ChangeEvent = front.ChangeEvent
 //	    },
 //	})... }>
 type AChange struct {
-	// Mark is an optional identifier that appears in frontend hook lifecycle events.
-	// Use it to filter events like `hook:start` or `hook:end` in JavaScript.
-	Mark string
-
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, ModeFrame, etc.
 	Scope []Scope
@@ -264,6 +257,9 @@ type AChange struct {
 	// It receives a typed EventRequest[ChangeEvent] and should return true
 	// when the hook is complete and can be removed.
 	On func(context.Context, REvent[ChangeEvent]) bool
+
+	// OnError determines what to do if error occured during hook requrest
+	OnError []OnError
 }
 
 func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -271,7 +267,7 @@ func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attr
 		capture:   &front.ChangeCapture{},
 		node:      n,
 		ctx:       ctx,
-		mark:      p.Mark,
+		onError:   p.OnError,
 		indicator: p.Indicator,
 		inst:      inst,
 		scope:     p.Scope,
@@ -281,11 +277,11 @@ func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attr
 
 type InputEvent = front.InputEvent
 type AInput struct {
-	Mark         string
 	Scope        []Scope
 	Indicator    []Indicator
 	On           func(context.Context, REvent[InputEvent]) bool
 	ExcludeValue bool
+	OnError      []OnError
 }
 
 func (p AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
@@ -296,7 +292,7 @@ func (p AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs
 		node:      n,
 		inst:      inst,
 		ctx:       ctx,
-		mark:      p.Mark,
+		onError:   p.OnError,
 		scope:     p.Scope,
 		indicator: p.Indicator,
 		on:        p.On,

@@ -100,7 +100,11 @@ func (inst *Instance[M]) TriggerHook(nodeId uint64, hookId uint64, w http.Respon
 		return false
 	}
 	inst.mu.RUnlock()
-	return inst.core.TriggerHook(nodeId, hookId, w, r)
+	ok := inst.core.TriggerHook(nodeId, hookId, w, r)
+	if ok {
+		inst.session.limiter.touch(inst.id)
+	}
+	return ok
 }
 
 func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {

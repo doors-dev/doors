@@ -18,8 +18,6 @@ type Store struct {
 	mu      sync.RWMutex
 }
 
-type storeKeyType struct{}
-
 func (c *Store) Inject(ctx context.Context) context.Context {
 	return context.WithValue(ctx, c.key, c)
 }
@@ -27,8 +25,7 @@ func (c *Store) Inject(ctx context.Context) context.Context {
 func (c *Store) Load(key any) any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	v, _ := c.storage[key]
-	return v
+	return c.storage[key]
 }
 
 func (c *Store) Save(key any, value any) {

@@ -16,7 +16,6 @@ type field struct {
 type adapterBuilder[M any] struct {
 	g       *group
 	fields  map[string]field
-	setPath func(m *M, l *Location)
 	name    string
 }
 

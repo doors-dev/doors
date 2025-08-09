@@ -17,10 +17,6 @@ type Location struct {
 	Query url.Values
 }
 
-var emptyLocation *Location = &Location{
-	Path:  "",
-	Query: make(url.Values),
-}
 
 func NewRequestLocation(r *http.Request) *Location {
 	return &Location{

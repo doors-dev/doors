@@ -16,7 +16,7 @@ export class Hook {
     private abortTimer: AbortTimer | null = null
     private fetch: any = {}
     private scopeQueue: Array<ScopeSet>
-    constructor(private params: { nodeId: number, hookId: number, event?: Event, scopeQueue: Array<ScopeSet>, indicator: Array<IndicatorEntry>, mark: string }) {
+    constructor(private params: { nodeId: number, hookId: number, event?: Event, scopeQueue: Array<ScopeSet>, indicator: Array<IndicatorEntry> }) {
         this.promise = new Promise((res, rej) => {
             this.res = res
             this.rej = rej
