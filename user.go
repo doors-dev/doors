@@ -3,17 +3,17 @@ package doors
 import (
 	"context"
 	"errors"
-	"time"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxstore"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
+	"time"
 )
 
 // UserLocationReload triggers a browser location reload for the current instance.
 // This executes location.reload() in JavaScript through the framework's call mechanism.
 //
-// The reload is performed asynchronously, causing the browser to reload the current 
+// The reload is performed asynchronously, causing the browser to reload the current
 // page and create a new instance.
 //
 // Example:
@@ -33,7 +33,7 @@ func UserLocationReload(ctx context.Context) {
 }
 
 // UserLocationAssignRaw navigates the browser to the specified URL by calling
-// location.assign(url) in JavaScript. This creates a new entry in the browser's 
+// location.assign(url) in JavaScript. This creates a new entry in the browser's
 // history stack, allowing the user to navigate back.
 //
 // The url parameter should be a complete URL string. The Origin field is set to
@@ -44,7 +44,7 @@ func UserLocationReload(ctx context.Context) {
 //
 //	// Navigate to external site
 //	doors.UserLocationAssignRaw(ctx, "https://example.com")
-//	
+//
 //	// Navigate to a specific path
 //	doors.UserLocationAssignRaw(ctx, "/static/docs.pdf")
 func UserLocationAssignRaw(ctx context.Context, url string) {
@@ -56,7 +56,7 @@ func UserLocationAssignRaw(ctx context.Context, url string) {
 }
 
 // UserLocationReplaceRaw replaces the current browser location with the specified
-// URL by calling location.replace(url) in JavaScript. This does not create a new 
+// URL by calling location.replace(url) in JavaScript. This does not create a new
 // history entry, preventing the user from navigating back to the current page.
 //
 // The url parameter should be a complete URL string. Use this for redirects
@@ -75,7 +75,7 @@ func UserLocationReplaceRaw(ctx context.Context, url string) {
 }
 
 // UserLocationReplace replaces the current browser location with a URL generated
-// from the provided model. This calls location.replace(url) in JavaScript and 
+// from the provided model. This calls location.replace(url) in JavaScript and
 // does not create a new history entry.
 //
 // The model should be a struct with a registered path adapter. The adapter
@@ -88,7 +88,7 @@ func UserLocationReplaceRaw(ctx context.Context, url string) {
 //	    IsCat  bool   `path:"/catalog/:CatId"`
 //	    CatId  string
 //	}
-//	
+//
 //	// Replace current location with category page
 //	err := doors.UserLocationReplace(ctx, CatalogPath{
 //	    IsCat: true,
@@ -110,7 +110,7 @@ func UserLocationReplace(ctx context.Context, model any) error {
 }
 
 // UserLocationAssign navigates the browser to a URL generated from the provided
-// model by calling location.assign(url) in JavaScript. This creates a new history 
+// model by calling location.assign(url) in JavaScript. This creates a new history
 // entry, allowing the user to navigate back.
 //
 // The model should be a struct with a registered path adapter. Navigation between
@@ -240,7 +240,7 @@ func UserSessionId(ctx context.Context) string {
 	return inst.SessionId()
 }
 
-// UserSave stores a key-value pair in the session-scoped storage.
+// UserSessionSave stores a key-value pair in the session-scoped storage.
 // The storage persists for the session lifetime and is shared across
 // all instances (browser tabs) within the same session.
 //
@@ -256,16 +256,16 @@ func UserSessionId(ctx context.Context) string {
 //	    Theme    string
 //	    Language string
 //	}
-//	
-//	saved := doors.UserSave(ctx, "prefs", Preferences{
+//
+//	saved := doors.UserSessionSave(ctx, "prefs", Preferences{
 //	    Theme:    "dark",
 //	    Language: "en",
 //	})
-func UserSave(ctx context.Context, key any, value any) bool {
-	return ctxstore.Save(ctx, key, value)
+func UserSessionSave(ctx context.Context, key any, value any) bool {
+	return ctxstore.Save(ctx, common.SessionStoreCtxKey, key, value)
 }
 
-// UserLoad retrieves a value from the session-scoped storage by its key.
+// UserSessionLoad retrieves a value from the session-scoped storage by its key.
 // Returns nil if the key doesn't exist in the storage.
 //
 // The returned value must be type-asserted to its original type.
@@ -274,12 +274,54 @@ func UserSave(ctx context.Context, key any, value any) bool {
 // Example:
 //
 //	// Load user preferences
-//	if val := doors.UserLoad(ctx, "prefs"); val != nil {
+//	if val := doors.UserSessionLoad(ctx, "prefs"); val != nil {
 //	    prefs := val.(Preferences)
 //	    applyTheme(prefs.Theme)
 //	}
-func UserLoad(ctx context.Context, key any) any {
-	return ctxstore.Load(ctx, key)
+func UserSessionLoad(ctx context.Context, key any) any {
+	return ctxstore.Load(ctx, common.SessionStoreCtxKey, key)
+}
+
+// UserInstanceSave stores a key-value pair in the instance-scoped storage.
+// The storage persists for the instance lifetime and is isolated to
+// the current instance (browser tab / page). Each instance has its own separate storage.
+//
+// Both key and value can be of any type. The storage is thread-safe
+// and can be accessed concurrently from different goroutines within the same instance.
+//
+// Returns true if the value was successfully saved, false otherwise.
+//
+// Example:
+//
+//	// Store user preferences for this specific tab
+//	type Preferences struct {
+//	    Theme    string
+//	    Language string
+//	}
+//
+//	saved := doors.UserInstanceSave(ctx, "prefs", Preferences{
+//	    Theme:    "dark",
+//	    Language: "en",
+//	})
+func UserInstanceSave(ctx context.Context, key any, value any) bool {
+	return ctxstore.Save(ctx, common.InstanceStoreCtxKey, key, value)
+}
+
+// UserInstanceLoad retrieves a value from the instance-scoped storage by its key.
+// Returns nil if the key doesn't exist in the storage.
+//
+// The returned value must be type-asserted to its original type.
+// The storage is isolated to the current instance and not shared with other instances.
+//
+// Example:
+//
+//	// Load user preferences for this specific tab
+//	if val := doors.UserInstanceLoad(ctx, "prefs"); val != nil {
+//	    prefs := val.(Preferences)
+//	    applyTheme(prefs.Theme)
+//	}
+func UserInstanceLoad(ctx context.Context, key any) any {
+	return ctxstore.Load(ctx, common.InstanceStoreCtxKey, key)
 }
 
 // Location represents a URL location within the application's routing system.
@@ -307,7 +349,7 @@ type Location = path.Location
 //	    Id   int
 //	    Sort string `query:"sort"`
 //	}
-//	
+//
 //	// Create location for product item
 //	loc, err := doors.NewLocation(ctx, ProductPath{
 //	    Item: true,
@@ -345,7 +387,7 @@ func NewLocation(ctx context.Context, model any) (Location, error) {
 //
 //	// Generate unique token
 //	token := doors.RandId()
-//	
+//
 //	// Use for session creation
 //	session := Session{
 //	    ID:      doors.RandId(),

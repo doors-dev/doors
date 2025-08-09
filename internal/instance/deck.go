@@ -393,13 +393,13 @@ func (c *card) skipSeq(seq uint64, h head) {
 
 func newHeader(startSeq uint64, endSeq uint64) header {
 	if startSeq == endSeq {
-		return []common.JsonWritable{common.JsonWritableAny{endSeq}}
+		return []any{endSeq}
 	}
-	return []common.JsonWritable{common.JsonWritableAny{endSeq}, common.JsonWritableAny{startSeq}}
+	return []any{endSeq, startSeq}
 
 }
 
-type header []common.JsonWritable
+type header []any
 
 var terminator = []byte{0xFF}
 
@@ -414,16 +414,19 @@ func (h header) writeOnly(w io.Writer) error {
 
 func (h header) write(w io.Writer) error {
 	buffer := &bytes.Buffer{}
-	err := common.JsonWritables(common.JsonWritables(h)).WriteJson(buffer)
+	enc := json.NewEncoder(buffer)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(h)
 	if err != nil {
 		panic("Json writable is not writable")
 	}
-	length := uint32(buffer.Len())
+	bytes := common.StripN(buffer.Bytes())
+	length := uint32(len(bytes))
 	err = binary.Write(w, binary.BigEndian, length)
 	if err != nil {
 		return err
 	}
-	_, err = w.Write(buffer.Bytes())
+	_, err = w.Write(bytes)
 	return err
 }
 
@@ -433,7 +436,7 @@ type issuedCall struct {
 }
 
 func (i *issuedCall) write(h header, w io.Writer) error {
-	header := append(h, common.JsonWritableAny{i.data.Name}, i.data.Arg)
+	header := append(h, i.data.Name, i.data.Arg)
 	err := header.write(w)
 	if err != nil {
 		return err

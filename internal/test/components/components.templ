@@ -5,34 +5,70 @@ import (
 	"github.com/doors-dev/doors/internal/test"
 )
 
+
 templ head(b doors.SourceBeam[test.Path]) {
-	@doors.Title(b, func(p test.Path) string {
+	@doors.Head(b, func(p test.Path) doors.HeadData {
 		if p.Vh {
-			return "home"
+			return doors.HeadData{
+				Title: "home",
+				Meta: map[string]string{
+					"description": "Welcome to the home page",
+					"keywords":    "home, main, index",
+					"og:title":    "Home Page",
+				},
+			}
 		}
 		if p.Vs {
-			return "s"
+			return doors.HeadData{
+				Title: "s",
+				Meta: map[string]string{
+					"description": "String page description",
+					"category":    "text-content",
+				},
+			}
 		}
-		return p.P
+		return doors.HeadData{
+			Title: p.P,
+			Meta: map[string]string{
+				"description": "Page for parameter: " + p.P,
+				"keywords":    "param, " + p.P,
+				"og:title":    "Param: " + p.P,
+				"author":      "Parameter Author",
+			},
+		}
 	})
 }
 
 type LinksFragment struct {
 	test.NoBeam
-    Param string
+	Param string
 }
 
 templ (f *LinksFragment) Render() {
-	<a id="param" { doors.A(ctx, doors.AHref {
+	<a
+		id="home"
+		{ doors.A(ctx, doors.AHref {
+        Model: test.Path {
+            Vh: true,
+        },
+    })... }
+	>home</a>
+	<a
+		id="param"
+		{ doors.A(ctx, doors.AHref {
         Model: test.Path {
             Vp: true,
             P: f.Param,
         },
-    })... } >param</a>
-	<a id="string" { doors.A(ctx, doors.AHref {
+    })... }
+	>param</a>
+	<a
+		id="string"
+		{ doors.A(ctx, doors.AHref {
         Model: test.Path {
             Vs: true,
             P: f.Param,
         },
-    })... } >string</a>
+    })... }
+	>string</a>
 }

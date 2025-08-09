@@ -49,7 +49,7 @@ func (conf *CallConf) clientCall() (*node.ClientCall, bool) {
 	}
 	return &node.ClientCall{
 		Name:    conf.Name,
-		Arg:     (common.JsonWritabeRaw)(arg),
+		Arg:     json.RawMessage(arg),
 		Trigger: conf.triggerFunc(),
 		Cancel:  conf.Cancel,
 	}, true
@@ -63,7 +63,6 @@ func (c *CallConf) triggerFunc() func(ctx context.Context, w http.ResponseWriter
 		c.Trigger(ctx, &request{w: w, r: r, ctx: ctx})
 	}
 }
-
 
 // Call sends a backend-initiated JavaScript function call to the frontend.
 //
@@ -84,18 +83,18 @@ func (c *CallConf) triggerFunc() func(ctx context.Context, w http.ResponseWriter
 //
 // Example:
 //
-//	// Go (backend):
-//	d.Call(ctx, d.CallConf{
-//	    Name: "alert",
-//	    Arg:  "Hello",
-//	})
+//		// Go (backend):
+//		d.Call(ctx, d.CallConf{
+//		    Name: "alert",
+//		    Arg:  "Hello",
+//		})
 //
-//	// JavaScript (frontend):
-//  $doors.Script() {
-//		<script>
-//			$d.on("alert", (message) => alert(message))
-//		</script>
-// } 
+//		// JavaScript (frontend):
+//	 $doors.Script() {
+//			<script>
+//				$d.on("alert", (message) => alert(message))
+//			</script>
+//	}
 //
 // Notes:
 //   - The Name must match the identifier registered via `$D.on(...)` in frontend JavaScript.

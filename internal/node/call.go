@@ -12,7 +12,7 @@ type nodeCall struct {
 	ctx     context.Context
 	name    string
 	ch      chan error
-	arg     common.JsonWritable
+	arg     any
 	payload common.Writable
 	done    ctxwg.Done
 }

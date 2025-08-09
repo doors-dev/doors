@@ -34,14 +34,35 @@ func head(b doors.SourceBeam[test.Path]) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = doors.Title(b, func(p test.Path) string {
+		templ_7745c5c3_Err = doors.Head(b, func(p test.Path) doors.HeadData {
 			if p.Vh {
-				return "home"
+				return doors.HeadData{
+					Title: "home",
+					Meta: map[string]string{
+						"description": "Welcome to the home page",
+						"keywords":    "home, main, index",
+						"og:title":    "Home Page",
+					},
+				}
 			}
 			if p.Vs {
-				return "s"
+				return doors.HeadData{
+					Title: "s",
+					Meta: map[string]string{
+						"description": "String page description",
+						"category":    "text-content",
+					},
+				}
 			}
-			return p.P
+			return doors.HeadData{
+				Title: p.P,
+				Meta: map[string]string{
+					"description": "Page for parameter: " + p.P,
+					"keywords":    "param, " + p.P,
+					"og:title":    "Param: " + p.P,
+					"author":      "Parameter Author",
+				},
+			}
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -76,7 +97,19 @@ func (f *LinksFragment) Render() templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<a id=\"param\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<a id=\"home\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.AHref{
+			Model: test.Path{
+				Vh: true,
+			},
+		}))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, ">home</a> <a id=\"param\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -89,7 +122,7 @@ func (f *LinksFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, ">param</a> <a id=\"string\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, ">param</a> <a id=\"string\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -102,7 +135,7 @@ func (f *LinksFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, ">string</a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, ">string</a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -147,7 +147,6 @@ func Sub[T any](beam Beam[T], render func(T) templ.Component) templ.Component {
 	})
 }
 
-
 // Inject creates a reactive component that injects Beam values into the context for child components.
 //
 // It subscribes to the Beam and re-renders its children whenever the value changes,

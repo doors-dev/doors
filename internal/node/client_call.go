@@ -11,7 +11,7 @@ import (
 
 type ClientCall struct {
 	Name    string
-	Arg     common.JsonWritabeRaw
+	Arg     any
 	Trigger func(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	Cancel  func(ctx context.Context, err error)
 }
@@ -67,7 +67,6 @@ func (cc *clientCall) cancelCall(err error) {
 		return
 	}
 	cc.call.cancel(cc.ctx, err)
-	return
 }
 
 func (cc *clientCall) Data() *common.CallData {
@@ -82,12 +81,12 @@ func (cc *clientCall) Data() *common.CallData {
 
 }
 
-func (cc *clientCall) arg() common.JsonWritable {
-	hook := common.JsonWritableAny{nil}
+func (cc *clientCall) arg() []any {
+	var hook *uint64 = nil
 	if cc.hookEntry != nil {
-		hook = common.JsonWritableAny{cc.hookEntry.HookId}
+		hook = &cc.hookEntry.HookId
 	}
-	return common.JsonWritables([]common.JsonWritable{common.JsonWritableAny{cc.call.Name}, cc.call.Arg, common.JsonWritableAny{cc.tracker.Id()}, hook})
+	return []any{cc.call.Name, cc.call.Arg, cc.tracker.Id(), hook}
 }
 
 func (cc *clientCall) Result(err error) {

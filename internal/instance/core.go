@@ -39,6 +39,7 @@ type coreInstance[M any] interface {
 func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredder.Spawner) *core[M] {
 	return &core[M]{
 		instance:     inst,
+		store:        ctxstore.NewStore(common.InstanceStoreCtxKey),
 		gen:          common.NewPrima(),
 		hooksMu:      sync.Mutex{},
 		hooks:        make(map[uint64]map[uint64]*node.NodeHook),
@@ -49,6 +50,7 @@ func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredde
 }
 
 type Core interface {
+	Thread() *shredder.Thread
 	InlineNonce() (string, bool)
 	CSPCollector() (*common.CSPCollector, bool)
 	ImportRegistry() *resources.Registry
@@ -67,6 +69,7 @@ type Core interface {
 
 type core[M any] struct {
 	instance         coreInstance[M]
+	store            *ctxstore.Store
 	gen              *common.Primea
 	hooksMu          sync.Mutex
 	hooks            map[uint64]map[uint64]*node.NodeHook
@@ -113,11 +116,9 @@ func (c *core[M]) SessionId() string {
 	return c.instance.getSession().Id()
 }
 
-
 func (c *core[M]) Cinema() *node.Cinema {
 	return c.root.Cinema()
 }
-
 
 func (c *core[M]) NewId() uint64 {
 	return c.gen.Gen()
@@ -164,6 +165,7 @@ func (c *core[M]) Call(call common.Call) {
 
 func (c *core[M]) serve(w http.ResponseWriter, content templ.Component, code int) error {
 	ctx := context.WithValue(context.Background(), common.InstanceCtxKey, c)
+	ctx = c.store.Inject(ctx)
 	ctx = context.WithValue(ctx, common.AdaptersCtxKey, c.instance.getSession().getRouter().Adapters())
 
 	c.root = node.NewRoot(ctx, c)

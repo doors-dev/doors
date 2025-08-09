@@ -26,8 +26,8 @@ func (t *setPathCaller) Data() *common.CallData {
 	}
 }
 
-func (t *setPathCaller) arg() common.JsonWritable {
-	return common.JsonWritables([]common.JsonWritable{common.JsonWritableAny{t.path}, common.JsonWritableAny{t.replace}})
+func (t *setPathCaller) arg() []any {
+	return []any{t.path, t.replace}
 }
 
 func (t *setPathCaller) Result(error) {}
@@ -38,7 +38,7 @@ type LocatinReload struct {
 func (l *LocatinReload) Data() *common.CallData {
 	return &common.CallData{
 		Name:    "location_reload",
-		Arg:     make(common.JsonWritables, 0),
+		Arg:     []any{},
 		Payload: common.WritableNone{},
 	}
 }
@@ -52,7 +52,7 @@ type LocationReplace struct {
 func (l *LocationReplace) Data() *common.CallData {
 	return &common.CallData{
 		Name:    "location_replace",
-		Arg:     common.JsonWritableAny{[]any{l.Href, l.Origin}},
+		Arg:     []any{l.Href, l.Origin},
 		Payload: common.WritableNone{},
 	}
 }
@@ -66,7 +66,7 @@ type LocationAssign struct {
 func (l *LocationAssign) Data() *common.CallData {
 	return &common.CallData{
 		Name:    "location_assign",
-		Arg:     common.JsonWritableAny{[]any{l.Href, l.Origin}},
+		Arg:     []any{l.Href, l.Origin},
 		Payload: common.WritableNone{},
 	}
 }

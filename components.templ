@@ -2,49 +2,127 @@ package doors
 
 import (
 	"context"
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
+	"github.com/doors-dev/doors/internal/shredder"
 	"net/http"
+	"reflect"
 )
 
-// Title renders a <title> element that updates dynamically based on a Beam value.
+// HeadData represents page metadata including title and meta tags
+type HeadData struct {
+	Title string
+	Meta  map[string]string
+}
+
+// Head renders both <title> and <meta> elements that update dynamically based on a Beam value.
 //
-// It outputs a standard HTML <title> tag, and includes the necessary script bindings
-// to ensure the title updates reactively when the Beam changes on the server.
+// It outputs HTML <title> and <meta> tags, and includes the necessary script bindings
+// to ensure all metadata updates reactively when the Beam changes on the server.
 //
 // Example:
 //
-//	@doors.Title(beam, func(p Path) string {
-//	    name := getName(p.id)
-//	    return "item card "+name
+//	@doors.Head(beam, func(p Path) HeadData {
+//	    return HeadData{
+//	        Title: "Product: " + p.Name,
+//	        Meta: map[string]string{
+//	            "description": "Buy " + p.Name + " at the best price",
+//	            "keywords": p.Name + ", product, buy",
+//	            "og:title": p.Name,
+//	            "og:description": "Check out this amazing product",
+//	        },
+//	    }
 //	})
 //
 // Parameters:
-//   - b: a Beam providing the input value (usualy page path Beam)
-//   - cast: a function that maps the Beam value to a title string.
+//   - b: a Beam providing the input value (usually page path Beam)
+//   - cast: a function that maps the Beam value to a HeadData struct.
 //
 // Returns:
-//   - A templ.Component that renders a <title> element with remote call script.
-templ Title[M any](b Beam[M], cast func(M) string) {
+//   - A templ.Component that renders title and meta elements with remote call scripts.
+type headUsed struct{}
+
+templ Head[M any](b Beam[M], cast func(M) HeadData) {
 	{{
-	titleBeam := NewBeam(b, cast)
-	var cancel func()
-	title, _ := titleBeam.ReadAndSub(ctx, func(ctx context.Context, title string) bool {
-		if cancel != nil {
+	_, ok := UserInstanceLoad(ctx, headUsed{}).(headUsed)
+	if ok {
+		return nil
+	}
+	UserInstanceSave(ctx, headUsed{}, headUsed{})
+	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	thread := inst.Thread()
+	var cancel = func() {}
+	var currentMeta HeadData
+	m, ok := b.ReadAndSub(ctx, func(ctx context.Context, m M) bool {
+		thread.Write(func(t *shredder.Thread) {
+			if t == nil {
+				return
+			}
+			newMeta := cast(m)
+			if reflect.DeepEqual(newMeta, currentMeta) {
+				return
+			}
+			currentMeta = newMeta
 			cancel()
-		}
-		cancel, _ = Call(ctx, CallConf{
-			Name: "changeTitle",
-			Arg:  templ.EscapeString(title),
+			cancel, _ = Call(ctx, CallConf{
+				Name: "update_metadata",
+				Arg: map[string]interface{}{
+					"title": templ.EscapeString(newMeta.Title),
+					"meta": func() map[string]string {
+						escapedTags := make(map[string]string, len(newMeta.Meta))
+						for k, v := range newMeta.Meta {
+							escapedTags[k] = templ.EscapeString(v)
+						}
+						return escapedTags
+					}(),
+				},
+			})
 		})
 		return false
 	})
+	if !ok {
+		return nil
+	}
+	currentMeta = cast(m)
+	tags := make([]string, len(currentMeta.Meta))
+	i := 0
+	for k := range currentMeta.Meta {
+		tags[i] = k
+		i++
+	}
 	}}
-	<title>{ title }</title>
+	<title>{ currentMeta.Title }</title>
+	for name, content := range currentMeta.Meta {
+		<meta name={ name } content={ content }/>
+	}
 	@Script() {
-		<script>
-            $d.on("changeTitle", (title) => { document.title = title });
-        </script>
+		<script { A(ctx, AData{Name: "tags", Value: tags})... }>
+            let tags = new Set($d.data("tags"))
+			$d.on("update_metadata", (data) => {
+                document.title = data.title;
+                const removeTags = tags
+                tags = new Set()
+                for(const [name, content] of Object.entries(data.meta)) {
+                    removeTags.delete(name)
+                    tags.add(name)
+                    let meta = document.querySelector(`meta[name="${name}"]`);
+                    if (meta) {
+                        meta.setAttribute('content', content);
+                        continue
+                    } 
+                    meta = document.createElement('meta');
+                    meta.setAttribute('name', name);
+                    meta.setAttribute('content', content);
+                    document.head.appendChild(meta);
+                }
+                for(const name of removeTags) {
+                    const meta = document.querySelector(`meta[name="${name}"]`)
+                    meta.remove();
+                }
+			});
+		</script>
 	}
 }
 
@@ -104,4 +182,3 @@ templ styleRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 		/>
 	}
 }
-

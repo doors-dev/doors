@@ -310,7 +310,7 @@ func (t *touch) Data() *common.CallData {
 	}
 	return &common.CallData{
 		Name: "touch",
-		Arg: make(common.JsonWritables, 0),
+		Arg: []any{},
 		Payload: common.WritableNone{},
 	}
 }

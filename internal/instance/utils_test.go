@@ -36,7 +36,7 @@ func (t *testCall) Data() *common.CallData {
 	}
 	return &common.CallData {
 		Name: "test",
-		Arg: common.JsonWritableAny{t.arg},
+		Arg: t.arg,
 		Payload: t,
 	}
 }

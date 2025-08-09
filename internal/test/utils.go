@@ -147,6 +147,24 @@ func TestContent(t *testing.T, page *rod.Page, selector string, content string) 
 	}
 }
 
+func TestAttr(t *testing.T, page *rod.Page, selector string, name string, value string) {
+	page = page.Timeout(200 * time.Millisecond)
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("attr: element ", selector, " not found")
+	}
+	attr, err := el.Attribute(name)
+	if err != nil {
+		t.Fatal("attr: element ", selector, " attribute ", name, " not found")
+	}
+	if attr == nil {
+		t.Fatal("attr: element ", selector, " attribute ", name, " is nil")
+	}
+	if *attr != value {
+		t.Fatal("attr: element ", selector, " attribute ", name, " expects: ", value, " fact: ", *attr)
+	}
+}
+
 func TestReport(t *testing.T, page *rod.Page, content string) {
 	TestReportId(t, page, 0, content)
 }

@@ -5,24 +5,23 @@ import (
 	"sync"
 )
 
-func NewStore() *Store {
+func NewStore(key any) *Store {
 	return &Store{
 		storage: make(map[any]any),
+		key:     key,
 	}
 }
 
 type Store struct {
+	key     any
 	storage map[any]any
 	mu      sync.RWMutex
 }
 
-
 type storeKeyType struct{}
 
-var storeKey = storeKeyType{}
-
-func  (c *Store) Inject(ctx context.Context) context.Context {
-    return context.WithValue(ctx, storeKey, c)
+func (c *Store) Inject(ctx context.Context) context.Context {
+	return context.WithValue(ctx, c.key, c)
 }
 
 func (c *Store) Load(key any) any {
@@ -38,19 +37,19 @@ func (c *Store) Save(key any, value any) {
 	c.storage[key] = value
 }
 
-func Save(ctx context.Context, key any, value any) bool {
-    c, ok := ctx.Value(storeKey).(*Store)
-    if !ok {
-        return true
-    }
-    c.Save(key, value)
-    return false
+func Save(ctx context.Context, storeKey any, key any, value any) bool {
+	c, ok := ctx.Value(storeKey).(*Store)
+	if !ok {
+		return true
+	}
+	c.Save(key, value)
+	return false
 }
 
-func Load(ctx context.Context, key any) any {
-    c, ok := ctx.Value(storeKey).(*Store)
-    if !ok {
-        return nil
-    }
-    return c.Load(key)
+func Load(ctx context.Context, storeKey any, key any) any {
+	c, ok := ctx.Value(storeKey).(*Store)
+	if !ok {
+		return nil
+	}
+	return c.Load(key)
 }

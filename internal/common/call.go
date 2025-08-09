@@ -1,9 +1,8 @@
 package common
 
-
 type CallData struct {
 	Name    string
-	Arg     JsonWritable
+	Arg     any
 	Payload Writable
 }
 

@@ -89,7 +89,7 @@ func (c *container) replace(userCtx context.Context, content templ.Component) <-
 	call := &nodeCall{
 		ctx:  c.parentCtx,
 		name: "node_replace",
-		arg:  common.JsonWritableAny{c.id},
+		arg:  c.id,
 		ch:   make(chan error, 1),
 		done: ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{
@@ -140,7 +140,7 @@ func (c *container) update(userCtx context.Context, content templ.Component) <-c
 	call := &nodeCall{
 		ctx:  ctx,
 		name: "node_update",
-		arg:  common.JsonWritableAny{c.id},
+		arg:  c.id,
 		ch:   make(chan error, 1),
 		done: ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{

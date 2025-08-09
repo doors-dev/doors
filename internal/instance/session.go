@@ -27,7 +27,7 @@ type router interface {
 
 func NewSession(r router) *Session {
 	sess := &Session{
-		store:     ctxstore.NewStore(),
+		store:     ctxstore.NewStore(common.SessionStoreCtxKey),
 		id:        common.RandId(),
 		instances: make(map[string]AnyInstance),
 		mu:        sync.Mutex{},
