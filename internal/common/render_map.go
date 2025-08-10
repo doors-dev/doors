@@ -210,18 +210,26 @@ func (rw *RenderWriter) Holdplace(w io.Writer) error {
 	return err
 }
 
+func (rw *RenderWriter) destroy() {
+	rw.buf = nil
+	rw.rm = nil
+}
+
 func (rw *RenderWriter) Submit() {
 	rw.rm.submit(rw)
+	rw.destroy()
 }
 
 func (rw *RenderWriter) SubmitEmpty() {
 	rw.buf.Reset()
 	rw.rm.submit(rw)
+	rw.destroy()
 }
 func (rw *RenderWriter) SubmitError(err error, args ...any) {
 	rw.buf.Reset()
 	RenderErrorLog(context.Background(), rw.buf, err.Error(), args...)
 	rw.rm.submit(rw)
+	rw.destroy()
 }
 
 func (rw *RenderWriter) Len() int {
