@@ -97,7 +97,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 				cancel, _ = Call(ctx, CallConf{
 					Name: "update_metadata",
 					Arg: map[string]interface{}{
-						"title": templ.EscapeString(newMeta.Title),
+						"title": newMeta.Title,
 						"meta": func() map[string]string {
 							escapedTags := make(map[string]string, len(newMeta.Meta))
 							for k, v := range newMeta.Meta {
