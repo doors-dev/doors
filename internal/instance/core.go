@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -162,7 +163,7 @@ func (c *core[M]) Call(call common.Call) {
 	c.solitaire.Call(call)
 }
 
-func (c *core[M]) serve(w http.ResponseWriter, content templ.Component, code int) error {
+func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, content templ.Component, code int) error {
 	ctx := context.WithValue(context.Background(), common.InstanceCtxKey, c)
 	ctx = c.store.Inject(ctx)
 	ctx = context.WithValue(ctx, common.AdaptersCtxKey, c.instance.getSession().getRouter().Adapters())
@@ -181,8 +182,7 @@ func (c *core[M]) serve(w http.ResponseWriter, content templ.Component, code int
 		header := c.cspCollector.Generate()
 		w.Header().Add("Content-Security-Policy", header)
 	}
-	gz := !c.instance.conf().ServerDisableGzip
-
+	gz := !c.instance.conf().ServerDisableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 	if gz {
 		w.Header().Set("Content-Encoding", "gzip")
 	}

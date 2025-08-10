@@ -20,7 +20,7 @@ import (
 
 type AnyInstance interface {
 	Id() string
-	Serve(http.ResponseWriter, int) error
+	Serve(http.ResponseWriter, *http.Request, int) error
 	UpdatePath(m any, adapter path.AnyAdapter) bool
 	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request) bool
 	Connect(w http.ResponseWriter, r *http.Request)
@@ -122,7 +122,7 @@ func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {
 func (inst *Instance[M]) syncError(err error) {
 	inst.end(causeSyncError)
 }
-func (inst *Instance[M]) Serve(w http.ResponseWriter, code int) error {
+func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request, code int) error {
 	inst.mu.Lock()
 	if inst.killed {
 		return errors.New("Instance killed before render")
@@ -134,7 +134,7 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, code int) error {
 	spawner := inst.session.router.Spawner(inst)
 	inst.core = newCore[M](inst, newSolitaire(inst, common.GetSolitaireConf(inst.conf())), spawner)
 	inst.mu.Unlock()
-	err := inst.core.serve(w, inst.page.Render(inst.beam), code)
+	err := inst.core.serve(w, r, inst.page.Render(inst.beam), code)
 	if err != nil {
 		defer inst.end(causeKilled)
 	}
