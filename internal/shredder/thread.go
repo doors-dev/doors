@@ -95,6 +95,7 @@ func (t *Thread) spawn() bool {
 			}
 		}()
 		t.main(t)
+		t.main = nil
 	})
 }
 
@@ -178,31 +179,7 @@ func (th *Thread) writeTask(t task, tryStarve bool) bool {
 	}
 	th.tail = frame
 	return true
-} /*
-func (th *Thread) writeTask(t task) bool {
-	th.mu.Lock()
-	if th.killed {
-		th.mu.Unlock()
-		return false
-	}
-	th.writing = true
-	frame := &frame{
-		mu:      sync.Mutex{},
-		next:    nil,
-		parent:  th,
-		threads: common.NewSet[*Thread](),
-		tasks:   []task{t},
-	}
-	if th.tail == nil {
-		f := frame.start(false)
-		defer f()
-	} else {
-		th.tail.setNext(frame)
-	}
-	th.tail = frame
-	th.mu.Unlock()
-	return true
-} */
+} 
 
 func (th *Thread) Read(f func(*Thread), joined ...*JoinedThread) {
 	th.executeMulti(f, R(th), joined)
