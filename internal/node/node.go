@@ -147,15 +147,14 @@ func (n *Node) Render(ctx context.Context, w io.Writer) error {
 		return n.content.Render(ctx, w)
 	}
 	defer n.mu.Unlock()
-	n.parent = ctx.Value(common.NodeCtxKey).(*tracker)
+	parentCtx := ctx.Value(common.ParentCtxKey).(context.Context)
+	n.parent = parentCtx.Value(common.NodeCtxKey).(*tracker)
 	if n.parent != nil {
 		n.parent.addChild(n)
 	}
-	inst := ctx.Value(common.InstanceCtxKey).(instance)
+	inst := parentCtx.Value(common.InstanceCtxKey).(instance)
 	thread := ctx.Value(common.ThreadCtxKey).(*shredder.Thread)
 	rm := ctx.Value(common.RenderMapCtxKey).(*common.RenderMap)
-	parentCtx := context.WithValue(ctx, common.RenderMapCtxKey, nil)
-	parentCtx = context.WithValue(parentCtx, common.ThreadCtxKey, nil)
 	var parentCinema *Cinema
 	if n.parent != nil {
 		parentCinema = n.parent.cinema

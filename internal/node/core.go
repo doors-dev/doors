@@ -37,18 +37,18 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 	if err != nil {
 		return err
 	}
-	tracker, ctx := c.newTacker()
+	tracker, parentCtx := c.newTacker()
 	thread.Read(func(t *shredder.Thread) {
-		if t == nil || ctx.Err() != nil {
+		if t == nil || parentCtx.Err() != nil {
 			rw.SubmitEmpty()
 			return
 		}
 		var err error
 		t.Write(func(t *shredder.Thread) {
-			if t == nil || ctx.Err() != nil {
+			if t == nil || parentCtx.Err() != nil {
 				return
 			}
-			ctx = context.WithValue(ctx, common.NodeCtxKey, tracker)
+			ctx := context.WithValue(parentCtx, common.ParentCtxKey, parentCtx)
 			ctx = context.WithValue(ctx, common.RenderMapCtxKey, rm)
 			ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
 			_, err = rw.Write(fmt.Appendf(nil, "<do-or id =\"d00r/%d\">", c.id))
@@ -64,7 +64,7 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 			_, err = rw.Write([]byte("</do-or>"))
 		})
 		t.Write(func(t *shredder.Thread) {
-			if t == nil || ctx.Err() != nil {
+			if t == nil || parentCtx.Err() != nil {
 				rw.SubmitEmpty()
 				return
 			}
@@ -104,7 +104,8 @@ func (c *container) replace(userCtx context.Context, content templ.Component) <-
 		if t == nil || c.parentCtx.Err() != nil {
 			return
 		}
-		ctx := context.WithValue(c.parentCtx, common.RenderMapCtxKey, rm)
+		ctx := context.WithValue(c.parentCtx, common.ParentCtxKey, c.parentCtx)
+		ctx = context.WithValue(ctx, common.RenderMapCtxKey, rm)
 		ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
 		if content != nil {
 			err = content.Render(ctx, rw)
@@ -133,12 +134,12 @@ func (c *container) update(userCtx context.Context, content templ.Component) <-c
 	}
 	c.tracker.suspend(true)
 
-	tracker, ctx := c.newTacker()
+	tracker, parentCtx := c.newTacker()
 	rm := common.NewRenderMap()
 	rw, _ := rm.Writer(c.id)
 
 	call := &nodeCall{
-		ctx:  ctx,
+		ctx:  parentCtx,
 		name: "node_update",
 		arg:  c.id,
 		ch:   make(chan error, 1),
@@ -150,7 +151,7 @@ func (c *container) update(userCtx context.Context, content templ.Component) <-c
 	}
 
 	tracker.thread.Write(func(t *shredder.Thread) {
-		if t == nil || ctx.Err() != nil {
+		if t == nil || parentCtx.Err() != nil {
 			call.stale()
 			return
 		}
@@ -158,10 +159,10 @@ func (c *container) update(userCtx context.Context, content templ.Component) <-c
 		var err error
 
 		t.Write(func(t *shredder.Thread) {
-			if t == nil || ctx.Err() != nil {
+			if t == nil || parentCtx.Err() != nil {
 				return
 			}
-			ctx := context.WithValue(ctx, common.NodeCtxKey, tracker)
+			ctx := context.WithValue(parentCtx, common.ParentCtxKey, parentCtx)
 			ctx = context.WithValue(ctx, common.RenderMapCtxKey, rm)
 			ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
 			if content != nil {
@@ -169,7 +170,7 @@ func (c *container) update(userCtx context.Context, content templ.Component) <-c
 			}
 		})
 		t.Write(func(t *shredder.Thread) {
-			if t == nil || ctx.Err() != nil {
+			if t == nil || parentCtx.Err() != nil {
 				call.stale()
 				return
 			}
@@ -187,7 +188,6 @@ func (c *container) update(userCtx context.Context, content templ.Component) <-c
 	return call.ch
 }
 
-
 func (n *container) remove(userCtx context.Context) <-chan error {
 	return n.replace(userCtx, nil)
 }
@@ -196,14 +196,16 @@ func (c *container) newTacker() (*tracker, context.Context) {
 	thread := c.inst.Thread()
 	ctx, cancel := context.WithCancel(c.parentCtx)
 	cinema := newCinema(c.parentCinema, c.inst, thread, c.id)
-	return &tracker{
+	t := &tracker{
 		cinema:      cinema,
 		children:    common.NewSet[*Node](),
 		thread:      thread,
 		cancel:      cancel,
 		container:   c,
 		clientCalls: common.NewSet[*clientCall](),
-	}, ctx
+	}
+	ctx = context.WithValue(ctx, common.NodeCtxKey, t)
+	return t, ctx
 }
 
 func (c *container) instance() instance {

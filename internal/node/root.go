@@ -92,6 +92,7 @@ func (r *RootRender) Write(w io.Writer) error {
 
 func (r *Root) Render(content templ.Component) <-chan *RootRender {
 	ch := make(chan *RootRender, 1)
+	parentCtx := context.WithValue(r.ctx, common.ParentCtxKey, r.ctx)
 	r.tracker.thread.Write(func(t *shredder.Thread) {
 		if t == nil {
 			close(ch)
@@ -108,7 +109,7 @@ func (r *Root) Render(content templ.Component) <-chan *RootRender {
 				return
 			}
 
-			ctx := context.WithValue(r.ctx, common.RenderMapCtxKey, rm)
+			ctx := context.WithValue(parentCtx, common.RenderMapCtxKey, rm)
 			ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
 			err = content.Render(ctx, rw)
 		})
