@@ -75,3 +75,4 @@ The standard Go `context.Context`, extended and used throughout *doors* to:
 - Read **beam** values
 - Tack **hook** triggered changes
 - Access and modify **instance/session** state
+

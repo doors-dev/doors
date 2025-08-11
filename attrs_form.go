@@ -47,32 +47,48 @@ func (p *focusEventHook) init(event string, ctx context.Context, n node.Core, in
 // AFocus is an attribute struct used with A(ctx, ...) to handle 'focus' events via backend hooks.
 type AFocus focusEventHook
 
-func (f AFocus) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*focusEventHook)(&f)
+func (f AFocus) Attr() AttrInit {
+	return &f
+}
+
+func (f *AFocus) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*focusEventHook)(f)
 	p.init("focus", ctx, n, inst, attrs)
 }
 
 // ABlur is an attribute struct used with A(ctx, ...) to handle 'blur' events via backend hooks.
 type ABlur focusEventHook
 
-func (b ABlur) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*focusEventHook)(&b)
+func (b ABlur) Attr() AttrInit {
+	return &b
+}
+
+func (b *ABlur) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*focusEventHook)(b)
 	p.init("blur", ctx, n, inst, attrs)
 }
 
 // AFocusIn is an attribute struct used with A(ctx, ...) to handle 'focusin' events via backend hooks.
 type AFocusIn focusEventHook
 
-func (f AFocusIn) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*focusEventHook)(&f)
+func (f AFocusIn) Attr() AttrInit {
+	return &f
+}
+
+func (f *AFocusIn) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*focusEventHook)(f)
 	p.init("focusin", ctx, n, inst, attrs)
 }
 
 // AFocusOut is an attribute struct used with A(ctx, ...) to handle 'focusout' events via backend hooks.
 type AFocusOut focusEventHook
 
-func (f AFocusOut) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*focusEventHook)(&f)
+func (f AFocusOut) Attr() AttrInit {
+	return &f
+}
+
+func (f *AFocusOut) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*focusEventHook)(f)
 	p.init("focusout", ctx, n, inst, attrs)
 }
 
@@ -112,7 +128,11 @@ type ARawSubmit struct {
 	OnError []OnError
 }
 
-func (s ARawSubmit) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s ARawSubmit) Attr() AttrInit {
+	return &s
+}
+
+func (s *ARawSubmit) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
 		Trigger: s.handle,
 	})
@@ -181,7 +201,11 @@ type ASubmit[D any] struct {
 	OnError []OnError
 }
 
-func (s ASubmit[V]) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s ASubmit[V]) Attr() AttrInit {
+	return &s
+}
+
+func (s *ASubmit[V]) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
 		Trigger: s.handle,
 	})
@@ -262,7 +286,11 @@ type AChange struct {
 	OnError []OnError
 }
 
-func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (p AChange) Attr() AttrInit {
+	return &p
+}
+
+func (p *AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[ChangeEvent]{
 		capture:   &front.ChangeCapture{},
 		node:      n,
@@ -284,7 +312,11 @@ type AInput struct {
 	OnError      []OnError
 }
 
-func (p AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (p AInput) Attr() AttrInit {
+	return &p
+}
+
+func (p *AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[InputEvent]{
 		capture: &front.InputCapture{
 			ExcludeValue: p.ExcludeValue,

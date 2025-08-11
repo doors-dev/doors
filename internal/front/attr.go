@@ -98,7 +98,7 @@ type Attr interface {
 	Init(context.Context, node.Core, instance.Core, *Attrs)
 }
 
-func A(ctx context.Context, attr ...Attr) templ.Attributes {
+func A(ctx context.Context, attr []Attr) templ.Attributes {
 	node, nodeOk := ctx.Value(common.NodeCtxKey).(node.Core)
 	instance, instOk := ctx.Value(common.InstanceCtxKey).(instance.Core)
 	if !nodeOk || !instOk {

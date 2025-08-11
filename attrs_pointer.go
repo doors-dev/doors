@@ -73,8 +73,12 @@ type AClick struct {
 	OnError []OnError
 }
 
-func (c AClick) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c AClick) Attr() AttrInit {
+	return &c
+}
+
+func (c *AClick) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("click", ctx, n, inst, attrs)
 }
 
@@ -101,8 +105,12 @@ type APointerDown struct {
 	OnError []OnError
 }
 
-func (c APointerDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c APointerDown) Attr() AttrInit {
+	return &c
+}
+
+func (c *APointerDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("pointerdown", ctx, n, inst, attrs)
 }
 
@@ -129,8 +137,12 @@ type APointerUp struct {
 	OnError []OnError
 }
 
-func (c APointerUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c APointerUp) Attr() AttrInit {
+	return &c
+}
+
+func (c *APointerUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("pointerup", ctx, n, inst, attrs)
 }
 
@@ -157,16 +169,24 @@ type APointerMove struct {
 	OnError []OnError
 }
 
-func (c APointerMove) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c APointerMove) Attr() AttrInit {
+	return &c
+}
+
+func (c *APointerMove) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("pointermove", ctx, n, inst, attrs)
 }
 
 // APointerOver is an attribute struct used with A(ctx, ...) to handle 'pointerover' events via backend hooks.
 type APointerOver pointerEventHook
 
-func (c APointerOver) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c APointerOver) Attr() AttrInit {
+	return &c
+}
+
+func (c *APointerOver) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("pointerover", ctx, n, inst, attrs)
 }
 
@@ -193,8 +213,12 @@ type APointerOut struct {
 	OnError []OnError
 }
 
-func (c APointerOut) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c APointerOut) Attr() AttrInit {
+	return &c
+}
+
+func (c *APointerOut) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("pointerout", ctx, n, inst, attrs)
 }
 
@@ -221,8 +245,12 @@ type APointerEnter struct {
 	OnError []OnError
 }
 
-func (c APointerEnter) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c APointerEnter) Attr() AttrInit {
+	return &c
+}
+
+func (c *APointerEnter) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("pointerenter", ctx, n, inst, attrs)
 }
 
@@ -249,8 +277,12 @@ type APointerLeave struct {
 	OnError []OnError
 }
 
-func (c APointerLeave) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c APointerLeave) Attr() AttrInit {
+	return &c
+}
+
+func (c *APointerLeave) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("pointerleave", ctx, n, inst, attrs)
 }
 
@@ -277,23 +309,35 @@ type APointerCancel struct {
 	OnError []OnError
 }
 
-func (c APointerCancel) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c APointerCancel) Attr() AttrInit {
+	return &c
+}
+
+func (c *APointerCancel) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("pointercancel", ctx, n, inst, attrs)
 }
 
 // AGotPointerCapture is an attribute struct used with A(ctx, ...) to handle 'gotpointercapture' events via backend hooks.
 type AGotPointerCapture pointerEventHook
 
-func (c AGotPointerCapture) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c AGotPointerCapture) Attr() AttrInit {
+	return &c
+}
+
+func (c *AGotPointerCapture) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("gotpointercapture", ctx, n, inst, attrs)
 }
 
 // ALostPointerCapture is an attribute struct used with A(ctx, ...) to handle 'lostpointercapture' events via backend hooks.
 type ALostPointerCapture pointerEventHook
 
-func (c ALostPointerCapture) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*pointerEventHook)(&c)
+func (c ALostPointerCapture) Attr() AttrInit {
+	return &c
+}
+
+func (c *ALostPointerCapture) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*pointerEventHook)(c)
 	p.init("lostpointercapture", ctx, n, inst, attrs)
 }

@@ -102,8 +102,8 @@ type callFragment struct {
 	r *test.Reporter
 }
 
-func (d *callFragment) attr(ctx context.Context) templ.Attributes {
-	return doors.A(ctx, doors.AHook[string, int]{
+func (d *callFragment) attr() []doors.Attr {
+	return []doors.Attr{doors.AHook[string, int]{
 		Name: "myHook",
 		On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
 			d.r.Update(ctx, 0, r.Data())
@@ -126,19 +126,19 @@ func (d *callFragment) attr(ctx context.Context) templ.Attributes {
 	}, doors.AData{
 		Name:  "myData",
 		Value: d.data,
-	})
+	}}
 }
 
 templ (f *callFragment) Render() {
 	@doors.F(f.r)
 	<div id="target"></div>
-	@doors.Script() {
-		<script { f.attr(ctx)... }>
-        $d.on("myCall", (data) => {
-            document.getElementById("target").innerHTML = `${data}`
-            return "response"
-        })
-        await $d.hook("myHook", $d.data("myData"))
+	@doors.Script(f.attr()...) {
+		<script>
+            $d.on("myCall", (data) => {
+                document.getElementById("target").innerHTML = `${data}`
+                return "response"
+            })
+            await $d.hook("myHook", $d.data("myData"))
         </script>
 	}
 }

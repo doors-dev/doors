@@ -34,6 +34,12 @@ func (c *Store) Save(key any, value any) {
 	c.storage[key] = value
 }
 
+func (c *Store) Remove(key any) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.storage, key)
+}
+
 func Save(ctx context.Context, storeKey any, key any, value any) bool {
 	c, ok := ctx.Value(storeKey).(*Store)
 	if !ok {
@@ -49,4 +55,12 @@ func Load(ctx context.Context, storeKey any, key any) any {
 		return nil
 	}
 	return c.Load(key)
+}
+
+func Remove(ctx context.Context, storeKey any, key any) {
+	c, ok := ctx.Value(storeKey).(*Store)
+	if !ok {
+		return
+	}
+	c.Remove(key)
 }

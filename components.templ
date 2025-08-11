@@ -46,11 +46,11 @@ type headUsed struct{}
 
 templ Head[M any](b Beam[M], cast func(M) HeadData) {
 	{{
-	_, ok := UserInstanceLoad(ctx, headUsed{}).(headUsed)
+	_, ok := InstanceLoad(ctx, headUsed{}).(headUsed)
 	if ok {
 		return nil
 	}
-	UserInstanceSave(ctx, headUsed{}, headUsed{})
+	InstanceSave(ctx, headUsed{}, headUsed{})
 	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
 	thread := inst.Thread()
 	var cancel = func() {}
@@ -138,23 +138,25 @@ func inlineName(attr templ.Attributes, ext string) string {
 	return name + "." + ext
 }
 
-templ scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode) {
+templ scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs []Attr) {
 	{{
+	rawAttrs := A(ctx, append(attrs, ARaw(i.Attrs))...)
 	name := inlineName(i.Attrs, "js")
 	}}
 	if inline && mode != resources.InlineModeHost {
-		@renderRaw("script", i.Attrs, i.Content())
+		@renderRaw("script", rawAttrs, i.Content())
 	} else if mode == resources.InlineModeHost {
-		{{ i.Attrs["src"] = router.ResourcePath(i.Resource(), name) }}
-		<script { i.Attrs... }></script>
+		{{ rawAttrs["src"] = router.ResourcePath(i.Resource(), name) }}
+		<script { rawAttrs... }></script>
 	} else {
-		<script { A(ctx, ARaw(i.Attrs), ARawSrc {
-        Once: true,
-        Name: name,
-        Handler: func(w http.ResponseWriter, r *http.Request) {
-            i.Serve(w, r)
-        },
-    })... }></script>
+		<script { A(ctx, ARaw(rawAttrs), ARawSrc{
+            Once: true,
+            Name: name,
+            Handler: func(w http.ResponseWriter, r *http.Request) {
+                i.Serve(w, r)
+            },
+        })... }></script>
+		script
 	}
 }
 

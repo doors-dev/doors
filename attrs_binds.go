@@ -17,7 +17,10 @@ type AHook[I any, O any] struct {
 	Indicator []Indicator
 }
 
-func (h AHook[I, O]) Init(ctx context.Context, n node.Core, inst instance.Core, attr *front.Attrs) {
+func (h AHook[I, O]) Attr() AttrInit {
+	return &h
+}
+func (h *AHook[I, O]) Init(ctx context.Context, n node.Core, inst instance.Core, attr *front.Attrs) {
 	if h.On == nil {
 		println("Hook withoud handler")
 		return
@@ -71,7 +74,11 @@ type ARawHook struct {
 	Indicator []Indicator
 }
 
-func (h ARawHook) Init(ctx context.Context, n node.Core, inst instance.Core, attr *front.Attrs) {
+func (h ARawHook) Attr() AttrInit {
+	return &h
+}
+
+func (h *ARawHook) Init(ctx context.Context, n node.Core, inst instance.Core, attr *front.Attrs) {
 	if h.On == nil {
 		println("Hook withoud handler")
 		return
@@ -102,11 +109,19 @@ type AData struct {
 	Value any
 }
 
-func (a AData) Init(_ context.Context, n node.Core, _ instance.Core, attr *front.Attrs) {
+func (a AData) Attr() AttrInit {
+	return &a
+}
+
+func (a *AData) Init(_ context.Context, n node.Core, _ instance.Core, attr *front.Attrs) {
 	attr.SetData(a.Name, a.Value)
 }
 
 type ADataMap map[string]any
+
+func (dm ADataMap) Attr() AttrInit {
+	return dm
+}
 
 func (dm ADataMap) Init(_ context.Context, n node.Core, _ instance.Core, attr *front.Attrs) {
 	for name := range dm {

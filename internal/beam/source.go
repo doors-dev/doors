@@ -19,6 +19,7 @@ type instance interface {
 type SourceBeam[T any] interface {
 	Beam[T]
 
+	
 	// Update sets a new value and propagates it to all subscribers and derived beams.
 	// The update is applied only if it passes the source's distinct function (if configured).
 	//

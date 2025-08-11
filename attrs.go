@@ -11,7 +11,11 @@ import (
 	"github.com/doors-dev/doors/internal/node"
 )
 
-type Attr = front.Attr
+type AttrInit = front.Attr
+
+type Attr interface {
+	Attr() AttrInit
+}
 
 // A constructs a set of HTML attributes.
 //
@@ -42,10 +46,18 @@ type Attr = front.Attr
 // Returns:
 //   - A templ.Attributes object that can be spread into a templ element.
 func A(ctx context.Context, attrs ...Attr) templ.Attributes {
-	return front.A(ctx, attrs...)
+	a := make([]front.Attr, len(attrs))
+	for i, attr := range attrs {
+		a[i] = attr.Attr()
+	}
+	return front.A(ctx, a)
 }
 
 type ARaw templ.Attributes
+
+func (s ARaw) Attr() AttrInit {
+	return s
+}
 
 func (s ARaw) Init(ctx context.Context, _ node.Core, _ instance.Core, attrs *front.Attrs) {
 	if s == nil {

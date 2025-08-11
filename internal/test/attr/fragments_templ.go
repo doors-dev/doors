@@ -165,8 +165,8 @@ type callFragment struct {
 	r *test.Reporter
 }
 
-func (d *callFragment) attr(ctx context.Context) templ.Attributes {
-	return doors.A(ctx, doors.AHook[string, int]{
+func (d *callFragment) attr() []doors.Attr {
+	return []doors.Attr{doors.AHook[string, int]{
 		Name: "myHook",
 		On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
 			d.r.Update(ctx, 0, r.Data())
@@ -189,7 +189,7 @@ func (d *callFragment) attr(ctx context.Context) templ.Attributes {
 	}, doors.AData{
 		Name:  "myData",
 		Value: d.data,
-	})
+	}}
 }
 
 func (f *callFragment) Render() templ.Component {
@@ -233,21 +233,13 @@ func (f *callFragment) Render() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<script")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, f.attr(ctx))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, ">\n        $d.on(\"myCall\", (data) => {\n            document.getElementById(\"target\").innerHTML = `${data}`\n            return \"response\"\n        })\n        await $d.hook(\"myHook\", $d.data(\"myData\"))\n        </script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<script>\n            $d.on(\"myCall\", (data) => {\n                document.getElementById(\"target\").innerHTML = `${data}`\n                return \"response\"\n            })\n            await $d.hook(\"myHook\", $d.data(\"myData\"))\n        </script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = doors.Script().Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = doors.Script(f.attr()...).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -299,7 +291,7 @@ func (f *hookFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div id=\"target\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div id=\"target\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -315,7 +307,7 @@ func (f *hookFragment) Render() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<script")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<script")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -323,7 +315,7 @@ func (f *hookFragment) Render() templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, ">\n        const a = await $d.hook(\"myHook\", $d.data(\"myData\"))\n        document.getElementById(\"target\").innerHTML = `${a}`\n        </script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, ">\n        const a = await $d.hook(\"myHook\", $d.data(\"myData\"))\n        document.getElementById(\"target\").innerHTML = `${a}`\n        </script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -370,7 +362,7 @@ func (f *dataFragment) Render() templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div id=\"target\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div id=\"target\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -386,7 +378,7 @@ func (f *dataFragment) Render() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<script")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<script")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -394,7 +386,7 @@ func (f *dataFragment) Render() templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, ">\n        document.getElementById(\"target\").innerHTML = $d.data(\"myData\")\n        </script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, ">\n        document.getElementById(\"target\").innerHTML = $d.data(\"myData\")\n        </script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

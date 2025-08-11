@@ -254,7 +254,8 @@ func Go(f func(context.Context)) templ.Component {
 }
 
 type script struct {
-	mode resources.InlineMode
+	mode  resources.InlineMode
+	attrs []Attr
 }
 
 // Script converts inline script content to an external resource.
@@ -288,9 +289,10 @@ type script struct {
 //	        console.log(message);
 //	    </script>
 //	}
-func Script() templ.Component {
+func Script(attrs ...Attr) templ.Component {
 	return script{
-		mode: resources.InlineModeHost,
+		mode:  resources.InlineModeHost,
+		attrs: attrs,
 	}
 }
 
@@ -299,9 +301,10 @@ func Script() templ.Component {
 // a src attribute, but not exposed as a publicly accessible static asset.
 // The script content is wrapped in an anonymous async function and provides the $d variable.
 // The content must be wrapped in <script> tags.
-func ScriptLocal() templ.Component {
+func ScriptLocal(attrs ...Attr) templ.Component {
 	return script{
-		mode: resources.InlineModeLocal,
+		mode:  resources.InlineModeLocal,
+		attrs: attrs,
 	}
 }
 
@@ -310,9 +313,10 @@ func ScriptLocal() templ.Component {
 // and served with a src attribute, but not exposed as a static resource.
 // The script content is wrapped in an anonymous async function and provides the $d variable.
 // The content must be wrapped in <script> tags.
-func ScriptLocalNoCache() templ.Component {
+func ScriptLocalNoCache(attrs ...Attr) templ.Component {
 	return script{
-		mode: resources.InlineModeNoCache,
+		mode:  resources.InlineModeNoCache,
+		attrs: attrs,
 	}
 }
 
@@ -336,7 +340,7 @@ func (s script) Render(ctx context.Context, w io.Writer) error {
 	if inline && s.mode != resources.InlineModeHost {
 		resource.Attrs["nonce"] = nonce
 	}
-	return scriptRender(resource, inline, s.mode).Render(ctx, w)
+	return scriptRender(resource, inline, s.mode, s.attrs).Render(ctx, w)
 }
 
 type style struct {

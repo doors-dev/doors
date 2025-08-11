@@ -1,20 +1,16 @@
 package common
 
-type instanceCtxKey struct{}
-type nodeCtxKey struct{}
-type threadCtxKey struct{}
-type renderMapCtxKey struct{}
-type blockingCtxKey struct{}
-type adaptersCtxKey struct{}
-type sessionStoreCtxKey struct{}
-type instanceStoreCtxKey struct{}
-type parentCtxKey struct{}
+type ctxKey int
 
-var InstanceCtxKey = instanceCtxKey{}
-var NodeCtxKey = nodeCtxKey{}
-var ThreadCtxKey = threadCtxKey{}
-var RenderMapCtxKey = renderMapCtxKey{}
-var AdaptersCtxKey = adaptersCtxKey{}
-var SessionStoreCtxKey = sessionStoreCtxKey{}
-var InstanceStoreCtxKey = instanceStoreCtxKey{}
-var ParentCtxKey = parentCtxKey{}
+const (
+    InstanceCtxKey ctxKey = iota
+    NodeCtxKey
+    ThreadCtxKey
+    RenderMapCtxKey
+    BlockingCtxKey
+    AdaptersCtxKey
+    SessionStoreCtxKey
+    InstanceStoreCtxKey
+    ParentCtxKey
+)
+

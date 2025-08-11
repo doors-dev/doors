@@ -74,11 +74,11 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 
-		_, ok := UserInstanceLoad(ctx, headUsed{}).(headUsed)
+		_, ok := InstanceLoad(ctx, headUsed{}).(headUsed)
 		if ok {
 			return nil
 		}
-		UserInstanceSave(ctx, headUsed{}, headUsed{})
+		InstanceSave(ctx, headUsed{}, headUsed{})
 		inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
 		thread := inst.Thread()
 		var cancel = func() {}
@@ -215,7 +215,7 @@ func inlineName(attr templ.Attributes, ext string) string {
 	return name + "." + ext
 }
 
-func scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode) templ.Component {
+func scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs []Attr) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -237,19 +237,20 @@ func scriptRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 		}
 		ctx = templ.ClearChildren(ctx)
 
+		rawAttrs := A(ctx, append(attrs, ARaw(i.Attrs))...)
 		name := inlineName(i.Attrs, "js")
 		if inline && mode != resources.InlineModeHost {
-			templ_7745c5c3_Err = renderRaw("script", i.Attrs, i.Content()).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = renderRaw("script", rawAttrs, i.Content()).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if mode == resources.InlineModeHost {
-			i.Attrs["src"] = router.ResourcePath(i.Resource(), name)
+			rawAttrs["src"] = router.ResourcePath(i.Resource(), name)
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<script")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, i.Attrs)
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, rawAttrs)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -262,7 +263,7 @@ func scriptRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, A(ctx, ARaw(i.Attrs), ARawSrc{
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, A(ctx, ARaw(rawAttrs), ARawSrc{
 				Once: true,
 				Name: name,
 				Handler: func(w http.ResponseWriter, r *http.Request) {
@@ -272,7 +273,7 @@ func scriptRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "></script> script")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

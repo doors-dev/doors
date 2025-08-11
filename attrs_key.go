@@ -72,8 +72,12 @@ type AKeyDown struct {
 	OnError []OnError
 }
 
-func (k AKeyDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*keyEventHook)(&k)
+func (k AKeyDown) Attr() AttrInit {
+	return &k
+}
+
+func (k *AKeyDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*keyEventHook)(k)
 	p.init("keydown", ctx, n, inst, attrs)
 }
 
@@ -100,15 +104,23 @@ type AKeyUp struct {
 	OnError []OnError
 }
 
-func (k AKeyUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*keyEventHook)(&k)
+func (k AKeyUp) Attr() AttrInit {
+	return &k
+}
+
+func (k *AKeyUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*keyEventHook)(k)
 	p.init("keyup", ctx, n, inst, attrs)
 }
 
 // AKeyPress is an attribute struct used with A(ctx, ...) to handle 'keypress' events via backend hooks.
 type AKeyPress keyEventHook
 
-func (k AKeyPress) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*keyEventHook)(&k)
+func (k AKeyPress) Attr() AttrInit {
+	return &k
+}
+
+func (k *AKeyPress) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*keyEventHook)(k)
 	p.init("keyup", ctx, n, inst, attrs)
 }

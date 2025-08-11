@@ -5,7 +5,6 @@ import (
 	"log/slog"
 )
 
-var BlockingCtxKey = blockingCtxKey{}
 
 func IsBlockingCtx(ctx context.Context) bool {
     blocking, ok := ctx.Value(BlockingCtxKey).(bool)
