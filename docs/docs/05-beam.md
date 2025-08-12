@@ -4,7 +4,7 @@
 
 It is guaranteed that a Node and all of its children Nodes will observe the exact same value for a given Beam during the render cycle. 
 
-`SourceBeam` is the original Beam, which, in addition to its core functionality, includes the ability to update values and propagate changes to all subscribers and derived beams. It serves as the root of a reactive value chain. 
+`SourceBeam` is the initial `Beam` (others are derived from it), which, in addition to its core functionality, includes the ability to update values and propagate changes to all subscribers and derived beams. It serves as the root of a reactive value chain. 
 
 ## Constructor Methods
 
@@ -42,6 +42,8 @@ Returns the current value, then subscribes to future updates (invoking `onValue`
 
 An extended form of `ReadAndSub`. Also accepts `onCancel` and returns a `Cancel` function. Returns the initial value, the `Cancel` function, and a success boolean. If the boolean is `false`, the value is undefined, and no subscription was established. 
 
+
+
 ### `Read(ctx context.Context) (T, bool)`
 
 Reads the current value without subscribing. Returns the value and a boolean: `true` if the value is valid; `false` if the context was canceled (value undefined). 
@@ -54,11 +56,11 @@ Attaches a watcher for full lifecycle control. Watchers receive separate callbac
 >
 >Defines hooks for observing and reacting to the lifecycle of a Beam value stream. Implementers can perform custom logic during initialization, on each update, and when canceled.
 >
->### `Cancel()`
+>##### `Cancel()`
 >
 >Called when the watcher is terminated due to context cancellation.
 >
->### `Init(ctx context.Context, value *T, seq uint) bool`
+>##### `Init(ctx context.Context, value *T, seq uint) bool`
 >
 >Called with the initial value.
 >
@@ -66,7 +68,7 @@ Attaches a watcher for full lifecycle control. Watchers receive separate callbac
 >- Called in the same goroutine where the watcher was added.
 >- **Return value**: Return `true` to stop receiving updates after this call.
 >
->### `Update(ctx context.Context, value *T, seq uint) bool`
+>##### `Update(ctx context.Context, value *T, seq uint) bool`
 >
 >Called for each subsequent update to the value.
 >
@@ -75,43 +77,77 @@ Attaches a watcher for full lifecycle control. Watchers receive separate callbac
 
 ## SourceBeam API
 
-### `Update(ctx context.Context, value T) bool`
+### `Update(ctx context.Context, value T)`
 
 Sets a new value and propagates it to all subscribers and derived beams.
 
-- The update is applied only if it passes the source's **distinct check** .
-- **Returns**:
-  - `true` if the context is valid and the update was accepted.
-  - `false` if the context was canceled before the update.
+- The update is applied only if it passes the source's **distinct check** and context is valid .
 
-### `Mutate(ctx context.Context, f func(*T) bool) bool`
+### `Mutate(ctx context.Context, f func(T) T)`
 
 Modifies the current value using the provided function.
 
-- The function receives a copy of the current value and returns `true` to indicate that changes to the copy should be applied to the Beam.
-- The mutation is applied only if:
-  - The function returns `true`.
-  - The resulting value passes the **distinct check**.
-- **Returns**:
-  - `true` if the context is valid and the mutation was applied.
-  - `false` if the context was canceled or the mutation function returned `false`.
+- The function receives a copy of the current value and must return a new value.
+- The mutation is applied only if the resulting value passes the **distinct check**. Returning an unchanged value (when a distinct function is set) results in no update (if distinct function not `nil`).
+
 
 ### `Latest() T`
 
 Returns the most recently set or mutated value **without** requiring a context.
 
 - Not affected by context cancellation, unlike `Read`.
-- **Warning**: `Latest()` does **not** participate in render cycle consistency guarantees. 
-  - During rendering, use `Read()` to ensure consistent values across the component tree.
+- **Warning**: `Latest()` does **not** participate in render cycle consistency guarantees. During rendering, use `Read()` to ensure consistent values across the component tree.
 
 ## Extra `SourceBeam` API
 
 ```
-XMutate(ctx context.Context, f func(*T) bool) (<-chan error, bool)
+XMutate(ctx context.Context, f func(T) T) (<-chan error, bool)
 XUpdate(ctx context.Context, value T) (<-chan error, bool)
 ```
 
-Do the same, but returns a channel that signals when the update has been fully propagated to all subscribers.
+Do the same, and returns a channel that signals when the mutation has been fully propagated to all subscribers. This allows coordination ofdependent operations that must wait for the mutation to complete.
 
-* `nil` on successful propagation and non-nil `error` if the operation failed
-* closes immediately if the mutation was not applied or if there are no active subscribers
+* Channel receives `nil` on successful propagation
+* Channel receives `error` if provided context is invalid or instance ended before propagation finished
+* Channel closed without any value if distinct check failed, so no update needed
+
+## Helper Components
+
+For simple relations between `Beam` and DOM.
+
+### `func Sub[T any](beam Beam[T], render func(T) templ.Component) templ.Component`
+
+Creates a reactive component that re-renders whenever a beam’s value changes. It subscribes to the beam, computes content with the provided `render` function, and displays it in a node.
+
+```templ
+templ display(n int) {
+  <span>{strconv.Itoa(n)}</span>
+}
+
+templ demo(b Beam[int]) {
+  @doors.Sub(b, func(v int) templ.Component {
+    return display(v)
+  })
+}
+
+```
+
+### `func Inject[T any](key any, beam Beam[T]) templ.Component`
+
+Creates a reactive component that writes the current beam value into the rendering context for its children. On every update, children are re-rendered with the latest value available via the context.
+
+```templ
+// inject beam value into context
+@Inject("user", userBeam) {
+  {{
+    user := ctx.Value("user").(User)
+  }}
+  <p>{user.Name}</p>
+}
+```
+
+## Best Practices
+
+* Store origin values in beam, not business data. For example — id, but not the whole entry.
+* Minimize update frequency and region by deriving into smaller state pieces. If specific element depends on a single field in **beamed** data, derive beam with this field only and subscribe element to it.
+

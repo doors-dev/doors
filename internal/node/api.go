@@ -43,7 +43,7 @@ func (n *Node) Remove(ctx context.Context) {
 // The node's DOM element remains but its children are removed.
 // This is useful for emptying a container while keeping it available for future content.
 func (n *Node) Clear(ctx context.Context) {
-	n.Update(ctx, nil)
+	n.clear(ctx)
 }
 
 // XReload returns a channel that can be used to track when the reload operation completes.
@@ -53,7 +53,6 @@ func (n *Node) Clear(ctx context.Context) {
 // A blocking context warning is logged if called from a blocking context.
 func (n *Node) XReload(ctx context.Context) <-chan error {
 	common.LogBlockingWarning(ctx, "Node", "XUpdate")
-	ctx = common.ClearBlockingCtx(ctx)
 	return n.reload(ctx)
 }
 
@@ -64,7 +63,6 @@ func (n *Node) XReload(ctx context.Context) <-chan error {
 // A blocking context warning is logged if called from a blocking context.
 func (n *Node) XUpdate(ctx context.Context, content templ.Component) <-chan error {
 	common.LogBlockingWarning(ctx, "Node", "XUpdate")
-	ctx = common.ClearBlockingCtx(ctx)
 	return n.update(ctx, content)
 }
 
@@ -75,7 +73,6 @@ func (n *Node) XUpdate(ctx context.Context, content templ.Component) <-chan erro
 // A blocking context warning is logged if called from a blocking context.
 func (n *Node) XReplace(ctx context.Context, content templ.Component) <-chan error {
 	common.LogBlockingWarning(ctx, "Node", "XReplace")
-	ctx = common.ClearBlockingCtx(ctx)
 	return n.replace(ctx, content)
 }
 
@@ -86,7 +83,6 @@ func (n *Node) XReplace(ctx context.Context, content templ.Component) <-chan err
 // A blocking context warning is logged if called from a blocking context.
 func (n *Node) XRemove(ctx context.Context) <-chan error {
 	common.LogBlockingWarning(ctx, "Node", "XRemove")
-	ctx = common.ClearBlockingCtx(ctx)
 	return n.remove(ctx)
 }
 
@@ -96,5 +92,5 @@ func (n *Node) XRemove(ctx context.Context) <-chan error {
 // the channel is closed immediately without sending any value.
 // This is equivalent to XUpdate(ctx, nil) and empties the node's content.
 func (n *Node) XClear(ctx context.Context) <-chan error {
-	return n.XUpdate(ctx, nil)
+	return n.clear(ctx)
 }

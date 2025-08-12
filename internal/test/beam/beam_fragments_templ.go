@@ -58,9 +58,9 @@ func (f *BeamDeriveFragment) content() templ.Component {
 
 		n1 := doors.Node{}
 		n2 := doors.Node{}
-		f.b.Mutate(ctx, func(s *state) bool {
+		f.b.Mutate(ctx, func(s state) state {
 			s.Int = s.Int + 1
-			return true
+			return s
 		})
 		r, _ := d.Read(ctx)
 		templ_7745c5c3_Err = test.ReportId(1, fmt.Sprint(r)).Render(ctx, templ_7745c5c3_Buffer)
@@ -80,9 +80,9 @@ func (f *BeamDeriveFragment) content() templ.Component {
 			}
 			ctx = templ.InitializeContext(ctx)
 
-			f.b.Mutate(ctx, func(s *state) bool {
+			f.b.Mutate(ctx, func(s state) state {
 				s.Int = s.Int + 1
-				return true
+				return s
 			})
 			r, _ := d.Read(ctx)
 			templ_7745c5c3_Err = test.ReportId(2, fmt.Sprint(r)).Render(ctx, templ_7745c5c3_Buffer)
@@ -122,9 +122,9 @@ func (f *BeamDeriveFragment) content() templ.Component {
 			}
 			ctx = templ.InitializeContext(ctx)
 
-			f.b.Mutate(ctx, func(s *state) bool {
+			f.b.Mutate(ctx, func(s state) state {
 				s.Int = s.Int + 1
-				return true
+				return s
 			})
 			r, _ := f.b.Read(ctx)
 			templ_7745c5c3_Err = test.ReportId(3, fmt.Sprint(r.Int)).Render(ctx, templ_7745c5c3_Buffer)
@@ -235,9 +235,9 @@ func (f *BeamConsistentFragment) content() templ.Component {
 
 		n1 := doors.Node{}
 		n2 := doors.Node{}
-		f.b.Mutate(ctx, func(s *state) bool {
+		f.b.Mutate(ctx, func(s state) state {
 			s.Int = s.Int + 1
-			return true
+			return s
 		})
 		r, _ := f.b.Read(ctx)
 		templ_7745c5c3_Err = test.ReportId(1, fmt.Sprint(r.Int)).Render(ctx, templ_7745c5c3_Buffer)
@@ -257,9 +257,9 @@ func (f *BeamConsistentFragment) content() templ.Component {
 			}
 			ctx = templ.InitializeContext(ctx)
 
-			f.b.Mutate(ctx, func(s *state) bool {
+			f.b.Mutate(ctx, func(s state) state {
 				s.Int = s.Int + 1
-				return true
+				return s
 			})
 			r, _ := f.b.Read(ctx)
 			templ_7745c5c3_Err = test.ReportId(2, fmt.Sprint(r.Int)).Render(ctx, templ_7745c5c3_Buffer)
@@ -299,9 +299,9 @@ func (f *BeamConsistentFragment) content() templ.Component {
 			}
 			ctx = templ.InitializeContext(ctx)
 
-			f.b.Mutate(ctx, func(s *state) bool {
+			f.b.Mutate(ctx, func(s state) state {
 				s.Int = s.Int + 1
-				return true
+				return s
 			})
 			r, _ := f.b.Read(ctx)
 			templ_7745c5c3_Err = test.ReportId(3, fmt.Sprint(r.Int)).Render(ctx, templ_7745c5c3_Buffer)
@@ -418,9 +418,9 @@ func (f *BeamUpdateFragment) Render() templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = test.Button("mutate", func(ctx context.Context) bool {
-			f.b.Mutate(ctx, func(s *state) bool {
+			f.b.Mutate(ctx, func(s state) state {
 				s.Int = s.Int + 1
-				return true
+				return s
 			})
 			return true
 		}).Render(ctx, templ_7745c5c3_Buffer)
@@ -428,9 +428,8 @@ func (f *BeamUpdateFragment) Render() templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = test.Button("mutate-cancel", func(ctx context.Context) bool {
-			f.b.Mutate(ctx, func(s *state) bool {
-				s.Int = s.Int + 1
-				return false
+			f.b.Mutate(ctx, func(s state) state {
+				return s
 			})
 			return true
 		}).Render(ctx, templ_7745c5c3_Buffer)

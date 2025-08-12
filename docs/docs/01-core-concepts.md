@@ -70,9 +70,9 @@ Attribute constructors are used to attach framework-connected behaviors to HTML 
 
 The standard Go `context.Context`, extended and used throughout *doors* to:
 
-- Identify the **dynamic parent node**
+- Identify the **parent node**
 - Bind **hooks**
 - Read **beam** values
 - Tack **hook** triggered changes
-- Access and modify **instance/session** state
+- Access and modify **instance/session** entities
 

@@ -32,18 +32,18 @@ templ (f *BeamDeriveFragment) content() {
 	{{
 	n1 := doors.Node{}
 	n2 := doors.Node{}
-	f.b.Mutate(ctx, func(s *state) bool {
+	f.b.Mutate(ctx, func(s state) state {
 		s.Int = s.Int + 1
-		return true
+		return s
 	})
 	r, _ := d.Read(ctx)
 	}}
 	@test.ReportId(1, fmt.Sprint(r))
 	@n1 {
 		{{
-	f.b.Mutate(ctx, func(s *state) bool {
+	f.b.Mutate(ctx, func(s state) state {
 		s.Int = s.Int + 1
-		return true
+		return s
 	})
 	r, _ := d.Read(ctx)
 		}}
@@ -59,9 +59,9 @@ templ (f *BeamDeriveFragment) content() {
 	}
 	@n2 {
 		{{
-	f.b.Mutate(ctx, func(s *state) bool {
+	f.b.Mutate(ctx, func(s state) state {
 		s.Int = s.Int + 1
-		return true
+		return s
 	})
 	r, _ := f.b.Read(ctx)
 		}}
@@ -97,18 +97,18 @@ templ (f *BeamConsistentFragment) content() {
 	{{
 	n1 := doors.Node{}
 	n2 := doors.Node{}
-	f.b.Mutate(ctx, func(s *state) bool {
+	f.b.Mutate(ctx, func(s state) state {
 		s.Int = s.Int + 1
-		return true
+		return s
 	})
 	r, _ := f.b.Read(ctx)
 	}}
 	@test.ReportId(1, fmt.Sprint(r.Int))
 	@n1 {
 		{{
-	f.b.Mutate(ctx, func(s *state) bool {
+	f.b.Mutate(ctx, func(s state) state {
 		s.Int = s.Int + 1
-		return true
+		return s
 	})
 	r, _ := f.b.Read(ctx)
 		}}
@@ -124,9 +124,9 @@ templ (f *BeamConsistentFragment) content() {
 	}
 	@n2 {
 		{{
-	f.b.Mutate(ctx, func(s *state) bool {
+	f.b.Mutate(ctx, func(s state) state {
 		s.Int = s.Int + 1
-		return true
+		return s
 	})
 	r, _ := f.b.Read(ctx)
 		}}
@@ -165,16 +165,15 @@ templ (f *BeamUpdateFragment) Render() {
 		return true
 	})
 	@test.Button("mutate", func(ctx context.Context) bool {
-		f.b.Mutate(ctx, func(s *state) bool {
+		f.b.Mutate(ctx, func(s state) state {
 			s.Int = s.Int + 1
-			return true
+			return s
 		})
 		return true
 	})
 	@test.Button("mutate-cancel", func(ctx context.Context) bool {
-		f.b.Mutate(ctx, func(s *state) bool {
-			s.Int = s.Int + 1
-			return false
+		f.b.Mutate(ctx, func(s state) state {
+			return s
 		})
 		return true
 	})

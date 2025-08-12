@@ -419,3 +419,8 @@ func NewLocation(ctx context.Context, model any) (Location, error) {
 func RandId() string {
 	return common.RandId()
 }
+
+
+func AllowBlocking(ctx context.Context) context.Context {
+	return common.SetBlockingCtx(ctx)
+}

@@ -316,9 +316,9 @@ func (c *categoryFragment) loadMore(cat driver.Cat, page int) doors.Attr {
     return doors.AClick {
         On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
         		// update page number
-            c.path.Mutate(ctx,func(p *Path) bool {
+            c.path.Mutate(ctx, func(p Path) Path {
                 p.Page = &page
-                return true
+                return p
             })
             
             //append new page
@@ -464,9 +464,9 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 func (c *categoryFragment) loadMore(cat driver.Cat, page int) doors.Attr {
 	return doors.AClick{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-			c.path.Mutate(ctx, func(p *Path) bool {
-				p.Page = &page
-				return true
+			c.path.Mutate(ctx, func(p Path) Path {
+				p.Page = page
+				return p
 			})
 			c.loadNode.Replace(ctx, c.itemsPage(cat, page, true))
 			return true

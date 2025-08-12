@@ -10,23 +10,23 @@ import "github.com/doors-dev/doors/internal/beam"
 type Beam[T any] = beam.Beam[T]
 
 
-// SourceBeam extends Beam with the ability to update values and propagate changes
-// to all subscribers and derived beams. It serves as the root of a reactive value chain.
-//
+// SourceBeam is the initial Beam (others are derived from it), which, in addition to its core
+// functionality, includes the ability to update values and propagate changes to all 
+// subscribers and derived beams. It serves as the root of a reactive value chain. 
 // Updates and mutations are synchronized across all subscribers, ensuring consistent
 // state during rendering cycles. During a render cycle, all consumers will see a
 // consistent view of the latest value. The source maintains a sequence of values for
 // synchronization purposes.
 //
 // IMPORTANT: For reference types (slices, maps, pointers, structs), do not modify
-// the data directly. Instead, create a new instance and update the entire reference.
+// the data directly. Instead, create a new instance and update the reference itself.
 // Direct modification can break the consistency guarantees since subscribers may
-// observe partial changes or inconsistent state during concurrent access.
+// observe partial changes or inconsistent state.
 type SourceBeam[T any] = beam.SourceBeam[T]
 
-	// NewSourceBeam creates a new SourceBeam with the given initial value.
-// Updates are only propagated when the new value differs from the previous one
-// using == comparison.
+// NewSourceBeam creates a new SourceBeam with the given initial value.
+// Updates are only propagated when the new value passes the default distinct 
+// function with != comparison to the old value
 //
 // Parameters:
 //   - init: the initial value for the SourceBeam
@@ -55,9 +55,9 @@ func NewSourceBeamExt[T any](init T, distinct func(new T, old T) bool) SourceBea
 
 // NewBeam derives a new Beam[T2] from an existing Beam[T] by applying a transformation function.
 //
-// The cast function maps values from the source beam to the derived beam. Updates are
-// propagated only when the transformed value differs from the previous transformed value
-// using == comparison.
+// The cast function maps values from the source beam to the derived beam. 
+// Updates are only propagated when the new value passes the default distinct 
+// function with != comparison to the old value
 //
 // Parameters:
 //   - source: the source Beam[T] to derive from
@@ -72,7 +72,7 @@ func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
 // NewBeamExt derives a new Beam[T2] from an existing Beam[T] using custom transformation and filtering.
 //
 // The cast function transforms source values from type T to type T2. The distinct function
-// determines whether transformed values should be propagated by comparing new and old values.
+// determines whether updated values should be propagated by comparing new and old values.
 // If distinct is nil, every transformation will be propagated regardless of value equality.
 //
 // Parameters:

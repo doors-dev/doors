@@ -48,8 +48,9 @@ func (n *Node) registerHook(container *container, tracker *tracker, ctx context.
 	if n.container != container {
 		return nil, false
 	}
+	ctx = ctx.Value(common.ParentCtxKey).(context.Context)
 	hookId := n.container.inst.NewId()
-	hook := newHook(common.ClearBlockingCtx(ctx), h, n.container.inst)
+	hook := newHook(ctx, h, n.container.inst)
 	n.container.inst.RegisterHook(n.container.id, hookId, hook)
 	return &HookEntry{
 		NodeId: n.container.id,
@@ -75,59 +76,101 @@ func (n *Node) suspend(parent *tracker) {
 func (n *Node) reload(ctx context.Context) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	ch, ok := common.ResultChannel(ctx,"Node reload")
+	if !ok {
+		return ch
+	}
 	if n.container == nil {
-		return closedCh
+		close(ch)
+		return ch
 	}
 	n.container.inst.CancelHooks(n.container.id, nil)
-	return n.container.update(ctx, n.content)
+	n.container.update(ctx, n.content, ch)
+	return ch
 }
 
+func (n *Node) clear(ctx context.Context) <-chan error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	ch, ok := common.ResultChannel(ctx,"Node clear")
+	if !ok {
+		return ch
+	}
+	n.content = nil
+	if n.container == nil {
+		n.mode = dynamic
+		close(ch)
+		return ch
+	}
+	n.container.inst.CancelHooks(n.container.id, nil)
+	n.container.clear(ctx, ch)
+	return ch
+}
 func (n *Node) update(ctx context.Context, content templ.Component) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	ch, ok := common.ResultChannel(ctx,"Node update")
+	if !ok {
+		return ch
+	}
 	n.content = content
 	if n.container == nil {
 		n.mode = dynamic
-		return closedCh
+		close(ch)
+		return ch
 	}
 	n.container.inst.CancelHooks(n.container.id, nil)
-	return n.container.update(ctx, content)
+	n.container.update(ctx, content, ch)
+	return ch
 }
 
 func (n *Node) remove(ctx context.Context) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	ch, ok := common.ResultChannel(ctx,"Node remove")
+	if !ok {
+		return ch
+	}
 	n.mode = removed
 	if n.container == nil {
-		return closedCh
+		close(ch)
+		return nil
 	}
 	n.container.inst.CancelHooks(n.container.id, nil)
 	n.parent.removeChild(n)
 	container := n.container
 	n.container = nil
-	return container.remove(ctx)
+	container.remove(ctx, ch)
+	return ch
 }
 
 func (n *Node) replace(ctx context.Context, content templ.Component) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	ch, ok := common.ResultChannel(ctx,"Node replace")
+	if !ok {
+		return ch
+	}
 	n.mode = static
 	n.content = content
 	if n.container == nil {
-		return closedCh
+		close(ch)
+		return ch
 	}
 	n.container.inst.CancelHooks(n.container.id, nil)
 	n.parent.removeChild(n)
 	container := n.container
 	n.container = nil
-	return container.replace(ctx, content)
+	container.replace(ctx, content, ch)
+	return ch
 }
 
 func (n *Node) Render(ctx context.Context, w io.Writer) error {
 	n.mu.Lock()
 	if n.container != nil {
 		n.parent.removeChild(n)
-		n.container.remove(ctx)
+		ch := make(chan error, 1)
+		n.container.remove(ctx, ch)
 		n.container = nil
 	}
 	ctx, children, hasChildren := common.GetChildren(ctx)

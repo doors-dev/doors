@@ -99,10 +99,10 @@ func (c *cardFragment) close() doors.Attr {
 		    // reload category items table
         c.reload(ctx)
         // manually switch path to Cat from Item
-        c.path.Mutate(ctx, func(p *Path) bool {
+        c.path.Mutate(ctx, func(p Path) Path {
           p.IsCat = true
           p.IsItem = false
-          return true
+          return p
         })
         // remove hook
         return true

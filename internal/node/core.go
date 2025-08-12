@@ -79,7 +79,7 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 	return nil
 }
 
-func (c *container) replace(userCtx context.Context, content templ.Component) <-chan error {
+func (c *container) replace(userCtx context.Context, content templ.Component, ch chan error) {
 	c.tracker.suspend(true)
 
 	thread := c.inst.Thread()
@@ -90,7 +90,7 @@ func (c *container) replace(userCtx context.Context, content templ.Component) <-
 		ctx:  c.parentCtx,
 		name: "node_replace",
 		arg:  c.id,
-		ch:   make(chan error, 1),
+		ch:   ch,
 		done: ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{
 			Rm:    rm,
@@ -124,11 +124,9 @@ func (c *container) replace(userCtx context.Context, content templ.Component) <-
 		rw.Submit()
 		c.inst.Call(call)
 	})
-
-	return call.ch
 }
 
-func (c *container) update(userCtx context.Context, content templ.Component) <-chan error {
+func (c *container) update(userCtx context.Context, content templ.Component, ch chan error) {
 	if content == nil {
 		content = templ.NopComponent
 	}
@@ -142,7 +140,7 @@ func (c *container) update(userCtx context.Context, content templ.Component) <-c
 		ctx:  parentCtx,
 		name: "node_update",
 		arg:  c.id,
-		ch:   make(chan error, 1),
+		ch:   ch,
 		done: ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{
 			Rm:    rm,
@@ -182,14 +180,15 @@ func (c *container) update(userCtx context.Context, content templ.Component) <-c
 			c.inst.Call(call)
 		})
 	})
-
 	c.tracker = tracker
-
-	return call.ch
 }
 
-func (n *container) remove(userCtx context.Context) <-chan error {
-	return n.replace(userCtx, nil)
+func (n *container) remove(userCtx context.Context, ch chan error) {
+	n.replace(userCtx, nil, ch)
+}
+
+func (n *container) clear(userCtx context.Context, ch chan error) {
+	n.update(userCtx, nil, ch)
 }
 
 func (c *container) newTacker() (*tracker, context.Context) {
