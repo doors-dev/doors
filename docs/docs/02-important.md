@@ -2,7 +2,7 @@
 
 Practices you should understand and follow. 
 
-## 1. Use *doors*  entities inside *doors* context
+## 1. Use *doors*  entities inside *doors* context.
 
 ✅ Render `Node`, read/mutate `Beam/SourceBeam` values, use `doors.A...` binds and handlers in **pages served by doors.ServePage**
 
@@ -10,14 +10,14 @@ Practices you should understand and follow.
 
 **You will get a panic if you try.**
 
-## 2. Respect blocking free context
+## 2. Respect blocking free context.
 
-Rendering operations and Beam handlers are executed in the frameworks runtime.
+Rendering operations and Beam handlers are executed in the framework's runtime.
 
 ✅ Good 
 
 * Query data, make requests to external systems during render or in Beam subscription handlers
-* Wait on channels or async events in manualy spawned (or via @doors.Go) goroutines or hook handlers.
+* Wait on channels or async events in manually spawned (or via @doors.Go) goroutines or hook handlers.
 
 ✅  Query data during render:
 
@@ -123,9 +123,13 @@ templ (f *fragment) Render() {
 > }
 > ```
 
-## 
+## 3. Understand security model.
 
-## 3. Use closest `context.Context` value
+* For protected pages, check authentication in `ServePage` handler
+* There is no need to check cookies/headers in event handlers, because they are already scoped to the session and page instance
+* ❗ Don't forget to call `doors.SessionEnd(ctx)` when the user logs out and manage framework session expiration with `doors.SessionExpire(ctx, duration)`. Otherwise, you might leave private page instances active after authentication has ended.
+
+## 4. Use closest `context.Context` value.
 
 Context is used to track component relations, action progress and many more.  Always use closest context you have in scope. 
 
@@ -143,11 +147,11 @@ templ (f *fragment) Render() {
 
 ```
 
-Most of the time nothing serious will happen if you messed it up, 
+Most of the time, nothing serious will happen if you mess it up, 
 
-## 4. Avoid storing database data in state
+## 5. Avoid storing database data in state.
 
-In general you don't need to store database query result in fields or `Beams`.
+In general, you don't need to store database query results in fields or `Beams`.
 
 ✅ Store id in fragment field
 
@@ -207,6 +211,5 @@ itemBeam := doors.NewBeam(pathBeam, func(p Path) db.Item {
 })
 ```
 
-If you need data **only to produce render output** - fire and forget, so you won't waste server memory for nothing.  However, it's your choice.
+If you need data **only to produce render output** - fire and forget, so you won't waste server memory for nothing.  However, it's your decision.
 
-## 5. M

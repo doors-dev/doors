@@ -2,7 +2,7 @@
 
 `Beam` represents a reactive changing value stream that can be read, subscribed to, watched, or derived. 
 
-It is guaranteed that a Node and all of its children Nodes will observe the exact same value for a given Beam during the render cycle. 
+It is guaranteed that a Node and all of its child Nodes will observe the exact same value for a given Beam during the render cycle. 
 
 `SourceBeam` is the initial `Beam` (others are derived from it), which, in addition to its core functionality, includes the ability to update values and propagate changes to all subscribers and derived beams. It serves as the root of a reactive value chain. 
 
@@ -41,8 +41,6 @@ Returns the current value, then subscribes to future updates (invoking `onValue`
 ### `ReadAndSubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, Cancel, bool)`
 
 An extended form of `ReadAndSub`. Also accepts `onCancel` and returns a `Cancel` function. Returns the initial value, the `Cancel` function, and a success boolean. If the boolean is `false`, the value is undefined, and no subscription was established. 
-
-
 
 ### `Read(ctx context.Context) (T, bool)`
 
@@ -88,7 +86,7 @@ Sets a new value and propagates it to all subscribers and derived beams.
 Modifies the current value using the provided function.
 
 - The function receives a copy of the current value and must return a new value.
-- The mutation is applied only if the resulting value passes the **distinct check**. Returning an unchanged value (when a distinct function is set) results in no update (if distinct function not `nil`).
+- The mutation is applied only if the resulting value passes the **distinct check**. Returning an unchanged value (when a distinct function is set) results in no update (if the distinct function is not `nil`).
 
 
 ### `Latest() T`
@@ -105,11 +103,11 @@ XMutate(ctx context.Context, f func(T) T) (<-chan error, bool)
 XUpdate(ctx context.Context, value T) (<-chan error, bool)
 ```
 
-Do the same, and returns a channel that signals when the mutation has been fully propagated to all subscribers. This allows coordination ofdependent operations that must wait for the mutation to complete.
+Do the same, and return a channel that signals when the mutation has been fully propagated to all subscribers. This allows coordination of dependent operations that must wait for the mutation to complete.
 
 * Channel receives `nil` on successful propagation
-* Channel receives `error` if provided context is invalid or instance ended before propagation finished
-* Channel closed without any value if distinct check failed, so no update needed
+* Channel receives `error` if the provided context is invalid or the instance ended before propagation finished
+* Channel closed without any value if the distinct check failed, so no update is needed
 
 ## Helper Components
 
@@ -149,5 +147,5 @@ Creates a reactive component that writes the current beam value into the renderi
 ## Best Practices
 
 * Store origin values in beam, not business data. For example — id, but not the whole entry.
-* Minimize update frequency and region by deriving into smaller state pieces. If specific element depends on a single field in **beamed** data, derive beam with this field only and subscribe element to it.
+* Minimize update frequency and region by deriving into smaller state pieces. If a specific element depends on a single field in the beamed data, derive a beam with this field only and subscribe the element to it.
 

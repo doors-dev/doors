@@ -19,14 +19,6 @@ func (a anyMod) apply(rr *Router) {
 	a(rr)
 }
 
-func ServeRaw(path string, handler func(w http.ResponseWriter, r *http.Request)) Mod {
-	return anyMod(func(rr *Router) {
-		rr.dirs = append(rr.dirs, &static{
-			path:    path,
-			handler: http.HandlerFunc(handler),
-		})
-	})
-}
 
 func ServeFile(path string, localPath string) Mod {
 	return anyMod(func(rr *Router) {

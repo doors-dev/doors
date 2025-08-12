@@ -66,7 +66,7 @@ Builds a JS/TS file into an ES module via the framework’s builder.
 })
 ```
 
-> then it can be imported into the script via specifier
+> Then it can be imported into the script via the specifier
 >
 > ```templ
 > // script helper component

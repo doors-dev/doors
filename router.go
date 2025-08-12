@@ -56,21 +56,35 @@ type PageRoute = router.Response
 // It combines basic request/response functionality with model access.
 type RPage[M any] interface {
 	R
-	GetModel() M                  // Returns the decoded URL model
-	RequestHeader() http.Header   // Access to incoming request headers
-	ResponseHeader() http.Header  // Access to outgoing response headers
+	// Returns the decoded URL model
+	GetModel() M
+	// Access to incoming request headers
+	RequestHeader() http.Header
+	// Access to outgoing response headers
+	ResponseHeader() http.Header
 }
 
 // PageRouter provides methods for creating different types of page responses.
 // It allows rendering pages, redirecting, rerouting, and serving static content.
 type PageRouter[M any] interface {
-	Page(page Page[M]) PageRoute                                                    // Render page with 200 status
-	PageStatus(page Page[M], status int) PageRoute                                 // Render page with custom status
-	PageFunc(pageFunc func(SourceBeam[M]) templ.Component) PageRoute               // Render with function and 200 status
-	PageFuncStatus(pageFunc func(SourceBeam[M]) templ.Component, status int) PageRoute // Render with function and custom status
-	Reroute(model any, detached bool) PageRoute                                    // Internal reroute to different model (detached=true disables path synchronization)
-	Redirect(model any) PageRoute                                                  // HTTP redirect to model URL
-	RedirectStatus(model any, status int) PageRoute                               // HTTP redirect with custom status
+	// Serve page
+	Page(page Page[M]) PageRoute
+	// Serve page with custom status
+	PageStatus(page Page[M], status int) PageRoute
+	// Serve func page
+	PageFunc(pageFunc func(SourceBeam[M]) templ.Component) PageRoute
+	// Serve func page and custom status
+	PageFuncStatus(pageFunc func(SourceBeam[M]) templ.Component, status int) PageRoute
+	// Serve static page
+	StaticPage(content templ.Component) PageRoute
+	// Serve static page with custom status
+	StaticPageStatus(content templ.Component, status int) PageRoute
+	// Internal reroute to different model (detached=true disables path synchronization)
+	Reroute(model any, detached bool) PageRoute
+	// HTTP redirect to model URL
+	Redirect(model any) PageRoute
+	// HTTP redirect with custom status
+	RedirectStatus(model any, status int) PageRoute
 }
 
 type pageRequest[M any] struct {
@@ -182,16 +196,6 @@ func ServePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Mod {
 	})
 }
 
-// ServeDirPath serves static files from a local directory at the specified URL prefix.
-// This is a convenience function for serving directories from the filesystem.
-//
-// Parameters:
-//   - prefix: URL prefix (e.g., "/static/")
-//   - localPath: Local filesystem path to serve
-func ServeDirPath(prefix string, localPath string) Mod {
-	return router.ServeDirPath(prefix, localPath)
-}
-
 // ServeFS serves static files from an embedded filesystem at the specified URL prefix.
 // This is useful for serving embedded assets using Go's embed.FS.
 //
@@ -224,14 +228,10 @@ func ServeFile(path string, localPath string) Mod {
 	return router.ServeFile(path, localPath)
 }
 
-// ServeRaw registers a custom HTTP handler for the specified path.
-// This provides direct access to http.ResponseWriter and http.Request.
-//
-// Parameters:
-//   - path: URL path to handle
-//   - handler: Custom handler function
-func ServeRaw(path string, handler func(w http.ResponseWriter, r *http.Request)) Mod {
-	return router.ServeRaw(path, handler)
+// ServeFallback sets a fallback handler for requests that don't match any routes.
+// This is useful for integrating with other HTTP handlers or serving custom 404 pages.
+func ServeFallback(handler http.Handler) Mod {
+	return router.ServeFallback(handler)
 }
 
 // Router represents the main HTTP router that handles all requests.
@@ -245,12 +245,6 @@ type Router interface {
 // The router handles page routing, static files, hooks, and framework resources.
 func NewRouter() Router {
 	return router.NewRouter()
-}
-
-// ServeFallback sets a fallback handler for requests that don't match any routes.
-// This is useful for integrating with other HTTP handlers or serving custom 404 pages.
-func ServeFallback(handler http.Handler) Mod {
-	return router.ServeFallback(handler)
 }
 
 // SetGoroutineLimitPerInstance sets the maximum number of goroutines per instance.

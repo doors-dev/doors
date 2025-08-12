@@ -73,3 +73,15 @@ type Path struct {
  > -  `query` tag  instead of `form`
  > - empty values removed from query string on encoding
 
+### Capture Any path
+
+A code snippet that catches any path; you can use it to serve a 404 page.
+
+```go
+type AnyPath struct {
+  IsRoot bool `path:"/"` 
+  IsPath bool `path:"/:Path+"` // capture to end
+	Path   string // or []string to get individual parts 	
+}
+```
+
