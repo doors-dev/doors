@@ -1,4 +1,4 @@
-import { arrayDiff, splitClass } from "./lib"
+import {setDiff, arrayDiff, splitClass } from "./lib"
 
 
 type SelectorType = "target" | "query" | "parent_query"
@@ -9,8 +9,8 @@ export type IndicatorEntry = [[SelectorType, string | null], Kind, string, strin
 
 interface Indication {
     attrs: Map<string, string>
-    classes: Array<string>
-    removeClasses: Array<string>
+    classes: Set<string>
+    removeClasses: Set<string>
     content: string | null
 }
 
@@ -38,8 +38,8 @@ function newIndicator(
         if (!indication) {
             indication = {
                 attrs: new Map<string, string>(),
-                classes: [],
-                removeClasses: [],
+                classes: new Set(),
+                removeClasses: new Set(),
                 content: null,
             }
             indications.set(el, indication)
@@ -49,10 +49,10 @@ function newIndicator(
                 indication.attrs.set(param1, param2!)
                 break
             case "class":
-                indication.classes.push(...splitClass(param1))
+                splitClass(param1).forEach(c => indication.classes.add(c))
                 break
             case "remove_class":
-                indication.classes.push(...splitClass(param1))
+                splitClass(param1).forEach(c => indication.removeClasses.add(c))
                 break
             case "content":
                 indication.content = param1
@@ -118,7 +118,7 @@ class ElementIndicator {
             this.saved.content = this.el.innerHTML
             this.el.innerHTML = indication.content
         }
-        this.applyNext(id, indication, [], indication.classes, [], [...indication.attrs.keys()])
+        this.applyNext(id, indication, [...indication.removeClasses], [...indication.classes], [], [...indication.attrs.keys()])
     }
 
     end(id: number): boolean {
@@ -157,12 +157,12 @@ class ElementIndicator {
 
         const [nextId, nextIndication] = next
 
-        const [classToRemove1, classToAdd1] = arrayDiff(
+        const [classToRemove1, classToAdd1] = setDiff(
             activeIndication.classes,
             nextIndication.classes
         )
 
-        const [classToAdd2, classToRemove2] = arrayDiff(
+        const [classToAdd2, classToRemove2] = setDiff(
             activeIndication.removeClasses,
             nextIndication.removeClasses
         )

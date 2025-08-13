@@ -1,9 +1,14 @@
+
+export const setDiff = (a: Set<string>, b: Set<string>): [Array<string>, Array<string>] => {
+    const inANotB = [...a].filter(item => !b.has(item))
+    const inBNotA = [...b].filter(item => !a.has(item))
+    return [inANotB, inBNotA]
+}
+
 export const arrayDiff = (a: Array<string>, b: Array<string>): [Array<string>, Array<string>] => {
     const setA = new Set(a)
     const setB = new Set(b)
-    const inANotB = [...setA].filter(item => !setB.has(item))
-    const inBNotA = [...setB].filter(item => !setA.has(item))
-    return [inANotB, inBNotA]
+    return setDiff(setA, setB)
 }
 
 export const arraysEqual = (a: Array<string>, b: Array<string>, ordered = true) => {

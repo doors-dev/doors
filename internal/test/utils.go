@@ -7,7 +7,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -147,6 +149,46 @@ func TestContent(t *testing.T, page *rod.Page, selector string, content string) 
 	}
 }
 
+func TestClass(t *testing.T, page *rod.Page, selector string, className string) {
+	page = page.Timeout(200 * time.Millisecond)
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("class: element ", selector, " not found")
+	}
+	classAttr, err := el.Attribute("class")
+	if err != nil {
+		t.Fatal("class: element ", selector, " attribute 'class' not found")
+	}
+	if classAttr == nil {
+		t.Fatal("class: element ", selector, " has no 'class' attribute")
+	}
+	classes := strings.Fields(*classAttr)
+	found := slices.Contains(classes, className)
+	if !found {
+		t.Fatal("class: element ", selector, " expects to have class: ", className, " fact: ", *classAttr)
+	}
+}
+
+func TestClassNot(t *testing.T, page *rod.Page, selector string, className string) {
+	page = page.Timeout(200 * time.Millisecond)
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("class: element ", selector, " not found")
+	}
+	classAttr, err := el.Attribute("class")
+	if err != nil {
+		t.Fatal("class: element ", selector, " attribute 'class' not found")
+	}
+	if classAttr == nil {
+		return
+	}
+	classes := strings.Fields(*classAttr)
+	found := slices.Contains(classes, className)
+	for found {
+		t.Fatal("class: element ", selector, " expects not to have class: ", className)
+	}
+}
+
 func TestAttr(t *testing.T, page *rod.Page, selector string, name string, value string) {
 	page = page.Timeout(200 * time.Millisecond)
 	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
@@ -162,6 +204,40 @@ func TestAttr(t *testing.T, page *rod.Page, selector string, name string, value 
 	}
 	if *attr != value {
 		t.Fatal("attr: element ", selector, " attribute ", name, " expects: ", value, " fact: ", *attr)
+	}
+}
+
+func TestAttrNo(t *testing.T, page *rod.Page, selector string, name string) {
+	page = page.Timeout(200 * time.Millisecond)
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("attr: element ", selector, " not found")
+	}
+	attr, err := el.Attribute(name)
+	if err != nil {
+		t.Fatal("attr: element ", selector, " attribute ", name, " read error: ", err)
+	}
+
+	if attr != nil {
+		t.Fatal("attr: element ", selector, " should not have attribute ", name, " fact: ", *attr)
+	}
+}
+
+func TestAttrNot(t *testing.T, page *rod.Page, selector string, name string, value string) {
+	page = page.Timeout(200 * time.Millisecond)
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("attr: element ", selector, " not found")
+	}
+	attr, err := el.Attribute(name)
+	if err != nil {
+		t.Fatal("attr: element ", selector, " attribute ", name, " not found")
+	}
+	if attr == nil {
+		return
+	}
+	if *attr == value {
+		t.Fatal("attr: element ", selector, " attribute ", name, " expects not: ", value)
 	}
 }
 
