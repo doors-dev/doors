@@ -134,6 +134,14 @@ func Click(t *testing.T, page *rod.Page, selector string) {
 	<-time.After(100 * time.Millisecond)
 }
 
+func ClickNow(t *testing.T, page *rod.Page, selector string) {
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("click: element ", selector, " not found")
+	}
+	el.MustClick()
+}
+
 func TestContent(t *testing.T, page *rod.Page, selector string, content string) {
 	page = page.Timeout(200 * time.Millisecond)
 	el, err := page.Timeout(200 * time.Millisecond).Element(selector)

@@ -1,5 +1,5 @@
 import door from './door'
-import { capture, CaptureErr, captureErrTypes } from './capture'
+import { capture, CaptureErr,  captureErrKinds } from './capture'
 
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
@@ -24,7 +24,7 @@ class $D {
     async hookRaw(name: string, arg: any): Promise<Response> {
         const hook = getHookParams(this.anchor, name)
         if (hook === undefined) {
-            throw new CaptureErr(captureErrTypes.notFound, name)
+            throw new CaptureErr(captureErrKinds.notFound, name)
         }
         return await capture("default", undefined, arg, undefined, hook)
     }

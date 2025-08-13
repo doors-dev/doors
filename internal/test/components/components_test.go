@@ -35,7 +35,6 @@ func TestTitle(t *testing.T) {
 
 	// Test param state - has description, keywords, og:title, author (adds author, removes nothing)
 	test.Click(t, page, "#param")
-	<-time.After(200 * time.Millisecond)
 	test.TestContent(t, page, "title", p)
 	test.TestAttr(t, page, `meta[name="description"]`, "content", "Page for parameter: "+p)
 	test.TestAttr(t, page, `meta[name="keywords"]`, "content", "param, "+p)
@@ -46,7 +45,6 @@ func TestTitle(t *testing.T) {
 
 	// Test string state - has description, category (removes keywords, og:title, author; adds category)
 	test.Click(t, page, "#string")
-	<-time.After(200 * time.Millisecond)
 	test.TestContent(t, page, "title", "s")
 	test.TestAttr(t, page, `meta[name="description"]`, "content", "String page description")
 	test.TestAttr(t, page, `meta[name="category"]`, "content", "text-content")

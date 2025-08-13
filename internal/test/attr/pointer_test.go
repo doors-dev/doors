@@ -16,7 +16,7 @@ func moveTo(page *rod.Page, id string) (float64, float64) {
 	return xy[0], xy[1]
 }
 
-func TestPointer(t *testing.T) {
+func TestAttrPointer(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &pointerFragment{
 			r: test.NewReporter(3),

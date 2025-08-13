@@ -3,7 +3,7 @@ import { Hook } from './scope'
 import indicator from './indicator'
 import door from './door'
 
-export const captureErrTypes = {
+export const captureErrKinds = {
     blocked: "blocked",
     stale: "stale",
     done: "done",
@@ -16,64 +16,69 @@ export const captureErrTypes = {
     capture: "capture",
 } as const
 
+type CaptureErrKind = typeof captureErrKinds[keyof typeof captureErrKinds]
+
 export class CaptureErr extends Error {
     public meta: any
-    constructor(public type: string, private opt?: any) {
+    public status: number | undefined = undefined
+    public cause: Error | undefined = undefined
+    constructor(public kind: CaptureErrKind, opt?: any) {
         let message: string
-        switch (type) {
-            case captureErrTypes.notFound:
+        switch (kind) {
+            case captureErrKinds.notFound:
                 message = `capture or hook ${opt} not found`
                 break
-            case captureErrTypes.blocked:
+            case captureErrKinds.blocked:
                 message = `hook is blocked by another hook`
                 break
-            case captureErrTypes.stale:
+            case captureErrKinds.stale:
                 message = `instance is stopped`
                 break
-            case captureErrTypes.done:
+            case captureErrKinds.done:
                 message = `hook is done`
                 break
-            case captureErrTypes.other:
+            case captureErrKinds.other:
                 message = `Other Error: ${opt?.status}`
                 break
-            case captureErrTypes.network:
+            case captureErrKinds.network:
                 message = opt?.message
                 break
-            case captureErrTypes.capture:
+            case captureErrKinds.capture:
                 message = opt?.message
                 break
-            case captureErrTypes.server:
+            case captureErrKinds.server:
                 message = `Server Error: ${opt?.status}`
                 break
-            case captureErrTypes.format:
+            case captureErrKinds.format:
                 message = `body parsing error, bad request`
                 break
-            case captureErrTypes.debounce:
+            case captureErrKinds.debounce:
                 message = `Debounced`
                 break
             default:
-                throw new Error(`unsupported error type: ${type}`)
+                throw new Error(`unsupported error type: ${kind}`)
         }
 
         const cause = opt instanceof Error ? opt : undefined
         // @ts-expect-error: Error constructor overload not recognized by TS (ES2022 feature)
         super(message, cause ? { cause } : undefined)
+        if (opt && opt.status && typeof opt.status == "number") {
+            this.status = opt.status
+        }
+        if (cause) {
+            this.cause = cause
+        }
     }
-
-    isBlocked() { return this.type === captureErrTypes.blocked; }
-    isNotFound() { return this.type === captureErrTypes.notFound; }
-    isStale() { return this.type === captureErrTypes.stale; }
-    isDone() { return this.type === captureErrTypes.done; }
-    isOther() { return this.type === captureErrTypes.other; }
-    isNetwork() { return this.type === captureErrTypes.network; }
-    isCapture() { return this.type === captureErrTypes.capture; }
-    isServer() { return this.type === captureErrTypes.server; }
-    isFormat() { return this.type === captureErrTypes.format; }
-    isDebounce() { return this.type === captureErrTypes.debounce; }
-
-    status(): number | undefined {
-        return this.opt?.status
-    }
+    isBlocked() { return this.kind === captureErrKinds.blocked; }
+    isNotFound() { return this.kind === captureErrKinds.notFound; }
+    isStale() { return this.kind === captureErrKinds.stale; }
+    isDone() { return this.kind === captureErrKinds.done; }
+    isOther() { return this.kind === captureErrKinds.other; }
+    isNetwork() { return this.kind === captureErrKinds.network; }
+    isCapture() { return this.kind === captureErrKinds.capture; }
+    isServer() { return this.kind === captureErrKinds.server; }
+    isFormat() { return this.kind === captureErrKinds.format; }
+    isDebounce() { return this.kind === captureErrKinds.debounce; }
 }
 
 export function capture(name: string, opt: any, arg: any, event: Event | undefined, hook: any): Promise<Response> {

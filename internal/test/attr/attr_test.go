@@ -6,7 +6,7 @@ import "testing"
 import "time"
 import "fmt"
 
-func TestData(t *testing.T) {
+func TestAttrData(t *testing.T) {
 	data := common.RandId()
 
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
@@ -21,7 +21,7 @@ func TestData(t *testing.T) {
 	test.TestContent(t, page, "#target", data)
 }
 
-func TestHook(t *testing.T) {
+func TestAttrHook(t *testing.T) {
 	data := common.RandId()
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &hookFragment{
@@ -36,7 +36,7 @@ func TestHook(t *testing.T) {
 	test.TestContent(t, page, "#target", fmt.Sprint(len(data)))
 	test.TestReport(t, page, data)
 }
-func TestCall(t *testing.T) {
+func TestAttrCall(t *testing.T) {
 	data := common.RandId()
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &callFragment{

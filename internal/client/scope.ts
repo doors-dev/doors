@@ -1,4 +1,4 @@
-import { CaptureErr, captureErrTypes } from './capture'
+import { CaptureErr, captureErrKinds } from './capture'
 import captures from './captures'
 import indicator, { IndicatorEntry } from './indicator'
 import { requestTimeout, id } from './params'
@@ -31,13 +31,13 @@ export class Hook {
     capture(name: string, opt: any, arg: any) {
         const captureFunction = captures[name]
         if (!captureFunction) {
-            this.err(new CaptureErr(captureErrTypes.notFound, name))
+            this.err(new CaptureErr(captureErrKinds.notFound, name))
             return this.promise
         }
         try {
             this.fetch = captureFunction(arg, opt)
         } catch (e) {
-            this.rej(new CaptureErr(captureErrTypes.capture, e))
+            this.rej(new CaptureErr(captureErrKinds.capture, e))
             return this.promise
         }
         r.submit(this)
@@ -87,23 +87,23 @@ export class Hook {
                 return
             }
             if (r.status === 401 || r.status === 410) {
-                this.rej(new CaptureErr(captureErrTypes.stale, r))
+                this.rej(new CaptureErr(captureErrKinds.stale, r))
             } else if (r.status === 400) {
-                this.rej(new CaptureErr(captureErrTypes.format))
+                this.rej(new CaptureErr(captureErrKinds.format))
             } else if (r.status === 403) {
-                this.rej(new CaptureErr(captureErrTypes.done))
+                this.rej(new CaptureErr(captureErrKinds.done))
             } else if (r.status >= 500 && r.status < 600) {
-                this.rej(new CaptureErr(captureErrTypes.server, r))
+                this.rej(new CaptureErr(captureErrKinds.server, r))
             } else {
-                this.rej(new CaptureErr(captureErrTypes.other, r))
+                this.rej(new CaptureErr(captureErrKinds.other, r))
             }
         }).catch(e => {
             this.abortTimer!.clean()
             if (this.abortTimer!.status == "aborted") {
-                this.rej(new CaptureErr(captureErrTypes.blocked))
+                this.rej(new CaptureErr(captureErrKinds.blocked))
                 return
             }
-            this.err(new CaptureErr(captureErrTypes.network, e))
+            this.err(new CaptureErr(captureErrKinds.network, e))
         }).finally(() => {
             indicator.end(indicatorId)
         })
@@ -120,7 +120,7 @@ export class Hook {
             this.params.event.preventDefault()
             this.params.event.stopPropagation()
         }
-        this.err(new CaptureErr(captureErrTypes.blocked))
+        this.err(new CaptureErr(captureErrKinds.blocked))
     }
     private ok(r: Response) {
         this.res(r)
