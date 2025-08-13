@@ -109,18 +109,22 @@ func ScopeDebounce(duration time.Duration, limit time.Duration) []Scope {
 	return []Scope{(&DebounceScope{}).Scope(duration, limit)}
 }
 
+
+
 // FrameScope manages two types of events: immediate events and frame events.
 // Immediate events (frame=false) execute immediately without waiting.
 // Frame events (frame=true) wait until all other events in the scope complete,
-// and only one frame event can exist at a time (subsequent frame events are cancelled).
+// and then execute in blocking mode, all subsequent events during 
+// framing process are canceled (blocked)
 type FrameScope struct {
 	id front.ScopeAutoId
 }
 
 // Scope creates a frame-based scope with the specified event type.
 // Immediate events (frame=false) execute right away and don't wait for anything.
-// Frame events (frame=true) wait until they're the only event in the scope before executing,
-// and if another frame event arrives, the previous one is cancelled.
+// Frame events (frame=true) wait until all existing events in the scope complete,
+// and then execute in blocking mode, all subsequent events during 
+// framing process are canceled (blocked)
 //
 // Parameters:
 //   - frame: false for immediate execution, true to wait for other events to complete

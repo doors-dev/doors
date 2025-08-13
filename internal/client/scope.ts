@@ -230,6 +230,9 @@ class DebounceScope extends Scope {
         if (this.limitTimer != null) {
             return
         }
+        if (limit == 0) {
+            return
+        }
         this.limitTimer = setTimeout(() => {
             this.launch()
         }, limit)
@@ -243,10 +246,11 @@ class DebounceScope extends Scope {
     }
     protected process(hook: Hook, opt: any): void {
         const [duration, limit] = opt
-        if (this.hook) {
-            this.hook.cancel()
-        }
+        const oldHook = this.hook
         this.hook = hook
+        if (oldHook) {
+            oldHook.cancel()
+        }
         this.resetDuration(duration)
         this.resetLimit(limit)
     }
