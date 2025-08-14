@@ -22,7 +22,10 @@ func TestAttrPointer(t *testing.T) {
 			r: test.NewReporter(3),
 		}
 	})
+	defer bro.Close()
 	page := bro.Page(t, "/")
+	defer page.Close()
+
 	test.TestReportId(t, page, 0, "")
 	x, y := moveTo(page, "down")
 	page.Mouse.MustDown(proto.InputMouseButtonLeft)

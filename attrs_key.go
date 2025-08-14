@@ -113,14 +113,3 @@ func (k *AKeyUp) Init(ctx context.Context, n node.Core, inst instance.Core, attr
 	p.init("keyup", ctx, n, inst, attrs)
 }
 
-// AKeyPress is an attribute struct used with A(ctx, ...) to handle 'keypress' events via backend hooks.
-type AKeyPress keyEventHook
-
-func (k AKeyPress) Attr() AttrInit {
-	return &k
-}
-
-func (k *AKeyPress) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*keyEventHook)(k)
-	p.init("keyup", ctx, n, inst, attrs)
-}

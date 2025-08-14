@@ -1,0 +1,186 @@
+package attr
+
+import (
+	"context"
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"strings"
+)
+
+type inputFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+templ (f *inputFragment) Render() {
+	@f.r.Render()
+	@f.focusFields()
+	@f.inputFields()
+	<hr/>
+	@f.changeFields()
+}
+
+func (f *inputFragment) focusioouter() []doors.Attr {
+	return []doors.Attr{
+		doors.AFocusIn{
+			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 2, "in")
+				return false
+			},
+		},
+		doors.AFocusOut{
+			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 2, "out")
+				return false
+			},
+		},
+	}
+}
+func (f *inputFragment) focusio() []doors.Attr {
+	return []doors.Attr{
+		doors.AFocusIn{
+			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 1, "in")
+				return false
+			},
+		},
+		doors.AFocusOut{
+			StopPropagation: true,
+			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 1, "out")
+				return false
+			},
+		},
+	}
+}
+func (f *inputFragment) focus() []doors.Attr {
+	return []doors.Attr{
+		doors.AFocus{
+			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 0, "focus")
+				return false
+			},
+		},
+		doors.ABlur{
+			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 0, "blur")
+				return false
+			},
+		},
+	}
+}
+
+templ (f *inputFragment) focusFields() {
+	<h3>focus</h3>
+	<div { doors.A(ctx, f.focusioouter()...)... }>
+		<div { doors.A(ctx, f.focusio()...)... }>
+			<input id="focus" { doors.A(ctx, f.focus()...)... } type="text" name="text"/>
+		</div>
+	</div>
+	<button id="blur"></button>
+}
+
+func (f *inputFragment) inputAttr(excudeValue bool) doors.Attr {
+	return doors.AInput{
+		ExcludeValue: excudeValue,
+		On: func(ctx context.Context, r doors.REvent[doors.InputEvent]) bool {
+			f.r.Update(ctx, 0, r.Event().Data)
+			f.r.Update(ctx, 1, r.Event().Value)
+			//		fmt.Printf("%+v\n", r.Event())
+			return false
+		},
+	}
+}
+
+templ (f *inputFragment) inputFields() {
+	<h3>input</h3>
+	<input id="input" { doors.A(ctx, f.inputAttr(false))... } type="text" name="text"/>
+	<h3>input ex</h3>
+	<input id="input_ex" { doors.A(ctx, f.inputAttr(true))... } type="text" name="text"/>
+}
+
+func (f *inputFragment) attr(index string) doors.Attr {
+	return doors.AChange{
+		On: func(ctx context.Context, r doors.REvent[doors.ChangeEvent]) bool {
+			//		fmt.Printf("%+v\n", r.Event())
+			if r.Event().Name != index {
+				return false
+			}
+			f.r.Update(ctx, 0, index)
+			f.r.Update(ctx, 1, r.Event().Value)
+			if r.Event().Number != nil {
+				f.r.Update(ctx, 2, test.Float(*r.Event().Number))
+			} else {
+				f.r.Update(ctx, 2, "")
+			}
+			if r.Event().Date != nil {
+				f.r.Update(ctx, 3, r.Event().Date.String())
+			} else {
+				f.r.Update(ctx, 3, "")
+			}
+			s := strings.Join(r.Event().Selected, ",")
+			f.r.Update(ctx, 4, s)
+			if r.Event().Checked {
+				f.r.Update(ctx, 5, "true")
+			} else {
+				f.r.Update(ctx, 5, "false")
+			}
+			return false
+		},
+	}
+}
+
+templ (f *inputFragment) changeFields() {
+	<h3>text</h3>
+	<input id="text" { doors.A(ctx, f.attr("text" ))... } type="text" name="text"/>
+	<h3>password</h3>
+	<input id="password" { doors.A(ctx, f.attr("password" ))... } type="password" name="password"/>
+	<h3>email</h3>
+	<input id="email" { doors.A(ctx, f.attr("email" ))... } type="email" name="email"/>
+	<h3>tel</h3>
+	<input id="tel" { doors.A(ctx, f.attr("tel" ))... } type="tel" name="tel"/>
+	<h3>url</h3>
+	<input id="url" { doors.A(ctx, f.attr("url" ))... } type="url" name="url"/>
+	<h3>search</h3>
+	<input id="search" { doors.A(ctx, f.attr("search" ))... } type="search" name="search"/>
+	<h3>number</h3>
+	<input id="number" { doors.A(ctx, f.attr("number" ))... } type="number" name="number"/>
+	<h3>date</h3>
+	<input id="date" { doors.A(ctx, f.attr("date" ))... } type="date" name="date"/>
+	<h3>datetime-local</h3>
+	<input id="datetime-local" { doors.A(ctx, f.attr("datetime-local" ))... } type="datetime-local" name="datetime-local"/>
+	<h3>month</h3>
+	<input id="month" { doors.A(ctx, f.attr("month" ))... } type="month" name="month"/>
+	/*
+    // not supported by rod
+	<h3>week</h3>
+	<input id="week" { doors.A(ctx, f.attr("week" ))... } type="week" name="week"/>
+    */
+	<h3>time</h3>
+	<input id="time" { doors.A(ctx, f.attr("time" ))... } type="time" name="time"/>
+	<h3>color</h3>
+	<input id="color" { doors.A(ctx, f.attr("color" ))... } type="color" name="color"/>
+	<h3>checkbox</h3>
+	<input id="checkbox" { doors.A(ctx, f.attr("checkbox" ))... } type="checkbox" name="checkbox" value="on"/>
+	<h3>radio</h3>
+	{{ radio := doors.A(ctx, f.attr("radio")) }}
+	<input id="radio-1" { radio... } type="radio" name="radio" value="option1"/>
+	<input id="radio-2" { radio... } type="radio" name="radio" value="option2"/>
+	/*
+    // not supported by rod
+	<h3>range</h3>
+	<input id="range" { doors.A(ctx, f.attr("range" ))... } type="range" name="range"/>
+    */
+	<h3>textarea</h3>
+	<textarea id="textarea" { doors.A(ctx, f.attr("textarea"))... } name="textarea"></textarea>
+	<h3>select</h3>
+	<select id="select" { doors.A(ctx, f.attr("select"))... } name="select">
+		<option value="option1">Option 1</option>
+		<option value="option2">Option 2</option>
+	</select>
+	<h3>multiselect</h3>
+	<select id="multiselect" { doors.A(ctx, f.attr("multiselect"))... } name="multiselect" multiple>
+		<option value="option1">Option 1</option>
+		<option value="option2">Option 2</option>
+	</select>
+}

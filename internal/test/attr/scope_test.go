@@ -13,7 +13,11 @@ func TestScopeBlocking(t *testing.T) {
 			r: test.NewReporter(2),
 		}
 	})
+	defer bro.Close()
 	page := bro.Page(t, "/")
+	defer page.Close()
+	
+
 	test.TestReportId(t, page, 0, "0")
 	test.TestReportId(t, page, 1, "0")
 	test.ClickNow(t, page, "#b1")
@@ -34,7 +38,9 @@ func TestScopeSerial(t *testing.T) {
 			r: test.NewReporter(2),
 		}
 	})
+	defer bro.Close()
 	page := bro.Page(t, "/")
+	defer page.Close()
 
 	test.ClickNow(t, page, "#s1")
 	test.ClickNow(t, page, "#s2")
@@ -56,7 +62,9 @@ func TestScopeDebounce(t *testing.T) {
 			r: test.NewReporter(2),
 		}
 	})
+	defer bro.Close()
 	page := bro.Page(t, "/")
+	defer page.Close()
 	test.ClickNow(t, page, "#d1")
 	<-time.After(50 * time.Millisecond)
 	test.ClickNow(t, page, "#d2")
@@ -81,7 +89,9 @@ func TestScopeDebounceLimit(t *testing.T) {
 			r: test.NewReporter(2),
 		}
 	})
+	defer bro.Close()
 	page := bro.Page(t, "/")
+	defer page.Close()
 	test.ClickNow(t, page, "#dl1")
 	<-time.After(200 * time.Millisecond)
 	test.ClickNow(t, page, "#dl2")
@@ -113,7 +123,9 @@ func TestScopeFrame(t *testing.T) {
 			r: test.NewReporter(2),
 		}
 	})
+	defer bro.Close()
 	page := bro.Page(t, "/")
+	defer page.Close()
 	test.ClickNow(t, page, "#f1")
 	test.ClickNow(t, page, "#f1")
 	test.ClickNow(t, page, "#f2")
@@ -149,7 +161,9 @@ func TestScopePipe(t *testing.T) {
 			r: test.NewReporter(2),
 		}
 	})
+	defer bro.Close()
 	page := bro.Page(t, "/")
+	defer page.Close()
 	test.ClickNow(t, page, "#p1")
 	test.ClickNow(t, page, "#p2")
 	test.ClickNow(t, page, "#p4")

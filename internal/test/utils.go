@@ -2,11 +2,15 @@ package test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -16,6 +20,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors"
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
 )
 
@@ -109,6 +114,68 @@ func NewBro(browser *rod.Browser, mods ...doors.Mod) *Bro {
 		r:       r,
 		s:       s,
 		closeCh: ch,
+	}
+}
+func TestType(t *testing.T, page *rod.Page, selector string, keys []input.Key) {
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("must: element ", selector, " not found")
+	}
+	err = el.Type(keys...)
+	if err != nil {
+		t.Fatal("must: element ", selector, " input failed")
+	}
+}
+
+func TestInput(t *testing.T, page *rod.Page, selector string, value string) {
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("must: element ", selector, " not found")
+	}
+	err = el.Input(value)
+	if err != nil {
+		t.Fatal("must: element ", selector, " input failed")
+	}
+}
+func TestInputTime(t *testing.T, page *rod.Page, selector string, now time.Time) {
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("must: element ", selector, " not found")
+	}
+	err = el.InputTime(now)
+	if err != nil {
+		t.Fatal("must: element ", selector, " input failed")
+	}
+}
+func TestInputColor(t *testing.T, page *rod.Page, selector string, color string) {
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("must: element ", selector, " not found")
+	}
+	err = el.InputColor(color)
+	if err != nil {
+		t.Fatal("must: element ", selector, " input failed")
+	}
+}
+
+func TestSelect(t *testing.T, page *rod.Page, selector string, options []string) {
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("must: element ", selector, " not found")
+	}
+	err = el.Select(options, true, rod.SelectorTypeText)
+	if err != nil {
+		t.Fatal("must: element ", selector, " input failed")
+	}
+}
+func TestDeselect(t *testing.T, page *rod.Page, selector string, options []string) {
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("must: element ", selector, " not found")
+	}
+	err = el.Select(options, false, rod.SelectorTypeText)
+	if err != nil {
+		t.Fatal("must: element ", selector, " input failed")
 	}
 }
 
@@ -253,6 +320,19 @@ func TestReport(t *testing.T, page *rod.Page, content string) {
 	TestReportId(t, page, 0, content)
 }
 
+func GetReportContent(t *testing.T, page *rod.Page, id int) string {
+	page = page.Timeout(200 * time.Millisecond)
+	selector := fmt.Sprintf("#report-%d", id)
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("content: element ", selector, " not found")
+	}
+	s, err := el.Text()
+	if err != nil {
+		t.Fatal("content: element ", selector, " no text")
+	}
+	return s
+}
 func TestReportId(t *testing.T, page *rod.Page, id int, content string) {
 	TestContent(t, page, fmt.Sprintf("#report-%d", id), content)
 }
@@ -266,4 +346,46 @@ func Text(s string) templ.Component {
 func Count(page *rod.Page, s string) int {
 	elements := page.MustElements(s)
 	return len(elements)
+}
+
+type RandFile struct {
+	Path string
+	Hash string // SHA-256 hex digest of the file content
+}
+
+func (r *RandFile) IsSame(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		panic(err)
+	}
+	return r.Hash == hex.EncodeToString(h.Sum(nil))
+}
+
+func NewRandFile(size int64) RandFile {
+	f, err := os.CreateTemp("", "randfile-*.bin")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	mw := io.MultiWriter(f, h)
+
+	if _, err := io.CopyN(mw, rand.Reader, size); err != nil {
+		panic(err)
+	}
+	if err := f.Sync(); err != nil {
+		panic(err)
+	}
+
+	return RandFile{
+		Path: f.Name(),
+		Hash: hex.EncodeToString(h.Sum(nil)),
+	}
 }

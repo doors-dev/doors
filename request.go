@@ -2,11 +2,11 @@ package doors
 
 import (
 	"context"
+	"github.com/doors-dev/doors/internal/front"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"github.com/doors-dev/doors/internal/front"
 )
 
 type afterFunc func(context.Context) (*front.After, error)
@@ -96,17 +96,18 @@ type RForm[D any] interface {
 // when working with file uploads.
 type RRawForm interface {
 	R
-	Reader() (*multipart.Reader, error)    // Returns a multipart reader for streaming
+	W() http.ResponseWriter
+	Reader() (*multipart.Reader, error)          // Returns a multipart reader for streaming
 	ParseForm(maxMemory int) (ParsedForm, error) // Parses form data with memory limit
 	RAfter
 }
 
 // ParsedForm provides access to parsed form data including values and files.
 type ParsedForm interface {
-	FormValues() url.Values                                              // Returns all form values
-	FormValue(key string) string                                         // Returns a single form value
+	FormValues() url.Values                                             // Returns all form values
+	FormValue(key string) string                                        // Returns a single form value
 	FormFile(key string) (multipart.File, *multipart.FileHeader, error) // Returns an uploaded file
-	Form() *multipart.Form                                               // Returns the underlying multipart form
+	Form() *multipart.Form                                              // Returns the underlying multipart form
 }
 
 // RCall represents a request context for direct HTTP calls with full access
@@ -114,8 +115,7 @@ type ParsedForm interface {
 // over the HTTP request/response cycle.
 type RCall interface {
 	RRawForm
-	W() http.ResponseWriter // Returns the response writer
-	Body() io.ReadCloser    // Returns the request body
+	Body() io.ReadCloser // Returns the request body
 	RAfter
 }
 
@@ -131,8 +131,7 @@ type RHook[D any] interface {
 // automatic data parsing. This gives full control over request processing.
 type RRawHook interface {
 	RRawForm
-	W() http.ResponseWriter // Returns the response writer
-	Body() io.ReadCloser    // Returns the request body
+	Body() io.ReadCloser // Returns the request body
 }
 
 type request struct {

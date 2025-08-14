@@ -257,7 +257,7 @@ func (c *APointerEnter) Init(ctx context.Context, n node.Core, inst instance.Cor
 // APointerLeave is an attribute struct used with A(ctx, ...) to handle 'pointerleave' events via backend hooks.
 type APointerLeave struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
-	StopPropagation bool
+StopPropagation bool
 
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool

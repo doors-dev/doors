@@ -1,0 +1,77 @@
+package attr
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"io"
+)
+
+type formFragment struct {
+	test.NoBeam
+	r   *test.Reporter
+	raw bool
+}
+
+templ (f *formFragment) Render() {
+	{{ f.r.Update(ctx, 0, "init") }}
+	@f.r.Render()
+	if f.raw {
+		@f.form(f.submitRaw())
+	} else {
+		@f.form(f.submitSimple())
+	}
+}
+
+func (f *formFragment) submitSimple() doors.Attr {
+	return doors.ASubmit[formData]{
+		On: func(ctx context.Context, r doors.RForm[formData]) bool {
+			f.r.Update(ctx, 0, r.Data().Name)
+			f.r.Update(ctx, 1, r.Data().Email)
+			f.r.Update(ctx, 2, fmt.Sprint(r.Data().Age))
+			f.r.Update(ctx, 3, r.Data().Subscribe)
+			return true
+		},
+	}
+}
+func (f *formFragment) submitRaw() doors.Attr {
+	return doors.ARawSubmit{
+		On: func(ctx context.Context, rf doors.RRawForm) bool {
+			form, _ := rf.ParseForm(10_000_000)
+			fileHeader := form.Form().File["attachment"][0]
+			file, err := fileHeader.Open()
+			if err != nil {
+				return true
+			}
+			defer file.Close()
+			hasher := sha256.New()
+			if _, err := io.Copy(hasher, file); err != nil {
+				return true
+			}
+			hash := hex.EncodeToString(hasher.Sum(nil))
+			f.r.Update(ctx, 0, hash)
+			return true
+		},
+	}
+}
+
+type formData struct {
+	Name      string `form:"name"`
+	Email     string `form:"email"`
+	Age       int    `form:"age"`
+	Subscribe string `form:"subscribe"`
+}
+
+templ (f *formFragment) form(a doors.Attr) {
+	<form { doors.A(ctx, a)... }>
+		<input type="text" id="name" name="name"/>
+		<input type="email" id="email" name="email"/>
+		<input type="number" id="age" name="age" min="0"/>
+		<input type="checkbox" id="subscribe" name="subscribe" value="on"/>
+		<input type="file" id="file" name="attachment"/>
+		<button id="submit" type="submit">Submit</button>
+	</form>
+}

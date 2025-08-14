@@ -76,6 +76,14 @@ export default {
         };
         return fetchOptJson(obj);
     },
+    focus_io(event: FocusEvent, opt: EventOpt) {
+        applyEventOpt(event, opt);
+        const obj = {
+            type: event.type,
+            timestamp: date(new Date()),
+        };
+        return fetchOptJson(obj);
+    },
 
     keyboard(event: KeyboardEvent, opt: EventOpt) {
         applyEventOpt(event, opt);
