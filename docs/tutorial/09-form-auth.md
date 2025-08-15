@@ -69,9 +69,10 @@ type loginData struct {
 `./home/login.teml`
 
 ```templ
-func (l *loginFragment) submit() doors.Attr {
-	// submit attribute with loginData as form data
-	return doors.ASubmit[loginData]{
+
+templ (l *loginFragment) Render() {
+	// attach submit attribute with loginData as form data
+	@doors.ASubmit[loginData]{
 		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
 			// debug print
 			fmt.Printf("%+v\n", r.Data())
@@ -83,11 +84,7 @@ func (l *loginFragment) submit() doors.Attr {
 			return false
 		},
 	}
-}
-
-templ (l *loginFragment) Render() {
-	// construct attributes with submit handler
-	<form { doors.A(ctx, l.submit() )... }>
+	<form>
 		<fieldset>
 			<label>
 				Login
@@ -119,7 +116,7 @@ First, you can notice that regardless of how frequently you submit the form, eve
 >
 > That does not affect other hooks and operations, so you need to use synchronization techniques when accessing shared data.
 
-But, we don't want the user to submit a new form when the previous one is still processing. 
+But we don't want the user to submit a new form when the previous one is still processing. 
 
 That's what **scopes** are here for. 
 
@@ -208,7 +205,7 @@ import (
 	"time"
 )
 
-// hardcoded login data, only for the tutorial purposes!
+// hardcoded login data, only for tutorial purposes!
 const userLogin = "admin"
 const userPassword = "password123"
 
@@ -218,26 +215,24 @@ type loginFragment struct {
 	messageNode doors.Node
 }
 
-func (l *loginFragment) submit() doors.Attr {
-	return doors.ASubmit[loginData]{
-		Indicator: doors.IndicatorAttrQuery("#login-submit", "aria-busy", "true"),
-
-		Scope:     doors.ScopeBlocking(),
-		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
-            if r.Data().Login != userLogin || r.Data().Password != userPassword {
-              //display errror
-              l.messageNode.Update(ctx, l.errorMessage())
-              return false
-            } 
-            // display ok, just for testing
-            l.messageNode.Update(ctx, doors.Text("ok"))
-            return false
-		},
-	}
-}
 
 templ (l *loginFragment) Render() {
-	<form { doors.A(ctx, l.submit() )... }>
+  // attach submit
+  @doors.ASubmit[loginData]{
+		Indicator: doors.IndicatorAttrQuery("#login-submit", "aria-busy", "true"),
+		Scope:     doors.ScopeBlocking(),
+		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
+        if r.Data().Login != userLogin || r.Data().Password != userPassword {
+          //display errror
+          l.messageNode.Update(ctx, l.errorMessage())
+          return false
+        } 
+        // display ok, just for testing
+        l.messageNode.Update(ctx, doors.Text("ok"))
+        return false
+		},
+	}
+	<form>
 		<fieldset>
 			<label>
 				Login
@@ -285,8 +280,8 @@ In the form handler function
 ```templ
 const sessionDuration = time.Hour * 24
 
-func (l *loginFragment) submit() doors.Attr {
-	return doors.ASubmit[loginData]{
+templ (l *loginFragment) Render() {
+	@doors.ASubmit[loginData]{
 		Indicator: doors.IndicatorAttrQuery("#login-submit", "aria-busy", "true"),
 		Scope:     doors.ScopeBlocking(),
 		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
@@ -294,33 +289,28 @@ func (l *loginFragment) submit() doors.Attr {
 				l.messageNode.Update(ctx, l.errorMessage())
 				return false
 			}
-
-			// store session to db
 			session := driver.Sessions.Add(r.Data().Login, sessionDuration)
-
-			// set session cookie
 			r.SetCookie(&http.Cookie{
 				Name:     "session",
 				Value:    session.Token,
 				Expires:  time.Now().Add(sessionDuration),
+				Path:     "/",
 				HttpOnly: true,
 			})
-
-			// reload the page after hook
 			r.After(doors.AfterLocationReload())
-
-			// frameworks internal session cannot outlive yours!
-			doors.UserSessionExpire(ctx, sessionDuration)
-
+			doors.SessionExpire(ctx, sessionDuration)
 			return true
 		},
 	}
+	<form>
+		/* ... */
+	</form>
 }
 ```
 
 > `r.After(doors.After)` allows you to specify an action to execute on the front-end after the hook request is finished. `doors.AfterLocationReload()` is useful for situations when you need to reinitialize the page after hook execution.
 >
-> `doors.UserSessionExpire` is a safe precaution to ensure that opened pages with access to authorized functionality will not outlive the authorization session. 
+> `doors.SessionExpire` is a safe precaution to ensure that opened pages with access to authorized functionality will not outlive the authorization session. 
 
 ### Check Authorization
 
@@ -374,7 +364,7 @@ func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 
 > The handler function is the page's entry point. **It's the only place where you must care about authorization**.  
 
-Let's refactor the session extraction to an external function, so we can reuse it on catalog page.
+Let's refactor the session extraction to an external function, so we can reuse it on **catalog** page.
 
 `./common/utils.go`
 
@@ -432,28 +422,26 @@ templ (h *homePage) Body() {
 		@doors.F(&login{})
 	} else {
 		<h1>Welcome <strong>{ h.session.Login }</strong>!</h1>
-		// log out button
-		<button class="secondary" { doors.A(ctx, h.logout())... }>Log Out</button>
-	}
-}
-
-// log out handler
-func (h *homePage) logout() doors.Attr {
-	return doors.AClick{
-		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-			// clean cookies
-			r.SetCookie(&http.Cookie{
-				Name:   "session",
-				Path:   "/",
-				MaxAge: -1,
-			})
-			// end doors session to ensure no active pages left
-			doors.UserSessionEnd(ctx)
-			return true
-		},
+		// attach click attribute with logout handler
+		@doors.AClick{
+      On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+        // clean cookies
+        r.SetCookie(&http.Cookie{
+          Name:   "session",
+          Path:   "/",
+          MaxAge: -1,
+        })
+        // remove session entry
+        driver.Sessions.Remove(h.session.Token)
+        // end doors session to ensure no active pages left
+        doors.SessionEnd(ctx)
+        return true
+      },
+    }
+		<button>Log Out</button>
 	}
 }
 ```
 
-> **It's very important to call UserSessionEnd(ctx) on logout to ensure that no pages are left running under the authorized user.**
+> **It's very important to call SessionEnd(ctx) on logout to ensure that no pages are left running under the authorized user.** 
 

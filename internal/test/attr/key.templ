@@ -13,7 +13,30 @@ type keyFragment struct {
 }
 
 templ (f *keyFragment) Render() {
-	<input { doors.A(ctx, f.attrs()...)... } type="text" id="input" placeholder=""/>
+	@doors.AKeyDown{
+		On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
+			f.r.Update(ctx, 0, r.Event().Key)
+			f.r.Update(ctx, 1, "down")
+			return false
+		},
+	}
+	@doors.AKeyUp{
+		On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
+			f.r.Update(ctx, 2, r.Event().Key)
+			f.r.Update(ctx, 3, "up")
+			if r.Event().ShiftKey {
+				f.r.Update(ctx, 4, fmt.Sprint(r.Event().ShiftKey))
+			}
+			if r.Event().CtrlKey {
+				f.r.Update(ctx, 5, fmt.Sprint(r.Event().CtrlKey))
+			}
+			if r.Event().AltKey {
+				f.r.Update(ctx, 6, fmt.Sprint(r.Event().AltKey))
+			}
+			return false
+		},
+	}
+	<input type="text" id="input" placeholder=""/>
 	<hr/>
 	{{ f.r.Update(ctx, 0, "") }}
 	{{ f.r.Update(ctx, 1, "") }}
@@ -25,31 +48,3 @@ templ (f *keyFragment) Render() {
 	@f.r.Render()
 }
 
-func (f *keyFragment) attrs() []doors.Attr {
-
-	return []doors.Attr{
-		doors.AKeyDown{
-			On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
-				f.r.Update(ctx, 0, r.Event().Key)
-				f.r.Update(ctx, 1, "down")
-				return false
-			},
-		},
-		doors.AKeyUp{
-			On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
-				f.r.Update(ctx, 2, r.Event().Key)
-				f.r.Update(ctx, 3, "up")
-				if r.Event().ShiftKey {
-					f.r.Update(ctx, 4, fmt.Sprint(r.Event().ShiftKey))
-				}
-				if r.Event().CtrlKey {
-					f.r.Update(ctx, 5, fmt.Sprint(r.Event().CtrlKey))
-				}
-				if r.Event().AltKey {
-					f.r.Update(ctx, 6, fmt.Sprint(r.Event().AltKey))
-				}
-				return false
-			},
-		},
-	}
-}

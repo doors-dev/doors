@@ -209,8 +209,9 @@ class DebounceScope extends Scope {
     private hook: Hook | null = null
     private launch() {
         this.clearTimeouts()
-        this.promote(this.hook!)
+        const hook = this.hook!
         this.hook = null
+        this.promote(hook)
     }
     private clearTimeouts() {
         clearTimeout(this.durationTimer)

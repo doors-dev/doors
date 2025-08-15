@@ -46,112 +46,108 @@ func (f *pointerFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"down\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.APointerDown{
+		templ_7745c5c3_Err = doors.APointerDown{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 				f.r.Update(ctx, 0, "DOWN")
 				f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 				f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 				return false
 			},
-		}))
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, ">PointerDown</div><div id=\"up\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"down\">PointerDown</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.APointerUp{
+		templ_7745c5c3_Err = doors.APointerUp{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 				f.r.Update(ctx, 0, "UP")
 				f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 				f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 				return false
 			},
-		}))
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, ">PointerUp</div><div id=\"enter\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div id=\"up\">PointerUp</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.APointerEnter{
+		templ_7745c5c3_Err = doors.APointerEnter{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 				f.r.Update(ctx, 0, "ENTER")
 				f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 				f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 				return false
 			},
-		}))
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, ">PointerEnter</div><div id=\"beforeLeave\">beforeLeave</div><div id=\"leave\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div id=\"enter\">PointerEnter</div><div id=\"beforeLeave\">beforeLeave</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.APointerLeave{
+		templ_7745c5c3_Err = doors.APointerLeave{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 				f.r.Update(ctx, 0, "LEAVE")
 				f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 				f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 				return false
 			},
-		}))
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, ">PointerLeave</div><div id=\"move\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div id=\"leave\">PointerLeave</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.APointerMove{
+		templ_7745c5c3_Err = doors.APointerMove{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 				f.r.Update(ctx, 0, "MOVE")
 				f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 				f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 				return false
 			},
-		}))
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, ">PointerMove</div><div id=\"over\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div id=\"move\">PointerMove</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.APointerOver{
+		templ_7745c5c3_Err = doors.APointerOver{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 				f.r.Update(ctx, 0, "OVER")
 				f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 				f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 				return false
 			},
-		}))
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, ">Over</div><div id=\"beforeOut\">beforeOut</div><div id=\"out\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div id=\"over\">Over</div><div id=\"beforeOut\">beforeOut</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.APointerOut{
+		templ_7745c5c3_Err = doors.APointerOut{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 				f.r.Update(ctx, 0, "OUT")
 				f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 				f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 				return false
 			},
-		}))
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, ">Out</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div id=\"out\">Out</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -163,33 +159,6 @@ type callFragment struct {
 	data string
 	test.NoBeam
 	r *test.Reporter
-}
-
-func (d *callFragment) attr() []doors.Attr {
-	return []doors.Attr{doors.AHook[string, int]{
-		Name: "myHook",
-		On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
-			d.r.Update(ctx, 0, r.Data())
-			doors.Call(ctx, doors.CallConf{
-				Name: "myCall",
-				Arg:  len(r.Data()),
-				Trigger: func(ctx context.Context, r doors.RCall) {
-					var str string
-					decoder := json.NewDecoder(r.Body())
-					err := decoder.Decode(&str)
-					if err != nil {
-						d.r.Update(ctx, 1, err.Error())
-						return
-					}
-					d.r.Update(ctx, 1, str)
-				},
-			})
-			return len(r.Data()), true
-		},
-	}, doors.AData{
-		Name:  "myData",
-		Value: d.data,
-	}}
 }
 
 func (f *callFragment) Render() templ.Component {
@@ -217,7 +186,31 @@ func (f *callFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div id=\"target\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div id=\"target\"></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = doors.AHook[string, int]{
+			Name: "myHook",
+			On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
+				f.r.Update(ctx, 0, r.Data())
+				doors.Call(ctx, doors.CallConf{
+					Name: "myCall",
+					Arg:  len(r.Data()),
+					Trigger: func(ctx context.Context, r doors.RCall) {
+						var str string
+						decoder := json.NewDecoder(r.Body())
+						err := decoder.Decode(&str)
+						if err != nil {
+							f.r.Update(ctx, 1, err.Error())
+							return
+						}
+						f.r.Update(ctx, 1, str)
+					},
+				})
+				return len(r.Data()), true
+			},
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -233,13 +226,20 @@ func (f *callFragment) Render() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<script>\n            $d.on(\"myCall\", (data) => {\n                document.getElementById(\"target\").innerHTML = `${data}`\n                return \"response\"\n            })\n            await $d.hook(\"myHook\", $d.data(\"myData\"))\n        </script>")
+			templ_7745c5c3_Err = doors.AData{
+				Name:  "myData",
+				Value: f.data,
+			}.Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, " <script>\n        $d.on(\"myCall\", (data) => {\n            document.getElementById(\"target\").innerHTML = `${data}`\n            return \"response\"\n        })\n        await $d.hook(\"myHook\", $d.data(\"myData\"))\n        </script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = doors.Script(f.attr()...).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = doors.Script().Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -253,8 +253,8 @@ type hookFragment struct {
 	r *test.Reporter
 }
 
-func (d *hookFragment) attr(ctx context.Context) templ.Attributes {
-	return doors.A(ctx, doors.AHook[string, int]{
+func (d *hookFragment) attr() []doors.Attr {
+	return []doors.Attr{doors.AHook[string, int]{
 		Name: "myHook",
 		On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
 			d.r.Update(ctx, 0, r.Data())
@@ -263,7 +263,7 @@ func (d *hookFragment) attr(ctx context.Context) templ.Attributes {
 	}, doors.AData{
 		Name:  "myData",
 		Value: d.data,
-	})
+	}}
 }
 
 func (f *hookFragment) Render() templ.Component {
@@ -291,7 +291,7 @@ func (f *hookFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div id=\"target\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div id=\"target\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -307,15 +307,11 @@ func (f *hookFragment) Render() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<script")
+			templ_7745c5c3_Err = doors.Attributes(f.attr()).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, f.attr(ctx))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, ">\n        const a = await $d.hook(\"myHook\", $d.data(\"myData\"))\n        document.getElementById(\"target\").innerHTML = `${a}`\n        </script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " <script>\n            const a = await $d.hook(\"myHook\", $d.data(\"myData\"))\n            document.getElementById(\"target\").innerHTML = `${a}`\n        </script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -332,13 +328,6 @@ func (f *hookFragment) Render() templ.Component {
 type dataFragment struct {
 	data string
 	test.NoBeam
-}
-
-func (d *dataFragment) attr(ctx context.Context) templ.Attributes {
-	return doors.A(ctx, doors.AData{
-		Name:  "myData",
-		Value: d.data,
-	})
 }
 
 func (f *dataFragment) Render() templ.Component {
@@ -362,7 +351,7 @@ func (f *dataFragment) Render() templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div id=\"target\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div id=\"target\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -378,15 +367,14 @@ func (f *dataFragment) Render() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<script")
+			templ_7745c5c3_Err = doors.AData{
+				Name:  "myData",
+				Value: f.data,
+			}.Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, f.attr(ctx))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, ">\n        document.getElementById(\"target\").innerHTML = $d.data(\"myData\")\n        </script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " <script>\n        document.getElementById(\"target\").innerHTML = $d.data(\"myData\")\n        </script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

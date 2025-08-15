@@ -5,7 +5,6 @@ import (
 	"github.com/doors-dev/doors/internal/test"
 )
 
-
 templ head(b doors.SourceBeam[test.Path]) {
 	@doors.Head(b, func(p test.Path) doors.HeadData {
 		if p.Vh {
@@ -45,30 +44,24 @@ type LinksFragment struct {
 }
 
 templ (f *LinksFragment) Render() {
-	<a
-		id="home"
-		{ doors.A(ctx, doors.AHref {
-        Model: test.Path {
-            Vh: true,
-        },
-    })... }
-	>home</a>
-	<a
-		id="param"
-		{ doors.A(ctx, doors.AHref {
-        Model: test.Path {
-            Vp: true,
-            P: f.Param,
-        },
-    })... }
-	>param</a>
-	<a
-		id="string"
-		{ doors.A(ctx, doors.AHref {
-        Model: test.Path {
-            Vs: true,
-            P: f.Param,
-        },
-    })... }
-	>string</a>
+	@doors.AHref{
+		Model: test.Path{
+			Vh: true,
+		},
+	}
+	<a id="home">home</a>
+	@doors.AHref{
+		Model: test.Path{
+			Vp: true,
+			P:  f.Param,
+		},
+	}
+	<a id="param">param</a>
+	@doors.AHref{
+		Model: test.Path{
+			Vs: true,
+			P:  f.Param,
+		},
+	}
+	<a id="string">string</a>
 }

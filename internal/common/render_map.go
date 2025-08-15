@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"sync"
+	"unicode"
 
 	"github.com/a-h/templ"
 )
@@ -34,131 +36,184 @@ func RenderError(msg string) templ.Component {
 
 func NewRenderMap() *RenderMap {
 	return &RenderMap{
-		mu: sync.Mutex{},
-		m:  make(map[uint64][]byte),
+		mu:      sync.Mutex{},
+		buffers: make(map[uint64][]byte),
+		attrs:   make(map[uint32]*Attrs),
 	}
 }
 
 type RenderMap struct {
-	mu sync.Mutex
-	m  map[uint64][]byte
+	mu        sync.Mutex
+	buffers   map[uint64][]byte
+	attrs     map[uint32]*Attrs
+	attrCount uint32
+}
+
+func (r *RenderMap) WriteAttrs(w io.Writer, attr *Attrs) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	index := r.attrCount
+	r.attrCount += 1
+	r.attrs[index] = attr
+	bytes := make([]byte, 6)
+	bytes[0] = controlByte
+	bytes[1] = commandMagicA
+	binary.NativeEndian.PutUint32(bytes[2:], index)
+	_, err := w.Write(bytes)
+	return err
 }
 
 func (r *RenderMap) Destroy() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.m = nil
+	r.buffers = nil
 }
 
 func (r *RenderMap) RenderBuf(w io.Writer, buf []byte) error {
-	return r.renderBuf(w, buf, false)
+	return r.renderBuf(w, buf)
 }
 
 func (r *RenderMap) Render(w io.Writer, index uint64) error {
-	return r.render(w, index, false)
+	return r.render(w, index)
 }
 
-var qoute = []byte(`"`)
+type mode int
 
-func (r *RenderMap) RenderJsonBuf(w io.Writer, buf []byte) error {
-	_, err := w.Write(qoute)
-	if err != nil {
-		return err
-	}
-	err = r.renderBuf(w, buf, true)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(qoute)
-	return err
-}
+const (
+	modeLook mode = iota
+	modeCommand
+	modeInsert
+	modeMagicA
+	modeMagicALook
+	modeMagicACommand
+	modeMagicAInsert
+)
 
-func (r *RenderMap) RenderJson(w io.Writer, index uint64) error {
-	_, err := w.Write(qoute)
-	if err != nil {
-		return err
-	}
-	err = r.render(w, index, true)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(qoute)
-	return err
-}
+const controlByte byte = 0xFF
 
-var escape = map[byte][]byte{
-	'"':  []byte("\\\""),
-	'\\': []byte("\\\\"),
-	'/':  []byte("\\/"),
-	'\b': []byte("\\b"),
-	'\f': []byte("\\f"),
-	'\n': []byte("\\n"),
-	'\r': []byte("\\r"),
-	'\t': []byte("\\t"),
-}
+const (
+	commandInsert byte = iota
+	commandMagicA
+)
 
-func (r *RenderMap) renderBuf(w io.Writer, buf []byte, json bool) error {
-	nextIndexCursor := -1
-	nextIndexBuffer := make([]byte, 8)
+func (r *RenderMap) renderBuf(w io.Writer, buf []byte) error {
 	start := 0
-	for i, byte := range buf {
-		if nextIndexCursor != -1 {
-			nextIndexBuffer[nextIndexCursor] = byte
-			nextIndexCursor += 1
-			if nextIndexCursor == 8 {
-				nextIndexCursor = -1
-				start = i + 1
-				err := r.render(w, binary.NativeEndian.Uint64(nextIndexBuffer), json)
+	cursor := 0
+	mode := modeLook
+	var magicA *Attrs = nil
+	for cursor < len(buf) {
+		if mode == modeLook || mode == modeMagicALook {
+			b := buf[cursor]
+			if b == controlByte {
+				mode = modeCommand
+				if mode == modeMagicALook {
+					mode = modeMagicACommand
+				}
+				_, err := w.Write(buf[start:cursor])
 				if err != nil {
 					return err
 				}
+				cursor += 1
+				continue
 			}
+			cursor += 1
+			if mode != modeMagicALook {
+				continue
+			}
+			r := rune(b)
+			if unicode.IsSpace(r) {
+				continue
+			}
+			if r == '<' {
+				mode = modeMagicAInsert
+				continue
+			}
+			slog.Warn("magic attributes dropped, nowhere to attach")
+			magicA = nil
+			mode = modeLook
 			continue
 		}
-		if byte == 0xFF {
-			nextIndexCursor = 0
-			_, err := w.Write(buf[start:i])
-			if err != nil {
-				return err
+		if mode == modeCommand || mode == modeMagicACommand {
+			command := buf[cursor]
+			switch command {
+			case commandInsert:
+				if mode == modeMagicACommand {
+					slog.Warn("magic attributes dropped, nowhere to attach")
+					magicA = nil
+				}
+				mode = modeInsert
+			case commandMagicA:
+				mode = modeMagicA
+			default:
+				return errors.New("Unsupported command")
 			}
+			cursor += 1
 			continue
 		}
-		if !json {
+		if mode == modeInsert {
+			if cursor+8 > len(buf) {
+				return errors.New("length error")
+			}
+			id := binary.NativeEndian.Uint64(buf[cursor : cursor+8])
+			err := r.render(w, id)
+			if err != nil {
+				return err
+			}
+			mode = modeLook
+			cursor = cursor + 8
+			start = cursor
 			continue
 		}
-		escape, ok := escape[byte]
-		if ok {
-			_, err := w.Write(buf[start:i])
-			if err != nil {
-				return err
+		if mode == modeMagicA {
+			if cursor+4 > len(buf) {
+				return errors.New("length error")
 			}
-			_, err = w.Write(escape)
-			if err != nil {
-				return err
+			id := binary.NativeEndian.Uint32(buf[cursor : cursor+4])
+			attr, ok := r.attrs[id]
+			if !ok {
+				return errors.New("magic attr lost")
 			}
-			start = i + 1
+			delete(r.attrs, id)
+			if magicA == nil {
+				magicA = attr
+			} else {
+				magicA.Join(attr)
+			}
+			cursor = cursor + 4
+			mode = modeMagicALook
+			start = cursor
 			continue
 		}
-		if byte < 32 {
-			_, err := w.Write(buf[start:i])
+		if mode == modeMagicAInsert {
+			r := rune(buf[cursor])
+			if !unicode.IsSpace(r) && r != '>' {
+				cursor += 1
+				continue
+			}
+			_, err := w.Write(buf[start:cursor])
 			if err != nil {
 				return err
 			}
-			_, err = fmt.Fprintf(w, "\\u%04x", byte)
+			err = templ.RenderAttributes(context.Background(), w, magicA.A())
 			if err != nil {
 				return err
 			}
-			start = i + 1
+			magicA = nil
+			start = cursor
+			mode = modeLook
+			continue
 		}
-
+	}
+	if mode != modeLook {
+		return errors.New("buffer missaligned")
 	}
 	_, err := w.Write(buf[start:])
 	return err
 }
 
-func (r *RenderMap) render(w io.Writer, index uint64, json bool) error {
+func (r *RenderMap) render(w io.Writer, index uint64) error {
 	r.mu.Lock()
-	buf, ok := r.m[index]
+	buf, ok := r.buffers[index]
 	if !ok {
 		r.mu.Unlock()
 		return RenderErrorLog(context.Background(), w, "node "+fmt.Sprint(index)+" not found")
@@ -168,17 +223,17 @@ func (r *RenderMap) render(w io.Writer, index uint64, json bool) error {
 		return RenderErrorLog(context.Background(), w, "node "+fmt.Sprint(index)+" not submitted, bug")
 	}
 	r.mu.Unlock()
-	return r.renderBuf(w, buf, json)
+	return r.renderBuf(w, buf)
 }
 
 func (r *RenderMap) Writer(index uint64) (*RenderWriter, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	_, ok := r.m[index]
+	_, ok := r.buffers[index]
 	if ok {
 		return nil, false
 	}
-	r.m[index] = nil
+	r.buffers[index] = nil
 	return &RenderWriter{
 		index: index,
 		buf:   &bytes.Buffer{},
@@ -193,7 +248,7 @@ func (r *RenderMap) submit(w *RenderWriter) {
 	if b == nil {
 		b = make([]byte, 0)
 	}
-	r.m[w.index] = b
+	r.buffers[w.index] = b
 }
 
 type RenderWriter struct {
@@ -203,9 +258,10 @@ type RenderWriter struct {
 }
 
 func (rw *RenderWriter) Holdplace(w io.Writer) error {
-	bytes := make([]byte, 9)
-	bytes[0] = 0xFF
-	binary.NativeEndian.PutUint64(bytes[1:], rw.index)
+	bytes := make([]byte, 10)
+	bytes[0] = controlByte
+	bytes[1] = commandInsert
+	binary.NativeEndian.PutUint64(bytes[2:], rw.index)
 	_, err := w.Write(bytes)
 	return err
 }

@@ -3,6 +3,7 @@ package doors
 import (
 	"context"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
@@ -98,7 +99,11 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 		<meta name={ name } content={ content }/>
 	}
 	@Script() {
-		<script { A(ctx, AData{Name: "tags", Value: tags})... }>
+		@AData{
+			Name:  "tags",
+			Value: tags,
+		}
+		<script>
             let tags = new Set($d.data("tags"))
 			$d.on("update_metadata", (data) => {
                 document.title = data.title;
@@ -138,49 +143,50 @@ func inlineName(attr templ.Attributes, ext string) string {
 	return name + "." + ext
 }
 
-templ scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs []Attr) {
+templ scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs *front.Attrs) {
 	{{
-	rawAttrs := A(ctx, append(attrs, ARaw(i.Attrs))...)
 	name := inlineName(i.Attrs, "js")
 	}}
 	if inline && mode != resources.InlineModeHost {
-		@renderRaw("script", rawAttrs, i.Content())
+		@renderRaw("script", attrs.A(), i.Content())
 	} else if mode == resources.InlineModeHost {
-		{{ rawAttrs["src"] = router.ResourcePath(i.Resource(), name) }}
-		<script { rawAttrs... }></script>
+		{{ attrs.Set("src", router.ResourcePath(i.Resource(), name)) }}
+		<script { attrs.A()... }></script>
 	} else {
-		<script { A(ctx, ARaw(rawAttrs), ARawSrc{
-            Once: true,
-            Name: name,
-            Handler: func(w http.ResponseWriter, r *http.Request) {
-                i.Serve(w, r)
-            },
-        })... }></script>
-		script
+		{{
+	attrs.Join(front.A(ctx, ARawSrc{
+		Once: true,
+		Name: name,
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			i.Serve(w, r)
+		},
+	}))
+		}}
+		<script { attrs.A()... }></script>
 	}
 }
 
-templ styleRender(i *resources.InlineResource, inline bool, mode resources.InlineMode) {
+templ styleRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs *front.Attrs) {
 	{{
 	name := inlineName(i.Attrs, "css")
 	}}
 	if inline && mode != resources.InlineModeHost {
-		@renderRaw("style", i.Attrs, i.Content())
+		@renderRaw("style", attrs.A(), i.Content())
 	} else if mode == resources.InlineModeHost {
 		{{
-	i.Attrs["href"] = router.ResourcePath(i.Resource(), name)
+	attrs.Set("href", router.ResourcePath(i.Resource(), name))
 		}}
-		<link rel="stylesheet" { i.Attrs... }/>
+		<link rel="stylesheet" { attrs.A()... }/>
 	} else {
-		<link
-			rel="stylesheet"
-			{ A(ctx, ARaw(i.Attrs), ARawFileHref {
-        Name: name,
-        Once: false,
-        Handler: func(w http.ResponseWriter, r *http.Request) {
-            i.Serve(w, r)
-        },
-    })... }
-		/>
+		{{
+	attrs.Join(front.A(ctx, ARawFileHref{
+		Name: name,
+		Once: false,
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			i.Serve(w, r)
+		},
+	}))
+		}}
+		<link rel="stylesheet" { attrs.A()... }/>
 	}
 }

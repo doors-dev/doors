@@ -125,15 +125,11 @@ func (f *formFragment) form(a doors.Attr) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form")
+		templ_7745c5c3_Err = a.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, a))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><input type=\"text\" id=\"name\" name=\"name\"> <input type=\"email\" id=\"email\" name=\"email\"> <input type=\"number\" id=\"age\" name=\"age\" min=\"0\"> <input type=\"checkbox\" id=\"subscribe\" name=\"subscribe\" value=\"on\"> <input type=\"file\" id=\"file\" name=\"attachment\"> <button id=\"submit\" type=\"submit\">Submit</button></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form><input type=\"text\" id=\"name\" name=\"name\"> <input type=\"email\" id=\"email\" name=\"email\"> <input type=\"number\" id=\"age\" name=\"age\" min=\"0\"> <input type=\"checkbox\" id=\"subscribe\" name=\"subscribe\" value=\"on\"> <input type=\"file\" id=\"file\" name=\"attachment\"> <button id=\"submit\" type=\"submit\">Submit</button></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

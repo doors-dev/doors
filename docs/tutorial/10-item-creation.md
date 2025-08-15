@@ -133,14 +133,8 @@ templ (c *createItemFragment) Render() {
 	@c.button()
 }
 templ (c *createItemFragment) button() {
-  // button with openForm handler
-	<button class="secondary" { doors.A(ctx, c.openForm())... }>
-		Create
-	</button>
-}
-
-func (c *createItemFragment) openForm() doors.Attr {
-	return doors.AClick{
+  // attach openForm
+  @doors.AClick{
 		Scope: doors.ScopeBlocking(),
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 		  // display form
@@ -148,6 +142,9 @@ func (c *createItemFragment) openForm() doors.Attr {
 			return false
 		},
 	}
+	<button class="secondary">
+		Create
+	</button>
 }
 
 // form component
@@ -155,43 +152,33 @@ templ (c *createItemFragment) form() {
 	<dialog open>
 		<article>
 			<header>
-			  // close form 
-				<button aria-label="Close" rel="prev" { doors.A(ctx, c.closeForm())... }></button>
-
+			  @doors.AClick{
+          On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+              // clear the nodes content
+            c.node.Clear(ctx)
+            return true
+          },
+        }
+				<button aria-label="Close" rel="prev"></button>
 				<p>
 					<strong>Add New Item To <strong>{ c.cat.Name }</strong></strong>
 				</p>
 			</header>
-			<form { doors.A(ctx, c.submit())... }>
+			<form>
 				<fieldset>
 					<label>
 						Name
-						<input
-							name="name"
-						/>
+						<input name="name"/>
 					</label>
 					<label>
 						Description
-						<textarea
-							name="desc"
-						></textarea>
+						<textarea name="desc"></textarea>
 					</label>
 				</fieldset>
 				<button id="item-create" class="accent" role="submit">Create</button>
 			</form>
 		</article>
 	</dialog>
-}
-
-
-func (c *createItemFragment) closeForm() doors.Attr {
-	return doors.AClick{
-		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-		    // clear the nodes content
-			c.node.Clear(ctx)
-			return true
-		},
-	}
 }
 
 ```
@@ -315,30 +302,28 @@ func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 templ (c *createItemFragment) form() {
 	<dialog open>
 		<article>
-			<header>
-				<button aria-label="Close" rel="prev" { doors.A(ctx, c.closeForm())... }></button>
-				<p>
-					<strong>Add New Item To <strong>{ c.cat.Name }</strong></strong>
-				</p>
-			</header>
+			/* ... */
 			// added submission handler
-			<form { doors.A(ctx, c.submit())... }>
-				<fieldset>
-					<label>
-						Name
-						<input
-							name="name"
-							required="true"
-						/>
-					</label>
-					<label>
-						Description
-						<textarea
-							name="desc"
-							required="true"
-						></textarea>
-					</label>
-				</fieldset>
+			@doors.ASubmit[itemFormData]{
+          // indicate busy on the submit button
+        Indicator: doors.IndicatorAttrQuery("#item-create", "aria-busy", "true"),
+        On: func(ctx context.Context, r doors.RForm[itemFormData]) bool {
+          item := driver.Item{
+            Name:   r.Data().Name,
+            Desc:   r.Data().Desc,
+            Cat:    c.cat.Id,
+            Rating: 0,
+          }
+          // create item entry
+          driver.Items.Create(item)
+          //close form
+          c.node.Clear(ctx)
+          // remove hook
+          return true
+        },
+      }
+			<form>
+				/* .. */
 				<button id="item-create" class="accent" role="submit">Create</button>
 			</form>
 		</article>
@@ -351,27 +336,6 @@ type itemFormData struct {
 	Desc string `form:"desc"`
 }
 
-func (c *createItemFragment) submit() doors.Attr {
-	return doors.ASubmit[itemFormData]{
-	    // indicate busy
-		Indicator: doors.IndicatorAttrQuery("#item-create", "aria-busy", "true"),
-		On: func(ctx context.Context, r doors.RForm[itemFormData]) bool {
-			item := driver.Item{
-				Name:   r.Data().Name,
-				Desc:   r.Data().Desc,
-				Cat:    c.cat.Id,
-				Rating: 0,
-			}
-			// create item entry
-			driver.Items.Create(item)
-			//close form
-			c.node.Clear(ctx)
-			// remove hook
-			return true
-		},
-	}
-}
-
 
 ```
 
@@ -379,7 +343,9 @@ func (c *createItemFragment) submit() doors.Attr {
 
 ### Add partial page reload
 
-#### `reload` function dependency in the create item fragment
+So we can see the new item when form is closed.
+
+#### add `reload` function dependency in the create item fragment
 
 ```templ
 
@@ -399,23 +365,23 @@ type createItemFragment struct {
 	reload func(context.Context)
 }
 
-func (c *createItemFragment) submit() doors.Attr {
-	return doors.ASubmit[itemFormData]{
-		Indicator: doors.IndicatorAttrQuery("#item-create", "aria-busy", "true"),
-		On: func(ctx context.Context, r doors.RForm[itemFormData]) bool {
-			/* ...  */
-			// call reload
-			c.reload(ctx)
-			c.node.Clear(ctx)
-			return true
-		},
-	}
+templ (c *createItemFragment) form() {
+    /* ... */
+    @doors.ASubmit[itemFormData]{
+        /* ... */
+        // call reload
+        c.reload(ctx)
+        //close form
+        c.node.Clear(ctx)
+        // remove hook
+        return true
+      },
+    }
+    /* ... */
 }
-
-
 ```
 
-#### Reload with Node
+####  pass node reload function 
 
 `./catalog/cat.templ`
 
@@ -448,7 +414,7 @@ templ (c *categoryFragment) cat(cat driver.Cat) {
 
 ## Conclusion
 
-`itemCreateFragment` is an example of how a component can operate without
+`itemCreateFragment` is an example of how a basic dynamic component can operate without any reactive state, but  by directly modifying HTML in response to events. 
 
 ### Final Files
 
@@ -482,19 +448,16 @@ templ (c *createItemFragment) Render() {
 }
 
 templ (c *createItemFragment) button() {
-	<button class="secondary" { doors.A(ctx, c.openForm())... }>
+  @doors.AClick{
+      Scope: doors.ScopeBlocking(),
+      On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+        c.node.Update(ctx, c.form())
+        return false
+      },
+	}
+	<button class="secondary">
 		Create
 	</button>
-}
-
-func (c *createItemFragment) openForm() doors.Attr {
-	return doors.AClick{
-        Scope: doors.ScopeBlocking(),
-		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-			c.node.Update(ctx, c.form())
-			return false
-		},
-	}
 }
 
 
@@ -502,12 +465,33 @@ templ (c *createItemFragment) form() {
 	<dialog open>
 		<article>
 			<header>
-				<button aria-label="Close" rel="prev" { doors.A(ctx, c.closeForm())... }></button>
+			  @doors.AClick{
+          On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+            c.node.Clear(ctx)
+            return true
+          },
+        }
+				<button aria-label="Close" rel="prev"></button>
 				<p>
 					<strong>Add New Item To <strong>{ c.cat.Name }</strong></strong>
 				</p>
 			</header>
-			<form { doors.A(ctx, c.submit())... }>
+			@doors.ASubmit[itemFormData]{
+          Indicator: doors.IndicatorAttrQuery("#item-create", "aria-busy", "true"),
+          On: func(ctx context.Context, r doors.RForm[itemFormData]) bool {
+            item := driver.Item{
+              Name:   r.Data().Name,
+              Desc:   r.Data().Desc,
+              Cat:    c.cat.Id,
+              Rating: 0,
+            }
+            driver.Items.Create(item)
+            c.reload(ctx)
+            c.node.Clear(ctx)
+            return true
+          },
+			}
+			<form>
 				<fieldset>
 					<label>
 						Name
@@ -530,37 +514,11 @@ templ (c *createItemFragment) form() {
 	</dialog>
 }
 
-func (c *createItemFragment) closeForm() doors.Attr {
-	return doors.AClick{
-		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-			c.node.Clear(ctx)
-			return true
-		},
-	}
-}
-
 type itemFormData struct {
 	Name string `form:"name"`
 	Desc string `form:"desc"`
 }
 
-func (c *createItemFragment) submit() doors.Attr {
-	return doors.ASubmit[itemFormData]{
-		Indicator: doors.IndicatorAttrQuery("#item-create", "aria-busy", "true"),
-		On: func(ctx context.Context, r doors.RForm[itemFormData]) bool {
-			item := driver.Item{
-				Name:   r.Data().Name,
-				Desc:   r.Data().Desc,
-				Cat:    c.cat.Id,
-				Rating: 0,
-			}
-			driver.Items.Create(item)
-			c.reload(ctx)
-			c.node.Clear(ctx)
-			return true
-		},
-	}
-}
 
 ```
 

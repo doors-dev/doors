@@ -16,6 +16,7 @@ const (
     SessionStoreCtxKey
     InstanceStoreCtxKey
     ParentCtxKey
+    AttrsCtxKey
 )
 
 func ResultChannel(ctx context.Context, action string) (chan error, bool) {

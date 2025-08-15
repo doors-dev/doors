@@ -145,7 +145,7 @@ func (c *categoryFragment) itemHref(catId string, itemId int, page int) doors.At
 
 ```
 
-> We did it with `@doors.Inject(...)` for learning purposes. It's actually better to reuse `c.itemsNode` by updating it in page beam sub. 
+> We did it with `@doors.Inject(...)` for learning purposes. It's actually better to reuse `c.itemsNode` by updating it in the page beam sub. 
 >
 > ```
 >templ (c *categoryFragment) cat(cat driver.Cat) {
@@ -180,9 +180,9 @@ func (c *categoryFragment) itemHref(catId string, itemId int, page int) doors.At
 
 ## 3. Load More
 
-A lot of things can be impoved with pagination, but let's do **load more** button instead to learn a new useful pattern.
+Many aspects can be improved in pagination, but let's use a 'load more' button instead to learn a new, useful pattern.
 
-#### First, load all pages up to current
+#### First, load all pages up to the current
 
 #### `./catalog/cat.templ`
 
@@ -307,12 +307,13 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 		{{ page := ctx.Value("page").(int) }}
     // If there is no mo pages, we don't need the button
 		if page < pageCount - 1 {
-			<button { doors.A(ctx, c.loadMore(cat, page + 1))... } >Load More</button>
+		  @c.attachLoadMore(cat, page + 1)
+			<button>Load More</button>
 		}
 	}
 }
 
-func (c *categoryFragment) loadMore(cat driver.Cat, page int) doors.Attr {
+func (c *categoryFragment) attachLoadMore(cat driver.Cat, page int) doors.Attr {
     return doors.AClick {
         On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
         		// update page number
@@ -329,9 +330,9 @@ func (c *categoryFragment) loadMore(cat driver.Cat, page int) doors.Attr {
 }
 ```
 
-> But because old pages do not update when new one is loaded, their links not updated either, and so - we are losing page param query when clicking on first page items.
+> But because old pages do not update when a new one loads, item links are not updated either, so we lose the page parameter query when clicking on some items.
 >
-> You can check it by loading more and then clicking on first item and see that query param removed.
+> You can verify this by loading more content and then clicking on the first item, and you will see that the query parameter is removed.
 
 #### Links Rerender
 
@@ -355,13 +356,13 @@ templ (c *categoryFragment) item(item driver.Item) {
 		</kbd>
 	</article>
 }
-/*  aslo you need to remove extra argument in itemsPage*/
+/*  also, you need to remove the extra argument in itemsPage*/
 
 ```
 
-### 4. Refactor
+## 4. Refactor
 
-Whole catalog fragment code:
+Current catalog fragment code:
 
 `./catalog/cat.teml`
 
@@ -456,12 +457,13 @@ templ (c *categoryFragment) listItems(cat driver.Cat) {
 	@doors.Inject("page", c.page) {
 		{{ page := ctx.Value("page").(int) }}
 		if page < pageCount - 1 {
-			<button { doors.A(ctx, c.loadMore(cat, page + 1))... }>Load More</button>
+			@c.attachLoadMore(cat, page + 1)
+			<button>Load More</button>
 		}
 	}
 }
 
-func (c *categoryFragment) loadMore(cat driver.Cat, page int) doors.Attr {
+func (c *categoryFragment) attachLoadMore(cat driver.Cat, page int) doors.Attr {
 	return doors.AClick{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 			c.path.Mutate(ctx, func(p Path) Path {
@@ -591,6 +593,7 @@ That works, and seems ok. But we can do much better.
 
 1. Move `listItems` to a separate fragment
 2. Load more automatically on query param change
+3. Add some safety checks (we are loading pages in a cycle, don't want to do it quintillion times)
 
 `./catalog/items.templ`
 
@@ -602,6 +605,7 @@ import (
 	"github.com/derstruct/doors-starter/driver"
 	"github.com/doors-dev/doors"
 )
+
 
 type pageState struct {
 	// current page
@@ -619,7 +623,7 @@ type itemsFragment struct {
 }
 
 func items(cat driver.Cat, path doors.SourceBeam[Path]) templ.Component {
-	// derive page
+	// derive page  number
 	page := doors.NewBeam(path, func(p Path) int {
 		if p.Page == nil || *p.Page < 0 {
 			return 0
@@ -645,18 +649,18 @@ templ (f *itemsFragment) Render() {
 	@doors.Run(func(ctx context.Context) {
 		// previos page state, to calculate how many pages to load
 		var loadedPages = -1
-		// subscribe to page state changes
+		// subscribe to page state changes, to determain range of pages to load
 		f.state.Sub(ctx, func(ctx context.Context, s pageState) bool {
-            // no entries and no page loaded
-            if s.max == -1 && loadedPages == -1 {
-                f.node.Replace(ctx, f.empty())
-                return false
-            }
-            // limit to max pages
-			end := min(s.max, s.current)
-            // means already loaded
-			if loadedPages >= end {
-                return false
+      // no entries and no page loaded
+      if s.max == -1 && loadedPages == -1 {
+          f.node.Replace(ctx, f.empty())
+          return false
+      }
+      // limit to max pages 
+		  end := min(s.max, s.current)
+      // means already loaded
+		  if loadedPages >= end {
+		  		return false
 			}
 			start := loadedPages + 1
 			// replace with pages from start to end
@@ -666,7 +670,7 @@ templ (f *itemsFragment) Render() {
 			return false
 		})
 	})
-	// render our node (it's safe beacuse first beam.Sub func call is blocking)
+	// render our node (it's has content beacuse first beam.Sub func call is blocking)
 	@f.node
 	// depend on state
 	@doors.Inject(0, f.state) {
@@ -679,13 +683,7 @@ templ (f *itemsFragment) Render() {
 }
 
 func (f *itemsFragment) loadHref(page int) doors.Attr {
-	return doors.AHref{
-		Model: Path{
-			IsCat: true,
-			CatId: f.cat.Id,
-			Page:  &page,
-		},
-	}
+	return 
 }
 
 templ (f *itemsFragment) pages(start int, end int) {
@@ -757,7 +755,7 @@ func (f *itemsFragment) itemHref(catId string, itemId int, page int) doors.Attr 
 `./catalog/cat.templ`
 
 ```templ
-/* ... */
+	/* ... */
 type categoryFragment struct {
 	authorized bool
 	path       doors.SourceBeam[Path]

@@ -15,6 +15,7 @@ type AttrInit = front.Attr
 
 type Attr interface {
 	Attr() AttrInit
+	templ.Component
 }
 
 // A constructs a set of HTML attributes.
@@ -22,8 +23,7 @@ type Attr interface {
 // These attributes enable backend-connected interactivity — such as pointer events,
 // data binding, and hook-based logic — by wiring frontend behavior to Go code via context.
 //
-// `A` is typically used inside HTML tags to attach event handlers ,
-// and is required for features like AClick, AChange, AHook, etc.
+// `A` is typically used inside HTML tags to attach event handlers.
 //
 // It should be passed within an attribute block and spread into the element using `...`.
 //
@@ -45,18 +45,31 @@ type Attr interface {
 //
 // Returns:
 //   - A templ.Attributes object that can be spread into a templ element.
-func A(ctx context.Context, attrs ...Attr) templ.Attributes {
-	a := make([]front.Attr, len(attrs))
-	for i, attr := range attrs {
-		a[i] = attr.Attr()
-	}
-	return front.A(ctx, a)
+
+func A(ctx context.Context, a ...Attr) templ.Attributes {
+	return Init(ctx, a...).A()
 }
 
+
+type Attrs = front.Attrs
+
+func Init(ctx context.Context, a ...Attr) *Attrs {
+	ar := make([]front.Attr, len(a))
+	for i, attr := range a {
+		ar[i] = attr.Attr()
+	}
+	return front.A(ctx, ar...)
+}
+
+/*
 type ARaw templ.Attributes
 
 func (s ARaw) Attr() AttrInit {
 	return s
+}
+
+func (s ARaw) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, s)
 }
 
 func (s ARaw) Init(ctx context.Context, _ node.Core, _ instance.Core, attrs *front.Attrs) {
@@ -64,7 +77,7 @@ func (s ARaw) Init(ctx context.Context, _ node.Core, _ instance.Core, attrs *fro
 		return
 	}
 	attrs.SetRaw(templ.Attributes(s))
-}
+}*/
 
 type eventAttr[E any] struct {
 	node      node.Core

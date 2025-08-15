@@ -41,15 +41,36 @@ func (f *keyFragment) Render() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<input")
+		templ_7745c5c3_Err = doors.AKeyDown{
+			On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
+				f.r.Update(ctx, 0, r.Event().Key)
+				f.r.Update(ctx, 1, "down")
+				return false
+			},
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, f.attrs()...))
+		templ_7745c5c3_Err = doors.AKeyUp{
+			On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
+				f.r.Update(ctx, 2, r.Event().Key)
+				f.r.Update(ctx, 3, "up")
+				if r.Event().ShiftKey {
+					f.r.Update(ctx, 4, fmt.Sprint(r.Event().ShiftKey))
+				}
+				if r.Event().CtrlKey {
+					f.r.Update(ctx, 5, fmt.Sprint(r.Event().CtrlKey))
+				}
+				if r.Event().AltKey {
+					f.r.Update(ctx, 6, fmt.Sprint(r.Event().AltKey))
+				}
+				return false
+			},
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " type=\"text\" id=\"input\" placeholder=\"\"><hr>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<input type=\"text\" id=\"input\" placeholder=\"\"><hr>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -66,35 +87,6 @@ func (f *keyFragment) Render() templ.Component {
 		}
 		return nil
 	})
-}
-
-func (f *keyFragment) attrs() []doors.Attr {
-
-	return []doors.Attr{
-		doors.AKeyDown{
-			On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
-				f.r.Update(ctx, 0, r.Event().Key)
-				f.r.Update(ctx, 1, "down")
-				return false
-			},
-		},
-		doors.AKeyUp{
-			On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
-				f.r.Update(ctx, 2, r.Event().Key)
-				f.r.Update(ctx, 3, "up")
-				if r.Event().ShiftKey {
-					f.r.Update(ctx, 4, fmt.Sprint(r.Event().ShiftKey))
-				}
-				if r.Event().CtrlKey {
-					f.r.Update(ctx, 5, fmt.Sprint(r.Event().CtrlKey))
-				}
-				if r.Event().AltKey {
-					f.r.Update(ctx, 6, fmt.Sprint(r.Event().AltKey))
-				}
-				return false
-			},
-		},
-	}
 }
 
 var _ = templruntime.GeneratedTemplate

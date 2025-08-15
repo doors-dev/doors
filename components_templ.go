@@ -11,6 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"context"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
@@ -127,7 +128,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(currentMeta.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 96, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 97, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -145,7 +146,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 98, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 99, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -158,7 +159,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(content)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 98, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 99, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -181,15 +182,14 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<script")
+			templ_7745c5c3_Err = AData{
+				Name:  "tags",
+				Value: tags,
+			}.Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, A(ctx, AData{Name: "tags", Value: tags}))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, ">\n            let tags = new Set($d.data(\"tags\"))\n\t\t\t$d.on(\"update_metadata\", (data) => {\n                document.title = data.title;\n                const removeTags = tags\n                tags = new Set()\n                for(const [name, content] of Object.entries(data.meta)) {\n                    removeTags.delete(name)\n                    tags.add(name)\n                    let meta = document.querySelector(`meta[name=\"${name}\"]`);\n                    if (meta) {\n                        meta.setAttribute('content', content);\n                        continue\n                    } \n                    meta = document.createElement('meta');\n                    meta.setAttribute('name', name);\n                    meta.setAttribute('content', content);\n                    document.head.appendChild(meta);\n                }\n                for(const name of removeTags) {\n                    const meta = document.querySelector(`meta[name=\"${name}\"]`)\n                    meta.remove();\n                }\n\t\t\t});\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <script>\n            let tags = new Set($d.data(\"tags\"))\n\t\t\t$d.on(\"update_metadata\", (data) => {\n                document.title = data.title;\n                const removeTags = tags\n                tags = new Set()\n                for(const [name, content] of Object.entries(data.meta)) {\n                    removeTags.delete(name)\n                    tags.add(name)\n                    let meta = document.querySelector(`meta[name=\"${name}\"]`);\n                    if (meta) {\n                        meta.setAttribute('content', content);\n                        continue\n                    } \n                    meta = document.createElement('meta');\n                    meta.setAttribute('name', name);\n                    meta.setAttribute('content', content);\n                    document.head.appendChild(meta);\n                }\n                for(const name of removeTags) {\n                    const meta = document.querySelector(`meta[name=\"${name}\"]`)\n                    meta.remove();\n                }\n\t\t\t});\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -215,7 +215,7 @@ func inlineName(attr templ.Attributes, ext string) string {
 	return name + "." + ext
 }
 
-func scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs []Attr) templ.Component {
+func scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs *front.Attrs) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -237,43 +237,44 @@ func scriptRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 		}
 		ctx = templ.ClearChildren(ctx)
 
-		rawAttrs := A(ctx, append(attrs, ARaw(i.Attrs))...)
 		name := inlineName(i.Attrs, "js")
 		if inline && mode != resources.InlineModeHost {
-			templ_7745c5c3_Err = renderRaw("script", rawAttrs, i.Content()).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = renderRaw("script", attrs.A(), i.Content()).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if mode == resources.InlineModeHost {
-			rawAttrs["src"] = router.ResourcePath(i.Resource(), name)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<script")
+			attrs.Set("src", router.ResourcePath(i.Resource(), name))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<script")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, rawAttrs)
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs.A())
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "></script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<script")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, A(ctx, ARaw(rawAttrs), ARawSrc{
+
+			attrs.Join(front.A(ctx, ARawSrc{
 				Once: true,
 				Name: name,
 				Handler: func(w http.ResponseWriter, r *http.Request) {
 					i.Serve(w, r)
 				},
 			}))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<script")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "></script> script")
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs.A())
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -282,7 +283,7 @@ func scriptRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 	})
 }
 
-func styleRender(i *resources.InlineResource, inline bool, mode resources.InlineMode) templ.Component {
+func styleRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs *front.Attrs) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -306,41 +307,43 @@ func styleRender(i *resources.InlineResource, inline bool, mode resources.Inline
 
 		name := inlineName(i.Attrs, "css")
 		if inline && mode != resources.InlineModeHost {
-			templ_7745c5c3_Err = renderRaw("style", i.Attrs, i.Content()).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = renderRaw("style", attrs.A(), i.Content()).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if mode == resources.InlineModeHost {
 
-			i.Attrs["href"] = router.ResourcePath(i.Resource(), name)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<link rel=\"stylesheet\"")
+			attrs.Set("href", router.ResourcePath(i.Resource(), name))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<link rel=\"stylesheet\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, i.Attrs)
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs.A())
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, ">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, ">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<link rel=\"stylesheet\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, A(ctx, ARaw(i.Attrs), ARawFileHref{
+
+			attrs.Join(front.A(ctx, ARawFileHref{
 				Name: name,
 				Once: false,
 				Handler: func(w http.ResponseWriter, r *http.Request) {
 					i.Serve(w, r)
 				},
 			}))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<link rel=\"stylesheet\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, ">")
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs.A())
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, ">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

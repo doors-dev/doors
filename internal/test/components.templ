@@ -32,13 +32,13 @@ templ Document[P any](p page[P], b doors.SourceBeam[P]) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			@doors.Include()
+			@doors.ARawFileHref{
+				Handler: func(w http.ResponseWriter, r *http.Request) {
+				},
+			}
 			<link
 				rel="icon"
 				type="image/png"
-				{ doors.A(ctx, doors.ARawFileHref{
-                Handler: func(w http.ResponseWriter, r *http.Request) {
-                },
-                })... }
 			/>
 			@p.head(b)
 		</head>
@@ -74,13 +74,10 @@ templ (r *Reporter) Render() {
 }
 
 templ Button(id string, handler func(context.Context) bool) {
-	<button
-		id={ id }
-		{ doors.A(ctx, doors.AClick {
-        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            return handler(ctx)
-        },
-
-    }) ... }
-	>{ id }</button>
+	@doors.AClick{
+		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+			return handler(ctx)
+		},
+	}
+	<button id={ id }>{ id }</button>
 }

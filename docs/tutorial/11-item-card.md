@@ -71,7 +71,21 @@ templ (c *cardFragment) card(item *driver.Item) {
 	<dialog open>
 		<article>
 			<header>
-				<button aria-label="Close" rel="prev" { doors.A(ctx, c.close())... }></button>
+			  @doors.AClick{
+          On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+              // reload category items table
+              c.reload(ctx)
+              // manually switch path to Cat from Item
+              c.path.Mutate(ctx, func(p Path) Path {
+                p.IsCat = true
+                p.IsItem = false
+                return p
+              })
+              // remove hook
+              return true
+          },
+        }
+				<button aria-label="Close" rel="prev"></button>
 				<p>
 					if item != nil {
 						<strong>Item { item.Name }</strong>
@@ -91,23 +105,6 @@ templ (c *cardFragment) card(item *driver.Item) {
 			}
 		</article>
 	</dialog>
-}
-
-func (c *cardFragment) close() doors.Attr {
-	return doors.AClick{
-		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-		    // reload category items table
-        c.reload(ctx)
-        // manually switch path to Cat from Item
-        c.path.Mutate(ctx, func(p Path) Path {
-          p.IsCat = true
-          p.IsItem = false
-          return p
-        })
-        // remove hook
-        return true
-		},
-	}
 }
 
 ```

@@ -3,6 +3,7 @@ package doors
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"path/filepath"
@@ -90,11 +91,15 @@ func (h *AHref) active() []any {
 	return []any{h.Active.PathMatcher, h.Active.QueryMatcher, front.IntoIndicate(h.Active.Indicator)}
 }
 
-func (h AHref) Attr() AttrInit {
-	return &h
+func (h AHref) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, h)
 }
 
-func (h *AHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (h AHref) Attr() AttrInit {
+	return h
+}
+
+func (h AHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	link, err := inst.NewLink(ctx, h.Model)
 	if err != nil {
 		slog.Error("href creation  error", slog.String("link_error", err.Error()))
@@ -150,11 +155,15 @@ func (s ARawSrc) init(ctx context.Context, n node.Core, inst instance.Core) (str
 	return src, true
 }
 
-func (s ARawSrc) Attr() AttrInit {
-	return &s
+func (s ARawSrc) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, s)
 }
 
-func (s *ARawSrc) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s ARawSrc) Attr() AttrInit {
+	return s
+}
+
+func (s ARawSrc) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	src, ok := s.init(ctx, n, inst)
 	if !ok {
 		return
@@ -188,11 +197,15 @@ func (s ASrc) init(ctx context.Context, n node.Core, inst instance.Core) (string
 	return link, true
 }
 
-func (s ASrc) Attr() AttrInit {
-	return &s
+func (s ASrc) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, s)
 }
 
-func (s *ASrc) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s ASrc) Attr() AttrInit {
+	return s
+}
+
+func (s ASrc) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	src, ok := s.init(ctx, n, inst)
 	if !ok {
 		return
@@ -211,12 +224,16 @@ type AFileHref struct {
 	Name string
 }
 
-func (s AFileHref) Attr() AttrInit {
-	return &s
+func (s AFileHref) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, s)
 }
 
-func (s *AFileHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	link, ok := (*ASrc)(s).init(ctx, n, inst)
+func (s AFileHref) Attr() AttrInit {
+	return s
+}
+
+func (s AFileHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	link, ok := (*ASrc)(&s).init(ctx, n, inst)
 	if !ok {
 		return
 	}
@@ -229,12 +246,16 @@ type ARawFileHref struct {
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
-func (s ARawFileHref) Attr() AttrInit {
-	return &s
+func (s ARawFileHref) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, s)
 }
 
-func (s *ARawFileHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	link, ok := (*ARawSrc)(s).init(ctx, n, inst)
+func (s ARawFileHref) Attr() AttrInit {
+	return s
+}
+
+func (s ARawFileHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	link, ok := (*ARawSrc)(&s).init(ctx, n, inst)
 	if !ok {
 		return
 	}

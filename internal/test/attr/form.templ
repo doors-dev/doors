@@ -66,7 +66,8 @@ type formData struct {
 }
 
 templ (f *formFragment) form(a doors.Attr) {
-	<form { doors.A(ctx, a)... }>
+    @a
+	<form>
 		<input type="text" id="name" name="name"/>
 		<input type="email" id="email" name="email"/>
 		<input type="number" id="age" name="age" min="0"/>

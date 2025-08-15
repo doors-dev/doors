@@ -58,46 +58,40 @@ templ (f *FragmentX) Render() {
 		@test.Marker("init")
 	}
 	@f.report
-	<button
-		id="updatex"
-		{ doors.A(ctx, doors.AClick {
-        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            ch := f.n.XUpdate(ctx, test.Marker("updated"))
-            err, ok := <- ch
-            if !ok {
-                f.rep(ctx, "channel closed")
-                return true
-            }
-            if err != nil {
-                f.rep(ctx, "channel err: "+err.Error())
-                return true
-            } 
-            f.rep(ctx, "ok")
-            return false
-        },
-
-    }) ... }
-	>C</button>
-	<button
-		id="removex"
-		{ doors.A(ctx, doors.AClick {
-        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            ch := f.n.XRemove(ctx)
-            err, ok := <- ch
-            if !ok {
-                f.rep(ctx, "channel closed")
-                return true
-            }
-            if err != nil {
-                f.rep(ctx, "channel err: "+err.Error())
-                return true
-            } 
-            f.rep(ctx, "ok")
-            return true
-        },
-
-    }) ... }
-	>R</button>
+	@doors.AClick{
+		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+			ch := f.n.XUpdate(ctx, test.Marker("updated"))
+			err, ok := <-ch
+			if !ok {
+				f.rep(ctx, "channel closed")
+				return true
+			}
+			if err != nil {
+				f.rep(ctx, "channel err: "+err.Error())
+				return true
+			}
+			f.rep(ctx, "ok")
+			return false
+		},
+	}
+	<button id="updatex">C</button>
+	@doors.AClick{
+		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+			ch := f.n.XRemove(ctx)
+			err, ok := <-ch
+			if !ok {
+				f.rep(ctx, "channel closed")
+				return true
+			}
+			if err != nil {
+				f.rep(ctx, "channel err: "+err.Error())
+				return true
+			}
+			f.rep(ctx, "ok")
+			return true
+		},
+	}
+	<button id="removex">R</button>
 }
 
 type EmbeddedFragment struct {
@@ -112,7 +106,7 @@ templ (f *EmbeddedFragment) Render() {
 		@f.n2 {
 			@test.Marker("init")
 		}
-        @test.Marker("static")
+		@test.Marker("static")
 	}
 	@f.n3
 	<button

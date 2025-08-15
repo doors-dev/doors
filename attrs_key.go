@@ -2,6 +2,7 @@ package doors
 
 import (
 	"context"
+	"io"
 
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
@@ -72,12 +73,16 @@ type AKeyDown struct {
 	OnError []OnError
 }
 
-func (k AKeyDown) Attr() AttrInit {
-	return &k
+func (k AKeyDown) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, k)
 }
 
-func (k *AKeyDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*keyEventHook)(k)
+func (k AKeyDown) Attr() AttrInit {
+	return k
+}
+
+func (k AKeyDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*keyEventHook)(&k)
 	p.init("keydown", ctx, n, inst, attrs)
 }
 
@@ -104,12 +109,16 @@ type AKeyUp struct {
 	OnError []OnError
 }
 
-func (k AKeyUp) Attr() AttrInit {
-	return &k
+func (k AKeyUp) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, k)
 }
 
-func (k *AKeyUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*keyEventHook)(k)
+func (k AKeyUp) Attr() AttrInit {
+	return k
+}
+
+func (k AKeyUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*keyEventHook)(&k)
 	p.init("keyup", ctx, n, inst, attrs)
 }
 

@@ -2,6 +2,7 @@ package doors
 
 import (
 	"context"
+	"io"
 
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
@@ -96,12 +97,16 @@ type AFocus struct {
 	OnError []OnError
 }
 
-func (f AFocus) Attr() AttrInit {
-	return &f
+func (f AFocus) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, f)
 }
 
-func (f *AFocus) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*focusEventHook)(f)
+func (f AFocus) Attr() AttrInit {
+	return f
+}
+
+func (f AFocus) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*focusEventHook)(&f)
 	p.init("focus", ctx, n, inst, attrs)
 }
 
@@ -123,12 +128,16 @@ type ABlur struct {
 	OnError []OnError
 }
 
-func (b ABlur) Attr() AttrInit {
-	return &b
+func (b ABlur) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, b)
 }
 
-func (b *ABlur) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*focusEventHook)(b)
+func (b ABlur) Attr() AttrInit {
+	return b
+}
+
+func (b ABlur) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*focusEventHook)(&b)
 	p.init("blur", ctx, n, inst, attrs)
 }
 
@@ -153,12 +162,16 @@ type AFocusIn struct {
 	OnError []OnError
 }
 
-func (f AFocusIn) Attr() AttrInit {
-	return &f
+func (f AFocusIn) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, f)
 }
 
-func (f *AFocusIn) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*focusIOEventHook)(f)
+func (f AFocusIn) Attr() AttrInit {
+	return f
+}
+
+func (f AFocusIn) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*focusIOEventHook)(&f)
 	p.init("focusin", ctx, n, inst, attrs)
 }
 
@@ -183,11 +196,15 @@ type AFocusOut struct {
 	OnError []OnError
 }
 
-func (f AFocusOut) Attr() AttrInit {
-	return &f
+func (f AFocusOut) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, f)
 }
 
-func (f *AFocusOut) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*focusIOEventHook)(f)
+func (f AFocusOut) Attr() AttrInit {
+	return f
+}
+
+func (f AFocusOut) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+	p := (*focusIOEventHook)(&f)
 	p.init("focusout", ctx, n, inst, attrs)
 }

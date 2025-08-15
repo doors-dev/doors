@@ -8,6 +8,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/node"
 	"github.com/doors-dev/doors/internal/resources"
@@ -254,8 +255,7 @@ func Go(f func(context.Context)) templ.Component {
 }
 
 type script struct {
-	mode  resources.InlineMode
-	attrs []Attr
+	mode resources.InlineMode
 }
 
 // Script converts inline script content to an external resource.
@@ -289,10 +289,9 @@ type script struct {
 //	        console.log(message);
 //	    </script>
 //	}
-func Script(attrs ...Attr) templ.Component {
+func Script() templ.Component {
 	return script{
-		mode:  resources.InlineModeHost,
-		attrs: attrs,
+		mode: resources.InlineModeHost,
 	}
 }
 
@@ -301,10 +300,9 @@ func Script(attrs ...Attr) templ.Component {
 // a src attribute, but not exposed as a publicly accessible static asset.
 // The script content is wrapped in an anonymous async function and provides the $d variable.
 // The content must be wrapped in <script> tags.
-func ScriptLocal(attrs ...Attr) templ.Component {
+func ScriptLocal() templ.Component {
 	return script{
-		mode:  resources.InlineModeLocal,
-		attrs: attrs,
+		mode: resources.InlineModeLocal,
 	}
 }
 
@@ -313,10 +311,9 @@ func ScriptLocal(attrs ...Attr) templ.Component {
 // and served with a src attribute, but not exposed as a static resource.
 // The script content is wrapped in an anonymous async function and provides the $d variable.
 // The content must be wrapped in <script> tags.
-func ScriptLocalNoCache(attrs ...Attr) templ.Component {
+func ScriptLocalNoCache() templ.Component {
 	return script{
-		mode:  resources.InlineModeNoCache,
-		attrs: attrs,
+		mode: resources.InlineModeNoCache,
 	}
 }
 
@@ -324,6 +321,8 @@ func (s script) Render(ctx context.Context, w io.Writer) error {
 	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
 	script := templ.GetChildren(ctx)
 	ctx = templ.ClearChildren(ctx)
+	attrs := front.NewAttrs()
+	ctx = context.WithValue(ctx, common.AttrsCtxKey, attrs)
 	buf := &bytes.Buffer{}
 	err := script.Render(ctx, buf)
 	if err != nil {
@@ -340,7 +339,8 @@ func (s script) Render(ctx context.Context, w io.Writer) error {
 	if inline && s.mode != resources.InlineModeHost {
 		resource.Attrs["nonce"] = nonce
 	}
-	return scriptRender(resource, inline, s.mode, s.attrs).Render(ctx, w)
+	attrs.SetRaw(resource.Attrs)
+	return scriptRender(resource, inline, s.mode, attrs).Render(ctx, w)
 }
 
 type style struct {
@@ -393,6 +393,8 @@ func (s style) Render(ctx context.Context, w io.Writer) error {
 	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
 	style := templ.GetChildren(ctx)
 	ctx = templ.ClearChildren(ctx)
+	attrs := front.NewAttrs()
+	ctx = context.WithValue(ctx, common.AttrsCtxKey, attrs)
 	buf := &bytes.Buffer{}
 	err := style.Render(ctx, buf)
 	if err != nil {
@@ -409,7 +411,8 @@ func (s style) Render(ctx context.Context, w io.Writer) error {
 	if inline && s.mode != resources.InlineModeHost {
 		resource.Attrs["nonce"] = nonce
 	}
-	return styleRender(resource, inline, s.mode).Render(ctx, w)
+	attrs.SetRaw(resource.Attrs)
+	return styleRender(resource, inline, s.mode, attrs).Render(ctx, w)
 }
 
 func renderRaw(tag string, attrs templ.Attributes, content []byte) templ.Component {
@@ -449,4 +452,39 @@ func Text(value any) templ.Component {
 		_, err := w.Write(common.AsBytes(escaped))
 		return err
 	})
+}
+
+func Components(content ...templ.Component) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		for _, c := range content {
+			err := c.Render(ctx, w)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func Attributes(a []Attr) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		attrs := Init(ctx, a...)
+		return attrs.Render(ctx, w)
+	})
+}
+
+func Any(v any) templ.Component {
+	c, ok := v.(templ.Component)
+	if ok {
+		return c
+	}
+	f, ok := v.(Fragment)
+	if ok {
+		return F(f)
+	}
+	m, ok := v.([]templ.Component)
+	if ok {
+		return Components(m...)
+	}
+	return Text(v)
 }

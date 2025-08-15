@@ -28,7 +28,9 @@ var testCatHref = doors.AHref {
 
 templ main() {
 	<h1>Catalog</h1>
-	<a { doors.A(ctx, testCatHref )... }>Test Category</a>
+	// attach to <a>
+	@testCatHref
+	<a>Test Category</a>
 }
 ```
 
@@ -48,7 +50,9 @@ var testMainHref = doors.AHref{
 
 templ category() {
 	<h1>Category</h1>
-	<a { doors.A(ctx, testMainHref )... }>Go back</a>
+	// attach to <a>
+	@testMainHref
+	<a>Go back</a>
 }
 
 

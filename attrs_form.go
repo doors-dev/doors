@@ -2,6 +2,7 @@ package doors
 
 import (
 	"context"
+	"io"
 	"net/http"
 
 	"github.com/doors-dev/doors/internal/front"
@@ -46,11 +47,15 @@ type ARawSubmit struct {
 	OnError []OnError
 }
 
-func (s ARawSubmit) Attr() AttrInit {
-	return &s
+func (s ARawSubmit) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, s)
 }
 
-func (s *ARawSubmit) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s ARawSubmit) Attr() AttrInit {
+	return s
+}
+
+func (s ARawSubmit) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
 		Trigger: s.handle,
 	})
@@ -119,11 +124,15 @@ type ASubmit[D any] struct {
 	OnError []OnError
 }
 
-func (s ASubmit[V]) Attr() AttrInit {
-	return &s
+func (s ASubmit[V]) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, s)
 }
 
-func (s *ASubmit[V]) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s ASubmit[V]) Attr() AttrInit {
+	return s
+}
+
+func (s ASubmit[V]) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
 		Trigger: s.handle,
 	})
@@ -204,11 +213,15 @@ type AChange struct {
 	OnError []OnError
 }
 
-func (p AChange) Attr() AttrInit {
-	return &p
+func (p AChange) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, p)
 }
 
-func (p *AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (p AChange) Attr() AttrInit {
+	return p
+}
+
+func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[ChangeEvent]{
 		capture:   &front.ChangeCapture{},
 		node:      n,
@@ -230,11 +243,15 @@ type AInput struct {
 	OnError      []OnError
 }
 
-func (p AInput) Attr() AttrInit {
-	return &p
+func (p AInput) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, p)
 }
 
-func (p *AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (p AInput) Attr() AttrInit {
+	return p
+}
+
+func (p AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[InputEvent]{
 		capture: &front.InputCapture{
 			ExcludeValue: p.ExcludeValue,
