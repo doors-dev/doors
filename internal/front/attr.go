@@ -29,6 +29,10 @@ func (a *Attrs) SetData(name string, data any) {
 	a.Attrs.SetObject(fmt.Sprintf("data-d00r-data:%s", name), data)
 }
 
+func (a *Attrs) AppendDyna(id uint64, name string) {
+	a.Attrs.AppendArray("data-d00r-dyna", []any{id, name})
+}
+
 func (a *Attrs) AppendCapture(capture Capture, hook *Hook) {
 	a.Attrs.AppendArray("data-d00r-capture", []any{capture.Listen(), capture.Name(), capture, hook})
 }
@@ -50,7 +54,7 @@ type Attr interface {
 	templ.Component
 }
 
-func A(ctx context.Context, attr ...Attr) *Attrs{
+func A(ctx context.Context, attr ...Attr) *Attrs {
 	node := ctx.Value(common.NodeCtxKey).(node.Core)
 	instance := ctx.Value(common.InstanceCtxKey).(instance.Core)
 	attrs := NewAttrs()
@@ -58,8 +62,7 @@ func A(ctx context.Context, attr ...Attr) *Attrs{
 		attr.Init(ctx, node, instance, attrs)
 	}
 	return attrs
-} 
-
+}
 
 func AttrRender(ctx context.Context, w io.Writer, a Attr) error {
 	node := ctx.Value(common.NodeCtxKey).(node.Core)

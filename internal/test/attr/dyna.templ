@@ -1,0 +1,91 @@
+
+package attr
+
+import (
+	"context"
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+)
+
+type dynaFragment struct {
+	test.NoBeam
+	n  doors.Node
+	v1 string
+	v2 string
+}
+
+templ (f *dynaFragment) content(da1 doors.ADyn, da2 doors.ADyn) {
+	@da1
+	@da2
+	<div id="t1"></div>
+	@da1
+	@da2
+	<div id="t2">
+		@da1
+		@da2
+		<div id="t3"></div>
+	</div>
+}
+
+templ (f *dynaFragment) buttons(index string, da doors.ADyn, value string) {
+	@doors.AClick{
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			da.Enable(ctx, true)
+			return false
+		},
+	}
+	<button id={ "enable-" + index }>enable-{ index }</button>
+	@doors.AClick{
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			da.Enable(ctx, false)
+			return false
+		},
+	}
+	<button id={ "disable-" + index }>disable-{ index }</button>
+	@doors.AClick{
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			da.Value(ctx, value)
+			return false
+		},
+	}
+	<button id={ "update-" + index }>update-{ index }</button>
+}
+
+templ (f *dynaFragment) Render() {
+	{{ da1 := doors.NewADyn("data-test1", f.v1, true) }}
+	{{ da2 := doors.NewADyn("data-test2", f.v2, false) }}
+	@f.n {
+		@f.content(da1, da2)
+	}
+	@f.buttons("1", da1, f.v2)
+	@f.buttons("2", da2, f.v1)
+	@doors.AClick{
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			da1.Value(ctx, f.v1)
+			da2.Value(ctx, f.v2)
+			return false
+		},
+	}
+	<button id="reset">reset</button>
+	@doors.AClick{
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			f.n.Clear(ctx)
+			return false
+		},
+	}
+	<button id="clear">clear</button>
+	@doors.AClick{
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			f.n.Update(ctx, f.content(da1, da2))
+			return false
+		},
+	}
+	<button id="show">show</button>
+	@doors.AClick{
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			f.n.Replace(ctx, f.content(da1, da2))
+			return true
+		},
+	}
+	<button id="replace">replace</button>
+}

@@ -41,11 +41,6 @@ class Door {
         }
         return this.doors.getHandler(this.parent, name)
     }
-
-    reset(): void {
-        this.handlers.clear()
-        this.unmountHandlers = []
-    }
     clear() {
         const logError = (e: any) => {
             console.error("unmount handler error", e)
@@ -60,6 +55,8 @@ class Door {
                 logError(e)
             }
         }
+        this.handlers.clear()
+        this.unmountHandlers = []
     }
 }
 
@@ -76,7 +73,7 @@ class Doors {
         this.doors.set(rootId, new Door(this, null))
     }
 
-    register(element: HTMLElement): void {
+    register(element: Element): void {
         const id = nodeId(element.id)
         const handlers = this.bufferedHandlers.get(id)
         this.bufferedHandlers.delete(id)
@@ -85,15 +82,14 @@ class Doors {
         this.doors.set(id, door)
     }
 
-
-    remove(element: HTMLElement): void {
+    unregister(element: Element): void {
         const id = nodeId(element.id)
         const door = this.doors.get(id)
         this.doors.delete(id)
         door!.clear()
     }
 
-    private getParentId(el: HTMLElement): number {
+    private getParentId(el: Element): number {
         const parent = el.parentElement!.closest("do-or")
         if (!parent) {
             return this.rootId
@@ -101,7 +97,7 @@ class Doors {
         return nodeId(parent.id)
     }
     on(
-        script: HTMLElement,
+        script: Element,
         name: string,
         handler: (arg: any) => any,
         response?: (response: Response) => void
@@ -120,10 +116,10 @@ class Doors {
         door.on(name, handler, response)
     }
 
-    onRemove(script: HTMLElement, handler: () => void | Promise<void>): void {
-        const id = this.getParentId(script)
+    onRemove(element: Element, handler: () => void | Promise<void>): void {
+        const id = this.getParentId(element)
         const door = this.doors.get(id)
-        door?.onRemove(handler)
+        door!.onRemove(handler)
     }
 
     getHandler(id: number, name: string): Handler | undefined {
@@ -131,7 +127,7 @@ class Doors {
         return door?.getHandler(name)
     }
     reset(id: number): void {
-        this.doors.get(id)?.reset()
+        this.doors.get(id)?.clear()
     }
 }
 
@@ -146,7 +142,7 @@ customElements.define('do-or',
             doors.register(this)
         }
         disconnectedCallback() {
-            doors.remove(this)
+            doors.unregister(this)
         }
     }
 )

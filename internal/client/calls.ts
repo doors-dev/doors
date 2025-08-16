@@ -1,6 +1,7 @@
 import door from "./door"
-import { capture, attach } from "./capture"
+import { capture, attach as attachCaptures } from "./capture"
 import navigator from "./navigator"
+import { attach as attachDyna, removeAttr, setAttr } from "./dyna"
 import { doorId } from "./lib"
 
 const task = (f: () => void) => {
@@ -51,7 +52,12 @@ export default {
             await response(requestResponse)
         }
     },
-
+    dyna_set: ([id, value]: [number, string]) => {
+        setAttr(id, value)
+    },
+    dyna_remove: (id: number) => {
+        removeAttr(id)
+    },
     set_path: ([p, replace]: [string, boolean]) => {
         if (replace) {
             navigator.replace(p)
@@ -64,28 +70,31 @@ export default {
         const node = document.getElementById(doorId(nodeId))
         if (!node) throw new Error("Node not found")
 
+        const parent = node.parentElement
         const range = document.createRange()
         range.selectNode(node)
         range.deleteContents()
 
         const fragment = range.createContextualFragment(content)
         navigator.activateInside(fragment)
-        attach(fragment)
+        attachCaptures(fragment)
         range.insertNode(fragment)
+        attachDyna(parent!)
     },
 
     node_update: (nodeId: number, content: string) => {
-        const node = document.getElementById(doorId(nodeId))
+        const id = doorId(nodeId)
+        const node = document.getElementById(id)
         if (!node) throw new Error("Node not found")
-
+        door.reset(nodeId)
         const range = document.createRange()
         range.selectNodeContents(node)
         range.deleteContents()
-        door.reset(nodeId)
         const fragment = range.createContextualFragment(content)
         navigator.activateInside(fragment)
-        attach(fragment)
+        attachCaptures(fragment)
         range.insertNode(fragment)
+        attachDyna(document.getElementById(id)!)
     },
 
     node_remove: (nodeId: number) => {

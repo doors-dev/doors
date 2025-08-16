@@ -1,7 +1,8 @@
 import { id, sleepAfter, ttl, requestTimeout } from "./params"
 import calls from "./calls"
 import { ProgressiveDelay, AbortTimer } from "./lib"
-import { attach } from "./capture"
+import { attach as attachCaptures } from "./capture"
+import { attach as attachDyna } from "./dyna"
 
 
 const decoder = new TextDecoder()
@@ -470,7 +471,8 @@ class Controller {
     }
     private ready() {
         this.loaded = true
-        attach(document)
+        attachCaptures(document)
+        attachDyna(document)
         if (this.state == state.dead) {
             return
         }

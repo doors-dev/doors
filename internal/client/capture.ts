@@ -93,10 +93,11 @@ export function capture(name: string, opt: any, arg: any, event: Event | undefin
     return h.capture(name, opt, arg)
 }
 
-export function attach(parent: HTMLElement | DocumentFragment | Document) {
-    for (const element of parent.querySelectorAll<HTMLElement>("[data-d00r-capture]")) {
-        const capturesList = JSON.parse(element.getAttribute("data-d00r-capture")!)
-        element.removeAttribute("data-d00r-capture")
+const attr = "data-d00r-capture"
+export function attach(parent: Element | DocumentFragment | Document) {
+    for (const element of parent.querySelectorAll<Element>(`[${attr}]`)) {
+        const capturesList = JSON.parse(element.getAttribute(attr)!)
+        element.removeAttribute(attr)
         for (const [event, name, opt, hook] of capturesList) {
             element.addEventListener(event, async (e) => {
                 try {
