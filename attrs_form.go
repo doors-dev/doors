@@ -7,7 +7,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/go-playground/form/v4"
 )
 
@@ -55,8 +55,8 @@ func (s ARawSubmit) Attr() AttrInit {
 	return s
 }
 
-func (s ARawSubmit) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
+func (s ARawSubmit) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
+	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 		Trigger: s.handle,
 	})
 	if !ok {
@@ -132,8 +132,8 @@ func (s ASubmit[V]) Attr() AttrInit {
 	return s
 }
 
-func (s ASubmit[V]) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
-	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
+func (s ASubmit[V]) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
+	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 		Trigger: s.handle,
 	})
 	if !ok {
@@ -221,10 +221,10 @@ func (p AChange) Attr() AttrInit {
 	return p
 }
 
-func (p AChange) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (p AChange) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[ChangeEvent]{
 		capture:   &front.ChangeCapture{},
-		node:      n,
+		door:      n,
 		ctx:       ctx,
 		onError:   p.OnError,
 		indicator: p.Indicator,
@@ -251,12 +251,12 @@ func (p AInput) Attr() AttrInit {
 	return p
 }
 
-func (p AInput) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (p AInput) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[InputEvent]{
 		capture: &front.InputCapture{
 			ExcludeValue: p.ExcludeValue,
 		},
-		node:      n,
+		door:      n,
 		inst:      inst,
 		ctx:       ctx,
 		onError:   p.OnError,

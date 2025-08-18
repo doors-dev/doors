@@ -4,7 +4,7 @@ Practices you should understand and follow.
 
 ## 1. Use *doors*  entities inside *doors* context.
 
-✅ Render `Node`, read/mutate `Beam/SourceBeam` values, use `doors.A...` binds and handlers in **pages served by doors.ServePage**
+✅ Render `Door`, read/mutate `Beam/SourceBeam` values, use `doors.A...` binds and handlers in **pages served by doors.ServePage**
 
 ❌ Try to enable interactivity/reactivity with *doors* in self served templ based pages
 
@@ -34,7 +34,7 @@ templ (c *card) Render() {*
 ```templ
 pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
 	item := db.get(c.id)
-	node.Update(ctx, itemInfo(item))
+	door.Update(ctx, itemInfo(item))
 }
 ```
 
@@ -47,13 +47,13 @@ templ (f *fragment) Render() (
         select {
         // after 1 minute update
         case <-time.After(1 * time.Minute):
-          f.node.Update(ctx, doors.Text("Updated after 1 minute!"))
+          f.door.Update(ctx, doors.Text("Updated after 1 minute!"))
         // or cancel if unmounted
         case <-ctx.Done():
           return
         }
 		})
-		@f.node {
+		@f.door {
 				Initial State
 		}
 )
@@ -69,7 +69,7 @@ templ (f *fragment) Render() (
 ```temp
 pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
   // XUpdate returns channel to track when frontend applies update
-	err, ok := <- node.XUpdate(ctx, itemInfo(item))
+	err, ok := <- door.XUpdate(ctx, itemInfo(item))
 	/* ... */
 	return false
 }
@@ -83,7 +83,7 @@ pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
 > 	go func() {
 > 			// tell the framework that you are safe
 > 			blockingCtx := doors.AllowBlocking(ctx)
-> 			err, ok := <- node.XUpdate(blockingCtx, itemInfo(item))
+> 			err, ok := <- door.XUpdate(blockingCtx, itemInfo(item))
 > 			/* ... */
 > 	}()
 > 	return false
@@ -105,8 +105,8 @@ templ (f *fragment) Render() {
 >
 > ```templ
 > templ (f *fragment) Render() {
-> 	// initialize node
-> 	{{ n := doors.Node{} }}
+> 	// initialize door
+> 	{{ n := doors.Door{} }}
 > 	// spawn goroutine
 > 	@doors.Go(func(ctx context.Context) {
 > 	   select {
@@ -118,7 +118,7 @@ templ (f *fragment) Render() {
 >        return
 >   }
 > 	})
-> 	// render node
+> 	// render door
 > 	@n
 > }
 > ```
@@ -137,12 +137,12 @@ Context is used to track component relations, action progress and many more.  Al
 templ (f *fragment) Render() {
 	@doors.Run(func(pageCtx context.Context) {
 		itemId.Sub(pageCtx, func(ctx context.Context, id int) bool {
-			✅  f.node.Update(ctx, card(id))
-			// ❌ f.node.Update(pageCtx, card(id))
+			✅  f.door.Update(ctx, card(id))
+			// ❌ f.door.Update(pageCtx, card(id))
 			return false
 		})
 	})
-	@f.node
+	@f.door
 }
 
 ```
@@ -212,4 +212,8 @@ itemBeam := doors.NewBeam(pathBeam, func(p Path) db.Item {
 ```
 
 If you need data **only to produce render output** - fire and forget, so you won't waste server memory for nothing.  However, it's your decision.
+
+## 6. Be conscious with front-end manipulations via JavaScript 
+
+Parts of the DOM are controlled by the framework. Don't remove or move around dynamic elements via front-end code.
 

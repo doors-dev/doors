@@ -163,9 +163,11 @@ templ (f *inputFragment) changeFields() {
 	<h3>checkbox</h3>
 	<input id="checkbox" { doors.A(ctx, f.attr("checkbox" ))... } type="checkbox" name="checkbox" value="on"/>
 	<h3>radio</h3>
-	{{ radio := doors.A(ctx, f.attr("radio")) }}
-	<input id="radio-1" { radio... } type="radio" name="radio" value="option1"/>
-	<input id="radio-2" { radio... } type="radio" name="radio" value="option2"/>
+	{{ radio := doors.InitA(ctx, f.attr("radio")) }}
+    @radio
+	<input id="radio-1"  type="radio" name="radio" value="option1"/>
+    @radio
+	<input id="radio-2"  type="radio" name="radio" value="option2"/>
 	/*
     // not supported by rod
 	<h3>range</h3>

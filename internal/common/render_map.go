@@ -70,11 +70,11 @@ func (r *RenderMap) Destroy() {
 }
 
 func (r *RenderMap) RenderBuf(w io.Writer, buf []byte) error {
-	return r.renderBuf(w, buf)
+	return r.renderBuf(w, buf, nil)
 }
 
 func (r *RenderMap) Render(w io.Writer, index uint64) error {
-	return r.render(w, index)
+	return r.render(w, index, nil)
 }
 
 type mode int
@@ -84,8 +84,6 @@ const (
 	modeCommand
 	modeInsert
 	modeMagicA
-	modeMagicALook
-	modeMagicACommand
 	modeMagicAInsert
 )
 
@@ -96,19 +94,15 @@ const (
 	commandMagicA
 )
 
-func (r *RenderMap) renderBuf(w io.Writer, buf []byte) error {
+func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
 	start := 0
 	cursor := 0
 	mode := modeLook
-	var magicA *Attrs = nil
 	for cursor < len(buf) {
-		if mode == modeLook || mode == modeMagicALook {
+		if mode == modeLook {
 			b := buf[cursor]
 			if b == controlByte {
 				mode = modeCommand
-				if mode == modeMagicALook {
-					mode = modeMagicACommand
-				}
 				_, err := w.Write(buf[start:cursor])
 				if err != nil {
 					return err
@@ -117,7 +111,7 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte) error {
 				continue
 			}
 			cursor += 1
-			if mode != modeMagicALook {
+			if magicA == nil {
 				continue
 			}
 			r := rune(b)
@@ -133,14 +127,10 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte) error {
 			mode = modeLook
 			continue
 		}
-		if mode == modeCommand || mode == modeMagicACommand {
+		if mode == modeCommand {
 			command := buf[cursor]
 			switch command {
 			case commandInsert:
-				if mode == modeMagicACommand {
-					slog.Warn("magic attributes dropped, nowhere to attach")
-					magicA = nil
-				}
 				mode = modeInsert
 			case commandMagicA:
 				mode = modeMagicA
@@ -155,7 +145,8 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte) error {
 				return errors.New("length error")
 			}
 			id := binary.NativeEndian.Uint64(buf[cursor : cursor+8])
-			err := r.render(w, id)
+			err := r.render(w, id, magicA)
+			magicA = nil
 			if err != nil {
 				return err
 			}
@@ -180,7 +171,7 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte) error {
 				magicA.Join(attr)
 			}
 			cursor = cursor + 4
-			mode = modeMagicALook
+			mode = modeLook
 			start = cursor
 			continue
 		}
@@ -211,19 +202,19 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte) error {
 	return err
 }
 
-func (r *RenderMap) render(w io.Writer, index uint64) error {
+func (r *RenderMap) render(w io.Writer, index uint64, magicA *Attrs) error {
 	r.mu.Lock()
 	buf, ok := r.buffers[index]
 	if !ok {
 		r.mu.Unlock()
-		return RenderErrorLog(context.Background(), w, "node "+fmt.Sprint(index)+" not found")
+		return RenderErrorLog(context.Background(), w, "door "+fmt.Sprint(index)+" not found")
 	}
 	if buf == nil {
 		r.mu.Unlock()
-		return RenderErrorLog(context.Background(), w, "node "+fmt.Sprint(index)+" not submitted, bug")
+		return RenderErrorLog(context.Background(), w, "door "+fmt.Sprint(index)+" not submitted, bug")
 	}
 	r.mu.Unlock()
-	return r.renderBuf(w, buf)
+	return r.renderBuf(w, buf, magicA)
 }
 
 func (r *RenderMap) Writer(index uint64) (*RenderWriter, bool) {

@@ -260,9 +260,9 @@ func SetSessionHooks(create func(id string), delete func(id string)) Mod {
 	return router.SetSessionHooks(create, delete)
 }
 
-// SetESProfiles configures esbuild profiles for JavaScript/TypeScript processing.
+// SetESConf configures esbuild profiles for JavaScript/TypeScript processing.
 // Different profiles can be used for development vs production builds.
-func SetESProfiles(p ESProfiles) Mod {
+func SetESConf(p ESConf) Mod {
 	return router.SetBuildProfiles(p)
 }
 

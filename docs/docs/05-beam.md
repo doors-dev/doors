@@ -1,10 +1,10 @@
 # Beam / SourceBeam
 
-`Beam` represents a reactive changing value stream that can be read, subscribed to, watched, or derived. 
+`doors.Beam` represents a reactive changing value stream that can be read, subscribed to, watched, or derived. 
 
-It is guaranteed that a Node and all of its child Nodes will observe the exact same value for a given Beam during the render cycle. 
+It is guaranteed that a **door** and all of its child **doors** will observe the exact same value for a given **beam** during the render cycle. 
 
-`SourceBeam` is the initial `Beam` (others are derived from it), which, in addition to its core functionality, includes the ability to update values and propagate changes to all subscribers and derived beams. It serves as the root of a reactive value chain. 
+`SourceBeam` is the initial **beam** (others are derived from it), which, in addition to its core functionality, includes the ability to update values and propagate changes to all subscribers and derived beams. It serves as the root of a reactive value chain. 
 
 ## Constructor Methods
 
@@ -22,7 +22,7 @@ Derives a new Beam[T2] from an existing Beam[T] by applying a cast function. Thi
 
 ### `func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(new T2, old T2) bool) Beam[T2]`
 
-Derives a new Beam[T2] from an existing Beam[T] by applying a cast function. This `Beam` will use a custom distinct function to verify if the value has indeed been updated, and subscribers and derived Beams must be notified of the new value.
+Derives a new `Beam[T2]` from an existing `Beam[T]` by applying a cast function. This **beam** will use a custom distinct function to verify if the value has indeed been updated, and subscribers and derived Beams must be notified of the new value.
 
 ## Beam  API
 
@@ -52,7 +52,7 @@ Attaches a watcher for full lifecycle control. Watchers receive separate callbac
 
 >#### Interface `Watcher[T any]`
 >
->Defines hooks for observing and reacting to the lifecycle of a Beam value stream. Implementers can perform custom logic during initialization, on each update, and when canceled.
+>Defines hooks for observing and reacting to the lifecycle of a **beam** value stream. Implementers can perform custom logic during initialization, on each update, and when canceled.
 >
 >##### `Cancel()`
 >
@@ -115,14 +115,14 @@ For simple relations between `Beam` and DOM.
 
 ### `func Sub[T any](beam Beam[T], render func(T) templ.Component) templ.Component`
 
-Creates a reactive component that re-renders whenever a beam’s value changes. It subscribes to the beam, computes content with the provided `render` function, and displays it in a node.
+Creates a reactive component that re-renders whenever a beam’s value changes. It subscribes to the beam, computes content with the provided `render` function, and displays it in a door.
 
 ```templ
 templ display(n int) {
   <span>{strconv.Itoa(n)}</span>
 }
 
-templ demo(b Beam[int]) {
+templ demo(b doors.Beam[int]) {
   @doors.Sub(b, func(v int) templ.Component {
     return display(v)
   })
@@ -146,6 +146,6 @@ Creates a reactive component that writes the current beam value into the renderi
 
 ## Best Practices
 
-* Store origin values in beam, not business data. For example — id, but not the whole entry.
-* Minimize update frequency and region by deriving into smaller state pieces. If a specific element depends on a single field in the beamed data, derive a beam with this field only and subscribe the element to it.
+* Store origin values in **beam**, not business data. For example — id, but not the whole entry.
+* Minimize update frequency and region by deriving into smaller state pieces. If a specific element depends on a single field in the **beam**ed data, derive a **beam** with this field only and subscribe the element to it.
 

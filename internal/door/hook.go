@@ -1,4 +1,4 @@
-package node
+package door
 
 import (
 	"context"
@@ -13,17 +13,17 @@ import (
 type Done = bool
 
 type HookEntry struct {
-	NodeId uint64
+	DoorId uint64
 	HookId uint64
 	inst   instance
 }
 
 func (h HookEntry) Cancel() {
-	h.inst.CancelHook(h.NodeId, h.HookId, nil)
+	h.inst.CancelHook(h.DoorId, h.HookId, nil)
 }
 
 func (h HookEntry) cancel(err error) {
-	h.inst.CancelHook(h.NodeId, h.HookId, err)
+	h.inst.CancelHook(h.DoorId, h.HookId, err)
 }
 
 
@@ -47,7 +47,7 @@ type Hook interface {
 	cancel(ctx context.Context, err error)
 }
 
-type NodeHook struct {
+type DoorHook struct {
 	hook    Hook
 	mu      sync.Mutex
 	counter uint
@@ -58,15 +58,15 @@ type NodeHook struct {
 	op      shredder.OnPanic
 }
 
-func newHook(ctx context.Context, h Hook, op shredder.OnPanic) *NodeHook {
-	return &NodeHook{
+func newHook(ctx context.Context, h Hook, op shredder.OnPanic) *DoorHook {
+	return &DoorHook{
 		hook: h,
 		ctx:  ctx,
 		op:   op,
 	}
 }
 
-func (h *NodeHook) Cancel(err error) {
+func (h *DoorHook) Cancel(err error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.done {
@@ -79,7 +79,7 @@ func (h *NodeHook) Cancel(err error) {
 	}
 }
 
-func (h *NodeHook) Trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
+func (h *DoorHook) Trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
 	h.mu.Lock()
 	ch := make(chan struct{})
 	prevCh := h.ch

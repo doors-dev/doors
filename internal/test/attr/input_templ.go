@@ -385,24 +385,20 @@ func (f *inputFragment) changeFields() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		radio := doors.A(ctx, f.attr("radio"))
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<input id=\"radio-1\"")
+		radio := doors.InitA(ctx, f.attr("radio"))
+		templ_7745c5c3_Err = radio.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, radio)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<input id=\"radio-1\" type=\"radio\" name=\"radio\" value=\"option1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, " type=\"radio\" name=\"radio\" value=\"option1\"> <input id=\"radio-2\"")
+		templ_7745c5c3_Err = radio.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, radio)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, " type=\"radio\" name=\"radio\" value=\"option2\"><h3>textarea</h3><textarea id=\"textarea\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<input id=\"radio-2\" type=\"radio\" name=\"radio\" value=\"option2\"><h3>textarea</h3><textarea id=\"textarea\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -410,7 +406,7 @@ func (f *inputFragment) changeFields() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " name=\"textarea\"></textarea><h3>select</h3><select id=\"select\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, " name=\"textarea\"></textarea><h3>select</h3><select id=\"select\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -418,7 +414,7 @@ func (f *inputFragment) changeFields() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " name=\"select\"><option value=\"option1\">Option 1</option> <option value=\"option2\">Option 2</option></select><h3>multiselect</h3><select id=\"multiselect\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " name=\"select\"><option value=\"option1\">Option 1</option> <option value=\"option2\">Option 2</option></select><h3>multiselect</h3><select id=\"multiselect\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -426,7 +422,7 @@ func (f *inputFragment) changeFields() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " name=\"multiselect\" multiple><option value=\"option1\">Option 1</option> <option value=\"option2\">Option 2</option></select>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " name=\"multiselect\" multiple><option value=\"option1\">Option 1</option> <option value=\"option2\">Option 2</option></select>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

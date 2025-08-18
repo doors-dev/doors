@@ -3,11 +3,11 @@ package instance
 import (
 	"net/http"
 
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
-func (i *core[M]) TriggerHook(nodeId uint64, hookId uint64, w http.ResponseWriter, r *http.Request) bool {
-	hook := i.getHook(nodeId, hookId)
+func (i *core[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request) bool {
+	hook := i.getHook(doorId, hookId)
 	if hook == nil {
 		return false
 	}
@@ -16,48 +16,48 @@ func (i *core[M]) TriggerHook(nodeId uint64, hookId uint64, w http.ResponseWrite
 		return false
 	}
 	if done {
-		i.removeHook(nodeId, hookId)
+		i.removeHook(doorId, hookId)
 	}
 	return true
 }
 
-func (i *core[M]) CancelHook(nodeId uint64, hookId uint64, err error) {
-	hook := i.removeHook(nodeId, hookId)
+func (i *core[M]) CancelHook(doorId uint64, hookId uint64, err error) {
+	hook := i.removeHook(doorId, hookId)
 	if hook == nil {
 		return
 	}
 	hook.Cancel(err)
 }
 
-func (i *core[M]) CancelHooks(nodeId uint64, err error) {
+func (i *core[M]) CancelHooks(doorId uint64, err error) {
 	i.hooksMu.Lock()
-	hooks, ok := i.hooks[nodeId]
+	hooks, ok := i.hooks[doorId]
 	if !ok {
 		i.hooksMu.Unlock()
 		return
 	}
-	delete(i.hooks, nodeId)
+	delete(i.hooks, doorId)
 	i.hooksMu.Unlock()
 	for id := range hooks {
 		hooks[id].Cancel(err)
 	}
 }
 
-func (i *core[M]) RegisterHook(nodeId uint64, hookId uint64, hook *node.NodeHook) {
+func (i *core[M]) RegisterHook(doorId uint64, hookId uint64, hook *door.DoorHook) {
 	i.hooksMu.Lock()
 	defer i.hooksMu.Unlock()
-	hooks, ok := i.hooks[nodeId]
+	hooks, ok := i.hooks[doorId]
 	if !ok {
-		hooks = make(map[uint64]*node.NodeHook)
-		i.hooks[nodeId] = hooks
+		hooks = make(map[uint64]*door.DoorHook)
+		i.hooks[doorId] = hooks
 	}
 	hooks[hookId] = hook
 }
 
-func (i *core[M]) getHook(nodeId uint64, hookId uint64) *node.NodeHook {
+func (i *core[M]) getHook(doorId uint64, hookId uint64) *door.DoorHook {
 	i.hooksMu.Lock()
 	defer i.hooksMu.Unlock()
-	hooks, ok := i.hooks[nodeId]
+	hooks, ok := i.hooks[doorId]
 	if !ok {
 		return nil
 	}
@@ -68,10 +68,10 @@ func (i *core[M]) getHook(nodeId uint64, hookId uint64) *node.NodeHook {
 	return hook
 }
 
-func (i *core[M]) removeHook(nodeId uint64, hookId uint64) *node.NodeHook {
+func (i *core[M]) removeHook(doorId uint64, hookId uint64) *door.DoorHook {
 	i.hooksMu.Lock()
 	defer i.hooksMu.Unlock()
-	hooks, ok := i.hooks[nodeId]
+	hooks, ok := i.hooks[doorId]
 	if !ok {
 		return nil
 	}
@@ -81,7 +81,7 @@ func (i *core[M]) removeHook(nodeId uint64, hookId uint64) *node.NodeHook {
 	}
 	delete(hooks, hookId)
 	if len(hooks) == 0 {
-		delete(i.hooks, nodeId)
+		delete(i.hooks, doorId)
 	}
 	return hook
 }

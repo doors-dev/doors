@@ -221,9 +221,9 @@ func Document[P any](p page[P], b doors.SourceBeam[P]) templ.Component {
 }
 
 func NewReporter(size int) *Reporter {
-	reports := make([]*doors.Node, size)
+	reports := make([]*doors.Door, size)
 	for i := range size {
-		reports[i] = &doors.Node{}
+		reports[i] = &doors.Door{}
 	}
 	return &Reporter{
 		reports: reports,
@@ -231,7 +231,7 @@ func NewReporter(size int) *Reporter {
 }
 
 type Reporter struct {
-	reports []*doors.Node
+	reports []*doors.Door
 }
 
 func (r *Reporter) Update(ctx context.Context, i int, content string) {

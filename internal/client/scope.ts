@@ -16,7 +16,7 @@ export class Hook {
     private abortTimer: AbortTimer | null = null
     private fetch: any = {}
     private scopeQueue: Array<ScopeSet>
-    constructor(private params: { nodeId: number, hookId: number, event?: Event, scopeQueue: Array<ScopeSet>, indicator: Array<IndicatorEntry> }) {
+    constructor(private params: { doorId: number, hookId: number, event?: Event, scopeQueue: Array<ScopeSet>, indicator: Array<IndicatorEntry> }) {
         this.promise = new Promise((res, rej) => {
             this.res = res
             this.rej = rej
@@ -31,7 +31,7 @@ export class Hook {
     capture(name: string, opt: any, arg: any) {
         const captureFunction = captures[name]
         if (!captureFunction) {
-            this.err(new CaptureErr(captureErrKinds.notFound, name))
+            this.err(new CaptureErr(captureErrKinds.capture, new Error("capture "+name+" not found")))
             return this.promise
         }
         try {
@@ -71,7 +71,7 @@ export class Hook {
         }
         const indicatorId = indicator.start(target, this.params.indicator)
         this.abortTimer = new AbortTimer(requestTimeout)
-        fetch(`/d00r/${id}/${this.params.nodeId}/${this.params.hookId}`, {
+        fetch(`/d00r/${id}/${this.params.doorId}/${this.params.hookId}`, {
             method: "POST",
             signal: this.abortTimer.signal,
             ...this.fetch,
@@ -87,11 +87,11 @@ export class Hook {
                 return
             }
             if (r.status === 401 || r.status === 410) {
-                this.rej(new CaptureErr(captureErrKinds.stale, r))
+                this.rej(new CaptureErr(captureErrKinds.unauthorized, r))
             } else if (r.status === 400) {
-                this.rej(new CaptureErr(captureErrKinds.format))
-            } else if (r.status === 403) {
-                this.rej(new CaptureErr(captureErrKinds.done))
+                this.rej(new CaptureErr(captureErrKinds.bad_request))
+            } else if (r.status === 404) {
+                this.rej(new CaptureErr(captureErrKinds.not_found))
             } else if (r.status >= 500 && r.status < 600) {
                 this.rej(new CaptureErr(captureErrKinds.server, r))
             } else {
@@ -100,7 +100,7 @@ export class Hook {
         }).catch(e => {
             this.abortTimer!.clean()
             if (this.abortTimer!.status == "aborted") {
-                this.rej(new CaptureErr(captureErrKinds.blocked))
+                this.rej(new CaptureErr(captureErrKinds.canceled))
                 return
             }
             this.err(new CaptureErr(captureErrKinds.network, e))
@@ -120,7 +120,7 @@ export class Hook {
             this.params.event.preventDefault()
             this.params.event.stopPropagation()
         }
-        this.err(new CaptureErr(captureErrKinds.blocked))
+        this.err(new CaptureErr(captureErrKinds.canceled))
     }
     private ok(r: Response) {
         this.res(r)
@@ -293,18 +293,17 @@ class BlockingScope extends Scope {
 
 class FrameScope extends Scope {
     private frameHook: Hook | null = null
-    protected complete(hook: Hook): void {
+    protected complete(_: Hook): void {
         if (!this.frameHook) {
-            return
-        }
-        if (this.frameHook === hook) {
-            this.frameHook = null
             return
         }
         if (this.size != 1) {
             return
         }
-        this.promote(this.frameHook)
+        const frameHook = this.frameHook
+        this.frameHook = null
+        this.promote(frameHook)
+
     }
     protected process(hook: Hook, opt: any): void {
         const frame = opt as boolean
@@ -316,8 +315,8 @@ class FrameScope extends Scope {
             this.promote(hook)
             return
         }
-        this.frameHook = hook
         if (this.size != 1) {
+            this.frameHook = hook
             return
         }
         this.promote(hook)

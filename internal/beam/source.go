@@ -7,13 +7,13 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxwg"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type instance interface {
 	Thread() *shredder.Thread
-	Cinema() *node.Cinema
+	Cinema() *door.Cinema
 	NewId() uint64
 }
 
@@ -55,7 +55,7 @@ type SourceBeam[T any] interface {
 
 	// Latest returns the most recently set or mutated value without requiring a context.
 	// This provides direct access to the current state and is not affected by
-	// context cancellation and Node tree state, unlike Read.
+	// context cancellation and Door tree state, unlike Read.
 	//
 	// WARNING: Latest() does not participate in render cycle consistency guarantees.
 	// Use Read() to ensure consistent values across the component tree.
@@ -187,8 +187,8 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 
 }
 
-func (s *source[T]) addWatcher(ctx context.Context, w node.Watcher) bool {
-	cinema := ctx.Value(common.NodeCtxKey).(node.Core).Cinema()
+func (s *source[T]) addWatcher(ctx context.Context, w door.Watcher) bool {
+	cinema := ctx.Value(common.DoorCtxKey).(door.Core).Cinema()
 	inst := ctx.Value(common.InstanceCtxKey).(instance)
 	s.init.Do(func() {
 		s.inst = inst

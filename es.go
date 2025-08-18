@@ -5,9 +5,9 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-type ESProfiles = resources.BuildProfiles
+type ESConf = resources.BuildProfiles
 
-type ESJSX struct {
+type JSX struct {
 	JSX          api.JSX
 	Factory      string
 	ImportSource string
@@ -16,26 +16,26 @@ type ESJSX struct {
 	Dev          bool
 }
 
-func ESJSXPreact() ESJSX {
-	return ESJSX{
+func JSXPreact() JSX {
+	return JSX{
 		Factory:  "h",
 		Fragment: "Fragment",
 	}
 }
 
-func ESJSXReact() ESJSX {
-	return ESJSX{
+func JSXReact() JSX {
+	return JSX{
 		JSX: api.JSXAutomatic,
 	}
 }
 
-type ESBuildOptions struct {
+type ESOptions struct {
 	External []string
 	Minify   bool
-	JSX      ESJSX
+	JSX      JSX
 }
 
-func (opt ESBuildOptions) Options(_profile string) api.BuildOptions {
+func (opt ESOptions) Options(_profile string) api.BuildOptions {
 	return api.BuildOptions{
 		Target:            api.ES2017,
 		External:          opt.External,

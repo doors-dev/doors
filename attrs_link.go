@@ -11,7 +11,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 type HrefActiveMatch int
@@ -99,7 +99,7 @@ func (h AHref) Attr() AttrInit {
 	return h
 }
 
-func (h AHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	link, err := inst.NewLink(ctx, h.Model)
 	if err != nil {
 		slog.Error("href creation  error", slog.String("link_error", err.Error()))
@@ -107,7 +107,7 @@ func (h AHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs 
 	}
 	on, ok := link.ClickHandler()
 	if ok {
-		entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
+		entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 			Trigger: func(_ context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 				on()
 				return false
@@ -141,14 +141,14 @@ type ARawSrc struct {
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
-func (s ARawSrc) init(ctx context.Context, n node.Core, inst instance.Core) (string, bool) {
-	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
+func (s ARawSrc) init(ctx context.Context, n door.Core, inst instance.Core) (string, bool) {
+	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 		Trigger: s.handle,
 	})
 	if !ok {
 		return "", false
 	}
-	src := fmt.Sprintf("/d00r/%s/%d/%d", inst.Id(), entry.NodeId, entry.HookId)
+	src := fmt.Sprintf("/d00r/%s/%d/%d", inst.Id(), entry.DoorId, entry.HookId)
 	if s.Name != "" {
 		src = src + "/" + s.Name
 	}
@@ -163,7 +163,7 @@ func (s ARawSrc) Attr() AttrInit {
 	return s
 }
 
-func (s ARawSrc) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s ARawSrc) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	src, ok := s.init(ctx, n, inst)
 	if !ok {
 		return
@@ -176,15 +176,15 @@ func (s *ARawSrc) handle(_ context.Context, w http.ResponseWriter, r *http.Reque
 	return s.Once
 }
 
-// attribute to securely serve file
+// attribute to securely serve a file
 type ASrc struct {
 	Path string
 	Once bool
 	Name string
 }
 
-func (s ASrc) init(ctx context.Context, n node.Core, inst instance.Core) (string, bool) {
-	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
+func (s ASrc) init(ctx context.Context, n door.Core, inst instance.Core) (string, bool) {
+	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 		Trigger: s.handle,
 	})
 	if !ok {
@@ -193,7 +193,7 @@ func (s ASrc) init(ctx context.Context, n node.Core, inst instance.Core) (string
 	if s.Name == "" {
 		s.Name = filepath.Base(s.Path)
 	}
-	link := fmt.Sprintf("/d00r/%s/%d/%d/%s", inst.Id(), entry.NodeId, entry.HookId, s.Name)
+	link := fmt.Sprintf("/d00r/%s/%d/%d/%s", inst.Id(), entry.DoorId, entry.HookId, s.Name)
 	return link, true
 }
 
@@ -205,7 +205,7 @@ func (s ASrc) Attr() AttrInit {
 	return s
 }
 
-func (s ASrc) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s ASrc) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	src, ok := s.init(ctx, n, inst)
 	if !ok {
 		return
@@ -232,7 +232,7 @@ func (s AFileHref) Attr() AttrInit {
 	return s
 }
 
-func (s AFileHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s AFileHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	link, ok := (*ASrc)(&s).init(ctx, n, inst)
 	if !ok {
 		return
@@ -254,7 +254,7 @@ func (s ARawFileHref) Attr() AttrInit {
 	return s
 }
 
-func (s ARawFileHref) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (s ARawFileHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	link, ok := (*ARawSrc)(&s).init(ctx, n, inst)
 	if !ok {
 		return

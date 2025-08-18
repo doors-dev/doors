@@ -4,6 +4,7 @@ import { ProgressiveDelay, AbortTimer } from "./lib"
 import { attach as attachCaptures } from "./capture"
 import { attach as attachDyna } from "./dyna"
 
+import doors from "./door"
 
 const decoder = new TextDecoder()
 
@@ -471,8 +472,7 @@ class Controller {
     }
     private ready() {
         this.loaded = true
-        attachCaptures(document)
-        attachDyna(document)
+        doors.scan(document)
         if (this.state == state.dead) {
             return
         }

@@ -85,3 +85,7 @@ type AnyPath struct {
 }
 ```
 
+## Link Behavior
+
+Navigation within the same path model type triggers a dynamic page update, whereas a link to a different type leads to a full-page load.
+

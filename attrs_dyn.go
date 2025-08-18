@@ -9,7 +9,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 type ADyn interface {
@@ -127,7 +127,7 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 	inst.Call(call)
 }
 
-func (a *aDyn) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (a *aDyn) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if !a.initialized {

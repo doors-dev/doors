@@ -1,4 +1,4 @@
-package node
+package door
 
 import (
 	"fmt"
@@ -24,14 +24,27 @@ type container struct {
 	parentCtx    context.Context
 	parentCinema *Cinema
 	tracker      *tracker
-	node         *Node
+	door         *Door
 }
 
 func (c *container) suspend() {
 	c.tracker.suspend(false)
 }
 
-func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.Writer, content templ.Component) error {
+func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.Writer, tag string, attrs templ.Attributes, content templ.Component) error {
+	if attrs == nil {
+		attrs = make(templ.Attributes, 2)
+	}
+
+	attrs["id"] = fmt.Sprintf("d00r/%d", c.id)
+	if tag != "" {
+		attrs["data-d00r"] = true
+		tag = templ.EscapeString(tag)
+	} else {
+		tag = "d0-0r"
+	}
+
+	tag = templ.EscapeString(tag)
 	rw, _ := rm.Writer(c.id)
 	err := rw.Holdplace(w)
 	if err != nil {
@@ -51,17 +64,25 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 			ctx := context.WithValue(parentCtx, common.ParentCtxKey, parentCtx)
 			ctx = context.WithValue(ctx, common.RenderMapCtxKey, rm)
 			ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
-			_, err = rw.Write(fmt.Appendf(nil, "<do-or id =\"d00r/%d\">", c.id))
+			_, err = rw.Write(fmt.Appendf(nil, "<%s", tag))
+			if err != nil {
+				return
+			}
+			err = templ.RenderAttributes(ctx, rw, attrs)
+			if err != nil {
+				return
+			}
+			_, err = rw.Write([]byte{'>'})
 			if err != nil {
 				return
 			}
 			if content != nil {
-				err := content.Render(ctx, rw)
+				err = content.Render(ctx, rw)
 				if err != nil {
 					return
 				}
 			}
-			_, err = rw.Write([]byte("</do-or>"))
+			_, err = rw.Write(fmt.Appendf(nil, "</%s>", tag))
 		})
 		t.Write(func(t *shredder.Thread) {
 			if t == nil || parentCtx.Err() != nil {
@@ -86,9 +107,9 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 	rm := common.NewRenderMap()
 	rw, _ := rm.Writer(c.id)
 
-	call := &nodeCall{
+	call := &doorCall{
 		ctx:  c.parentCtx,
-		name: "node_replace",
+		name: "door_replace",
 		arg:  c.id,
 		ch:   ch,
 		done: ctxwg.Add(userCtx),
@@ -136,9 +157,9 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 	rm := common.NewRenderMap()
 	rw, _ := rm.Writer(c.id)
 
-	call := &nodeCall{
+	call := &doorCall{
 		ctx:  parentCtx,
-		name: "node_update",
+		name: "door_update",
 		arg:  c.id,
 		ch:   ch,
 		done: ctxwg.Add(userCtx),
@@ -197,13 +218,13 @@ func (c *container) newTacker() (*tracker, context.Context) {
 	cinema := newCinema(c.parentCinema, c.inst, thread, c.id)
 	t := &tracker{
 		cinema:      cinema,
-		children:    common.NewSet[*Node](),
+		children:    common.NewSet[*Door](),
 		thread:      thread,
 		cancel:      cancel,
 		container:   c,
 		clientCalls: common.NewSet[*clientCall](),
 	}
-	ctx = context.WithValue(ctx, common.NodeCtxKey, t)
+	ctx = context.WithValue(ctx, common.DoorCtxKey, t)
 	return t, ctx
 }
 
@@ -212,7 +233,7 @@ func (c *container) instance() instance {
 }
 
 func (c *container) registerHook(tracker *tracker, ctx context.Context, h Hook) (*HookEntry, bool) {
-	return c.node.registerHook(c, tracker, ctx, h)
+	return c.door.registerHook(c, tracker, ctx, h)
 }
 
 func (c *container) getId() uint64 {
@@ -227,7 +248,7 @@ type trackerContainer interface {
 
 type tracker struct {
 	cinema      *Cinema
-	children    common.Set[*Node]
+	children    common.Set[*Door]
 	thread      *shredder.Thread
 	cancel      context.CancelFunc
 	container   trackerContainer
@@ -279,20 +300,20 @@ func (c *tracker) removeClientCall(cc *clientCall) {
 	})
 }
 
-func (c *tracker) addChild(node *Node) {
+func (c *tracker) addChild(door *Door) {
 	if c == nil {
 		return
 	}
 	c.thread.Write(func(t *shredder.Thread) {
 		if t == nil {
-			node.suspend(c)
+			door.suspend(c)
 			return
 		}
-		c.children.Add(node)
+		c.children.Add(door)
 	})
 }
 
-func (c *tracker) removeChild(node *Node) {
+func (c *tracker) removeChild(door *Door) {
 	if c == nil {
 		return
 	}
@@ -300,7 +321,7 @@ func (c *tracker) removeChild(node *Node) {
 		if t == nil {
 			return
 		}
-		c.children.Remove(node)
+		c.children.Remove(door)
 	})
 }
 

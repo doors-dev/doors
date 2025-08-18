@@ -1,4 +1,4 @@
-package node
+package door
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/doors-dev/doors/internal/common/ctxwg"
 )
 
-type nodeCall struct {
+type doorCall struct {
 	ctx     context.Context
 	name    string
 	ch      chan error
@@ -18,13 +18,13 @@ type nodeCall struct {
 	done    ctxwg.Done
 }
 
-func (n *nodeCall) stale() {
+func (n *doorCall) stale() {
 	n.Result(errors.New("stale"))
 }
 
-func (n *nodeCall) Result(err error) {
+func (n *doorCall) Result(err error) {
 	if err != nil {
-		slog.Error("Node call failed", slog.String("call_name", n.name), slog.String("js_error", err.Error()))
+		slog.Error("Door call failed", slog.String("call_name", n.name), slog.String("error", err.Error()))
 	}
 	n.ch <- err
 	close(n.ch)
@@ -34,7 +34,7 @@ func (n *nodeCall) Result(err error) {
 	n.done()
 }
 
-func (n *nodeCall) Data() *common.CallData {
+func (n *doorCall) Data() *common.CallData {
 	if n.ctx.Err() != nil {
 		n.stale()
 		return nil

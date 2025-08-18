@@ -1,8 +1,7 @@
-import door from "./door"
-import { capture, attach as attachCaptures } from "./capture"
+import doors from "./door"
+import { capture} from "./capture"
 import navigator from "./navigator"
-import { attach as attachDyna, removeAttr, setAttr } from "./dyna"
-import { doorId } from "./lib"
+import { removeAttr, setAttr } from "./dyna"
 
 const task = (f: () => void) => {
     setTimeout(f, 0)
@@ -36,8 +35,8 @@ export default {
             location.assign(url.toString())
         })
     },
-    call: async ([name, arg, nodeId, hookId]: [string, any, number, number]) => {
-        const entry = door.getHandler(nodeId, name)
+    call: async ([name, arg, doorId, hookId]: [string, any, number, number]) => {
+        const entry = doors.getHandler(doorId, name)
         if (!entry) {
             throw new Error(`Handler ${name} not found`)
         }
@@ -45,7 +44,7 @@ export default {
         const result = await handler(arg)
         let requestResponse: any = undefined
         if (hookId !== null) {
-            const hook = [nodeId, hookId, [], [], ""]
+            const hook = [doorId, hookId, [], [], ""]
             requestResponse = await capture("default", null, result, undefined, hook)
         }
         if (response) {
@@ -66,42 +65,14 @@ export default {
         navigator.push(p)
     },
 
-    node_replace: (nodeId: number, content: string) => {
-        const node = document.getElementById(doorId(nodeId))
-        if (!node) throw new Error("Node not found")
-
-        const parent = node.parentElement
-        const range = document.createRange()
-        range.selectNode(node)
-        range.deleteContents()
-
-        const fragment = range.createContextualFragment(content)
-        navigator.activateInside(fragment)
-        attachCaptures(fragment)
-        range.insertNode(fragment)
-        attachDyna(parent!)
+    door_replace: (doorId: number, content: string) => {
+        doors.replace(doorId, content)
     },
 
-    node_update: (nodeId: number, content: string) => {
-        const id = doorId(nodeId)
-        const node = document.getElementById(id)
-        if (!node) throw new Error("Node not found")
-        door.reset(nodeId)
-        const range = document.createRange()
-        range.selectNodeContents(node)
-        range.deleteContents()
-        const fragment = range.createContextualFragment(content)
-        navigator.activateInside(fragment)
-        attachCaptures(fragment)
-        range.insertNode(fragment)
-        attachDyna(document.getElementById(id)!)
+    door_update: (doorId: number, content: string) => {
+        doors.update(doorId, content)
     },
 
-    node_remove: (nodeId: number) => {
-        const node = document.getElementById(doorId(nodeId))
-        if (!node) throw new Error("Node not found")
-        node.remove()
-    },
 
     touch: (_: any) => { }
 }

@@ -1,4 +1,4 @@
-package node
+package door
 
 import (
 	"context"
@@ -15,7 +15,7 @@ func NewRoot(ctx context.Context, inst instance) *Root {
 	ctx, cancel := context.WithCancel(ctx)
 	t := &tracker{
 		cinema:      newCinema(nil, inst, thread, id),
-		children:    common.NewSet[*Node](),
+		children:    common.NewSet[*Door](),
 		thread:      thread,
 		cancel:      cancel,
 		clientCalls: common.NewSet[*clientCall](),
@@ -23,7 +23,7 @@ func NewRoot(ctx context.Context, inst instance) *Root {
 	r := &Root{
 		id:      id,
 		inst:    inst,
-		ctx:     context.WithValue(ctx, common.NodeCtxKey, t),
+		ctx:     context.WithValue(ctx, common.DoorCtxKey, t),
 		tracker: t,
 	}
 	t.container = r
@@ -65,7 +65,7 @@ func (r *Root) registerHook(tracker *tracker, ctx context.Context, h Hook) (*Hoo
 	hook := newHook(common.ClearBlockingCtx(ctx), h, r.inst)
 	r.inst.RegisterHook(r.id, hookId, hook)
 	return &HookEntry{
-		NodeId: r.id,
+		DoorId: r.id,
 		HookId: hookId,
 		inst:   r.inst,
 	}, true

@@ -8,7 +8,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 type AttrInit = front.Attr
@@ -47,13 +47,13 @@ type Attr interface {
 //   - A templ.Attributes object that can be spread into a templ element.
 
 func A(ctx context.Context, a ...Attr) templ.Attributes {
-	return Init(ctx, a...).A()
+	return InitA(ctx, a...).A()
 }
 
 
 type Attrs = front.Attrs
 
-func Init(ctx context.Context, a ...Attr) *Attrs {
+func InitA(ctx context.Context, a ...Attr) *Attrs {
 	ar := make([]front.Attr, len(a))
 	for i, attr := range a {
 		ar[i] = attr.Attr()
@@ -72,7 +72,7 @@ func (s ARaw) Render(ctx context.Context, w io.Writer) error {
 	return front.AttrRender(ctx, w, s)
 }
 
-func (s ARaw) Init(ctx context.Context, _ node.Core, _ instance.Core, attrs *front.Attrs) {
+func (s ARaw) Init(ctx context.Context, _ door.Core, _ instance.Core, attrs *front.Attrs) {
 	if s == nil {
 		return
 	}
@@ -80,7 +80,7 @@ func (s ARaw) Init(ctx context.Context, _ node.Core, _ instance.Core, attrs *fro
 }*/
 
 type eventAttr[E any] struct {
-	node      node.Core
+	door      door.Core
 	ctx       context.Context
 	capture   front.Capture
 	onError   []OnError
@@ -91,7 +91,7 @@ type eventAttr[E any] struct {
 }
 
 func (p *eventAttr[E]) init(attrs *front.Attrs) {
-	entry, ok := p.node.RegisterAttrHook(p.ctx, &node.AttrHook{
+	entry, ok := p.door.RegisterAttrHook(p.ctx, &door.AttrHook{
 		Trigger: p.handle,
 	})
 	if !ok {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 type AHook[I any, O any] struct {
@@ -26,12 +26,12 @@ func (h AHook[I, O]) Attr() AttrInit {
 	return h
 }
 
-func (h AHook[I, O]) Init(ctx context.Context, n node.Core, inst instance.Core, attr *front.Attrs) {
+func (h AHook[I, O]) Init(ctx context.Context, n door.Core, inst instance.Core, attr *front.Attrs) {
 	if h.On == nil {
 		println("Hook withoud handler")
 		return
 	}
-	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
+	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 		Trigger: h.handle,
 	})
 	if !ok {
@@ -88,12 +88,12 @@ func (h ARawHook) Attr() AttrInit {
 	return h
 }
 
-func (h ARawHook) Init(ctx context.Context, n node.Core, inst instance.Core, attr *front.Attrs) {
+func (h ARawHook) Init(ctx context.Context, n door.Core, inst instance.Core, attr *front.Attrs) {
 	if h.On == nil {
 		println("Hook withoud handler")
 		return
 	}
-	entry, ok := n.RegisterAttrHook(ctx, &node.AttrHook{
+	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 		Trigger: h.handle,
 	})
 	if !ok {
@@ -127,7 +127,7 @@ func (a AData) Attr() AttrInit {
 	return a
 }
 
-func (a AData) Init(_ context.Context, n node.Core, _ instance.Core, attr *front.Attrs) {
+func (a AData) Init(_ context.Context, n door.Core, _ instance.Core, attr *front.Attrs) {
 	attr.SetData(a.Name, a.Value)
 }
 
@@ -141,7 +141,7 @@ func (dm ADataMap) Attr() AttrInit {
 	return dm
 }
 
-func (dm ADataMap) Init(_ context.Context, n node.Core, _ instance.Core, attr *front.Attrs) {
+func (dm ADataMap) Init(_ context.Context, n door.Core, _ instance.Core, attr *front.Attrs) {
 	for name := range dm {
 		attr.SetData(name, dm[name])
 	}

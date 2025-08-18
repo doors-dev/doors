@@ -179,8 +179,8 @@ func (d *deck) Insert(call common.Call) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.seq += 1
-	node := newCard(d.seq, call)
-	d.insertTail(node)
+	door := newCard(d.seq, call)
+	d.insertTail(door)
 	return d.inc()
 }
 

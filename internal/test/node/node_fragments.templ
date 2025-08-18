@@ -1,4 +1,4 @@
-package node
+package door
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 )
 
 type FragmentMany struct {
-	n doors.Node
+	n doors.Door
 	test.NoBeam
 }
 
@@ -16,7 +16,7 @@ templ (f *FragmentMany) sample() {
 	<div class="sample">sample</div>
 }
 
-templ (f *FragmentMany) manyNodes() {
+templ (f *FragmentMany) manyDoors() {
 	for i := range 20 {
 		<span style="display:none">{ fmt.Sprint(i) }</span>
 		@f.n
@@ -33,9 +33,9 @@ templ (f *FragmentMany) replaced() {
 
 templ (f *FragmentMany) Render() {
 	{{ f.n.Update(ctx, f.sample()) }}
-	{{ n := doors.Node{} }}
+	{{ n := doors.Door{} }}
 	@n {
-		@f.manyNodes()
+		@f.manyDoors()
 	}
 	@test.Button("replace", func(ctx context.Context) bool {
 		n.Update(ctx, f.replaced())
@@ -44,8 +44,8 @@ templ (f *FragmentMany) Render() {
 }
 
 type FragmentX struct {
-	report doors.Node
-	n      doors.Node
+	report doors.Door
+	n      doors.Door
 	test.NoBeam
 }
 
@@ -95,9 +95,9 @@ templ (f *FragmentX) Render() {
 }
 
 type EmbeddedFragment struct {
-	n1 doors.Node
-	n2 doors.Node
-	n3 doors.Node
+	n1 doors.Door
+	n2 doors.Door
+	n3 doors.Door
 	test.NoBeam
 }
 
@@ -144,8 +144,8 @@ templ (f *EmbeddedFragment) Render() {
 }
 
 type DynamicFragment struct {
-	n1 doors.Node
-	n2 doors.Node
+	n1 doors.Door
+	n2 doors.Door
 	test.NoBeam
 }
 
@@ -192,24 +192,24 @@ templ (f *DynamicFragment) Render() {
 }
 
 type BeforeFragment struct {
-	nodeInit     doors.Node
-	nodeUpdate   doors.Node
-	nodeRemoved  doors.Node
-	nodeReplaced doors.Node
+	doorInit     doors.Door
+	doorUpdate   doors.Door
+	doorRemoved  doors.Door
+	doorReplaced doors.Door
 	test.NoBeam
 }
 
 templ (f *BeforeFragment) Render() {
-	@f.nodeInit {
+	@f.doorInit {
 		@test.Marker("init")
 	}
-	{{ f.nodeUpdate.Update(ctx, test.Marker("updated")) }}
-	@f.nodeUpdate
-	{{ f.nodeRemoved.Update(ctx, test.Marker("removed")) }}
-	{{ f.nodeRemoved.Remove(ctx) }}
-	@f.nodeRemoved
-	{{ f.nodeReplaced.Replace(ctx, test.Marker("replaced")) }}
-	@f.nodeReplaced {
+	{{ f.doorUpdate.Update(ctx, test.Marker("updated")) }}
+	@f.doorUpdate
+	{{ f.doorRemoved.Update(ctx, test.Marker("removed")) }}
+	{{ f.doorRemoved.Remove(ctx) }}
+	@f.doorRemoved
+	{{ f.doorReplaced.Replace(ctx, test.Marker("replaced")) }}
+	@f.doorReplaced {
 		@test.Marker("initReplaced")
 	}
 }

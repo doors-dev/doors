@@ -5,6 +5,8 @@ It supports multiple import types—ranging from locally built ES modules to ext
 
 When a page is rendered, the `doors.Imports` component processes all declared imports, updates the Content Security Policy (CSP) with required hashes and sources, and ensures that resources are properly loaded or mapped for later usage.
 
+> Refer to **ref/esbuild** article for esbult configuration 
+
 ---
 
 ## Overview
@@ -14,8 +16,8 @@ Each entry describes how a resource should be built or referenced and whether it
 
 Resources can be:
 
-- ES modules created from source files, raw files, byte slices, or bundles.
-- Stylesheets created from files, byte slices, or hosted/external URLs.
+- ES modules, created from source files, raw files, byte slices, or bundles.
+- Stylesheets, created from files, byte slices, or hosted/external URLs.
 
 ---
 
@@ -42,16 +44,16 @@ When invoked, `doors.Imports`:
 
 ## Common rules
 
-- **Specifier vs. Load:** If an entry is created with no `Specifier` and `Load == false`, it is skipped and a warning is logged. At least one must be set to include the resource.
+- **Specifier vs. Load:** If an entry is created with no `Specifier` (required in the import map) and `Load === false (true means include as HTML element), it is skipped and a warning is logged. At least one must be set to include the resource.
 - **CSP updates:** Import map hashes are added to CSP (if it's enabled). External JS/CSS sources are whitelisted using CSP `script-src` / `style-src`.
-- **Naming and paths:** Generated asset file names are derived from the source path or from the Name if provided. This can help you identify the resource in the web debugger.
-- For bundling Profile value will be used to determine esbuild profile (check esbuild.md for details)
+- **Naming and paths:** Generated asset file names are derived from the source path or  `Name` if provided. This can help you identify the resource in the web debugger.
+- For bundling, `Profile` value will be used to determine esbuild profile. The default profile is an empty string.
 
 ## Import types
 
 ### `ImportModule`
 
-Builds a JS/TS file into an ES module via the framework’s builder.
+Builds (not bundeles) a JS/TS file into an ES module via the framework’s builder.
 
 **Fields:** `Specifier`, `Path`, `Profile`, `Load`, `Name`.
 
@@ -167,16 +169,15 @@ References an external CSS file and adds its URL to CSP `style-src`.
 
 **Fields:** `Href`.
 
-## Usage examples
+## Usage example
 
-### Import a compiled module and stylesheet from local sources
+ Bundle and import module and stylesheet from local sources
 
 ```templ
 @doors.Imports(
-    doors.ImportModule{
+    doors.ImportModuleBundle{
         Specifier: "module",
-        Path:      modulePath + "/index.ts",
-        Load:      true,
+        Entry:      modulePath + "/index.ts",
     },
     doors.ImportStyle{
         Path: modulePath + "/style.css",

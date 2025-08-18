@@ -44,10 +44,10 @@ func (rg *Registry) initMain() {
 		profile := rg.Profiles.Options("")
 		profile.Format = api.FormatIIFE
 		profile.Footer = map[string]string{
-			"js": "$D = $D.default;",
+			"js": "_d00r = _d00r.default;",
 		}
 		profile.Bundle = true
-		profile.GlobalName = "$D"
+		profile.GlobalName = "_d00r"
 		scriptContent, err := BuildFS(internal.ClientSrc, "index.ts", profile)
 		if err != nil {
 			panic(errors.Join(errors.New("Client js build error"), err))
@@ -192,7 +192,7 @@ func (r *Registry) InlineScript(data []byte, mode InlineMode) (*InlineResource, 
 		if t == "module" {
 			return nil, errors.New("Module scripts are disallowed. Check the docs")
 		}
-		if t == "text/typescript" {
+		if t == "text/typescript" || t == "application/typescript" {
 			ts = true
 			delete(element.Attrs, "type")
 		}
@@ -211,7 +211,7 @@ func (r *Registry) InlineScript(data []byte, mode InlineMode) (*InlineResource, 
 	}
 	if s == nil {
 		buf := &bytes.Buffer{}
-		buf.WriteString("$D(document.currentScript, async ($d) => {\n")
+		buf.WriteString("_d00r(document.currentScript, async ($d) => {\n")
 		buf.Write(element.Content)
 		buf.WriteString("\n})")
 		var content []byte

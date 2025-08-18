@@ -4,15 +4,13 @@ import indicator from './indicator'
 import door from './door'
 
 export const captureErrKinds = {
-    blocked: "blocked",
-    stale: "stale",
-    done: "done",
-    notFound: "not_found",
+    canceled: "canceled",
+    unauthorized: "unauthorized",
+    not_found: "not_found",
     other: "other",
     network: "network",
-    format: "format",
+    bad_request: "bad_request",
     server: "server",
-    debounce: "debounce",
     capture: "capture",
 } as const
 
@@ -25,17 +23,14 @@ export class CaptureErr extends Error {
     constructor(public kind: CaptureErrKind, opt?: any) {
         let message: string
         switch (kind) {
-            case captureErrKinds.notFound:
-                message = `capture or hook ${opt} not found`
+            case captureErrKinds.not_found:
+                message = `hook not found on server, may be done`
                 break
-            case captureErrKinds.blocked:
-                message = `hook is blocked by another hook`
+            case captureErrKinds.canceled:
+                message = `hook is blocked by scope`
                 break
-            case captureErrKinds.stale:
+            case captureErrKinds.unauthorized:
                 message = `instance is stopped`
-                break
-            case captureErrKinds.done:
-                message = `hook is done`
                 break
             case captureErrKinds.other:
                 message = `Other Error: ${opt?.status}`
@@ -49,11 +44,8 @@ export class CaptureErr extends Error {
             case captureErrKinds.server:
                 message = `Server Error: ${opt?.status}`
                 break
-            case captureErrKinds.format:
+            case captureErrKinds.bad_request:
                 message = `body parsing error, bad request`
-                break
-            case captureErrKinds.debounce:
-                message = `Debounced`
                 break
             default:
                 throw new Error(`unsupported error type: ${kind}`)
@@ -69,22 +61,20 @@ export class CaptureErr extends Error {
             this.cause = cause
         }
     }
-    isBlocked() { return this.kind === captureErrKinds.blocked; }
-    isNotFound() { return this.kind === captureErrKinds.notFound; }
-    isStale() { return this.kind === captureErrKinds.stale; }
-    isDone() { return this.kind === captureErrKinds.done; }
-    isOther() { return this.kind === captureErrKinds.other; }
-    isNetwork() { return this.kind === captureErrKinds.network; }
-    isCapture() { return this.kind === captureErrKinds.capture; }
-    isServer() { return this.kind === captureErrKinds.server; }
-    isFormat() { return this.kind === captureErrKinds.format; }
-    isDebounce() { return this.kind === captureErrKinds.debounce; }
+    canceled() { return this.kind === captureErrKinds.canceled; }
+    notFound() { return this.kind === captureErrKinds.not_found; }
+    unauthorized() { return this.kind === captureErrKinds.unauthorized; }
+    other() { return this.kind === captureErrKinds.other; }
+    network() { return this.kind === captureErrKinds.network; }
+    capture() { return this.kind === captureErrKinds.capture; }
+    server() { return this.kind === captureErrKinds.server; }
+    badRequest() { return this.kind === captureErrKinds.bad_request; }
 }
 
 export function capture(name: string, opt: any, arg: any, event: Event | undefined, hook: any): Promise<Response> {
-    const [nodeId, hookId, scopeQueue, indicator] = hook
+    const [doorId, hookId, scopeQueue, indicator] = hook
     const h = new Hook({
-        nodeId,
+        doorId,
         hookId,
         event: event,
         scopeQueue,
@@ -95,9 +85,9 @@ export function capture(name: string, opt: any, arg: any, event: Event | undefin
 
 const attr = "data-d00r-capture"
 export function attach(parent: Element | DocumentFragment | Document) {
-    for (const element of parent.querySelectorAll<Element>(`[${attr}]`)) {
+    for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attr}="applied"])`)) {
         const capturesList = JSON.parse(element.getAttribute(attr)!)
-        element.removeAttribute(attr)
+        element.setAttribute(attr, "applied")
         for (const [event, name, opt, hook] of capturesList) {
             element.addEventListener(event, async (e) => {
                 try {
@@ -107,10 +97,10 @@ export function attach(parent: Element | DocumentFragment | Document) {
                         console.error("unknown error in capture:", err)
                         return
                     }
-                    if (err.isDebounce() || err.isBlocked() || err.isDone()) {
+                    if (err.canceled() || err.notFound()) {
                         return
                     }
-                    if (err.isStale()) {
+                    if (err.unauthorized()) {
                         ctrl.gone()
                         return
                     }
@@ -119,7 +109,7 @@ export function attach(parent: Element | DocumentFragment | Document) {
                         console.error("capture execution error", err)
                         return
                     }
-                    const nodeId = hook[0]
+                    const doorId = hook[0]
                     for (const [type, args] of onErr) {
                         if (type == "indicator") {
                             const [duration, indications] = args
@@ -131,7 +121,7 @@ export function attach(parent: Element | DocumentFragment | Document) {
                         if (type == "call") {
                             const [name, meta] = args
                             err.meta = meta
-                            const handler = door.getHandler(nodeId, name)
+                            const handler = door.getHandler(doorId, name)
                             if (!handler) {
                                 console.error("error handeling call " + name + " not found")
                                 return

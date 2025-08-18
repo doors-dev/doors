@@ -1,139 +1,231 @@
 import { rootId } from './params'
-import { nodeId } from './lib'
+import { doorId } from './lib'
+
+import { attach as attachCaptures } from "./capture"
+import navigator from "./navigator"
+import { attach as attachDyna } from "./dyna"
 
 type Handler = [(arg: any) => any, ((response: Response) => (void | Promise<void>)) | undefined]
+type Closure = () => void | Promise<void>
 
 
+const attr = "data-d00r"
+const tag = "d0-0r"
 
-class Door {
-    private doors: Doors
-    private handlers: Map<string, Handler>
-    private parent: number | null
-    private unmountHandlers: (() => void | Promise<void>)[]
-    constructor(
-        doors: Doors,
-        parent: number | null,
-        handlers: Map<string, Handler> = new Map()
-    ) {
-        this.doors = doors
-        this.handlers = handlers
-        this.parent = parent
-        this.unmountHandlers = []
-    }
-    on(
-        name: string,
-        handler: (arg: any) => any,
-        response?: (response: Response) => void
-    ): void {
-        this.handlers.set(name, [handler, response])
-    }
-    onRemove(handler: () => void | Promise<void>): void {
-        this.unmountHandlers.push(handler)
-    }
-    getHandler(name: string): Handler | undefined {
-        const entry = this.handlers.get(name)
-        if (entry) {
-            const [handler, response] = entry
-            return [handler, response]
-        }
-        if (this.parent === null) {
-            return undefined
-        }
-        return this.doors.getHandler(this.parent, name)
-    }
-    clear() {
-        const logError = (e: any) => {
-            console.error("unmount handler error", e)
-        }
-        for (const handler of this.unmountHandlers) {
-            try {
-                const result = handler()
-                if (result instanceof Promise) {
-                    result.then().catch(e => logError(e))
-                }
-            } catch (e) {
-                logError(e)
-            }
-        }
-        this.handlers.clear()
-        this.unmountHandlers = []
+type DoorElement = Element & {
+    _d00r: {
+        id: number
+        parent: number
+        impostor: boolean
     }
 }
 
+function execute(c: Closure) {
+
+    const logError = (e: any) => {
+        console.error("unmount handler error", e)
+    }
+    try {
+        const result = c()
+        if (result instanceof Promise) {
+            result.then().catch(e => logError(e))
+        }
+    } catch (e) {
+        logError(e)
+    }
+}
+function getSelfId(el: Element): (number | undefined) {
+    if (!el.matches(`${tag}, [${attr}]`)) {
+        return undefined
+    }
+    return doorId(el.id)
+}
+function getParentId(el: Element): number {
+    const parent = el.parentElement!.closest(`${tag}, [${attr}]`)
+    if (!parent) {
+        return rootId
+    }
+    return doorId(parent.id)
+}
 
 class Doors {
-    private doors: Map<number, Door>
-    private bufferedHandlers: Map<number, Map<string, Handler>>
-    private rootId: number
+    private elements = new Map<number, DoorElement>()
+    private handlers = new Map<number, Map<string, Handler>>()
+    private onClear = new Map<number, Array<Closure>>()
+    private onRemove = new Map<number, Array<Closure>>()
+    private impostors = new Map<number, Set<number>>()
 
-    constructor(rootId: number) {
-        this.rootId = rootId
-        this.doors = new Map()
-        this.bufferedHandlers = new Map()
-        this.doors.set(rootId, new Door(this, null))
+    private scanImpostors(parent: Element | Document) {
+        for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attr}="indexed"])`)) {
+            element.setAttribute(attr, "indexed")
+            this.register(element, true)
+        }
     }
 
-    register(element: Element): void {
-        const id = nodeId(element.id)
-        const handlers = this.bufferedHandlers.get(id)
-        this.bufferedHandlers.delete(id)
-        const parent = this.getParentId(element)
-        const door = new Door(this, parent, handlers)
-        this.doors.set(id, door)
+    private clear(id: number) {
+        this.handlers.delete(id)
+        const closures = this.onClear.get(id)
+        if (closures === undefined) {
+            return
+        }
+        this.onClear.delete(id)
+        closures.forEach(c => execute(c))
+        const impostors = this.impostors.get(id)
+        if (impostors === undefined) {
+            return
+        }
+        for (const impostor of impostors) {
+            const element = this.elements.get(impostor)!
+            this.unregister(element)
+        }
+    }
+
+    register(element: Element, impostor: boolean = false) {
+        const door = element as DoorElement
+        const id = doorId(element.id);
+        door._d00r = {
+            id: id,
+            parent: getParentId(element),
+            impostor: impostor,
+        }
+        this.elements.set(id, door)
+        if (!impostor) {
+            return
+        }
+        let siblings = this.impostors.get(door._d00r.parent)
+        if (!siblings) {
+            siblings = new Set()
+            this.impostors.set(door._d00r.parent, siblings)
+        }
+        siblings.add(id)
     }
 
     unregister(element: Element): void {
-        const id = nodeId(element.id)
-        const door = this.doors.get(id)
-        this.doors.delete(id)
-        door!.clear()
+        const door = element as DoorElement
+        this.elements.delete(door._d00r.id)
+        this.clear(door._d00r.id)
+        const onRemove = this.onRemove.get(door._d00r.id)
+        if (onRemove !== undefined) {
+            this.onRemove.delete(door._d00r.id)
+            onRemove.forEach(c => execute(c))
+        }
+        if (!door._d00r.impostor) {
+            return
+        }
+        const siblings = this.impostors.get(door._d00r.parent)!
+        siblings.delete(door._d00r.id)
+        if (siblings.size == 0) {
+            this.impostors.delete(door._d00r.parent)
+        }
     }
 
-    private getParentId(el: Element): number {
-        const parent = el.parentElement!.closest("do-or")
-        if (!parent) {
-            return this.rootId
-        }
-        return nodeId(parent.id)
+    scan(parent: Element | Document) {
+        this.scanImpostors(parent)
+        attachCaptures(parent)
+        attachDyna(parent)
+        navigator.activate(parent)
     }
+
+    update(id: number, content: string) {
+        const door = this.elements.get(id)
+        if (!door) {
+            throw new Error(`door ${id} not found`)
+        }
+        this.clear(door._d00r.id)
+
+        const range = document.createRange()
+        range.selectNodeContents(door)
+        range.deleteContents()
+        const fragment = range.createContextualFragment(content)
+        navigator.activate(fragment)
+        attachCaptures(fragment)
+
+        range.insertNode(fragment)
+
+        this.scanImpostors(door)
+        attachDyna(door)
+    }
+
+    replace(id: number, content: string) {
+        const door = this.elements.get(id)
+        if (!door) {
+            throw new Error(`door ${id} not found`)
+        }
+        if (door._d00r.impostor) {
+            this.unregister(door)
+        }
+        const parent = door.parentElement!
+        const range = document.createRange()
+        range.selectNode(door)
+        range.deleteContents()
+        const fragment = range.createContextualFragment(content)
+
+        navigator.activate(fragment)
+        attachCaptures(fragment)
+
+        range.insertNode(fragment)
+
+        this.scanImpostors(parent)
+        attachDyna(parent)
+    }
+
     on(
-        script: Element,
+        element: Element,
         name: string,
         handler: (arg: any) => any,
         response?: (response: Response) => void
     ): void {
-        const id = this.getParentId(script)
-        const door = this.doors.get(id)
-        if (!door) {
-            let buffer = this.bufferedHandlers.get(id)
-            if (!buffer) {
-                buffer = new Map()
-                this.bufferedHandlers.set(id, buffer)
-            }
-            buffer.set(name, [handler, response])
-            return
+        let id = getSelfId(element)
+        if (id == undefined) {
+            id = getParentId(element)
         }
-        door.on(name, handler, response)
+        let handlers = this.handlers.get(id)
+        if (!handlers) {
+            handlers = new Map()
+            this.handlers.set(id, handlers)
+        }
+        handlers.set(name, [handler, response])
     }
 
-    onRemove(element: Element, handler: () => void | Promise<void>): void {
-        const id = this.getParentId(element)
-        const door = this.doors.get(id)
-        door!.onRemove(handler)
+    onUnmount(element: Element, handler: () => void | Promise<void>): void {
+        let id = getSelfId(element)
+        if (id !== undefined) {
+            if (!this.onRemove.has(id)) {
+                this.onRemove.set(id, [handler])
+                return
+            }
+            this.onRemove.get(id)!.push(handler)
+            return
+        }
+        id = getParentId(element)
+        if (!this.onClear.has(id)) {
+            this.onClear.set(id, [handler])
+            return
+        }
+        this.onClear.get(id)!.push(handler)
     }
 
     getHandler(id: number, name: string): Handler | undefined {
-        const door = this.doors.get(id)
-        return door?.getHandler(name)
+        const handlers = this.handlers.get(id)
+        if (handlers !== undefined && handlers.has(name)) {
+            return handlers.get(name)
+        }
+        if (id == rootId) {
+            return undefined
+        }
+        const element = this.elements.get(id)
+        if (element === undefined) {
+            console.error("Unexpected behavior door [", id, "] not found for the call [" + name + "]")
+            return undefined
+        }
+        return this.getHandler(element._d00r.parent, name)
     }
-    reset(id: number): void {
-        this.doors.get(id)?.clear()
-    }
+
 }
 
-const doors = new Doors(rootId)
+const doors = new Doors()
 
-customElements.define('do-or',
+customElements.define(tag,
     class extends HTMLElement {
         constructor() {
             super()

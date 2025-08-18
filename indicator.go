@@ -44,7 +44,7 @@ func SelectorParentQuery(query string) Selector {
 // The original content is automatically restored when the indicator is removed.
 type ContentIndicator struct {
 	Selector Selector // Element selector
-	Content  string   // HTML content to display
+	Content  string   // Text content to display
 }
 
 func (c ContentIndicator) Indicate() *indicate {

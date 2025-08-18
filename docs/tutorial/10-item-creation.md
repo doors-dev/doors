@@ -123,13 +123,13 @@ func createItem(cat driver.Cat) templ.Component {
 type createItemFragment struct {
     // current category
 	cat    driver.Cat
-	// node to show pop up with form
-	node   doors.Node
+	// door to show pop up with form
+	door   doors.Door
 }
 
 // main render function
 templ (c *createItemFragment) Render() {
-	@c.node
+	@c.door
 	@c.button()
 }
 templ (c *createItemFragment) button() {
@@ -138,7 +138,7 @@ templ (c *createItemFragment) button() {
 		Scope: doors.ScopeBlocking(),
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 		  // display form
-			c.node.Update(ctx, c.form())
+			c.door.Update(ctx, c.form())
 			return false
 		},
 	}
@@ -154,8 +154,8 @@ templ (c *createItemFragment) form() {
 			<header>
 			  @doors.AClick{
           On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-              // clear the nodes content
-            c.node.Clear(ctx)
+              // clear the doors content
+            c.door.Clear(ctx)
             return true
           },
         }
@@ -317,7 +317,7 @@ templ (c *createItemFragment) form() {
           // create item entry
           driver.Items.Create(item)
           //close form
-          c.node.Clear(ctx)
+          c.door.Clear(ctx)
           // remove hook
           return true
         },
@@ -360,7 +360,7 @@ func createItem(cat driver.Cat, reload func(ctx context.Context)) templ.Componen
 
 type createItemFragment struct {
 	cat    driver.Cat
-	node   doors.Node
+	door   doors.Door
 	// new field
 	reload func(context.Context)
 }
@@ -372,7 +372,7 @@ templ (c *createItemFragment) form() {
         // call reload
         c.reload(ctx)
         //close form
-        c.node.Clear(ctx)
+        c.door.Clear(ctx)
         // remove hook
         return true
       },
@@ -381,7 +381,7 @@ templ (c *createItemFragment) form() {
 }
 ```
 
-####  pass node reload function 
+####  pass door reload function 
 
 `./catalog/cat.templ`
 
@@ -390,7 +390,7 @@ type categoryFragment struct {
 	authorized bool
 	path       doors.SourceBeam[Path]
 	// add new field 
-	itemsNode  doors.Node
+	itemsDoor  doors.Door
 }
 
 templ (c *categoryFragment) cat(cat driver.Cat) {
@@ -400,12 +400,12 @@ templ (c *categoryFragment) cat(cat driver.Cat) {
 	</hgroup>
 	if c.authorized {
 		<p>
-		  // pass node reload function 
-			@createItem(cat, c.itemsNode.Reload)
+		  // pass door reload function 
+			@createItem(cat, c.itemsDoor.Reload)
 		</p>
 	}
-	// render list inside node
-	@c.itemsNode {
+	// render list inside door
+	@c.itemsDoor {
 		@c.listItems(cat)
 	}
 }
@@ -438,12 +438,12 @@ func createItem(cat driver.Cat, reload func(ctx context.Context)) templ.Componen
 
 type createItemFragment struct {
 	cat    driver.Cat
-	node   doors.Node
+	door   doors.Door
 	reload func(context.Context)
 }
 
 templ (c *createItemFragment) Render() {
-	@c.node
+	@c.door
 	@c.button()
 }
 
@@ -451,7 +451,7 @@ templ (c *createItemFragment) button() {
   @doors.AClick{
       Scope: doors.ScopeBlocking(),
       On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-        c.node.Update(ctx, c.form())
+        c.door.Update(ctx, c.form())
         return false
       },
 	}
@@ -467,7 +467,7 @@ templ (c *createItemFragment) form() {
 			<header>
 			  @doors.AClick{
           On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-            c.node.Clear(ctx)
+            c.door.Clear(ctx)
             return true
           },
         }
@@ -487,7 +487,7 @@ templ (c *createItemFragment) form() {
             }
             driver.Items.Create(item)
             c.reload(ctx)
-            c.node.Clear(ctx)
+            c.door.Clear(ctx)
             return true
           },
 			}
@@ -543,7 +543,7 @@ func newCategoryFragment(path doors.SourceBeam[Path], authorized bool) *category
 type categoryFragment struct {
 	authorized bool
 	path       doors.SourceBeam[Path]
-	itemsNode  doors.Node
+	itemsDoor  doors.Door
 }
 
 templ (c *categoryFragment) Render() {
@@ -580,10 +580,10 @@ templ (c *categoryFragment) cat(cat driver.Cat) {
 	</hgroup>
 	if c.authorized {
 		<p>
-			@createItem(cat, c.itemsNode.Reload)
+			@createItem(cat, c.itemsDoor.Reload)
 		</p>
 	}
-	@c.itemsNode {
+	@c.itemsDoor {
 		@c.listItems(cat)
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 // CallConf configures a backend-to-frontend JavaScript call.
@@ -26,41 +26,40 @@ import (
 //   - Cancel: optional. Called if the call is invalidated before it reaches the frontend,
 //     or if manually canceled using the returned TryCancel function.
 type CallConf struct {
-	// Name of the JavaScript call handler handler  (must be registered on the frontend).
+	// Name of the JavaScript call handler  (must be registered on the frontend).
 	Name string
 
-	// Arg is the value passed to the frontend function. It is serialized as JSON.
+	// Arg is the value passed to the frontend function. It is serialized to JSON.
 	Arg any
 
-	// Trigger is an optional backend handler that is called when the frontend responds.
-	// Use this to handle data returned by the frontend, such as result values or side effects.
-	Trigger func(context.Context, RCall)
+	// On is an optional backend handler that is called with the frontend call responce.
+	On func(context.Context, RCall)
 
-	// Cancel is called if the context becomes invalid before the call is delivered,
+	// OnCancel is called if the context becomes invalid before the call is delivered,
 	// or if the call is canceled explicitly. Optional.
-	Cancel func(context.Context, error)
+	OnCancel func(context.Context, error)
 }
 
-func (conf *CallConf) clientCall() (*node.ClientCall, bool) {
+func (conf *CallConf) clientCall() (*door.ClientCall, bool) {
 	arg, err := common.MarshalJSON(conf.Arg)
 	if err != nil {
 		slog.Error("Call arg marshaling error", slog.String("call_name", conf.Name), slog.String("json_error", err.Error()))
 		return nil, false
 	}
-	return &node.ClientCall{
+	return &door.ClientCall{
 		Name:    conf.Name,
 		Arg:     json.RawMessage(arg),
 		Trigger: conf.triggerFunc(),
-		Cancel:  conf.Cancel,
+		Cancel:  conf.OnCancel,
 	}, true
 }
 
 func (c *CallConf) triggerFunc() func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	if c.Trigger == nil {
+	if c.On == nil {
 		return nil
 	}
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		c.Trigger(ctx, &request{w: w, r: r, ctx: ctx})
+		c.On(ctx, &request{w: w, r: r, ctx: ctx})
 	}
 }
 
@@ -102,7 +101,7 @@ func (c *CallConf) triggerFunc() func(ctx context.Context, w http.ResponseWriter
 //   - Use `document` instead of `document.currentScript` to register globally.
 //   - To handle a frontend response, set the Trigger field in CallConf
 func Call(ctx context.Context, conf CallConf) (func(), bool) {
-	n := ctx.Value(common.NodeCtxKey).(node.Core)
+	n := ctx.Value(common.DoorCtxKey).(door.Core)
 	call, ok := conf.clientCall()
 	if !ok {
 		return nil, false

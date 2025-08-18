@@ -6,7 +6,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 type PointerEvent = front.PointerEvent
@@ -33,7 +33,7 @@ type pointerEventHook struct {
 	OnError []OnError
 }
 
-func (p *pointerEventHook) init(event string, ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (p *pointerEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 
 	(&eventAttr[PointerEvent]{
 		capture: &front.PointerCapture{
@@ -42,7 +42,7 @@ func (p *pointerEventHook) init(event string, ctx context.Context, n node.Core, 
 			PreventDefault:  p.PreventDefault,
 		},
 		inst:      inst,
-		node:      n,
+		door:      n,
 		scope:     p.Scope,
 		ctx:       ctx,
 		onError:   p.OnError,
@@ -82,7 +82,7 @@ func (c AClick) Attr() AttrInit {
 	return c
 }
 
-func (c AClick) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c AClick) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("click", ctx, n, inst, attrs)
 }
@@ -118,7 +118,7 @@ func (c APointerDown) Attr() AttrInit {
 	return c
 }
 
-func (c APointerDown) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c APointerDown) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("pointerdown", ctx, n, inst, attrs)
 }
@@ -154,7 +154,7 @@ func (c APointerUp) Attr() AttrInit {
 	return c
 }
 
-func (c APointerUp) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c APointerUp) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("pointerup", ctx, n, inst, attrs)
 }
@@ -190,7 +190,7 @@ func (c APointerMove) Attr() AttrInit {
 	return c
 }
 
-func (c APointerMove) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c APointerMove) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("pointermove", ctx, n, inst, attrs)
 }
@@ -206,7 +206,7 @@ func (c APointerOver) Attr() AttrInit {
 	return c
 }
 
-func (c APointerOver) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c APointerOver) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("pointerover", ctx, n, inst, attrs)
 }
@@ -242,7 +242,7 @@ func (c APointerOut) Attr() AttrInit {
 	return c
 }
 
-func (c APointerOut) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c APointerOut) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("pointerout", ctx, n, inst, attrs)
 }
@@ -278,7 +278,7 @@ func (c APointerEnter) Attr() AttrInit {
 	return c
 }
 
-func (c APointerEnter) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c APointerEnter) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("pointerenter", ctx, n, inst, attrs)
 }
@@ -314,7 +314,7 @@ func (c APointerLeave) Attr() AttrInit {
 	return c
 }
 
-func (c APointerLeave) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c APointerLeave) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("pointerleave", ctx, n, inst, attrs)
 }
@@ -350,7 +350,7 @@ func (c APointerCancel) Attr() AttrInit {
 	return c
 }
 
-func (c APointerCancel) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c APointerCancel) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("pointercancel", ctx, n, inst, attrs)
 }
@@ -366,7 +366,7 @@ func (c AGotPointerCapture) Attr() AttrInit {
 	return c
 }
 
-func (c AGotPointerCapture) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c AGotPointerCapture) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("gotpointercapture", ctx, n, inst, attrs)
 }
@@ -382,7 +382,7 @@ func (c ALostPointerCapture) Attr() AttrInit {
 	return c
 }
 
-func (c ALostPointerCapture) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (c ALostPointerCapture) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*pointerEventHook)(&c)
 	p.init("lostpointercapture", ctx, n, inst, attrs)
 }

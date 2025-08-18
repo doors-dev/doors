@@ -7,7 +7,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxwg"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 type watcher[T any] struct {
@@ -15,7 +15,7 @@ type watcher[T any] struct {
 	w    Watcher[T]
 	init chan struct{}
 	done atomic.Bool
-	s    *node.Screen
+	s    *door.Screen
 	id   uint
 	seq  uint
 	ctx  context.Context
@@ -66,7 +66,7 @@ func (w *watcher[T]) Sync(ctx context.Context, seq uint, c *common.FuncCollector
 	}
 }
 
-func (w *watcher[T]) Init(ctx context.Context, s *node.Screen, id uint, seq uint) func() {
+func (w *watcher[T]) Init(ctx context.Context, s *door.Screen, id uint, seq uint) func() {
 	w.seq = seq
 	w.id = id
 	w.s = s

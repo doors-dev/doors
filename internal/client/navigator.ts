@@ -1,5 +1,5 @@
 import { id } from "./params"
-import { arraysEqual, splitClass } from "./lib"
+import { arraysEqual } from "./lib"
 import indicator from "./indicator"
 
 
@@ -7,13 +7,15 @@ type PathMatchType = "full" | "starts" | "parts";
 type QueryMatchType = "all" | "some";
 
 
-type State = {
+type Cache = {
     indicator: number | undefined,
     url: URL,
+    settings: any
 }
+const attrName = "data-d00r-active"
 
 export class Navigator {
-    private state = new WeakMap<Element, State>()
+    private cache = new WeakMap<Element, Cache>()
     constructor(
         private id: string,
     ) {
@@ -21,7 +23,6 @@ export class Navigator {
             await this.update(this.urlCurrent());
         });
 
-        document.addEventListener("DOMContentLoaded", () => this.activateLinks(this.urlCurrent()));
     }
 
     private searchEqual(
@@ -54,7 +55,7 @@ export class Navigator {
     }
 
 
-    public activateInside(e: Element | DocumentFragment): void {
+    public activate(e: Element | DocumentFragment | Document): void {
         this.activateLinks(this.urlCurrent(), e)
     }
 
@@ -62,23 +63,23 @@ export class Navigator {
         return path.replace(/^\/+|\/+$/g, "")
     }
 
-    private activateLinks(newUrl: URL, parent: any = document): void {
-        const links = parent.querySelectorAll('[data-d00r-active]');
-        links.forEach(linkElement => {
-            const state = this.state.get(linkElement)
-            const link = linkElement as HTMLAnchorElement
-            const attr = link.getAttribute("data-d00r-active");
-            if (!attr) {
-                return
-            }
+    private activateLinks(newUrl: URL, parent: Element | DocumentFragment | Document = document): void {
+        const links = parent.querySelectorAll(`[${attrName}]`) as any as Array<HTMLAnchorElement>;
+        links.forEach(link => {
             const href = link.getAttribute("href")
             if (href === null) {
                 return
             }
-            if (!!state && this.urlAreEqual(state.url, newUrl)) {
+            let cache = this.cache.get(link)
+            if (!!cache && this.urlAreEqual(cache.url, newUrl)) {
                 return
             }
-            const [pathMatchTuple, queryMatchTuple, indicators]: any = JSON.parse(attr);
+            let settings = cache?.settings
+            if (!settings) {
+                settings = JSON.parse(link.getAttribute(attrName)!)
+                link.setAttribute(attrName, "cached")
+            }
+            const [pathMatchTuple, queryMatchTuple, indicators]: any = settings;
             const pathMatch: PathMatchType = pathMatchTuple[0];
             const pathMatchArg: number | undefined = pathMatchTuple[1];
             const queryMatch: QueryMatchType = queryMatchTuple[0];
@@ -101,11 +102,11 @@ export class Navigator {
             } else if (match && queryMatch === "some" && queryMatchArg) {
                 match = this.searchEqual(newUrl.searchParams, url.searchParams, queryMatchArg);
             }
-            const prevIndicator = state?.indicator
+            const prevIndicator = cache?.indicator
             if (match) {
-                this.state.set(link, { indicator: indicator.start(link, indicators), url: newUrl })
+                this.cache.set(link, { indicator: indicator.start(link, indicators), url: newUrl, settings })
             } else {
-                this.state.set(link, { indicator: undefined, url: newUrl })
+                this.cache.set(link, { indicator: undefined, url: newUrl, settings })
             }
             indicator.end(prevIndicator)
         });

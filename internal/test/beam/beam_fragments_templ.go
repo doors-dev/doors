@@ -22,7 +22,7 @@ type state struct {
 type BeamDeriveFragment struct {
 	r *test.Reporter
 	b doors.SourceBeam[state]
-	n doors.Node
+	n doors.Door
 	test.NoBeam
 }
 
@@ -56,8 +56,8 @@ func (f *BeamDeriveFragment) content() templ.Component {
 			return false
 		})
 
-		n1 := doors.Node{}
-		n2 := doors.Node{}
+		n1 := doors.Door{}
+		n2 := doors.Door{}
 		f.b.Mutate(ctx, func(s state) state {
 			s.Int = s.Int + 1
 			return s
@@ -93,7 +93,7 @@ func (f *BeamDeriveFragment) content() templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			n3 := doors.Node{}
+			n3 := doors.Door{}
 
 			d.Sub(ctx, func(ctx context.Context, s int) bool {
 				n3.Update(ctx, test.ReportId(4, fmt.Sprint(s)))
@@ -202,7 +202,7 @@ func (f *BeamDeriveFragment) Render() templ.Component {
 type BeamConsistentFragment struct {
 	r *test.Reporter
 	b doors.SourceBeam[state]
-	n doors.Node
+	n doors.Door
 	test.NoBeam
 }
 
@@ -233,8 +233,8 @@ func (f *BeamConsistentFragment) content() templ.Component {
 			return false
 		})
 
-		n1 := doors.Node{}
-		n2 := doors.Node{}
+		n1 := doors.Door{}
+		n2 := doors.Door{}
 		f.b.Mutate(ctx, func(s state) state {
 			s.Int = s.Int + 1
 			return s
@@ -270,7 +270,7 @@ func (f *BeamConsistentFragment) content() templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			n3 := doors.Node{}
+			n3 := doors.Door{}
 
 			f.b.Sub(ctx, func(ctx context.Context, s state) bool {
 				n3.Update(ctx, test.ReportId(4, fmt.Sprint(s.Int)))

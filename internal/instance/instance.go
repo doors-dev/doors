@@ -93,14 +93,14 @@ func (inst *Instance[M]) getSession() coreSession {
 	return inst.session
 }
 
-func (inst *Instance[M]) TriggerHook(nodeId uint64, hookId uint64, w http.ResponseWriter, r *http.Request) bool {
+func (inst *Instance[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request) bool {
 	inst.mu.RLock()
 	if inst.killed || inst.core == nil {
 		inst.mu.RUnlock()
 		return false
 	}
 	inst.mu.RUnlock()
-	ok := inst.core.TriggerHook(nodeId, hookId, w, r)
+	ok := inst.core.TriggerHook(doorId, hookId, w, r)
 	if ok {
 		inst.session.limiter.touch(inst.id)
 	}

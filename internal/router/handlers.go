@@ -24,7 +24,7 @@ func ResourcePath(r *resources.Resource, ext string) string {
 	return fmt.Sprint("/d00r/r/" + r.HashString() + "." + ext)
 }
 
-func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceId string, nodeId uint64, hookId uint64) {
+func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceId string, doorId uint64, hookId uint64) {
 	sess := rr.getSession(r)
 	if sess == nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -35,9 +35,9 @@ func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceId s
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	found = inst.TriggerHook(nodeId, hookId, w, r)
+	found = inst.TriggerHook(doorId, hookId, w, r)
 	if !found {
-		w.WriteHeader(http.StatusForbidden)
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
@@ -50,7 +50,7 @@ func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	instanceId := matches[1]
-	nodeId, err := strconv.ParseUint(matches[2], 10, 64)
+	doorId, err := strconv.ParseUint(matches[2], 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return true
@@ -60,7 +60,7 @@ func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
 		w.WriteHeader(http.StatusBadRequest)
 		return true
 	}
-	rr.serveHook(w, r, instanceId, nodeId, hookId)
+	rr.serveHook(w, r, instanceId, doorId, hookId)
 	return true
 }
 

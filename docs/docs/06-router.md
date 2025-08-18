@@ -96,7 +96,7 @@ Provides various routing options via methods:
    Performs HTTP level redirect with 302 or the provided status to the URL constructed from the provided model
    
 5. `StaticPage(content templ.Component) PageRoute` and `StaticPage(...,status int) PageRoute`
-   Serves a static page with 200 or the provided status code. The usage of beams, nodes, etc, on a static page will cause panic.
+   Serves a static page with 200 or the provided status code. The usage of beams, doors, etc, on a static page will cause panic.
 
 ##### Page Request `doors.RPage[M any]`
 

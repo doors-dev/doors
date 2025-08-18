@@ -13,7 +13,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxstore"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
 )
@@ -43,7 +43,7 @@ func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredde
 		store:        ctxstore.NewStore(common.InstanceStoreCtxKey),
 		gen:          common.NewPrima(),
 		hooksMu:      sync.Mutex{},
-		hooks:        make(map[uint64]map[uint64]*node.NodeHook),
+		hooks:        make(map[uint64]map[uint64]*door.DoorHook),
 		spawner:      spawner,
 		solitaire:    solitaire,
 		cspCollector: inst.getSession().getRouter().CSP().NewCollector(),
@@ -60,7 +60,7 @@ type Core interface {
 	ClientConf() *common.ClientConf
 	Id() string
 	NewId() uint64
-	Cinema() *node.Cinema
+	Cinema() *door.Cinema
 	NewLink(context.Context, any) (*Link, error)
 	SessionExpire(d time.Duration)
 	SessionEnd()
@@ -73,8 +73,8 @@ type core[M any] struct {
 	store            *ctxstore.Store
 	gen              *common.Primea
 	hooksMu          sync.Mutex
-	hooks            map[uint64]map[uint64]*node.NodeHook
-	root             *node.Root
+	hooks            map[uint64]map[uint64]*door.DoorHook
+	root             *door.Root
 	solitaire        *solitaire
 	spawner          *shredder.Spawner
 	cspCollectorUsed atomic.Bool
@@ -116,7 +116,7 @@ func (c *core[M]) SessionId() string {
 	return c.instance.getSession().Id()
 }
 
-func (c *core[M]) Cinema() *node.Cinema {
+func (c *core[M]) Cinema() *door.Cinema {
 	return c.root.Cinema()
 }
 
@@ -168,7 +168,7 @@ func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, content templ.Co
 	ctx = c.store.Inject(ctx)
 	ctx = context.WithValue(ctx, common.AdaptersCtxKey, c.instance.getSession().getRouter().Adapters())
 
-	c.root = node.NewRoot(ctx, c)
+	c.root = door.NewRoot(ctx, c)
 
 	ch := c.root.Render(content)
 	render, ok := <-ch

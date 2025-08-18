@@ -197,7 +197,7 @@ func (f *callFragment) Render() templ.Component {
 				doors.Call(ctx, doors.CallConf{
 					Name: "myCall",
 					Arg:  len(r.Data()),
-					Trigger: func(ctx context.Context, r doors.RCall) {
+					On: func(ctx context.Context, r doors.RCall) {
 						var str string
 						decoder := json.NewDecoder(r.Body())
 						err := decoder.Decode(&str)

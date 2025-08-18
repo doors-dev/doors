@@ -8,14 +8,14 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 type include struct{}
 
 func (_ include) Render(ctx context.Context, w io.Writer) error {
 	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
-	node := ctx.Value(common.NodeCtxKey).(node.Core)
+	door := ctx.Value(common.DoorCtxKey).(door.Core)
 	if !inst.Include() {
 		slog.Warn("doors header included multiple times on the page, keeping first", slog.String("instance_id", inst.Id()))
 		return nil
@@ -47,7 +47,7 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 		"<script src=\"/%s.js\" id=\"%s\" data-root=\"%d\" data-ttl=\"%d\" data-sleep=\"%d\" data-request=\"%d\"></script>",
 		script.HashString(),
 		inst.Id(),
-		node.Id(),
+		door.Id(),
 		conf.TTL.Milliseconds(),
 		conf.SleepTimeout.Milliseconds(),
 		conf.RequestTimeout.Milliseconds(),

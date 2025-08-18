@@ -1,5 +1,5 @@
 import door from './door'
-import { capture, CaptureErr,  captureErrKinds } from './capture'
+import { capture, CaptureErr, captureErrKinds } from './capture'
 
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
@@ -10,10 +10,19 @@ function getHookParams(element: HTMLElement, name: string): any | undefined {
 }
 
 
+const global: { [key: string]: any } = {}
+
 class $D {
+    CaptureErr = CaptureErr
+
     constructor(private anchor: HTMLElement) { }
+
     clean(handler: () => void | Promise<void>): void {
-        door.onRemove(this.anchor, handler)
+        door.onUnmount(this.anchor, handler)
+    }
+
+    get G() {
+        return global
     }
 
     on(name: string, handler: (arg: any) => any, response?: (response: Response) => void
@@ -21,16 +30,16 @@ class $D {
         door.on(this.anchor, name, handler, response)
     }
 
-    async hookRaw(name: string, arg: any): Promise<Response> {
+    async rawHook(name: string, arg: any): Promise<Response> {
         const hook = getHookParams(this.anchor, name)
         if (hook === undefined) {
-            throw new CaptureErr(captureErrKinds.notFound, name)
+            throw new CaptureErr(captureErrKinds.capture, new Error("hook " + name + " not found"))
         }
         return await capture("default", undefined, arg, undefined, hook)
     }
 
     async hook(name: string, arg: any): Promise<any> {
-        const res = await this.hookRaw(name, arg)
+        const res = await this.rawHook(name, arg)
         return await res.json()
     }
 

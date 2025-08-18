@@ -1,4 +1,4 @@
-package node
+package door
 
 import (
 	"context"
@@ -15,28 +15,30 @@ type instance interface {
 	Thread() *shredder.Thread
 	CancelHooks(uint64, error)
 	CancelHook(uint64, uint64, error)
-	RegisterHook(uint64, uint64, *NodeHook)
+	RegisterHook(uint64, uint64, *DoorHook)
 	NewId() uint64
 	Call(common.Call)
 }
 
-type nodeMode int
+type doorMode int
 
 const (
-	dynamic nodeMode = iota
+	dynamic doorMode = iota
 	static
 	removed
 )
 
-type Node struct {
+type Door struct {
+	Tag       string
+	A     templ.Attributes
 	mu        sync.Mutex
 	parent    *tracker
 	container *container
 	content   templ.Component
-	mode      nodeMode
+	mode      doorMode
 }
 
-func (n *Node) registerHook(container *container, tracker *tracker, ctx context.Context, h Hook) (*HookEntry, bool) {
+func (n *Door) registerHook(container *container, tracker *tracker, ctx context.Context, h Hook) (*HookEntry, bool) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if ctx.Err() != nil || n.container == nil {
@@ -53,13 +55,13 @@ func (n *Node) registerHook(container *container, tracker *tracker, ctx context.
 	hook := newHook(ctx, h, n.container.inst)
 	n.container.inst.RegisterHook(n.container.id, hookId, hook)
 	return &HookEntry{
-		NodeId: n.container.id,
+		DoorId: n.container.id,
 		HookId: hookId,
 		inst:   n.container.inst,
 	}, true
 }
 
-func (n *Node) suspend(parent *tracker) {
+func (n *Door) suspend(parent *tracker) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if n.parent != parent {
@@ -73,10 +75,10 @@ func (n *Node) suspend(parent *tracker) {
 	n.container = nil
 }
 
-func (n *Node) reload(ctx context.Context) <-chan error {
+func (n *Door) reload(ctx context.Context) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx,"Node reload")
+	ch, ok := common.ResultChannel(ctx, "Door reload")
 	if !ok {
 		return ch
 	}
@@ -89,10 +91,10 @@ func (n *Node) reload(ctx context.Context) <-chan error {
 	return ch
 }
 
-func (n *Node) clear(ctx context.Context) <-chan error {
+func (n *Door) clear(ctx context.Context) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx,"Node clear")
+	ch, ok := common.ResultChannel(ctx, "Door clear")
 	if !ok {
 		return ch
 	}
@@ -106,10 +108,10 @@ func (n *Node) clear(ctx context.Context) <-chan error {
 	n.container.clear(ctx, ch)
 	return ch
 }
-func (n *Node) update(ctx context.Context, content templ.Component) <-chan error {
+func (n *Door) update(ctx context.Context, content templ.Component) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx,"Node update")
+	ch, ok := common.ResultChannel(ctx, "Door update")
 	if !ok {
 		return ch
 	}
@@ -124,10 +126,10 @@ func (n *Node) update(ctx context.Context, content templ.Component) <-chan error
 	return ch
 }
 
-func (n *Node) remove(ctx context.Context) <-chan error {
+func (n *Door) remove(ctx context.Context) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx,"Node remove")
+	ch, ok := common.ResultChannel(ctx, "Door remove")
 	if !ok {
 		return ch
 	}
@@ -144,10 +146,10 @@ func (n *Node) remove(ctx context.Context) <-chan error {
 	return ch
 }
 
-func (n *Node) replace(ctx context.Context, content templ.Component) <-chan error {
+func (n *Door) replace(ctx context.Context, content templ.Component) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx,"Node replace")
+	ch, ok := common.ResultChannel(ctx, "Door replace")
 	if !ok {
 		return ch
 	}
@@ -165,7 +167,7 @@ func (n *Node) replace(ctx context.Context, content templ.Component) <-chan erro
 	return ch
 }
 
-func (n *Node) Render(ctx context.Context, w io.Writer) error {
+func (n *Door) Render(ctx context.Context, w io.Writer) error {
 	n.mu.Lock()
 	if n.container != nil {
 		n.parent.removeChild(n)
@@ -191,7 +193,7 @@ func (n *Node) Render(ctx context.Context, w io.Writer) error {
 	}
 	defer n.mu.Unlock()
 	parentCtx := ctx.Value(common.ParentCtxKey).(context.Context)
-	n.parent = parentCtx.Value(common.NodeCtxKey).(*tracker)
+	n.parent = parentCtx.Value(common.DoorCtxKey).(*tracker)
 	if n.parent != nil {
 		n.parent.addChild(n)
 	}
@@ -207,7 +209,7 @@ func (n *Node) Render(ctx context.Context, w io.Writer) error {
 		inst:         inst,
 		parentCtx:    parentCtx,
 		parentCinema: parentCinema,
-		node:         n,
+		door:         n,
 	}
-	return n.container.render(thread, rm, w, n.content)
+	return n.container.render(thread, rm, w, n.Tag, n.A, n.content)
 }

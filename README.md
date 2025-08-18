@@ -31,7 +31,7 @@ doors combines the best of Single Page Applications (SPAs) and Multi-Page Applic
 - Everything else wrapped and secured by the framework
 
 ### 4. **NPM-Free Development**
-- No Node.js required to build or run
+- No Door.js required to build or run
 - Optional JavaScript/TypeScript integration when needed
 - Built-in esbuild for processing
 
@@ -50,7 +50,7 @@ doors combines the best of Single Page Applications (SPAs) and Multi-Page Applic
 
 ### Core Components
 
-**Nodes** - Dynamic placeholders in HTML where content can change:
+**Doors** - Dynamic placeholders in HTML where content can change:
 - Update, Replace, Remove, Clear, Reload operations
 - Explicit control over what changes and when
 

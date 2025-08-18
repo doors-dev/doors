@@ -6,7 +6,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 type FocusEvent = front.FocusEvent
@@ -31,13 +31,13 @@ type focusIOEventHook struct {
 	OnError []OnError
 }
 
-func (p *focusIOEventHook) init(event string, ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (p *focusIOEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[FocusEvent]{
 		capture: &front.FocusIOCapture{
 			Event:           event,
 			StopPropagation: p.StopPropagation,
 		},
-		node:      n,
+		door:      n,
 		ctx:       ctx,
 		inst:      inst,
 		onError:   p.OnError,
@@ -64,12 +64,12 @@ type focusEventHook struct {
 	OnError []OnError
 }
 
-func (p *focusEventHook) init(event string, ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (p *focusEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	(&eventAttr[FocusEvent]{
 		capture: &front.FocusCapture{
 			Event: event,
 		},
-		node:      n,
+		door:      n,
 		ctx:       ctx,
 		inst:      inst,
 		onError:   p.OnError,
@@ -105,7 +105,7 @@ func (f AFocus) Attr() AttrInit {
 	return f
 }
 
-func (f AFocus) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (f AFocus) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*focusEventHook)(&f)
 	p.init("focus", ctx, n, inst, attrs)
 }
@@ -136,7 +136,7 @@ func (b ABlur) Attr() AttrInit {
 	return b
 }
 
-func (b ABlur) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (b ABlur) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*focusEventHook)(&b)
 	p.init("blur", ctx, n, inst, attrs)
 }
@@ -170,7 +170,7 @@ func (f AFocusIn) Attr() AttrInit {
 	return f
 }
 
-func (f AFocusIn) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (f AFocusIn) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*focusIOEventHook)(&f)
 	p.init("focusin", ctx, n, inst, attrs)
 }
@@ -204,7 +204,7 @@ func (f AFocusOut) Attr() AttrInit {
 	return f
 }
 
-func (f AFocusOut) Init(ctx context.Context, n node.Core, inst instance.Core, attrs *front.Attrs) {
+func (f AFocusOut) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
 	p := (*focusIOEventHook)(&f)
 	p.init("focusout", ctx, n, inst, attrs)
 }

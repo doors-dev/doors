@@ -15,11 +15,11 @@ type HTMLElement struct {
 
 func HTMLParseElement(tag string, data []byte) (*HTMLElement, error) {
 	reader := bytes.NewReader(data)
-	node, err := html.Parse(reader)
+	door, err := html.Parse(reader)
 	if err != nil {
 		return nil, err
 	}
-	content, attrs := destructFirst(node, tag)
+	content, attrs := destructFirst(door, tag)
 	if content == nil {
 		return nil, nil
 	}

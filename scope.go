@@ -41,8 +41,7 @@ func (b *BlockingScope) Scope(inst instance.Core) *ScopeSet {
 }
 
 // SerialScope processes events one at a time in the order they were received.
-// Events are queued and processed sequentially, ensuring proper ordering.
-// This is useful when order matters but you don't want to lose events.
+// Events are queued and processed sequentially.
 type SerialScope struct {
 	id front.ScopeAutoId
 }
@@ -52,8 +51,7 @@ func (b *SerialScope) Scope(inst instance.Core) *ScopeSet {
 }
 
 // ScopeSerial creates a serial scope that processes events one at a time in order.
-// Events are queued and executed sequentially, ensuring no events are lost
-// and maintaining proper execution order.
+// Events are queued and executed sequentially.
 func ScopeSerial() []Scope {
 	return []Scope{&SerialScope{}}
 }
@@ -112,19 +110,17 @@ func ScopeDebounce(duration time.Duration, limit time.Duration) []Scope {
 
 
 // FrameScope manages two types of events: immediate events and frame events.
-// Immediate events (frame=false) execute immediately without waiting.
-// Frame events (frame=true) wait until all other events in the scope complete,
-// and then execute in blocking mode, all subsequent events during 
-// framing process are canceled (blocked)
+// Immediate events (frame=false) executed normaly. 
+// Frame events (frame=true) wait until all previous events in the scope complete,
+// while blocking new events, and then execute normaly.
 type FrameScope struct {
 	id front.ScopeAutoId
 }
 
 // Scope creates a frame-based scope with the specified event type.
-// Immediate events (frame=false) execute right away and don't wait for anything.
-// Frame events (frame=true) wait until all existing events in the scope complete,
-// and then execute in blocking mode, all subsequent events during 
-// framing process are canceled (blocked)
+// Immediate events (frame=false) executed normaly. 
+// Frame events (frame=true) wait until all previous events in the scope complete,
+// while blocking new events (frame=true and frame=false), and then execute normaly.
 //
 // Parameters:
 //   - frame: false for immediate execution, true to wait for other events to complete

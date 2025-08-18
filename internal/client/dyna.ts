@@ -44,7 +44,7 @@ class Registry {
         if (!dyna.add(element)) {
             return
         }
-        doors.onRemove(element, () => {
+        doors.onUnmount(element, () => {
             dyna.remove(element)
             if (dyna.isEmpty()) {
                 this.registry.delete(id)
@@ -80,9 +80,9 @@ export function setAttr(id: number, value: string): number {
 
 const attr = "data-d00r-dyna"
 export function attach(parent: Element | DocumentFragment | Document) {
-    for (const element of parent.querySelectorAll<Element>(`[${attr}]`)) {
+    for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attr}="applied"])`)) {
         const dynaList = JSON.parse(element.getAttribute(attr)!)
-        element.removeAttribute(attr)
+        element.setAttribute(attr, "applied")
         for (const [id, name] of dynaList) {
             r.add(element, id, name)
         }

@@ -10,40 +10,44 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/resources"
 )
 
-// Node represents a dynamic placeholder in the DOM tree that can be updated,
+// Door represents a dynamic placeholder in the DOM tree that can be updated,
 // replaced, or removed at runtime.
 //
 // It is a fundamental building block of the framework, used to manage dynamic HTML content.
-// All changes made to a Node are automatically synchronized with the frontend DOM.
+// All changes made to a Door are automatically synchronized with the frontend DOM.
 //
-// A Node is itself a templ.Component and can be used directly in templates:
+// A Door is itself a templ.Component and can be used directly in templates:
 //
-//	@node
+//	@door
 //	// or
-//	@node {
+//	@door {
 //	    // initial HTML content
 //	}
 //
-// Nodes start inactive and become active when rendered. Operations on inactive nodes
-// are stored virtually and applied when the node becomes active. If a node is removed
+// Doors start inactive and become active when rendered. Operations on inactive doors
+// are stored virtually and applied when the door becomes active. If a door is removed
 // or replaced, it becomes inactive again, but operations continue to update its virtual
 // state for potential future rendering.
 //
-// The context used when rendering a Node's content follows the Node's lifecycle.
+// The context used when rendering a Door's content follows the Door's lifecycle.
 // This allows you to safely use `ctx.Done()` inside background goroutines
-// that depend on the Node's presence in the DOM.
+// that depend on the Door's presence in the DOM.
 //
 // Extended methods (prefixed with X) return a channel that can be used to track
 // when operations complete. The channel receives nil on success or an error on failure,
-// then closes. For inactive nodes, the channel closes immediately without sending a value.
+// then closes. For inactive doors, the channel closes immediately without sending a value.
 //
-// During a single render cycle, Nodes and their children are guaranteed to observe
+// During a single render cycle, Doors and their children are guaranteed to observe
 // consistent state (Beam), ensuring stable and predictable rendering.
-type Node = node.Node
+type Door = door.Door
+
+
+// Deprecated name
+type Node = Door
 
 // Fragment is a helper interface for defining composable, stateful, and code-interactive components.
 //
@@ -54,25 +58,25 @@ type Node = node.Node
 // Fragments implement the Render method and can be rendered using the F() helper.
 //
 // A Fragment can be stored in a variable, rendered once, and later updated by calling custom methods.
-// These methods typically encapsulate internal Node updates — such as a Refresh() function
+// These methods typically encapsulate internal Door updates — such as a Refresh() function
 // that re-renders part of the fragment's content manually.
 //
 // By default, a Fragment is static — its output does not change after rendering.
-// To enable dynamic behavior, use a root-level Node to support targeted updates.
+// To enable dynamic behavior, use a root-level Door to support targeted updates.
 //
 // Example:
 //
 //	type Counter struct {
-//	    node  doors.Node
+//	    door  doors.Door
 //	    count int
 //	}
 //
 //	func (c *Counter) Refresh(ctx context.Context) {
-//	    c.node.Update(ctx, c.display())
+//	    c.door.Update(ctx, c.display())
 //	}
 //
 //	templ (c *Counter) Render() {
-//	    @c.node {
+//	    @c.door {
 //	        @c.display()
 //	    }
 //	    <button { doors.A(ctx, doors.AClick{
@@ -136,15 +140,15 @@ func F(f Fragment) templ.Component {
 //   - A templ.Component that updates reactively as the Beam value changes
 func Sub[T any](beam Beam[T], render func(T) templ.Component) templ.Component {
 	return E(func(ctx context.Context) templ.Component {
-		node := &Node{}
+		door := &Door{}
 		ok := beam.Sub(ctx, func(ctx context.Context, v T) bool {
-			node.Update(ctx, render(v))
+			door.Update(ctx, render(v))
 			return false
 		})
 		if !ok {
 			return nil
 		}
-		return node
+		return door
 	})
 }
 
@@ -164,9 +168,9 @@ func Inject[T any](key any, beam Beam[T]) templ.Component {
 	return E(func(ctx context.Context) templ.Component {
 		children := templ.GetChildren(ctx)
 		ctx = templ.ClearChildren(ctx)
-		node := &Node{}
+		door := &Door{}
 		ok := beam.Sub(ctx, func(ctx context.Context, v T) bool {
-			node.Update(
+			door.Update(
 				ctx,
 				templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 					ctx = context.WithValue(ctx, key, v)
@@ -178,7 +182,7 @@ func Inject[T any](key any, beam Beam[T]) templ.Component {
 		if !ok {
 			return nil
 		}
-		return node
+		return door
 	})
 }
 
@@ -234,7 +238,7 @@ func Run(f func(context.Context)) templ.Component {
 //	    for {
 //	        select {
 //	        case <-time.After(time.Second):
-//	            node.Update(ctx, currentTime())
+//	            door.Update(ctx, currentTime())
 //	        case <-ctx.Done():
 //	            return
 //	        }
@@ -468,7 +472,7 @@ func Components(content ...templ.Component) templ.Component {
 
 func Attributes(a []Attr) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		attrs := Init(ctx, a...)
+		attrs := InitA(ctx, a...)
 		return attrs.Render(ctx, w)
 	})
 }

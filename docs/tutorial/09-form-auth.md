@@ -101,7 +101,7 @@ templ (l *loginFragment) Render() {
 					autocomplete="password"
 				/>
 			</label>
-			@l.messageNode
+			@l.messageDoor
 		</fieldset>
 		<button role="submit">Log In</button>
 	</form>
@@ -211,8 +211,8 @@ const userPassword = "password123"
 
 
 type loginFragment struct {
-  // dynamic node to display message
-	messageNode doors.Node
+  // dynamic door to display message
+	messageDoor doors.Door
 }
 
 
@@ -224,11 +224,11 @@ templ (l *loginFragment) Render() {
 		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
         if r.Data().Login != userLogin || r.Data().Password != userPassword {
           //display errror
-          l.messageNode.Update(ctx, l.errorMessage())
+          l.messageDoor.Update(ctx, l.errorMessage())
           return false
         } 
         // display ok, just for testing
-        l.messageNode.Update(ctx, doors.Text("ok"))
+        l.messageDoor.Update(ctx, doors.Text("ok"))
         return false
 		},
 	}
@@ -249,7 +249,7 @@ templ (l *loginFragment) Render() {
 					autocomplete="password"
 				/>
 			</label>
-			@l.messageNode
+			@l.messageDoor
 		</fieldset>
 		<button id="login-submit" role="submit">Log In</button>
 	</form>
@@ -286,7 +286,7 @@ templ (l *loginFragment) Render() {
 		Scope:     doors.ScopeBlocking(),
 		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
 			if r.Data().Login != userLogin || r.Data().Password != userPassword {
-				l.messageNode.Update(ctx, l.errorMessage())
+				l.messageDoor.Update(ctx, l.errorMessage())
 				return false
 			}
 			session := driver.Sessions.Add(r.Data().Login, sessionDuration)

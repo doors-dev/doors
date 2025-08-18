@@ -79,8 +79,8 @@ type categoryFragment struct {
 	path       doors.SourceBeam[Path]
 	// add page beam field
 	page       doors.Beam[int]
-	itemsNode  doors.Node
-	loadNode   doors.Node
+	itemsDoor  doors.Door
+	loadDoor   doors.Door
 }
 
 templ (c *categoryFragment) listItems(cat driver.Cat) {
@@ -145,7 +145,7 @@ func (c *categoryFragment) itemHref(catId string, itemId int, page int) doors.At
 
 ```
 
-> We did it with `@doors.Inject(...)` for learning purposes. It's actually better to reuse `c.itemsNode` by updating it in the page beam sub. 
+> We did it with `@doors.Inject(...)` for learning purposes. It's actually better to reuse `c.itemsDoor` by updating it in the page beam sub. 
 >
 > ```
 >templ (c *categoryFragment) cat(cat driver.Cat) {
@@ -160,12 +160,12 @@ func (c *categoryFragment) itemHref(catId string, itemId int, page int) doors.At
 > 			return *p.Page
 > 		// subsribe
 > 		}).Sub(ctx, func(ctx context.Context, page int) bool {
-> 		  // update items node with actual page
-> 			c.itemsNode.Update(ctx, c.listItems(cat, page))
+> 		  // update items door with actual page
+> 			c.itemsDoor.Update(ctx, c.listItems(cat, page))
 > 			return false
 > 		})
-> 		// render items node
-> 		return &c.itemsNode
+> 		// render items door
+> 		return &c.itemsDoor
 > 	})
 > }
 > // add page as arg, no need to derive / inject
@@ -234,9 +234,9 @@ templ (c *categoryFragment) itemsPage(cat driver.Cat, page int) {
 
 > Now there is no reaction to change of page query param — that's intentional, we removed HTML dependency on page beam.
 
-### Load More With Node Replace
+### Load More With Door Replace
 
-We will implement loading new page by placeholder node replacement
+We will implement loading new page by placeholder door replacement
 
 ##### Add Struct Field
 
@@ -245,9 +245,9 @@ type categoryFragment struct {
 	authorized bool
 	path       doors.SourceBeam[Path]
 	page       doors.Beam[int]
-	itemsNode  doors.Node
-	// new node
-	loadNode   doors.Node
+	itemsDoor  doors.Door
+	// new door
+	loadDoor   doors.Door
 }
 
 
@@ -280,8 +280,8 @@ templ (c *categoryFragment) itemsPage(cat driver.Cat, page int, last bool) {
 		// if last page 
 		if last {
 		  // to avoid recursive render
-			{{ c.loadNode.Clear(ctx) }}
-      @c.loadNode
+			{{ c.loadDoor.Clear(ctx) }}
+      @c.loadDoor
 		}
 	}
 }
@@ -323,7 +323,7 @@ func (c *categoryFragment) attachLoadMore(cat driver.Cat, page int) doors.Attr {
             })
             
             //append new page
-            c.loadNode.Replace(ctx, c.itemsPage(cat, page, true))
+            c.loadDoor.Replace(ctx, c.itemsPage(cat, page, true))
             return true
         },
     }
@@ -393,13 +393,13 @@ type categoryFragment struct {
 	authorized bool
 	path       doors.SourceBeam[Path]
 	page       doors.Beam[int]
-	itemsNode  doors.Node
-	loadNode   doors.Node
+	itemsDoor  doors.Door
+	loadDoor   doors.Door
 }
 
 templ (c *categoryFragment) Render() {
 	@c.style()
-	@card(c.path, c.itemsNode.Reload, c.authorized)
+	@card(c.path, c.itemsDoor.Reload, c.authorized)
 	<div class="cat">
 		<aside>
 			@c.nav()
@@ -433,11 +433,11 @@ templ (c *categoryFragment) cat(cat driver.Cat) {
 	if c.authorized {
 		<p>
 			@createItem(cat, func(ctx context.Context) {
-				c.itemsNode.Reload(ctx)
+				c.itemsDoor.Reload(ctx)
 			})
 		</p>
 	}
-	@c.itemsNode {
+	@c.itemsDoor {
 		@c.listItems(cat)
 	}
 }
@@ -470,7 +470,7 @@ func (c *categoryFragment) attachLoadMore(cat driver.Cat, page int) doors.Attr {
 				p.Page = page
 				return p
 			})
-			c.loadNode.Replace(ctx, c.itemsPage(cat, page, true))
+			c.loadDoor.Replace(ctx, c.itemsPage(cat, page, true))
 			return true
 		},
 	}
@@ -496,8 +496,8 @@ templ (c *categoryFragment) itemsPage(cat driver.Cat, page int, last bool) {
 			</div>
 		</div>
 		if last {
-			{{ c.loadNode.Clear(ctx) }}
-			@c.loadNode
+			{{ c.loadDoor.Clear(ctx) }}
+			@c.loadDoor
 		}
 	}
 }
@@ -618,8 +618,8 @@ type itemsFragment struct {
 	// current category
 	cat   driver.Cat
 	state doors.Beam[pageState]
-	// loadNode
-	node doors.Node
+	// loadDoor
+	door doors.Door
 }
 
 func items(cat driver.Cat, path doors.SourceBeam[Path]) templ.Component {
@@ -653,7 +653,7 @@ templ (f *itemsFragment) Render() {
 		f.state.Sub(ctx, func(ctx context.Context, s pageState) bool {
       // no entries and no page loaded
       if s.max == -1 && loadedPages == -1 {
-          f.node.Replace(ctx, f.empty())
+          f.door.Replace(ctx, f.empty())
           return false
       }
       // limit to max pages 
@@ -664,14 +664,14 @@ templ (f *itemsFragment) Render() {
 			}
 			start := loadedPages + 1
 			// replace with pages from start to end
-			f.node.Replace(ctx, f.pages(start, end))
+			f.door.Replace(ctx, f.pages(start, end))
 			loadedPages = end
 			// not done, keep sub
 			return false
 		})
 	})
-	// render our node (it's has content beacuse first beam.Sub func call is blocking)
-	@f.node
+	// render our door (it's has content beacuse first beam.Sub func call is blocking)
+	@f.door
 	// depend on state
 	@doors.Inject(0, f.state) {
 		{{ s := ctx.Value(0).(pageState) }}
@@ -709,14 +709,14 @@ templ (f *itemsFragment) pages(start int, end int) {
 			</div>
 		}
 	}
-	// clear node to prevent infinite render loop
-	{{ f.node.Clear(ctx) }}
-	@f.node
+	// clear door to prevent infinite render loop
+	{{ f.door.Clear(ctx) }}
+	@f.door
 }
 
 
 templ (f *itemsFragment) empty() {
-	@f.node {
+	@f.door {
 		No Items
 	}
 }
@@ -759,7 +759,7 @@ func (f *itemsFragment) itemHref(catId string, itemId int, page int) doors.Attr 
 type categoryFragment struct {
 	authorized bool
 	path       doors.SourceBeam[Path]
-	itemsNode  doors.Node
+	itemsDoor  doors.Door
 	// extra fields removed
 }
 
@@ -772,10 +772,10 @@ templ (c *categoryFragment) cat(cat driver.Cat) {
 	</hgroup>
 	if c.authorized {
 		<p>
-			@createItem(cat, c.itemsNode.Reload)
+			@createItem(cat, c.itemsDoor.Reload)
 		</p>
 	}
-	@c.itemsNode {
+	@c.itemsDoor {
 	  // render items component
 		@items(cat, c.path)
 	}

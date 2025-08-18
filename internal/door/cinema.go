@@ -1,4 +1,4 @@
-package node
+package door
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type Watcher interface {
 type screenCinema interface {
 	tryKill(uint64)
 	isRoot() bool
-	nodeId() uint64
+	doorId() uint64
 	newThread() *shredder.Thread
 }
 
@@ -175,14 +175,14 @@ func (s *Screen) isEmpty() bool {
 	return len(s.watchers) == 0 && s.children.IsEmpty()
 }
 
-func newCinema(parent *Cinema, inst instance, coreThread *shredder.Thread, nodeId uint64) *Cinema {
+func newCinema(parent *Cinema, inst instance, coreThread *shredder.Thread, doorId uint64) *Cinema {
 	return &Cinema{
 		mu:         sync.Mutex{},
 		coreThread: coreThread,
 		inst:       inst,
 		parent:     parent,
 		screens:    make(map[uint64]*Screen),
-		id:         nodeId,
+		id:         doorId,
 	}
 }
 
@@ -200,7 +200,7 @@ func (ss *Cinema) newThread() *shredder.Thread {
 	return ss.inst.Thread()
 }
 
-func (ss *Cinema) nodeId() uint64 {
+func (ss *Cinema) doorId() uint64 {
 	return ss.id
 }
 
@@ -268,7 +268,7 @@ func (ss *Cinema) tryKill(id uint64) {
 
 func (ss *Cinema) InitSync(syncThread *shredder.Thread, ctx context.Context, id uint64, seq uint, c *common.FuncCollector) {
 	if !ss.isRoot() {
-		log.Fatal("Only root node can init sync")
+		log.Fatal("Only root door can init sync")
 	}
 	ss.mu.Lock()
 	defer ss.mu.Unlock()

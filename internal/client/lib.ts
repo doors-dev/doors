@@ -33,11 +33,11 @@ export const date = (date: Date) => {
     return timeString + offsetString
 }
 
-export const doorId = (nodeId: number) => {
-    return `d00r/${nodeId}`
+export const elementId = (doorId: number) => {
+    return `d00r/${doorId}`
 }
 
-export const nodeId = (doorId: string) => {
+export const doorId = (doorId: string) => {
     return Number(doorId.slice(5))
 }
 
@@ -51,7 +51,7 @@ export const fetchOptForm = (data: FormData) => {
 export const fetchOptJson = (data: any) => {
     return {
         body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json;charset=UTF-8' }
+        headers: { "Content-Type": "application/json;charset=UTF-8" }
     }
 }
 
@@ -60,7 +60,7 @@ export const fetchOpt = (data: any) => {
         body: null as any,
         headers: {} as { [key: string]: string },
     }
-    if (data === undefined || data === null) {
+    if (data === undefined) {
         return result
     }
     if (data instanceof FormData) {
@@ -69,24 +69,24 @@ export const fetchOpt = (data: any) => {
     }
     if (data instanceof URLSearchParams) {
         result.body = data
-        result.headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8'
+        result.headers["Content-Type"] = "application/x-www-form-urlencoded;charset=UTF-8"
         return result
     }
     if (data instanceof Blob) {
         result.body = data
         if (data.type) {
-            result.headers['Content-Type'] = data.type
+            result.headers["Content-Type"] = data.type
         }
         return result
     }
     if (data instanceof File) {
         result.body = data
-        result.headers['Content-Type'] = data.type || 'application/octet-stream'
+        result.headers["Content-Type"] = data.type || "application/octet-stream"
         return result
     }
-    if (typeof ReadableStream !== 'undefined' && data instanceof ReadableStream) {
+    if (typeof ReadableStream !== "undefined" && data instanceof ReadableStream) {
         result.body = data
-        result.headers['Content-Type'] = 'application/octet-stream'
+        result.headers["Content-Type"] = "application/octet-stream"
         return result
     }
     if (
@@ -94,11 +94,11 @@ export const fetchOpt = (data: any) => {
         ArrayBuffer.isView(data)
     ) {
         result.body = data
-        result.headers['Content-Type'] = 'application/octet-stream'
+        result.headers["Content-Type"] = "application/octet-stream"
         return result
     }
     result.body = JSON.stringify(data)
-    result.headers['Content-Type'] = 'application/json;charset=UTF-8'
+    result.headers["Content-Type"] = "application/json;charset=UTF-8"
     return result
 }
 

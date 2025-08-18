@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/node"
+	"github.com/doors-dev/doors/internal/door"
 )
 
 type Cancel = func()
@@ -61,7 +61,7 @@ type Beam[T any] interface {
 	// Returns a Cancel function and a boolean indicating whether the watcher was added.
 	AddWatcher(ctx context.Context, w Watcher[T]) (Cancel, bool)
 
-	addWatcher(ctx context.Context, w node.Watcher) bool
+	addWatcher(ctx context.Context, w door.Watcher) bool
 	sync(uint, *common.FuncCollector) (*T, bool)
 }
 
@@ -108,7 +108,7 @@ type beam[T any, T2 any] struct {
 	null   T2
 }
 
-func (b *beam[T, T2]) addWatcher(ctx context.Context, w node.Watcher) bool {
+func (b *beam[T, T2]) addWatcher(ctx context.Context, w door.Watcher) bool {
 	return b.source.addWatcher(ctx, w)
 }
 

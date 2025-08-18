@@ -27,7 +27,7 @@ func card(path doors.SourceBeam[Path], reload func(context.Context)) templ.Compo
 type cardFragment struct {
 	path   doors.SourceBeam[Path]
 	reload func(context.Context)
-	node   doors.Node
+	door   doors.Door
 }
 
 
@@ -43,28 +43,28 @@ templ (c *cardFragment) Render() {
 			return p.ItemId
 		})
 		// this time we subscribe directly (not by using @doors.Sub(..))
-		// because we need direct access to the node to also update to/after edit
+		// because we need direct access to the door to also update to/after edit
 		itemId.Sub(ctx, func(ctx context.Context, id int) bool {
 			if id == -1 {
-				c.node.Clear(ctx)
+				c.door.Clear(ctx)
 				return false
 			}
-			// call method to load item card into the node
+			// call method to load item card into the door
 			c.loadCard(ctx, id)
 			return false
 		})
 	})
-	@c.node
+	@c.door
 }
 
-// query item and update the node with card
+// query item and update the door with card
 func (c *cardFragment) loadCard(ctx context.Context, id int) {
 	item, ok := driver.Items.Get(id)
 	if !ok {
-		c.node.Update(ctx, c.card(nil))
+		c.door.Update(ctx, c.card(nil))
 		return
 	}
-	c.node.Update(ctx, c.card(&item))
+	c.door.Update(ctx, c.card(&item))
 }
 
 templ (c *cardFragment) card(item *driver.Item) {
@@ -117,7 +117,7 @@ templ (c *cardFragment) card(item *driver.Item) {
 templ (c *categoryFragment) Render() {
 	@c.style()
 	// render card fragment
-	@card(c.path, c.itemsNode.Reload)	
+	@card(c.path, c.itemsDoor.Reload)	
   <div class="cat">
 		<aside>
 			@c.nav()
@@ -139,6 +139,6 @@ At this point, you have all the concepts to do it yourself.
 Steps:
 
 1. Add authorized property to the card fragment and pass it as a constructor argument.
-2. If authorized, show the edit button inside the card pop-up, which switches the Node content with the edit form HTML
+2. If authorized, show the edit button inside the card pop-up, which switches the Door content with the edit form HTML
 3. Add submit handler attribute — update item via driver and call loadCard method to show new data
 

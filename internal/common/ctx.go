@@ -8,7 +8,7 @@ type ctxKey int
 
 const (
     InstanceCtxKey ctxKey = iota
-    NodeCtxKey
+    DoorCtxKey
     ThreadCtxKey
     RenderMapCtxKey
     BlockingCtxKey

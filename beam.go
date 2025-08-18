@@ -4,7 +4,7 @@ import "github.com/doors-dev/doors/internal/beam"
 
 // Beam represents a reactive value stream that can be read, subscribed to, or watched.
 //
-// When used in a render cycle, it is guaranteed that a Node and all of its children
+// When used in a render cycle, it is guaranteed that a Door and all of its children
 // will observe the exact same value for a given Beam. This ensures stable and predictable
 // rendering behavior, even when multiple components depend on the same reactive source.
 type Beam[T any] = beam.Beam[T]

@@ -87,20 +87,20 @@ templ (c *catalogPage) Body() {
 	// {{ ... }} used write regular golang code inside templ
 	{{
 	// initialize dynamic element
-	node := doors.Node{}
+	door := doors.Door{}
 	// subscribe to our beam
 	c.beam.Sub(ctx, func(ctx context.Context, p Path) bool {
-		// depending on path variant marker set Node content
+		// depending on path variant marker set Door content
 		if p.IsMain {
-			node.Update(ctx, main())
+			door.Update(ctx, main())
 		} else {
-			node.Update(ctx, category())
+			door.Update(ctx, category())
 		}
 		// false means not done, keep sub active
 		return false
 	})
 	}}
-	@node
+	@door
 }
 
 ```
@@ -109,7 +109,7 @@ templ (c *catalogPage) Body() {
 
 ### Refactor to @doors.Sub helper
 
-Beam and Node are elementary building pieces. But sometimes you don't want so much control (and boilerplate), so let's refactor `Body()` method to use a helper component that combines `Beam` an `Node`
+Beam and Door are elementary building pieces. But sometimes you don't want so much control (and boilerplate), so let's refactor `Body()` method to use a helper component that combines `Beam` an `Door`
 
 ```templ
 templ (c *catalogPage) Body() {
