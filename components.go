@@ -8,9 +8,9 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/resources"
 )
 
@@ -44,7 +44,6 @@ import (
 // During a single render cycle, Doors and their children are guaranteed to observe
 // consistent state (Beam), ensuring stable and predictable rendering.
 type Door = door.Door
-
 
 // Deprecated name
 type Node = Door
@@ -419,7 +418,7 @@ func (s style) Render(ctx context.Context, w io.Writer) error {
 	return styleRender(resource, inline, s.mode, attrs).Render(ctx, w)
 }
 
-func renderRaw(tag string, attrs templ.Attributes, content []byte) templ.Component {
+func renderRaw(tag string, attrs templ.Attributer, content []byte) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		_, err := w.Write(fmt.Appendf(nil, "<%s", tag))
 		if err != nil {
@@ -472,7 +471,7 @@ func Components(content ...templ.Component) templ.Component {
 
 func Attributes(a []Attr) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		attrs := InitA(ctx, a...)
+		attrs := A(ctx, a...)
 		return attrs.Render(ctx, w)
 	})
 }

@@ -6,9 +6,10 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/instance"
 )
 
 type include struct{}
@@ -43,15 +44,24 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 		}
 	}
 	conf := inst.ClientConf()
-	_, err := w.Write(fmt.Appendf(nil,
-		"<script src=\"/%s.js\" id=\"%s\" data-root=\"%d\" data-ttl=\"%d\" data-sleep=\"%d\" data-request=\"%d\"></script>",
-		script.HashString(),
-		inst.Id(),
-		door.Id(),
-		conf.TTL.Milliseconds(),
-		conf.SleepTimeout.Milliseconds(),
-		conf.RequestTimeout.Milliseconds(),
-	))
+	attrs := map[string]any{
+		"src":          "/" + script.HashString() + ".js",
+		"id":           inst.Id(),
+		"data-root":    door.Id(),
+		"data-ttl":     conf.TTL.Milliseconds(),
+		"data-sleep":   conf.SleepTimeout.Milliseconds(),
+		"data-request": conf.RequestTimeout.Milliseconds(),
+		"data-detached":     inst.Detached(),
+	}
+	_, err := w.Write([]byte("<script"))
+	if err != nil {
+		return err
+	}
+	err = templ.RenderAttributes(context.Background(), w, templ.Attributes(attrs))
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte("></script>"))
 	return err
 
 }

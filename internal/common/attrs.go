@@ -1,8 +1,8 @@
 package common
 
 import (
-	"log/slog"
 	"github.com/a-h/templ"
+	"log/slog"
 )
 
 func NewAttrs() *Attrs {
@@ -19,7 +19,11 @@ type Attrs struct {
 	arrays  map[string][]any
 }
 
-func (a *Attrs) Join(attrs *Attrs) {
+func (a *Attrs) Items() []templ.KeyValue[string, any] {
+	return a.a().Items()
+}
+
+func (a *Attrs) Include(attrs *Attrs) {
 	for name := range attrs.regular {
 		a.Set(name, attrs.regular[name])
 	}
@@ -41,7 +45,7 @@ func (a *Attrs) marshal(value any) (string, error) {
 	return AsString(&b), nil
 }
 
-func (a *Attrs) A() templ.Attributes {
+func (a *Attrs) a() templ.Attributes {
 	output := make(templ.Attributes)
 	for name := range a.regular {
 		output[name] = a.regular[name]
@@ -88,5 +92,3 @@ func (a *Attrs) AppendArray(name string, value any) {
 	}
 	a.arrays[name] = arr
 }
-
-

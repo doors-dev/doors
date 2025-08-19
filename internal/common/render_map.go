@@ -168,7 +168,7 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
 			if magicA == nil {
 				magicA = attr
 			} else {
-				magicA.Join(attr)
+				magicA.Include(attr)
 			}
 			cursor = cursor + 4
 			mode = modeLook
@@ -185,7 +185,7 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
 			if err != nil {
 				return err
 			}
-			err = templ.RenderAttributes(context.Background(), w, magicA.A())
+			err = templ.RenderAttributes(context.Background(), w, magicA)
 			if err != nil {
 				return err
 			}

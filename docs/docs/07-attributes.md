@@ -81,7 +81,7 @@ Sometimes you want to use the same handler for multiple elements. To do this, pr
 
 ```templ
 // initialization
-{{ onchange := doors.InitA(ctx, doors.AChange{
+{{ onchange := doors.A(ctx, doors.AChange{
 	/* setup */
 }) }}
 
@@ -99,26 +99,14 @@ Sometimes you want to use the same handler for multiple elements. To do this, pr
 Alternatively to **Magic Attributes,** you can utilize templ spread syntax
 
 ```templ
-<button
-{ doors.A(ctx, doors.AClick{
-	/* setup */
-}, /* other attrs */)... }
->
-	Click Me!
-</button>
-```
-
-Or
-
-```templ
 {{  onclick := doors.AClick{
 	/* setup */
 } }}
 
-<button { onclick.A(ctx)... }>Click Me!</button>
+<button { doors.A(ctx, onclick)... }>Click Me!</button>
 ```
 
-
+> ⚠️ One element can't have magic and spread attributes; one overwrites another
 
 
 

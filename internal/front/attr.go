@@ -38,15 +38,16 @@ func (a *Attrs) AppendCapture(capture Capture, hook *Hook) {
 }
 
 func (a *Attrs) Init(_ context.Context, _ door.Core, _ instance.Core, attrs *Attrs) {
-	a.Join(attrs)
+	attrs.Join(a)
 }
 
 func (a *Attrs) Render(ctx context.Context, w io.Writer) error {
 	return AttrRender(ctx, w, a)
 }
 
-func (a *Attrs) Join(attrs *Attrs) {
-	attrs.Attrs.Join(&a.Attrs)
+func (a *Attrs) Join(attrs *Attrs) *Attrs {
+	a.Attrs.Include(&attrs.Attrs)
+	return a
 }
 
 type Attr interface {

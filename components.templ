@@ -148,13 +148,13 @@ templ scriptRender(i *resources.InlineResource, inline bool, mode resources.Inli
 	name := inlineName(i.Attrs, "js")
 	}}
 	if inline && mode != resources.InlineModeHost {
-		@renderRaw("script", attrs.A(), i.Content())
+		@renderRaw("script", attrs, i.Content())
 	} else if mode == resources.InlineModeHost {
 		{{ attrs.Set("src", router.ResourcePath(i.Resource(), name)) }}
-		<script { attrs.A()... }></script>
+		<script { attrs... }></script>
 	} else {
 		{{
-	attrs.Join(front.A(ctx, ARawSrc{
+	attrs.Join(A(ctx, ARawSrc{
 		Once: true,
 		Name: name,
 		Handler: func(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +162,7 @@ templ scriptRender(i *resources.InlineResource, inline bool, mode resources.Inli
 		},
 	}))
 		}}
-		<script { attrs.A()... }></script>
+		<script { attrs... }></script>
 	}
 }
 
@@ -171,12 +171,12 @@ templ styleRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 	name := inlineName(i.Attrs, "css")
 	}}
 	if inline && mode != resources.InlineModeHost {
-		@renderRaw("style", attrs.A(), i.Content())
+		@renderRaw("style", attrs, i.Content())
 	} else if mode == resources.InlineModeHost {
 		{{
 	attrs.Set("href", router.ResourcePath(i.Resource(), name))
 		}}
-		<link rel="stylesheet" { attrs.A()... }/>
+		<link rel="stylesheet" { attrs... }/>
 	} else {
 		{{
 	attrs.Join(front.A(ctx, ARawFileHref{
@@ -187,6 +187,6 @@ templ styleRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 		},
 	}))
 		}}
-		<link rel="stylesheet" { attrs.A()... }/>
+		<link rel="stylesheet" { attrs... }/>
 	}
 }

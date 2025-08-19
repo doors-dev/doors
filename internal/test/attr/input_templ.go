@@ -385,7 +385,7 @@ func (f *inputFragment) changeFields() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		radio := doors.InitA(ctx, f.attr("radio"))
+		radio := doors.A(ctx, f.attr("radio"))
 		templ_7745c5c3_Err = radio.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

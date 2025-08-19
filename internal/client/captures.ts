@@ -1,5 +1,6 @@
 import { fetchOpt, fetchOptJson, fetchOptForm, date } from "./lib";
 import navigator from "./navigator";
+import { detached } from "./params";
 
 interface EventOpt {
     preventDefault?: boolean;
@@ -63,7 +64,7 @@ export default {
         opt.preventDefault = true;
         applyEventOpt(event, opt);
         const href = (event.currentTarget as HTMLAnchorElement).href;
-        if (href) {
+        if (href && !detached) {
             navigator.push(href);
         }
         return {};

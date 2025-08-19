@@ -45,6 +45,36 @@ func (s *Bro) Close() {
 	s.l.Close()
 }
 
+func (s *Bro) PageStatus(t *testing.T, path string, status int) *rod.Page {
+	t.Helper()
+	page := s.b.MustPage("")
+	var err string
+	url := s.url(path)
+	wait := page.EachEvent(
+		func(e *proto.NetworkResponseReceived) bool {
+			if e.Response.URL != url {
+				return false
+			}
+			if e.Response.Status != status {
+				err = fmt.Sprintf("[http %d] %s", int(e.Response.Status), e.Response.URL)
+			}
+			return true
+		},
+		func(e *proto.NetworkLoadingFailed) bool {
+			err = fmt.Sprintf("[request-failed] %s – %s", e.RequestID, e.ErrorText)
+			return true
+		},
+		func(_ *proto.PageLoadEventFired) bool {
+			return true
+		},
+	)
+	page.MustNavigate(url)
+	wait()
+	if err != "" {
+		t.Fatal(err)
+	}
+	return page
+}
 func (s *Bro) Page(t *testing.T, path string) *rod.Page {
 	t.Helper()
 	page := s.b.MustPage("")
@@ -389,3 +419,4 @@ func NewRandFile(size int64) RandFile {
 		Hash: hex.EncodeToString(h.Sum(nil)),
 	}
 }
+

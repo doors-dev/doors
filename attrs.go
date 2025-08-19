@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 )
 
 type AttrInit = front.Attr
@@ -46,14 +46,9 @@ type Attr interface {
 // Returns:
 //   - A templ.Attributes object that can be spread into a templ element.
 
-func A(ctx context.Context, a ...Attr) templ.Attributes {
-	return InitA(ctx, a...).A()
-}
-
-
 type Attrs = front.Attrs
 
-func InitA(ctx context.Context, a ...Attr) *Attrs {
+func A(ctx context.Context, a ...Attr) *Attrs {
 	ar := make([]front.Attr, len(a))
 	for i, attr := range a {
 		ar[i] = attr.Attr()

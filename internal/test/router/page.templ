@@ -1,0 +1,65 @@
+package router
+
+import "github.com/doors-dev/doors"
+
+type PathA struct {
+	Path bool `path:"/a"`
+}
+
+templ pageA(b doors.SourceBeam[PathC]) {
+	<html>
+		<head>
+			@doors.Include()
+		</head>
+		<body>
+			<div id="path">A</div>
+		</body>
+	</html>
+}
+
+type PathB struct {
+	Path bool `path:"/b"`
+}
+
+templ static(path string) {
+	<html>
+		<head></head>
+		<body>
+			<div id="path">{ path }</div>
+		</body>
+	</html>
+}
+
+type PathC struct {
+	PathC1 bool `path:"/c1"`
+	PathC2 bool `path:"/c2"`
+}
+
+templ pageC(b doors.SourceBeam[PathC]) {
+	<html>
+		<head>
+			@doors.Include()
+		</head>
+		<body>
+			@doors.Inject(0, b) {
+				if ctx.Value(0).(PathC).PathC1 {
+					<div id="path">c1</div>
+				} else {
+					<div id="path">c2</div>
+				}
+			}
+			@doors.AHref{
+				Model: PathC{
+					PathC1: true,
+				},
+			}
+			<a>c1</a>
+			@doors.AHref{
+				Model: PathC{
+					PathC2: true,
+				},
+			}
+			<a id="c2">c2</a>
+		</body>
+	</html>
+}

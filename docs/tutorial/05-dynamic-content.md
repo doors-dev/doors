@@ -54,8 +54,6 @@ templ category() {
 	@testMainHref
 	<a>Go back</a>
 }
-
-
 ```
 
 

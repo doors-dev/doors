@@ -35,6 +35,7 @@ type coreInstance[M any] interface {
 	include() bool
 	conf() *common.SystemConf
 	OnPanic(error)
+	detached() bool
 }
 
 func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredder.Spawner) *core[M] {
@@ -52,6 +53,7 @@ func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredde
 
 type Core interface {
 	Thread() *shredder.Thread
+	Detached() bool
 	InlineNonce() (string, bool)
 	CSPCollector() (*common.CSPCollector, bool)
 	ImportRegistry() *resources.Registry
@@ -79,6 +81,10 @@ type core[M any] struct {
 	spawner          *shredder.Spawner
 	cspCollectorUsed atomic.Bool
 	cspCollector     *common.CSPCollector
+}
+
+func (c *core[M]) Detached() bool {
+	return c.instance.detached()
 }
 
 func (c *core[M]) OnPanic(err error) {

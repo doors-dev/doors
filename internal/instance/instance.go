@@ -66,6 +66,10 @@ type Instance[M any] struct {
 	killTimer *time.Timer
 }
 
+func (inst *Instance[M]) detached() bool {
+	return inst.opt.Detached
+}
+
 func (inst *Instance[M]) resetKillTimer() bool {
 	if inst.killTimer != nil {
 		stopped := inst.killTimer.Stop()

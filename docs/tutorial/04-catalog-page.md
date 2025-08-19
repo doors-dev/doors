@@ -257,41 +257,15 @@ templ menu() {
 
 Since version 0.2.0, you can render any attributes  (`doors.A...`) directly in the template just before component you want to attach it to:
 
-```temp;
-templ menu() {
-	<nav>
-		<ul>
-			<li><strong>doors tutorial</strong></li>
-		</ul>
-		<ul>
-			<li>
-			  // magic attribute, will be attached to the next element
-				@doors.AHref{
-					Model: HomePath{},
-					Active: doors.Active{
-						Indicator: doors.IndicatorClass("contrast"),
-					},
-				}
-				<a>home</a>
-			</li>
-			<li>
-			  // magic attribute, will be attached to the next element
-				@doors.AHref{
-					Model: CatalogPath{
-						IsMain: true,
-					},
-					Active: doors.Active{
-						Indicator:    doors.IndicatorClass("contrast"),
-						PathMatcher:  doors.PathMatcherStarts(),
-						QueryMatcher: doors.QueryMatcherIgnore(),
-					},
-				}
-				<a>catalog</a>
-			</li>
-		</ul>
-	</nav>
-}
-
+```templ
+<li>
+  @homeMenuHref
+  <a>home</a>
+</li>
+<li>
+  @catalogMenuHref
+  <a>catalog</a>
+</li>
 ```
 
-> Use  `{ doors.A(ctx, ...)... }` together with magic attributes on the same element.
+> Don't use  `{ doors.A(ctx, ...)... }` together with magic attributes on the same element!

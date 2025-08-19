@@ -239,7 +239,7 @@ func scriptRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 
 		name := inlineName(i.Attrs, "js")
 		if inline && mode != resources.InlineModeHost {
-			templ_7745c5c3_Err = renderRaw("script", attrs.A(), i.Content()).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = renderRaw("script", attrs, i.Content()).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -249,7 +249,7 @@ func scriptRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs.A())
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -259,7 +259,7 @@ func scriptRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 			}
 		} else {
 
-			attrs.Join(front.A(ctx, ARawSrc{
+			attrs.Join(A(ctx, ARawSrc{
 				Once: true,
 				Name: name,
 				Handler: func(w http.ResponseWriter, r *http.Request) {
@@ -270,7 +270,7 @@ func scriptRender(i *resources.InlineResource, inline bool, mode resources.Inlin
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs.A())
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -307,7 +307,7 @@ func styleRender(i *resources.InlineResource, inline bool, mode resources.Inline
 
 		name := inlineName(i.Attrs, "css")
 		if inline && mode != resources.InlineModeHost {
-			templ_7745c5c3_Err = renderRaw("style", attrs.A(), i.Content()).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = renderRaw("style", attrs, i.Content()).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -318,7 +318,7 @@ func styleRender(i *resources.InlineResource, inline bool, mode resources.Inline
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs.A())
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -339,7 +339,7 @@ func styleRender(i *resources.InlineResource, inline bool, mode resources.Inline
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs.A())
+			templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, attrs)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
