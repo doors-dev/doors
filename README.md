@@ -31,7 +31,7 @@ doors combines the best of Single Page Applications (SPAs) and Multi-Page Applic
 - Everything else wrapped and secured by the framework
 
 ### 4. **NPM-Free Development**
-- No Door.js required to build or run
+- No Node.js required to build or run
 - Optional JavaScript/TypeScript integration when needed
 - Built-in esbuild for processing
 
