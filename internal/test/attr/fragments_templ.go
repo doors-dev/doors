@@ -11,8 +11,10 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
+	"io"
 )
 
 type pointerFragment struct {
@@ -260,6 +262,19 @@ func (d *hookFragment) attr() []doors.Attr {
 			d.r.Update(ctx, 0, r.Data())
 			return len(r.Data()), true
 		},
+	}, doors.ARawHook{
+		Name: "rawHook",
+		On: func(ctx context.Context, r doors.RRawHook) bool {
+			body, err := io.ReadAll(r.Body())
+			if err != nil {
+				return true
+			}
+			var str string
+			json.Unmarshal(body, &str)
+			d.r.Update(ctx, 1, str)
+			fmt.Fprint(r.W(), len(str))
+			return true
+		},
 	}, doors.AData{
 		Name:  "myData",
 		Value: d.data,
@@ -291,7 +306,7 @@ func (f *hookFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div id=\"target\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div id=\"target\"></div><div id=\"target2\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -311,7 +326,7 @@ func (f *hookFragment) Render() templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " <script>\n            const a = await $d.hook(\"myHook\", $d.data(\"myData\"))\n            document.getElementById(\"target\").innerHTML = `${a}`\n        </script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " <script>\n            const a = await $d.hook(\"myHook\", $d.data(\"myData\"))\n            document.getElementById(\"target\").innerHTML = `${a}`\n            const b = await $d.hook(\"rawHook\", $d.data(\"myData\"))\n            document.getElementById(\"target2\").innerHTML = `${b}`\n        </script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

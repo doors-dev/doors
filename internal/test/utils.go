@@ -350,9 +350,7 @@ func TestReport(t *testing.T, page *rod.Page, content string) {
 	TestReportId(t, page, 0, content)
 }
 
-func GetReportContent(t *testing.T, page *rod.Page, id int) string {
-	page = page.Timeout(200 * time.Millisecond)
-	selector := fmt.Sprintf("#report-%d", id)
+func GetContent(t *testing.T, page *rod.Page, selector string) string {
 	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
 	if err != nil {
 		t.Fatal("content: element ", selector, " not found")
@@ -362,6 +360,12 @@ func GetReportContent(t *testing.T, page *rod.Page, id int) string {
 		t.Fatal("content: element ", selector, " no text")
 	}
 	return s
+}
+
+func GetReportContent(t *testing.T, page *rod.Page, id int) string {
+	page = page.Timeout(200 * time.Millisecond)
+	selector := fmt.Sprintf("#report-%d", id)
+	return GetContent(t, page, selector)
 }
 func TestReportId(t *testing.T, page *rod.Page, id int, content string) {
 	TestContent(t, page, fmt.Sprintf("#report-%d", id), content)
@@ -419,4 +423,3 @@ func NewRandFile(size int64) RandFile {
 		Hash: hex.EncodeToString(h.Sum(nil)),
 	}
 }
-

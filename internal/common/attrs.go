@@ -23,7 +23,7 @@ func (a *Attrs) Items() []templ.KeyValue[string, any] {
 	return a.a().Items()
 }
 
-func (a *Attrs) Include(attrs *Attrs) {
+func (a *Attrs) Join(attrs *Attrs) {
 	for name := range attrs.regular {
 		a.Set(name, attrs.regular[name])
 	}

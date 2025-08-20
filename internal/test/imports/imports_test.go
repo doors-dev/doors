@@ -119,3 +119,17 @@ func TestReact(t *testing.T) {
 	test.Click(t, page, "#pdec")
 	test.TestReportId(t, page, 1, "-1")
 }
+
+func TestFiles(t *testing.T) {
+	bro := test.NewBro(browser,
+		doors.ServePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
+			return pr.Page(&test.Page{
+				H: staticFiles,
+				F: &Empty{},
+			})
+		}),
+	)
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+}

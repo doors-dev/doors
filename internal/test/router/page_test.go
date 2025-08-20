@@ -3,11 +3,21 @@ package router
 import (
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/a-h/templ"
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/go-rod/rod"
 )
+
+func testPath(t *testing.T, page *rod.Page, path string) {
+	url := strings.Split(strings.Trim(page.MustInfo().URL, "/"), "/")
+	last := url[len(url)-1]
+	if last != path {
+		t.Fatal("path expected " + path + " actual " + last)
+	}
+}
 
 func TestPageStatic(t *testing.T) {
 	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
@@ -70,10 +80,132 @@ func TestPageRerouteDetached(t *testing.T) {
 	testPath(t, page, "a")
 }
 
-func testPath(t *testing.T, page *rod.Page, path string) {
-	url := strings.Split(strings.Trim(page.MustInfo().URL, "/"), "/")
-	last := url[len(url)-1]
-	if last != path {
-		t.Fatal("path expected " + path + " actual " + last)
+func TestPageError(t *testing.T) {
+	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+		return p.Redirect(PathC{})
+	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+		return p.PageFunc(pageC)
+	}), doors.SetErrorPage(func(message string) templ.Component {
+		return static("error")
+	}))
+	defer bro.Close()
+	page := bro.PageStatus(t, "/a", 500)
+	defer page.Close()
+	test.TestContent(t, page, "#path", "error")
+}
+
+func TestPageInfiniteReroute(t *testing.T) {
+	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+		return p.Reroute(PathC{}, true)
+	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+		return p.Reroute(PathA{}, true)
+	}), doors.SetErrorPage(func(message string) templ.Component {
+		return static("error")
+	}))
+	defer bro.Close()
+	page := bro.PageStatus(t, "/a", 500)
+	defer page.Close()
+	test.TestContent(t, page, "#path", "error")
+}
+
+func TestLocations(t *testing.T) {
+	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+		return p.PageFunc(pageA)
+	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+		return p.PageFunc(pageC)
+	}), doors.SetErrorPage(func(message string) templ.Component {
+		return static("error")
+	}))
+	defer bro.Close()
+	page := bro.Page(t, "/a")
+	testPath(t, page, "a")
+	defer page.Close()
+	test.Click(t, page, "#assign")
+	testPath(t, page, "c1")
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "a")
+	test.Click(t, page, "#assign")
+	testPath(t, page, "c1")
+	test.Click(t, page, "#replace")
+	testPath(t, page, "c2")
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "a")
+	test.Click(t, page, "#assign")
+	marker := test.GetContent(t, page, "#marker")
+	test.Click(t, page, "#reload")
+	marker2 := test.GetContent(t, page, "#marker")
+	if marker == marker2 {
+		t.Fatalf("reload did not work")
 	}
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "a")
+}
+func TestAfterAssign(t *testing.T) {
+	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+		return p.PageFunc(pageA)
+	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+		return p.PageFunc(pageC)
+	}), doors.SetErrorPage(func(message string) templ.Component {
+		return static("error")
+	}), doors.ServePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
+		return p.StaticPage(static("b"))
+	}))
+	defer bro.Close()
+	page := bro.Page(t, "/a")
+	defer page.Close()
+	test.Click(t, page, "#assign")
+	test.Click(t, page, "#assign_after")
+	testPath(t, page, "b")
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "c1")
+}
+
+func TestAfterReplace(t *testing.T) {
+	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+		return p.PageFunc(pageA)
+	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+		return p.PageFunc(pageC)
+	}), doors.SetErrorPage(func(message string) templ.Component {
+		return static("error")
+	}), doors.ServePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
+		return p.StaticPage(static("b"))
+	}))
+	defer bro.Close()
+	page := bro.Page(t, "/a")
+	defer page.Close()
+	test.Click(t, page, "#assign")
+	test.Click(t, page, "#replace_after")
+	testPath(t, page, "b")
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "a")
+}
+func TestAfterReload(t *testing.T) {
+	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+		return p.PageFunc(pageA)
+	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+		return p.PageFunc(pageC)
+	}), doors.SetErrorPage(func(message string) templ.Component {
+		return static("error")
+	}), doors.ServePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
+		return p.StaticPage(static("b"))
+	}))
+	defer bro.Close()
+	page := bro.Page(t, "/a")
+	defer page.Close()
+	test.Click(t, page, "#assign")
+	marker := test.GetContent(t, page, "#marker")
+	test.Click(t, page, "#reload_after")
+	marker2 := test.GetContent(t, page, "#marker")
+	if marker == marker2 {
+		t.Fatalf("reload did not work")
+	}
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "a")
+
 }

@@ -168,7 +168,7 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
 			if magicA == nil {
 				magicA = attr
 			} else {
-				magicA.Include(attr)
+				magicA.Join(attr)
 			}
 			cursor = cursor + 4
 			mode = modeLook

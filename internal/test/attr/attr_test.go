@@ -26,7 +26,7 @@ func TestAttrHook(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &hookFragment{
 			data: data,
-			r:    test.NewReporter(1),
+			r:    test.NewReporter(2),
 		}
 	})
 	page := bro.Page(t, "/")
@@ -34,7 +34,9 @@ func TestAttrHook(t *testing.T) {
 	defer page.Close()
 	<-time.After(100 * time.Millisecond)
 	test.TestContent(t, page, "#target", fmt.Sprint(len(data)))
+	test.TestContent(t, page, "#target2", fmt.Sprint(len(data)))
 	test.TestReport(t, page, data)
+	test.TestReportId(t, page, 1, data)
 }
 func TestAttrCall(t *testing.T) {
 	data := common.RandId()

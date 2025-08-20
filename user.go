@@ -45,8 +45,6 @@ func LocationReload(ctx context.Context) {
 //	// Navigate to external site
 //	doors.LocationAssignRaw(ctx, "https://example.com")
 //
-//	// Navigate to a specific path
-//	doors.LocationAssignRaw(ctx, "/static/docs.pdf")
 func LocationAssignRaw(ctx context.Context, url string) {
 	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
 	inst.Call(&instance.LocationAssign{
@@ -62,10 +60,6 @@ func LocationAssignRaw(ctx context.Context, url string) {
 // The url parameter should be a complete URL string. Use this for redirects
 // where you don't want the current page in the browser's history.
 //
-// Example:
-//
-//	// Redirect after form submission
-//	doors.LocationReplaceRaw(ctx, "/success")
 func LocationReplaceRaw(ctx context.Context, url string) {
 	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
 	inst.Call(&instance.LocationReplace{

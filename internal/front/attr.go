@@ -46,7 +46,7 @@ func (a *Attrs) Render(ctx context.Context, w io.Writer) error {
 }
 
 func (a *Attrs) Join(attrs *Attrs) *Attrs {
-	a.Attrs.Include(&attrs.Attrs)
+	a.Attrs.Join(&attrs.Attrs)
 	return a
 }
 

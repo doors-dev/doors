@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -84,7 +85,7 @@ func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page anyPage
 	inst, ok := page.intoInstance(session, opt)
 	if !ok {
 		if new {
-			log.Fatalf("New session can't end")
+			panic("New session can't end")
 		}
 		rr.sess.Delete(session.Id())
 		rr.servePage(w, r, page, opt)
@@ -92,6 +93,7 @@ func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page anyPage
 	}
 	err := inst.Serve(w, r, page.getStatus())
 	if err != nil {
+		slog.Error("instance serve error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
 		rr.serveError(w, r, err.Error())
 	}
 }
@@ -110,7 +112,8 @@ main:
 	for {
 		counter += 1
 		if counter > 64 {
-			rr.serveError(w, r, "probably you have infinite reroute")
+			slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", "reroute loop"))
+			rr.serveError(w, r, "reroute loop")
 			return true
 		}
 		if page != nil {
@@ -150,12 +153,16 @@ main:
 				name := path.GetAdapterName(res.Model)
 				adapter, ok := rr.adapters[name]
 				if !ok {
-					rr.serveError(w, r, "Adapter "+name+" not found")
+					msg := "Adapter " + name + " not found"
+					slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", msg))
+					rr.serveError(w, r, msg)
 					return true
 				}
 				location, err := adapter.EncodeAny(res.Model)
 				if err != nil {
-					rr.serveError(w, r, "Adapter "+name+" encoding error "+err.Error())
+					msg := "Adapter " + name + " encoding error: " + err.Error()
+					slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", msg))
+					rr.serveError(w, r, msg)
 					return true
 				}
 				if res.Status == 0 {
@@ -305,8 +312,12 @@ func (rr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (rr *Router) serveError(w http.ResponseWriter, r *http.Request, m string) {
 	w.WriteHeader(http.StatusInternalServerError)
-	if rr.errPage != nil {
-		err := rr.errPage(m).Render(r.Context(), w)
-		println(err)
+	if rr.errPage == nil {
+		return
 	}
+	err := rr.errPage(m).Render(r.Context(), w)
+	if err == nil {
+		return
+	}
+	slog.Error("error page rendering error", slog.String("error", err.Error()))
 }

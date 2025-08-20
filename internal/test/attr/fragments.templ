@@ -3,8 +3,10 @@ package attr
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
+	"io"
 )
 
 type pointerFragment struct {
@@ -154,6 +156,19 @@ func (d *hookFragment) attr() []doors.Attr {
 			d.r.Update(ctx, 0, r.Data())
 			return len(r.Data()), true
 		},
+	}, doors.ARawHook{
+		Name: "rawHook",
+		On: func(ctx context.Context, r doors.RRawHook) bool {
+			body, err := io.ReadAll(r.Body())
+			if err != nil {
+				return true
+			}
+            var str string
+            json.Unmarshal(body, &str)
+			d.r.Update(ctx, 1, str)
+            fmt.Fprint(r.W(), len(str))
+			return true
+		},
 	}, doors.AData{
 		Name:  "myData",
 		Value: d.data,
@@ -163,11 +178,14 @@ func (d *hookFragment) attr() []doors.Attr {
 templ (f *hookFragment) Render() {
 	@doors.F(f.r)
 	<div id="target"></div>
+	<div id="target2"></div>
 	@doors.Script() {
 		@doors.Attributes(f.attr())
 		<script>
             const a = await $d.hook("myHook", $d.data("myData"))
             document.getElementById("target").innerHTML = `${a}`
+            const b = await $d.hook("rawHook", $d.data("myData"))
+            document.getElementById("target2").innerHTML = `${b}`
         </script>
 	}
 }

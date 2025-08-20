@@ -1,18 +1,28 @@
 package router
 
-import "github.com/doors-dev/doors"
+import (
+	"context"
+	"github.com/doors-dev/doors"
+)
 
 type PathA struct {
 	Path bool `path:"/a"`
 }
 
-templ pageA(b doors.SourceBeam[PathC]) {
+templ pageA(b doors.SourceBeam[PathA]) {
 	<html>
 		<head>
 			@doors.Include()
 		</head>
 		<body>
 			<div id="path">A</div>
+			@doors.AClick{
+				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+					doors.LocationAssign(ctx, PathC{PathC1: true})
+					return false
+				},
+			}
+			<button id="assign">assign</button>
 		</body>
 	</html>
 }
@@ -60,6 +70,43 @@ templ pageC(b doors.SourceBeam[PathC]) {
 				},
 			}
 			<a id="c2">c2</a>
+			@doors.AClick{
+				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+					doors.LocationReplace(ctx, PathC{PathC2: true})
+					return true
+				},
+			}
+			<button id="replace">replace</button>
+			<div id="marker">{ doors.RandId() }</div>
+			@doors.AClick{
+				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+					doors.LocationReload(ctx)
+					return false
+				},
+			}
+			<button id="reload">reload</button>
+
+			@doors.AClick{
+				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+					r.After(doors.AfterLocationAssign(PathB{}))
+					return false
+				},
+			}
+			<button id="assign_after">assign_after</button>
+			@doors.AClick{
+				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+					r.After(doors.AfterLocationReplace(PathB{}))
+					return false
+				},
+			}
+			<button id="replace_after">replace_after</button>
+			@doors.AClick{
+				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+					r.After(doors.AfterLocationReload())
+					return false
+				},
+			}
+			<button id="reload_after">reload_after</button>
 		</body>
 	</html>
 }
