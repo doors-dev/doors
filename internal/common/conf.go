@@ -41,10 +41,10 @@ type SystemConf struct {
 	// for debugging or when using external compression. Default: false.
 	ServerDisableGzip bool
 
-	// ClientHiddenSleepTimer controls how long hidden/background page instances keep
+	// DisconnectHiddenTimer controls how long hidden/background page instances keep
 	// connection active. This helps manage CPU/RAM usage when many tabs are open 
-	// but not actively viewed. Default: 3 minutes.
-	ClientHiddenSleepTimer time.Duration
+	// but not actively viewed. Default: 10 minutes.
+	DisconnectHiddenTimer time.Duration
 
 	// SolitaireRollSize sets the maximum number of bytes that can be sent in a single
 	// response before commanding the client to roll to a new request. Default: 8 KB.
@@ -99,7 +99,7 @@ type ClientConf struct {
 func GetClientConf(s *SystemConf) *ClientConf {
 	return &ClientConf{
 		TTL:            s.InstanceTTL,
-		SleepTimeout:   s.ClientHiddenSleepTimer,
+		SleepTimeout:   s.DisconnectHiddenTimer,
 		RequestTimeout: s.SolitaireRequestTimeout,
 	}
 }
@@ -130,13 +130,13 @@ func InitDefaults(s *SystemConf) {
 	if s.InstanceGoroutineLimit <= 0 {
 		s.InstanceGoroutineLimit = 16
 	}
-	if s.InstanceTTL == 0 {
+	if s.InstanceTTL <= 0 {
 		s.InstanceTTL = 15 * time.Minute
 	}
 	if s.InstanceTTL < s.SolitaireRequestTimeout * 2{
 		s.InstanceTTL = s.SolitaireRequestTimeout * 2
 	}
-	if s.ClientHiddenSleepTimer == 0 {
-		s.ClientHiddenSleepTimer = 3 * time.Minute
+	if s.DisconnectHiddenTimer <= 0 {
+		s.DisconnectHiddenTimer = 10 * time.Minute
 	}
 }

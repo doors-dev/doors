@@ -284,8 +284,8 @@ func SetErrorPage(page func(message string) templ.Component) Mod {
 // CSP represents Content Security Policy configuration.
 type CSP = common.CSP
 
-// SetCSP configures Content Security Policy headers for enhanced security.
+// EnableCSP configures Content Security Policy headers for enhanced security.
 // This helps prevent XSS attacks and other security vulnerabilities.
-func SetCSP(csp *CSP) Mod {
-	return router.SetCSP(csp)
+func EnableCSP(csp CSP) Mod {
+	return router.SetCSP(&csp)
 }

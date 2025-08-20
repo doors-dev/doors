@@ -19,6 +19,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
@@ -117,9 +118,18 @@ func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
 	)
 }
 
+
 func NewBro(browser *rod.Browser, mods ...doors.Mod) *Bro {
 	r := doors.NewRouter()
 	r.Use(mods...)
+	limit := os.Getenv("LIMIT") != ""
+	if limit {
+		r.Use(doors.SetSystemConf(common.SystemConf{
+			SessionInstanceLimit:   1,
+			InstanceGoroutineLimit: 1,
+		}))
+	}
+
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		log.Fatalf("Error starting listner: %v\n", err)

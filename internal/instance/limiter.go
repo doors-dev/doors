@@ -140,7 +140,7 @@ func (l *limiter) add(id string) string {
 	if len(l.players) > l.limit {
 		removed = l.tail.id
 		l.tail = l.tail.leader
-		if removed == l.tail.id {
+		if l.tail != nil && removed == l.tail.id {
 			log.Fatal("REMOVED ", removed, " new tail", l.tail.id)
 		}
 		delete(l.players, removed)

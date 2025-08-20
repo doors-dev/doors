@@ -298,23 +298,23 @@ func Script() templ.Component {
 	}
 }
 
-// ScriptLocal converts inline script content to an external resource that is served
+// ScriptPrivate converts inline script content to an external resource that is served
 // securely within the current context scope. The script is processed and served with
 // a src attribute, but not exposed as a publicly accessible static asset.
 // The script content is wrapped in an anonymous async function and provides the $d variable.
 // The content must be wrapped in <script> tags.
-func ScriptLocal() templ.Component {
+func ScriptPrivate() templ.Component {
 	return script{
 		mode: resources.InlineModeLocal,
 	}
 }
 
-// ScriptLocalNoCache converts inline script content to an external resource within
+// ScriptDisposable converts inline script content to an external resource within
 // the current context scope without caching. The script is processed on every render
 // and served with a src attribute, but not exposed as a static resource.
 // The script content is wrapped in an anonymous async function and provides the $d variable.
 // The content must be wrapped in <script> tags.
-func ScriptLocalNoCache() templ.Component {
+func ScriptDisposable() templ.Component {
 	return script{
 		mode: resources.InlineModeNoCache,
 	}
@@ -372,21 +372,21 @@ func Style() templ.Component {
 	}
 }
 
-// StyleLocal converts inline CSS content to an external resource that is served
+// StylePrivate converts inline CSS content to an external resource that is served
 // securely within the current context scope. The CSS is processed and served with
 // an href attribute, but not exposed as a publicly accessible static asset.
 // The content must be wrapped in <style> tags.
-func StyleLocal() templ.Component {
+func StylePrivate() templ.Component {
 	return style{
 		mode: resources.InlineModeLocal,
 	}
 }
 
-// StyleLocalNoCache converts inline CSS content to an external resource within
+// StyleDisposable converts inline CSS content to an external resource within
 // the current context scope without caching. The CSS is processed on every render
 // and served with an href attribute, but not exposed as a static resource.
 // The content must be wrapped in <style> tags.
-func StyleLocalNoCache() templ.Component {
+func StyleDisposable() templ.Component {
 	return style{
 		mode: resources.InlineModeNoCache,
 	}
@@ -488,6 +488,14 @@ func Any(v any) templ.Component {
 	m, ok := v.([]templ.Component)
 	if ok {
 		return Components(m...)
+	}
+	e, ok := v.(func(context.Context) templ.Component)
+	if ok {
+		return E(e)
+	}
+	r, ok := v.(func(context.Context))
+	if ok {
+		return Run(r)
 	}
 	return Text(v)
 }

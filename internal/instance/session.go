@@ -32,7 +32,7 @@ func NewSession(r router) *Session {
 		instances: make(map[string]AnyInstance),
 		mu:        sync.Mutex{},
 		router:    r,
-		limiter:   newLimiter(r.Conf().InstanceGoroutineLimit),
+		limiter:   newLimiter(r.Conf().SessionInstanceLimit),
 	}
 	sess.SetExpiration(r.Conf().SessionExpiration)
 	return sess

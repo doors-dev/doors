@@ -218,18 +218,18 @@ type loginFragment struct {
 
 templ (l *loginFragment) Render() {
   // attach submit
-  @doors.ASubmit[loginData]{
+    @doors.ASubmit[loginData]{
 		Indicator: doors.IndicatorAttrQuery("#login-submit", "aria-busy", "true"),
 		Scope:     doors.ScopeBlocking(),
 		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
-        if r.Data().Login != userLogin || r.Data().Password != userPassword {
-          //display errror
-          l.messageDoor.Update(ctx, l.errorMessage())
-          return false
-        } 
-        // display ok, just for testing
-        l.messageDoor.Update(ctx, doors.Text("ok"))
-        return false
+            if r.Data().Login != userLogin || r.Data().Password != userPassword {
+              //display errror
+              l.messageDoor.Update(ctx, l.errorMessage())
+              return false
+            } 
+            // display ok, just for testing
+            l.messageDoor.Update(ctx, doors.Text("ok"))
+            return false
 		},
 	}
 	<form>
@@ -424,20 +424,20 @@ templ (h *homePage) Body() {
 		<h1>Welcome <strong>{ h.session.Login }</strong>!</h1>
 		// attach click attribute with logout handler
 		@doors.AClick{
-      On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-        // clean cookies
-        r.SetCookie(&http.Cookie{
-          Name:   "session",
-          Path:   "/",
-          MaxAge: -1,
-        })
-        // remove session entry
-        driver.Sessions.Remove(h.session.Token)
-        // end doors session to ensure no active pages left
-        doors.SessionEnd(ctx)
-        return true
-      },
-    }
+          On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+            // clean cookies
+            r.SetCookie(&http.Cookie{
+              Name:   "session",
+              Path:   "/",
+              MaxAge: -1,
+            })
+            // remove session entry
+            driver.Sessions.Remove(h.session.Token)
+            // end doors session to ensure no active pages left
+            doors.SessionEnd(ctx)
+            return true
+          },
+        }
 		<button>Log Out</button>
 	}
 }

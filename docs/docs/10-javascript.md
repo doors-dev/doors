@@ -43,6 +43,15 @@ The Script Component provides integration with framework functions. It:
 >
 > *That's intentional, because modules stay in memory for the whole page lifetime.*
 
+### Variants
+
+* `doors.Script()`
+  Creates publicly available cachable static resource from inline script
+* `doors.ScriptPrivate()`
+  Creates session-protected resource, internaly chaches script content
+* `doors.ScriptDisposable()`
+  Creates session-protected resource, does not cache content (for dynamic scripts to avoid memory leaks)
+
 ## 2. Pass Data To JavaScript 
 
 With **doors.AData** attribute

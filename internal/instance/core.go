@@ -92,7 +92,7 @@ func (c *core[M]) OnPanic(err error) {
 }
 
 func (c *core[M]) SleepTimeout() time.Duration {
-	return c.instance.conf().ClientHiddenSleepTimer
+	return c.instance.conf().DisconnectHiddenTimer
 }
 
 func (c *core[M]) ClientConf() *common.ClientConf {
