@@ -14,16 +14,16 @@ Let's add a new pages path model.
 
 `./common/path.go`
 
-```go
+```templ
 package common
 
 type CatalogPath struct {
-    IsMain    bool `path:"/catalog"` // show categories
-    IsCat     bool `path:"/catalog/:CatId"` // show items of category
-    IsItem    bool `path:"/catalog/:CatId/:ItemId"` // show item
-    CatId     string 
-    ItemId    int
-    Page      *int `query:"page"` // query param for pagination (used pointer to avoid 0 default value)
+	IsMain bool `path:"/catalog"`                // show categories
+	IsCat  bool `path:"/catalog/:CatId"`         // show items of category
+	IsItem bool `path:"/catalog/:CatId/:ItemId"` // show item
+	CatId  string
+	ItemId int
+	Page   *int `query:"page"` // query param for pagination (used pointer to avoid showing 0 default value)
 }
 
 // prev one, keep it
@@ -42,7 +42,7 @@ In new package `catalog`
 package catalog
 
 import "github.com/doors-dev/doors"
-import "github.com/derstruct/doors-starter/common"
+import "github.com/derstruct/doors-tutorial/common"
 
 type Path = common.CatalogPath
 
@@ -50,11 +50,11 @@ type catalogPage struct {
 }
 
 templ (c *catalogPage) Head() {
-    <title>catalog</title>
+	<title>catalog</title>
 }
 
 templ (c *catalogPage) Body() {
-    <h1>Catalog</h1>
+	<h1>Catalog</h1>
 }
 
 /*
@@ -67,18 +67,11 @@ templ (c *catalogPage) Render(b doors.SourceBeam[Path]) {
 Because there is only one component `common.Template(c)`, we can return it directly:
 */
 
-func (c *catalogPage) Render(b doors.SourceBeam[Path]) templ.Comonent {
+func (c *catalogPage) Render(b doors.SourceBeam[Path]) templ.Component {
     return common.Template(c)
 }
-```
 
-./catalog/handler.go
-
-```go
-package catalog
-
-import "github.com/doors-dev/doors"
-
+// page request handler
 func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 	return p.Page(&catalogPage{})
 }
@@ -94,26 +87,28 @@ package main
 import (
 	"net/http"
 
-	"github.com/derstruct/doors-starter/catalog"
-	"github.com/derstruct/doors-starter/home"
+	"github.com/derstruct/doors-tutorial/catalog"
+	"github.com/derstruct/doors-tutorial/home"
 	"github.com/doors-dev/doors"
 )
 
 func main() {
 	r := doors.NewRouter()
 	r.Use(doors.ServePage(home.Handler))
-  
-  // our new page
-	r.Use(doors.ServePage(catalog.Handler))
-  
-	panic(http.ListenAndServeTLS(":8443", "localhost+2.pem", "localhost+2-key.pem", r))
 
+	// our new catalog page
+	r.Use(doors.ServePage(catalog.Handler))
+
+	err := http.ListenAndServeTLS(":8443", "localhost+2.pem", "localhost+2-key.pem", r)
+	if err != nil {
+		panic(err)
+	}
 }
 ```
 
 ## 4. Check
 
-Visit http://localhost:8080/catalog 
+Visit https://localhost:8443/catalog 
 
 ## 5. Styling 
 
@@ -138,9 +133,13 @@ templ Template(p Page) {
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<meta name="color-scheme" content="light dark"/>
-			// add CDN styles 
-			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
 			@doors.Include()
+
+			// same as <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			// but adds CSP headers (useful if you enable CSP later), please refer to docs/ref/imports.md for details
+			@doors.Imports(doors.ImportStyleExternal{
+				Href: "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css",
+			})
 			@p.Head()
 		</head>
 		<body>
@@ -165,8 +164,12 @@ templ menu() {
 			<li><strong>doors tutorial</strong></li>
 		</ul>
 		<ul>
-			<li><a href="/">home</a></li>
-			<li><a href="/catalog">services</a></li>
+			<li>
+				<a href="/">home</a>
+			</li>
+			<li>
+				<a href="/catalog">services</a>
+			</li>
 		</ul>
 	</nav>
 }
@@ -177,25 +180,24 @@ include it in our template
 `./common/page.templ`
 
 ```templ
-/* ... */
-
 templ Template(p Page) {
-	/* ... */
-	<body>
-		// PicoCSS container
-		<main class="container">
-			// our menu component
-			@menu()
-			@p.Body()
-		</main>
-	</body>
-	/* ... */
+		/* ... */
+    <body>
+        // PicoCSS container
+        <main class="container">
+            // menu component
+            @menu()
+            @p.Body()
+        </main>
+    </body>
+		/* ... */
 }
+
 ```
 
-## 5. Idiomatic Menu
+> Confirm that it works in browser
 
->  In **templ** you can assign HTML attributes from a map with a [spread](https://templ.guide/syntax-and-usage/attributes/#spread-attributes) syntax. *doors* takes advantage of that to prepare attributes.
+## 5. Idiomatic Menu
 
 *doors* enables you to prepare href attributes in a type-safe manner and has extensive tooling for active link highlighting built in.
 
@@ -206,66 +208,54 @@ package common
 
 import "github.com/doors-dev/doors"
 
-
-// prepare our hrefs
-// home
-var homeMenuHref = doors.AHref{
-  // href Path Model 
-	Model: HomePath{},
-	// active link highlighting settings
-	Active: doors.Active{
-		// indicate active link with class
-		Indicator: doors.IndicatorClass("contrast"),
-	},
-}
-
-//catalog
-var catalogMenuHref = doors.AHref{
-  // href Path Model
-	Model: CatalogPath{
-		// marker of variant
-		IsMain: true,
-	},
-	// active link highlighting settings
-	Active: doors.Active{
-		// indicate active link with class
-		Indicator: doors.IndicatorClass("contrast"),
-		// page path must start with href value
-		PathMatcher: doors.PathMatcherStarts(),
-		// ignore query params
-		QueryMatcher: doors.QueryMatcherIgnore(),
-	},
-}
-
 templ menu() {
 	<nav>
 		<ul>
 			<li><strong>doors tutorial</strong></li>
 		</ul>
 		<ul>
-			// construct attributes, add href
-			<li><a { doors.A(ctx, homeMenuHref)... }>home</a></li>
-			<li><a { doors.A(ctx, catalogMenuHref)... }>catalog</a></li>
+			<li>
+			  // Magic attribute syntax, attribute attached to the next element
+				@doors.AHref{
+					// href Path Model
+					Model: HomePath{},
+					// active link highlighting settings
+					Active: doors.Active{
+						// indicate active link with attribute aria-current="page"
+						Indicator: doors.IndicatorAttr("aria-current", "page"),
+					},
+				}
+				<a>home</a>
+			</li>
+			<li>
+			  // Magic attribute syntax, attribute attached to the next element
+				@doors.AHref{
+					// href Path Model
+					Model: CatalogPath{
+						// marker of variant
+						IsMain: true,
+					},
+					// active link highlighting settings
+					Active: doors.Active{
+						// indicate active link with attribute aria-current="page"
+						Indicator: doors.IndicatorAttr("aria-current", "page"),
+						// page path must start with href value to enable highlighting
+						PathMatcher: doors.PathMatcherStarts(),
+						// ignore query params 
+						QueryMatcher: doors.QueryMatcherIgnore(),
+					},
+				}
+				<a>services</a>
+			</li>
 		</ul>
 	</nav>
 }
 ```
 
-> Navigation between the home page and the catalog causes a new page load, which happens because you are navigating between different path models. 
+> Navigation between the home page and the catalog causes a new page load, which happens because you are navigating between different path models. We learn about dynamic pages in next article.
 
-## 6. Magic Attributes
+Please refer to **href-and-src.md** for full details on href. Alternatively to **Magic Attribute** syntax you can use attribute spread, check out **attributes.md** for details.
 
-Since version 0.2.0, you can render any attributes  (`doors.A...`) directly in the template just before component you want to attach it to:
+## 6. Conclusion
 
-```templ
-<li>
-  @homeMenuHref
-  <a>home</a>
-</li>
-<li>
-  @catalogMenuHref
-  <a>catalog</a>
-</li>
-```
-
-> Don't use  `{ doors.A(ctx, ...)... }` together with magic attributes on the same element!
+Visit https://localhost:8443/ to checkout that switching between pages works and active link indication applied.

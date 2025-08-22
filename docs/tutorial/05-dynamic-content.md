@@ -1,106 +1,108 @@
 # Dynamic Content
 
-Our structure:
+Desired catalog page structure:
 
-* Main catalog page 
+* Main 
   *Show the list of categories*
-* Category catalog page
-  *Show a list of items of the category and an item card in a pop-up.*
+* Category
+  *Show a list of items in the category*
+  * Item Card
+    *Pop-up.*
 
-## 1. Prepare templates for different path variants
+## 1. Create templates for all path options
 
 ### Catalog Main Page
 
-`./catalog/main.teml`
+`./catalog/main.templ`
 
 ```templ
 package catalog
 
 import "github.com/doors-dev/doors"
 
-// test href to show category page
-var testCatHref = doors.AHref {
-	Model: Path{
-		IsCat: true,
-		CatId: "test_cat",
-	},
-}
-
 templ main() {
 	<h1>Catalog</h1>
-	// attach to <a>
-	@testCatHref
+
+	// href to  test category page
+	@doors.AHref{
+		Model: Path{
+			IsCat: true,
+			CatId: "test_cat",
+		},
+	}
 	<a>Test Category</a>
 }
 ```
 
-`./catalog/cat.templ`
+`./catalog/category.templ`
 
 ```templ
 package catalog
 
 import "github.com/doors-dev/doors"
 
-// test href to go main catalog page
-var testMainHref = doors.AHref{
-	Model: Path{
-		IsMain: true,
-	},
-}
-
 templ category() {
 	<h1>Category</h1>
-	// attach to <a>
-	@testMainHref
+	// back to main
+	@doors.AHref{
+		Model: Path{
+			IsMain: true,
+		},
+	}
 	<a>Go back</a>
 }
+
 ```
 
 
 
-## 2. Enable dynamic page updates
+## 2. Enable dynamic page updates on path change
 
-### Save beam to page field.
+### Save path beam to page field.
+
+**Beam** represents a reactive, changing value stream. Framork provides a **beam** that holds the **path model**.
 
 ```templ
 type catalogPage struct {
-	// add field
-	beam doors.SourceBeam[Path]
+  // add fields
+	path doors.SourceBeam[Path]
 }
+
+/* ... */
 
 func (c *catalogPage) Render(b doors.SourceBeam[Path]) templ.Component {
 	// save it
-	c.beam = b
+	c.path = b
 	return common.Template(c)
 }
 
 ```
 
-Now we can use `Beam` with Path Model inside Body(). Let's enable dynamic updates explicitly.
+Now use **path bream** inside the body to enable dynamic updates explicitly.
 
 `./catalog/page.templ`
 
 ```templ
 templ (c *catalogPage) Body() {
-	// {{ ... }} used write regular golang code inside templ
-	{{
-	// initialize dynamic element
-	door := doors.Door{}
-	// subscribe to our beam
-	c.beam.Sub(ctx, func(ctx context.Context, p Path) bool {
-		// depending on path variant marker set Door content
-		if p.IsMain {
-			door.Update(ctx, main())
-		} else {
-			door.Update(ctx, category())
-		}
-		// false means not done, keep sub active
-		return false
+	// doors.E eveluates function and renders return value
+	@doors.E(func(ctx context.Context) templ.Component {
+		// intialize dynamic container
+		door := doors.Door{}
+		// subscribe to path changes
+		c.path.Sub(ctx, func(ctx context.Context, p Path) bool {
+			// depending on path variant marker set Door content
+			if p.IsMain {
+				door.Update(ctx, main())
+			} else {
+				door.Update(ctx, category())
+			}
+			// false means not done, keep sub active
+			return false
+		})
+		// render dynamic container
+		return &door
 	})
-	}}
-	@door
 }
-
 ```
 
 > Visit the catalog page and try our first dynamic page update! Congrats!
@@ -111,7 +113,8 @@ Beam and Door are elementary building pieces. But sometimes you don't want so mu
 
 ```templ
 templ (c *catalogPage) Body() {
-	@doors.Sub(c.beam, func(p Path) templ.Component {
+    // subscribe helper component, updates node based on func output
+	@doors.Sub(c.path, func(p Path) templ.Component {
 		if p.IsMain {
 			return main()
 		}
@@ -122,33 +125,13 @@ templ (c *catalogPage) Body() {
 
 It does precisely the same under the hood.
 
-Our final `./catalog/page.templ`
+> Now the page updates dynamically when we navigate inside the catalog page.
+
+Since we have only one component, we can replace the templ function with a standard one that follows the interface.
 
 ```templ
-package catalog
-
-import (
-	"github.com/derstruct/doors-starter/common"
-	"github.com/doors-dev/doors"
-)
-
-type Path = common.CatalogPath
-
-type catalogPage struct {
-	beam doors.SourceBeam[Path]
-}
-
-func (c *catalogPage) Render(b doors.SourceBeam[Path]) templ.Component {
-	c.beam = b
-	return common.Template(c)
-}
-
-templ (c *catalogPage) Head() {
-	<title>catalog</title>
-}
-
-templ (c *catalogPage) Body() {
-	@doors.Sub(c.beam, func(p Path) templ.Component {
+func (c *catalogPage) Body() templ.Component {
+	return doors.Sub(c.path, func(p Path) templ.Component {
 		if p.IsMain {
 			return main()
 		}
@@ -156,8 +139,6 @@ templ (c *catalogPage) Body() {
 	})
 }
 ```
-
-
 
 
 

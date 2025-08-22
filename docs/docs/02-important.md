@@ -10,16 +10,11 @@ Practices you should understand and follow.
 
 **You will get a panic if you try.**
 
-## 2. Respect blocking free context.
+## 2. Respect blocking free context and data propagation.
 
-Rendering operations and Beam handlers are executed in the framework's runtime.
+Rendering operations and Beam handlers are executed in the framework's runtime. It's okay to query data and make requests to external systems during rendering or in Beam subscription handlers. However, use manually spawned (or via @doors.Go) goroutines to wait on channels or async events in manually spawned (or via @doors.Go) goroutines or hook handlers.
 
-✅ Good 
-
-* Query data, make requests to external systems during render or in Beam subscription handlers
-* Wait on channels or async events in manually spawned (or via @doors.Go) goroutines or hook handlers.
-
-✅  Query data during render:
+✅  Best: query data during render:
 
 ```templ
 templ (c *card) Render() {*
@@ -29,7 +24,7 @@ templ (c *card) Render() {*
 }
 ```
 
-✅  Query data in subscription:
+⚠️ Acceptable: query data in subscription
 
 ```templ
 pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
@@ -37,6 +32,8 @@ pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
 	door.Update(ctx, itemInfo(item))
 }
 ```
+
+> Querying data in the beam handler will delay the propagation of **beam** data to nested elements; it's acceptable.
 
 ✅  Spawn goroutine for long running tasks:
 
@@ -62,14 +59,14 @@ templ (f *fragment) Render() (
 ❌ Bad 
 
 *  Wait for external systems events during render or in Beam subscription handlers
-*  Try to syncronize rendering operations with each other by blocking in render functions
+*  Try to synchronize rendering operations with each other by blocking in render functions
 
-❌  Block framework runtime to wait for other runtime operation to complete like :
+❌  Block framework runtime to wait for other runtime dependent operations to complete, like :
 
 ```temp
 pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
   // XUpdate returns channel to track when frontend applies update
-	err, ok := <- door.XUpdate(ctx, itemInfo(item))
+	err, ok := <- door.XUpdate(ctx, itemInfo(item))  // can cause a deadlock!
 	/* ... */
 	return false
 }
@@ -106,20 +103,20 @@ templ (f *fragment) Render() {
 > ```templ
 > templ (f *fragment) Render() {
 > 	// initialize door
-> 	{{ n := doors.Door{} }}
+> 	{{ door := doors.Door{} }}
 > 	// spawn goroutine
 > 	@doors.Go(func(ctx context.Context) {
 > 	   select {
->      // blocking recieve from pubsub topic 
->      case msg, _ := <- f.pubsub.Channel():
->         n.update(doors.Text(msg.Payload))
->      // or cancel if unmounted
->      case <-ctx.Done():
->        return
->   }
+>            // blocking recieve from pubsub topic 
+>            case msg, _ := <- f.pubsub.Channel():
+>               n.update(doors.Text(msg.Payload))
+>            // or cancel if unmounted
+>            case <-ctx.Done():
+>              return
+>         }
 > 	})
 > 	// render door
-> 	@n
+> 	@door
 > }
 > ```
 

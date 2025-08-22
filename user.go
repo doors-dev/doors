@@ -282,7 +282,7 @@ func SessionLoad(ctx context.Context, key any) any {
 //
 // Example:
 //
-//	// Remove user preferences
+//	Remove user preferences
 //	doors.SessionRemove(ctx, "prefs")
 func SessionRemove(ctx context.Context, key any) {
 	ctxstore.Remove(ctx, common.SessionStoreCtxKey, key)

@@ -2,46 +2,19 @@
 
 Before we proceed, we need a DB to work with. Let's use SQLite.
 
-### Install
+## 1. Install SQLite
 
 ```bash
 $ go get github.com/mattn/go-sqlite3 
 ```
 
-### Driver Package
+## 2. Driver Package
 
-Basic CRUD for categories+items and session management.
+Basic CRUD for categories+items and session management. You can just copy paste.
 
 > It panics on any error,  that's ok for our tutorial
 
-`./driver/init.go`
-
-```templ
-package driver
-
-import (
-	"database/sql"
-	"log"
-
-	_ "github.com/mattn/go-sqlite3"
-)
-
-var Cats *CatsDriver
-var Items *ItemsDriver
-var Sessions *SessionsDriver
-
-func init() {
-	db, err := sql.Open("sqlite3", "./tutorial.db")
-	if err != nil {
-		log.Fatal("Failed to open database:", err)
-	}
-	Cats = newCatsDriver(db)
-	Items = newItemsDriver(db)
-	Cats.populate()
-	Sessions = newSessionsDriver(db)
-}
-
-```
+### Category Management
 
 `./driver/cats.go`
 
@@ -76,7 +49,6 @@ func newCatsDriver(db *sql.DB) *CatsDriver {
 	}
 }
 
-
 type CatsDriver struct {
 	db *sql.DB
 }
@@ -99,23 +71,23 @@ func (c *CatsDriver) populate() {
 		{Id: "food", Name: "Food & Beverages", Desc: "Snacks, drinks, and cooking ingredients"},
 	}
 	for _, cat := range sampleCats {
-		c.Create(cat) 
+		c.Create(cat)
 	}
 }
 
 func (c *CatsDriver) Get(id string) (Cat, bool) {
-    var cat Cat
-    err := c.db.QueryRow("SELECT id, name, desc FROM cats WHERE id = ?", id).
-        Scan(&cat.Id, &cat.Name, &cat.Desc)
-    
-    if err != nil {
-        if err == sql.ErrNoRows {
-            return Cat{}, false
-        }
-        panic(err)
-    }
-    
-    return cat, true
+	var cat Cat
+	err := c.db.QueryRow("SELECT id, name, desc FROM cats WHERE id = ?", id).
+		Scan(&cat.Id, &cat.Name, &cat.Desc)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return Cat{}, false
+		}
+		panic(err)
+	}
+
+	return cat, true
 }
 
 func (c *CatsDriver) List() []Cat {
@@ -145,7 +117,7 @@ func (c *CatsDriver) Create(cat Cat) bool {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return false // Id already exists
 		}
-		panic(err) 
+		panic(err)
 	}
 	return true
 }
@@ -175,14 +147,15 @@ func (c *CatsDriver) Update(cat Cat) bool {
 	}
 	return rowsAffected > 0
 }
+
 ```
 
-
+### Item Management
 
 `./driver/items.go`
 
 ```templ
-pakage driver
+package driver
 
 import (
 	"database/sql"
@@ -215,7 +188,6 @@ func newItemsDriver(db *sql.DB) *ItemsDriver {
 	}
 }
 
-
 type ItemsDriver struct {
 	db *sql.DB
 }
@@ -234,7 +206,6 @@ func (d *ItemsDriver) CountPages(catId string) int {
 	}
 	return pages
 }
-
 
 func (d *ItemsDriver) List(catId string, page int) []Item {
 	offset := page * onPage
@@ -311,7 +282,10 @@ func (d *ItemsDriver) removeItemsByCat(catId string) {
 		panic(err)
 	}
 }
+
 ```
+
+### Session Management
 
 `./driver/sessions.go`
 
@@ -320,8 +294,8 @@ package driver
 
 import (
 	"database/sql"
-	"time"
 	"github.com/doors-dev/doors"
+	"time"
 )
 
 func newSessionsDriver(db *sql.DB) *SessionsDriver {
@@ -365,7 +339,7 @@ func (d *SessionsDriver) cleanup() {
 func (d *SessionsDriver) Add(login string, dur time.Duration) Session {
 	token := doors.RandId()
 	expire := time.Now().Add(dur)
-	
+
 	_, err := d.db.Exec(
 		"INSERT INTO sessions (token, login, expire) VALUES (?, ?, ?)",
 		token, login, expire,
@@ -373,7 +347,7 @@ func (d *SessionsDriver) Add(login string, dur time.Duration) Session {
 	if err != nil {
 		panic("Failed to create session: " + err.Error())
 	}
-	
+
 	return Session{
 		Token:  token,
 		Login:  login,
@@ -387,7 +361,7 @@ func (d *SessionsDriver) Get(token string) (Session, bool) {
 		"SELECT token, login, expire FROM sessions WHERE token = ? AND expire > ?",
 		token, time.Now(),
 	).Scan(&session.Token, &session.Login, &session.Expire)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// Return empty session and false if not found or expired
@@ -395,7 +369,7 @@ func (d *SessionsDriver) Get(token string) (Session, bool) {
 		}
 		panic("Failed to get session: " + err.Error())
 	}
-	
+
 	return session, true
 }
 
@@ -404,14 +378,84 @@ func (d *SessionsDriver) Remove(token string) bool {
 	if err != nil {
 		panic("Failed to remove session: " + err.Error())
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		panic("Failed to get rows affected: " + err.Error())
 	}
-	
+
 	return rowsAffected > 0
+}
+```
+
+### Initialization 
+
+`./driver/init.go`
+
+```templ
+package driver
+
+import (
+	"database/sql"
+	"log"
+
+	_ "github.com/mattn/go-sqlite3"
+)
+
+var Cats *CatsDriver
+var Items *ItemsDriver
+var Sessions *SessionsDriver
+
+func init() {
+	db, err := sql.Open("sqlite3", "./tutorial.db")
+	if err != nil {
+		log.Fatal("Failed to open database:", err)
+	}
+	Cats = newCatsDriver(db)
+	Items = newItemsDriver(db)
+	Cats.populate()
+	Sessions = newSessionsDriver(db)
+}
+```
+
+## 3. Add Categories Listing
+
+>  DB driver populates the categories table with sample data if it's empty.
+
+`./catalog/main.templ`
+
+```templ
+package catalog
+
+import (
+	"github.com/derstruct/doors-tutorial/driver"
+	"github.com/doors-dev/doors"
+)
+
+templ main() {
+	<h1>Catalog</h1>
+	// query and iterate categories list
+	for _, cat := range driver.Cats.List() {
+		<article>
+			<header>
+			  // attach href
+				@doors.AHref{
+				  // category path model
+					Model: Path{
+						IsCat: true,
+						CatId: cat.Id, 
+					},
+				}
+				<a>{ cat.Name }</a>
+			</header>
+			{ cat.Desc }
+		</article>
+	}
 }
 
 ```
+
+You can visit https://localhost:8443/catalog/ to see a list of categories from the database
+
+> The first build may take longer than expected because of SQLite
 
