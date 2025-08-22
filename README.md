@@ -2,17 +2,33 @@
 
 Backend UI framework for modern, feature-rich, and secure web apps in Go. 
 
-⚠️ **Early Preview - Not Ready for Production**
+⚠️ **Beta - Not Ready for Production**
 
 ## Getting Started
 
-See the [Tutorial](./docs/tutorial) for building your first doors application.
-Checkout the [Docs](https://docs.doors.dev) for API reference.
+* See the [Tutorial](./docs/tutorial) for building your first doors application.
+* Read the [Docs](./docs/docs) to dive into details.
+* Check out the [API Reference](https://docs.doors.dev).
 
-## What is doors?
+## Philosophy 
 
-doors combines the best of Single Page Applications (SPAs) and Multi-Page Applications (MPAs) through a server-driven architecture. Your entire application logic lives in Go - no APIs to build, no client state to synchronize, Go code directly manipulates the HTML.
+### Explicid
+Build direct connections between events, state, and HTML in a completely type-safe environment. *It hits different*.
 
+### Lightweight 
+Fast loading, efficient synchronization, non-blocking execution environment
+
+### Server Centric
+Business logic runs on the server, browser acts like a human interface. 
+
+### Straight
+Native experience of classic MPA with natural reactive UI capabilities.
+
+### JS friendly
+If you need - integration, bundling, and serving tools included.
+
+
+## Features 
 
 ### 1. **Modern like SPA**
 - Composable components 
@@ -28,7 +44,7 @@ doors combines the best of Single Page Applications (SPAs) and Multi-Page Applic
 ### 3. **API-Free Architecture**
 - No REST/GraphQL APIs needed
 - Static endpoints only for files and pages
-- Everything else wrapped and secured by the framework
+- Everything else is wrapped and secured by the framework
 
 ### 4. **NPM-Free Development**
 - No Node.js required to build or run
@@ -82,23 +98,6 @@ doors combines the best of Single Page Applications (SPAs) and Multi-Page Applic
 - Events as separate HTTP requests
 - Advanced concurrency control (blocking, debounce and more)
 
-## Philosophy 
-
-### Explicid
-Build direct connections between events, state and HTML in completely type-safe environment. *It hits different*.
-
-### Lightweight 
-Fast loading, efficient syncronization, non-blocking execution environment
-
-### Server Centric
-Business logic runs on the server, browser acts like a human interface. 
-
-### Straight
-Native expirience of classic MPA with natural reactive UI capabilities.
-
-### JS friendly
-If you need - integration, bundling and serving tools included.
-
 
 ## When to Use doors
 
@@ -134,7 +133,3 @@ doors will be a **paid product** with developer-friendly terms:
 ## Why Paid?
 
 This isn't backed by big tech or VCs. It's a focused effort to build the best possible tool without divided interests. Sustainable funding ensures long-term commitment and continuous improvement.
-
-## Status
-
-⚠️ **Early Preview** - Core functionality complete, API may change. Not recommended for production yet.
