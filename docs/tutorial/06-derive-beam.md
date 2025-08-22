@@ -1,6 +1,6 @@
 # State Derive
 
-In the previous part, we subscribed to path changes:
+In the previous part, we subscribed to the path updates:
 
 ```templ
 func (c *catalogPage) Body() templ.Component {

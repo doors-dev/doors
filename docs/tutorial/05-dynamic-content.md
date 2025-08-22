@@ -9,7 +9,7 @@ Desired catalog page structure:
   * Item Card
     *Pop-up.*
 
-## 1. Create templates for all path options
+## 1. Create templates for all path options.
 
 ### Catalog Main Page
 
@@ -58,9 +58,9 @@ templ category() {
 
 ## 2. Enable dynamic page updates on path change
 
-### Save path beam to page field.
+### Save the path beam to the page field.
 
-**Beam** represents a reactive, changing value stream. Framork provides a **beam** that holds the **path model**.
+**Beam** represents a reactive, changing value stream. The framework provides a **beam** that holds the **path model**.
 
 ```templ
 type catalogPage struct {
@@ -78,25 +78,25 @@ func (c *catalogPage) Render(b doors.SourceBeam[Path]) templ.Component {
 
 ```
 
-Now use **path bream** inside the body to enable dynamic updates explicitly.
+Now use the **path beam** inside the body to enable dynamic updates explicitly.
 
 `./catalog/page.templ`
 
 ```templ
 templ (c *catalogPage) Body() {
-	// doors.E eveluates function and renders return value
+	// doors.E evaluates the function and renders the return value
 	@doors.E(func(ctx context.Context) templ.Component {
-		// intialize dynamic container
+		// initialize dynamic container
 		door := doors.Door{}
-		// subscribe to path changes
+		// subscribe to path updates
 		c.path.Sub(ctx, func(ctx context.Context, p Path) bool {
-			// depending on path variant marker set Door content
+			// depending on the path variant marker, set the door content.
 			if p.IsMain {
 				door.Update(ctx, main())
 			} else {
 				door.Update(ctx, category())
 			}
-			// false means not done, keep sub active
+			// false means not done; keep sub active
 			return false
 		})
 		// render dynamic container
@@ -105,11 +105,11 @@ templ (c *catalogPage) Body() {
 }
 ```
 
-> Visit the catalog page and try our first dynamic page update! Congrats!
+> Visit the catalog page and experience our first dynamic page update! Congrats!
 
 ### Refactor to @doors.Sub helper
 
-Beam and Door are elementary building pieces. But sometimes you don't want so much control (and boilerplate), so let's refactor `Body()` method to use a helper component that combines `Beam` an `Door`
+**Beam** and **door** are basic building blocks. But sometimes you want less control (and boilerplate), so let's refactor the `Body()` method to use a helper component that combines **beam** and  **door**.
 
 ```templ
 templ (c *catalogPage) Body() {

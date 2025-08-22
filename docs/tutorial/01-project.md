@@ -15,8 +15,6 @@
 
 1. Initialize a new project.
 
-*Skip if you already have one.*
-
 ```bash
 mkdir project
 cd project
@@ -25,7 +23,7 @@ go mod init github.com/derstruct/project # address of your repo (actually can be
 
 > You can find the code from this tutorial here [https://github.com/derstruct/doors-tutorial](https://github.com/derstruct/doors-tutorial). Branch name ~= part name.
 
-2. Get *doors* dependency
+2. Get the *doors* dependency
 
 ```bash
 go get github.com/doors-dev/doors

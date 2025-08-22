@@ -16,7 +16,7 @@ Run in your project dir:
  wgo -file=.go -file=.templ  -xfile=_templ.go templ generate :: go run .
 ```
 
-> Sometimes, the reload occurs at the wrong moment, and the browser displays the "Unable to connect" page. In that case, manually reload the page.
+> Sometimes, the reload happens at the wrong moment, causing the browser to show the "Unable to connect" page. In that situation, manually reload the page.
 >
 > Additionally, the **templ** included watcher struggles with my lib as a dependency.
 >
@@ -24,5 +24,5 @@ Run in your project dir:
 
 ### Check
 
-Open https://localhost:8443/ , then edit `<h1>`  content in your `./home/page.templ` ,  page should be automatically reloaded with the new version.
+Open https://localhost:8443/, then edit the `<h1>` content in your `./home/page.templ`; the page should automatically reload with the new version.
 

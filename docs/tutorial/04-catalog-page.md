@@ -1,16 +1,16 @@
 # Catalog Page
 
-Mini app with 3 pages
+Mini app with three pages.
 
-* Display a list of categories.
-* Display a list of items in a category.
-* Display item card
+* Show a list of categories.
+* Show a list of items within a category.
+* Show item card.
 
-> I assume that you have live reloading enabled. If you prefer not to use it, don't forget to run `templ generate` and restart.
+> I assume you have live reloading enabled. If you prefer not to use it, don't forget to run templ generate and restart.
 
 ## 1. Path Model
 
-Let's add a new pages path model. 
+Let's add a new page path model. 
 
 `./common/path.go`
 
@@ -34,7 +34,7 @@ type HomePath struct {
 
 ## 2. Page & Handler
 
-In new package `catalog`
+In the new `catalog` package
 
 `./catalog/page.templ`
 
@@ -112,7 +112,7 @@ Visit https://localhost:8443/catalog
 
 ## 5. Styling 
 
-To save some time, let's use PicoCSS default styles for our tutorial purposes. Include CDN styles in our template.
+To save some time, let's use PicoCSS's default styles. Include CDN styles in our template.
 
 `./common/page.templ`
 
@@ -151,7 +151,7 @@ templ Template(p Page) {
 
 ## 5. Menu 
 
-We have two pages now, let's cook some nav:
+We now have two pages; let's add some navigation.
 
 `./common/components.templ`
 
@@ -175,7 +175,7 @@ templ menu() {
 }
 ```
 
-include it in our template
+Include it in our template.
 
 `./common/page.templ`
 
@@ -195,11 +195,11 @@ templ Template(p Page) {
 
 ```
 
-> Confirm that it works in browser
+> Confirm it works in the browser
 
 ## 5. Idiomatic Menu
 
-*doors* enables you to prepare href attributes in a type-safe manner and has extensive tooling for active link highlighting built in.
+*doors* allows you to create href attributes  in a type-safe manner and includes extensive tools for highlighting active links.
 
 `/common/components.templ`
 
@@ -252,10 +252,11 @@ templ menu() {
 }
 ```
 
-> Navigation between the home page and the catalog causes a new page load, which happens because you are navigating between different path models. We learn about dynamic pages in next article.
+> Navigation between the home page and the catalog triggers a new page load because you're switching between different path models. We learn about dynamic pages in the next article.
 
-Please refer to **href-and-src.md** for full details on href. Alternatively to **Magic Attribute** syntax you can use attribute spread, check out **attributes.md** for details.
+Please refer to **href-and-src.md** for full details on `href`. Alternatively, instead of using Magic Attribute syntax, you can use attribute spread; see **attributes.md** for details.
 
 ## 6. Conclusion
 
-Visit https://localhost:8443/ to checkout that switching between pages works and active link indication applied.
+Visit https://localhost:8443/ to verify that page switching works and active link indication is applied.
+
