@@ -9,6 +9,7 @@ type PointerCapture struct {
 	Event           string `json:"-"`
 	PreventDefault  bool   `json:"preventDefault"`
 	StopPropagation bool   `json:"stopPropagation"`
+	ExactTarget     bool   `json:"exactTarget"`
 }
 
 func (pc *PointerCapture) Name() string {
@@ -23,6 +24,7 @@ type KeyboardEventCapture struct {
 	Event           string `json:"-"`
 	PreventDefault  bool   `json:"preventDefault"`
 	StopPropagation bool   `json:"stopPropagation"`
+	ExactTarget     bool   `json:"exactTarget"`
 }
 
 func (c *KeyboardEventCapture) Name() string {
@@ -71,6 +73,7 @@ func (c *FocusCapture) Listen() string {
 type FocusIOCapture struct {
 	Event           string `json:"-"`
 	StopPropagation bool   `json:"stopPropagation"`
+	ExactTarget     bool   `json:"exactTarget"`
 }
 
 func (c *FocusIOCapture) Name() string {

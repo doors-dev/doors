@@ -31,11 +31,15 @@ export class Hook {
     capture(name: string, opt: any, arg: any) {
         const captureFunction = captures[name]
         if (!captureFunction) {
-            this.err(new CaptureErr(captureErrKinds.capture, new Error("capture "+name+" not found")))
+            this.err(new CaptureErr(captureErrKinds.capture, new Error("capture " + name + " not found")))
             return this.promise
         }
         try {
             this.fetch = captureFunction(arg, opt)
+            if (this.fetch === undefined) {
+                this.rej(new CaptureErr(captureErrKinds.canceled))
+                return this.promise
+            }
         } catch (e) {
             this.rej(new CaptureErr(captureErrKinds.capture, e))
             return this.promise

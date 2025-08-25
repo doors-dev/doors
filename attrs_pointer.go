@@ -4,9 +4,9 @@ import (
 	"context"
 	"io"
 
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 )
 
 type PointerEvent = front.PointerEvent
@@ -17,6 +17,9 @@ type pointerEventHook struct {
 
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
+
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
@@ -40,6 +43,7 @@ func (p *pointerEventHook) init(event string, ctx context.Context, n door.Core, 
 			Event:           event,
 			StopPropagation: p.StopPropagation,
 			PreventDefault:  p.PreventDefault,
+			ExactTarget:     p.ExactTarget,
 		},
 		inst:      inst,
 		door:      n,
@@ -58,6 +62,9 @@ type AClick struct {
 
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
+
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
@@ -95,6 +102,9 @@ type APointerDown struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool 
+
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -131,6 +141,9 @@ type APointerUp struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
+
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -166,6 +179,9 @@ type APointerMove struct {
 
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
+
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
@@ -219,6 +235,9 @@ type APointerOut struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool 
+
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -254,6 +273,9 @@ type APointerEnter struct {
 
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
+
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
@@ -291,6 +313,9 @@ type APointerLeave struct {
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
 
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
+
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -326,6 +351,9 @@ type APointerCancel struct {
 
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
+
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
@@ -386,4 +414,3 @@ func (c ALostPointerCapture) Init(ctx context.Context, n door.Core, inst instanc
 	p := (*pointerEventHook)(&c)
 	p.init("lostpointercapture", ctx, n, inst, attrs)
 }
-

@@ -5,18 +5,25 @@ import { detached } from "./params";
 interface EventOpt {
     preventDefault?: boolean;
     stopPropagation?: boolean;
+    exactTarget?: boolean;
 }
 interface InputOpt {
     excludeValue: boolean;
 }
 
-function applyEventOpt(event: Event, opt: EventOpt): void {
+function applyEventOpt(event: Event, opt: EventOpt): boolean {
+    if (opt.exactTarget) {
+        if (event.target !== event.currentTarget) {
+            return false
+        }
+    }
     if (opt.preventDefault) {
         event.preventDefault();
     }
     if (opt.stopPropagation) {
         event.stopPropagation();
     }
+    return true
 }
 
 interface InputValues {
@@ -62,7 +69,9 @@ export default {
 
     link(event: MouseEvent, opt: EventOpt) {
         opt.preventDefault = true;
-        applyEventOpt(event, opt);
+        if (!applyEventOpt(event, opt)) {
+            return undefined
+        }
         const href = (event.currentTarget as HTMLAnchorElement).href;
         if (href && !detached) {
             navigator.push(href);
@@ -78,7 +87,9 @@ export default {
         return fetchOptJson(obj);
     },
     focus_io(event: FocusEvent, opt: EventOpt) {
-        applyEventOpt(event, opt);
+        if (!applyEventOpt(event, opt)) {
+            return undefined
+        }
         const obj = {
             type: event.type,
             timestamp: date(new Date()),
@@ -87,7 +98,9 @@ export default {
     },
 
     keyboard(event: KeyboardEvent, opt: EventOpt) {
-        applyEventOpt(event, opt);
+        if (!applyEventOpt(event, opt)) {
+            return undefined
+        }
         const obj = {
             type: event.type,
             key: event.key,
@@ -103,7 +116,9 @@ export default {
     },
 
     pointer(event: PointerEvent, opt: EventOpt) {
-        applyEventOpt(event, opt);
+        if (!applyEventOpt(event, opt)) {
+            return undefined
+        }
         const obj = {
             type: event.type,
             pointerId: event.pointerId,

@@ -4,9 +4,9 @@ import (
 	"context"
 	"io"
 
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 )
 
 type FocusEvent = front.FocusEvent
@@ -14,6 +14,9 @@ type FocusEvent = front.FocusEvent
 type focusIOEventHook struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
+
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
@@ -36,6 +39,7 @@ func (p *focusIOEventHook) init(event string, ctx context.Context, n door.Core, 
 		capture: &front.FocusIOCapture{
 			Event:           event,
 			StopPropagation: p.StopPropagation,
+			ExactTarget:     p.ExactTarget,
 		},
 		door:      n,
 		ctx:       ctx,
@@ -146,6 +150,9 @@ type AFocusIn struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
 
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool `json:"exactTarget"`
+
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
 
@@ -179,6 +186,9 @@ func (f AFocusIn) Init(ctx context.Context, n door.Core, inst instance.Core, att
 type AFocusOut struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
+
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool `json:"exactTarget"`
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
