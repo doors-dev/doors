@@ -1,3 +1,12 @@
+// doors
+// Copyright (c) 2025 doors dev LLC
+//
+// Licensed under the Business Source License 1.1 (BUSL-1.1).
+// See LICENSE.txt for details.
+//
+// For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
+// To purchase a license, visit https://doors.dev or contact sales@doors.dev.
+
 
 export const setDiff = (a: Set<string>, b: Set<string>): [Array<string>, Array<string>] => {
     const inANotB = [...a].filter(item => !b.has(item))

@@ -1,6 +1,6 @@
 # doors
 
-Backend UI framework for modern, feature-rich, and secure web apps in Go. 
+Back-end UI Framework for feature-rich, secure, and fast web apps in Go.
 
 ⚠️ **Beta - Not Ready for Production**
 
@@ -16,10 +16,10 @@ Backend UI framework for modern, feature-rich, and secure web apps in Go.
 Build direct connections between events, state, and HTML in a completely type-safe environment. *It hits different*.
 
 ### Lightweight 
-Fast loading, efficient synchronization, non-blocking execution environment
+Fast loading, non-blocking execution environment, minimal memory footprint
 
 ### Server Centric
-Business logic runs on the server, browser acts like a human interface. 
+Business logic runs on the server, browser acts like a human I/0. 
 
 ### Straight
 Native experience of classic MPA with natural reactive UI capabilities.
@@ -27,42 +27,18 @@ Native experience of classic MPA with natural reactive UI capabilities.
 ### JS friendly
 If you need - integration, bundling, and serving tools included.
 
-
-## Features 
-
-### 1. **Modern like SPA**
-- Composable components 
-- Dynamic updates without page refreshes
-- Built-in reactivity system
-
-### 2. **Straight like MPA**
-- Natural server-side rendering
-- Fast initial load and functional `href` links
-- Real `FormData` handling
-- Execution transparency
-
-### 3. **API-Free Architecture**
-- No REST/GraphQL APIs needed
-- Static endpoints only for files and pages
-- Everything else is wrapped and secured by the framework
-
-### 4. **NPM-Free Development**
-- No Node.js required to build or run
-- Optional JavaScript/TypeScript integration when needed
-- Built-in esbuild for processing
-
-### 5. **Type-Safe Throughout**
-- From DOM events to routing
-
 ## How It Works
 
 ### Stateful Server + Ultra-Thin Client
+
+> API-free architecture
 
 1. **User loads page** → Server creates instance and sets session cookie
 2. **Server maintains state** → Live representation of each user's page
 3. **Persistent connection** → Lightweight client syncs with server
 4. **Events flow up** → User interactions sent to Go handlers
 5. **Updates flow down** → Server sends specific DOM changes
+
 
 ### Core Components
 
@@ -116,20 +92,42 @@ If you need - integration, bundling, and serving tools included.
 
 ## Comparison
 
-Unlike **React/Vue**: No business logic on the client side, no hydration, no npm dependencies.
+Unlike **React/Vue**: No business logic on the client side, no hydration, NPM-free.
+
 Unlike **htmx**: Full type safety, reactive state, and programmatic control from Go.
+
 Unlike **Phoenix LiveView**: Go instead of Elixir, explicit update model, superior concurrency model and QUIC friendly
 
-## Pricing
+## License
 
-doors will be a **paid product** with developer-friendly terms:
+doors is source-available under the **Business Source License 1.1 (BUSL-1.1)** from **doors dev LLC**.
 
-- ✅ **Affordable lifetime license** 
-- ✅ **Source code available on GitHub** 
-- ✅ **Free for development** 
-- ✅ **No telemetry**
+- **Free for development** (non-production)  
+- **Free for non-commercial production** (personal, education, research, non-profit) — optional pay-what-you-want support  
+- **Commercial production** requires a paid license (Startup, Business, or Enterprise)  
 
+Each version of doors automatically converts to **AGPL-3.0** after 4 years.
 
-## Why Paid?
+### Commercial Licensing
 
-This isn't backed by big tech or VCs. It's a focused effort to build the best possible tool without divided interests. Sustainable funding ensures long-term commitment and continuous improvement.
+Commercial licenses are delivered as **License Keys**:
+
+- **Startup License** (per production domain) — strict startup criteria, internal use only  
+- **Business License** (per production domain / per client domain) — internal + client work  
+- **Enterprise License** — custom scope (domain-linked, company-wide, or enterprise-wide)  
+
+Unless otherwise stated, License Keys are **permanent (no expiration)**. Keys may be shared, but they only activate for the scope encoded in the key.
+
+At this stage (beta), licenses are not purchasable directly on the website.  
+For commercial use, please contact [sales@doors.dev](mailto:sales@doors.dev) to obtain a License Key.
+
+### Full License Texts
+
+- [LICENSE.txt](./LICENSE.txt) — BUSL with parameters  
+- [LICENSE-COMMERCIAL.txt](./LICENSE-COMMERCIAL.txt) — Commercial license summary  
+- [COMMERCIAL-EULA.md](./COMMERCIAL-EULA.md) — Full commercial terms  
+
+---
+
+**Note:** This README section is a summary. The binding terms are in the license files listed above.
+

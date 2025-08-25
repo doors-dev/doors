@@ -9,10 +9,9 @@
 
 package doors
 
-templ importScript(src string) {
-	<script type="module" src={ src }></script>
-}
+import "embed"
 
-templ importStyle(href string) {
-	<link rel="stylesheet" href={href} />
-}
+// DocsFS is the embedded documentation tree for internal purposes.
+//
+//go:embed docs/**
+var DocsFS embed.FS
