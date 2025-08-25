@@ -1,3 +1,12 @@
+// doors
+// Copyright (c) 2025 doors dev LLC
+//
+// Licensed under the Business Source License 1.1 (BUSL-1.1).
+// See LICENSE.txt for details.
+//
+// For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
+// To purchase a license, visit https://doors.dev or contact sales@doors.dev.
+
 import { fetchOpt, fetchOptJson, fetchOptForm, date } from "./lib";
 import navigator from "./navigator";
 import { detached } from "./params";
