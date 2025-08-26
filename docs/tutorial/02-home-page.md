@@ -1,4 +1,4 @@
-# Serve First Page
+# Serve the First Page
 
 ## 0. HTTPS self-signed certs
 
@@ -69,7 +69,7 @@ templ Template(p Page) {
 
 ## 2.  Path Model 
 
-> Check out path-model.md in the docs to understand how it works.
+> Refer to **Path Model** in the docs for an explanation of how it works.
 
 Now we need to create a path model structure. Let's place it in a common package so it can be imported into all other packages. 
 
@@ -87,7 +87,7 @@ type HomePath struct {
 
 Create a new package that will include everything related to the homepage.
 
-#### Page Template And Page Request Handler
+#### Page Template and Page Request Handler
 
 `./home/page.templ`
 
@@ -113,7 +113,8 @@ templ (h *homePage) Body() {
 }
 
 // Render method is neccessary for page declaration.
-// doors.SourceBeam is used to subscribe to path changes (in case of home page there are no parameters or path variants, so we won't use it)
+// doors.SourceBeam is used to subscribe to path changes 
+// (in case of home page there are no parameters or path variants, so we won't use it)
 templ (p *homePage) Render(_ doors.SourceBeam[Path]) {
 	// use our template
 	@common.Template(p)
@@ -128,13 +129,11 @@ func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 
 ```
 
-> Before proceeding, generate a `.go` files from `.templ`
->
-> ```bash
-> $ templ generate
-> ```
+Before proceeding, generate a `.go` files from `.templ`
 
-
+```bash
+$ templ generate
+```
 
 ## 3. Router
 

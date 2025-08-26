@@ -84,7 +84,7 @@ templ categoryContent(catId string) {
 
 ```
 
-## 2. Refactor to fragment
+## 2. Refactor to Fragment
 
 Instead of a templ function, we can have a struct type, which will allows to group all pieces nicely in its methods/fields.
 
@@ -135,7 +135,7 @@ func category(path doors.SourceBeam[Path]) templ.Component {
 }
 ```
 
-## 3. Layout and styles
+## 3. Layout and Styles
 
 ### Styles
 

@@ -418,7 +418,7 @@ func init() {
 }
 ```
 
-## 3. Add Categories Listing
+## 3. Categories Listing
 
 >  DB driver populates the categories table with sample data if it's empty.
 

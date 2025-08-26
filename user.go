@@ -53,7 +53,6 @@ func LocationReload(ctx context.Context) {
 //
 //	// Navigate to external site
 //	doors.LocationAssignRaw(ctx, "https://example.com")
-//
 func LocationAssignRaw(ctx context.Context, url string) {
 	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
 	inst.Call(&instance.LocationAssign{
@@ -68,7 +67,6 @@ func LocationAssignRaw(ctx context.Context, url string) {
 //
 // The url parameter should be a complete URL string. Use this for redirects
 // where you don't want the current page in the browser's history.
-//
 func LocationReplaceRaw(ctx context.Context, url string) {
 	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
 	inst.Call(&instance.LocationReplace{
@@ -250,7 +248,7 @@ func SessionId(ctx context.Context) string {
 // Both key and value can be of any type. The storage is thread-safe
 // and can be accessed concurrently from different instances or goroutines.
 //
-// Returns true if the value was successfully saved, false otherwise.
+// # Returns previous value under the key
 //
 // Example:
 //
@@ -264,8 +262,8 @@ func SessionId(ctx context.Context) string {
 //	    Theme:    "dark",
 //	    Language: "en",
 //	})
-func SessionSave(ctx context.Context, key any, value any) bool {
-	return ctxstore.Save(ctx, common.SessionStoreCtxKey, key, value)
+func SessionSave(ctx context.Context, key any, value any) any {
+	return ctxstore.Swap(ctx, common.SessionStoreCtxKey, key, value)
 }
 
 // SessionLoad retrieves a value from the session-scoped storage by its key.
@@ -289,12 +287,14 @@ func SessionLoad(ctx context.Context, key any) any {
 // If the key does not exist, the method performs no action.
 // The storage is shared across all instances within the same session.
 //
+// # Returns removed value
+//
 // Example:
 //
 //	Remove user preferences
 //	doors.SessionRemove(ctx, "prefs")
-func SessionRemove(ctx context.Context, key any) {
-	ctxstore.Remove(ctx, common.SessionStoreCtxKey, key)
+func SessionRemove(ctx context.Context, key any) any {
+	return ctxstore.Remove(ctx, common.SessionStoreCtxKey, key)
 }
 
 // InstanceSave stores a key-value pair in the instance-scoped storage.
@@ -304,7 +304,7 @@ func SessionRemove(ctx context.Context, key any) {
 // Both key and value can be of any type. The storage is thread-safe
 // and can be accessed concurrently from different goroutines within the same instance.
 //
-// Returns true if the value was successfully saved, false otherwise.
+// # Returns previous value under key
 //
 // Example:
 //
@@ -318,8 +318,8 @@ func SessionRemove(ctx context.Context, key any) {
 //	    Theme:    "dark",
 //	    Language: "en",
 //	})
-func InstanceSave(ctx context.Context, key any, value any) bool {
-	return ctxstore.Save(ctx, common.InstanceStoreCtxKey, key, value)
+func InstanceSave(ctx context.Context, key any, value any) any {
+	return ctxstore.Swap(ctx, common.InstanceStoreCtxKey, key, value)
 }
 
 // InstanceLoad retrieves a value from the instance-scoped storage by its key.
@@ -330,9 +330,8 @@ func InstanceSave(ctx context.Context, key any, value any) bool {
 //
 // Example:
 //
-//	// Load user preferences for this specific tab
-//	if val := doors.InstanceLoad(ctx, "prefs"); val != nil {
-//	    prefs := val.(Preferences)
+//	Load user preferences for this specific instance
+//	if prefs, ok := doors.InstanceLoad(ctx, "prefs").(Preferences); ok {
 //	    applyTheme(prefs.Theme)
 //	}
 func InstanceLoad(ctx context.Context, key any) any {
@@ -343,12 +342,14 @@ func InstanceLoad(ctx context.Context, key any) any {
 // If the key does not exist, the method performs no action.
 // The storage is isolated to the current instance.
 //
+// # Returns removed value
+//
 // Example:
 //
 //	// Remove user preferences for this specific tab
 //	doors.InstanceRemove(ctx, "prefs")
-func InstanceRemove(ctx context.Context, key any) {
-	ctxstore.Remove(ctx, common.InstanceStoreCtxKey, key)
+func InstanceRemove(ctx context.Context, key any) any {
+	return ctxstore.Remove(ctx, common.InstanceStoreCtxKey, key)
 }
 
 // Location represents a URL location within the application's routing system.
@@ -422,7 +423,6 @@ func NewLocation(ctx context.Context, model any) (Location, error) {
 func RandId() string {
 	return common.RandId()
 }
-
 
 func AllowBlocking(ctx context.Context) context.Context {
 	return common.SetBlockingCtx(ctx)

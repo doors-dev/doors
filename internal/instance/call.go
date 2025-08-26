@@ -14,17 +14,17 @@ import (
 	"sync/atomic"
 )
 
-type setPathCaller struct {
+type setPathCall struct {
 	path     string
 	replace  bool
 	canceled atomic.Bool
 }
 
-func (t *setPathCaller) cancel() {
+func (t *setPathCall) cancel() {
 	t.canceled.Store(true)
 }
 
-func (t *setPathCaller) Data() *common.CallData {
+func (t *setPathCall) Data() *common.CallData {
 	if t.canceled.Load() {
 		return nil
 	}
@@ -35,11 +35,11 @@ func (t *setPathCaller) Data() *common.CallData {
 	}
 }
 
-func (t *setPathCaller) arg() []any {
+func (t *setPathCall) arg() []any {
 	return []any{t.path, t.replace}
 }
 
-func (t *setPathCaller) Result(error) {}
+func (t *setPathCall) Result(error) {}
 
 type LocatinReload struct {
 }

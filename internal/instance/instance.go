@@ -13,12 +13,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
-	"reflect"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/a-h/templ"
@@ -30,7 +27,7 @@ import (
 type AnyInstance interface {
 	Id() string
 	Serve(http.ResponseWriter, *http.Request, int) error
-	UpdatePath(m any, adapter path.AnyAdapter) bool
+	RestorePath(*http.Request) bool
 	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request) bool
 	Connect(w http.ResponseWriter, r *http.Request)
 	end(endCause)
@@ -47,14 +44,11 @@ type Options struct {
 
 func NewInstance[M any](sess *Session, page Page[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
 	inst := &Instance[M]{
-		id: common.RandId(),
-		beam: beam.NewSourceBeamExt(*m, func(new, old M) bool {
-			return !reflect.DeepEqual(new, old)
-		}),
-		adapter: adapter,
-		page:    page,
-		opt:     opt,
-		session: sess,
+		id:        common.RandId(),
+		navigator: newNavigator(adapter, sess.router.Adapters(), m, opt.Detached, opt.Rerouted),
+		page:      page,
+		opt:       opt,
+		session:   sess,
 	}
 	inst.resetKillTimer()
 	return inst, sess.AddInstance(inst)
@@ -64,19 +58,13 @@ type Instance[M any] struct {
 	mu        sync.RWMutex
 	killed    bool
 	id        string
-	beam      beam.SourceBeam[M]
-	adapter   *path.Adapter[M]
+	navigator *navigator[M]
 	page      Page[M]
 	opt       *Options
 	core      *core[M]
 	session   *Session
 	ctx       context.Context
-	included  atomic.Bool
 	killTimer *time.Timer
-}
-
-func (inst *Instance[M]) detached() bool {
-	return inst.opt.Detached
 }
 
 func (inst *Instance[M]) resetKillTimer() bool {
@@ -96,10 +84,6 @@ func (inst *Instance[M]) resetKillTimer() bool {
 
 func (inst *Instance[M]) conf() *common.SystemConf {
 	return inst.session.router.Conf()
-}
-
-func (inst *Instance[M]) include() bool {
-	return !inst.included.Swap(true)
 }
 
 func (inst *Instance[M]) getSession() coreSession {
@@ -138,16 +122,18 @@ func (inst *Instance[M]) syncError(err error) {
 func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request, code int) error {
 	inst.mu.Lock()
 	if inst.killed {
+		inst.mu.Unlock()
 		return errors.New("Instance killed before render")
 	}
 	if inst.core != nil {
 		inst.mu.Unlock()
-		log.Fatal("Instance rendered twice")
+		panic("Instance rendered twice")
 	}
 	spawner := inst.session.router.Spawner(inst)
-	inst.core = newCore[M](inst, newSolitaire(inst, common.GetSolitaireConf(inst.conf())), spawner)
+	solitaire := newSolitaire(inst, common.GetSolitaireConf(inst.conf()))
+	inst.core = newCore(inst, solitaire, spawner, inst.navigator)
 	inst.mu.Unlock()
-	err := inst.core.serve(w, r, inst.page.Render(inst.beam), code)
+	err := inst.core.serve(w, r, inst.page, code)
 	if err != nil {
 		defer inst.end(causeKilled)
 	}
@@ -176,6 +162,10 @@ func (inst *Instance[M]) end(cause endCause) {
 		return
 	}
 	inst.core.end(cause)
+}
+
+func (inst *Instance[M]) RestorePath(r *http.Request) bool {
+	return inst.navigator.restore(r)
 }
 
 type endCause int

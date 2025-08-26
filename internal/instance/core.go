@@ -19,7 +19,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxstore"
 	"github.com/doors-dev/doors/internal/door"
@@ -38,16 +37,12 @@ type coreSession interface {
 type coreInstance[M any] interface {
 	getSession() coreSession
 	Id() string
-	setupPathSync(context.Context)
-	newLink(context.Context, any) (*Link, error)
 	end(endCause)
-	include() bool
 	conf() *common.SystemConf
 	OnPanic(error)
-	detached() bool
 }
 
-func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredder.Spawner) *core[M] {
+func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredder.Spawner, navigator *navigator[M]) *core[M] {
 	return &core[M]{
 		instance:     inst,
 		store:        ctxstore.NewStore(common.InstanceStoreCtxKey),
@@ -57,6 +52,7 @@ func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredde
 		spawner:      spawner,
 		solitaire:    solitaire,
 		cspCollector: inst.getSession().getRouter().CSP().NewCollector(),
+		navigator:    navigator,
 	}
 }
 
@@ -67,7 +63,6 @@ type Core interface {
 	CSPCollector() (*common.CSPCollector, bool)
 	ImportRegistry() *resources.Registry
 	SessionId() string
-	Include() bool
 	ClientConf() *common.ClientConf
 	Id() string
 	NewId() uint64
@@ -87,13 +82,14 @@ type core[M any] struct {
 	hooks            map[uint64]map[uint64]*door.DoorHook
 	root             *door.Root
 	solitaire        *solitaire
+	navigator        *navigator[M]
 	spawner          *shredder.Spawner
 	cspCollectorUsed atomic.Bool
 	cspCollector     *common.CSPCollector
 }
 
 func (c *core[M]) Detached() bool {
-	return c.instance.detached()
+	return c.navigator.isDetached()
 }
 
 func (c *core[M]) OnPanic(err error) {
@@ -155,12 +151,8 @@ func (c *core[M]) Id() string {
 	return c.instance.Id()
 }
 
-func (c *core[M]) Include() bool {
-	return c.instance.include()
-}
-
 func (c *core[M]) NewLink(ctx context.Context, m any) (*Link, error) {
-	return c.instance.newLink(ctx, m)
+	return c.navigator.newLink(ctx, m)
 }
 func (c *core[M]) end(cause endCause) {
 	c.solitaire.End(cause)
@@ -178,14 +170,13 @@ func (c *core[M]) Call(call common.Call) {
 	c.solitaire.Call(call)
 }
 
-func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, content templ.Component, code int) error {
+func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M], code int) error {
 	ctx := context.WithValue(context.Background(), common.InstanceCtxKey, c)
 	ctx = c.store.Inject(ctx)
 	ctx = context.WithValue(ctx, common.AdaptersCtxKey, c.instance.getSession().getRouter().Adapters())
-
 	c.root = door.NewRoot(ctx, c)
-
-	ch := c.root.Render(content)
+	c.navigator.init(c.root.Ctx(), c.solitaire)
+	ch := c.root.Render(page.Render(c.navigator.getBeam()))
 	render, ok := <-ch
 	if !ok {
 		return errors.New("instance killed before render")
@@ -201,13 +192,11 @@ func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, content templ.Co
 	if gz {
 		w.Header().Set("Content-Encoding", "gzip")
 	}
-
 	if render.Err() != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.WriteHeader(code)
 	}
-
 	var err error
 	if gz {
 		writer := gzip.NewWriter(w)
@@ -221,6 +210,5 @@ func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, content templ.Co
 	if err != nil {
 		return err
 	}
-	c.instance.setupPathSync(c.root.Ctx())
 	return nil
 }

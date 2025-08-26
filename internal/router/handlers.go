@@ -76,21 +76,6 @@ func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
 
 func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page anyPageResponse, opt *instance.Options) {
 	new, session := rr.ensureSession(r, w)
-	instId := r.Header.Get("d00r")
-	if instId != "" {
-		inst, ok := session.GetInstance(instId)
-		if !ok {
-			w.WriteHeader(http.StatusGone)
-			return
-		}
-		ok = inst.UpdatePath(page.getModel(), page.getAdapter())
-		if !ok {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		return
-	}
 	inst, ok := page.intoInstance(session, opt)
 	if !ok {
 		if new {
@@ -107,7 +92,32 @@ func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page anyPage
 	}
 }
 
+func (rr *Router) restorePath(w http.ResponseWriter, r *http.Request, instId string) {
+	w.Header().Set("Cache-Control", "no-cache")
+	sess := rr.getSession(r)
+	if sess == nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	inst, ok := sess.GetInstance(instId)
+	if !ok {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+	ok = inst.RestorePath(r)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
+	instId := r.Header.Get("D00r")
+	if instId != "" {
+		rr.restorePath(w, r, instId)
+		return true
+	}
 	l := path.NewRequestLocation(r)
 	var model any = nil
 	var response Response = nil
@@ -195,7 +205,6 @@ main:
 		}
 		break
 	}
-	instId := r.Header.Get("D00r")
 	if page == nil {
 		if instId != "" {
 			w.WriteHeader(http.StatusNotFound)

@@ -2,11 +2,11 @@
 
 Practices you should understand and follow. 
 
-## 1. Use *doors*  entities inside *doors* context.
+## 1. Use *doors* entities inside *doors* context.
 
 ✅ Render `Door`, read/mutate `Beam/SourceBeam` values, use `doors.A...` binds and handlers in **pages served by doors.ServePage**
 
-❌ Try to enable interactivity/reactivity with *doors* in self served templ based pages
+❌ Try to enable interactivity/reactivity with *doors* in self-served templ-based pages
 
 **You will get a panic if you try.**
 
@@ -120,13 +120,17 @@ templ (f *fragment) Render() {
 > }
 > ```
 
-## 3. Understand security model.
+## 3. Understand the security model.
 
-* For protected pages, check authentication in `ServePage` handler
-* There is no need to check cookies/headers in event handlers, because they are already scoped to the session and page instance
-* ❗ Don't forget to call `doors.SessionEnd(ctx)` when the user logs out and manage framework session expiration with `doors.SessionExpire(ctx, duration)`. Otherwise, you might leave private page instances active after authentication has ended.
+* For protected pages, **verify cookie authentication in the `ServePage` handler**
+* **Don't forget to call `doors.SessionEnd(ctx)` when the user logs out** and manage framework session expiration with `doors.SessionExpire(ctx, duration)`. Otherwise, you might leave private page instances active after authentication has ended.
+* There is no need to check cookies/headers in event handlers, because they are already protected
+* **If user access to certain actions or views can be revoked,** you should 
+  * **Verify user view permissions during render** (not only in the ServePage handler) to ensure that the user can't access previously available views with dynamic navigation. 
+  * **Verify user write permissions in the hook handler functions**, to ensure that even after permission is revoked after render, you are safe 
 
-## 4. Use closest `context.Context` value.
+
+## 4. Use the closest `context.Context` value.
 
 Context is used to track component relations, action progress and many more.  Always use closest context you have in scope. 
 
@@ -150,7 +154,7 @@ Most of the time, nothing serious will happen if you mess it up,
 
 In general, you don't need to store database query results in fields or `Beams`.
 
-✅ Store id in fragment field
+✅  Store the ID in the fragment field.
 
 ```templ
 func newCard(id string) *card {
@@ -171,7 +175,7 @@ templ (c *card) Render() {
 }
 ```
 
-✅  Store id in Beam
+✅   Store ID in **Beam**
 
 ```templ
 idBeam := doors.NewBeam(pathBeam, func(p Path) string {
@@ -179,7 +183,7 @@ idBeam := doors.NewBeam(pathBeam, func(p Path) string {
 })
 ```
 
-❌ Store db entry in fragment field like:
+❌ Store DB entry in fragment field like:
 
 ```templ
 func newCard(id string) *card {
@@ -212,5 +216,5 @@ If you need data **only to produce render output** - fire and forget, so you won
 
 ## 6. Be conscious with front-end manipulations via JavaScript 
 
-Parts of the DOM are controlled by the framework. Don't remove or move around dynamic elements via front-end code.
+Parts of the DOM are controlled by the framework. Avoid removing or moving dynamic elements via JavaScript.
 

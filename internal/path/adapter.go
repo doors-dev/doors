@@ -12,7 +12,6 @@ package path
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -47,7 +46,7 @@ func GetAdapterName(m any) string {
 		t = t.Elem()
 	}
 	if t.Name() == "" {
-		log.Fatalf("Can't use anonimus struct")
+		panic("Path must be named struct")
 	}
 	return t.PkgPath() + "." + t.Name()
 }

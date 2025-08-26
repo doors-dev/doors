@@ -2,14 +2,11 @@
 
 Desired catalog page structure:
 
-* Main 
-  *Show the list of categories*
-* Category
-  *Show a list of items in the category*
-  * Item Card
-    *Pop-up.*
+* **Main**: Show the list of categories
+* **Category**: Show a list of items in the category
+  * **Item Card**: Pop-up
 
-## 1. Create templates for all path options.
+## 1. Create templates for all path options
 
 ### Catalog Main Page
 

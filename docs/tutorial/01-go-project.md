@@ -1,6 +1,6 @@
-# Init Project
+# Initialize the Project
 
-## 1. System
+## 1. Prepare the system
 
 * Ensure your [Go](https://go.dev/) is at least `1.24.1`; you can check in the terminal by running:
 
@@ -11,7 +11,7 @@
 - Install the [templ](https://templ.guide/quick-start/installation) CLI tool.
 - *Optional:* install [wgo](https://github.com/bokwoon95/wgo) for "live" reload 
 
-##  2. Init Project
+##  2. Initialize the Go project and add *doors*
 
 1. Initialize a new project.
 

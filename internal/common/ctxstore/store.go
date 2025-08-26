@@ -37,39 +37,39 @@ func (c *Store) Load(key any) any {
 	return c.storage[key]
 }
 
+func (c *Store) Swap(key any, value any) any {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	v := c.storage[key]
+	c.storage[key] = value
+	return v
+}
+
 func (c *Store) Save(key any, value any) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.storage[key] = value
 }
 
-func (c *Store) Remove(key any) {
+func (c *Store) Remove(key any) any {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	v := c.storage[key]
 	delete(c.storage, key)
+	return v
 }
 
-func Save(ctx context.Context, storeKey any, key any, value any) bool {
-	c, ok := ctx.Value(storeKey).(*Store)
-	if !ok {
-		return true
-	}
-	c.Save(key, value)
-	return false
+func Swap(ctx context.Context, storeKey any, key any, value any) any {
+	c := ctx.Value(storeKey).(*Store)
+	return c.Swap(key, value)
 }
 
 func Load(ctx context.Context, storeKey any, key any) any {
-	c, ok := ctx.Value(storeKey).(*Store)
-	if !ok {
-		return nil
-	}
+	c := ctx.Value(storeKey).(*Store)
 	return c.Load(key)
 }
 
-func Remove(ctx context.Context, storeKey any, key any) {
-	c, ok := ctx.Value(storeKey).(*Store)
-	if !ok {
-		return
-	}
-	c.Remove(key)
+func Remove(ctx context.Context, storeKey any, key any) any {
+	c := ctx.Value(storeKey).(*Store)
+	return c.Remove(key)
 }

@@ -29,7 +29,14 @@ router.Use(doors.ServePage(
 
 There is no need to check cookies/headers in event handlers, because they are already scoped to the session and page instance.
 
-> **❗ Don't rely only on the cookie value, always implement session storage** 
+> **❗ Don't rely only on the cookie value; always implement session storage** 
+
+### ⚠️ When to check authorization besides the page handler
+
+If user access to certain actions or views can be revoked, you should 
+
+* **Verify user view permissions during render** (not only in the ServePage handler) to ensure that the user can't access previously available views with dynamic navigation. 
+* **Verify user write permissions in the hook handler functions** to ensure that even if the permission is revoked after rendering, you are still safe.
 
 ## Session Management
 
@@ -113,4 +120,6 @@ In any event handler, you can schedule a browser action to be executed after the
   Replace location with the provided **path model** (without history entry)
 
 Use those actions in login handlers to "redirect" the user to the authorized page.
+
+## 
 

@@ -130,9 +130,9 @@ export class Navigator {
             if (!r.ok) {
                 throw new Error("code " + r.status);
             }
+            this.activateLinks(url);
         } catch (e) {
-            console.error(e);
-            window.location.href = this.urlToStr(url);
+            location.reload()
         }
     }
 
