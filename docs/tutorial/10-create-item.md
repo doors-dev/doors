@@ -418,3 +418,7 @@ templ (f *createItemFragment) form() {
 
 
 
+---
+
+Next: [Item Card](./11-item-card.md)
+

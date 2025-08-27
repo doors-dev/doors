@@ -35,18 +35,16 @@ Builds (not bundeles) a JS/TS file into an ES module via the framework’s build
 })
 ```
 
-> Then it can be imported into the script via the specifier
->
-> ```templ
-> // script helper component
-> @doors.Script() {
-> 	<script>
-> 		const module = await import("utils")
-> 	</script>
-> }
-> ```
->
-> 
+Then it can be imported into the script via the **specifier** ("utis")
+
+```templ
+// script helper component
+@doors.Script() {
+	<script>
+		const module = await import("utils")
+	</script>
+}
+```
 
 ### `ImportModuleBytes`
 

@@ -36,9 +36,15 @@ func (c *catalogPage) Body() templ.Component {
 }
 ```
 
-Beam triggers an update only if newValue != oldValue. Additionaly, you can use doors.NewBeamExt constructor to provide a custom distinction check function. Check out **beam.md**  for details on **beam** and **source beam**.
+Beam triggers an update only if newValue != oldValue. Additionaly, you can use doors.NewBeamExt constructor to provide a custom distinction check function. Check out [Beam](../docs/05-beam.md) for details.
 
 > Path Model beam uses `reflect.DeepEqual` under the hood.
 
-As a general rule, always derive **beam** into the most specific pieces. It will not only optimize DOM updates, but also reduce DB load in many cases.
+As a general rule, always derive the **beam** into the most specific pieces. It will not only optimize DOM updates, but also reduce DB load in many cases.
+
+
+
+---
+
+Next: [DB Driver](./07-db-driver.md)
 

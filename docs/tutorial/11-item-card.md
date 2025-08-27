@@ -134,3 +134,9 @@ Steps:
 1. If authorized (common.IsAuthorized(ctx)), show the edit button inside the card pop-up, which switches the **door** content with the edit form component
 2. Add submit handler attribute — update item via driver and load the card into **door**.
 
+
+
+---
+
+Next: [Pagination](./12-pagination.md)
+

@@ -37,7 +37,7 @@ func OnErrorIndicate(duration time.Duration, indicator []Indicator) []OnError
 
 ## Call
 
-Call registered JavaScript handler when error occurs
+Call the registered JavaScript handler when an error occurs
 
 ```templ
 type CallOnError struct {
@@ -55,7 +55,7 @@ type CallOnError struct {
 func OnErrorCall(name string, meta any) []OnError 
 ```
 
-> Call **Registration/Invocation** rules are explained in the **JavaScript** article
+> Call **Registration/Invocation** rules are explained in the [JavaScript](../10-javascript.md) article
 
 ## Example
 

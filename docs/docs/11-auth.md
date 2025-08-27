@@ -111,15 +111,7 @@ templ logout() {
 
 ## After Actions
 
-In any event handler, you can schedule a browser action to be executed after the browser receives a response.
+Use [After Actions](./ref/07-after-actions.md) in login handlers to "redirect" the user to the authorized page.
 
-*  `r.After(doors.AfterLocationReload())`
-*  `r.After(doors.AfterLocationAssign(model any))`
-  Assign a new location from the provided **path model** (creates a history entry)
-*  `r.After(doors.AfterLocationReload(model any))`
-  Replace location with the provided **path model** (without history entry)
 
-Use those actions in login handlers to "redirect" the user to the authorized page.
-
-## 
 

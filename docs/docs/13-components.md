@@ -24,18 +24,18 @@ templ Demo() {
 `func ScriptPrivate() templ.Component`
 `func ScriptDisposable() templ.Component`
 
-Prepares inline script. Please look in **javascript.md **for details
+Prepares an inline script. Please look in the [JavaScript](./10-javascript.md) article for details.
 
 ## Style
 
 `func Style() templ.Component`
-Creates publicly available cachable static resource from inline style
+Creates a publicly accessible, cacheable, static resource from an inline style sheet.
 
 `func StylePrivate() templ.Component`
-Creates session-protected resource, internaly chaches style content
+Creates a session-protected resource and internally caches style content.
 
 `func StyleDisposable() templ.Component`
-Creates session-protected resource, does not cache content (for dynamic styles to avoid memory leaks)
+Creates a session-protected resource and does not cache content to prevent memory leaks with dynamic styles.
 
 ```templ
 @doors.Style(){
@@ -57,7 +57,7 @@ Creates session-protected resource, does not cache content (for dynamic styles t
 
 `func Text(any) templ.Component`
 
-Text converts any value to a component with escaped string using default formats.
+Converts any value to a component with an escaped string using default formats.
 
 ```templ
 @doors.Text(3) 
@@ -96,7 +96,7 @@ templ (f *Fragment) Render() {
 
 ## Components
 
-Renders multiple components one by one
+Renders multiple components sequentially.
 
 `func Components(content ...templ.Component) templ.Component`
 
@@ -104,18 +104,18 @@ Renders multiple components one by one
 
 `func Attributes([]Attr) templ.Component`
 
-Prepares magic attributes from an array, refer to **attributes.md**
+Prepares magic attributes from an array, refer to [Attributes](./07-attributes.md)
 
 ## Any
 
 `func Any(any) templ.Component {`
 
-Depending on value type
+Depending on the value type
 
 * renders `templ.Component`  directly
 * renders `doors.Fragment` with `doors.F`
 * renders `[]templ.Component` with `doors.Components`
-* prepares magic attributes from `[]Attr`  `Attributes`
+* prepares magic attributes from `[]Attr` with `doors.Attributes`
 * rvaluates and renders `func(context.Context) templ.Component `with `doors.E`
 * runs `func(context.Context) `with `doors.Run`
 * tries to format and render as text with `doors.Text`

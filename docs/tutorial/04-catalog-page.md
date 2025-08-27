@@ -136,7 +136,7 @@ templ Template(p Page) {
 			@doors.Include()
 
 			// same as <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
-			// but adds CSP headers (useful if you enable CSP later), please refer to docs/ref/imports.md for details
+			// but adds CSP headers (useful if you enable CSP later)
 			@doors.ImportStyleExternal{
 				Href: "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css",
 			}
@@ -148,6 +148,8 @@ templ Template(p Page) {
 	</html>
 }
 ```
+
+> Please refer to [Imports](../docs/ref/05-imports.md) for details
 
 ## 5. Menu 
 
@@ -254,9 +256,14 @@ templ menu() {
 
 > Navigation between the home page and the catalog triggers a new page load because you're switching between different path models. We learn about dynamic pages in the next article.
 
-Please refer to **href-and-src.md** for full details on `href`. Alternatively, instead of using Magic Attribute syntax, you can use attribute spread; see **attributes.md** for details.
+Please refer to [Href and Src](../docs/09-href-and-src.md) for full details on `href`. Alternatively, instead of using Magic Attribute syntax, you can use attribute spread; see [Attributes](../docs/07-attributes.md) for details.
 
 ## 6. Conclusion
 
 Visit https://localhost:8443/ to verify that page switching works and active link indication is applied.
 
+
+
+---
+
+Next: [Dynamic Content](./05-dynamic-content.md)

@@ -43,6 +43,18 @@ func AfterLocationReload() After {
 // AfterLocationAssign creates an After action that navigates to a new URL.
 // This adds the new URL to the browser's history stack. The model parameter
 // is used to generate the target URL using the application's routing system.
+func AfterScrollInto(selector string, smooth bool) After {
+	return afterFunc(func(ctx context.Context) (*front.After, error) {
+		return &front.After{
+			Name: "scroll_into",
+			Arg:  []any{selector, smooth},
+		}, nil
+	})
+}
+
+// AfterLocationAssign creates an After action that navigates to a new URL.
+// This adds the new URL to the browser's history stack. The model parameter
+// is used to generate the target URL using the application's routing system.
 func AfterLocationAssign(model any) After {
 	return afterFunc(func(ctx context.Context) (*front.After, error) {
 		l, err := NewLocation(ctx, model)

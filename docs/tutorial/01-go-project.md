@@ -49,3 +49,8 @@ $ go run .
 hello world
 ```
 
+
+
+---
+
+Next: [Home Page](./02-home-page.md)

@@ -56,7 +56,7 @@ func (c *FormCapture) Listen() string {
 }
 
 type LinkCapture struct {
-	StopPropagation bool `json:"stopPropagation"`
+	StopPropagation bool   `json:"stopPropagation"`
 }
 
 func (c *LinkCapture) Name() string {

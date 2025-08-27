@@ -139,3 +139,7 @@ func (c *catalogPage) Body() templ.Component {
 
 
 
+---
+
+Next: [Derive Beam](./06-derive-beam.md)
+

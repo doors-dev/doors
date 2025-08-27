@@ -12,9 +12,11 @@ type AHref struct {
 	Model           any
 	// Active link indicator configuration
 	Active          Active
-	
+
 	// For dynamic links
 	StopPropagation bool  // stop click event propagation
+	// scrolls into specified selector (after action)
+  ScrollInto      string
 	Indicator       []Indicator // loading indicator
 	OnError         []OnError  // error action 
 }

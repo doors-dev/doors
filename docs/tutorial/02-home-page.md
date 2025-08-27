@@ -69,9 +69,9 @@ templ Template(p Page) {
 
 ## 2.  Path Model 
 
-> Refer to **Path Model** in the docs for an explanation of how it works.
+> Refer to [Path Model](../docs/03-path-model.md) in the docs for an explanation of how it works.
 
-Now we need to create a path model structure. Let's place it in a common package so it can be imported into all other packages. 
+Now we need to create a path model structure. Let's put it in a common package so it can be imported into all other packages. 
 
  `./common/path.go`
 
@@ -195,3 +195,8 @@ Then visit https://localhost:8443/ to check; you should see an empty page with a
 
 > If you didn't install the CA (`mkcert -install`), you will see a warning first. Just proceed; it's a self-signed certificate - you can trust it.
 
+
+
+---
+
+Next: [Live Reloading](./03-live-reloading.md)

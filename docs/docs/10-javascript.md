@@ -13,9 +13,9 @@ Magic variable to access framework features
 * `$d.rawHook(name: string, arg: any): Promise<Response>`
   Call the hook from the `doors.AHook` or `doors.ARawHook` and get raw response
 * `$d.CaptureEr`
-  Reference to the error class thrown by hooks, so in the exception, you can check `if(err instanceof $d.CaptureErr)`. A description of CaptureErr can be found in the **ref/error-handling.md**.
+  Reference to the error class thrown by hooks, so in the exception, you can check `if(err instanceof $d.CaptureErr)`. A description of CaptureErr can be found in the [Error Handling](./ref/02-error-handling.md) article.
 * `$d.on(name string,  handler: (arg: any) => any)`
-  Register a handler to be called from Go or on error (checkout **ref/error-handling.md**)
+  Register a handler to be called from Go or on error (checkout [Error Handling](./ref/02-error-handling.md) article)
 * `$d.G: { [key: string]: any }`
   Getter for the global persistent object to share data between scripts.
 * `$d.clean(handler: () => void | Promise<void>): void`
@@ -46,11 +46,11 @@ The Script Component provides integration with framework functions. It:
 ### Variants
 
 * `doors.Script()`
-  Creates publicly available cachable static resource from inline script
+  Creates a publicly accessible, cacheable static resource from inline script.
 * `doors.ScriptPrivate()`
-  Creates session-protected resource, internaly chaches script content
+  Creates session-protected resource, internally caches script content.
 * `doors.ScriptDisposable()`
-  Creates session-protected resource, does not cache content (for dynamic scripts to avoid memory leaks)
+  Creates a session-protected resource and does not cache content, preventing memory leaks with dynamic scripts.
 
 ## 2. Pass Data To JavaScript 
 
@@ -123,7 +123,7 @@ type AHook[I any, O any] struct {
 }
 ```
 
-> ⚠️ It's your responsibility to handle exceptions in custom hooks on the front-end. Any hook error will throw an instance of `$d.CaptureErr` class. Please refer to **ref/error-handling.md**
+> ⚠️ It's your responsibility to handle exceptions in custom hooks on the front-end. Any hook error will throw an instance of `$d.CaptureErr` class. Please refer to the [Error Handling](./ref/02-error-handling.md) article.
 
 ### Raw Custom Hook
 

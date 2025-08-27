@@ -38,7 +38,7 @@ type Page[M any] interface {
 func(SourceBeam[M any]) templ.Component
 ```
 
-Where M is `Path Model` (check out **03-path-model.md**)
+Where M is `Path Model` (check out [Path Model](./03-path-model.md))
 
 ### Page Handler
 

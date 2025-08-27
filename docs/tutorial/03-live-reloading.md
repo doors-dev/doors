@@ -26,3 +26,8 @@ Run in your project dir:
 
 Open https://localhost:8443/, then edit the `<h1>` content in your `./home/page.templ`; the page should automatically reload with the new version.
 
+
+
+---
+
+Next: [Catalog Page](./04-catalog-page.md)

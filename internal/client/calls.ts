@@ -8,7 +8,7 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 import doors from "./door"
-import { capture} from "./capture"
+import { capture } from "./capture"
 import navigator from "./navigator"
 import { removeAttr, setAttr } from "./dyna"
 
@@ -32,6 +32,12 @@ export default {
         task(() => {
             location.replace(url.toString())
         })
+    },
+    scroll_into: ([selector, smooth]: [string, boolean]) => {
+        const el = document.querySelector(selector)
+        if (el) {
+            el.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
+        }
     },
     location_assign: ([href, origin]: [string, boolean]) => {
         let url: URL

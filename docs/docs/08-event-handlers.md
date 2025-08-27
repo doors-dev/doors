@@ -91,7 +91,7 @@ That's too relaxed for some cases.  So, precise control can be enabled on the fr
 }
 ```
 
-Check out the **ref/scopes** article for details.
+Check out the [Scopes](./ref/04-scopes.md) article for details.
 
 ## Indication
 
@@ -110,7 +110,7 @@ For better UX apply pending indication with the **Indicator** API:
 }
 ```
 
-Check out the **ref/indication** article for details.
+Refer to the [Indication](./ref/03-indication.md) article for more details.
 
 ## Error Handling
 
@@ -128,5 +128,5 @@ To configure front-end action on error use the `OnError` field:
 }
 ```
 
-You can set up an indicator or a JavaScript function call, or any combination thereof. Please refer to the **ref/error-handling** article.
+You can set up an indicator or a JavaScript function call, or any combination thereof. Please refer to the [Error Handling](./ref/02-error-handling.md) article.
 

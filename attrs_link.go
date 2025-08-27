@@ -18,9 +18,9 @@ import (
 	"path/filepath"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 )
 
 type HrefActiveMatch int
@@ -82,6 +82,7 @@ type Active struct {
 type AHref struct {
 	Active          Active
 	StopPropagation bool
+	ScrollInto      string
 	Model           any
 	Indicator       []Indicator
 	OnError         []OnError
@@ -117,7 +118,15 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 	on, ok := link.ClickHandler()
 	if ok {
 		entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
-			Trigger: func(_ context.Context, _ http.ResponseWriter, _ *http.Request) bool {
+			Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+				if h.ScrollInto != "" {
+					r := request{
+						w:   w,
+						r:   r,
+						ctx: ctx,
+					}
+					r.After(AfterScrollInto(h.ScrollInto, false))
+				}
 				on()
 				return false
 			},

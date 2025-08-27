@@ -128,7 +128,7 @@ templ (f *loginFragment) Render() {
 
 ```
 
-> There are multiple types of scopes; additionally, they can be shared between hooks and combined in a pipeline. `doors.Scope{Type}` is a helper for creating a scope pipeline of one scope of a specific type. Please refer to **ref/scopes.md** for details.
+> There are multiple types of scopes; additionally, they can be shared between hooks and combined in a pipeline. `doors.Scope{Type}` is a helper for creating a scope pipeline of one scope of a specific type. Please refer to [Scopes](../docs/ref/04-scopes.md) for details.
 
 #### Indication
 
@@ -160,9 +160,7 @@ templ (f *loginFragment) Render() {
 
 ```
 
-> `doors.Indicator{Type}{Selector}` is a helper function to define a single indicator of a specific type and selector.  There are multiple indication types  (attribute, class, content) and selectors (target, query, parent query).  You can also specify multiple indicators. Please refer to **ref/indication.md** for details.
->
-> 
+> `doors.Indicator{Type}{Selector}` is a helper function to define a single indicator of a specific type and selector.  There are multiple indication types  (attribute, class, content) and selectors (target, query, parent query).  You can also specify multiple indicators. Please refer to [Indication](../docs/ref/03-indication.md) for details.
 
 ## 3. Form Error Message
 
@@ -293,7 +291,7 @@ func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 
 ```
 
-> The handler function is the page's entry point. **It's the only place where you must care about authorization**.   
+> The handler function is the page's entry point. **It's the only place where you need to worry about checking cookie authorization**.   
 
 ## 6. Logout
 
@@ -432,7 +430,7 @@ func IsAuthorized(ctx context.Context) bool {
 
 ### Auth check in category fragment
 
-```teml
+```templ
 templ (f *categoryFragment) content(catId string) {
 	{{ cat, ok := driver.Cats.Get(catId) }}
 	if ok {
@@ -452,7 +450,12 @@ templ (f *categoryFragment) content(catId string) {
 		</div>
 	}
 }
-
 ```
 
 > Check any category page, you should see button "Add Item" button if authorized
+
+
+
+---
+
+Next: [Create Item](./10-create-item.md)

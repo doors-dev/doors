@@ -12,9 +12,12 @@ Practices you should understand and follow.
 
 ## 2. Respect blocking free context and data propagation.
 
-Rendering operations and Beam handlers are executed in the framework's runtime. It's okay to query data and make requests to external systems during rendering or in Beam subscription handlers. However, use manually spawned (or via @doors.Go) goroutines to wait on channels or async events in manually spawned (or via @doors.Go) goroutines or hook handlers.
+Rendering operations and Beam handlers are executed in the framework's runtime. 
 
-✅  Best: query data during render:
+* Query data and make requests to external systems during rendering or, less preferably, in `Beam` subscription handlers.
+* Use manually spawned (or via `@doors.Go`) goroutines, or, less preferably, hook handlers to wait on channels, asynchronous events, or perform any long-running operations.
+
+✅  Best: query data during render: 
 
 ```templ
 templ (c *card) Render() {*
@@ -35,7 +38,7 @@ pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
 
 > Querying data in the beam handler will delay the propagation of **beam** data to nested elements; it's acceptable.
 
-✅  Spawn goroutine for long running tasks:
+✅  Spawn goroutine for long-running tasks:
 
 ```templ
 templ (f *fragment) Render() (
@@ -61,7 +64,7 @@ templ (f *fragment) Render() (
 *  Wait for external systems events during render or in Beam subscription handlers
 *  Try to synchronize rendering operations with each other by blocking in render functions
 
-❌  Block framework runtime to wait for other runtime dependent operations to complete, like :
+❌  Block framework runtime to wait for other runtime-dependent operations to complete, like :
 
 ```temp
 pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
@@ -72,58 +75,58 @@ pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
 }
 ```
 
-> ✅   Instead do this:
->
-> ```templ
-> pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
-> // spawn independent runtime goroutine
-> 	go func() {
-> 			// tell the framework that you are safe
-> 			blockingCtx := doors.AllowBlocking(ctx)
-> 			err, ok := <- door.XUpdate(blockingCtx, itemInfo(item))
-> 			/* ... */
-> 	}()
-> 	return false
-> }
-> ```
+✅   Instead, do this:
+
+```temlp
+pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
+// spawn independent runtime goroutine
+	go func() {
+			// tell the framework that you are safe
+			blockingCtx := doors.AllowBlocking(ctx)
+			err, ok := <- door.XUpdate(blockingCtx, itemInfo(item))
+			/* ... */
+	}()
+	return false
+}
+```
 
 ❌  Block the render like:
 
 ```templ
 templ (f *fragment) Render() {
- 		// blocking recieve from pubsub topic
+ 		// blocking receive from pubsub topic
 		{{ msg, _ := <- f.pubsub.Channel() }}
 		// print payload
 		{ msg.Payload }
 }
 ```
 
-> ✅  instead do this:
->
-> ```templ
-> templ (f *fragment) Render() {
-> 	// initialize door
-> 	{{ door := doors.Door{} }}
-> 	// spawn goroutine
-> 	@doors.Go(func(ctx context.Context) {
-> 	   select {
->            // blocking recieve from pubsub topic 
->            case msg, _ := <- f.pubsub.Channel():
->               n.update(doors.Text(msg.Payload))
->            // or cancel if unmounted
->            case <-ctx.Done():
->              return
->         }
-> 	})
-> 	// render door
-> 	@door
-> }
-> ```
+✅  Instead, do this:
+
+```templ 
+templ (f *fragment) Render() {
+	// initialize door
+	{{ door := doors.Door{} }}
+	// spawn goroutine
+	@doors.Go(func(ctx context.Context) {
+	   select {
+        // blocking recieve from pubsub topic 
+        case msg, _ := <- f.pubsub.Channel():
+           n.update(doors.Text(msg.Payload))
+        // or cancel if unmounted
+        case <-ctx.Done():
+          return
+     }
+	})
+	// render door
+	@door
+}
+```
 
 ## 3. Understand the security model.
 
 * For protected pages, **verify cookie authentication in the `ServePage` handler**
-* **Don't forget to call `doors.SessionEnd(ctx)` when the user logs out** and manage framework session expiration with `doors.SessionExpire(ctx, duration)`. Otherwise, you might leave private page instances active after authentication has ended.
+* **Don't forget to call `doors.SessionEnd(ctx)` when the user logs out**, and manage framework session expiration with `doors.SessionExpire(ctx, duration)`. Otherwise, you might leave private page instances active after authentication has ended.
 * There is no need to check cookies/headers in event handlers, because they are already protected
 * **If user access to certain actions or views can be revoked,** you should 
   * **Verify user view permissions during render** (not only in the ServePage handler) to ensure that the user can't access previously available views with dynamic navigation. 
@@ -132,7 +135,7 @@ templ (f *fragment) Render() {
 
 ## 4. Use the closest `context.Context` value.
 
-Context is used to track component relations, action progress and many more.  Always use closest context you have in scope. 
+Context is used to track component relations, action progress, and many more.  Always use the closest context you have in scope. 
 
 ```templ
 templ (f *fragment) Render() {

@@ -231,3 +231,10 @@ templ (f *categoryFragment) Render() {
 By this time, you have learned one of the core frameworks' mechanics: `Beam` derivation and subscription.   As you probably already understand, the framework establishes an explicit and direct connection between data and HTML updates, without relying on hidden virtual DOM diffs (**diff data, not DOM**).
 
 In the following chapters, we will cover authentication and event handling.
+
+
+
+---
+
+Next: [Form Auth](./09-form-auth.md)
+
