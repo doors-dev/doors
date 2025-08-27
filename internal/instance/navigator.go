@@ -24,10 +24,11 @@ import (
 
 func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyAdapter, model *M, detached bool, rerouted bool) *navigator[M] {
 	return &navigator[M]{
-		adapter:  adapter,
-		adapters: adapters,
-		detached: detached,
-		rerouted: rerouted,
+		adapter:     adapter,
+		adapters:    adapters,
+		detached:    detached,
+		rerouted:    rerouted,
+		historyHead: &historyHead[M]{},
 		model: beam.NewSourceBeamExt(*model, func(new, old M) bool {
 			return !reflect.DeepEqual(new, old)
 		}),
@@ -37,17 +38,16 @@ func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyA
 const historyLimit = 32
 
 type navigator[M any] struct {
-	adapter      *path.Adapter[M]
-	adapters     map[string]path.AnyAdapter
-	detached     bool
-	rerouted     bool
-	model        beam.SourceBeam[M]
-	solitaire    *solitaire
-	mu           sync.Mutex
-	historyIndex int
-	history      [historyLimit]*navigatorState[M]
-	pathCall     *setPathCall
-	ctx          context.Context
+	adapter     *path.Adapter[M]
+	adapters    map[string]path.AnyAdapter
+	detached    bool
+	rerouted    bool
+	model       beam.SourceBeam[M]
+	solitaire   *solitaire
+	mu          sync.Mutex
+	historyHead *historyHead[M]
+	pathCall    *setPathCall
+	ctx         context.Context
 }
 
 func (n *navigator[M]) isDetached() bool {
@@ -100,64 +100,6 @@ func (n *navigator[M]) newLink(ctx context.Context, m any) (*Link, error) {
 	}, nil
 }
 
-func (n *navigator[M]) restore(r *http.Request) bool {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	index := n.findPath(r.RequestURI)
-	if index != -1 {
-		entry := n.history[index]
-		n.model.Update(n.ctx, *entry.model)
-		return true
-	}
-	return false
-}
-
-func (n *navigator[M]) findPath(path string) int {
-	index := n.historyIndex - 1
-	for {
-		if index == -1 {
-			index = historyLimit - 1
-		}
-		entry := n.history[index]
-		if entry == nil {
-			break
-		}
-		if entry.path == path {
-			return index
-		}
-		if index == n.historyIndex {
-			break
-		}
-		index -= 1
-	}
-	return -1
-}
-
-func (n *navigator[M]) pushHistory(ns *navigatorState[M], sync bool) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	if sync {
-		if n.pathCall != nil {
-			n.pathCall.cancel()
-		}
-		n.pathCall = &setPathCall{
-			path:    ns.path,
-			replace: false,
-		}
-		n.solitaire.Call(n.pathCall)
-	}
-	index := n.findPath(ns.path)
-	if index != -1 {
-		n.history[index] = ns
-		return
-	}
-	n.history[n.historyIndex] = ns
-	n.historyIndex += 1
-	if n.historyIndex >= historyLimit {
-		n.historyIndex = 0
-	}
-}
-
 func (n *navigator[M]) init(ctx context.Context, solitaire *solitaire) {
 	n.solitaire = solitaire
 	n.ctx = ctx
@@ -180,13 +122,95 @@ func (n *navigator[M]) init(ctx context.Context, solitaire *solitaire) {
 		}
 	})
 	ns, ok := state.ReadAndSub(ctx, func(ctx context.Context, ns navigatorState[M]) bool {
-		n.pushHistory(&ns, !n.detached)
+		n.pushHistory(&ns, !n.detached, false)
 		return false
 	})
 	if !ok {
 		return
 	}
-	n.pushHistory(&ns, n.rerouted && !n.detached)
+	n.pushHistory(&ns, n.rerouted && !n.detached, true)
+}
+
+func (n *navigator[M]) restore(r *http.Request) bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	entry := n.historyHead.retrieve(r.RequestURI)
+	if entry != nil {
+		n.model.Update(n.ctx, *entry.model)
+		return true
+	}
+	return false
+}
+
+func (n *navigator[M]) pushHistory(ns *navigatorState[M], sync bool, replace bool) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if sync {
+		if n.pathCall != nil {
+			n.pathCall.cancel()
+		}
+		n.pathCall = &setPathCall{
+			path:    ns.path,
+			replace: replace,
+		}
+		n.solitaire.Call(n.pathCall)
+	}
+	n.historyHead.push(ns)
+}
+
+type historyHead[M any] struct {
+	entry *historyEntry[M]
+}
+
+func (h *historyHead[M]) retrieve(path string) *navigatorState[M] {
+	if h.entry == nil {
+		return nil
+	}
+	return h.entry.retrieve(path)
+}
+
+func (h *historyHead[M]) push(n *navigatorState[M]) {
+	entry := &historyEntry[M]{
+		n: n,
+	}
+	if h.entry == nil {
+		h.entry = entry
+		return
+	}
+	entry.next = h.entry
+	entry.next.shake(entry, n.path, 1)
+
+	h.entry = entry
+}
+
+type historyEntry[M any] struct {
+	next *historyEntry[M]
+	n    *navigatorState[M]
+}
+
+func (e *historyEntry[M]) retrieve(path string) *navigatorState[M] {
+	if e.n.path == path {
+		return e.n
+	}
+	if e.next == nil {
+		return nil
+	}
+	return e.next.retrieve(path)
+}
+
+func (e *historyEntry[M]) shake(prev *historyEntry[M], path string, count int) {
+	if count == historyLimit {
+		prev.next = nil
+		return
+	}
+	if e.n.path == path {
+		prev.next = e.next
+		return
+	}
+	if e.next == nil {
+		return
+	}
+	e.next.shake(e, path, count+1)
 }
 
 type Link struct {
