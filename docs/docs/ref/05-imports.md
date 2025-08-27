@@ -1,53 +1,20 @@
 # Imports
 
-The framework provides the `doors.Imports` component for including JavaScript and CSS resources in a page.  
-It supports multiple import types—ranging from locally built ES modules to externally hosted scripts and stylesheets—and automatically generates an **import map** along with the necessary `<script>` and `<link>` tags.
+The framework provides the various import components for including JavaScript and CSS resources in a page: ranging from locally built ES modules to externally hosted scripts and stylesheets. 
 
-When a page is rendered, the `doors.Imports` component processes all declared imports, updates the Content Security Policy (CSP) with required hashes and sources, and ensures that resources are properly loaded or mapped for later usage.
+JavasScript module import map  and  CSP headers  are automatically generated along with the necessary `<script>` and `<link>` tags.
 
 > Refer to **ref/esbuild** article for esbult configuration 
 
----
-
-## Overview
-
-`doors.Imports` accepts one or more import entries implementing the `Import` interface.  
-Each entry describes how a resource should be built or referenced and whether it should be loaded immediately.
-
-Resources can be:
-
-- ES modules, created from source files, raw files, byte slices, or bundles.
 - Stylesheets, created from files, byte slices, or hosted/external URLs.
-
----
-
-## Page-level integration
-
-`doors.Imports` should be placed once per page, typically inside the `<head>` element.  
-It collects all provided imports, generates the import map, writes it to HTML, and renders any required `<script>` or `<link>` tags.
-
-If `doors.Imports` is called more than once per page render, the extra calls are ignored and an error is logged.
-
-```templ
-// Example: in your page head
-@doors.Imports(
-    // one or more Import entries …
-)
-```
-
-When invoked, `doors.Imports`:
-
-1. Writes a `<script type="importmap">…</script>` block.
-2. Prepares, bundles, and caches
-3. Records the script’s hash for CSP.
-4. Renders any queued loader scripts or stylesheets.
 
 ## Common rules
 
+- Imports should be placed once per page, typically inside the `<head>` element.  
 - **Specifier vs. Load:** If an entry is created with no `Specifier` (required in the import map) and `Load === false (true means include as HTML element), it is skipped and a warning is logged. At least one must be set to include the resource.
-- **CSP updates:** Import map hashes are added to CSP (if it's enabled). External JS/CSS sources are whitelisted using CSP `script-src` / `style-src`.
+- **CSP updates:**  external JS/CSS sources are whitelisted using CSP `script-src` / `style-src`.
 - **Naming and paths:** Generated asset file names are derived from the source path or  `Name` if provided. This can help you identify the resource in the web debugger.
-- For bundling, `Profile` value will be used to determine esbuild profile. The default profile is an empty string.
+- For modules, `Profile` value will be used to determine esbuild profile. The default profile is an empty string.
 
 ## Import types
 
@@ -62,8 +29,8 @@ Builds (not bundeles) a JS/TS file into an ES module via the framework’s build
 
 ```templ
 @doors.Imports(doors.ImportModule{
-    Specifier: "module",
-    Path:      "module/index.ts",
+    Specifier: "utils",
+    Path:      "src/index.ts",
     Load:      false,
 })
 ```
@@ -74,7 +41,7 @@ Builds (not bundeles) a JS/TS file into an ES module via the framework’s build
 > // script helper component
 > @doors.Script() {
 > 	<script>
-> 		const module = await import("module")
+> 		const module = await import("utils")
 > 	</script>
 > }
 > ```
@@ -107,7 +74,7 @@ Serves raw JavaScript from `[]byte` without processing.
 
 ### `ImportModuleBundle`
 
-Creates a bundled ES module from an entry point using the builder.
+Creates a bundled ES module from an entry point.
 
 **Fields:** `Specifier`, `Entry`, `Profile`, `Load`, `Name`.
 

@@ -152,13 +152,11 @@ func inlineName(attr templ.Attributes, ext string) string {
 	return name + "." + ext
 }
 
-templ scriptRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs *front.Attrs) {
+templ scriptRender(i *resources.InlineResource, mode resources.InlineMode, attrs *front.Attrs) {
 	{{
 	name := inlineName(i.Attrs, "js")
 	}}
-	if inline && mode != resources.InlineModeHost {
-		@renderRaw("script", attrs, i.Content())
-	} else if mode == resources.InlineModeHost {
+	if mode == resources.InlineModeHost {
 		{{ attrs.Set("src", router.ResourcePath(i.Resource(), name)) }}
 		<script { attrs... }></script>
 	} else {
@@ -175,13 +173,11 @@ templ scriptRender(i *resources.InlineResource, inline bool, mode resources.Inli
 	}
 }
 
-templ styleRender(i *resources.InlineResource, inline bool, mode resources.InlineMode, attrs *front.Attrs) {
+templ styleRender(i *resources.InlineResource, mode resources.InlineMode, attrs *front.Attrs) {
 	{{
 	name := inlineName(i.Attrs, "css")
 	}}
-	if inline && mode != resources.InlineModeHost {
-		@renderRaw("style", attrs, i.Content())
-	} else if mode == resources.InlineModeHost {
+	if mode == resources.InlineModeHost {
 		{{
 	attrs.Set("href", router.ResourcePath(i.Resource(), name))
 		}}

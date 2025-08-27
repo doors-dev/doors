@@ -73,7 +73,7 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 			ctx := context.WithValue(parentCtx, common.ParentCtxKey, parentCtx)
 			ctx = context.WithValue(ctx, common.RenderMapCtxKey, rm)
 			ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
-			_, err = rw.Write(fmt.Appendf(nil, "<%s", tag))
+			_, err = fmt.Fprintf(rw, "<%s", tag)
 			if err != nil {
 				return
 			}
@@ -91,7 +91,7 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 					return
 				}
 			}
-			_, err = rw.Write(fmt.Appendf(nil, "</%s>", tag))
+			_, err = fmt.Fprintf(rw, "</%s>", tag)
 		})
 		t.Write(func(t *shredder.Thread) {
 			if t == nil || parentCtx.Err() != nil {

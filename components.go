@@ -54,7 +54,7 @@ import (
 // consistent state (Beam), ensuring stable and predictable rendering.
 type Door = door.Door
 
-// Deprecated name
+// Deprecated: Use Door instead
 type Node = Door
 
 // Fragment is a helper interface for defining composable, stateful, and code-interactive components.
@@ -347,12 +347,8 @@ func (s script) Render(ctx context.Context, w io.Writer) error {
 	if resource == nil {
 		return nil
 	}
-	nonce, inline := inst.InlineNonce()
-	if inline && s.mode != resources.InlineModeHost {
-		resource.Attrs["nonce"] = nonce
-	}
 	attrs.SetRaw(resource.Attrs)
-	return scriptRender(resource, inline, s.mode, attrs).Render(ctx, w)
+	return scriptRender(resource, s.mode, attrs).Render(ctx, w)
 }
 
 type style struct {
@@ -419,17 +415,13 @@ func (s style) Render(ctx context.Context, w io.Writer) error {
 	if resource == nil {
 		return nil
 	}
-	nonce, inline := inst.InlineNonce()
-	if inline && s.mode != resources.InlineModeHost {
-		resource.Attrs["nonce"] = nonce
-	}
 	attrs.SetRaw(resource.Attrs)
-	return styleRender(resource, inline, s.mode, attrs).Render(ctx, w)
+	return styleRender(resource, s.mode, attrs).Render(ctx, w)
 }
 
 func renderRaw(tag string, attrs templ.Attributer, content []byte) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, err := w.Write(fmt.Appendf(nil, "<%s", tag))
+		_, err := fmt.Fprintf(w, "<%s", tag)
 		if err != nil {
 			return err
 		}
@@ -437,7 +429,7 @@ func renderRaw(tag string, attrs templ.Attributer, content []byte) templ.Compone
 		if err != nil {
 			return err
 		}
-		_, err = w.Write(common.AsBytes(">"))
+		_, err = fmt.Fprint(w, ">")
 		if err != nil {
 			return err
 		}
@@ -445,7 +437,7 @@ func renderRaw(tag string, attrs templ.Attributer, content []byte) templ.Compone
 		if err != nil {
 			return err
 		}
-		_, err = w.Write(fmt.Appendf(nil, "</%s>", tag))
+		_, err = fmt.Fprintf(w, "</%s>", tag)
 		return err
 	})
 }
@@ -485,6 +477,7 @@ func Attributes(a []Attr) templ.Component {
 	})
 }
 
+
 func Any(v any) templ.Component {
 	c, ok := v.(templ.Component)
 	if ok {
@@ -497,6 +490,10 @@ func Any(v any) templ.Component {
 	m, ok := v.([]templ.Component)
 	if ok {
 		return Components(m...)
+	}
+	as, ok := v.([]Attr)
+	if ok {
+		return Attributes(as)
 	}
 	e, ok := v.(func(context.Context) templ.Component)
 	if ok {

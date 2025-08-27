@@ -12,7 +12,9 @@ package common
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -48,6 +50,9 @@ func NewRenderMap() *RenderMap {
 		mu:      sync.Mutex{},
 		buffers: make(map[uint64][]byte),
 		attrs:   make(map[uint32]*Attrs),
+		importMap: &importMap{
+			Imports: make(map[string]string),
+		},
 	}
 }
 
@@ -55,7 +60,25 @@ type RenderMap struct {
 	mu        sync.Mutex
 	buffers   map[uint64][]byte
 	attrs     map[uint32]*Attrs
+	importMap *importMap
 	attrCount uint32
+}
+
+func (r *RenderMap) InitImportMap(c *CSPCollector) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.importMap.init(c)
+}
+
+func (r *RenderMap) AddImport(specifier string, path string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.importMap.addImport(specifier, path)
+}
+
+func (r *RenderMap) WriteImportMap(w io.Writer) error {
+	_, err := w.Write([]byte{controlByte, commandImportMap})
+	return err
 }
 
 func (r *RenderMap) WriteAttrs(w io.Writer, attr *Attrs) error {
@@ -76,6 +99,8 @@ func (r *RenderMap) Destroy() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.buffers = nil
+	r.attrs = nil
+	r.importMap = nil
 }
 
 func (r *RenderMap) RenderBuf(w io.Writer, buf []byte) error {
@@ -94,6 +119,7 @@ const (
 	modeInsert
 	modeMagicA
 	modeMagicAInsert
+	modeImportMap
 )
 
 const controlByte byte = 0xFF
@@ -101,6 +127,7 @@ const controlByte byte = 0xFF
 const (
 	commandInsert byte = iota
 	commandMagicA
+	commandImportMap
 )
 
 func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
@@ -139,6 +166,8 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
 		if mode == modeCommand {
 			command := buf[cursor]
 			switch command {
+			case commandImportMap:
+				mode = modeImportMap
 			case commandInsert:
 				mode = modeInsert
 			case commandMagicA:
@@ -147,6 +176,15 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
 				return errors.New("Unsupported command")
 			}
 			cursor += 1
+			continue
+		}
+		if mode == modeImportMap {
+			err := r.importMap.write(w)
+			if err != nil {
+				return err
+			}
+			mode = modeLook
+			start = cursor
 			continue
 		}
 		if mode == modeInsert {
@@ -294,4 +332,35 @@ func (rw *RenderWriter) Len() int {
 
 func (w *RenderWriter) Write(b []byte) (int, error) {
 	return w.buf.Write(b)
+}
+
+type importMap struct {
+	Imports map[string]string `json:"imports"`
+	content []byte
+}
+
+func (i *importMap) addImport(specifier string, path string) {
+	i.Imports[specifier] = path
+}
+
+func (i *importMap) write(w io.Writer) error {
+	if i.content == nil {
+		return nil
+	}
+	_, err := w.Write(i.content)
+	return err
+}
+
+func (i *importMap) init(c *CSPCollector) {
+	if len(i.Imports) == 0 {
+		return
+	}
+	w := &bytes.Buffer{}
+	json, _ := json.Marshal(i)
+	hash := sha256.Sum256(json)
+	c.ScriptHash(hash[:])
+	w.WriteString("<script type=\"importmap\">")
+	w.Write(json)
+	w.WriteString("</script>")
+	i.content = w.Bytes()
 }

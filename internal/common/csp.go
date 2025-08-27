@@ -16,37 +16,93 @@ import (
 )
 
 type CSP struct {
-	// nil or empty = 'self'
-	DefaultSources      []string
-	ScriptStrictDynamic bool
-	// Add extra sources besides  imported hashes and nonces
+	// default-src:
+	//   nil          ⇒ emit:   default-src 'self'
+	//   len == 0     ⇒ omit:   (no default-src directive)
+	//   len > 0      ⇒ emit:   default-src <values>
+	DefaultSources []string
+
+	// script-src (user additions only):
+	//   Directive is ALWAYS emitted with at least 'self' plus any collected hashes/sources.
+	//   nil or len == 0 ⇒ no extra user sources added.
 	ScriptSources []string
-	// Add extra sources besides  imported hashes and nonces
+
+	// script-src strict-dynamic:
+	//   When true, appends 'strict-dynamic' to script-src (typically used with nonces/hashes).
+	ScriptStrictDynamic bool
+
+	// style-src (user additions only):
+	//   Directive is ALWAYS emitted with at least 'self' plus any collected hashes/sources.
+	//   nil or len == 0 ⇒ no extra user sources added.
 	StyleSources []string
-	// Add extra sources besides self
+
+	// connect-src (user additions only):
+	//   Directive is ALWAYS emitted with at least 'self'.
+	//   nil or len == 0 ⇒ results in: connect-src 'self'
+	//   len > 0         ⇒ connect-src 'self' <values>
 	ConnectSources []string
-	// nill or empty = 'none' (framework handeles via js)
-	FormActions []string // nil - none
-	// If null empty 'none'
+
+	// form-action:
+	//   nil      ⇒ emit:   form-action 'none'
+	//   len == 0 ⇒ omit:   (no form-action directive)
+	//   len > 0  ⇒ emit:   form-action <values>
+	FormActions []string
+
+	// object-src:
+	//   nil      ⇒ emit:   object-src 'none'
+	//   len == 0 ⇒ omit:   (no object-src directive)
+	//   len > 0  ⇒ emit:   object-src <values>
 	ObjectSources []string
-	// If null empty 'none'
+
+	// frame-src:
+	//   nil      ⇒ emit:   frame-src 'none'
+	//   len == 0 ⇒ omit:   (no frame-src directive)
+	//   len > 0  ⇒ emit:   frame-src <values>
 	FrameSources []string
-	// If null empty 'none'
+
+	// frame-ancestors:
+	//   nil      ⇒ emit:   frame-ancestors 'none'
+	//   len == 0 ⇒ omit:   (no frame-ancestors directive)
+	//   len > 0  ⇒ emit:   frame-ancestors <values>
 	FrameAcestors []string
-	// If null empty 'none'
+
+	// base-uri:
+	//   nil      ⇒ emit:   base-uri 'none'
+	//   len == 0 ⇒ omit:   (no base-uri directive)
+	//   len > 0  ⇒ emit:   base-uri <values>
 	BaseURIAllow []string
-	// If null empy directive will not be added
+
+	// img-src:
+	//   nil or len == 0 ⇒ omit
+	//   len > 0         ⇒ emit: img-src <values>
 	ImgSources []string
-	// If null empy directive will not be added
+
+	// font-src:
+	//   nil or len == 0 ⇒ omit
+	//   len > 0         ⇒ emit: font-src <values>
 	FontSources []string
-	// If null empy directive will not be added
+
+	// media-src:
+	//   nil or len == 0 ⇒ omit
+	//   len > 0         ⇒ emit: media-src <values>
 	MediaSources []string
-	// If null empy directive will not be added
+
+	// sandbox:
+	//   nil or len == 0 ⇒ omit
+	//   len > 0         ⇒ emit: sandbox <flags>
 	Sandbox []string
-	// If null empy directive will not be added
+
+	// worker-src:
+	//   nil or len == 0 ⇒ omit
+	//   len > 0         ⇒ emit: worker-src <values>
 	WorkerSources []string
-	// Inlines ScriptLocal* and StyleLocal* with nonce, impoves first time loading, not recommended. Adds nonce to style and script direcrives in header
-	InlineLocal bool
+
+	// report-to:
+	//   ""  ⇒ omit
+	//   set ⇒ emit: report-to <value>
+	// NOTE: To make this effective, you must also send a corresponding
+	//       `Report-To` HTTP response header that defines the reporting group.
+	ReportTo string
 }
 
 type collectedCSP struct {
@@ -64,7 +120,6 @@ func newCollectedCSP() *collectedCSP {
 type CSPCollector struct {
 	csp     *CSP
 	styles  *collectedCSP
-	nonce   string
 	scripts *collectedCSP
 }
 
@@ -96,41 +151,29 @@ func (c *CSPCollector) ScriptHash(hash []byte) {
 	c.scripts.hashes = append(c.scripts.hashes, hash)
 }
 
-func (c *CSPCollector) Nonce() string {
-	if c == nil {
-		return ""
-	}
-	return c.nonce
-}
-
 func (c *CSPCollector) Generate() string {
-	return c.csp.generate(c.styles, c.scripts, c.nonce)
+	return c.csp.generate(c.styles, c.scripts)
 }
 
 func (c *CSP) NewCollector() *CSPCollector {
 	if c == nil {
 		return nil
 	}
-	var nonce string
-	if c.InlineLocal {
-		nonce = RandId()
-	}
 	return &CSPCollector{
 		csp:     c,
-		nonce:   nonce,
 		styles:  newCollectedCSP(),
 		scripts: newCollectedCSP(),
 	}
 }
 
-func (c *CSP) generate(styleCollected *collectedCSP, scriptCollected *collectedCSP, nonce string) string {
+func (c *CSP) generate(styleCollected *collectedCSP, scriptCollected *collectedCSP) string {
 	def := c.simple("default-src", nil, c.DefaultSources, []string{"'self'"})
 	connect := c.simple("connect-src", []string{"'self'"}, c.ConnectSources, nil)
-	script := c.collected("script-src", scriptCollected, c.ScriptSources, nonce)
+	script := c.collected("script-src", scriptCollected, c.ScriptSources)
 	if c.ScriptStrictDynamic {
 		script = script + " " + "'strict-dynamic'"
 	}
-	style := c.collected("style-src", styleCollected, c.StyleSources, nonce)
+	style := c.collected("style-src", styleCollected, c.StyleSources)
 	allow := map[string][]string{
 		"form-action":     c.FormActions,
 		"object-src":      c.ObjectSources,
@@ -147,38 +190,37 @@ func (c *CSP) generate(styleCollected *collectedCSP, scriptCollected *collectedC
 		"img-src":    c.ImgSources,
 		"font-src":   c.FontSources,
 		"media-src":  c.MediaSources,
-		"sanbox":     c.Sandbox,
+		"sandbox":    c.Sandbox,
 		"worker-src": c.WorkerSources,
 	}
 	for directive := range optional {
 		value := c.simple(directive, nil, optional[directive], nil)
 		parts = append(parts, value)
 	}
+	if c.ReportTo != "" {
+		parts = append(parts, "report-to "+c.ReportTo)
+	}
 	return c.join(parts)
 }
 
-func (c *CSP) collected(directive string, collected *collectedCSP, user []string, nonce string) string {
+func (c *CSP) collected(directive string, collected *collectedCSP, user []string) string {
 	parts := []string{"'self'"}
 	for _, hash := range collected.hashes {
 		value := fmt.Sprintf("'sha256-%s'", base64.StdEncoding.EncodeToString(hash))
 		parts = append(parts, value)
 	}
 	parts = append(parts, collected.sources...)
-	if c.InlineLocal {
-		value := fmt.Sprintf("'nonce-%s'", nonce)
-		parts = append(parts, value)
-	}
 	return c.simple(directive, parts, user, nil)
 }
 
 func (c *CSP) simple(directive string, mandatory []string, user []string, def []string) string {
-	if user != nil && len(user) == 0 {
-		return ""
-	}
 	hasUser := user != nil
 	hasDefault := len(def) > 0
 	hasMandatory := len(mandatory) > 0
 	if user == nil && !hasMandatory && !hasDefault {
+		return ""
+	}
+	if user != nil && len(user) == 0 && !hasMandatory {
 		return ""
 	}
 	parts := []string{directive}

@@ -11,8 +11,6 @@ package doors
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/json"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -39,44 +37,37 @@ func importPath(r *resources.Resource, path string, name string, ext string) str
 	return router.ResourcePath(r, fileName)
 }
 
-// Import represents a resource that can be imported into a web page.
-// Imports can be JavaScript modules, CSS stylesheets, or external resources.
-// They are processed during rendering to generate appropriate HTML tags and import maps.
-type Import interface {
-	print() string
-	init(*importMap, *resources.Registry, *common.CSPCollector) error
-}
-
 // ImportModule imports a JavaScript/TypeScript file, processes it through esbuild,
 // and makes it available as an ES module. The module can be added to the import map
 // with a specifier name and/or loaded directly via script tag.
 type ImportModule struct {
-	Specifier string // Import map specifier name (optional)
-	Path      string // File system path to the module
-	Profile   string // Build profile for esbuild options
-	Load      bool   // Whether to load the module immediately via script tag
-	Name      string // Custom name for the generated file (optional)
+	Specifier string           // Import map specifier name (optional)
+	Path      string           // File system path to the module
+	Profile   string           // Build profile for esbuild options
+	Load      bool             // Whether to load the module immediately via script tag
+	Name      string           // Custom name for the generated file (optional)
+	Attrs     templ.Attributes // Additional html attributes
 }
 
-func (m ImportModule) print() string {
+func (m ImportModule) info() string {
 	return "module " + m.Path
 }
-
-func (m ImportModule) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportModule) Render(ctx context.Context, w io.Writer) error {
 	if m.Specifier == "" && !m.Load {
-		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.print()))
+		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.info()))
 		return nil
 	}
-	s, err := r.Module(m.Path, m.Profile)
+	man := newImportManager(ctx)
+	s, err := man.registry.Module(m.Path, m.Profile)
 	if err != nil {
 		return err
 	}
 	path := importPath(s, m.Path, m.Name, "js")
 	if m.Specifier != "" {
-		im.addImport(m.Specifier, path)
+		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		im.addRender(importScript(path))
+		return importScript(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -84,33 +75,34 @@ func (m ImportModule) init(im *importMap, r *resources.Registry, c *common.CSPCo
 // ImportModuleBytes imports JavaScript/TypeScript content from a byte slice,
 // processes it through esbuild, and makes it available as an ES module.
 type ImportModuleBytes struct {
-	Specifier string // Import map specifier name (optional)
-	Content   []byte // Module source code
-	Profile   string // Build profile for esbuild options
-	Load      bool   // Whether to load the module immediately via script tag
-	Name      string // Custom name for the generated file
+	Specifier string           // Import map specifier name (optional)
+	Content   []byte           // Module source code
+	Profile   string           // Build profile for esbuild options
+	Load      bool             // Whether to load the module immediately via script tag
+	Name      string           // Custom name for the generated file
+	Attrs     templ.Attributes // Additional html attributes
 }
 
-func (m ImportModuleBytes) print() string {
+func (m ImportModuleBytes) info() string {
 	return "module bytes"
 }
 
-func (m ImportModuleBytes) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportModuleBytes) Render(ctx context.Context, w io.Writer) error {
 	if m.Specifier == "" && !m.Load {
-		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.print()))
+		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.info()))
 		return nil
 	}
-
-	s, err := r.ModuleBytes(m.Content, m.Profile)
+	man := newImportManager(ctx)
+	s, err := man.registry.ModuleBytes(m.Content, m.Profile)
 	if err != nil {
 		return err
 	}
 	path := importPath(s, m.Name, "", "js")
 	if m.Specifier != "" {
-		im.addImport(m.Specifier, path)
+		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		im.addRender(importScript(path))
+		return importScript(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -118,32 +110,33 @@ func (m ImportModuleBytes) init(im *importMap, r *resources.Registry, c *common.
 // ImportModuleRaw imports a JavaScript file without any processing or transformation.
 // The file is served as-is without going through esbuild.
 type ImportModuleRaw struct {
-	Specifier string // Import map specifier name (optional)
-	Path      string // File system path to the module
-	Load      bool   // Whether to load the module immediately via script tag
-	Name      string // Custom name for the generated file (optional)
+	Specifier string           // Import map specifier name (optional)
+	Path      string           // File system path to the module
+	Load      bool             // Whether to load the module immediately via script tag
+	Name      string           // Custom name for the generated file (optional)
+	Attrs     templ.Attributes // Additional html attributes
 }
 
-func (m ImportModuleRaw) print() string {
+func (m ImportModuleRaw) info() string {
 	return "module raw " + m.Path
 }
 
-func (m ImportModuleRaw) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportModuleRaw) Render(ctx context.Context, w io.Writer) error {
 	if m.Specifier == "" && !m.Load {
-		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.print()))
+		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.info()))
 		return nil
 	}
-
-	s, err := r.ModuleRaw(m.Path)
+	man := newImportManager(ctx)
+	s, err := man.registry.ModuleRaw(m.Path)
 	if err != nil {
 		return err
 	}
 	path := importPath(s, m.Path, m.Name, "js")
 	if m.Specifier != "" {
-		im.addImport(m.Specifier, path)
+		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		im.addRender(importScript(path))
+		return importScript(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -151,31 +144,33 @@ func (m ImportModuleRaw) init(im *importMap, r *resources.Registry, c *common.CS
 // ImportModuleRawBytes imports JavaScript content from a byte slice without
 // any processing or transformation. The content is served as-is.
 type ImportModuleRawBytes struct {
-	Specifier string // Import map specifier name (optional)
-	Content   []byte // Raw JavaScript content
-	Load      bool   // Whether to load the module immediately via script tag
-	Name      string // Custom name for the generated file
+	Specifier string           // Import map specifier name (optional)
+	Content   []byte           // Raw JavaScript content
+	Load      bool             // Whether to load the module immediately via script tag
+	Name      string           // Custom name for the generated file
+	Attrs     templ.Attributes // Additional html attributes
 }
 
-func (m ImportModuleRawBytes) print() string {
+func (m ImportModuleRawBytes) info() string {
 	return "module raw bytes"
 }
 
-func (m ImportModuleRawBytes) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportModuleRawBytes) Render(ctx context.Context, w io.Writer) error {
 	if m.Specifier == "" && !m.Load {
-		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.print()))
+		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.info()))
 		return nil
 	}
-	s, err := r.ModuleRawBytes(m.Content)
+	man := newImportManager(ctx)
+	s, err := man.registry.ModuleRawBytes(m.Content)
 	if err != nil {
 		return err
 	}
 	path := importPath(s, "", m.Name, "js")
 	if m.Specifier != "" {
-		im.addImport(m.Specifier, path)
+		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		im.addRender(importScript(path))
+		return importScript(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -183,32 +178,34 @@ func (m ImportModuleRawBytes) init(im *importMap, r *resources.Registry, c *comm
 // ImportModuleBundle creates a bundled JavaScript module from an entry point,
 // bundling all local imports and dependencies into a single file using esbuild.
 type ImportModuleBundle struct {
-	Specifier string // Import map specifier name (optional)
-	Entry     string // Entry point file for the bundle
-	Profile   string // Build profile for esbuild options
-	Load      bool   // Whether to load the module immediately via script tag
-	Name      string // Custom name for the generated file (optional)
+	Specifier string           // Import map specifier name (optional)
+	Entry     string           // Entry point file for the bundle
+	Profile   string           // Build profile for esbuild options
+	Load      bool             // Whether to load the module immediately via script tag
+	Name      string           // Custom name for the generated file (optional)
+	Attrs     templ.Attributes // Additional html attributes
 }
 
-func (m ImportModuleBundle) print() string {
+func (m ImportModuleBundle) info() string {
 	return "module bundle " + m.Entry
 }
 
-func (m ImportModuleBundle) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportModuleBundle) Render(ctx context.Context, w io.Writer) error {
 	if m.Specifier == "" && !m.Load {
-		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.print()))
+		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.info()))
 		return nil
 	}
-	s, err := r.ModuleBundle(m.Entry, m.Profile)
+	man := newImportManager(ctx)
+	s, err := man.registry.ModuleBundle(m.Entry, m.Profile)
 	if err != nil {
 		return err
 	}
 	path := importPath(s, "", m.Name, "js")
 	if m.Specifier != "" {
-		im.addImport(m.Specifier, path)
+		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		im.addRender(importScript(path))
+		return importScript(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -217,34 +214,36 @@ func (m ImportModuleBundle) init(im *importMap, r *resources.Registry, c *common
 // bundling all local imports and dependencies into a single file using esbuild.
 // This is useful for embedding assets or working with embed.FS.
 type ImportModuleBundleFS struct {
-	CacheKey  string // Unique cache key for this filesystem/bundle combination
-	Specifier string // Import map specifier name (optional)
-	FS        fs.FS  // File system to read from
-	Entry     string // Entry point file within the filesystem
-	Profile   string // Build profile for esbuild options
-	Load      bool   // Whether to load the module immediately via script tag
-	Name      string // Custom name for the generated file (optional)
+	CacheKey  string           // Unique cache key for this filesystem/bundle combination
+	Specifier string           // Import map specifier name (optional)
+	FS        fs.FS            // File system to read from
+	Entry     string           // Entry point file within the filesystem
+	Profile   string           // Build profile for esbuild options
+	Load      bool             // Whether to load the module immediately via script tag
+	Name      string           // Custom name for the generated file (optional)
+	Attrs     templ.Attributes // Additional html attributes
 }
 
-func (m ImportModuleBundleFS) print() string {
+func (m ImportModuleBundleFS) info() string {
 	return "module bundle fs " + m.CacheKey
 }
 
-func (m ImportModuleBundleFS) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportModuleBundleFS) Render(ctx context.Context, w io.Writer) error {
 	if m.Specifier == "" && !m.Load {
-		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.print()))
+		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.info()))
 		return nil
 	}
-	s, err := r.ModuleBundleFS(m.CacheKey, m.FS, m.Entry, m.Profile)
+	man := newImportManager(ctx)
+	s, err := man.registry.ModuleBundleFS(m.CacheKey, m.FS, m.Entry, m.Profile)
 	if err != nil {
 		return err
 	}
 	path := importPath(s, "", m.Name, "js")
 	if m.Specifier != "" {
-		im.addImport(m.Specifier, path)
+		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		im.addRender(importScript(path))
+		return importScript(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -253,21 +252,27 @@ func (m ImportModuleBundleFS) init(im *importMap, r *resources.Registry, c *comm
 // but not processed by the build system. The Src should be a full path
 // starting from the application root.
 type ImportModuleHosted struct {
-	Specifier string // Import map specifier name (optional)
-	Load      bool   // Whether to load the module immediately via script tag
-	Src       string // Full path to the hosted module
+	Specifier string           // Import map specifier name (optional)
+	Load      bool             // Whether to load the module immediately via script tag
+	Src       string           // Full path to the hosted module
+	Attrs     templ.Attributes // Additional html attributes
 }
 
-func (m ImportModuleHosted) print() string {
+func (m ImportModuleHosted) info() string {
 	return "local module " + m.Src
 }
 
-func (m ImportModuleHosted) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
+func (m ImportModuleHosted) Render(ctx context.Context, w io.Writer) error {
+	if m.Specifier == "" && !m.Load {
+		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.info()))
+		return nil
+	}
+	man := newImportManager(ctx)
 	if m.Specifier != "" {
-		im.addImport(m.Specifier, m.Src)
+		man.rm.AddImport(m.Specifier, m.Src)
 	}
 	if m.Load {
-		im.addRender(importScript(m.Src))
+		return importScript(m.Src, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -275,22 +280,28 @@ func (m ImportModuleHosted) init(im *importMap, r *resources.Registry, c *common
 // ImportModuleExternal imports a JavaScript module from an external URL.
 // This adds the URL to the Content Security Policy script sources.
 type ImportModuleExternal struct {
-	Specifier string // Import map specifier name (optional)
-	Load      bool   // Whether to load the module immediately via script tag
-	Src       string // External URL to the module
+	Specifier string           // Import map specifier name (optional)
+	Load      bool             // Whether to load the module immediately via script tag
+	Src       string           // External URL to the module
+	Attrs     templ.Attributes // Additional html attributes
 }
 
-func (m ImportModuleExternal) print() string {
+func (m ImportModuleExternal) info() string {
 	return "external module " + m.Src
 }
 
-func (m ImportModuleExternal) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
-	c.ScriptSource(m.Src)
+func (m ImportModuleExternal) Render(ctx context.Context, w io.Writer) error {
+	if m.Specifier == "" && !m.Load {
+		slog.Warn("imported resource skipped: load is false and no specifier provided", slog.String("import", m.info()))
+		return nil
+	}
+	man := newImportManager(ctx)
+	man.collector.ScriptSource(m.Src)
 	if m.Specifier != "" {
-		im.addImport(m.Specifier, m.Src)
+		man.rm.AddImport(m.Specifier, m.Src)
 	}
 	if m.Load {
-		im.addRender(importScript(m.Src))
+		return importScript(m.Src, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -299,150 +310,98 @@ func (m ImportModuleExternal) init(im *importMap, r *resources.Registry, c *comm
 // but not processed by the build system. The Href should be a full path
 // starting from the application root.
 type ImportStyleHosted struct {
-	Href string // Full path to the hosted stylesheet
+	Href  string           // Full path to the hosted stylesheet
+	Attrs templ.Attributes // Additional html attributes
 }
 
-func (m ImportStyleHosted) print() string {
+func (m ImportStyleHosted) info() string {
 	return "local style " + m.Href
 }
 
-func (m ImportStyleHosted) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
-	im.addRender(importStyle(m.Href))
-	return nil
+func (m ImportStyleHosted) Render(ctx context.Context, w io.Writer) error {
+	return importStyle(m.Href, m.Attrs).Render(ctx, w)
 }
 
 // ImportStyleExternal imports a CSS stylesheet from an external URL.
 // This adds the URL to the Content Security Policy style sources.
 type ImportStyleExternal struct {
-	Href string // External URL to the stylesheet
+	Href  string           // External URL to the stylesheet
+	Attrs templ.Attributes // Additional html attributes
 }
 
-func (m ImportStyleExternal) print() string {
+func (m ImportStyleExternal) info() string {
 	return "external style " + m.Href
 }
 
-func (m ImportStyleExternal) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
-	c.StyleSource(m.Href)
-	im.addRender(importStyle(m.Href))
-	return nil
+func (m ImportStyleExternal) Render(ctx context.Context, w io.Writer) error {
+	man := newImportManager(ctx)
+	man.collector.StyleSource(m.Href)
+	return importStyle(m.Href, m.Attrs).Render(ctx, w)
 }
 
 // ImportStyle imports a CSS file, processes it (minification), and makes it
 // available as a stylesheet link in the HTML head.
 type ImportStyle struct {
-	Path string // File system path to the CSS file
-	Name string // Custom name for the generated file (optional)
+	Path  string           // File system path to the CSS file
+	Name  string           // Custom name for the generated file (optional)
+	Attrs templ.Attributes // Additional html attributes
 }
 
-func (m ImportStyle) print() string {
+func (m ImportStyle) info() string {
 	return "style " + m.Path
 }
 
-func (m ImportStyle) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
-	s, err := r.Style(m.Path)
+func (m ImportStyle) Render(ctx context.Context, w io.Writer) error {
+	man := newImportManager(ctx)
+	s, err := man.registry.Style(m.Path)
 	if err != nil {
 		return err
 	}
 	path := importPath(s, m.Path, m.Name, "css")
-	im.addRender(importStyle(path))
-	return nil
+	return importStyle(path, m.Attrs).Render(ctx, w)
 }
 
 // ImportStyleBytes imports CSS content from a byte slice, processes it
 // (minification), and makes it available as a stylesheet link.
 type ImportStyleBytes struct {
-	Content []byte // CSS source code
-	Name    string // Custom name for the generated file
+	Content []byte           // CSS source code
+	Name    string           // Custom name for the generated file
+	Attrs   templ.Attributes // Additional html attributes
 }
 
-func (m ImportStyleBytes) print() string {
+func (m ImportStyleBytes) info() string {
 	return "style bytes"
 }
 
-func (m ImportStyleBytes) init(im *importMap, r *resources.Registry, c *common.CSPCollector) error {
-	s, err := r.StyleBytes(m.Content)
+func (m ImportStyleBytes) Render(ctx context.Context, w io.Writer) error {
+	man := newImportManager(ctx)
+	s, err := man.registry.StyleBytes(m.Content)
 	if err != nil {
 		return err
 	}
 	path := importPath(s, m.Name, "", "css")
-	im.addRender(importStyle(path))
-	return nil
+	return importStyle(path, m.Attrs).Render(ctx, w)
 }
 
-type importMap struct {
-	Imports map[string]string `json:"imports"`
-	renders []templ.Component
+type importManager struct {
+	registry  *resources.Registry
+	collector *common.CSPCollector
+	rm        *common.RenderMap
 }
 
-func (i *importMap) render(c *common.CSPCollector, ctx context.Context, w io.Writer) error {
-	json, err := json.Marshal(i)
-	if err != nil {
-		return err
+func newImportManager(ctx context.Context) *importManager {
+	instance := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	registy := instance.ImportRegistry()
+	collector := instance.CSPCollector()
+	rm := ctx.Value(common.RenderMapCtxKey).(*common.RenderMap)
+	return &importManager{
+		registry:  registy,
+		collector: collector,
+		rm:        rm,
 	}
-	hash := sha256.Sum256(json)
-	c.ScriptHash(hash[:])
-	_, err = w.Write(common.AsBytes("<script type=\"importmap\">"))
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(json)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(common.AsBytes("</script>"))
-	if err != nil {
-		return err
-	}
-	for _, component := range i.renders {
-		err = component.Render(ctx, w)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
-func (i *importMap) addImport(name string, path string) {
-	i.Imports[name] = path
-}
-
-func (i *importMap) addRender(component templ.Component) {
-	i.renders = append(i.renders, component)
-}
-
-// Imports generates the HTML import map and resource loading tags for the specified imports.
-// This component should be placed in the HTML head section and can only be used once per page.
-// It processes all import entries, builds an ES modules import map, and generates the necessary
-// script and link tags for loading resources.
-//
-// The function handles:
-//   - ES module import map generation
-//   - JavaScript and CSS resource processing
-//   - Content Security Policy header updates
-//   - Automatic resource caching and optimization
-//
-// Import entries are processed in order, and any errors are logged while continuing
-// with the remaining entries.
-func Imports(entries ...Import) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		instance := ctx.Value(common.InstanceCtxKey).(instance.Core)
-		registy := instance.ImportRegistry()
-		collector, ok := instance.CSPCollector()
-		if !ok {
-			slog.Error("@Imports is allowed only in initial render and only once.")
-			return nil
-		}
-		im := &importMap{
-			Imports: make(map[string]string),
-			renders: make([]templ.Component, 0),
-		}
-		for _, entry := range entries {
-			err := entry.init(im, registy, collector)
-			if err != nil {
-				slog.Error(err.Error(), slog.String("import", entry.print()))
-				continue
-			}
-		}
-		return im.render(collector, ctx, w)
-	})
+// Deprecated: Direct import render supported
+func Imports(content ...templ.Component) templ.Component {
+	return Components(content...)
 }

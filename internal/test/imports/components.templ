@@ -47,91 +47,92 @@ templ fileRawSrc() {
 }
 
 templ styleBytesHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportStyleBytes{
+	@doors.ImportStyleBytes{
 		Content: styleRawBytes,
-	})
+	}
 }
 
 templ styleExternalHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportStyleExternal{
+	@doors.ImportStyleExternal{
 		Href: test.Host + "/module/style.css",
-	})
+	}
 }
 
 templ styleHostedHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportStyleHosted{
+	@doors.ImportStyleHosted{
 		Href: "/module/style.css",
-	})
+	}
 }
 
 templ styleHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportStyle{
+	@doors.ImportStyle{
 		Path: modulePath + "/style.css",
-	})
+	}
 }
 
 templ moduleExternalHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportModuleExternal{
+	@doors.ImportModuleExternal{
 		Specifier: "module",
 		Src:       test.Host + "/module/index.js",
-	})
+	}
 }
 
 templ moduleBundleHostHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportModuleHosted{
+	@doors.ImportModuleHosted{
 		Specifier: "module",
 		Src:       "/module/index.js",
-	})
+	}
 }
 
 templ moduleBundleFSHead(_b doors.SourceBeam[test.Path]) {
 	{{ moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src") }}
-	@doors.Imports(doors.ImportModuleBundleFS{
+	@doors.ImportModuleBundleFS{
 		Specifier: "module",
 		FS:        moduleBundleDir,
 		Entry:     "index.ts",
-	})
+	}
 }
 
 templ moduleRawBytesHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportModuleRawBytes{
+	@doors.ImportModuleRawBytes{
 		Specifier: "module",
 		Content:   moduleRawBytes,
-	})
+	}
 }
 
 templ moduleRawHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportModuleRaw{
+	@doors.ImportModuleRaw{
 		Specifier: "module",
 		Path:      modulePath + "/index.js",
-	})
+	}
 }
 
 templ moduleBytesHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportModuleBytes{
+	@doors.ImportModuleBytes{
 		Specifier: "module",
 		Content:   moduleBytes,
-	})
+	}
 }
 
 templ moduleHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportModule{
+	@doors.ImportModule{
 		Specifier: "module",
 		Path:      modulePath + "/index.ts",
 		Load:      true,
-	})
+	}
 }
 
 templ reactHead(_b doors.SourceBeam[test.Path]) {
-	@doors.Imports(doors.ImportModuleBundle{
+	@doors.ImportModuleBundle{
 		Specifier: "preact",
 		Entry:     preactPath + "/index.tsx",
 		Name:      "preact",
-	}, doors.ImportModuleBundle{
+	}
+	@doors.ImportModuleBundle{
 		Specifier: "react",
 		Entry:     reactPath + "/index.tsx",
 		Profile:   "react",
-	})
+	}
 }
 
 type ModuleFragment struct {
@@ -172,5 +173,6 @@ templ (f *ReactFragment) Render() {
 type Empty struct {
 	test.NoBeam
 }
+
 templ (f *Empty) Render() {
 }

@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -59,8 +58,7 @@ func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredde
 type Core interface {
 	Thread() *shredder.Thread
 	Detached() bool
-	InlineNonce() (string, bool)
-	CSPCollector() (*common.CSPCollector, bool)
+	CSPCollector() *common.CSPCollector
 	ImportRegistry() *resources.Registry
 	SessionId() string
 	ClientConf() *common.ClientConf
@@ -75,17 +73,16 @@ type Core interface {
 }
 
 type core[M any] struct {
-	instance         coreInstance[M]
-	store            *ctxstore.Store
-	gen              *common.Primea
-	hooksMu          sync.Mutex
-	hooks            map[uint64]map[uint64]*door.DoorHook
-	root             *door.Root
-	solitaire        *solitaire
-	navigator        *navigator[M]
-	spawner          *shredder.Spawner
-	cspCollectorUsed atomic.Bool
-	cspCollector     *common.CSPCollector
+	instance     coreInstance[M]
+	store        *ctxstore.Store
+	gen          *common.Primea
+	hooksMu      sync.Mutex
+	hooks        map[uint64]map[uint64]*door.DoorHook
+	root         *door.Root
+	solitaire    *solitaire
+	navigator    *navigator[M]
+	spawner      *shredder.Spawner
+	cspCollector *common.CSPCollector
 }
 
 func (c *core[M]) Detached() bool {
@@ -104,19 +101,8 @@ func (c *core[M]) ClientConf() *common.ClientConf {
 	return common.GetClientConf(c.instance.conf())
 }
 
-func (c *core[M]) InlineNonce() (string, bool) {
-	nonce := c.cspCollector.Nonce()
-	return nonce, nonce != ""
-}
-
-func (c *core[M]) CSPCollector() (*common.CSPCollector, bool) {
-	if c.cspCollector == nil {
-		return nil, true
-	}
-	if !c.cspCollectorUsed.CompareAndSwap(false, true) {
-		return nil, false
-	}
-	return c.cspCollector, true
+func (c *core[M]) CSPCollector() *common.CSPCollector {
+	return c.cspCollector
 }
 
 func (c *core[M]) ImportRegistry() *resources.Registry {
@@ -181,12 +167,11 @@ func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M], co
 	if !ok {
 		return errors.New("instance killed before render")
 	}
+	render.InitImportMap(c.cspCollector)
 	if c.cspCollector != nil {
-		c.cspCollectorUsed.Store(true)
-		c.cspCollector.ScriptHash(c.instance.getSession().getRouter().ImportRegistry().MainScript().Hash())
-		c.cspCollector.StyleHash(c.instance.getSession().getRouter().ImportRegistry().MainStyle().Hash())
 		header := c.cspCollector.Generate()
 		w.Header().Add("Content-Security-Policy", header)
+		c.cspCollector = nil
 	}
 	gz := !c.instance.conf().ServerDisableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 	if gz {

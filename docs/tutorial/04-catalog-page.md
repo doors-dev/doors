@@ -137,9 +137,9 @@ templ Template(p Page) {
 
 			// same as <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
 			// but adds CSP headers (useful if you enable CSP later), please refer to docs/ref/imports.md for details
-			@doors.Imports(doors.ImportStyleExternal{
+			@doors.ImportStyleExternal{
 				Href: "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css",
-			})
+			}
 			@p.Head()
 		</head>
 		<body>

@@ -90,6 +90,10 @@ func (r *RootRender) Err() error {
 	return r.err
 }
 
+func (r *RootRender) InitImportMap(c *common.CSPCollector) {
+	r.rm.InitImportMap(c)
+}
+
 func (r *RootRender) Write(w io.Writer) error {
 	err := r.rm.Render(w, r.id)
 	r.rm.Destroy()

@@ -36,37 +36,21 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 	}
 	style := inst.ImportRegistry().MainStyle()
 	script := inst.ImportRegistry().MainScript()
-	_, inline := inst.InlineNonce()
-	if !inline {
-		_, err := w.Write(fmt.Appendf(nil, "<link rel=\"stylesheet\" href=\"/%s.css\"/>", style.HashString()))
-		if err != nil {
-			return err
-		}
-	} else {
-		_, err := w.Write([]byte("<style>"))
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(style.Content())
-		if err != nil {
-			return err
-		}
-		_, err = w.Write([]byte("</style>"))
-		if err != nil {
-			return err
-		}
+	_, err := fmt.Fprintf(w, "<link rel=\"stylesheet\" href=\"/%s.css\"/>", style.HashString())
+	if err != nil {
+		return err
 	}
 	conf := inst.ClientConf()
 	attrs := map[string]any{
-		"src":          "/" + script.HashString() + ".js",
-		"id":           inst.Id(),
-		"data-root":    door.Id(),
-		"data-ttl":     conf.TTL.Milliseconds(),
-		"data-sleep":   conf.SleepTimeout.Milliseconds(),
-		"data-request": conf.RequestTimeout.Milliseconds(),
-		"data-detached":     inst.Detached(),
+		"src":           "/" + script.HashString() + ".js",
+		"id":            inst.Id(),
+		"data-root":     door.Id(),
+		"data-ttl":      conf.TTL.Milliseconds(),
+		"data-sleep":    conf.SleepTimeout.Milliseconds(),
+		"data-request":  conf.RequestTimeout.Milliseconds(),
+		"data-detached": inst.Detached(),
 	}
-	_, err := w.Write([]byte("<script"))
+	_, err = fmt.Fprint(w, "<script")
 	if err != nil {
 		return err
 	}
@@ -74,8 +58,12 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = w.Write([]byte("></script>"))
-	return err
+	_, err = fmt.Fprint(w, "></script>")
+	if err != nil {
+		return err
+	}
+	rm := ctx.Value(common.RenderMapCtxKey).(*common.RenderMap)
+	return rm.WriteImportMap(w)
 
 }
 

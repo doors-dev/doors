@@ -9,10 +9,10 @@
 
 package doors
 
-templ importScript(src string) {
-	<script type="module" src={ src }></script>
+templ importScript(src string, attrs templ.Attributes) {
+	<script type="module" src={ src } { attrs... }></script>
 }
 
-templ importStyle(href string) {
-	<link rel="stylesheet" href={href} />
+templ importStyle(href string, attrs templ.Attributes) {
+	<link rel="stylesheet" href={ href } { attrs... }/>
 }
