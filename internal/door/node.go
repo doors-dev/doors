@@ -59,7 +59,7 @@ func (n *Door) registerHook(container *container, tracker *tracker, ctx context.
 	if n.container != container {
 		return nil, false
 	}
-	ctx = ctx.Value(common.ParentCtxKey).(context.Context)
+	ctx = ctx.Value(common.CtxKeyParent).(context.Context)
 	hookId := n.container.inst.NewId()
 	hook := newHook(ctx, h, n.container.inst)
 	n.container.inst.RegisterHook(n.container.id, hookId, hook)
@@ -201,14 +201,14 @@ func (n *Door) Render(ctx context.Context, w io.Writer) error {
 		return n.content.Render(ctx, w)
 	}
 	defer n.mu.Unlock()
-	parentCtx := ctx.Value(common.ParentCtxKey).(context.Context)
-	n.parent = parentCtx.Value(common.DoorCtxKey).(*tracker)
+	parentCtx := ctx.Value(common.CtxKeyParent).(context.Context)
+	n.parent = parentCtx.Value(common.CtxKeyDoor).(*tracker)
 	if n.parent != nil {
 		n.parent.addChild(n)
 	}
-	inst := parentCtx.Value(common.InstanceCtxKey).(instance)
-	thread := ctx.Value(common.ThreadCtxKey).(*shredder.Thread)
-	rm := ctx.Value(common.RenderMapCtxKey).(*common.RenderMap)
+	inst := parentCtx.Value(common.CtxKeyInstance).(instance)
+	thread := ctx.Value(common.CtxKeyThread).(*shredder.Thread)
+	rm := ctx.Value(common.CtxKeyRenderMap).(*common.RenderMap)
 	var parentCinema *Cinema
 	if n.parent != nil {
 		parentCinema = n.parent.cinema

@@ -44,7 +44,7 @@ type coreInstance[M any] interface {
 func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredder.Spawner, navigator *navigator[M]) *core[M] {
 	return &core[M]{
 		instance:     inst,
-		store:        ctxstore.NewStore(common.InstanceStoreCtxKey),
+		store:        ctxstore.NewStore(common.CtxKeyInstanceStore),
 		gen:          common.NewPrima(),
 		hooksMu:      sync.Mutex{},
 		hooks:        make(map[uint64]map[uint64]*door.DoorHook),
@@ -65,7 +65,7 @@ type Core interface {
 	Id() string
 	NewId() uint64
 	Cinema() *door.Cinema
-	NewLink(context.Context, any) (*Link, error)
+	NewLink(any) (*Link, error)
 	SessionExpire(d time.Duration)
 	SessionEnd()
 	Call(call common.Call)
@@ -137,8 +137,8 @@ func (c *core[M]) Id() string {
 	return c.instance.Id()
 }
 
-func (c *core[M]) NewLink(ctx context.Context, m any) (*Link, error) {
-	return c.navigator.newLink(ctx, m)
+func (c *core[M]) NewLink(m any) (*Link, error) {
+	return c.navigator.newLink(m)
 }
 func (c *core[M]) end(cause endCause) {
 	c.solitaire.End(cause)
@@ -156,10 +156,10 @@ func (c *core[M]) Call(call common.Call) {
 	c.solitaire.Call(call)
 }
 
-func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M], code int) error {
-	ctx := context.WithValue(context.Background(), common.InstanceCtxKey, c)
+func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M]) error {
+	ctx := context.WithValue(context.Background(), common.CtxKeyInstance, c)
 	ctx = c.store.Inject(ctx)
-	ctx = context.WithValue(ctx, common.AdaptersCtxKey, c.instance.getSession().getRouter().Adapters())
+	ctx = context.WithValue(ctx, common.CtxKeyAdapters, c.instance.getSession().getRouter().Adapters())
 	c.root = door.NewRoot(ctx, c)
 	c.navigator.init(c.root.Ctx(), c.solitaire)
 	ch := c.root.Render(page.Render(c.navigator.getBeam()))
@@ -178,8 +178,9 @@ func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M], co
 		w.Header().Set("Content-Encoding", "gzip")
 	}
 	if render.Err() != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
+		return render.Err()
+	}
+	if code, ok := c.store.Load(common.CtxStorageKeyStatus).(int); ok {
 		w.WriteHeader(code)
 	}
 	var err error

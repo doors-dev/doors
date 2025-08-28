@@ -42,14 +42,12 @@ func (pr *StaticPage) marker() responseMarker {
 
 type PageResponse[M any] struct {
 	Page    instance.Page[M]
-	Status  int
 	Model   *M
 	Adapter *path.Adapter[M]
 }
 
 type anyPageResponse interface {
 	intoInstance(*instance.Session, *instance.Options) (instance.AnyInstance, bool)
-	getStatus() int
 	getModel() any
 	getAdapter() path.AnyAdapter
 }
@@ -60,10 +58,6 @@ func (pr *PageResponse[M]) getAdapter() path.AnyAdapter {
 
 func (pr *PageResponse[M]) getModel() any {
 	return pr.Model
-}
-
-func (pr *PageResponse[M]) getStatus() int {
-	return pr.Status
 }
 
 func (pr *PageResponse[M]) intoInstance(sess *instance.Session, opt *instance.Options) (instance.AnyInstance, bool) {

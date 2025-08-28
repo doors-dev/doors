@@ -330,11 +330,11 @@ func ScriptDisposable() templ.Component {
 }
 
 func (s script) Render(ctx context.Context, w io.Writer) error {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	script := templ.GetChildren(ctx)
 	ctx = templ.ClearChildren(ctx)
 	attrs := front.NewAttrs()
-	ctx = context.WithValue(ctx, common.AttrsCtxKey, attrs)
+	ctx = context.WithValue(ctx, common.CtxKeyAttrs, attrs)
 	buf := &bytes.Buffer{}
 	err := script.Render(ctx, buf)
 	if err != nil {
@@ -398,11 +398,11 @@ func StyleDisposable() templ.Component {
 }
 
 func (s style) Render(ctx context.Context, w io.Writer) error {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	style := templ.GetChildren(ctx)
 	ctx = templ.ClearChildren(ctx)
 	attrs := front.NewAttrs()
-	ctx = context.WithValue(ctx, common.AttrsCtxKey, attrs)
+	ctx = context.WithValue(ctx, common.CtxKeyAttrs, attrs)
 	buf := &bytes.Buffer{}
 	err := style.Render(ctx, buf)
 	if err != nil {
@@ -505,3 +505,6 @@ func Any(v any) templ.Component {
 	}
 	return Text(v)
 }
+
+
+

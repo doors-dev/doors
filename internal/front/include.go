@@ -27,9 +27,9 @@ type include struct{}
 type included struct{}
 
 func (_ include) Render(ctx context.Context, w io.Writer) error {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
-	door := ctx.Value(common.DoorCtxKey).(door.Core)
-	_, already := ctxstore.Swap(ctx, common.InstanceStoreCtxKey, included{}, included{}).(included)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
+	door := ctx.Value(common.CtxKeyDoor).(door.Core)
+	_, already := ctxstore.Swap(ctx, common.CtxKeyInstanceStore, included{}, included{}).(included)
 	if already {
 		slog.Warn("doors header included multiple times on the page, keeping first", slog.String("instance_id", inst.Id()))
 		return nil
@@ -62,7 +62,7 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	rm := ctx.Value(common.RenderMapCtxKey).(*common.RenderMap)
+	rm := ctx.Value(common.CtxKeyRenderMap).(*common.RenderMap)
 	return rm.WriteImportMap(w)
 
 }

@@ -26,7 +26,7 @@ import (
 
 type AnyInstance interface {
 	Id() string
-	Serve(http.ResponseWriter, *http.Request, int) error
+	Serve(http.ResponseWriter, *http.Request) error
 	RestorePath(*http.Request) bool
 	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request) bool
 	Connect(w http.ResponseWriter, r *http.Request)
@@ -119,7 +119,7 @@ func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {
 func (inst *Instance[M]) syncError(err error) {
 	inst.end(causeSyncError)
 }
-func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request, code int) error {
+func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 	inst.mu.Lock()
 	if inst.killed {
 		inst.mu.Unlock()
@@ -133,7 +133,7 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request, code int)
 	solitaire := newSolitaire(inst, common.GetSolitaireConf(inst.conf()))
 	inst.core = newCore(inst, solitaire, spawner, inst.navigator)
 	inst.mu.Unlock()
-	err := inst.core.serve(w, r, inst.page, code)
+	err := inst.core.serve(w, r, inst.page)
 	if err != nil {
 		defer inst.end(causeKilled)
 	}

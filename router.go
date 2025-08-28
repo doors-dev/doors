@@ -10,6 +10,8 @@
 package doors
 
 import (
+	"context"
+	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -78,22 +80,14 @@ type RPage[M any] interface {
 type PageRouter[M any] interface {
 	// Serve page
 	Page(page Page[M]) PageRoute
-	// Serve page with custom status
-	PageStatus(page Page[M], status int) PageRoute
 	// Serve func page
 	PageFunc(pageFunc func(SourceBeam[M]) templ.Component) PageRoute
-	// Serve func page and custom status
-	PageFuncStatus(pageFunc func(SourceBeam[M]) templ.Component, status int) PageRoute
 	// Serve static page
-	StaticPage(content templ.Component) PageRoute
-	// Serve static page with custom status
-	StaticPageStatus(content templ.Component, status int) PageRoute
+	StaticPage(content templ.Component, status int) PageRoute
 	// Internal reroute to different model (detached=true disables path synchronization)
 	Reroute(model any, detached bool) PageRoute
-	// HTTP redirect to model URL
-	Redirect(model any) PageRoute
-	// HTTP redirect with custom status
-	RedirectStatus(model any, status int) PageRoute
+	// HTTP redirect with status
+	Redirect(model any, status int) PageRoute
 }
 
 type pageRequest[M any] struct {
@@ -102,6 +96,10 @@ type pageRequest[M any] struct {
 
 func (r *pageRequest[M]) GetModel() M {
 	return *r.r.Model
+}
+
+func (r *pageRequest[M]) Done() <-chan struct{} {
+	return r.r.R.Context().Done()
 }
 
 func (r *pageRequest[M]) RequestHeader() http.Header {
@@ -127,13 +125,7 @@ func (r *pageRequest[M]) Reroute(model any, detached bool) PageRoute {
 	}
 }
 
-func (r *pageRequest[M]) Redirect(model any) PageRoute {
-	return &router.RedirectResponse{
-		Model: model,
-	}
-}
-
-func (r *pageRequest[M]) RedirectStatus(model any, status int) PageRoute {
+func (r *pageRequest[M]) Redirect(model any, status int) PageRoute {
 	return &router.RedirectResponse{
 		Model:  model,
 		Status: status,
@@ -141,27 +133,18 @@ func (r *pageRequest[M]) RedirectStatus(model any, status int) PageRoute {
 }
 
 func (r *pageRequest[M]) Page(page Page[M]) PageRoute {
-	return r.PageStatus(page, 200)
-}
-
-func (r *pageRequest[M]) PageStatus(page Page[M], status int) PageRoute {
 	return &router.PageResponse[M]{
 		Page:    page,
 		Model:   r.r.Model,
 		Adapter: r.r.Adapter,
-		Status:  status,
 	}
 }
 
-func (r *pageRequest[M]) StaticPageStatus(content templ.Component, status int) PageRoute {
+func (r *pageRequest[M]) StaticPage(content templ.Component, status int) PageRoute {
 	return &router.StaticPage{
 		Content: content,
 		Status:  status,
 	}
-}
-
-func (r *pageRequest[M]) StaticPage(content templ.Component) PageRoute {
-	return r.StaticPageStatus(content, 200)
 }
 
 type pageFunc[M any] func(SourceBeam[M]) templ.Component
@@ -171,11 +154,23 @@ func (p pageFunc[M]) Render(b SourceBeam[M]) templ.Component {
 }
 
 func (r *pageRequest[M]) PageFunc(f func(SourceBeam[M]) templ.Component) PageRoute {
-	return r.PageFuncStatus(f, 200)
+	return r.Page(pageFunc[M](f))
 }
 
-func (r *pageRequest[M]) PageFuncStatus(f func(SourceBeam[M]) templ.Component, status int) PageRoute {
-	return r.PageStatus(pageFunc[M](f), status)
+// SetStatus sets an HTTP status code for the page.
+// Makes effect only at initial page render
+func SetStatus(ctx context.Context, statusCode int) {
+	InstanceSave(ctx, common.CtxStorageKeyStatus, statusCode)
+}
+
+// Status is a templ.Component that sets the HTTP status code
+// when rendered in a template (e.g. @doors.Status(404)).
+// Makes effect only at initial page render.
+func Status(statusCode int) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, _w io.Writer) error {
+		SetStatus(ctx, statusCode)
+		return nil
+	})
 }
 
 // ServePage registers a page handler for a specific path model type.

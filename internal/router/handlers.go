@@ -85,7 +85,7 @@ func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page anyPage
 		rr.servePage(w, r, page, opt)
 		return
 	}
-	err := inst.Serve(w, r, page.getStatus())
+	err := inst.Serve(w, r)
 	if err != nil {
 		slog.Error("instance serve error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
 		rr.serveError(w, r, err.Error())
@@ -156,12 +156,13 @@ main:
 			response = nil
 			switch res := res.(type) {
 			case *StaticPage:
-				{
-					w.WriteHeader(res.Status)
-					ctx := context.WithValue(r.Context(), common.AdaptersCtxKey, rr.Adapters())
-					res.Content.Render(ctx, w)
-					return true
+				if res.Status == 0 {
+					res.Status = http.StatusOK
 				}
+				w.WriteHeader(res.Status)
+				ctx := context.WithValue(r.Context(), common.CtxKeyAdapters, rr.Adapters())
+				res.Content.Render(ctx, w)
+				return true
 			case *RerouteResponse:
 				if res.Detached {
 					opt.Detached = true

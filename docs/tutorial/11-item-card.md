@@ -81,6 +81,7 @@ templ (c *cardFragment) card(id int) {
 					if ok {
 						<strong>{ item.Name }</strong>
 					} else {
+					  @doors.Status(http.StatusNotFound)
 						<strong>Item Not Found</strong>
 					}
 				</p>

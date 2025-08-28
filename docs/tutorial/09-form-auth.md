@@ -445,6 +445,7 @@ templ (f *categoryFragment) content(catId string) {
 			</p>
 		}
 	} else {
+		@doors.Status(http.StatusNotFound)
 		<div>
 			<mark>Not Found</mark>
 		</div>

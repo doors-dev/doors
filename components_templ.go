@@ -96,7 +96,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 			return nil
 		}
 		InstanceSave(ctx, headUsed{}, headUsed{})
-		inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+		inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 		thread := inst.Thread()
 		var cancel = func() {}
 		var currentMeta HeadData

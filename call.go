@@ -110,7 +110,7 @@ func (c *CallConf) triggerFunc() func(ctx context.Context, w http.ResponseWriter
 //   - Use `document` instead of `document.currentScript` to register globally.
 //   - To handle a frontend response, set the Trigger field in CallConf
 func Call(ctx context.Context, conf CallConf) (func(), bool) {
-	n := ctx.Value(common.DoorCtxKey).(door.Core)
+	n := ctx.Value(common.CtxKeyDoor).(door.Core)
 	call, ok := conf.clientCall()
 	if !ok {
 		return nil, false

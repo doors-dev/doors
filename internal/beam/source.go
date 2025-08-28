@@ -197,8 +197,8 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 }
 
 func (s *source[T]) addWatcher(ctx context.Context, w door.Watcher) bool {
-	cinema := ctx.Value(common.DoorCtxKey).(door.Core).Cinema()
-	inst := ctx.Value(common.InstanceCtxKey).(instance)
+	cinema := ctx.Value(common.CtxKeyDoor).(door.Core).Cinema()
+	inst := ctx.Value(common.CtxKeyInstance).(instance)
 	s.init.Do(func() {
 		s.inst = inst
 		s.id = inst.NewId()

@@ -37,7 +37,7 @@ import (
 //	    }
 //	}
 func LocationReload(ctx context.Context) {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(&instance.LocatinReload{})
 }
 
@@ -54,7 +54,7 @@ func LocationReload(ctx context.Context) {
 //	// Navigate to external site
 //	doors.LocationAssignRaw(ctx, "https://example.com")
 func LocationAssignRaw(ctx context.Context, url string) {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(&instance.LocationAssign{
 		Href:   url,
 		Origin: false,
@@ -68,7 +68,7 @@ func LocationAssignRaw(ctx context.Context, url string) {
 // The url parameter should be a complete URL string. Use this for redirects
 // where you don't want the current page in the browser's history.
 func LocationReplaceRaw(ctx context.Context, url string) {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(&instance.LocationReplace{
 		Href:   url,
 		Origin: false,
@@ -102,7 +102,7 @@ func LocationReplace(ctx context.Context, model any) error {
 	if err != nil {
 		return err
 	}
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(&instance.LocationReplace{
 		Href:   l.String(),
 		Origin: true,
@@ -133,7 +133,7 @@ func LocationAssign(ctx context.Context, model any) error {
 	if err != nil {
 		return err
 	}
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(&instance.LocationAssign{
 		Href:   l.String(),
 		Origin: true,
@@ -159,7 +159,7 @@ func LocationAssign(ctx context.Context, model any) error {
 //	session := createAuthSession(user, sessionDuration)
 //	doors.SessionExpire(ctx, sessionDuration)
 func SessionExpire(ctx context.Context, d time.Duration) {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.SessionExpire(d)
 }
 
@@ -188,7 +188,7 @@ func SessionExpire(ctx context.Context, d time.Duration) {
 //	    }
 //	}
 func SessionEnd(ctx context.Context) {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.SessionEnd()
 }
 
@@ -205,7 +205,7 @@ func SessionEnd(ctx context.Context) {
 //	// Close current tab after completion
 //	doors.InstanceEnd(ctx)
 func InstanceEnd(ctx context.Context) {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.End()
 }
 
@@ -221,7 +221,7 @@ func InstanceEnd(ctx context.Context) {
 //	instanceId := doors.InstanceId(ctx)
 //	log.Printf("Processing request for instance: %s", instanceId)
 func InstanceId(ctx context.Context) string {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	return inst.Id()
 }
 
@@ -237,7 +237,7 @@ func InstanceId(ctx context.Context) string {
 //	sessionId := doors.SessionId(ctx)
 //	analytics.Track("page_view", sessionId)
 func SessionId(ctx context.Context) string {
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	return inst.SessionId()
 }
 
@@ -263,7 +263,7 @@ func SessionId(ctx context.Context) string {
 //	    Language: "en",
 //	})
 func SessionSave(ctx context.Context, key any, value any) any {
-	return ctxstore.Swap(ctx, common.SessionStoreCtxKey, key, value)
+	return ctxstore.Swap(ctx, common.CtxKeySessionStore, key, value)
 }
 
 // SessionLoad retrieves a value from the session-scoped storage by its key.
@@ -280,7 +280,7 @@ func SessionSave(ctx context.Context, key any, value any) any {
 //	    applyTheme(prefs.Theme)
 //	}
 func SessionLoad(ctx context.Context, key any) any {
-	return ctxstore.Load(ctx, common.SessionStoreCtxKey, key)
+	return ctxstore.Load(ctx, common.CtxKeySessionStore, key)
 }
 
 // SessionRemove deletes a key-value pair from the session-scoped storage.
@@ -294,7 +294,7 @@ func SessionLoad(ctx context.Context, key any) any {
 //	Remove user preferences
 //	doors.SessionRemove(ctx, "prefs")
 func SessionRemove(ctx context.Context, key any) any {
-	return ctxstore.Remove(ctx, common.SessionStoreCtxKey, key)
+	return ctxstore.Remove(ctx, common.CtxKeySessionStore, key)
 }
 
 // InstanceSave stores a key-value pair in the instance-scoped storage.
@@ -319,7 +319,7 @@ func SessionRemove(ctx context.Context, key any) any {
 //	    Language: "en",
 //	})
 func InstanceSave(ctx context.Context, key any, value any) any {
-	return ctxstore.Swap(ctx, common.InstanceStoreCtxKey, key, value)
+	return ctxstore.Swap(ctx, common.CtxKeyInstanceStore, key, value)
 }
 
 // InstanceLoad retrieves a value from the instance-scoped storage by its key.
@@ -335,7 +335,7 @@ func InstanceSave(ctx context.Context, key any, value any) any {
 //	    applyTheme(prefs.Theme)
 //	}
 func InstanceLoad(ctx context.Context, key any) any {
-	return ctxstore.Load(ctx, common.InstanceStoreCtxKey, key)
+	return ctxstore.Load(ctx, common.CtxKeyInstanceStore, key)
 }
 
 // InstanceRemove deletes a key-value pair from the instance-scoped storage.
@@ -349,7 +349,7 @@ func InstanceLoad(ctx context.Context, key any) any {
 //	// Remove user preferences for this specific tab
 //	doors.InstanceRemove(ctx, "prefs")
 func InstanceRemove(ctx context.Context, key any) any {
-	return ctxstore.Remove(ctx, common.InstanceStoreCtxKey, key)
+	return ctxstore.Remove(ctx, common.CtxKeyInstanceStore, key)
 }
 
 // Location represents a URL location within the application's routing system.
@@ -389,7 +389,7 @@ type Location = path.Location
 // Returns an error if no adapter is registered for the model's type or if
 // encoding fails due to invalid model data.
 func NewLocation(ctx context.Context, model any) (Location, error) {
-	adapters := ctx.Value(common.AdaptersCtxKey).(map[string]path.AnyAdapter)
+	adapters := ctx.Value(common.CtxKeyAdapters).(map[string]path.AnyAdapter)
 	name := path.GetAdapterName(model)
 	adapter, ok := adapters[name]
 	if !ok {

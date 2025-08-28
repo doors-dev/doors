@@ -390,10 +390,10 @@ type importManager struct {
 }
 
 func newImportManager(ctx context.Context) *importManager {
-	instance := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	instance := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	registy := instance.ImportRegistry()
 	collector := instance.CSPCollector()
-	rm := ctx.Value(common.RenderMapCtxKey).(*common.RenderMap)
+	rm := ctx.Value(common.CtxKeyRenderMap).(*common.RenderMap)
 	return &importManager{
 		registry:  registy,
 		collector: collector,

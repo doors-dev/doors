@@ -539,11 +539,11 @@ func moduleHead(_b doors.SourceBeam[test.Path]) templ.Component {
 			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = doors.Imports(doors.ImportModule{
+		templ_7745c5c3_Err = doors.ImportModule{
 			Specifier: "module",
 			Path:      modulePath + "/index.ts",
 			Load:      true,
-		}).Render(ctx, templ_7745c5c3_Buffer)
+		}.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

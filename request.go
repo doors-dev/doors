@@ -94,6 +94,7 @@ type RAfter interface {
 type R interface {
 	SetCookie(cookie *http.Cookie)
 	GetCookie(name string) (*http.Cookie, error)
+	Done() <-chan struct{}
 }
 
 // REvent represents a request context for event handlers with typed event data.
@@ -198,6 +199,10 @@ func (r *request) Reader() (*multipart.Reader, error) {
 
 func (r *request) FormValues() url.Values {
 	return r.r.Form
+}
+
+func (r *request) Done() <-chan struct{} {
+	return r.r.Context().Done()
 }
 
 func (r *request) Form() *multipart.Form {

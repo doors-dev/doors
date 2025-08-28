@@ -65,8 +65,8 @@ type Attr interface {
 }
 
 func A(ctx context.Context, attr ...Attr) *Attrs {
-	door := ctx.Value(common.DoorCtxKey).(door.Core)
-	instance := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	door := ctx.Value(common.CtxKeyDoor).(door.Core)
+	instance := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	attrs := NewAttrs()
 	for _, attr := range attr {
 		attr.Init(ctx, door, instance, attrs)
@@ -75,15 +75,15 @@ func A(ctx context.Context, attr ...Attr) *Attrs {
 }
 
 func AttrRender(ctx context.Context, w io.Writer, a Attr) error {
-	door := ctx.Value(common.DoorCtxKey).(door.Core)
-	instance := ctx.Value(common.InstanceCtxKey).(instance.Core)
-	attrs, ok := ctx.Value(common.AttrsCtxKey).(*Attrs)
+	door := ctx.Value(common.CtxKeyDoor).(door.Core)
+	instance := ctx.Value(common.CtxKeyInstance).(instance.Core)
+	attrs, ok := ctx.Value(common.CtxKeyAttrs).(*Attrs)
 	if ok {
 		a.Init(ctx, door, instance, attrs)
 		return nil
 	}
 	attrs = NewAttrs()
 	a.Init(ctx, door, instance, attrs)
-	rm := ctx.Value(common.RenderMapCtxKey).(*common.RenderMap)
+	rm := ctx.Value(common.CtxKeyRenderMap).(*common.RenderMap)
 	return rm.WriteAttrs(w, &attrs.Attrs)
 }

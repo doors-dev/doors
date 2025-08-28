@@ -76,6 +76,8 @@ templ categoryContent(catId string) {
 			<p>{ cat.Desc } </p>
 		</hgroup>
 	} else {
+	  // set status code (for the initial load)
+		@doors.Status(http.StatusNotFound)
 		<div>
 			<mark>Not Found</mark>
 		</div>
@@ -116,6 +118,7 @@ templ (f *categoryFragment) content(catId string) {
 			<p>{ cat.Desc } </p>
 		</hgroup>
 	} else {
+		@doors.Status(http.StatusNotFound)
 		<div>
 			<mark>Not Found</mark>
 		</div>

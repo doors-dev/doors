@@ -32,7 +32,7 @@ func NewRoot(ctx context.Context, inst instance) *Root {
 	r := &Root{
 		id:      id,
 		inst:    inst,
-		ctx:     context.WithValue(ctx, common.DoorCtxKey, t),
+		ctx:     context.WithValue(ctx, common.CtxKeyDoor, t),
 		tracker: t,
 	}
 	t.container = r
@@ -105,7 +105,7 @@ func (r *RootRender) Write(w io.Writer) error {
 
 func (r *Root) Render(content templ.Component) <-chan *RootRender {
 	ch := make(chan *RootRender, 1)
-	parentCtx := context.WithValue(r.ctx, common.ParentCtxKey, r.ctx)
+	parentCtx := context.WithValue(r.ctx, common.CtxKeyParent, r.ctx)
 	r.tracker.thread.Write(func(t *shredder.Thread) {
 		if t == nil {
 			close(ch)
@@ -122,8 +122,8 @@ func (r *Root) Render(content templ.Component) <-chan *RootRender {
 				return
 			}
 
-			ctx := context.WithValue(parentCtx, common.RenderMapCtxKey, rm)
-			ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
+			ctx := context.WithValue(parentCtx, common.CtxKeyRenderMap, rm)
+			ctx = context.WithValue(ctx, common.CtxKeyThread, t)
 			err = content.Render(ctx, rw)
 		})
 		t.Write(func(t *shredder.Thread) {

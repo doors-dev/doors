@@ -64,7 +64,7 @@ type navigatorState[M any] struct {
 	err   error
 }
 
-func (n *navigator[M]) newLink(ctx context.Context, m any) (*Link, error) {
+func (n *navigator[M]) newLink(m any) (*Link, error) {
 	thisModel, ok := m.(*M)
 	if !ok {
 		direct, ok := m.(M)
@@ -77,12 +77,11 @@ func (n *navigator[M]) newLink(ctx context.Context, m any) (*Link, error) {
 		if err != nil {
 			return nil, err
 		}
-		on := func() {
-			n.model.Update(ctx, *thisModel)
-		}
 		return &Link{
 			location: location,
-			on:       on,
+			on: func(ctx context.Context) {
+				n.model.Update(ctx, *thisModel)
+			},
 		}, nil
 	}
 	name := path.GetAdapterName(m)
@@ -215,7 +214,7 @@ func (e *historyEntry[M]) shake(prev *historyEntry[M], path string, count int) {
 
 type Link struct {
 	location *path.Location
-	on       func()
+	on       func(context.Context)
 }
 
 func (h *Link) Path() (string, bool) {
@@ -225,7 +224,7 @@ func (h *Link) Path() (string, bool) {
 	return h.location.String(), true
 }
 
-func (h *Link) ClickHandler() (func(), bool) {
+func (h *Link) ClickHandler() (func(context.Context), bool) {
 	if h.on == nil {
 		return nil, false
 	}

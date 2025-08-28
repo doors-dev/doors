@@ -16,16 +16,17 @@ import (
 type ctxKey int
 
 const (
-    InstanceCtxKey ctxKey = iota
-    DoorCtxKey
-    ThreadCtxKey
-    RenderMapCtxKey
-    BlockingCtxKey
-    AdaptersCtxKey
-    SessionStoreCtxKey
-    InstanceStoreCtxKey
-    ParentCtxKey
-    AttrsCtxKey
+    CtxKeyInstance ctxKey = iota
+    CtxKeyDoor
+    CtxKeyThread
+    CtxKeyRenderMap
+    CtxKeyBlocking
+    CtxKeyAdapters
+    CtxKeySessionStore
+    CtxKeyInstanceStore
+    CtxKeyParent
+    CtxKeyAttrs
+	CtxStorageKeyStatus
 )
 
 func ResultChannel(ctx context.Context, action string) (chan error, bool) {

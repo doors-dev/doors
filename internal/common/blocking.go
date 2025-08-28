@@ -16,7 +16,7 @@ import (
 
 
 func IsBlockingCtx(ctx context.Context) bool {
-    blocking, ok := ctx.Value(BlockingCtxKey).(bool)
+    blocking, ok := ctx.Value(CtxKeyBlocking).(bool)
     if !ok {
         return false
     }
@@ -24,14 +24,14 @@ func IsBlockingCtx(ctx context.Context) bool {
 }
 
 func SetBlockingCtx(ctx context.Context) context.Context {
-    return context.WithValue(ctx, BlockingCtxKey, true)
+    return context.WithValue(ctx, CtxKeyBlocking, true)
 }
 
 func ClearBlockingCtx(ctx context.Context) context.Context {
     if !IsBlockingCtx(ctx) {
         return ctx
     }
-    return context.WithValue(ctx, BlockingCtxKey, false)
+    return context.WithValue(ctx, CtxKeyBlocking, false)
 }
 
 func LogBlockingWarning(ctx context.Context, entity string, operation string) {

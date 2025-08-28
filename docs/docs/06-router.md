@@ -66,11 +66,11 @@ router.Use(doors.ServePage(
 
 Provides various routing options via methods:
 
-1. `Page(page Page[M]) PageRoute` and `PageStatus(..., status int) PageRoute`
-   Serves a dynamic page with 200 or the provided  status code
+1. `Page(page Page[M]) PageRoute`
+   Serves a dynamic page
 
-2. `PageFunc(pageFunc func(SourceBeam[M]) templ.Component) PageRoute` and `PageFuncStatus(..., status int)`
-   Serves a dynamic page with 200 or the provided  status code
+2. `PageFunc(pageFunc func(SourceBeam[M]) templ.Component) PageRoute` 
+   Serves a dynamic page
 
 3. `Reroute(model any, detached bool)`
    Internally, routes the request to a different Path Model, causing a new handler matching process. If detached = true, the path string will not be updated and synced on the frontend.
@@ -91,16 +91,18 @@ Provides various routing options via methods:
    > ))
    > ```
 
-4. `Redirect(model any) PageRoute` and `RedirectStatus(..., status int) PageRoute`                                                  
+4.  `RedirectStatus(model any, status int) PageRoute`                                                  
 
-   Performs HTTP level redirect with 302 or the provided status to the URL constructed from the provided model
-   
-5. `StaticPage(content templ.Component) PageRoute` and `StaticPage(...,status int) PageRoute`
-   Serves a static page with 200 or the provided status code. The usage of beams, doors, etc, on a static page will cause panic.
+   Performs HTTP level redirect with provided status to the URL constructed from the provided model
+
+5. `StaticPage(content templ.Component, status int) PageRoute` 
+   Serves a static page with the provided status code. The usage of beams, doors, etc, on a static page will cause panic.
+
+> To set response status code on dynamic pages, use `@doors.Status(statusCode int)` component or `doors.SetStatus(ctx context.Context, statusCode int)` function
 
 ##### Page Request `doors.RPage[M any]`
 
-Gives you access to cookies, headers, and the requested path in the form of a `Path Model`.  You can use it to check user authentication before serving a page.
+AGives you access to cookies, headers, and the requested path in the form of a `Path Model`.  You can use it to check user authentication before serving a page.
 
 ### Please, consider:
 

@@ -70,9 +70,9 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 			if t == nil || parentCtx.Err() != nil {
 				return
 			}
-			ctx := context.WithValue(parentCtx, common.ParentCtxKey, parentCtx)
-			ctx = context.WithValue(ctx, common.RenderMapCtxKey, rm)
-			ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
+			ctx := context.WithValue(parentCtx, common.CtxKeyParent, parentCtx)
+			ctx = context.WithValue(ctx, common.CtxKeyRenderMap, rm)
+			ctx = context.WithValue(ctx, common.CtxKeyThread, t)
 			_, err = fmt.Fprintf(rw, "<%s", tag)
 			if err != nil {
 				return
@@ -134,9 +134,9 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 		if t == nil || c.parentCtx.Err() != nil {
 			return
 		}
-		ctx := context.WithValue(c.parentCtx, common.ParentCtxKey, c.parentCtx)
-		ctx = context.WithValue(ctx, common.RenderMapCtxKey, rm)
-		ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
+		ctx := context.WithValue(c.parentCtx, common.CtxKeyParent, c.parentCtx)
+		ctx = context.WithValue(ctx, common.CtxKeyRenderMap, rm)
+		ctx = context.WithValue(ctx, common.CtxKeyThread, t)
 		if content != nil {
 			err = content.Render(ctx, rw)
 		}
@@ -190,9 +190,9 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 			if t == nil || parentCtx.Err() != nil {
 				return
 			}
-			ctx := context.WithValue(parentCtx, common.ParentCtxKey, parentCtx)
-			ctx = context.WithValue(ctx, common.RenderMapCtxKey, rm)
-			ctx = context.WithValue(ctx, common.ThreadCtxKey, t)
+			ctx := context.WithValue(parentCtx, common.CtxKeyParent, parentCtx)
+			ctx = context.WithValue(ctx, common.CtxKeyRenderMap, rm)
+			ctx = context.WithValue(ctx, common.CtxKeyThread, t)
 			if content != nil {
 				err = content.Render(ctx, rw)
 			}
@@ -233,7 +233,7 @@ func (c *container) newTacker() (*tracker, context.Context) {
 		container:   c,
 		clientCalls: common.NewSet[*clientCall](),
 	}
-	ctx = context.WithValue(ctx, common.DoorCtxKey, t)
+	ctx = context.WithValue(ctx, common.CtxKeyDoor, t)
 	return t, ctx
 }
 

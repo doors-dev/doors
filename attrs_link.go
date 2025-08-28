@@ -110,7 +110,7 @@ func (h AHref) Attr() AttrInit {
 }
 
 func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	link, err := inst.NewLink(ctx, h.Model)
+	link, err := inst.NewLink(h.Model)
 	if err != nil {
 		slog.Error("href creation  error", slog.String("link_error", err.Error()))
 		return
@@ -127,7 +127,7 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 					}
 					r.After(AfterScrollInto(h.ScrollInto, false))
 				}
-				on()
+				on(ctx)
 				return false
 			},
 		})

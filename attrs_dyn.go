@@ -98,7 +98,7 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 			Payload: common.WritableNone{},
 		}
 	}
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(call)
 }
 
@@ -132,7 +132,7 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 		prevValue:  prevValue,
 		prevEnable: prevEnable,
 	}
-	inst := ctx.Value(common.InstanceCtxKey).(instance.Core)
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(call)
 }
 
