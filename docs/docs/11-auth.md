@@ -35,8 +35,8 @@ There is no need to check cookies/headers in event handlers, because they are al
 
 If user access to certain actions or views can be revoked, you should 
 
-* **Verify user view permissions during render** (not only in the ServePage handler) to ensure that the user can't access previously available views with dynamic navigation. 
-* **Verify user write permissions in the hook handler functions** to ensure that even if the permission is revoked after rendering, you are still safe.
+* **Verify user view permissions during render** to ensure that the user can't access previously available views with dynamic navigation. 
+* **Verify user write permissions in the transactions** to ensure that even if the permission is revoked after rendering, you are still safe.
 
 ## Session Management
 
@@ -107,7 +107,7 @@ templ logout() {
 }
 ```
 
-> ⚠️ Ending the session causes pages to reload. In theory, it could happen before the browser receives a response and clears the cookies. To be on the safe side, **rely on session storage (remove on logout, check in page handler)**. 
+> ⚠️ Ending the session causes pages to reload. In theory, it could happen before the browser receives a response and clears the cookies. To be on the safe side, **rely on session storage (remove on logout, check in the page handler)**. 
 
 ## After Actions
 

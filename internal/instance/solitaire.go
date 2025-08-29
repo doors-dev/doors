@@ -11,9 +11,8 @@ package instance
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/json"
-	"io"
+	"errors"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -28,30 +27,29 @@ type solitaireInstance interface {
 func newSolitaire(inst solitaireInstance, conf *common.SolitaireConf) *solitaire {
 	return &solitaire{
 		conf: conf,
-		inst: inst,
-		deck: newDeck(conf.Queue, conf.Pending),
+		deck: newDeck(inst, conf.Queue, conf.Pending, conf.SyncTimeout),
 	}
 }
 
 type solitaire struct {
-	conf       *common.SolitaireConf
-	inst       solitaireInstance
-	deck       *deck
-	connection atomic.Pointer[conn]
+	conf   *common.SolitaireConf
+	deck   *deck
+	buffer atomic.Pointer[conn]
+	conn   atomic.Pointer[conn]
 }
 
 func (s *solitaire) Call(call common.Call) {
 	err := s.deck.Insert(call)
 	if err != nil {
-		s.inst.syncError(err)
 		return
 	}
-	c := s.connection.Load()
+	c := s.conn.Load()
 	c.Trigger()
 }
 
 func (s *solitaire) End(cause endCause) {
-	conn := s.connection.Swap(nil)
+	defer s.deck.End()
+	conn := s.conn.Swap(nil)
 	if conn == nil {
 		return
 	}
@@ -59,7 +57,6 @@ func (s *solitaire) End(cause endCause) {
 }
 
 func (s *solitaire) Connect(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
 	decoder := json.NewDecoder(r.Body)
 	rep := &report{}
 	err := decoder.Decode(rep)
@@ -70,183 +67,129 @@ func (s *solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 	}
 	err = s.deck.OnReport(rep)
 	if err != nil {
-		s.inst.syncError(err)
 		return
 	}
-	c := newConn(s.inst, s.conf, w, r, s.deck, start)
-	prev := s.connection.Swap(c)
-	prev.Cancel()
-	prev.Wait()
-	c.Run()
+	conn := newConn(s.conf, w, r, s.deck)
+	s.buffer.Swap(conn)
+	active := s.conn.Load()
+	ch := active.Roll()
+	<-ch
+	ok := s.buffer.CompareAndSwap(conn, nil)
+	if !ok {
+		conn.Roll()
+		conn.Run()
+		return
+	}
+	ok = s.conn.CompareAndSwap(active, conn)
+	if !ok {
+		conn.Roll()
+		conn.Run()
+		return
+	}
+	conn.Run()
 }
 
-func newConn(inst solitaireInstance, conf *common.SolitaireConf, w http.ResponseWriter, r *http.Request, desk *deck, start time.Time) *conn {
-	ctx, cancel := context.WithCancelCause(r.Context())
+func newConn(conf *common.SolitaireConf, w http.ResponseWriter, r *http.Request, desk *deck) *conn {
+	ctx, cancelTimer := context.WithTimeout(r.Context(), conf.Ping*4/3)
+	ctx, cancel := context.WithCancelCause(ctx)
 	return &conn{
-		conf:    conf,
-		inst:    inst,
-		ctx:     ctx,
-		cancel:  cancel,
-		writer:  &writer{w: w},
-		flusher: w.(http.Flusher),
-		start:   start,
-		desk:    desk,
+		conf:       conf,
+		requestCtx: r.Context(),
+		ctx:        ctx,
+		cancel: func(cause error) {
+			cancel(cause)
+			cancelTimer()
+		},
+		writer: &writer{w: w, f: w.(http.Flusher), sizeLimit: conf.FlushSize, timeLimit: conf.FlushTimeout},
+		desk:   desk,
+		endCh:  make(chan struct{}),
 	}
 }
-
-const rollSignal uint8 = 0x00
-const suspendSignal uint8 = 0x01
-const killSignal uint8 = 0x02
 
 type conn struct {
-	conf     *common.SolitaireConf
-	inst     solitaireInstance
-	ctx      context.Context
-	cancel   context.CancelCauseFunc
-	writer   *writer
-	flusher  http.Flusher
-	desk     *deck
-	start    time.Time
-	deadline time.Time
-	zombie   bool
-	trigger  atomic.Pointer[chan struct{}]
+	conf       *common.SolitaireConf
+	requestCtx context.Context
+	ctx        context.Context
+	cancel     context.CancelCauseFunc
+	writer     *writer
+	desk       *deck
+	trigger    atomic.Pointer[chan struct{}]
+	endCh      chan struct{}
 }
 
-type waitResult int
-
-const (
-	waitContinue waitResult = iota
-	waitReturn
-	waitZombie
-)
-
-func (c *conn) wait() waitResult {
+func (c *conn) wait() {
 	ch := c.trigger.Load()
 	if ch == nil {
-		return waitContinue
-	}
-	if c.zombie {
-		select {
-		case <-*ch:
-			return waitContinue
-		case <-c.ctx.Done():
-			return waitReturn
-		}
-	}
-	dur := time.Until(c.deadline)
-	if dur <= 0 {
-		return waitZombie
+		return
 	}
 	select {
 	case <-*ch:
-		return waitContinue
 	case <-c.ctx.Done():
-		return waitReturn
-	case <-time.After(dur):
-		return waitZombie
 	}
-
 }
 
 func (c *conn) handleCause() {
 	cause := context.Cause(c.ctx)
-	endCause, ok := cause.(endCause)
-	if !ok {
-		return
-	}
-	switch endCause {
+	switch cause {
+	case context.DeadlineExceeded:
+	case context.Canceled:
+		c.writer.Write(rollSignal)
 	case causeKilled:
-		c.signal(killSignal)
+		c.writer.Write(killSignal)
 	case causeSuspend:
-		c.signal(suspendSignal)
+		c.writer.Write(suspendSignal)
 	case causeSyncError:
-		return
+	default:
+		panic(errors.New("Unknown solitaire connection cancel cause"))
 	}
-	c.flusher.Flush()
 }
 
 func (c *conn) Run() {
-	ttl := max(min(c.conf.Request-time.Since(c.start), c.conf.RollTime), 0)
-	if c.desk.Pending() {
-		ttl = min(ttl, c.conf.RollPendingTime)
-	}
-	c.deadline = time.Now().Add(ttl)
 	defer c.handleCause()
 	defer c.cleanup()
-	var waitChannel *chan struct{} = nil
-	sentenced := false
+	wait := false
+	zombie := false
+	start := time.Now()
 	for c.ctx.Err() == nil {
-		if waitChannel != nil {
-			c.trigger.Store(waitChannel)
-		}
-		writeResult, err := c.desk.WriteNext(c.writer)
-		if writeResult == writeErr {
-			return
-		}
-		if writeResult == writeSyncErr {
-			c.inst.syncError(err)
-			return
-		}
-		if writeResult == nothingToWrite {
-			if waitChannel != nil {
-				waitChannel = nil
-				r := c.wait()
-				if r == waitReturn {
-					return
-				}
-				if r == waitContinue || c.zombie {
-					continue
-				}
-				if !c.writer.somethingWritten() && c.desk.Pending() {
-					c.desk.Insert(&touch{})
-					sentenced = true
-					continue
-				}
-			} else {
-				if c.zombie || !c.writer.somethingWritten() {
-					ch := make(chan struct{})
-					waitChannel = &ch
-					continue
-				}
-			}
-		}
-		if writeResult == writeOk {
-			waitChannel = nil
-			if c.zombie || (!sentenced && c.writer.total <= c.conf.RollSize) {
-				c.flusher.Flush()
-				continue
-			}
-		}
-		if writeResult == pendingLimit && !c.writer.somethingWritten() {
-			select {
-			case <-time.After(c.conf.RollPendingTime):
-			case <-c.ctx.Done():
+		for c.requestCtx.Err() == nil {
+			writeResult, _ := c.desk.WriteNext(c.writer)
+			if writeResult == writeErr {
 				return
 			}
-		}
-		c.zombie = true
-		err = c.signal(rollSignal)
-		if err != nil {
-			return
-		}
-		c.flusher.Flush()
-		if writeResult == pendingLimit {
-			return
+			if writeResult == writeSyncErr {
+				return
+			}
+			if writeResult == nothingToWrite {
+				zombie = true
+				c.writer.flush()
+				if wait {
+					wait = false
+					c.wait()
+				} else {
+					ch := make(chan struct{})
+					c.trigger.Store(&ch)
+					wait = true
+				}
+			}
+			if writeResult == pendingLimit {
+				zombie = true
+				c.writer.flush()
+				<-c.ctx.Done()
+			}
+			if !zombie && time.Since(start) > c.conf.RollDuration {
+				zombie = true
+			}
+			if zombie {
+				break
+			}
 		}
 	}
 }
 
-func (c *conn) signal(s uint8) error {
-	err := signal(s).write(c.writer.w)
-	if err != nil {
-		return err
-	}
-	c.flusher.Flush()
-	return nil
-}
 
 func (c *conn) cleanup() {
 	c.cancel(nil)
+	close(c.endCh)
 }
 
 func (c *conn) Trigger() {
@@ -262,11 +205,14 @@ func (c *conn) Trigger() {
 	}
 }
 
-func (c *conn) Cancel() {
+func (c *conn) Roll() <-chan struct{} {
 	if c == nil {
-		return
+		ch := make(chan struct{})
+		close(ch)
+		return ch
 	}
 	c.cancel(nil)
+	return c.endCh
 }
 func (c *conn) End(cause endCause) {
 	if c == nil {
@@ -274,53 +220,43 @@ func (c *conn) End(cause endCause) {
 	}
 	c.cancel(cause)
 }
-func (c *conn) Wait() {
-	if c == nil {
-		return
-	}
-	<-c.ctx.Done()
-}
 
 type writer struct {
-	total int
-	w     http.ResponseWriter
+	sizeLimit   int
+	timeLimit   time.Duration
+	lastFlushed time.Time
+	total       int
+	f           http.Flusher
+	w           http.ResponseWriter
+	flushed     bool
 }
 
-func (w *writer) somethingWritten() bool {
-	return w.total != 0
+func (w *writer) flush() {
+	w.flushed = true
+	if w.total == 0 {
+		return
+	}
+	w.f.Flush()
+	w.total = 0
+	w.lastFlushed = time.Now()
 }
+
+var writerError = errors.New("actual write error")
 
 func (w *writer) Write(data []byte) (int, error) {
 	size, err := w.w.Write(data)
-	w.total += size
-	return size, err
-}
-
-type signal uint8
-
-var zeroLength = []byte{0x00, 0x00, 0x00, 0x00}
-
-func (s signal) write(w io.Writer) error {
-	_, err := w.Write(zeroLength)
 	if err != nil {
-		return nil
+		return 0, writerError
 	}
-	err = binary.Write(w, binary.BigEndian, s)
-	return err
+	w.total += size
+	if w.lastFlushed.IsZero() {
+		w.lastFlushed = time.Now()
+	} else if w.total >= w.sizeLimit {
+		w.flush()
+	} else if time.Since(w.lastFlushed) >= w.timeLimit {
+		w.flush()
+	}
+	return size, nil
 }
 
-type touch struct {
-	fired bool
-}
 
-func (t *touch) Data() *common.CallData {
-	if t.fired {
-		return nil
-	}
-	return &common.CallData{
-		Name: "touch",
-		Arg: []any{},
-		Payload: common.WritableNone{},
-	}
-}
-func (t *touch) Result(error) {}

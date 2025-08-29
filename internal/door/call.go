@@ -11,7 +11,7 @@ package door
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"log/slog"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -27,14 +27,18 @@ type doorCall struct {
 	done    ctxwg.Done
 }
 
-func (n *doorCall) stale() {
-	n.Result(errors.New("stale"))
+func (n *doorCall) Cancel() {
+	n.send(context.Canceled)
 }
 
-func (n *doorCall) Result(err error) {
+func (n *doorCall) Result(_ json.RawMessage, err error) {
 	if err != nil {
-		slog.Error("Door call failed", slog.String("call_name", n.name), slog.String("error", err.Error()))
+		slog.Error("door ["+n.name+"] rendering error", slog.String("error", err.Error()))
 	}
+	n.send(err)
+}
+
+func (n *doorCall) send(err error) {
 	n.ch <- err
 	close(n.ch)
 	if n.payload != nil {
@@ -45,7 +49,6 @@ func (n *doorCall) Result(err error) {
 
 func (n *doorCall) Data() *common.CallData {
 	if n.ctx.Err() != nil {
-		n.stale()
 		return nil
 	}
 	return &common.CallData{

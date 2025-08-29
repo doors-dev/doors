@@ -12,109 +12,124 @@ package doors
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
-	"net/http"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/common/ctxwg"
 	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/instance"
 )
 
-// CallConf configures a backend-to-frontend JavaScript call.
-//
-// This allows server-side code to invoke a JavaScript function in the browser,
-// passing arguments and optionally handling a response via a trigger hook.
-//
-// The call is sent to the frontend immediately once the connection is ready (typically within a few milliseconds).
-// If the backend context is no longer valid (e.g., the component was unmounted), the call is automatically canceled.
-//
-// Fields:
-//   - Name: the name of the frontend JavaScript function to call.
-//   - Arg: the argument to pass to the function (must be JSON-serializable).
-//   - Trigger: optional. Called when the frontend responds to the function call.
-//     The handler receives a CallRequest, which can read data from the frontend.
-//   - Cancel: optional. Called if the call is invalidated before it reaches the frontend,
-//     or if manually canceled using the returned TryCancel function.
-type CallConf struct {
-	// Name of the JavaScript call handler  (must be registered on the frontend).
-	Name string
-
-	// Arg is the value passed to the frontend function. It is serialized to JSON.
-	Arg any
-
-	// On is an optional backend handler that is called with the frontend call responce.
-	On func(context.Context, RCall)
-
-	// OnCancel is called if the context becomes invalid before the call is delivered,
-	// or if the call is canceled explicitly. Optional.
-	OnCancel func(context.Context, error)
+type call[O any] struct {
+	inst     instance.Core
+	doorId   uint64
+	ctx      context.Context
+	arg      any
+	name     string
+	done     func()
+	onResult func(O, error)
+	onCancel func()
 }
 
-func (conf *CallConf) clientCall() (*door.ClientCall, bool) {
-	arg, err := common.MarshalJSON(conf.Arg)
-	if err != nil {
-		slog.Error("Call arg marshaling error", slog.String("call_name", conf.Name), slog.String("json_error", err.Error()))
-		return nil, false
-	}
-	return &door.ClientCall{
-		Name:    conf.Name,
-		Arg:     json.RawMessage(arg),
-		Trigger: conf.triggerFunc(),
-		Cancel:  conf.OnCancel,
-	}, true
-}
-
-func (c *CallConf) triggerFunc() func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	if c.On == nil {
+func (c *call[O]) Data() *common.CallData {
+	if c.ctx.Err() != nil {
 		return nil
 	}
-	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		c.On(ctx, &request{w: w, r: r, ctx: ctx})
+	return &common.CallData{
+		Name:    "call",
+		Arg:     []any{c.name, c.arg, c.doorId},
+		Payload: common.WritableNone{},
 	}
 }
 
-// Call sends a backend-initiated JavaScript function call to the frontend.
+func (c call[O]) Cancel() {
+	defer c.done()
+	if c.onCancel == nil {
+		return
+	}
+	c.onCancel()
+}
+
+func (c *call[O]) Result(r json.RawMessage, err error) {
+	if err != nil {
+		slog.Error("Call failed", slog.String("call_name", c.name), slog.String("error", err.Error()))
+	}
+	if c.onResult == nil {
+		c.done()
+		return
+	}
+	ok := c.inst.Spawn(func() {
+		defer c.done()
+		var output O
+		if err != nil {
+			c.onResult(output, errors.Join(errors.New("execution error"), err))
+			return
+		}
+		err = json.Unmarshal(r, &output)
+		if err != nil {
+			c.onResult(output, errors.Join(errors.New("result unmarshal error"), err))
+			return
+		}
+		c.onResult(output, err)
+	})
+	if !ok {
+		c.onCancel()
+	}
+}
+
+// Call invokes a JavaScript handler previously registered on the client
+// with $d.on(name, fn). The argument is marshaled to JSON and passed to
+// the handler. The handler’s return value is unmarshaled into OUTPUT and
+// delivered asynchronously to onResult.
 //
-// The call is dispatched as soon as the frontend connection is ready.
-// It serializes the Arg field of CallConf to JSON and sends it to a frontend function
-// registered with the given Name. Optionally, the backend can handle a response
-// via the Trigger field, or react to cancellation via the Cancel field.
+// onResult and onCancel are optional and may be nil. If provided,
+// onResult is invoked with the decoded result or an error, and onCancel
+// is invoked if the call is canceled or cannot be scheduled.
 //
-// If the component or context is no longer valid (e.g., unmounted), Cancel is called automatically.
+// The returned CancelFunc attempts to cancel the call, but cancellation
+// is best-effort and not guaranteed if the call is already in progress.
 //
-// Parameters:
-//   - ctx: the current rendering or lifecycle context.
-//   - conf: the configuration specifying the function name, argument, and optional handlers.
-//
-// Returns:
-//   - a function to cancel the pending call (usually ignored).
-//   - ok: false if the call couldn't be registered or marshaling failed.
+// If provied context is already canceled, onCancel invoked immediately.
 //
 // Example:
 //
-//		// Go (backend):
-//		d.Call(ctx, d.CallConf{
-//		    Name: "alert",
-//		    Arg:  "Hello",
-//		})
+//	cancel := doors.Call[string](ctx, "my_js_call", "Hello from Go",
+//		func(out string, err error) {
+//			if err != nil { log.Println("error:", err); return }
+//			log.Println("reply:", out)
+//		},
+//		func() { log.Println("canceled") },
+//	)
 //
-//		// JavaScript (frontend):
-//	 $doors.Script() {
-//			<script>
-//				$d.on("alert", (message) => alert(message))
-//			</script>
-//	}
-//
-// Notes:
-//   - The Name must match the identifier registered via `$D.on(...)` in frontend JavaScript.
-//   - The Arg is serialized to JSON and passed as the first argument to the JS handler.
-//   - Use `document` instead of `document.currentScript` to register globally.
-//   - To handle a frontend response, set the Trigger field in CallConf
-func Call(ctx context.Context, conf CallConf) (func(), bool) {
-	n := ctx.Value(common.CtxKeyDoor).(door.Core)
-	call, ok := conf.clientCall()
-	if !ok {
-		return nil, false
+func Call[OUTPUT any](ctx context.Context, name string, arg any, onResult func(OUTPUT, error), onCancel func()) context.CancelFunc {
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
+	doorId := ctx.Value(common.CtxKeyDoor).(door.Core).Id()
+	callCtx, cancel := context.WithCancel(context.Background())
+	c := &call[OUTPUT]{
+		done:     ctxwg.Add(ctx),
+		inst:     inst,
+		name:     name,
+		doorId:   doorId,
+		ctx:      callCtx,
+		arg:      arg,
+		onCancel: onCancel,
+		onResult: onResult,
 	}
-	cancel, ok := n.RegisterClientCall(ctx, call)
-	return cancel, ok
+	if ctx.Err() != nil {
+		c.Cancel()
+		return cancel
+	}
+	inst.Call(c)
+	return cancel
+
 }
+
+// Fire performs JavaScrtipt call via simplified API (without handlers).
+// Please refer to doors.Call[OUTPUT] for details.
+//
+//
+func Fire(ctx context.Context, name string, arg any) context.CancelFunc {
+	return Call[json.RawMessage](ctx, name, arg, nil, nil)
+}
+

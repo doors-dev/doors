@@ -110,7 +110,7 @@ func (s *Bro) url(path string) string {
 
 func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
 	return NewBro(b,
-		doors.ServePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+		doors.UsePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
 			return pr.Page(&Page{
 				F: f(),
 			})
@@ -124,7 +124,7 @@ func NewBro(browser *rod.Browser, mods ...doors.Mod) *Bro {
 	r.Use(mods...)
 	limit := os.Getenv("LIMIT") != ""
 	if limit {
-		r.Use(doors.SetSystemConf(common.SystemConf{
+		r.Use(doors.UseSystemConf(common.SystemConf{
 			SessionInstanceLimit:   1,
 			InstanceGoroutineLimit: 1,
 		}))

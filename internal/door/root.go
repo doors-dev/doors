@@ -27,7 +27,6 @@ func NewRoot(ctx context.Context, inst instance) *Root {
 		children:    common.NewSet[*Door](),
 		thread:      thread,
 		cancel:      cancel,
-		clientCalls: common.NewSet[*clientCall](),
 	}
 	r := &Root{
 		id:      id,

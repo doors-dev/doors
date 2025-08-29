@@ -12,7 +12,6 @@ func TestCaptureError(t *testing.T) {
 		return &errorFragment{}
 	})
 	page := bro.Page(t, "/")
-	
 	// initial
 	test.TestContent(t, page, "#report", "initial")
 

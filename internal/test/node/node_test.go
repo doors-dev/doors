@@ -9,7 +9,7 @@ import (
 
 func TestDoorLoadPage(t *testing.T) {
 	bro := test.NewBro(browser,
-		doors.ServePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
+		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
 			return pr.Page(&test.Page{
 				Header: "Page Door",
 			})

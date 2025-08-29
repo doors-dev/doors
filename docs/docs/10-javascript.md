@@ -155,7 +155,9 @@ When you pass an argument to hook `$d.hook(name, arg) or $d.rawHook(name, arg)`,
 
 ## 4. Call JavaScript from Go
 
-You can register a JavaScript handler to be called at any time by the server.
+You can register a JavaScript handler to be called at any time by the server. 
+
+⚠️ Async functions are not supported, use hooks to report regarding long running operations
 
 **Example:**
 
@@ -170,36 +172,30 @@ You can register a JavaScript handler to be called at any time by the server.
 }
 ```
 
-> Return value from the JavaScript handler will be converted to the request body  by **Data Conversion** rules.
+> Return value from the JavaScript handler will be serialized to JSON
 
-**Backend function to issue the call:**
+## Invoke from Go (new API)
 
-```templ
-// returns cancel function, and ok (bool) value if call is 
-// successfuly issued 
-func Call(ctx context.Context, conf CallConf) (func(), bool) 
-```
-
-> ⚠️ It's not guaranteed that the cancel function will actually cancel the call, as it may already be in progress.
-
-**Call configuration:**
+### Function
 
 ```templ
-type CallConf struct {
-	// Name of the JavaScript call handler  (must be registered on the frontend).
-	Name string
-	// Arg is the value passed to the frontend function. It is serialized to JSON.
-	Arg any
-	// On is an optional backend handler that is called with the frontend call responce.
-	On func(context.Context, RCall)
-	// OnCancel is called if the context becomes invalid before the call is delivered,
-	// or if the call is canceled explicitly. Optional.
-	OnCancel func(context.Context, error)
-}
-
+func Call[OUTPUT any](
+  ctx context.Context,
+  name string,
+  arg any,
+  onResult func(OUTPUT, error),
+  onCancel func(),
+) context.CancelFunc
 ```
 
-> ❗ Calls are not intended for long-running operations. If you need to trigger a long-running operation, don't wait for the result in the handler function, but send it with a custom hook later.
+- **ctx**: must be valid 
+- **name**: JS handler name registered with `$d.on(name, fn)`.
+- **arg**: any value; marshaled to JSON and passed to JS.
+- **onResult**: called with the decoded JS return value (into `OUTPUT`) or an error. Pass `nil` if not needed.
+- **onCancel**: called if provided context is canceled, the call is canceled, or cannot be scheduled/delivered due to instance shutdown.  Pass `nil` if not needed.
+- **returns**: a `cancel` function (best-effort)
+
+> Provide `json.RawMessage`  as `OUTPUT` if you don't need parsing
 
 ### Important: Call Registration/Invocation rules
 
@@ -236,25 +232,23 @@ To clarify how it works, let's examine this code:
 ### Example
 
 ```templ
-@doors.Script() {	
-	<script>
-	  // register "alert" handler
-		$d.on("alert", (message) => alert(message))
-	</script>
+@doors.Script() {
+  <script>
+    $d.on("alert", (msg) => { alert(msg); return true })
+  </script>
 }
 
 @doors.AClick{
-	On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-	    // issue js Call
-			doors.Call(ctx, doors.CallConf{
-				Name: "alert",
-				// will be marshaled and parsed from JSON
-				Arg:  "Hello from Go",
-			})
-			return false
-	}
+  On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+    doors.Call[bool](ctx, "alert", "Hello from Go",
+      func(ok bool, err error) { /* handle */ },
+      nil,
+    )
+    return false
+  }
 }
 <button>Alert Me!</button>
+
 ```
 
 ## 5. Clean Up

@@ -34,9 +34,8 @@ class $D {
         return global
     }
 
-    on(name: string, handler: (arg: any) => any, response?: (response: Response) => void
-    ): void {
-        door.on(this.anchor, name, handler, response)
+    on(name: string, handler: (arg: any) => any): void {
+        door.on(this.anchor, name, handler)
     }
 
     async rawHook(name: string, arg: any): Promise<Response> {

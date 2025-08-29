@@ -10,33 +10,59 @@
 package instance
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 )
 
-func newDeck(queueLimit int, issueLimit int) *deck {
+func newDeck(inst solitaireInstance, queueLimit int, issueLimit int, syncTimeout time.Duration) *deck {
 	return &deck{
-		issueLimit: issueLimit,
-		queueLimit: queueLimit,
-		issued:     make(map[uint64]*issuedCall),
+		inst:        inst,
+		issueLimit:  issueLimit,
+		queueLimit:  queueLimit,
+		issued:      make(map[uint64]*issuedCall),
+		syncTimeout: syncTimeout,
+		expirator: common.NewExpirator(func() {
+			inst.syncError(errors.New("sync timeout"))
+		}),
 	}
 }
 
 type deck struct {
+	inst         solitaireInstance
 	issueLimit   int
 	queueLimit   int
+	syncTimeout  time.Duration
 	seq          uint64
 	top          *card
 	bottom       *card
 	issued       map[uint64]*issuedCall
 	mu           sync.Mutex
+	killed       bool
 	deckSize     int
 	latestReport uint64
+	expirator    *common.Expirator
+}
+
+func (d *deck) End() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.killed {
+		return
+	}
+	d.expirator.Shutdown()
+	d.killed = true
+	for seq := range d.issued {
+		d.issued[seq].call.Cancel()
+	}
+	if d.top == nil {
+		return
+	}
+	d.top.cancel()
 }
 
 func (d *deck) PendingCount() int {
@@ -62,10 +88,18 @@ const (
 	writeSyncErr
 )
 
-func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
+func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
+	defer func() {
+		if res == writeSyncErr {
+			d.inst.syncError(err)
+		}
+	}()
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for {
+		if d.killed {
+			return writeSyncErr, errors.New("killed")
+		}
 		if len(d.issued) == d.issueLimit {
 			return pendingLimit, nil
 		}
@@ -75,7 +109,7 @@ func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
 		}
 		header := newHeader(card.startSeq, card.endSeq)
 		if card.isFiller() {
-			if err := header.writeOnly(w); err != nil {
+			if err := header.writeFiller(w); err != nil {
 				d.skipRange(card.startSeq, card.endSeq)
 				return writeErr, err
 			}
@@ -83,6 +117,8 @@ func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
 		}
 		data := card.call.Data()
 		if data == nil {
+			d.expirator.Report(card.seq())
+			card.call.Cancel()
 			d.skipRange(card.startSeq, card.endSeq)
 			continue
 		}
@@ -92,10 +128,20 @@ func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
 		}
 		err := issuedCall.write(header, w)
 		if err != nil {
-			if err := d.cancelCut(card); err != nil {
-				return writeSyncErr, err
+			if errors.Is(err, writerError) {
+				if err := d.cancelCut(card); err != nil {
+					return writeSyncErr, err
+				}
+				return writeErr, err
 			}
-			return writeErr, err
+			d.expirator.Report(card.seq())
+			issuedCall.call.Result(nil, errors.Join(errors.New("call serialization error"), err))
+			d.skipRange(card.startSeq, card.endSeq)
+			_, err := w.Write(errorTerminator)
+			if err != nil {
+				return writeErr, err
+			}
+			return writeOk, nil
 		}
 		d.issued[card.seq()] = issuedCall
 		return writeOk, nil
@@ -113,7 +159,12 @@ func (d *deck) extractRestored(seq uint64) (*card, error) {
 	return card, err
 }
 
-func (d *deck) OnReport(s *report) error {
+func (d *deck) OnReport(s *report) (err error) {
+	defer func() {
+		if err != nil {
+			d.inst.syncError(err)
+		}
+	}()
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for seq := range s.Results {
@@ -123,10 +174,7 @@ func (d *deck) OnReport(s *report) error {
 		if d.latestReport < seq {
 			d.latestReport = seq
 		}
-		var resultErr error = nil
-		if s.Results[seq] != nil {
-			resultErr = errors.New(*s.Results[seq])
-		}
+		result := s.Results[seq]
 		call, ok := d.issued[seq]
 		if !ok {
 			card, err := d.extractRestored(seq)
@@ -136,27 +184,21 @@ func (d *deck) OnReport(s *report) error {
 			if card == nil {
 				continue
 			}
-			card.call.Result(resultErr)
+			d.expirator.Report(seq)
+			card.call.Result(result.output, result.err)
 			continue
 		}
 		delete(d.issued, seq)
-		call.call.Result(resultErr)
-	}
-	if len(s.Gaps) == 0 {
-		return nil
-	}
-	first := s.Gaps[0]
-	last := s.Gaps[len(s.Gaps)-1]
-	if last.end >= d.seq {
-		return errors.New("gap overflows last seq")
-	}
-	if first.start <= d.latestReport {
-		return errors.New("gap after report")
+		d.expirator.Report(seq)
+		call.call.Result(result.output, result.err)
 	}
 	prevEnd := d.latestReport
 	for _, gap := range s.Gaps {
 		if gap.end < gap.start {
 			return errors.New("gap range issue")
+		}
+		if gap.end > d.seq {
+			return errors.New("gap overflows last seq")
 		}
 		if prevEnd >= gap.start {
 			return errors.New("gap overlap")
@@ -174,15 +216,28 @@ func (d *deck) OnReport(s *report) error {
 			}
 		}
 	}
+	if (d.bottom == nil || d.bottom.seq() != d.seq) && len(d.issued) > 0 {
+		d.seq += 1
+		d.skipSeq(d.seq)
+	}
 	return nil
 }
-
-func (d *deck) Insert(call common.Call) error {
+func (d *deck) Insert(call common.Call) (err error) {
+	defer func() {
+		if err != nil {
+			d.inst.syncError(err)
+		}
+	}()
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	if d.killed {
+		call.Cancel()
+		return errors.New("killed")
+	}
 	d.seq += 1
 	door := newCard(d.seq, call)
 	d.insertTail(door)
+	d.expirator.Track(d.seq, time.Now().Add(d.syncTimeout))
 	return d.inc()
 }
 
@@ -307,6 +362,16 @@ type card struct {
 	restored bool
 }
 
+func (s *card) cancel() {
+	if !s.isFiller() {
+		s.call.Cancel()
+	}
+	if s.tail == nil {
+		return
+	}
+	s.tail.cancel()
+}
+
 func (s *card) extractRestored(seq uint64, h head) (*card, error) {
 	if s.seq() == seq {
 		if s.isFiller() {
@@ -402,9 +467,16 @@ func newHeader(startSeq uint64, endSeq uint64) header {
 
 type header []any
 
-var terminator = []byte{0xFF}
+var callSignal = []byte{0x00}
+var rollSignal = []byte{0x01}
+var suspendSignal = []byte{0x02}
+var killSignal = []byte{0x03}
 
-func (h header) writeOnly(w io.Writer) error {
+var continueWithPayload = []byte{0xFC}
+var terminator = []byte{0xFF}
+var errorTerminator = []byte{0xFD}
+
+func (h header) writeFiller(w io.Writer) error {
 	err := h.write(w)
 	if err != nil {
 		return err
@@ -414,16 +486,13 @@ func (h header) writeOnly(w io.Writer) error {
 }
 
 func (h header) write(w io.Writer) error {
-	bytes, err := common.MarshalJSON(h)
-	if err != nil {
-		panic("Json writable is not writable")
-	}
-	length := uint32(len(bytes))
-	err = binary.Write(w, binary.BigEndian, length)
+	_, err := w.Write(callSignal)
 	if err != nil {
 		return err
 	}
-	_, err = w.Write(bytes)
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	err = enc.Encode(h)
 	return err
 }
 
@@ -438,13 +507,44 @@ func (i *issuedCall) write(h header, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	payload := i.data.Payload
-	err = payload.Write(w)
+	if _, ok := i.data.Payload.(common.WritableNone); ok {
+		_, err = w.Write(terminator)
+		return err
+	}
+	_, err = w.Write(continueWithPayload)
+	if err != nil {
+		return err
+	}
+	err = i.data.Payload.Write(w)
 	if err != nil {
 		return err
 	}
 	_, err = w.Write(terminator)
 	return err
+}
+
+type result struct {
+	output json.RawMessage
+	err    error
+}
+
+func (r *result) UnmarshalJSON(data []byte) error {
+	var a [2]json.RawMessage
+	err := json.Unmarshal(data, &a)
+	if err != nil {
+		return err
+	}
+	var e *string
+	err = json.Unmarshal(a[1], &e)
+	if err != nil {
+		return err
+	}
+	if e != nil {
+		r.err = errors.New(*e)
+		return nil
+	}
+	r.output = a[0]
+	return nil
 }
 
 type gap struct {
@@ -478,6 +578,6 @@ func (m *gap) UnmarshalJSON(data []byte) error {
 }
 
 type report struct {
-	Gaps    []gap              `json:"gaps"`
-	Results map[uint64]*string `json:"results"`
+	Gaps    []gap             `json:"Gaps"`
+	Results map[uint64]result `json:"results"`
 }

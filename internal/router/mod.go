@@ -10,7 +10,6 @@
 package router
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
@@ -78,14 +77,6 @@ func SetSystemConf(conf common.SystemConf) Mod {
 }
 
 
-func SetGoroutineLimit(n int) Mod {
-	if n < 1 {
-		panic(errors.New("At least 1"))
-	}
-	return anyMod(func(rr *Router) {
-		rr.pool.Tune(n)
-	})
-}
 
 
 func SetErrorPage(page ErrorPageComponent) Mod {

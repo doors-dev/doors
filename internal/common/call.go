@@ -9,6 +9,8 @@
 
 package common
 
+import "encoding/json"
+
 type CallData struct {
 	Name    string
 	Arg     any
@@ -17,6 +19,6 @@ type CallData struct {
 
 type Call interface {
 	Data() *CallData
-	Result(error)
+	Cancel()
+	Result(json.RawMessage, error)
 }
-

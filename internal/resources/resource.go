@@ -10,7 +10,6 @@
 package resources
 
 import (
-	"crypto/sha256"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -19,14 +18,15 @@ import (
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/mr-tron/base58"
+	"github.com/zeebo/blake3"
 )
 
 func NewResource(content []byte, contentType string, gzip bool) *Resource {
-	hash := sha256.Sum256(content)
-	hashStr := base58.Encode(hash[:])
+	hash := blake3.Sum256(content)
+	shortHash := hash[:16]
 	return &Resource{
-		hash:        hash,
-		hashString:  hashStr,
+		hash:        *(*[16]byte)(shortHash),
+		hashString:  base58.Encode(shortHash),
 		gzip:        gzip,
 		content:     content,
 		contentType: contentType,
@@ -52,7 +52,7 @@ func (i *InlineResource) Serve(w http.ResponseWriter, r *http.Request) {
 
 type Resource struct {
 	hashString  string
-	hash        [32]byte
+	hash        [16]byte
 	gzip        bool
 	once        sync.Once
 	content     []byte
@@ -62,10 +62,6 @@ type Resource struct {
 
 func (s *Resource) HashString() string {
 	return s.hashString
-}
-
-func (s *Resource) Hash() []byte {
-	return s.hash[:]
 }
 
 func (s *Resource) Content() []byte {

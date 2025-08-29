@@ -155,7 +155,7 @@ func main() {
 	r := doors.NewRouter()
 
 	// attach home handler
-	r.Use(doors.ServePage(home.Handler))
+	r.Use(doors.UsePage(home.Handler))
 
 	// start server with our self signed cert
 	err := http.ListenAndServeTLS(":8443", "localhost+2.pem", "localhost+2-key.pem", r)

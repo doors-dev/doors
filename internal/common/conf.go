@@ -7,121 +7,126 @@
 // For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
-
 package common
 
 import "time"
 
-// SystemConf contains system-wide configuration options that control various aspects
-// of the doors framework including session management, instance lifecycle, performance
-// settings, and client-server communication parameters.
+// SystemConf defines global configuration for sessions, instances,
+// client-server communication, and performance. Defaults are auto-initialized.
 type SystemConf struct {
-	// SessionInstanceLimit controls the maximum number of page instances that can
-	// exist simultaneously within a single session. When this limit is exceeded,
-	// the oldest and least active instances are suspended to make room for new ones.
-	// Default: 6.
+	// SessionInstanceLimit is the max number of page instances per session.
+	// When exceeded, the oldest inactive ones are suspended.
+	// Default: 12.
 	SessionInstanceLimit int
 
-	// SessionExpiration sets the session expiration timeout. The session will be
-	// automatically cleaned up after this duration of inactivity, regardless of
-	// whether instances are present. 
-	// Default: 0 (session cleaned up when no more instances left).
+	// SessionExpiration is the session lifetime. If >0, sessions expire
+	// even with active instances. Default: 0 (expire when no instances remain).
 	SessionExpiration time.Duration
 
-	// SessionCookieExpiration sets the expiration time for the session cookie sent
-	// to the client's browser. This should typically be longer than SessionExpiration
-	// to allow for proper session restoration. 
-	// Default and recommended: 0 (session cookies expire when browser closes).
+	// SessionCookieExpiration sets session cookie lifetime in the browser.
+	// Default: 0 (expires when browser closes).
 	SessionCookieExpiration time.Duration
 
-	// InstanceGoroutineLimit sets the maximum number of goroutines that can be spawned
-	// per page instance. This controls resource usage for render tasks and reactive
-	// updates within each instance. Default: 16.
+	// InstanceGoroutineLimit is the max goroutines per page instance.
+	// Controls resource use for rendering and reactive updates. Default: 16.
 	InstanceGoroutineLimit int
 
-	// InstanceTTL (Time To Live) sets how long an inactive page instance remains alive
-	// before being automatically killed. Instances are considered active when they
-	// have ongoing connections or recent client interactions. Default: 15 minutes
-	// or at least twice SolitaireRequestTimeout (whichever is greater).
+	// InstanceTTL is how long an inactive instance is kept before cleanup.
+	// Active = browser connected. Default: 40minutes or ≥2×RequestTimeout.
 	InstanceTTL time.Duration
 
-	// ServerDisableGzip disables gzip compression for HTTP responses when set to true.
-	// Compression is enabled by default to reduce bandwidth usage, but may be disabled
-	// for debugging or when using external compression. Default: false.
+	// ServerDisableGzip disables gzip compression for HTML, JS, and CSS if true.
 	ServerDisableGzip bool
 
-	// DisconnectHiddenTimer controls how long hidden/background page instances keep
-	// connection active. This helps manage CPU/RAM usage when many tabs are open 
-	// but not actively viewed. Default: 10 minutes.
+	// DisconnectHiddenTimer is how long hidden/background instances stay connected.
+	// Default: InstanceTTL/2.
 	DisconnectHiddenTimer time.Duration
 
-	// SolitaireRollSize sets the maximum number of bytes that can be sent in a single
-	// response before commanding the client to roll to a new request. Default: 8 KB.
-	SolitaireRollSize int
+	// RequestTimeout is the max duration of a client-server request (hook).
+	// Default: 30s.
+	RequestTimeout time.Duration
 
-	// SolitaireRequestTimeout sets the maximum duration a client-server communication
-	// request can remain open. Default: 30 seconds.
-	SolitaireRequestTimeout time.Duration
+	// SolitairePing is the max idle time before rolling the request.
+	// Default: 15s.
+	SolitairePing time.Duration
 
-	// SolitaireRollPendingTime sets how long the server waits if there are pending calls
-	// before commanding the client to roll to a new request, even if SolitaireRollSize
-	// hasn't been reached. This balances latency against request efficiency.
-	// Default: 100 milliseconds.
-	SolitaireRollPendingTime time.Duration
+	// SolitaireSyncTimeout is the max pending duration of a server→client sync task,
+	// including user calls. Exceeding this kills the instance.
+	// Default: InstanceTTL.
+	SolitaireSyncTimeout time.Duration
 
-	// SolitaireQueue sets the maximum number of client calls that can be queued
-	// waiting to be sent to the client. When this limit is exceeded, the instance
-	// will be terminated to prevent memory exhaustion. Default: 1024.
+	// SolitaireRollTimeout is how long an active sync connection lasts before
+	// rolling to a new one if the queue is long. Default: 1s.
+	SolitaireRollTimeout time.Duration
+
+	// SolitaireFlushTimeout is the max time before forcing a flush.
+	// Default: 30ms
+	SolitaireFlushTimeout time.Duration
+
+	// SolitaireFlushSizeLimit is the max buffered bytes before forcing a flush.
+	// Default: 32 KB
+	SolitaireFlushSizeLimit int
+
+	// SolitaireQueue is the max queued server→client sync task.
+	// Exceeding this kills the instance. Default: 1024.
 	SolitaireQueue int
 
-	// SolitairePending sets the maximum number of calls that can be sent to the
-	// client but not yet acknowledged. Default: 256.
+	// SolitairePending is the max unresolved server→client sync tasks.
+	// Throttles sending when reached. Default: 256.
 	SolitairePending int
 }
 
 type SolitaireConf struct {
-	Request         time.Duration
-	RollSize        int
-	RollTime        time.Duration
-	RollPendingTime time.Duration
-	Queue           int
-	Pending         int
+	Ping         time.Duration
+	FlushSize    int
+	RollDuration time.Duration
+	FlushTimeout time.Duration
+	Queue        int
+	Pending      int
+	SyncTimeout  time.Duration
 }
 
 func GetSolitaireConf(s *SystemConf) *SolitaireConf {
 	return &SolitaireConf{
-		Request:         (s.SolitaireRequestTimeout * 2) / 3,
-		RollSize:        s.SolitaireRollSize,
-		RollTime:        s.SolitaireRequestTimeout / 2,
-		RollPendingTime: s.SolitaireRollPendingTime,
-		Queue:           s.SolitaireQueue,
-		Pending:         s.SolitairePending,
+		SyncTimeout:  s.SolitaireSyncTimeout,
+		Ping:         s.SolitairePing,
+		FlushSize:    s.SolitaireFlushSizeLimit,
+		RollDuration: s.SolitaireRollTimeout,
+		FlushTimeout: s.SolitaireFlushTimeout,
+		Queue:        s.SolitaireQueue,
+		Pending:      s.SolitairePending,
 	}
 }
 
 type ClientConf struct {
 	TTL            time.Duration
 	RequestTimeout time.Duration
+	Ping           time.Duration
 	SleepTimeout   time.Duration
+	Detached       bool
 }
 
 func GetClientConf(s *SystemConf) *ClientConf {
 	return &ClientConf{
 		TTL:            s.InstanceTTL,
 		SleepTimeout:   s.DisconnectHiddenTimer,
-		RequestTimeout: s.SolitaireRequestTimeout,
+		RequestTimeout: s.RequestTimeout,
+		Ping:           s.SolitairePing,
 	}
 }
 
 func (s *SystemConf) solitaireDefaults() {
-	if s.SolitaireRollSize <= 0 {
-		s.SolitaireRollSize = 8 * 1024
+	if s.SolitaireFlushSizeLimit <= 0 {
+		s.SolitaireFlushSizeLimit = 32 * 1024
 	}
-	if s.SolitaireRequestTimeout <= 0 {
-		s.SolitaireRequestTimeout = 30 * time.Second
+	if s.SolitaireSyncTimeout <= 0 {
+		s.SolitaireSyncTimeout = s.InstanceTTL
 	}
-	if s.SolitaireRollPendingTime <= 0 {
-		s.SolitaireRollPendingTime = 100 * time.Millisecond
+	if s.SolitaireFlushTimeout <= 0 {
+		s.SolitaireFlushTimeout = 30 * time.Millisecond
+	}
+	if s.SolitaireRollTimeout <= 0 {
+		s.SolitaireRollTimeout = 1 * time.Second
 	}
 	if s.SolitaireQueue <= 0 {
 		s.SolitaireQueue = 1024
@@ -129,23 +134,29 @@ func (s *SystemConf) solitaireDefaults() {
 	if s.SolitairePending <= 0 {
 		s.SolitairePending = 256
 	}
+	if s.SolitairePing <= 0 {
+		s.SolitairePing = 15 * time.Second
+	}
 }
 
 func InitDefaults(s *SystemConf) {
-	s.solitaireDefaults()
+	if s.RequestTimeout <= 0 {
+		s.RequestTimeout = 30 * time.Second
+	}
 	if s.SessionInstanceLimit < 1 {
-		s.SessionInstanceLimit = 6
+		s.SessionInstanceLimit = 12
 	}
 	if s.InstanceGoroutineLimit <= 0 {
 		s.InstanceGoroutineLimit = 16
 	}
 	if s.InstanceTTL <= 0 {
-		s.InstanceTTL = 15 * time.Minute
+		s.InstanceTTL = 40 * time.Minute
 	}
-	if s.InstanceTTL < s.SolitaireRequestTimeout * 2{
-		s.InstanceTTL = s.SolitaireRequestTimeout * 2
+	if s.InstanceTTL < s.RequestTimeout*2 {
+		s.InstanceTTL = s.RequestTimeout * 2
 	}
 	if s.DisconnectHiddenTimer <= 0 {
-		s.DisconnectHiddenTimer = 10 * time.Minute
+		s.DisconnectHiddenTimer = s.InstanceTTL / 2
 	}
+	s.solitaireDefaults()
 }

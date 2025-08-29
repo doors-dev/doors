@@ -122,8 +122,6 @@ templ (c *catalogPage) Body() {
 
 It does precisely the same under the hood.
 
-> Now the page updates dynamically when we navigate inside the catalog page.
-
 Since we have only one component, we can replace the templ function with a standard one that follows the interface.
 
 ```templ

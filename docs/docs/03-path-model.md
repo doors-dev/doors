@@ -6,7 +6,7 @@
 
 * Declare multiple path variants (patterns)
 * Capture int, string, and float64 params
-* Query
+* Query params
 
 ### Basic Declaration
 
@@ -53,25 +53,22 @@ type Path struct {
 
 > **LIMITATIONS**
 >
-> For ease of use, the path pattern is matched to an already URL-decoded string. That means you can't match or use "/", ":", and "+" characters inside path parts, as they will always be treated as pattern syntax. 
+> For ease of use, the path pattern is matched to an already URL-decoded string. That means you can't match or use "/", ":", and "+" characters inside path part values, as they will always be treated as pattern syntax. 
 
 
 ### Query Params
 
-To capture query param tag target struct field with `query` tag query param name value. Query params do not affect routing.
+To capture query param, tag target struct field with `query`. Query params do not affect routing, unless decoding error occured.
 
 ```go
 type Path struct {
 	Path          bool `path:"/catalog"` 
-	ColorFilter   string `query:"color"` // ?color=red 
+	ColorFilter   *string `query:"color"` // ?color=red 
 }
 ```
  > Decoding and encoding are provided by the [go-playground/form v4](https://github.com/go-playground/form) library.  So refer to its documentation for all features.
- >
- > Differences:
- >
- > -  `query` tag  instead of `form`
- > - empty values removed from query string on encoding
+
+*Use pointer type to omit default values from URL query string.*
 
 ### Capture Any path
 

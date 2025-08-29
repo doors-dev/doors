@@ -8,7 +8,6 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 import doors from "./door"
-import { capture } from "./capture"
 import navigator from "./navigator"
 import { removeAttr, setAttr } from "./dyna"
 
@@ -50,21 +49,12 @@ export default {
             location.assign(url.toString())
         })
     },
-    call: async ([name, arg, doorId, hookId]: [string, any, number, number]) => {
-        const entry = doors.getHandler(doorId, name)
-        if (!entry) {
+    call: ([name, arg, doorId]: [string, any, number]): any => {
+        const handler = doors.getHandler(doorId, name)
+        if (!handler) {
             throw new Error(`Handler ${name} not found`)
         }
-        const [handler, response] = entry
-        const result = await handler(arg)
-        let requestResponse: any = undefined
-        if (hookId !== null) {
-            const hook = [doorId, hookId, [], [], ""]
-            requestResponse = await capture("default", null, result, undefined, hook)
-        }
-        if (response) {
-            await response(requestResponse)
-        }
+        return handler(arg)
     },
     dyna_set: ([id, value]: [number, string]) => {
         setAttr(id, value)
@@ -87,7 +77,5 @@ export default {
     door_update: (doorId: number, content: string) => {
         doors.update(doorId, content)
     },
-
-
     touch: (_: any) => { }
 }

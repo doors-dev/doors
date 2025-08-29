@@ -24,7 +24,6 @@ type Core interface {
 	Id() uint64
 	Cinema() *Cinema
 	RegisterAttrHook(ctx context.Context, h *AttrHook) (*HookEntry, bool)
-	RegisterClientCall(ctx context.Context, call *ClientCall) (func(), bool)
 }
 
 type container struct {
@@ -144,11 +143,11 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 
 	thread.Write(func(t *shredder.Thread) {
 		if t == nil || c.parentCtx.Err() != nil {
-			call.stale()
+			call.Cancel()
 			return
 		}
 		if err != nil {
-			call.Result(err)
+			call.Result(nil, err)
 			return
 		}
 		rw.Submit()
@@ -180,7 +179,7 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 
 	tracker.thread.Write(func(t *shredder.Thread) {
 		if t == nil || parentCtx.Err() != nil {
-			call.stale()
+			call.Cancel()
 			return
 		}
 
@@ -199,11 +198,11 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 		})
 		t.Write(func(t *shredder.Thread) {
 			if t == nil || parentCtx.Err() != nil {
-				call.stale()
+				call.Cancel()
 				return
 			}
 			if err != nil {
-				call.Result(err)
+				call.Result(nil, err)
 				return
 			}
 			rw.Submit()
@@ -231,7 +230,6 @@ func (c *container) newTacker() (*tracker, context.Context) {
 		thread:      thread,
 		cancel:      cancel,
 		container:   c,
-		clientCalls: common.NewSet[*clientCall](),
 	}
 	ctx = context.WithValue(ctx, common.CtxKeyDoor, t)
 	return t, ctx
@@ -261,7 +259,6 @@ type tracker struct {
 	thread      *shredder.Thread
 	cancel      context.CancelFunc
 	container   trackerContainer
-	clientCalls common.Set[*clientCall]
 }
 
 func (c *tracker) Cinema() *Cinema {
@@ -272,42 +269,11 @@ func (c *tracker) Id() uint64 {
 	return c.container.getId()
 }
 
-func (c *tracker) RegisterClientCall(ctx context.Context, call *ClientCall) (func(), bool) {
-	cc := &clientCall{
-		call:    call,
-		tracker: c,
-	}
-	if call.Trigger != nil {
-		entry, ok := c.container.registerHook(c, ctx, cc)
-		if !ok {
-			return nil, false
-		}
-		cc.hookEntry = entry
-	}
-	c.thread.Write(func(t *shredder.Thread) {
-		if t == nil {
-			cc.kill()
-		}
-		c.clientCalls.Add(cc)
-	})
-	c.container.instance().Call(cc)
-	return func() {
-		cc.cancelCall(nil)
-	}, true
-}
 
 func (c *tracker) RegisterAttrHook(ctx context.Context, h *AttrHook) (*HookEntry, bool) {
 	return c.container.registerHook(c, ctx, h)
 }
 
-func (c *tracker) removeClientCall(cc *clientCall) {
-	c.thread.Write(func(t *shredder.Thread) {
-		if t == nil {
-			return
-		}
-		c.clientCalls.Remove(cc)
-	})
-}
 
 func (c *tracker) addChild(door *Door) {
 	if c == nil {
@@ -340,9 +306,6 @@ func (t *tracker) suspend(init bool) {
 		t.cinema.kill(init)
 		for child := range t.children.Iter() {
 			child.suspend(t)
-		}
-		for call := range t.clientCalls.Iter() {
-			call.kill()
 		}
 	})
 }

@@ -23,6 +23,12 @@ import (
 	"github.com/doors-dev/doors/internal/resources"
 )
 
+// Include returns a component that includes the framework's main client-side script and styles.
+// This should be placed in the HTML head section and is required for the framework to function.
+func Include() templ.Component {
+	return front.Include
+}
+
 // Door represents a dynamic placeholder in the DOM tree that can be updated,
 // replaced, or removed at runtime.
 //
@@ -266,6 +272,22 @@ func Go(f func(context.Context)) templ.Component {
 	})
 }
 
+// SetStatus sets an HTTP status code for the page.
+// Makes effect only at initial page render
+func SetStatus(ctx context.Context, statusCode int) {
+	InstanceSave(ctx, common.CtxStorageKeyStatus, statusCode)
+}
+
+// Status is a templ.Component that sets the HTTP status code
+// when rendered in a template (e.g. @doors.Status(404)).
+// Makes effect only at initial page render.
+func Status(statusCode int) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, _w io.Writer) error {
+		SetStatus(ctx, statusCode)
+		return nil
+	})
+}
+
 type script struct {
 	mode resources.InlineMode
 }
@@ -477,7 +499,6 @@ func Attributes(a []Attr) templ.Component {
 	})
 }
 
-
 func Any(v any) templ.Component {
 	c, ok := v.(templ.Component)
 	if ok {
@@ -505,6 +526,3 @@ func Any(v any) templ.Component {
 	}
 	return Text(v)
 }
-
-
-

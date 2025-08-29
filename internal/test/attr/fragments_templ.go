@@ -196,20 +196,9 @@ func (f *callFragment) Render() templ.Component {
 			Name: "myHook",
 			On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
 				f.r.Update(ctx, 0, r.Data())
-				doors.Call(ctx, doors.CallConf{
-					Name: "myCall",
-					Arg:  len(r.Data()),
-					On: func(ctx context.Context, r doors.RCall) {
-						var str string
-						decoder := json.NewDecoder(r.Body())
-						err := decoder.Decode(&str)
-						if err != nil {
-							f.r.Update(ctx, 1, err.Error())
-							return
-						}
-						f.r.Update(ctx, 1, str)
-					},
-				})
+				doors.Call[string](ctx, "myCall", len(r.Data()), func(r string, err error) {
+					f.r.Update(ctx, 1, r)
+				}, nil)
 				return len(r.Data()), true
 			},
 		}.Render(ctx, templ_7745c5c3_Buffer)

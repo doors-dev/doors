@@ -14,7 +14,7 @@ import { attach as attachCaptures } from "./capture"
 import navigator from "./navigator"
 import { attach as attachDyna } from "./dyna"
 
-type Handler = [(arg: any) => any, ((response: Response) => (void | Promise<void>)) | undefined]
+type Handler = (arg: any) => any
 type Closure = () => void | Promise<void>
 
 
@@ -181,8 +181,7 @@ class Doors {
     on(
         element: Element,
         name: string,
-        handler: (arg: any) => any,
-        response?: (response: Response) => void
+        handler: (arg: any) => any
     ): void {
         let id = getSelfId(element)
         if (id == undefined) {
@@ -193,7 +192,7 @@ class Doors {
             handlers = new Map()
             this.handlers.set(id, handlers)
         }
-        handlers.set(name, [handler, response])
+        handlers.set(name, handler)
     }
 
     onUnmount(element: Element, handler: () => void | Promise<void>): void {
