@@ -211,7 +211,6 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
 			if !ok {
 				return errors.New("magic attr lost")
 			}
-			delete(r.attrs, id)
 			if magicA == nil {
 				magicA = attr
 			} else {
