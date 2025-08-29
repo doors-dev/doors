@@ -16,7 +16,6 @@ import (
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
-	"github.com/doors-dev/doors/internal/shredder"
 	"net/http"
 	"reflect"
 )
@@ -56,29 +55,24 @@ type headUsed struct{}
 
 templ Head[M any](b Beam[M], cast func(M) HeadData) {
 	{{
-	_, ok := InstanceLoad(ctx, headUsed{}).(headUsed)
+	_, ok := InstanceSave(ctx, headUsed{}, headUsed{}).(headUsed)
 	if ok {
 		return nil
 	}
-	InstanceSave(ctx, headUsed{}, headUsed{})
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	thread := inst.Thread()
 	var cancel = func() {}
 	var currentMeta HeadData
 	m, ok := b.ReadAndSub(ctx, func(ctx context.Context, m M) bool {
-		thread.Write(func(t *shredder.Thread) {
-			if t == nil {
-				return
-			}
+		return !inst.Spawn(func() {
 			newMeta := cast(m)
 			if reflect.DeepEqual(newMeta, currentMeta) {
 				return
 			}
 			currentMeta = newMeta
 			cancel()
-			cancel, _ = Call(ctx, CallConf{
-				Name: "update_metadata",
-				Arg: map[string]interface{}{
+			cancel = Fire(ctx,
+				"update_metadata",
+				map[string]interface{}{
 					"title": newMeta.Title,
 					"meta": func() map[string]string {
 						escapedTags := make(map[string]string, len(newMeta.Meta))
@@ -88,9 +82,8 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 						return escapedTags
 					}(),
 				},
-			})
+			)
 		})
-		return false
 	})
 	if !ok {
 		return nil

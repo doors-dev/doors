@@ -10,8 +10,10 @@
 package instance
 
 import (
-	"github.com/doors-dev/doors/internal/common"
+	"encoding/json"
 	"sync/atomic"
+
+	"github.com/doors-dev/doors/internal/common"
 )
 
 type setPathCall struct {
@@ -39,7 +41,8 @@ func (t *setPathCall) arg() []any {
 	return []any{t.path, t.replace}
 }
 
-func (t *setPathCall) Result(error) {}
+func (t *setPathCall) Result(json.RawMessage, error) {}
+func (t *setPathCall) Cancel()                       {}
 
 type LocatinReload struct {
 }
@@ -51,7 +54,8 @@ func (l *LocatinReload) Data() *common.CallData {
 		Payload: common.WritableNone{},
 	}
 }
-func (t *LocatinReload) Result(error) {}
+func (t *LocatinReload) Result(json.RawMessage, error) {}
+func (t *LocatinReload) Cancel()                       {}
 
 type LocationReplace struct {
 	Href   string
@@ -65,7 +69,8 @@ func (l *LocationReplace) Data() *common.CallData {
 		Payload: common.WritableNone{},
 	}
 }
-func (t *LocationReplace) Result(error) {}
+func (t *LocationReplace) Result(json.RawMessage, error) {}
+func (t *LocationReplace) Cancel()                       {}
 
 type LocationAssign struct {
 	Href   string
@@ -80,4 +85,5 @@ func (l *LocationAssign) Data() *common.CallData {
 	}
 }
 
-func (t *LocationAssign) Result(error) {}
+func (t *LocationAssign) Result(json.RawMessage, error) {}
+func (t *LocationAssign) Cancel()                       {}

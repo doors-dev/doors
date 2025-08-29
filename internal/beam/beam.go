@@ -17,7 +17,6 @@ import (
 	"github.com/doors-dev/doors/internal/door"
 )
 
-type Cancel = func()
 
 type Beam[T any] interface {
 	// Sub subscribes to the value stream. The onValue callback is called immediately
@@ -37,7 +36,7 @@ type Beam[T any] interface {
 	//   - Returns a Cancel function for manual subscription termination
 	//
 	// Returns the Cancel function and a boolean indicating whether the subscription was established.
-	SubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (Cancel, bool)
+	SubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (context.CancelFunc, bool)
 
 	// ReadAndSub returns the current value and then subscribes to future updates.
 	// The onValue function is invoked on every subsequent update.
@@ -54,7 +53,7 @@ type Beam[T any] interface {
 	//
 	// Returns the initial value, Cancel function, and success boolean.
 	// If the boolean is false, the value is undefined and no subscription was established.
-	ReadAndSubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, Cancel, bool)
+	ReadAndSubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, context.CancelFunc, bool)
 
 	// Read returns the current value of the Beam without establishing a subscription.
 	//
@@ -68,7 +67,7 @@ type Beam[T any] interface {
 	// allowing for more sophisticated subscription management.
 	//
 	// Returns a Cancel function and a boolean indicating whether the watcher was added.
-	AddWatcher(ctx context.Context, w Watcher[T]) (Cancel, bool)
+	AddWatcher(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool)
 
 	addWatcher(ctx context.Context, w door.Watcher) bool
 	sync(uint, *common.FuncCollector) (*T, bool)

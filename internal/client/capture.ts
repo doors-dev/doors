@@ -136,7 +136,7 @@ export function attach(parent: Element | DocumentFragment | Document) {
                                 return
                             }
                             try {
-                                await handler[0](err)
+                                handler(err)
                             } catch (e) {
                                 console.error("error handeling call " + name + " failed", e)
                             }

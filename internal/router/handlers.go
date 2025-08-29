@@ -248,7 +248,7 @@ func (rr *Router) tryServePut(w http.ResponseWriter, r *http.Request) bool {
 
 func (rr *Router) tryServeJs(w http.ResponseWriter, r *http.Request) bool {
 	main := rr.registry.MainScript()
-	if r.URL.Path != "/"+main.HashString()+".js" {
+	if r.URL.Path != "/"+main.HashString()+".doors.js" {
 		return false
 	}
 	main.Serve(w, r)
@@ -257,7 +257,7 @@ func (rr *Router) tryServeJs(w http.ResponseWriter, r *http.Request) bool {
 
 func (rr *Router) tryServeCss(w http.ResponseWriter, r *http.Request) bool {
 	main := rr.registry.MainStyle()
-	if r.URL.Path != "/"+main.HashString()+".css" {
+	if r.URL.Path != "/"+main.HashString()+".doors.css" {
 		return false
 	}
 	main.Serve(w, r)

@@ -77,6 +77,7 @@ func (inst *Instance[M]) resetKillTimer() bool {
 		return true
 	}
 	inst.killTimer = time.AfterFunc(inst.conf().InstanceTTL, func() {
+		slog.Debug("Inactive instance killed by timeout", slog.String("type", "message"), slog.String("instance_id", inst.id))
 		inst.end(causeKilled)
 	})
 	return true
@@ -117,6 +118,7 @@ func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (inst *Instance[M]) syncError(err error) {
+	slog.Debug("Instance syncronization error", slog.String("error", err.Error()), slog.String("type", "error"), slog.String("instance_id", inst.id))
 	inst.end(causeSyncError)
 }
 func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {

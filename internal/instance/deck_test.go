@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"time"
 )
 
 func testCounters(t *testing.T, d *deck, queue int, pending int) {
@@ -87,7 +88,8 @@ func newTestCalls() testCalls {
 }
 
 func TestRange(t *testing.T) {
-	deck := newDeck(10, 11)
+	ti := &testInstance{}
+	deck := newDeck(ti, 10, 11, time.Minute)
 	w := &testWriter{}
 	ps := newTestCalls()
 	ps.insertWrite(deck, w, 10, 10)
@@ -107,7 +109,8 @@ func TestRange(t *testing.T) {
 }
 
 func TestRetry(t *testing.T) {
-	deck := newDeck(1, 1)
+	ti := &testInstance{}
+	deck := newDeck(ti, 1, 1, time.Minute)
 	w := &testWriter{}
 	deck.Insert(&testCall{
 		arg:     123,
@@ -134,7 +137,8 @@ func TestRetry(t *testing.T) {
 }
 
 func TestSkip(t *testing.T) {
-	deck := newDeck(5, 6)
+	ti := &testInstance{}
+	deck := newDeck(ti, 5, 6, time.Minute)
 	w := &testWriter{}
 	ps := newTestCalls()
 	ps.cancel(1)
@@ -154,7 +158,8 @@ func TestSkip(t *testing.T) {
 }
 
 func TestReportResult(t *testing.T) {
-	deck := newDeck(5, 6)
+	ti := &testInstance{}
+	deck := newDeck(ti, 5, 6, time.Minute)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 5, 5)
@@ -162,15 +167,15 @@ func TestReportResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	re := "test"
+	re := errors.New("test")
 	rep := &report{
 		Gaps: []gap{},
-		Results: map[uint64]*string{
-			1: nil,
-			2: &re,
-			3: &re,
-			4: nil,
-			5: &re,
+		Results: map[uint64]result{
+			1: result{output: nil, err: nil},
+			2: result{output: nil, err: re},
+			3: result{output: nil, err: re},
+			4: result{output: nil, err: nil},
+			5: result{output: nil, err: re},
 		},
 	}
 	err = deck.OnReport(rep)
@@ -184,19 +189,20 @@ func TestReportResult(t *testing.T) {
 	if ps[3].resultErr != nil {
 		t.Fatal("wrong result")
 	}
-	if ps[1].resultErr.Error() != re {
+	if ps[1].resultErr.Error() != re.Error() {
 		t.Fatal("wrong result")
 	}
-	if ps[2].resultErr.Error() != re {
+	if ps[2].resultErr.Error() != re.Error() {
 		t.Fatal("wrong result")
 	}
-	if ps[4].resultErr.Error() != re {
+	if ps[4].resultErr.Error() != re.Error() {
 		t.Fatal("wrong result")
 	}
 }
 
 func TestReportGap(t *testing.T) {
-	deck := newDeck(6, 7)
+	ti := &testInstance{}
+	deck := newDeck(ti, 6, 7, time.Minute)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 6, 5)
@@ -210,7 +216,7 @@ func TestReportGap(t *testing.T) {
 	}
 	s := `{
 	"gaps":[[2,4]],
-	"results":{"1":null}
+	"results":{"1":[null,null]}
 	}`
 	rep := &report{}
 	err = json.Unmarshal([]byte(s), rep)
@@ -245,7 +251,8 @@ func TestReportGap(t *testing.T) {
 }
 
 func TestExtraction(t *testing.T) {
-	deck := newDeck(6, 7)
+	ti := &testInstance{}
+	deck := newDeck(ti, 6, 7, time.Minute)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 5, 4)
@@ -262,8 +269,8 @@ func TestExtraction(t *testing.T) {
 			start: 3,
 			end:   4,
 		}},
-		Results: map[uint64]*string{
-			1: nil,
+		Results: map[uint64]result{
+			1: result{output: nil, err: nil},
 		},
 	}
 	deck.OnReport(rep)
@@ -273,9 +280,9 @@ func TestExtraction(t *testing.T) {
 			start: 4,
 			end:   4,
 		}},
-		Results: map[uint64]*string{
-			2: nil,
-			3: nil,
+		Results: map[uint64]result{
+			2: result{output: nil, err: nil},
+			3: result{output: nil, err: nil},
 		},
 	}
 	deck.OnReport(rep)
@@ -287,7 +294,8 @@ func TestExtraction(t *testing.T) {
 }
 
 func TestSkipTail(t *testing.T) {
-	deck := newDeck(6, 7)
+	ti := &testInstance{}
+	deck := newDeck(ti, 6, 7, time.Minute)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 4, 3)
@@ -304,7 +312,7 @@ func TestSkipTail(t *testing.T) {
 			start: 1,
 			end:   1,
 		}},
-		Results: map[uint64]*string{},
+		Results: map[uint64]result{},
 	}
 	deck.OnReport(rep)
 	testCounters(t, deck, 2, 2)
@@ -314,7 +322,7 @@ func TestSkipTail(t *testing.T) {
 			start: 3,
 			end:   3,
 		}},
-		Results: map[uint64]*string{},
+		Results: map[uint64]result{},
 	}
 	err = deck.OnReport(rep)
 	testCounters(t, deck, 3, 1)
@@ -328,7 +336,8 @@ func TestSkipTail(t *testing.T) {
 }
 
 func TestLimits(t *testing.T) {
-	deck := newDeck(6, 6)
+	ti := &testInstance{}
+	deck := newDeck(ti, 6, 6, time.Minute)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 6, 0)
@@ -362,8 +371,10 @@ func TestLimits(t *testing.T) {
 		t.Fatal("must reach pending limit")
 	}
 	deck.OnReport(&report{
-		Gaps:    []gap{},
-		Results: map[uint64]*string{1: nil},
+		Gaps: []gap{},
+		Results: map[uint64]result{
+			1: result{output: nil, err: nil},
+		},
 	})
 	r, _ = deck.WriteNext(w)
 	if r != writeOk {
@@ -373,7 +384,8 @@ func TestLimits(t *testing.T) {
 }
 
 func TestReportNonIssued(t *testing.T) {
-	deck := newDeck(6, 6)
+	ti := &testInstance{}
+	deck := newDeck(ti, 6, 6, time.Minute)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 6, 4)
@@ -383,8 +395,8 @@ func TestReportNonIssued(t *testing.T) {
 	}
 	rep := &report{
 		Gaps: []gap{},
-		Results: map[uint64]*string{
-			5: nil,
+		Results: map[uint64]result{
+			5: result{output: nil, err: nil},
 		},
 	}
 	err = deck.OnReport(rep)
@@ -393,8 +405,8 @@ func TestReportNonIssued(t *testing.T) {
 	}
 	rep = &report{
 		Gaps: []gap{},
-		Results: map[uint64]*string{
-			7: nil,
+		Results: map[uint64]result{
+			7: result{output: nil, err: nil},
 		},
 	}
 	err = deck.OnReport(rep)
@@ -404,7 +416,8 @@ func TestReportNonIssued(t *testing.T) {
 	testCounters(t, deck, 2, 4)
 }
 func TestReport(t *testing.T) {
-	deck := newDeck(7, 7)
+	ti := &testInstance{}
+	deck := newDeck(ti, 7, 7, time.Minute)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 7, 7)
@@ -417,8 +430,8 @@ func TestReport(t *testing.T) {
 			start: 2,
 			end:   7,
 		}},
-		Results: map[uint64]*string{
-			3: nil,
+		Results: map[uint64]result{
+			3: result{output: nil, err: nil},
 		},
 	}
 	err = deck.OnReport(rep)
@@ -431,7 +444,7 @@ func TestReport(t *testing.T) {
 			start: 2,
 			end:   3,
 		}},
-		Results: map[uint64]*string{},
+		Results: map[uint64]result{},
 	}
 	err = deck.OnReport(rep)
 	if err == nil {
@@ -445,7 +458,7 @@ func TestReport(t *testing.T) {
 			start: 5,
 			end:   6,
 		}},
-		Results: map[uint64]*string{},
+		Results: map[uint64]result{},
 	}
 	err = deck.OnReport(rep)
 	if err == nil {
@@ -457,7 +470,7 @@ func TestReport(t *testing.T) {
 			start: 6,
 			end:   5,
 		}},
-		Results: map[uint64]*string{},
+		Results: map[uint64]result{},
 	}
 	err = deck.OnReport(rep)
 	if err == nil {

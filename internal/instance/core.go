@@ -56,8 +56,8 @@ func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredde
 }
 
 type Core interface {
+	Spawn(func()) bool
 	Thread() *shredder.Thread
-	Detached() bool
 	CSPCollector() *common.CSPCollector
 	ImportRegistry() *resources.Registry
 	SessionId() string
@@ -85,8 +85,8 @@ type core[M any] struct {
 	cspCollector *common.CSPCollector
 }
 
-func (c *core[M]) Detached() bool {
-	return c.navigator.isDetached()
+func (c *core[M]) Spawn(f func()) bool {
+	return c.spawner.Go(f)
 }
 
 func (c *core[M]) OnPanic(err error) {
@@ -98,7 +98,9 @@ func (c *core[M]) SleepTimeout() time.Duration {
 }
 
 func (c *core[M]) ClientConf() *common.ClientConf {
-	return common.GetClientConf(c.instance.conf())
+	conf := common.GetClientConf(c.instance.conf())
+	conf.Detached = c.navigator.isDetached()
+	return conf
 }
 
 func (c *core[M]) CSPCollector() *common.CSPCollector {

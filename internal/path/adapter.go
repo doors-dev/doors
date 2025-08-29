@@ -135,11 +135,13 @@ func (a *Adapter[M]) Encode(m *M) (*Location, error) {
 		return nil, err
 	}
 	query, err := queryEncoder.Encode(m)
+	/*
 	for key := range query {
 		if len(query[key]) == 0 || (len(query[key]) == 1 && query[key][0] == "") {
 			delete(query, key)
 		}
 	}
+	*/
 	if err != nil {
 		return nil, err
 	}

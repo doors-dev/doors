@@ -8,7 +8,7 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 package door
-
+/*
 import (
 	"context"
 	"log/slog"
@@ -108,4 +108,4 @@ func (cc *clientCall) Result(err error) {
 		return
 	}
 	cc.makeDone()
-}
+} */

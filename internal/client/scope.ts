@@ -89,7 +89,7 @@ export class Hook {
             signal: this.abortTimer.signal,
             ...this.fetch,
         }).then(r => {
-            this.abortTimer!.clean()
+            this.abortTimer!.cancel()
             if (r.ok) {
                 const after = r.headers.get("D00r-After")
                 if (after) {
@@ -111,7 +111,7 @@ export class Hook {
                 this.rej(new CaptureErr(captureErrKinds.other, r))
             }
         }).catch(e => {
-            this.abortTimer!.clean()
+            this.abortTimer!.cancel()
             if (this.abortTimer!.status == "aborted") {
                 this.rej(new CaptureErr(captureErrKinds.canceled))
                 return

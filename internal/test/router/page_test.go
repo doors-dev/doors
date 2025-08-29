@@ -20,7 +20,7 @@ func testPath(t *testing.T, page *rod.Page, path string) {
 }
 
 func TestPageStatic(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.StaticPage(static("a"), 0)
 	}))
 	defer bro.Close()
@@ -30,7 +30,7 @@ func TestPageStatic(t *testing.T) {
 }
 
 func TestPageStaticCode(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.StaticPage(static("a"), 404)
 	}))
 	defer bro.Close()
@@ -40,9 +40,9 @@ func TestPageStaticCode(t *testing.T) {
 }
 
 func TestPageRedirect(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.Redirect(PathB{}, 0)
-	}), doors.ServePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
 		return p.StaticPage(static("b"), 0)
 	}))
 	defer bro.Close()
@@ -52,9 +52,9 @@ func TestPageRedirect(t *testing.T) {
 }
 
 func TestPageReroute(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.Reroute(PathC{PathC1: true}, false)
-	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
 		return p.PageFunc(pageC)
 	}))
 	defer bro.Close()
@@ -65,9 +65,9 @@ func TestPageReroute(t *testing.T) {
 }
 
 func TestPageRerouteDetached(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.Reroute(PathC{PathC1: true}, true)
-	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
 		return p.PageFunc(pageC)
 	}))
 	defer bro.Close()
@@ -81,11 +81,11 @@ func TestPageRerouteDetached(t *testing.T) {
 }
 
 func TestPageError(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.Redirect(PathC{}, 0)
-	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
 		return p.PageFunc(pageC)
-	}), doors.SetErrorPage(func(message string) templ.Component {
+	}), doors.UseErrorPage(func(message string) templ.Component {
 		return static("error")
 	}))
 	defer bro.Close()
@@ -95,11 +95,11 @@ func TestPageError(t *testing.T) {
 }
 
 func TestPageInfiniteReroute(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.Reroute(PathC{}, true)
-	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
 		return p.Reroute(PathA{}, true)
-	}), doors.SetErrorPage(func(message string) templ.Component {
+	}), doors.UseErrorPage(func(message string) templ.Component {
 		return static("error")
 	}))
 	defer bro.Close()
@@ -109,11 +109,11 @@ func TestPageInfiniteReroute(t *testing.T) {
 }
 
 func TestLocations(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.PageFunc(pageA)
-	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
 		return p.PageFunc(pageC)
-	}), doors.SetErrorPage(func(message string) templ.Component {
+	}), doors.UseErrorPage(func(message string) templ.Component {
 		return static("error")
 	}))
 	defer bro.Close()
@@ -144,13 +144,13 @@ func TestLocations(t *testing.T) {
 	testPath(t, page, "a")
 }
 func TestAfterAssign(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.PageFunc(pageA)
-	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
 		return p.PageFunc(pageC)
-	}), doors.SetErrorPage(func(message string) templ.Component {
+	}), doors.UseErrorPage(func(message string) templ.Component {
 		return static("error")
-	}), doors.ServePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
 		return p.StaticPage(static("b"), 0)
 	}))
 	defer bro.Close()
@@ -165,13 +165,13 @@ func TestAfterAssign(t *testing.T) {
 }
 
 func TestAfterReplace(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.PageFunc(pageA)
-	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
 		return p.PageFunc(pageC)
-	}), doors.SetErrorPage(func(message string) templ.Component {
+	}), doors.UseErrorPage(func(message string) templ.Component {
 		return static("error")
-	}), doors.ServePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
 		return p.StaticPage(static("b"), 0)
 	}))
 	defer bro.Close()
@@ -185,13 +185,13 @@ func TestAfterReplace(t *testing.T) {
 	testPath(t, page, "a")
 }
 func TestAfterReload(t *testing.T) {
-	bro := test.NewBro(browser, doors.ServePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
+	bro := test.NewBro(browser, doors.UsePage(func(p doors.PageRouter[PathA], r doors.RPage[PathA]) doors.PageRoute {
 		return p.PageFunc(pageA)
-	}), doors.ServePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathC], r doors.RPage[PathC]) doors.PageRoute {
 		return p.PageFunc(pageC)
-	}), doors.SetErrorPage(func(message string) templ.Component {
+	}), doors.UseErrorPage(func(message string) templ.Component {
 		return static("error")
-	}), doors.ServePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
+	}), doors.UsePage(func(p doors.PageRouter[PathB], r doors.RPage[PathB]) doors.PageRoute {
 		return p.StaticPage(static("b"), 0)
 	}))
 	defer bro.Close()

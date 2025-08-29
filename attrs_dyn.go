@@ -11,14 +11,16 @@ package doors
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/common/ctxwg"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 )
 
 type ADyn interface {
@@ -80,6 +82,7 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 		return
 	}
 	call := &dynaCall{
+		done:       ctxwg.Add(ctx),
 		seq:        a.seq,
 		attr:       a,
 		prevValue:  prevValue,
@@ -122,6 +125,7 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 		return
 	}
 	call := &dynaCall{
+		done: ctxwg.Add(ctx),
 		seq:  a.seq,
 		attr: a,
 		data: &common.CallData{
@@ -158,11 +162,16 @@ func (a *aDyn) Render(ctx context.Context, w io.Writer) error {
 }
 
 type dynaCall struct {
+	done       func()
 	seq        int
 	attr       *aDyn
 	data       *common.CallData
 	prevValue  string
 	prevEnable bool
+}
+
+func (c *dynaCall) Cancel() {
+	c.done()
 }
 
 func (c *dynaCall) Data() *common.CallData {
@@ -172,7 +181,8 @@ func (c *dynaCall) Data() *common.CallData {
 	return c.data
 }
 
-func (c *dynaCall) Result(err error) {
+func (c *dynaCall) Result(_ json.RawMessage, err error) {
+	defer c.done()
 	if err == nil {
 		return
 	}

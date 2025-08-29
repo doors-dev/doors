@@ -2,17 +2,37 @@
 
 Practices you should understand and follow. 
 
-## 1. Use *doors* entities inside *doors* context.
+## 1. Use local context
 
-✅ Render `Door`, read/mutate `Beam/SourceBeam` values, use `doors.A...` binds and handlers in **pages served by doors.ServePage**
+In all `templ` components. handlers and listeners framework provides `context.Context` value. 
 
-❌ Try to enable interactivity/reactivity with *doors* in self-served templ-based pages
+❌ Use `context.Background()` (or any external context) instead of `ctx` provided by the framework in framework related operations.  **It panics**.
 
-**You will get a panic if you try.**
+❌ Try to enable interactivity/reactivity with *doors* in templ-based pages **not served** by *doors*. **It panics**.
+
+✅ Update `Door`, read and mutate `Beam/SourceBeam` values, use `doors.A...` binds using context value in scope inside frameworks space.
+
+✅ Use closest context in scope. *It is used to track component relations, action progress, and more.* 
+
+```templ
+templ (f *fragment) Render() {
+	@doors.Run(func(pageCtx context.Context) {
+		itemId.Sub(pageCtx, func(subCtx context.Context, id int) bool {
+			✅  f.door.Update(subCtx, card(id))
+			// ❌ f.door.Update(pageCtx, card(id))
+			// ❌ f.door.Update(context.Background(), card(id))
+			return false
+		})
+	})
+	@f.door
+}
+```
+
+> Context lifecycle is linked to dynamic components tree. You can use `ctx.Done()` channel in spawned goroutines to trigger clean up on DOM removal.
 
 ## 2. Respect blocking free context and data propagation.
 
-Rendering operations and Beam handlers are executed in the framework's runtime. 
+Rendering operations and **Beam** handlers are executed in the framework's runtime. 
 
 * Query data and make requests to external systems during rendering or, less preferably, in `Beam` subscription handlers.
 * Use manually spawned (or via `@doors.Go`) goroutines, or, less preferably, hook handlers to wait on channels, asynchronous events, or perform any long-running operations.
@@ -127,37 +147,16 @@ templ (f *fragment) Render() {
 
 * For protected pages, **verify cookie authentication in the `ServePage` handler**
 * **Don't forget to call `doors.SessionEnd(ctx)` when the user logs out**, and manage framework session expiration with `doors.SessionExpire(ctx, duration)`. Otherwise, you might leave private page instances active after authentication has ended.
-* There is no need to check cookies/headers in event handlers, because they are already protected
+* **There is no need to check cookies/headers in the event handlers**, because they are already protected
 * **If user access to certain actions or views can be revoked,** you should 
-  * **Verify user view permissions during render** (not only in the ServePage handler) to ensure that the user can't access previously available views with dynamic navigation. 
-  * **Verify user write permissions in the hook handler functions**, to ensure that even after permission is revoked after render, you are safe 
+  * **Verify user view permissions during render** to ensure that the user can't access previously available views with dynamic navigation. 
+  * **Verify user write permissions in the transactions** to ensure that even if the permission is revoked after rendering, you are still safe.
 
-
-## 4. Use the closest `context.Context` value.
-
-Context is used to track component relations, action progress, and many more.  Always use the closest context you have in scope. 
-
-```templ
-templ (f *fragment) Render() {
-	@doors.Run(func(pageCtx context.Context) {
-		itemId.Sub(pageCtx, func(ctx context.Context, id int) bool {
-			✅  f.door.Update(ctx, card(id))
-			// ❌ f.door.Update(pageCtx, card(id))
-			return false
-		})
-	})
-	@f.door
-}
-
-```
-
-Most of the time, nothing serious will happen if you mess it up, 
-
-## 5. Avoid storing database data in state.
+## 4. Avoid storing database data in state.
 
 In general, you don't need to store database query results in fields or `Beams`.
 
-✅  Store the ID in the fragment field.
+✅  Store the ID in the **Fragment** field.
 
 ```templ
 func newCard(id string) *card {
@@ -186,7 +185,7 @@ idBeam := doors.NewBeam(pathBeam, func(p Path) string {
 })
 ```
 
-❌ Store DB entry in fragment field like:
+❌ Store DB entry in the **Fragment** field like:
 
 ```templ
 func newCard(id string) *card {
@@ -207,7 +206,7 @@ templ (c *card) Render() {
 }
 ```
 
-❌  Store db entry in Beam like:
+❌  Store db entry in the **Beam** like:
 
 ```templ
 itemBeam := doors.NewBeam(pathBeam, func(p Path) db.Item {
@@ -215,9 +214,9 @@ itemBeam := doors.NewBeam(pathBeam, func(p Path) db.Item {
 })
 ```
 
-If you need data **only to produce render output** - fire and forget, so you won't waste server memory for nothing.  However, it's your decision.
+If you need data **only to produce render output** - render and forget, so you won't waste server memory for nothing.  However, it's your decision.
 
-## 6. Be conscious with front-end manipulations via JavaScript 
+## 5. Be conscious with front-end manipulations via JavaScript 
 
 Parts of the DOM are controlled by the framework. Avoid removing or moving dynamic elements via JavaScript.
 

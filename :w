@@ -7,23 +7,11 @@
 // For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
-import { id, disconnectAfter, ttl, solitairePing } from "./params"
+import { id, sleepAfter, ttl, requestTimeout } from "./params"
 import calls from "./calls"
 import { ProgressiveDelay, AbortTimer, ReliableTimer } from "./lib"
 
 import doors from "./door"
-
-const controlBytes = {
-    terminator: 0xFF,
-    discard: 0xFD,
-    content: 0xFC,
-}
-const signals = {
-    call: 0x00,
-    roll: 0x01,
-    suspend: 0x02,
-    kill: 0x03,
-}
 
 const decoder = new TextDecoder()
 
@@ -32,14 +20,13 @@ class Package {
     end: number
     call: string
     arg: any
-    private payloadParts: Array<string> = []
-    private headerParts: Array<string> = []
+    private parts: Array<string> = []
     filler = false
     get seq(): number {
         return this.end
     }
-    parseHeader() {
-        const arr = JSON.parse(this.headerParts.join(""))
+    setHeader(buf: Uint8Array) {
+        const arr = JSON.parse(decoder.decode(buf))
         if (arr.length == 1) {
             this.end = arr[0]
             this.start = arr[0]
@@ -58,22 +45,17 @@ class Package {
         [this.end, this.start, this.call, this.arg] = arr
     }
     get payload(): string {
-        return this.payloadParts.join("")
+        return this.parts.join("")
     }
-    appendHeaderData(buf: Uint8Array) {
+    appendData(buf: Uint8Array) {
         if (buf.length == 0) {
             return
         }
-        this.headerParts.push(decoder.decode(buf))
-    }
-    appendPayloadData(buf: Uint8Array) {
-        if (buf.length == 0) {
-            return
-        }
-        this.payloadParts.push(decoder.decode(buf))
+        this.parts.push(decoder.decode(buf))
     }
 }
 
+type Gaps = Array<number>
 
 class Solitaire {
     top: Card
@@ -81,29 +63,29 @@ class Solitaire {
     constructor() {
 
     }
-    private collectedLost = new Set<number>()
-    returnLost(lost: Lost) {
-        for (const gap of lost) {
-            this.collectedLost.delete(gap)
+    private collectedGaps = new Set<number>()
+    returnGaps(gaps: Gaps) {
+        for (const gap of gaps) {
+            this.collectedGaps.delete(gap)
         }
     }
-    private getLost(): Lost {
-        let lost: Lost = []
+    private getGaps(): Gaps {
+        let gaps: Gaps = []
         if (!this.top) {
-            return lost
+            return gaps
         }
-        this.top.lost(this.cursor - 1, lost)
-        return lost
+        this.top.gaps(this.cursor - 1, gaps)
+        return gaps
     }
     isDone(): boolean {
         return !this.top
     }
-    collectLost(): Lost {
-        return this.getLost().filter((seq) => {
-            if (this.collectedLost.has(seq)) {
+    collectGaps(): Gaps {
+        return this.getGaps().filter((seq) => {
+            if (this.collectedGaps.has(seq)) {
                 return false
             }
-            this.collectedLost.add(seq)
+            this.collectedGaps.add(seq)
             return true
         })
     }
@@ -121,9 +103,9 @@ class Solitaire {
         return a.filter(p => !p.filler)
     }
     insert(p: Package) {
-        // console.log(this.cursor, !!this.top, "ARRIVED", p.start, p.end, [...this.collectedLost])
+        // console.log(this.cursor, !!this.top, "ARRIVED", p.start, p.end, p.call, p.arg)
         for (let seq = p.start; seq <= p.end; seq++) {
-            this.collectedLost.delete(seq)
+            this.collectedGaps.delete(seq)
         }
         if (p.end < this.cursor) {
             return
@@ -144,16 +126,16 @@ class Card {
     get start(): number {
         return this.p.start
     }
-    lost(end: number, lost: Lost) {
+    gaps(end: number, gaps: Gaps) {
         if (end < this.p.start - 1) {
             const lostStart = end + 1
             const lostEnd = this.p.start - 1
             for (let seq = lostStart; seq <= lostEnd; seq++) {
-                lost.push(seq)
+                gaps.push(seq)
             }
         }
         if (this.next) {
-            this.next.lost(this.p.end, lost)
+            this.next.gaps(this.p.end, gaps)
         }
     }
     collect(a: Array<Package>, h: Solitaire) {
@@ -205,7 +187,7 @@ class Card {
         }
         // start < end
         if (p.start <= this.p.start && p.end >= this.p.end) {
-            //      console.log("CONSUMED, EXTENING BOTH SIDED");
+            // console.log("CONSUMED, EXTENING BOTH SIDED");
             this.p = p
             if (this.next) {
                 this.next.cover(this.p.end, this)
@@ -213,7 +195,7 @@ class Card {
             return
         }
         if (p.end >= this.p.end) { // && p.start > this.start
-            //       console.log("CONSUMED, EXTENDING RIGHT");
+            // console.log("CONSUMED, EXTENDING RIGHT");
             p.start = this.p.start
             this.p = p
             if (this.next) {
@@ -249,33 +231,36 @@ class Card {
 }
 
 const connectorStatus = {
+    length: "length",
     signal: "signal",
     header: "header",
     payload: "payload",
 } as const
 type SyncStatus = typeof connectorStatus[keyof typeof connectorStatus];
 
-
-class NetworkError extends Error { }
-
-const reports = {
-    ok: "ok",
-    broken: "broken",
-    interrupted: "interrupt",
-} as const;
-type Report = typeof reports[keyof typeof reports];
-
-type Lost = Array<number>
-type Gap = ([number, number] | [number])
-type Gaps = Array<Gap>
+class NetworkErr extends Error {
+    constructor() {
+        super("sync request network error")
+    }
+}
+class RequestErr extends Error {
+    constructor(public status: number) {
+        super("sync request error, status: " + status)
+    }
+}
 
 class Connection {
-    private status: SyncStatus = connectorStatus.signal
+    private status: SyncStatus = connectorStatus.length
     private abortTimer: AbortTimer
     private rollTimer: ReliableTimer
-    constructor(private ctrl: Controller, private results: Results, private lost: Lost) {
-        this.abortTimer = new AbortTimer(solitairePing * 4 / 3)
-        this.rollTimer = new ReliableTimer(solitairePing, () => {
+    private results: Results | undefined
+    private gaps: Gaps | undefined
+    private rolled = false
+    constructor(private ctrl: Controller, results: Results, gaps: Gaps) {
+        this.abortTimer = new AbortTimer(requestTimeout)
+        this.results = results
+        this.gaps = gaps
+        this.rollTimer = new ReliableTimer(requestTimeout * 0.7, () => {
             this.ctrl.requestRoll(this)
         })
         this.run()
@@ -292,104 +277,98 @@ class Connection {
             return
         }
         this.acked = true
+        this.results = undefined
+        this.gaps = undefined
 
     }
-    private report(ok: boolean = false) {
+    private done() {
         this.abortTimer.cancel()
         this.rollTimer.cancel()
-        const report = ok ? reports.ok : this.acked ? reports.interrupted : reports.broken;
-        this.ctrl.report(this, report, this.results, this.lost)
-    }
-    private get gaps(): Gaps {
-        const gaps: Gaps = []
-        let gap: any
-        for (const seq of this.lost) {
-            if (!gap) {
-                gap = [seq]
-                continue
-            }
-            const prev = gap[1] !== undefined ? gap[1] : gap[0]
-            if (seq == prev + 1) {
-                gap[1] = seq
-                continue
-            }
-            gaps.push(gap)
-            gap = [seq]
+        if (!this.acked) {
+            this.ctrl.report(this, this.rolled, { gaps: this.gaps!, results: this.results! })
+            return
         }
-        if (gap) {
-            gaps.push(gap)
-        }
-        return gaps
+        this.ctrl.report(this, this.rolled)
     }
-
     private async run() {
         try {
-            let response: Response
-            try {
-                response = await fetch("/d00r/" + id, {
-                    signal: this.abortTimer.signal,
-                    method: "PUT",
-                    headers: {
-                        Accept: "application/octet-stream",
-                        'Content-Type': 'application/json;charset=UTF-8',
-                    },
-                    body: JSON.stringify({
-                        gaps: this.gaps,
-                        results: Object.fromEntries(this.results!),
-                    }),
-                })
-            } catch (e) {
-                throw new NetworkError()
-            }
+            const response = await fetch("/d00r/" + id, {
+                signal: this.abortTimer.signal,
+                method: "PUT",
+                headers: {
+                    Accept: "application/octet-stream",
+                    'Content-Type': 'application/json;charset=UTF-8',
+                },
+                body: JSON.stringify({
+                    gaps: this.gaps!,
+                    results: Object.fromEntries(this.results!),
+                }),
+            })
             if (response.status === 401 || response.status === 410) {
                 this.ctrl.kill()
-                throw new Error()
+                this.done()
+                return
             }
             if (!response.ok) {
-                throw new Error()
+                this.done()
+                return
             }
             const reader = response.body!.getReader()
             while (true) {
                 let value: Uint8Array
-                const result = await reader.read()
-                if (result.done) {
-                    throw new Error()
+                try {
+                    const result = await reader.read()
+                    if (result.done) {
+                        this.done()
+                        return
+                    }
+                    value = result.value
+                } catch (e) {
+                    this.done(e)
+                    return
                 }
-                /* connection loss simulation
-                if (Math.random() > 0.3) {
-                    throw new Error()
-                }
-                */
-                if (result.value.length > 0) {
-                    this.ack()
-                }
-                value = result.value
-                const done = this.onChunk(value)
+                this.onChunk(value)
                 this.ctrl.flush()
-                if (done) {
-                    reader.cancel()
-                    break
-                }
             }
-            this.report(true)
         } catch (e) {
-            this.report()
+            this.done(new NetworkErr())
+            return
         }
     }
-    private onChunk(data: Uint8Array): boolean {
+    private onChunk(data: Uint8Array) {
         if (data.length == 0) {
-            return false
+            return
+        }
+        this.ack()
+        if (this.status == connectorStatus.length) {
+            const remainingLength = this.buf.length - this.offset
+            const lengthToWrite = Math.min(remainingLength, data.length)
+            this.buf.set(data.subarray(0, lengthToWrite), this.offset)
+            this.offset += lengthToWrite
+            if (this.offset != this.buf.length) {
+                return
+            }
+            this.offset = 0
+            const length = new DataView(this.buf.buffer).getUint32(0)
+            if (length == 0) {
+                this.status = connectorStatus.signal
+                if (lengthToWrite == data.length) {
+                    return
+                }
+                return this.onChunk(data.subarray(lengthToWrite))
+            }
+            this.buf = new Uint8Array(length)
+            this.status = connectorStatus.header
+            this.package = new Package()
+            if (lengthToWrite == data.length) {
+                return
+            }
+            return this.onChunk(data.subarray(lengthToWrite))
         }
         if (this.status == connectorStatus.signal) {
             const signal = data[0]
+            this.status = connectorStatus.length
             switch (signal) {
-                case signals.call:
-                    this.status = connectorStatus.header
-                    this.package = new Package()
-                    if (data.length == 1) {
-                        return false
-                    }
-                    return this.onChunk(data.subarray(1))
                 case signals.suspend:
                     this.ctrl.suspend()
                     break;
@@ -397,68 +376,58 @@ class Connection {
                     this.ctrl.kill()
                     break;
                 case signals.roll:
+                    this.rolled = true
                     break
                 default:
                     console.error(new Error("unsupported signal " + signal))
             }
-            return true
+            if (data.length == 1) {
+                return
+            }
+            return this.onChunk(data.subarray(1))
         }
         if (this.status == connectorStatus.header) {
+            const remainingLength = this.buf.length - this.offset
+            const lengthToWrite = Math.min(remainingLength, data.length)
+            this.buf.set(data.subarray(0, lengthToWrite), this.offset)
+            this.offset += lengthToWrite
+            if (this.offset != this.buf.length) {
+                return
+            }
+            this.offset = 0
+            this.package!.setHeader(this.buf)
+            this.buf = new Uint8Array(4)
+            this.status = connectorStatus.payload
+            if (lengthToWrite == data.length) {
+                return
+            }
+            return this.onChunk(data.subarray(lengthToWrite))
+        }
+        if (this.status == connectorStatus.payload) {
             for (let i = 0; i < data.length; i++) {
-                const byte = data[i]
-                if (byte == controlBytes.discard) {
-                    this.package = undefined
-                    this.status = connectorStatus.signal
-                    if (i + 1 == data.length) {
-                        return false
-                    }
-                    return this.onChunk(data.subarray(i + 1))
-                }
-                if (byte != controlBytes.content && byte != controlBytes.terminator) {
+                const char = data[i]
+                if (char != 0xFF) {
                     continue
                 }
-                this.package!.appendHeaderData(data.subarray(0, i))
-                this.package!.parseHeader()
-                if (byte == controlBytes.terminator) {
-                    this.ctrl.onPackage(this.package!)
-                    this.package = undefined
-                    this.status = connectorStatus.signal
-                } else {
-                    this.status = connectorStatus.payload
-                }
-                if (i + 1 == data.length) {
-                    return false
-                }
-                return this.onChunk(data.subarray(i + 1))
-            }
-            this.package!.appendHeaderData(data)
-            return false
-        }
-        for (let i = 0; i < data.length; i++) {
-            const byte = data[i]
-            if (byte == controlBytes.discard) {
+                this.package!.appendData(data.subarray(0, i))
+                this.ctrl.onPackage(this.package!)
                 this.package = undefined
-                this.status = connectorStatus.signal
+                this.status = connectorStatus.length
                 if (i + 1 == data.length) {
-                    return false
+                    return
                 }
-                return this.onChunk(data.subarray(i + 1))
+                this.onChunk(data.subarray(i + 1))
+                return
             }
-            if (byte != controlBytes.terminator) {
-                continue
-            }
-            this.package!.appendPayloadData(data.subarray(0, i))
-            this.ctrl.onPackage(this.package!)
-            this.package = undefined
-            this.status = connectorStatus.signal
-            if (i + 1 == data.length) {
-                return false
-            }
-            return this.onChunk(data.subarray(i + 1))
+            this.package!.appendData(data)
         }
-        this.package!.appendPayloadData(data)
-        return false
     }
+}
+
+const signals = {
+    roll: 0x00,
+    suspend: 0x01,
+    kill: 0x02,
 }
 
 type Results = Map<number, [any, string | undefined]>
@@ -572,22 +541,12 @@ class Controller {
             this.rolling = true
             this.delay.wait().then(() => {
                 this.rolling = false
-                this.connect()
+                this.connections.add(new Connection(this, this.tracker.collect(), this.deck.collectGaps()))
             })
         }
-        this.connect()
-    }
-    private connect() {
-        const results = this.tracker.collect()
-        const lost = this.deck.collectLost()
-        // console.log("CONNECT", lost, results, this.connections.size)
-        if (lost.length == 0 && results.size == 0 && this.connections.size > 1) {
-            return
-        }
-        this.connections.add(new Connection(this, results, lost))
+        this.connections.add(new Connection(this, this.tracker.collect(), this.deck.collectGaps()))
     }
     requestRoll(connection: Connection) {
-        // console.log("ROLL REQUESTED", this.connections.has(connection), this.connections.size)
         if (!this.connections.has(connection)) {
             return
         }
@@ -596,28 +555,18 @@ class Controller {
         }
         this.roll()
     }
-    report(connection: Connection, report: Report, results: Results, lost: Lost) {
+    report(connection: Connection, rolled: boolean, returned?: { gaps: Gaps; results: Results }) {
         this.connections.delete(connection)
-        // console.log(result, returned !== undefined, this.connections.size)
-        if (lost.length > 0) {
-            if (report == reports.ok) {
-                setTimeout(() => {
-                    this.deck.returnLost(lost)
-                }, 0)
-            } else {
-                this.deck.returnLost(lost)
-            }
-        }
-        if (report == reports.broken) {
-            this.tracker.return(results)
-        }
-        if (report == reports.ok) {
-            this.delay.reset()
-        }
-        if (this.connections.size >= 6 || (this.connections.size != 0 && report == reports.ok)) {
+        if (returned) {
+            this.deck.returnGaps(returned.gaps)
+            this.tracker.return(returned.results)
+            this.roll(true)
             return
         }
-        this.roll(report == reports.broken)
+        if (this.connections.size != 0 && rolled) {
+            return
+        }
+        this.roll()
     }
 
 
@@ -640,7 +589,7 @@ class Controller {
         }
         this.sleepTimer = setTimeout(() => {
             this.sleep()
-        }, disconnectAfter)
+        }, sleepAfter)
     }
 
     private closeConnections() {
@@ -696,6 +645,6 @@ const c = new Controller()
 
 export default {
     gone() {
-        c.kill()
+        c.gone()
     }
 }

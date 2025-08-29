@@ -11,7 +11,6 @@ package instance
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,14 +20,20 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 )
 
+type testInstance struct {
+	err error
+}
+
+func (t *testInstance) syncError(err error) {
+	t.err = err
+}
+
 type testCall struct {
 	arg       int
 	payload   string
 	resultErr error
 	cancel    bool
 }
-
-
 
 func (t *testCall) Destroy() {
 
@@ -43,18 +48,20 @@ func (t *testCall) Data() *common.CallData {
 	if t.cancel {
 		return nil
 	}
-	return &common.CallData {
-		Name: "test",
-		Arg: t.arg,
+	return &common.CallData{
+		Name:    "test",
+		Arg:     t.arg,
 		Payload: t,
 	}
 }
 
+func (t *testCall) Cancel() {
 
-func (t *testCall) Result(err error) {
-	t.resultErr = err
 }
 
+func (t *testCall) Result(r json.RawMessage, err error) {
+	t.resultErr = err
+}
 
 type testPackage struct {
 	isSignal bool
@@ -75,39 +82,46 @@ func (w *testWriter) readPackage() (*testPackage, error) {
 	if w.buf.Len() < 5 {
 		return nil, errors.New("not enogh data")
 	}
-	var headerLength uint32
-	err := binary.Read(&w.buf, binary.BigEndian, &headerLength)
+	b, err := w.buf.ReadByte()
 	if err != nil {
 		return nil, err
 	}
-	if headerLength == 0 {
-		b, err := w.buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
+	if b != 0x00 {
 		return &testPackage{
 			isSignal: true,
 			signal:   b,
 		}, nil
 	}
-	buf := make([]byte, headerLength)
-	_, err = w.buf.Read(buf)
-	if err != nil {
-		return nil, err
+	headerBuf := make([]byte, 0)
+	content := false
+	for {
+		byte, err := w.buf.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+		if byte == 0xFF {
+			break
+		}
+		if byte == 0xFC {
+			content = true
+			break
+		}
+		headerBuf = append(headerBuf, byte)
 	}
-	payload, err := w.buf.ReadBytes(0xFF)
-	payload = payload[:len(payload)-1]
-	if err != nil {
-		return nil, err
-	}
-	if !utf8.Valid(payload) {
-		return nil, errors.New("invalid payload encoding")
-	}
-	pkg := &testPackage{
-		payload: string(payload),
+	pkg := &testPackage{}
+	if content {
+		payload, err := w.buf.ReadBytes(0xFF)
+		payload = payload[:len(payload)-1]
+		if err != nil {
+			return nil, err
+		}
+		if !utf8.Valid(payload) {
+			return nil, errors.New("invalid payload encoding")
+		}
+		pkg.payload = string(payload)
 	}
 	var header []json.RawMessage
-	err = json.Unmarshal(buf, &header)
+	err = json.Unmarshal(headerBuf, &header)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +164,7 @@ func (w *testWriter) readPackage() (*testPackage, error) {
 func (w *testWriter) Write(b []byte) (int, error) {
 	if w.errNextWrite {
 		w.errNextWrite = false
-		return 0, errors.New("write error simulation")
+		return 0, writerError
 	}
 	s, _ := w.buf.Write(b)
 	return s, nil
@@ -160,9 +174,8 @@ func (w *testWriter) skip(c int) error {
 	for i := range c {
 		_, err := w.readPackage()
 		if err != nil {
-			return errors.Join(err, errors.New("failed"+ fmt.Sprint(i)))
+			return errors.Join(err, errors.New("failed"+fmt.Sprint(i)))
 		}
 	}
 	return nil
 }
-

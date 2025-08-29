@@ -36,19 +36,20 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 	}
 	style := inst.ImportRegistry().MainStyle()
 	script := inst.ImportRegistry().MainScript()
-	_, err := fmt.Fprintf(w, "<link rel=\"stylesheet\" href=\"/%s.css\"/>", style.HashString())
+	_, err := fmt.Fprintf(w, "<link rel=\"stylesheet\" href=\"/%s.doors.css\"/>", style.HashString())
 	if err != nil {
 		return err
 	}
 	conf := inst.ClientConf()
 	attrs := map[string]any{
-		"src":           "/" + script.HashString() + ".js",
-		"id":            inst.Id(),
-		"data-root":     door.Id(),
-		"data-ttl":      conf.TTL.Milliseconds(),
-		"data-sleep":    conf.SleepTimeout.Milliseconds(),
-		"data-request":  conf.RequestTimeout.Milliseconds(),
-		"data-detached": inst.Detached(),
+		"src":             "/" + script.HashString() + ".doors.js",
+		"id":              inst.Id(),
+		"data-root":       door.Id(),
+		"data-ttl":        conf.TTL.Milliseconds(),
+		"data-disconnect": conf.SleepTimeout.Milliseconds(),
+		"data-request":    conf.RequestTimeout.Milliseconds(),
+		"data-ping":       conf.Ping.Milliseconds(),
+		"data-detached":   conf.Detached,
 	}
 	_, err = fmt.Fprint(w, "<script")
 	if err != nil {

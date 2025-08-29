@@ -167,6 +167,7 @@ export class ProgressiveDelay {
     }
     reset() {
         this.resetFee()
+        this.resetMarker()
     }
     wait(): Promise<void> {
         return new Promise(res => {
@@ -188,25 +189,45 @@ export class ProgressiveDelay {
     }
 }
 
+export class ReliableTimer {
+    private interval: number
+    private done: boolean = false
+    private deadline: number
+    private tick: number
+    constructor(private timeout: number, handler: Function) {
+        this.timeout = timeout
+        this.tick = 0.05 * this.timeout
+        this.reset()
+        this.interval = setInterval(() => {
+            if (Date.now() < this.deadline) {
+                return
+            }
+            this.done = true
+            clearInterval(this.interval)
+            handler()
+        }, this.tick)
+    }
+    reset() {
+        this.deadline = Date.now() + this.timeout - this.tick / 2
+    }
+    cancel() {
+        clearInterval(this.interval)
+        return !this.done
+    }
+}
 
 export class AbortTimer {
     private abortController = new AbortController()
-    private interval: number
+    private timer: ReliableTimer
     private _expired = false
     constructor(timeout: number) {
-        const tick = 0.05 * timeout
-        const deadline = Date.now() + timeout - tick / 2
-        this.interval = setInterval(() => {
-            if (Date.now() < deadline) {
-                return
-            }
+        this.timer = new ReliableTimer(timeout, () => {
             if (this.signal.aborted) {
                 return
             }
             this._expired = true
-            this.abort()
-        }, tick)
-
+            this.abortController.abort("timeout")
+        })
     }
     get status(): "running" | "aborted" | "expired" {
         if (!this.signal.aborted) {
@@ -217,11 +238,11 @@ export class AbortTimer {
         }
         return "aborted"
     }
-    clean() {
-        clearInterval(this.interval)
+    cancel() {
+        this.timer.cancel()
     }
     abort() {
-        clearInterval(this.interval)
+        this.timer.cancel()
         this.abortController.abort()
     }
     get signal() {

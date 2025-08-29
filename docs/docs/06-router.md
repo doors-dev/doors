@@ -1,6 +1,7 @@
-# Router
+#  Router
 
-*doors* framework provides a router that you can plug into standard go http server:
+The *doors* framework provides a router that you can plug into the standard Go `http.Server`.
+ It handles page routing, static files, hooks, and framework resources.
 
 ```go
 func main() {
@@ -18,13 +19,13 @@ func main() {
 }
 ```
 
-Call `router.Use(...doors.Mod)` to configureate.
+Call `router.Use(...doors.Mod)` to configure.
 
-## Page Serving
+## Pages
 
-### Page
+### Page as struct
 
-**Page as struct** must implement page ` doors.Page[M any]` interface
+implements the `doors.Page[M any]` interface
 
 ```go
 type Page[M any] interface {
@@ -32,149 +33,215 @@ type Page[M any] interface {
 }
 ```
 
-**Page as function** must follow the signature:
+### Page as function
+
+ a function with this signature:
 
 ```go
 func(SourceBeam[M any]) templ.Component
 ```
 
-Where M is `Path Model` (check out [Path Model](./03-path-model.md))
+Where `M` is the **Path Model**  (see [Path Model](./03-path-model.md))
 
-### Page Handler
+### Register a page
 
-To serve a page, attach a page handler to the router with `Mod`: 
+Use `UsePage` to bind a handler for a path model:
 
 ```go
-func ServePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Mod
+func UsePage[M any](
+  handler func(p PageRouter[M], r RPage[M]) PageRoute,
+) Mod
 ```
 
 Example:
 
 ```go
-
-router.Use(doors.ServePage(
-  // page handler function
-  func (p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
-  	// home page implements doors.Page[M any] interface)
-  	return p.Page(&homePage{})
-	},
-))
-
+func homePage(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+  	// serve home page (implements doors.Page[BlogPath])
+   return p.Page(&homePage{}) 
+}
 ```
 
-##### Page Router `doors.PageRouter[M any]`
+```go
+r.Use(doors.UsePage(homePage))
+```
 
-Provides various routing options via methods:
+### Page Router (`doors.PageRouter[M]`)
 
-1. `Page(page Page[M]) PageRoute`
-   Serves a dynamic page
+Provides routing options for serving a given path model:
 
-2. `PageFunc(pageFunc func(SourceBeam[M]) templ.Component) PageRoute` 
-   Serves a dynamic page
+1. **Page(page Page[M]) PageRoute**
+    Serve a page struct implementing `doors.Page[M]`.
+2. **PageFunc(func(SourceBeam[M]) templ.Component) PageRoute**
+    Serve a page via a function.
+3. **Reroute(model any, detached bool)**
+    Internally re-route to another path model.
+    If `detached = true`, the URL will not be updated on the frontend.
+4. **RedirectStatus(model any, status int) PageRoute**
+    Perform an HTTP redirect to the URL built from `model`.
+5. **StaticPage(content templ.Component, status int) PageRoute**
+    Serve a static page with the given status code.
+    ⚠️ Using beams/doors inside a static page will panic.
 
-3. `Reroute(model any, detached bool)`
-   Internally, routes the request to a different Path Model, causing a new handler matching process. If detached = true, the path string will not be updated and synced on the frontend.
+> To set status code on dynamic pages, use `@doors.Status(code)`  component or `doors.SetStatus(ctx, code)` function.
 
-   > For example, this is useful to serve the Unauthorized page. 
-   > ```go
-   > router.Use(doors.ServePage(
-   >   func (p doors.PageRouter[AdminPath], r doors.RPage[AdminPath]) doors.PageRoute {
-   >     if !isAuthorized(r) {
-   >         // will keep the original address in the browser, while rendering 
-   >       	 // Unauthorized page (it must also be registered with
-   >       	 // doors.ServePage[UnauthorizedPath])
-   >         return p.Reroute(UnauthorizedPath{}, true)
-   >     } 
-   >      // home page implements doors.Page[M any] interface)
-   >   	return p.Page(&adminPage{})
-   >   },
-   > ))
-   > ```
+### Page Request `doors.RPage[M any]`
 
-4.  `RedirectStatus(model any, status int) PageRoute`                                                  
-
-   Performs HTTP level redirect with provided status to the URL constructed from the provided model
-
-5. `StaticPage(content templ.Component, status int) PageRoute` 
-   Serves a static page with the provided status code. The usage of beams, doors, etc, on a static page will cause panic.
-
-> To set response status code on dynamic pages, use `@doors.Status(statusCode int)` component or `doors.SetStatus(ctx context.Context, statusCode int)` function
-
-##### Page Request `doors.RPage[M any]`
-
-AGives you access to cookies, headers, and the requested path in the form of a `Path Model`.  You can use it to check user authentication before serving a page.
+Gives access to cookies, headers, and the requested path in the form of a typed **Path Model**. Use it to check user authentication or inject per-request data before serving a page.
 
 ### Please, consider:
 
-* Specific `Path Model` type can be registered only once.
-* Page route handler inside `doors.ServePage` is the only place where it's neccessary to check user access for protected resources. 
+* Each **Path Model** type can be registered only once.
+* The route handler inside `doors.UsePage` is the right place to enforce cookie access control (retrieve session) for protected resources.
 
-## Static Serving
+## Static File Serving
 
-### ServeDir
+The router provides helpers for serving files and directories.  
 
-Serves static files from a local directory using `os.DirFS`.
- This creates a filesystem from the directory and serves it at the specified prefix.
+### UseDir
 
-**Parameters**:
-
-- `prefix` (string): URL prefix (e.g., `/public/`)
-- `path` (string): Local directory path
+Serve static files from a **local directory** via `os.DirFS`.
 
 ```go
-func ServeDirPath(prefix string, localPath string) Mod
+func UseDir(prefix string, path string) Mod
 ```
 
-### ServeFS
+**Parameters**:  
 
-Serves static files from a filesystem at the specified URL prefix.  This is useful for serving embedded assets using Go’s `embed.FS`.
+- `prefix` (string): URL prefix (e.g., `/public/`)  
+- `path` (string): local directory path  
 
-**Parameters**:
-
-- `prefix` (string): URL prefix (e.g., `/assets/`)
-- `fs` (fs.FS): Filesystem to serve from (typically `embed.FS`)
+Example:
 
 ```go
-func ServeDir(prefix string, path string) Mod
+router.Use(doors.UseDir("/public/", "./public"))
 ```
 
-### ServeFS
+### UseFS
 
-Serves static files from a filesystem at the specified URL prefix.  This is useful for serving embedded assets using Go’s `embed.FS`.
-
-- `prefix` (string): URL prefix (e.g., `/assets/`)
-- `fs` (fs.FS): Filesystem to serve from (typically `embed.FS`)
+Serve files from an `fs.FS` (typically `embed.FS`).
 
 ```go
-func ServeFS(prefix string, fs fs.FS) Mod
+func UseFS(prefix string, fs fs.FS) Mod
 ```
 
-#### ServeFile
+**Parameters**:  
 
-Serves a single file at the specified URL path.
+- `prefix` (string): URL prefix (e.g., `/assets/`)  
+- `fs` (fs.FS): filesystem source  
 
-**Parameters**:
-
-- `path` (string): URL path (e.g., `/favicon.ico`)
-- `localPath` (string): Local file path
-
-```
-func ServeFile(path string, localPath string) Mod
-```
-
-## Custom Serving
-
-### ServeFallback
-
-Sets a fallback router for requests that do not match any routes. For example, you can use `gorilla.Mux` to serve whatever you want.
-
-**Parameters**:
-
-- `handler` (http.Handler): HTTP handler to execute for unmatched routes
-
-**Signature**:
+Example:
 
 ```go
-func ServeFallback(handler http.Handler) Mod
+//go:embed assets/*
+var assets embed.FS
+
+router.Use(doors.UseFS("/assets/", assets))
 ```
 
+### UseFile
+
+Serve a **single file** at a given URL path.
+
+```go
+func UseFile(path string, localPath string) Mod
+```
+
+**Parameters**:  
+
+- `path` (string): URL path (e.g., `/favicon.ico`)  
+- `localPath` (string): local file path  
+
+Example:
+
+```go
+router.Use(doors.UseFile("/favicon.ico", "./static/favicon.ico"))
+```
+
+---
+
+## Fallback
+
+Set a fallback handler for unmatched requests. Useful for integrating with another router (e.g., Gorilla Mux) or serving a custom 404.
+
+```go
+func UseFallback(handler http.Handler) Mod
+```
+
+Example:
+
+```go
+router.Use(doors.UseFallback(myOtherMux))
+```
+
+## System Configuration
+
+Apply system-wide config such as timeouts, resource limits, and session behavior.
+
+```go
+type SystemConf = common.SystemConf
+
+func UseSystemConf(conf SystemConf) Mod
+```
+
+Example:
+
+```go
+router.Use(doors.UseSystemConf(doors.SystemConf{
+  SessionInstanceLimit: 12,
+}))
+```
+
+## Error Page
+
+Provide a custom component for error handling.
+
+```go
+func UseErrorPage(page func(message string) templ.Component) Mod
+```
+
+Example:
+
+```go
+router.Use(doors.UseErrorPage(func(msg string) templ.Component {
+  return myErrorPage{Message: msg}
+}))
+```
+
+## Security (CSP)
+
+Configure Content Security Policy headers.
+
+```go
+type CSP = common.CSP
+
+func UseCSP(csp CSP) Mod
+```
+
+Example:
+
+```go
+router.Use(doors.UseCSP(doors.CSP{
+  ScriptSrc: []string{"'self'", "cdn.example.com"},
+}))
+```
+
+## Build Profiles
+
+Configure esbuild options and profiles for JS/TS
+
+```go
+func UseESConf(conf ESConf) Mod
+```
+
+---
+
+## Session Hooks
+
+Register callbacks for session lifecycle.
+
+```go
+func UseSessionHooks(onCreate func(id string), onDelete func(id string)) Mod
+```
+
+## 

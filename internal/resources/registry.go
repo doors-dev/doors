@@ -44,8 +44,12 @@ type Registry struct {
 	init       sync.Once
 }
 
-func (rg *Registry) key(b []byte) [32]byte {
+func (rg *Registry) key32(b []byte) [32]byte {
 	return *(*[32]byte)(b)
+}
+
+func (rg *Registry) key16(b []byte) [16]byte {
+	return *(*[16]byte)(b)
 }
 
 func (rg *Registry) initMain() {
@@ -77,11 +81,11 @@ func (rg *Registry) MainScript() *Resource {
 }
 
 func (rg *Registry) Serve(hash []byte, w http.ResponseWriter, r *http.Request) {
-	if len(hash) != 32 {
+	if len(hash) != 16 {
 		w.WriteHeader(400)
 		return
 	}
-	s, ok := rg.lookup.Load(rg.key(hash))
+	s, ok := rg.lookup.Load(rg.key16(hash))
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -91,7 +95,7 @@ func (rg *Registry) Serve(hash []byte, w http.ResponseWriter, r *http.Request) {
 
 func (r *Registry) create(key []byte, content []byte, lookup bool, contentType string) *Resource {
 	s := NewResource(content, contentType, r.Gzip)
-	existing, existed := r.cache.LoadOrStore(r.key(key), s)
+	existing, existed := r.cache.LoadOrStore(r.key32(key), s)
 	if existed {
 		s = existing.(*Resource)
 	}
@@ -102,7 +106,7 @@ func (r *Registry) create(key []byte, content []byte, lookup bool, contentType s
 }
 
 func (r *Registry) get(key []byte) *Resource {
-	entry, ok := r.cache.Load(r.key(key))
+	entry, ok := r.cache.Load(r.key32(key))
 	if !ok {
 		return nil
 	}
