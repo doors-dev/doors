@@ -63,14 +63,13 @@ const (
 )
 
 func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	for {
-		d.mu.Lock()
 		if len(d.issued) == d.issueLimit {
-			d.mu.Unlock()
 			return pendingLimit, nil
 		}
 		card := d.cutTop()
-		d.mu.Unlock()
 		if card == nil {
 			return nothingToWrite, nil
 		}
@@ -84,9 +83,7 @@ func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
 		}
 		data := card.call.Data()
 		if data == nil {
-			d.mu.Lock()
 			d.skipRange(card.startSeq, card.endSeq)
-			d.mu.Unlock()
 			continue
 		}
 		issuedCall := &issuedCall{
@@ -95,15 +92,11 @@ func (d *deck) WriteNext(w io.Writer) (writeResult, error) {
 		}
 		err := issuedCall.write(header, w)
 		if err != nil {
-			d.mu.Lock()
-			defer d.mu.Unlock()
 			if err := d.cancelCut(card); err != nil {
 				return writeSyncErr, err
 			}
 			return writeErr, err
 		}
-		d.mu.Lock()
-		defer d.mu.Unlock()
 		d.issued[card.seq()] = issuedCall
 		return writeOk, nil
 	}

@@ -212,7 +212,8 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
 				return errors.New("magic attr lost")
 			}
 			if magicA == nil {
-				magicA = attr
+				magicA = NewAttrs()
+				magicA.Join(attr)
 			} else {
 				magicA.Join(attr)
 			}
@@ -240,6 +241,9 @@ func (r *RenderMap) renderBuf(w io.Writer, buf []byte, magicA *Attrs) error {
 			mode = modeLook
 			continue
 		}
+	}
+	if magicA != nil {
+		slog.Warn("magic attributes dropped, nowhere to attach")
 	}
 	if mode != modeLook {
 		return errors.New("buffer missaligned")
