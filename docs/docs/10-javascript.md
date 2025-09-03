@@ -15,7 +15,7 @@ Magic variable to access framework features
 * `$d.CaptureEr`
   Reference to the error class thrown by hooks, so in the exception, you can check `if(err instanceof $d.CaptureErr)`. A description of CaptureErr can be found in the [Error Handling](./ref/02-error-handling.md) article.
 * `$d.on(name string,  handler: (arg: any) => any)`
-  Register a handler to be called from Go or on error (checkout [Error Handling](./ref/02-error-handling.md) article)
+  Register a handler to be called from Go or on error (checkout [Error Handling](./ref/02-error-handling.md) article). No async support.
 * `$d.G: { [key: string]: any }`
   Getter for the global persistent object to share data between scripts.
 * `$d.clean(handler: () => void | Promise<void>): void`

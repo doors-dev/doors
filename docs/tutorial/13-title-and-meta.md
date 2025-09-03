@@ -51,54 +51,54 @@ func (c *catalogPage) Head() templ.Component {
 
 ```templ
 // state that title depends on
-type pathState struct {
+type metaState struct {
 	Cat  string
 	Item int
 }
 
 func (c *catalogPage) Head() templ.Component {
-	// derive new beam with pathState
-	state := doors.NewBeam(c.path, func(p Path) pathState {
+	// derive new beam with metaState
+	state := doors.NewBeam(c.path, func(p Path) metaState {
 		if p.IsMain {
-			return pathState{
+			return metaState{
 				Cat:  "",
 				Item: -1,
 			}
 		}
 		if p.IsCat {
-			return pathState{
+			return metaState{
 				Cat:  p.CatId,
 				Item: -1,
 			}
 		}
-		return pathState{
+		return metaState{
 			Cat:  p.CatId,
 			Item: p.ItemId,
 		}
 	})
 	// head component, takes path beam and function to derive HeadData
-	return doors.Head(state, func(ps pathState) doors.HeadData {
+	return doors.Head(state, func(m metaState) doors.HeadData {
 		// no category selected
-		if ps.Cat == "" {
+		if m.Cat == "" {
 			return doors.HeadData{
 				Title: "Catalog",
 			}
 		}
-		cat, ok := driver.Cats.Get(ps.Cat)
-		// cannout find category
+		cat, ok := driver.Cats.Get(m.Cat)
+		// cat not found
 		if !ok {
 			return doors.HeadData{
 				Title: "Category Not Found",
 			}
 		}
 		// category page
-		if ps.Item == -1 {
+		if m.Item == -1 {
 			return doors.HeadData{
 				Title: cat.Name,
 			}
 		}
-		item, ok := driver.Items.Get(ps.Item)
-		// cannot find item
+		item, ok := driver.Items.Get(m.Item)
+		// item not found
 		if !ok {
 			return doors.HeadData{
 				Title: "Item Not Found",
@@ -110,6 +110,7 @@ func (c *catalogPage) Head() templ.Component {
 	})
 }
 
+
 ```
 
 ## 3. Meta
@@ -118,7 +119,7 @@ If you want meta tags to update in response to a path change, include it in the 
 
 ```go
   /* ... */
-  if p.Item == -1 {
+  if m.Item == -1 {
     return doors.HeadData{
       Title: cat.Name,
       Meta: map[string]string{

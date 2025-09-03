@@ -446,7 +446,7 @@ templ main() {
 						CatId: cat.Id, 
 					},
 				}
-				<a>{ cat.Name }</a>
+				<a class="contrast">{ cat.Name }</a>
 			</header>
 			{ cat.Desc }
 		</article>

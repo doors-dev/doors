@@ -19,11 +19,13 @@ templ category() {
 }
 ```
 
-To query category data from the DB, we need the category ID. Obtain the category ID from the **path beam**: 
+To query category data from the DB, we need the category ID. Obtain the category ID from the **path beam**, add argument to the category component: 
 
 ```templ
 templ category(path doors.SourceBeam[Path]) 
 ```
+
+Provide the path beam:
 
 `./catalog/page.templ`
 
@@ -79,7 +81,7 @@ templ categoryContent(catId string) {
 	  // set status code (for the initial load)
 		@doors.Status(http.StatusNotFound)
 		<div>
-			<mark>Not Found</mark>
+			<h1>Not Found</h1>
 		</div>
 	}
 }
@@ -120,7 +122,7 @@ templ (f *categoryFragment) content(catId string) {
 	} else {
 		@doors.Status(http.StatusNotFound)
 		<div>
-			<mark>Not Found</mark>
+			<h1>Not Found</h1>
 		</div>
 	}
 }

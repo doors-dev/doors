@@ -112,7 +112,7 @@ type APointerDown struct {
 	PreventDefault bool
 
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
-	ExactTarget bool 
+	ExactTarget bool
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
@@ -245,7 +245,7 @@ type APointerOut struct {
 	PreventDefault bool
 
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
-	ExactTarget bool 
+	ExactTarget bool
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope

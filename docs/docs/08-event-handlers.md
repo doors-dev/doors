@@ -10,6 +10,9 @@ type AClick struct {
 
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
+	
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
 
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope

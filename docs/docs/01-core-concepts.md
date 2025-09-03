@@ -23,24 +23,6 @@ A dynamic placeholder or container that can be updated, removed, or replaced. It
 - Doors form a synchronized dynamic tree during rendering.
 - Features like append/prepend are implemented using placeholder doors that can be replaced.
 
-## Hook
-
-An HTTP handler dynamically routed by the framework, typically bound to a DOM event.
-
-- Hooks have their own lifecycle, scoped to the dynamic door in which they were created.
-- `src`/`href` attributes can route to hook endpoints for secure file serving.
-- You can define custom hooks callable from JavaScript.
-- JS calls can receive and respond to hooks seamlessly.
-
-## Call
-
-A mechanism to invoke a registered frontend JavaScript function from Go, and process its response.
-
-- Register with: `$D.on("name", (arg) => { return response })`
-- Enables client-side behavior integration (e.g. setting class, triggering animation).
-- JS function lookup is scoped to the nearest dynamic parent to avoid naming conflicts.
-- When Go calls a function, **the client searches upward from the exact door the call originated from**, ensuring context-specific behavior and avoiding naming collisions
-
 ## Path Model
 
 A typed structure representing the current page route, including query parameters. Defined using struct tags for path variants and bindings.
@@ -48,7 +30,7 @@ A typed structure representing the current page route, including query parameter
 - Page routing occurs by deserializing the URL into a path model.
 - Changing parameters within the same model updates the current instance reactively.
 - Switching between different path structs triggers a full instance change.
-- Use `SourceBeam` (provided to page render function) to observe path changes and trigger rerenders.
+- Use `SourceBeam` (provided to the page render function) to observe path changes and trigger rerenders.
 
 ## Beam / SourceBeam
 
@@ -61,18 +43,26 @@ Composable reactive state primitives.
 
 ## Attributes
 
-Attribute constructors are used to attach framework-connected behaviors to HTML elements.
+Attributes are used to attach framework-connected behaviors to HTML elements.
 
 - Includes event bindings (hooks), data attributes, etc.
-- Enables consistent integration of client/server behavior.
+- Enables integration of client/server behavior.
+
+## Hook
+
+An HTTP handler dynamically routed by the framework, typically bound to a DOM event. Initialized as an attribute. 
+
+- Hooks have their own lifecycle, scoped to the dynamic door in which they were created.
+- `src`/`href` attributes can route to hook endpoints for secure file serving.
+- You can define custom hooks to trigger from JavaScript.
 
 ## Context
 
 The standard Go `context.Context`, extended and used throughout *doors* to:
 
-- Identify the **parent door**
+- Identify the **location in the dynamic tree**
 - Bind **hooks**
 - Read **beam** values
-- Tack **hook** triggered changes
+- Track **hook**-triggered changes completions
 - Access and modify **instance/session** entities
 

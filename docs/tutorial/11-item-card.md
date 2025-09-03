@@ -57,22 +57,25 @@ templ (c *cardFragment) Render() {
 	@c.content
 }
 
+
+
 templ (c *cardFragment) card(id int) {
 	{{ item, ok := driver.Items.Get(id) }}
+	// close pop-up on background click
+	@doors.APointerDown{
+		// ignore bubbling events, target only
+		ExactTarget: true,
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			c.closeCard(ctx)
+			return true
+		},
+	}
 	<dialog open>
 		<article>
 			<header>
 				@doors.AClick{
 					On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-						// reload category items table
-						c.reload(ctx)
-						// manually switch path to Cat from Item
-						c.path.Mutate(ctx, func(p Path) Path {
-							p.IsCat = true
-							p.IsItem = false
-							return p
-						})
-						// remove hook
+						c.closeCard(ctx)
 						return true
 					},
 				}
@@ -98,11 +101,23 @@ templ (c *cardFragment) card(id int) {
 		</article>
 	</dialog>
 }
+
+func (c *cardFragment) closeCard(ctx context.Context) {
+  // reload category items table
+	c.reload(ctx)
+	// switch path to Cat from Item
+	c.path.Mutate(ctx, func(p Path) Path {
+		p.IsCat = true
+		p.IsItem = false
+		return p
+	})
+}
+
 ```
 
 > Notice how `SourceBeam[Path]` is synchronized with the path in the browser when we close the pop-up. 
 
-`./catalog/cat.templ`
+`./catalog/category.templ`
 
 ```templ
 templ (f *categoryFragment) Render() {
