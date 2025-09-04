@@ -161,6 +161,7 @@ func (c *core[M]) Call(call common.Call) {
 func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M]) error {
 	ctx := context.WithValue(context.Background(), common.CtxKeyInstance, c)
 	ctx = c.store.Inject(ctx)
+	ctx = c.instance.getSession().getStorage().Inject(ctx)
 	ctx = context.WithValue(ctx, common.CtxKeyAdapters, c.instance.getSession().getRouter().Adapters())
 	c.root = door.NewRoot(ctx, c)
 	c.navigator.init(c.root.Ctx(), c.solitaire)

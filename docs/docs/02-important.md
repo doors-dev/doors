@@ -6,13 +6,13 @@ Practices you should understand and follow.
 
 In all `templ` components. handlers and listeners framework provides `context.Context` value. 
 
-❌ Use `context.Background()` (or any external context) instead of `ctx` provided by the framework in framework related operations.  **It panics**.
+❌ Using `context.Background()` or any external context instead of the `ctx` provided by the framework in framework-related operations. **It panics**.
 
 ❌ Try to enable interactivity/reactivity with *doors* in templ-based pages **not served** by *doors*. **It panics**.
 
 ✅ Update `Door`, read and mutate `Beam/SourceBeam` values, use `doors.A...` binds using context value in scope inside frameworks space.
 
-✅ Use closest context in scope. *It is used to track component relations, action progress, and more.* 
+✅ Use the closest context in scope. *It is used to track component relations, progress of actions, and more.* 
 
 ```templ
 templ (f *fragment) Render() {
@@ -28,11 +28,17 @@ templ (f *fragment) Render() {
 }
 ```
 
-> Context lifecycle is linked to dynamic components tree. You can use `ctx.Done()` channel in spawned goroutines to trigger clean up on DOM removal.
+> Context lifecycle is linked to the dynamic container tree. You can use `ctx.Done()` channel in spawned goroutines to trigger clean up on DOM removal.
 
-## 2. Respect blocking free context and data propagation.
+## 2. Respect the concurrency model
 
-Rendering operations and **Beam** handlers are executed in the framework's runtime. 
+Rendering operations and `Beam` (state) watchers are executed in the framework's runtime on a goroutine pool. 
+
+* `Beam` propagation begins at the root and proceeds in parallel down each branch, where each dynamic container waits for its subscribers to complete before updating its children.
+* The `Beam` algorithm ensures that all elements observe the same state value consistently during a render.
+* The content of each dynamic container (`Door`) is rendered in its own goroutine 
+
+Best practices:
 
 * Query data and make requests to external systems during rendering or, less preferably, in `Beam` subscription handlers.
 * Use manually spawned (or via `@doors.Go`) goroutines, or, less preferably, hook handlers to wait on channels, asynchronous events, or perform any long-running operations.
@@ -56,7 +62,7 @@ pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
 }
 ```
 
-> Querying data in the beam handler will delay the propagation of **beam** data to nested elements; it's acceptable.
+> Querying data in the beam watcher will delay data propagation to nested elements; this is acceptable.
 
 ✅  Spawn goroutine for long-running tasks:
 
@@ -99,7 +105,7 @@ pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
 
 ```temlp
 pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
-// spawn independent runtime goroutine
+	// spawn independent goroutine
 	go func() {
 			// tell the framework that you are safe
 			blockingCtx := doors.AllowBlocking(ctx)
@@ -142,6 +148,22 @@ templ (f *fragment) Render() {
 	@door
 }
 ```
+
+❌  Render-time shared state race:
+
+```templ
+templ (f *fragment) Render() {
+  // initialize door
+	{{ door := doors.Door{} }}
+  {{ foo := "bar" }}
+	@f.door { // content of the door is rendered in its own goroutine!
+		{{ foo = "" }} 
+	}
+	{ foo } // probably will render "bar"
+}
+```
+
+
 
 ## 3. Understand the security model.
 
@@ -218,5 +240,5 @@ If you need data **only to produce render output** - render and forget, so you w
 
 ## 5. Be conscious with front-end manipulations via JavaScript 
 
-Parts of the DOM are controlled by the framework. Avoid removing or moving dynamic elements via JavaScript.
+Parts of the DOM are controlled by the framework, so separate concerns clearly.
 

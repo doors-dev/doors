@@ -200,6 +200,30 @@ func Inject[T any](key any, beam Beam[T]) templ.Component {
 	})
 }
 
+func Switch[T any](beam Beam[T], showIf func(T) bool) templ.Component {
+	return E(func(ctx context.Context) templ.Component {
+		children := templ.GetChildren(ctx)
+		ctx = templ.ClearChildren(ctx)
+		door := &Door{}
+		ok := beam.Sub(ctx, func(ctx context.Context, v T) bool {
+			if !showIf(v) {
+				door.Update(ctx, nil)
+				return false
+			}
+			door.Update(ctx, children)
+			return false
+		})
+		if !ok {
+			return nil
+		}
+		return door
+	})
+}
+func If(beam Beam[bool]) templ.Component {
+	return Switch(beam, func(v bool) bool { return v })
+}
+
+
 // E evaluates the provided function at render time and returns the resulting templ.Component.
 //
 // This is useful when rendering logic is complex or better expressed in plain Go code,
