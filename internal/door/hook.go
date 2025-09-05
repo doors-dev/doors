@@ -98,6 +98,11 @@ func (h *DoorHook) Trigger(w http.ResponseWriter, r *http.Request) (Done, bool) 
 		<-prevCh
 	}
 	h.mu.Lock()
+	if r.Context().Err() != nil {
+		h.mu.Unlock()
+		close(ch)
+		return false, true
+	}
 	if h.done {
 		h.mu.Unlock()
 		close(ch)

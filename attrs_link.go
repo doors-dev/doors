@@ -80,12 +80,20 @@ type Active struct {
 }
 
 type AHref struct {
-	Active          Active
+	// Target path model value
+	Model any
+	// Active link indicator configuration
+	Active Active
+	// Stops event propagation (for dynamic link)
 	StopPropagation bool
-	ScrollInto      string
-	Model           any
-	Indicator       []Indicator
-	OnError         []OnError
+	// Scrolls into selector (for dynamic link)
+	ScrollInto string
+	// Loading indications (for dynamic link)
+	Indicator []Indicator
+	// Action on error (for dynamic link)
+	OnError []OnError
+	// For analytics purposes
+	Callback func()
 }
 
 func (h *AHref) active() []any {
@@ -119,6 +127,9 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 	if ok {
 		entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 			Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+				if h.Callback != nil {
+					defer h.Callback()
+				}
 				if h.ScrollInto != "" {
 					r := request{
 						w:   w,

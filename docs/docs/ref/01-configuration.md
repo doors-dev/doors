@@ -17,8 +17,7 @@ router.Use(doors.UseSystemConf(doors.SystemConf{
 ```templ
 type SystemConf struct {
 	SessionInstanceLimit     int
-	SessionExpiration        time.Duration
-	SessionCookieExpiration  time.Duration
+	SessionTTL							 time.Duration
 	InstanceGoroutineLimit   int
 	InstanceTTL              time.Duration
 	ServerDisableGzip        bool
@@ -42,24 +41,23 @@ Key settings to understand:
 
 - **SessionInstanceLimit** — Max page instances per session. Oldest inactive suspended if exceeded.
    *Default: 12*
+   
+- **SessionTTL** — Session lifetime policy. *Default: 0*
+   
+   Behavior at `0`: session ends when **no instances remain**, and the session cookie expires when the **browser closes**.
+   
 - **InstanceGoroutineLimit** — Max goroutines per instance for rendering and reactivity.
    *Default: 16*
+   
 - **InstanceTTL** — Lifetime of inactive instances before cleanup.
    *Default: 40minutes or ≥ 2× `RequestTimeout`*
+   
 - **DisconnectHiddenTimer** — Time hidden/background tabs stay connected.
    *Default: InstanceTTL ÷ 2*
 
-### Session Management
+### Solitaire Protocol (synchronization)
 
-- **SessionExpiration** — Lifetime of a session. If >0, session expires even if has active instances.
-   *Default: 0 (expires when no instances remain)*
-
-  **SessionCookieExpiration** — Browser session cookie lifetime.
-   *Default: 0 (expires when browser closes)*
-
-### Solitaire Protocol (syncronization)
-
-#### Control Syncronization Issues 
+#### Control Synchronization Issues 
 
 - **SolitaireSyncTimeout** — Max pending duration of a server→client sync calls; **exceeding kills instance**.
    *Default: InstanceTTL*

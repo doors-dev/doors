@@ -125,16 +125,13 @@ func ServeFallback(handler http.Handler) Mod {
 	return UseFallback(handler)
 }
 
-// UseSessionHooks registers callbacks for session lifecycle events.
-// The onCreate callback is called when a new session is created.
-// The onDelete callback is called when a session is removed.
-func UseSessionHooks(onCreate func(id string), onDelete func(id string)) Mod {
-	return router.SetSessionHooks(onCreate, onDelete)
-}
+type SessionCallback = router.SessionCallback
 
-// Deprecated: use UseSessionHooks
-func SetSessionHooks(onCreate func(id string), onDelete func(id string)) Mod {
-	return UseSessionHooks(onCreate, onDelete)
+// UseSessionCallback registers callbacks for session lifecycle events.
+// The Create callback is called when a new session is created.
+// The Delete callback is called when a session is removed.
+func UseSessionCallback(callback SessionCallback) Mod {
+	return router.SetSessionCallback(callback)
 }
 
 // UseESConf configures esbuild profiles for JavaScript/TypeScript processing.

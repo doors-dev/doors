@@ -236,12 +236,16 @@ func UseESConf(conf ESConf) Mod
 
 ---
 
-## Session Hooks
+## Session Callback
 
-Register callbacks for session lifecycle.
+Register callbacks for the session lifecycle. Useful for analytics and load balancing purposes 
 
 ```go
-func UseSessionHooks(onCreate func(id string), onDelete func(id string)) Mod
+type SessionCallback interface {
+	Create(id string, header http.Header)
+	Delete(id string)
+}
+
+func UseSessionCallback(callback SessionCallback) Mod
 ```
 
-## 

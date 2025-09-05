@@ -19,13 +19,10 @@ type SystemConf struct {
 	// Default: 12.
 	SessionInstanceLimit int
 
-	// SessionExpiration is the session lifetime. If >0, sessions expire
-	// even with active instances. Default: 0 (expire when no instances remain).
-	SessionExpiration time.Duration
-
-	// SessionCookieExpiration sets session cookie lifetime in the browser.
-	// Default: 0 (expires when browser closes).
-	SessionCookieExpiration time.Duration
+	// SessionTTL controls how long session lives.
+	// Default behavior (value 0): session ends, when no more
+	// instances left, cookie expires when browser closes.
+	SessionTTL time.Duration
 
 	// InstanceGoroutineLimit is the max goroutines per page instance.
 	// Controls resource use for rendering and reactive updates. Default: 16.

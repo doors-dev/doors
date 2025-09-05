@@ -98,6 +98,7 @@ func (r *pageRequest[M]) GetCookie(name string) (*http.Cookie, error) {
 	return r.r.R.Cookie(name)
 }
 
+
 func (r *pageRequest[M]) SetCookie(cookie *http.Cookie) {
 	http.SetCookie(r.r.W, cookie)
 }

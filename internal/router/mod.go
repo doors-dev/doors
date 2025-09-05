@@ -85,12 +85,15 @@ func SetErrorPage(page ErrorPageComponent) Mod {
 	})
 }
 
-func SetSessionHooks(create func(id string), delete func(id string)) Mod {
+type SessionCallback interface {
+	Create(id string, header http.Header)
+	Delete(id string)
+}
+
+
+func SetSessionCallback(hook SessionCallback) Mod {
 	return anyMod(func(rr *Router) {
-		rr.sessionHooks = &sessionHooks{
-			create: create,
-			delete: delete,
-		}
+		rr.sessionCallback = hook
 	})
 }
 

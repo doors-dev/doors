@@ -82,6 +82,15 @@ func FrameScope(id string, frame bool) *ScopeSet {
 	}
 }
 
+func PriorityScope(id string, priority uint8) *ScopeSet {
+	return &ScopeSet{
+		Id:   id,
+		Type: "priority",
+		Opt:  priority,
+	}
+}
+
+
 func LatestScope(id string) *ScopeSet {
 	return &ScopeSet{
 		Id:   id,

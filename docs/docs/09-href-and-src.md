@@ -17,8 +17,10 @@ type AHref struct {
 	StopPropagation bool  // stop click event propagation
 	// scrolls into specified selector (after action)
   ScrollInto      string
-	Indicator       []Indicator // loading indicator
-	OnError         []OnError  // error action 
+  // loading indicator
+	Indicator       []Indicator 
+	// error action 
+	OnError         []OnError  
 }
 ```
 

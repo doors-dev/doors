@@ -43,9 +43,19 @@ func NewSession(r router) *Session {
 		router:    r,
 		limiter:   newLimiter(r.Conf().SessionInstanceLimit),
 	}
-	sess.SetExpiration(r.Conf().SessionExpiration)
+	sess.setTTL()
 	return sess
 
+}
+
+func (sess *Session) setTTL() {
+	ttl := sess.router.Conf().SessionTTL
+	if ttl == 0 {
+		return
+	}
+	sess.ttl = time.AfterFunc(ttl, func() {
+		sess.Kill()
+	})
 }
 
 type Session struct {
@@ -57,6 +67,7 @@ type Session struct {
 	router    router
 	limiter   *limiter
 	expire    *time.Timer
+	ttl       *time.Timer
 }
 
 func (sess *Session) getRouter() router {
@@ -89,7 +100,7 @@ func (sess *Session) removeInstance(id string) {
 	}
 	sess.limiter.delete(id)
 	delete(sess.instances, id)
-	if len(sess.instances) == 0 && sess.expire == nil {
+	if len(sess.instances) == 0 && sess.ttl == nil {
 		sess.killed = true
 		sess.cleanup()
 	}
@@ -153,6 +164,9 @@ func (sess *Session) cleanup() {
 	sess.router.RemoveSession(sess.id)
 	if sess.expire != nil {
 		sess.expire.Stop()
+	}
+	if sess.ttl != nil {
+		sess.ttl.Stop()
 	}
 	for id := range sess.instances {
 		sess.instances[id].end(causeKilled)

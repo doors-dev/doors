@@ -39,6 +39,7 @@ func NewRouter() *Router {
 		dirs:           make([]*static, 0),
 		registry:       resources.NewRegistry(),
 		conf:           conf,
+		sessionCallback:   sessionHooks{},
 	}
 }
 
@@ -65,30 +66,11 @@ func (d *static) tryServe(w http.ResponseWriter, r *http.Request) bool {
 
 type ErrorPageComponent = func(message string) templ.Component
 
-type sessionHooks struct {
-	create func(string)
-	delete func(string)
-}
+type sessionHooks struct{}
 
-func (s *sessionHooks) onCreate(id string) {
-	if s == nil {
-		return
-	}
-	if s.create == nil {
-		return
-	}
-	s.create(id)
-}
+func (s sessionHooks) Create(string, http.Header) {}
 
-func (s *sessionHooks) onDelete(id string) {
-	if s == nil {
-		return
-	}
-	if s.delete == nil {
-		return
-	}
-	s.delete(id)
-}
+func (s sessionHooks) Delete(string) {}
 
 type Router struct {
 	sess           sync.Map
@@ -99,7 +81,7 @@ type Router struct {
 	dirs           []*static
 	pool           *shredder.Pool
 	errPage        ErrorPageComponent
-	sessionHooks   *sessionHooks
+	sessionCallback   SessionCallback
 	registry       *resources.Registry
 	csp            *common.CSP
 	conf           *common.SystemConf
@@ -124,7 +106,7 @@ func (rr *Router) Spawner(op shredder.OnPanic) *shredder.Spawner {
 
 func (rr *Router) RemoveSession(id string) {
 	rr.sess.Delete(id)
-	rr.sessionHooks.onDelete(id)
+	rr.sessionCallback.Delete(id)
 }
 func (rr *Router) Adapters() map[string]path.AnyAdapter {
 	return rr.adapters
@@ -141,8 +123,8 @@ func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *
 	}
 	s = instance.NewSession(rr)
 	var expires time.Time
-	if rr.conf.SessionCookieExpiration != 0 {
-		expires = time.Now().Add(rr.conf.SessionCookieExpiration)
+	if rr.conf.SessionTTL != 0 {
+		expires = time.Now().Add(rr.conf.SessionTTL)
 	}
 	cookie := &http.Cookie{
 		Name:     "d00r",
@@ -153,7 +135,7 @@ func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *
 		Expires:  expires,
 	}
 	rr.sess.Store(s.Id(), s)
-	rr.sessionHooks.onCreate(s.Id())
+	rr.sessionCallback.Create(s.Id(), r.Header)
 	http.SetCookie(w, cookie)
 	return true, s
 }

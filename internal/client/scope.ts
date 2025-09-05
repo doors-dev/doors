@@ -210,6 +210,7 @@ abstract class Scope {
 const newScope = {
     "debounce": (runtime: Runtime, id: string) => new DebounceScope(runtime, id),
     "blocking": (runtime: Runtime, id: string) => new BlockingScope(runtime, id),
+    "priority": (runtime: Runtime, id: string) => new PriorityScope(runtime, id),
     "serial": (runtime: Runtime, id: string) => new SerialScope(runtime, id),
     "frame": (runtime: Runtime, id: string) => new FrameScope(runtime, id),
     "latest": (runtime: Runtime, id: string) => new LatestScope(runtime, id),
@@ -304,18 +305,44 @@ class BlockingScope extends Scope {
     }
 }
 
+class PriorityScope extends Scope {
+    private active = new Map<Hook, number>
+
+    protected complete(hook: Hook): void {
+        this.active.delete(hook)
+    }
+
+    protected process(hook: Hook, opt: any): void {
+        const priority = opt as number
+        for (const [pendingHook, pendingPriority] of this.active.entries()) {
+            if (pendingPriority > priority) {
+                hook.cancel()
+                return
+            }
+            if (pendingPriority < priority) {
+                pendingHook.cancel()
+                this.active.delete(pendingHook)
+            }
+        }
+        this.active.set(hook, priority)
+        this.promote(hook)
+    }
+}
+
 class FrameScope extends Scope {
     private frameHook: Hook | null = null
-    protected complete(_: Hook): void {
+    protected complete(hook: Hook): void {
         if (!this.frameHook) {
+            return
+        }
+        if (this.frameHook == hook) {
+            this.frameHook = null
             return
         }
         if (this.size != 1) {
             return
         }
-        const frameHook = this.frameHook
-        this.frameHook = null
-        this.promote(frameHook)
+        this.promote(this.frameHook)
 
     }
     protected process(hook: Hook, opt: any): void {
@@ -328,8 +355,8 @@ class FrameScope extends Scope {
             this.promote(hook)
             return
         }
+        this.frameHook = hook
         if (this.size != 1) {
-            this.frameHook = hook
             return
         }
         this.promote(hook)

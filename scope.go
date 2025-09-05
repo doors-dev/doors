@@ -10,9 +10,9 @@
 package doors
 
 import (
-	"time"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
+	"time"
 )
 
 // Scope controls event processing concurrency by managing how multiple events
@@ -116,25 +116,41 @@ func ScopeDebounce(duration time.Duration, limit time.Duration) []Scope {
 	return []Scope{(&DebounceScope{}).Scope(duration, limit)}
 }
 
-
-
 // FrameScope manages two types of events: immediate events and frame events.
-// Immediate events (frame=false) executed normaly. 
+// Immediate events (frame=false) executed normaly.
 // Frame events (frame=true) wait until all previous events in the scope complete,
-// while blocking new events, and then execute normaly.
+// while blocking new events, and then execute in blocking manner.
 type FrameScope struct {
 	id front.ScopeAutoId
 }
 
 // Scope creates a frame-based scope with the specified event type.
-// Immediate events (frame=false) executed normaly. 
+// Immediate events (frame=false) executed normaly.
 // Frame events (frame=true) wait until all previous events in the scope complete,
-// while blocking new events (frame=true and frame=false), and then execute normaly.
+// while blocking new events (frame=true and frame=false), and then execute in
+// blocking manner.
 //
 // Parameters:
 //   - frame: false for immediate execution, true to wait for other events to complete
 func (d *FrameScope) Scope(frame bool) Scope {
 	return scopeFunc(func(inst instance.Core) *ScopeSet {
 		return front.FrameScope(d.id.Id(inst), frame)
+	})
+}
+
+type PriorityScope struct {
+	id front.ScopeAutoId
+}
+
+// Scope creates a frame-based scope with the specified event type.
+// Immediate events (frame=false) executed normaly.
+// Frame events (frame=true) wait until all previous events in the scope complete,
+// while blocking new events (frame=true and frame=false), and then execute normaly.
+//
+// Parameters:
+//   - frame: false for immediate execution, true to wait for other events to complete
+func (d *PriorityScope) Scope(priority uint8) Scope {
+	return scopeFunc(func(inst instance.Core) *ScopeSet {
+		return front.PriorityScope(d.id.Id(inst), priority)
 	})
 }
