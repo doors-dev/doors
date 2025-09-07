@@ -86,8 +86,6 @@ type AHref struct {
 	Active Active
 	// Stops event propagation (for dynamic link)
 	StopPropagation bool
-	// Scrolls into selector (for dynamic link)
-	ScrollInto string
 	// Loading indications (for dynamic link)
 	Indicator []Indicator
 	// Action on error (for dynamic link)
@@ -129,14 +127,6 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 			Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 				if h.Callback != nil {
 					defer h.Callback()
-				}
-				if h.ScrollInto != "" {
-					r := request{
-						w:   w,
-						r:   r,
-						ctx: ctx,
-					}
-					r.After(AfterScrollInto(h.ScrollInto, false))
 				}
 				on(ctx)
 				return false

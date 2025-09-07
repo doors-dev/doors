@@ -15,8 +15,6 @@ type AHref struct {
 
 	// For dynamic links
 	StopPropagation bool  // stop click event propagation
-	// scrolls into specified selector (after action)
-  ScrollInto      string
   // loading indicator
 	Indicator       []Indicator 
 	// error action 
