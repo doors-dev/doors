@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/action"
 )
 
 type testInstance struct {
@@ -44,15 +45,17 @@ func (t *testCall) Write(w io.Writer) error {
 	return err
 }
 
-func (t *testCall) Data() *common.CallData {
+func (t *testCall) Payload() common.Writable {
+	return t
+}
+
+func (t *testCall) Action() (action.Action, bool) {
 	if t.cancel {
-		return nil
+		return nil, false
 	}
-	return &common.CallData{
-		Name:    "test",
-		Arg:     t.arg,
-		Payload: t,
-	}
+	return &action.Test{
+		Arg: t.arg,
+	}, true
 }
 
 func (t *testCall) Cancel() {
@@ -125,38 +128,38 @@ func (w *testWriter) readPackage() (*testPackage, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(header) == 0 || len(header) > 4 {
+	if len(header) == 0 || len(header) > 2 {
 		return nil, errors.New("wrong sized header")
 	}
-	err = json.Unmarshal(header[0], &pkg.endSeq)
+	rg := make([]uint64, 0)
+	err = json.Unmarshal(header[0], &rg)
 	if err != nil {
 		return nil, err
 	}
-	pkg.startSeq = pkg.endSeq
+	pkg.endSeq = rg[0]
+	if len(rg) == 2 {
+		pkg.startSeq = rg[1]
+	} else {
+		pkg.startSeq = pkg.endSeq
+	}
 	if len(header) == 1 {
 		return pkg, nil
 	}
-	if len(header) == 2 || len(header) == 4 {
-		err = json.Unmarshal(header[1], &pkg.startSeq)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if len(header) == 2 {
-		return pkg, nil
-	}
-	index := 1
-	if len(header) == 4 {
-		index += 1
-	}
-	err = json.Unmarshal(header[index], &pkg.name)
+	var inv [2]json.RawMessage
+	err = json.Unmarshal(header[1], &inv)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(header[index+1], &pkg.arg)
+	err = json.Unmarshal(inv[0], &pkg.name)
 	if err != nil {
 		return nil, err
 	}
+	var arg [1]int
+	err = json.Unmarshal(inv[1], &arg)
+	if err != nil {
+		return nil, err
+	}
+	pkg.arg = arg[0]
 	return pkg, nil
 
 }

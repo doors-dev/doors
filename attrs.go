@@ -65,29 +65,12 @@ func A(ctx context.Context, a ...Attr) *Attrs {
 	return front.A(ctx, ar...)
 }
 
-/*
-type ARaw templ.Attributes
-
-func (s ARaw) Attr() AttrInit {
-	return s
-}
-
-func (s ARaw) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, s)
-}
-
-func (s ARaw) Init(ctx context.Context, _ door.Core, _ instance.Core, attrs *front.Attrs) {
-	if s == nil {
-		return
-	}
-	attrs.SetRaw(templ.Attributes(s))
-}*/
-
 type eventAttr[E any] struct {
 	door      door.Core
 	ctx       context.Context
 	capture   front.Capture
-	onError   []OnError
+	onError   []Action
+	before    []Action
 	scope     []Scope
 	indicator []Indicator
 	inst      instance.Core
@@ -102,7 +85,8 @@ func (p *eventAttr[E]) init(attrs *front.Attrs) {
 		return
 	}
 	attrs.AppendCapture(p.capture, &front.Hook{
-		Error:     front.IntoErrorAction(p.onError),
+		OnError:   intoActions(p.ctx, p.onError),
+		Before:    intoActions(p.ctx, p.before),
 		Scope:     front.IntoScopeSet(p.inst, p.scope),
 		Indicate:  front.IntoIndicate(p.indicator),
 		HookEntry: entry,

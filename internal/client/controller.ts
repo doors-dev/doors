@@ -8,7 +8,7 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 import { id, disconnectAfter, ttl, solitairePing } from "./params"
-import calls from "./calls"
+import action, { CallResult } from "./calls"
 import { ProgressiveDelay, AbortTimer, ReliableTimer } from "./lib"
 
 import doors from "./door"
@@ -19,7 +19,7 @@ const controlBytes = {
     content: 0xFC,
 }
 const signals = {
-    call: 0x00,
+    action: 0x00,
     roll: 0x01,
     suspend: 0x02,
     kill: 0x03,
@@ -38,24 +38,18 @@ class Package {
     get seq(): number {
         return this.end
     }
+    private parseRange(range: Array<number>) {
+        this.end = range[0]
+        this.start = range.length == 2 ? range[1] : range[0]
+    }
     parseHeader() {
         const arr = JSON.parse(this.headerParts.join(""))
+        this.parseRange(arr[0])
         if (arr.length == 1) {
-            this.end = arr[0]
-            this.start = arr[0]
             this.filler = true
             return
         }
-        if (arr.length == 2) {
-            [this.end, this.start] = arr
-            this.filler = true
-        }
-        if (arr.length == 3) {
-            [this.end, this.call, this.arg] = arr
-            this.start = this.end
-            return
-        }
-        [this.end, this.start, this.call, this.arg] = arr
+        [this.call, this.arg] = arr[1]
     }
     get payload(): string {
         return this.payloadParts.join("")
@@ -280,8 +274,6 @@ class Connection {
         })
         this.run()
     }
-    private offset = 0
-    private buf = new Uint8Array(4)
     private package: Package | undefined
     abort() {
         this.abortTimer.abort()
@@ -383,7 +375,7 @@ class Connection {
         if (this.status == connectorStatus.signal) {
             const signal = data[0]
             switch (signal) {
-                case signals.call:
+                case signals.action:
                     this.status = connectorStatus.header
                     this.package = new Package()
                     if (data.length == 1) {
@@ -461,29 +453,13 @@ class Connection {
     }
 }
 
-type Results = Map<number, [any, string | undefined]>
+type Results = Map<number, CallResult>
 
 class Tracker {
     private buffered: Results = new Map()
     process(p: Package) {
-        const fn = (calls as any)[p.call]
-        if (!fn) {
-            this.respond(p.seq, undefined, `callable [${p.call}] not found`)
-            return
-        }
-        try {
-            const result = fn(p.arg, p.payload)
-            if (result instanceof Promise) {
-                this.respond(p.seq, undefined, "async calls are prohibited")
-                return
-            }
-            this.respond(p.seq, result)
-        } catch (e: any) {
-            this.respond(p.seq, undefined, e?.message ? e.message : "unkown error")
-        }
-    }
-    private respond(seq: number, result: any, error?: string) {
-        this.buffered.set(seq, [result, error])
+        const result = action(p.call, p.arg, { payload: p.payload })
+        this.buffered.set(p.seq, result)
     }
     return(collected: Results) {
         for (const [seq, entry] of collected.entries()) {

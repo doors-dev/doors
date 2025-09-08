@@ -9,6 +9,7 @@
 
 package doors
 
+/*
 import (
 	"encoding/json"
 	"log/slog"
@@ -17,7 +18,6 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front"
 )
-
 type OnError = front.OnError
 type errorAction = front.ErrorAction
 
@@ -55,4 +55,4 @@ func OnErrorCall(name string, meta any) []OnError {
 		Name: name,
 		Meta: meta,
 	}}
-}
+} */

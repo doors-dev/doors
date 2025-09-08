@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/action"
 )
 
 type solitaireInstance interface {
@@ -38,7 +39,7 @@ type solitaire struct {
 	conn   atomic.Pointer[conn]
 }
 
-func (s *solitaire) Call(call common.Call) {
+func (s *solitaire) Call(call action.Call) {
 	err := s.deck.Insert(call)
 	if err != nil {
 		return

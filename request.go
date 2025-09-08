@@ -11,13 +11,13 @@ package doors
 
 import (
 	"context"
-	"github.com/doors-dev/doors/internal/front"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 )
 
+/*
 type afterFunc func(context.Context) (*front.After, error)
 
 func (a afterFunc) after(ctx context.Context) (*front.After, error) {
@@ -82,12 +82,12 @@ func AfterLocationReplace(model any) After {
 			Arg:  []any{l.String(), true},
 		}, nil
 	})
-}
+} */
 
 // RAfter provides the ability to set an After action to execute client-side
 // after the request completes.
 type RAfter interface {
-	After(After) error
+	After([]Action) error
 }
 
 // R provides basic request functionality including cookie management.
@@ -162,12 +162,9 @@ type request struct {
 	ctx context.Context
 }
 
-func (r *request) After(a After) error {
-	after, err := a.after(r.ctx)
-	if err != nil {
-		return err
-	}
-	err = after.Set(r.w.Header())
+func (r *request) After(action []Action) error {
+	actions := intoActions(r.ctx, action)
+	err := actions.Set(r.w.Header())
 	if err != nil {
 		panic(err)
 	}

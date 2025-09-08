@@ -52,7 +52,7 @@ func pageA(b doors.SourceBeam[PathA]) templ.Component {
 		}
 		templ_7745c5c3_Err = doors.AClick{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-				doors.LocationAssign(ctx, PathC{PathC1: true})
+				doors.Call(ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
 				return false
 			},
 		}.Render(ctx, templ_7745c5c3_Buffer)
@@ -99,7 +99,7 @@ func static(path string) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(path)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/test/router/page.templ`, Line: 38, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `page.templ`, Line: 38, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -206,7 +206,7 @@ func pageC(b doors.SourceBeam[PathC]) templ.Component {
 		}
 		templ_7745c5c3_Err = doors.AClick{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-				doors.LocationReplace(ctx, PathC{PathC2: true})
+				doors.Call(ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
 				return true
 			},
 		}.Render(ctx, templ_7745c5c3_Buffer)
@@ -220,7 +220,7 @@ func pageC(b doors.SourceBeam[PathC]) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(doors.RandId())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/test/router/page.templ`, Line: 80, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `page.templ`, Line: 80, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -232,7 +232,7 @@ func pageC(b doors.SourceBeam[PathC]) templ.Component {
 		}
 		templ_7745c5c3_Err = doors.AClick{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-				doors.LocationReload(ctx)
+				doors.Call(ctx, doors.ActionLocationReload{})
 				return false
 			},
 		}.Render(ctx, templ_7745c5c3_Buffer)
@@ -245,7 +245,7 @@ func pageC(b doors.SourceBeam[PathC]) templ.Component {
 		}
 		templ_7745c5c3_Err = doors.AClick{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-				r.After(doors.AfterLocationAssign(PathB{}))
+				r.After(doors.ActionOnlyLocationAssign(PathB{}))
 				return false
 			},
 		}.Render(ctx, templ_7745c5c3_Buffer)
@@ -258,7 +258,7 @@ func pageC(b doors.SourceBeam[PathC]) templ.Component {
 		}
 		templ_7745c5c3_Err = doors.AClick{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-				r.After(doors.AfterLocationReplace(PathB{}))
+				r.After(doors.ActionOnlyLocationReplace(PathB{}))
 				return false
 			},
 		}.Render(ctx, templ_7745c5c3_Buffer)
@@ -271,7 +271,7 @@ func pageC(b doors.SourceBeam[PathC]) templ.Component {
 		}
 		templ_7745c5c3_Err = doors.AClick{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-				r.After(doors.AfterLocationReload())
+				r.After(doors.ActionOnlyLocationReload())
 				return false
 			},
 		}.Render(ctx, templ_7745c5c3_Buffer)

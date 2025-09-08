@@ -16,6 +16,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxwg"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/shredder"
 	"golang.org/x/net/context"
 )
@@ -116,11 +117,10 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 	rw, _ := rm.Writer(c.id)
 
 	call := &doorCall{
-		ctx:  c.parentCtx,
-		name: "door_replace",
-		arg:  c.id,
-		ch:   ch,
-		done: ctxwg.Add(userCtx),
+		ctx:    c.parentCtx,
+		action: &action.DoorReplace{Id: c.id},
+		ch:     ch,
+		done:   ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{
 			Rm:    rm,
 			Index: c.id,
@@ -166,11 +166,10 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 	rw, _ := rm.Writer(c.id)
 
 	call := &doorCall{
-		ctx:  parentCtx,
-		name: "door_update",
-		arg:  c.id,
-		ch:   ch,
-		done: ctxwg.Add(userCtx),
+		ctx:    parentCtx,
+		action: &action.DoorUpdate{Id: c.id},
+		ch:     ch,
+		done:   ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{
 			Rm:    rm,
 			Index: c.id,
@@ -225,11 +224,11 @@ func (c *container) newTacker() (*tracker, context.Context) {
 	ctx, cancel := context.WithCancel(c.parentCtx)
 	cinema := newCinema(c.parentCinema, c.inst, thread, c.id)
 	t := &tracker{
-		cinema:      cinema,
-		children:    common.NewSet[*Door](),
-		thread:      thread,
-		cancel:      cancel,
-		container:   c,
+		cinema:    cinema,
+		children:  common.NewSet[*Door](),
+		thread:    thread,
+		cancel:    cancel,
+		container: c,
 	}
 	ctx = context.WithValue(ctx, common.CtxKeyDoor, t)
 	return t, ctx
@@ -254,11 +253,11 @@ type trackerContainer interface {
 }
 
 type tracker struct {
-	cinema      *Cinema
-	children    common.Set[*Door]
-	thread      *shredder.Thread
-	cancel      context.CancelFunc
-	container   trackerContainer
+	cinema    *Cinema
+	children  common.Set[*Door]
+	thread    *shredder.Thread
+	cancel    context.CancelFunc
+	container trackerContainer
 }
 
 func (c *tracker) Cinema() *Cinema {
@@ -269,11 +268,9 @@ func (c *tracker) Id() uint64 {
 	return c.container.getId()
 }
 
-
 func (c *tracker) RegisterAttrHook(ctx context.Context, h *AttrHook) (*HookEntry, bool) {
 	return c.container.registerHook(c, ctx, h)
 }
-
 
 func (c *tracker) addChild(door *Door) {
 	if c == nil {

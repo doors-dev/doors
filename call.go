@@ -12,72 +12,67 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxwg"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/instance"
 )
 
-type call[O any] struct {
-	inst     instance.Core
-	doorId   uint64
-	ctx      context.Context
-	arg      any
-	name     string
-	done     func()
-	onResult func(O, error)
-	onCancel func()
+type CallResult[T any] struct {
+	Ok  T
+	Err error
 }
 
-func (c *call[O]) Data() *common.CallData {
-	if c.ctx.Err() != nil {
-		return nil
-	}
-	return &common.CallData{
-		Name:    "call",
-		Arg:     []any{c.name, c.arg, c.doorId},
-		Payload: common.WritableNone{},
-	}
+func Call(ctx context.Context, action Action) context.CancelFunc {
+	_, cancel := call[json.RawMessage](ctx, action)
+	return cancel
 }
 
-func (c call[O]) Cancel() {
-	defer c.done()
-	if c.onCancel == nil {
-		return
-	}
-	c.onCancel()
+func XCall[T any](ctx context.Context, action Action) (<-chan CallResult[T], context.CancelFunc) {
+	common.LogBlockingWarning(ctx, "action", "XCall")
+	return call[T](ctx, action)
 }
 
-func (c *call[O]) Result(r json.RawMessage, err error) {
+func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], context.CancelFunc) {
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
+	door := ctx.Value(common.CtxKeyDoor).(door.Core)
+	ch := make(chan CallResult[T], 1)
+	a, err := action.action(ctx, inst, door)
+	res := CallResult[T]{}
 	if err != nil {
-		slog.Error("Call failed", slog.String("call_name", c.name), slog.String("error", err.Error()))
+		slog.Error("Action preparation errror", slog.String("error", err.Error()))
+		res.Err = err
+		ch <- res
+		close(ch)
+		return ch, func() {}
 	}
-	if c.onResult == nil {
-		c.done()
-		return
+	if ctx.Err() != nil {
+		close(ch)
+		slog.Error("Call attempt from the canceled context", slog.String("action", a.Log()))
+		return ch, func() {}
 	}
-	ok := c.inst.Spawn(func() {
-		defer c.done()
-		var output O
-		if err != nil {
-			c.onResult(output, errors.Join(errors.New("execution error"), err))
+	cancel := inst.SimpleCall(
+		ctx,
+		a,
+		func(rm json.RawMessage, err error) {
+			if err != nil {
+				res.Err = err
+			} else {
+				res.Err = json.Unmarshal(rm, &res.Ok)
+			}
+			ch <- res
+			close(ch)
 			return
-		}
-		err = json.Unmarshal(r, &output)
-		if err != nil {
-			c.onResult(output, errors.Join(errors.New("result unmarshal error"), err))
-			return
-		}
-		c.onResult(output, err)
-	})
-	if !ok {
-		c.onCancel()
-	}
+		},
+		func() {
+			close(ch)
+		},
+	)
+	return ch, cancel
 }
 
+/*
 // Call invokes a JavaScript handler previously registered on the client
 // with $d.on(name, fn). The argument is marshaled to JSON and passed to
 // the handler. The handler’s return value is unmarshaled into OUTPUT and
@@ -131,5 +126,4 @@ func Call[OUTPUT any](ctx context.Context, name string, arg any, onResult func(O
 //
 func Fire(ctx context.Context, name string, arg any) context.CancelFunc {
 	return Call[json.RawMessage](ctx, name, arg, nil, nil)
-}
-
+} */

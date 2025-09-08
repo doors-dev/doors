@@ -87,13 +87,13 @@ type AHref struct {
 	// Stops event propagation (for dynamic link)
 	StopPropagation bool
 	// Scrolls into selector (for dynamic link)
-	ScrollInto string
-	// Loading indications (for dynamic link)
 	Indicator []Indicator
-	// Action on error (for dynamic link)
-	OnError []OnError
 	// For analytics purposes
-	Callback func()
+	On func(r RAfter)
+	// Action on error (for dynamic link)
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (h *AHref) active() []any {
@@ -127,16 +127,8 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 	if ok {
 		entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 			Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-				if h.Callback != nil {
-					defer h.Callback()
-				}
-				if h.ScrollInto != "" {
-					r := request{
-						w:   w,
-						r:   r,
-						ctx: ctx,
-					}
-					r.After(AfterScrollInto(h.ScrollInto, false))
+				if h.On != nil {
+					defer h.On(&request{w: w, r: r, ctx: ctx})
 				}
 				on(ctx)
 				return false
@@ -150,7 +142,8 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 		}, &front.Hook{
 			Scope:     []*ScopeSet{front.LatestScope("link")},
 			Indicate:  front.IntoIndicate(h.Indicator),
-			Error:     front.IntoErrorAction(h.OnError),
+			Before:    intoActions(ctx, h.Before),
+			OnError:   intoActions(ctx, h.OnError),
 			HookEntry: entry,
 		})
 	}

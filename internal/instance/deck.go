@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/action"
 )
 
 func newDeck(inst solitaireInstance, queueLimit int, issueLimit int, syncTimeout time.Duration) *deck {
@@ -115,16 +116,17 @@ func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
 			}
 			return writeOk, nil
 		}
-		data := card.call.Data()
-		if data == nil {
+		action, ok := card.call.Action()
+		if !ok {
 			d.expirator.Report(card.seq())
 			card.call.Cancel()
 			d.skipRange(card.startSeq, card.endSeq)
 			continue
 		}
 		issuedCall := &issuedCall{
-			data: data,
-			call: card.call,
+			invocation: action.Invocation(),
+			payload:    card.call.Payload(),
+			call:       card.call,
 		}
 		err := issuedCall.write(header, w)
 		if err != nil {
@@ -222,7 +224,7 @@ func (d *deck) OnReport(s *report) (err error) {
 	}
 	return nil
 }
-func (d *deck) Insert(call common.Call) (err error) {
+func (d *deck) Insert(call action.Call) (err error) {
 	defer func() {
 		if err != nil {
 			d.inst.syncError(err)
@@ -262,7 +264,7 @@ func (d *deck) dec() {
 	d.deckSize -= 1
 }
 
-func (d *deck) restore(seq uint64, call common.Call) error {
+func (d *deck) restore(seq uint64, call action.Call) error {
 	n := newRestoredCard(seq, call)
 	if d.top == nil {
 		d.top = n
@@ -330,7 +332,7 @@ type head interface {
 	setTail(*card)
 }
 
-func newRestoredCard(seq uint64, call common.Call) *card {
+func newRestoredCard(seq uint64, call action.Call) *card {
 	return &card{
 		startSeq: seq,
 		endSeq:   seq,
@@ -339,7 +341,7 @@ func newRestoredCard(seq uint64, call common.Call) *card {
 	}
 }
 
-func newCard(seq uint64, call common.Call) *card {
+func newCard(seq uint64, call action.Call) *card {
 	return &card{
 		startSeq: seq,
 		endSeq:   seq,
@@ -357,7 +359,7 @@ func newFillerCard(seq uint64) *card {
 type card struct {
 	startSeq uint64
 	endSeq   uint64
-	call     common.Call
+	call     action.Call
 	tail     *card
 	restored bool
 }
@@ -459,9 +461,9 @@ func (c *card) skipSeq(seq uint64, h head) {
 
 func newHeader(startSeq uint64, endSeq uint64) header {
 	if startSeq == endSeq {
-		return []any{endSeq}
+		return []any{[]uint64{endSeq}}
 	}
-	return []any{endSeq, startSeq}
+	return []any{[]uint64{endSeq, startSeq}}
 
 }
 
@@ -497,17 +499,18 @@ func (h header) write(w io.Writer) error {
 }
 
 type issuedCall struct {
-	call common.Call
-	data *common.CallData
+	call       action.Call
+	invocation *action.Invocation
+	payload    common.Writable
 }
 
 func (i *issuedCall) write(h header, w io.Writer) error {
-	header := append(h, i.data.Name, i.data.Arg)
+	header := append(h, i.invocation)
 	err := header.write(w)
 	if err != nil {
 		return err
 	}
-	if _, ok := i.data.Payload.(common.WritableNone); ok {
+	if _, ok := i.payload.(common.WritableNone); ok {
 		_, err = w.Write(terminator)
 		return err
 	}
@@ -515,7 +518,7 @@ func (i *issuedCall) write(h header, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = i.data.Payload.Write(w)
+	err = i.payload.Write(w)
 	if err != nil {
 		return err
 	}

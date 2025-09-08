@@ -49,165 +49,165 @@ func SelectorParentQuery(query string) Selector {
 	return (*selector)(front.SelectParentQuery(query))
 }
 
-// ContentIndicator temporarily replaces the innerHTML of the selected element.
+// IndicatorContent temporarily replaces the innerHTML of the selected element.
 // The original content is automatically restored when the indicator is removed.
-type ContentIndicator struct {
+type IndicatorContent struct {
 	Selector Selector // Element selector
 	Content  string   // Text content to display
 }
 
-func (c ContentIndicator) Indicate() *indicate {
+func (c IndicatorContent) Indicate() *indicate {
 	return front.IndicateContent(c.Selector.selector(), c.Content)
 }
 
-// AttrIndicator temporarily sets an attribute on the selected element.
+// IndicatorAttr temporarily sets an attribute on the selected element.
 // The original attribute value (if any) is automatically restored when the indicator is removed.
-type AttrIndicator struct {
+type IndicatorAttr struct {
 	Selector Selector // Element selector
 	Name     string   // Attribute name
 	Value    string   // Attribute value
 }
 
-func (c AttrIndicator) Indicate() *indicate {
+func (c IndicatorAttr) Indicate() *indicate {
 	return front.IndicateAttr(c.Selector.selector(), c.Name, c.Value)
 }
 
-// ClassIndicator temporarily adds CSS classes to the selected element.
+// IndicatorClass temporarily adds CSS classes to the selected element.
 // Multiple classes can be specified separated by spaces.
 // The classes are automatically removed when the indicator is removed.
-type ClassIndicator struct {
+type IndicatorClass struct {
 	Selector Selector // Element selector
 	Class    string   // CSS classes to add (space-separated)
 }
 
-func (c ClassIndicator) Indicate() *indicate {
+func (c IndicatorClass) Indicate() *indicate {
 	return front.IndicateClass(c.Selector.selector(), c.Class)
 }
 
-// ClassRemoveIndicator temporarily removes CSS classes from the selected element.
+// IndicatorClassRemove temporarily removes CSS classes from the selected element.
 // Multiple classes can be specified separated by spaces.
 // The classes are automatically restored when the indicator is removed.
-type ClassRemoveIndicator struct {
+type IndicatorClassRemove struct {
 	Selector Selector // Element selector
 	Class    string   // CSS classes to remove (space-separated)
 }
 
-func (c ClassRemoveIndicator) Indicate() *indicate {
+func (c IndicatorClassRemove) Indicate() *indicate {
 	return front.IndicateClassRemove(c.Selector.selector(), c.Class)
 }
 
-// IndicatorContent creates an indicator that changes the content of the target element.
+// IndicatorOnlyContent creates an indicator that changes the content of the target element.
 // This is a convenience function equivalent to ContentIndicator{SelectorTarget(), content}.
-func IndicatorContent(content string) []Indicator {
-	return []Indicator{ContentIndicator{
+func IndicatorOnlyContent(content string) []Indicator {
+	return []Indicator{IndicatorContent{
 		Selector: SelectorTarget(),
 		Content:  content,
 	}}
 }
 
-// IndicatorAttr creates an indicator that sets an attribute on the target element.
+// IndicatorOnlyAttr creates an indicator that sets an attribute on the target element.
 // This is a convenience function equivalent to AttrIndicator{SelectorTarget(), attr, value}.
-func IndicatorAttr(attr string, value string) []Indicator {
-	return []Indicator{AttrIndicator{
+func IndicatorOnlyAttr(attr string, value string) []Indicator {
+	return []Indicator{IndicatorAttr{
 		Selector: SelectorTarget(),
 		Name:     attr,
 		Value:    value,
 	}}
 }
 
-// IndicatorClassRemove creates an indicator that removes CSS classes from the target element.
+// IndicatorOnlyClassRemove creates an indicator that removes CSS classes from the target element.
 // Multiple classes can be specified separated by spaces.
 // This is a convenience function equivalent to ClassRemoveIndicator{SelectorTarget(), class}.
-func IndicatorClassRemove(class string) []Indicator {
-	return []Indicator{ClassRemoveIndicator{
+func IndicatorOnlyClassRemove(class string) []Indicator {
+	return []Indicator{IndicatorClassRemove{
 		Selector: SelectorTarget(),
 		Class:    class,
 	}}
 }
 
-// IndicatorClass creates an indicator that adds CSS classes to the target element.
+// IndicatorOnlyClass creates an indicator that adds CSS classes to the target element.
 // Multiple classes can be specified separated by spaces.
 // This is a convenience function equivalent to ClassIndicator{SelectorTarget(), class}.
-func IndicatorClass(class string) []Indicator {
-	return []Indicator{ClassIndicator{
+func IndicatorOnlyClass(class string) []Indicator {
+	return []Indicator{IndicatorClass{
 		Selector: SelectorTarget(),
 		Class:    class,
 	}}
 }
 
-// IndicatorContentQuery creates an indicator that changes the content of an element selected by CSS query.
+// IndicatorOnlyContentQuery creates an indicator that changes the content of an element selected by CSS query.
 // The query parameter should be a valid CSS selector string.
-func IndicatorContentQuery(query string, content string) []Indicator {
-	return []Indicator{ContentIndicator{
+func IndicatorOnlyContentQuery(query string, content string) []Indicator {
+	return []Indicator{IndicatorContent{
 		Selector: SelectorQuery(query),
 		Content:  content,
 	}}
 }
 
-// IndicatorAttrQuery creates an indicator that sets an attribute on an element selected by CSS query.
+// IndicatorOnlyAttrQuery creates an indicator that sets an attribute on an element selected by CSS query.
 // The query parameter should be a valid CSS selector string.
-func IndicatorAttrQuery(query string, attr string, value string) []Indicator {
-	return []Indicator{AttrIndicator{
+func IndicatorOnlyAttrQuery(query string, attr string, value string) []Indicator {
+	return []Indicator{IndicatorAttr{
 		Selector: SelectorQuery(query),
 		Name:     attr,
 		Value:    value,
 	}}
 }
 
-// IndicatorClassQuery creates an indicator that adds CSS classes to an element selected by CSS query.
+// IndicatorOnlyClassQuery creates an indicator that adds CSS classes to an element selected by CSS query.
 // The query parameter should be a valid CSS selector string.
 // Multiple classes can be specified separated by spaces.
-func IndicatorClassQuery(query string, class string) []Indicator {
-	return []Indicator{ClassIndicator{
+func IndicatorOnlyClassQuery(query string, class string) []Indicator {
+	return []Indicator{IndicatorClass{
 		Selector: SelectorQuery(query),
 		Class:    class,
 	}}
 }
 
-// IndicatorClassRemoveQuery creates an indicator that removes CSS classes from an element selected by CSS query.
+// IndicatorOnlyClassRemoveQuery creates an indicator that removes CSS classes from an element selected by CSS query.
 // The query parameter should be a valid CSS selector string.
 // Multiple classes can be specified separated by spaces.
-func IndicatorClassRemoveQuery(query string, class string) []Indicator {
-	return []Indicator{ClassRemoveIndicator{
+func IndicatorOnlyClassRemoveQuery(query string, class string) []Indicator {
+	return []Indicator{IndicatorClassRemove{
 		Selector: SelectorQuery(query),
 		Class:    class,
 	}}
 }
 
-// IndicatorContentQueryParent creates an indicator that changes the content of a parent element.
+// IndicatorOnlyContentQueryParent creates an indicator that changes the content of a parent element.
 // Starting from the target element's parent, it finds the closest ancestor matching the CSS query.
-func IndicatorContentQueryParent(query string, content string) []Indicator {
-	return []Indicator{ContentIndicator{
+func IndicatorOnlyContentQueryParent(query string, content string) []Indicator {
+	return []Indicator{IndicatorContent{
 		Selector: SelectorParentQuery(query),
 		Content:  content,
 	}}
 }
 
-// IndicatorAttrQueryParent creates an indicator that sets an attribute on a parent element.
+// IndicatorOnlyAttrQueryParent creates an indicator that sets an attribute on a parent element.
 // Starting from the target element's parent, it finds the closest ancestor matching the CSS query.
-func IndicatorAttrQueryParent(query string, attr string, value string) []Indicator {
-	return []Indicator{AttrIndicator{
+func IndicatorOnlyAttrQueryParent(query string, attr string, value string) []Indicator {
+	return []Indicator{IndicatorAttr{
 		Selector: SelectorParentQuery(query),
 		Name:     attr,
 		Value:    value,
 	}}
 }
 
-// IndicatorClassQueryParent creates an indicator that adds CSS classes to a parent element.
+// IndicatorOnlyClassQueryParent creates an indicator that adds CSS classes to a parent element.
 // Starting from the target element's parent, it finds the closest ancestor matching the CSS query.
 // Multiple classes can be specified separated by spaces.
-func IndicatorClassQueryParent(query string, class string) []Indicator {
-	return []Indicator{ClassIndicator{
+func IndicatorOnlyClassQueryParent(query string, class string) []Indicator {
+	return []Indicator{IndicatorClass{
 		Selector: SelectorParentQuery(query),
 		Class:    class,
 	}}
 }
 
-// IndicatorClassRemoveQueryParent creates an indicator that removes CSS classes from a parent element.
+// IndicatorOnlyClassRemoveQueryParent creates an indicator that removes CSS classes from a parent element.
 // Starting from the target element's parent, it finds the closest ancestor matching the CSS query.
 // Multiple classes can be specified separated by spaces.
-func IndicatorClassRemoveQueryParent(query string, class string) []Indicator {
-	return []Indicator{ClassRemoveIndicator{
+func IndicatorOnlyClassRemoveQueryParent(query string, class string) []Indicator {
+	return []Indicator{IndicatorClassRemove{
 		Selector: SelectorParentQuery(query),
 		Class:    class,
 	}}

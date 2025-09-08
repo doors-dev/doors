@@ -13,9 +13,9 @@ import (
 	"context"
 	"io"
 
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 )
 
 type KeyboardEvent = front.KeyboardEvent
@@ -39,7 +39,10 @@ type keyEventHook struct {
 	On func(context.Context, REvent[KeyboardEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
+
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (k *keyEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
@@ -52,6 +55,7 @@ func (k *keyEventHook) init(event string, ctx context.Context, n door.Core, inst
 			StopPropagation: k.StopPropagation,
 		},
 		inst:      inst,
+		before:    k.Before,
 		scope:     k.Scope,
 		onError:   k.OnError,
 		indicator: k.Indicator,
@@ -79,7 +83,10 @@ type AKeyDown struct {
 	On func(context.Context, REvent[KeyboardEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
+
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (k AKeyDown) Render(ctx context.Context, w io.Writer) error {
@@ -115,7 +122,10 @@ type AKeyUp struct {
 	On func(context.Context, REvent[KeyboardEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
+
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (k AKeyUp) Render(ctx context.Context, w io.Writer) error {
@@ -130,4 +140,3 @@ func (k AKeyUp) Init(ctx context.Context, n door.Core, inst instance.Core, attrs
 	p := (*keyEventHook)(&k)
 	p.init("keyup", ctx, n, inst, attrs)
 }
-

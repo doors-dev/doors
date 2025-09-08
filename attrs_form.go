@@ -14,9 +14,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 	"github.com/go-playground/form/v4"
 )
 
@@ -52,8 +52,12 @@ type ARawSubmit struct {
 	// It receives a RawFormRequest and should return true (is done)
 	// when processing is complete and the hook can be removed.
 	On func(context.Context, RRawForm) bool
+
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
+
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (s ARawSubmit) Render(ctx context.Context, w io.Writer) error {
@@ -72,7 +76,8 @@ func (s ARawSubmit) Init(ctx context.Context, n door.Core, inst instance.Core, a
 		return
 	}
 	attrs.AppendCapture(&front.FormCapture{}, &front.Hook{
-		Error:     front.IntoErrorAction(s.OnError),
+		OnError:   intoActions(ctx, s.OnError),
+		Before:    intoActions(ctx, s.Before),
 		Scope:     front.IntoScopeSet(inst, s.Scope),
 		Indicate:  front.IntoIndicate(s.Indicator),
 		HookEntry: entry,
@@ -130,7 +135,10 @@ type ASubmit[D any] struct {
 	On func(context.Context, RForm[D]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
+
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (s ASubmit[V]) Render(ctx context.Context, w io.Writer) error {
@@ -149,7 +157,8 @@ func (s ASubmit[V]) Init(ctx context.Context, n door.Core, inst instance.Core, a
 		return
 	}
 	attrs.AppendCapture(&front.FormCapture{}, &front.Hook{
-		Error:     front.IntoErrorAction(s.OnError),
+		OnError:   intoActions(ctx, s.OnError),
+		Before:    intoActions(ctx, s.Before),
 		Scope:     front.IntoScopeSet(inst, s.Scope),
 		Indicate:  front.IntoIndicate(s.Indicator),
 		HookEntry: entry,
@@ -219,7 +228,10 @@ type AChange struct {
 	On func(context.Context, REvent[ChangeEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
+
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (p AChange) Render(ctx context.Context, w io.Writer) error {
@@ -236,6 +248,7 @@ func (p AChange) Init(ctx context.Context, n door.Core, inst instance.Core, attr
 		door:      n,
 		ctx:       ctx,
 		onError:   p.OnError,
+		before:    p.Before,
 		indicator: p.Indicator,
 		inst:      inst,
 		scope:     p.Scope,
@@ -249,7 +262,8 @@ type AInput struct {
 	Indicator    []Indicator
 	On           func(context.Context, REvent[InputEvent]) bool
 	ExcludeValue bool
-	OnError      []OnError
+	OnError      []Action
+	Before       []Action
 }
 
 func (p AInput) Render(ctx context.Context, w io.Writer) error {
@@ -269,6 +283,7 @@ func (p AInput) Init(ctx context.Context, n door.Core, inst instance.Core, attrs
 		inst:      inst,
 		ctx:       ctx,
 		onError:   p.OnError,
+		before:    p.Before,
 		scope:     p.Scope,
 		indicator: p.Indicator,
 		on:        p.On,

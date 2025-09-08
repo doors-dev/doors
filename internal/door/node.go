@@ -16,6 +16,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
@@ -26,7 +27,7 @@ type instance interface {
 	CancelHook(uint64, uint64, error)
 	RegisterHook(uint64, uint64, *DoorHook)
 	NewId() uint64
-	Call(common.Call)
+	Call(action.Call)
 }
 
 type doorMode int

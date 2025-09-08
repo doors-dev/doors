@@ -21,16 +21,16 @@ templ (f *indicatorFragment) Render() {
 templ (f *indicatorFragment) queue() {
 	<div id="q-target" class="base-class" data-a="A0">base</div>
 	@f.button("queue-1", []doors.Indicator{
-		doors.AttrIndicator{
+		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#q-target"),
 			Name:     "data-a",
 			Value:    "A1",
 		},
-		doors.ClassIndicator{
+		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#q-target"),
 			Class:    "class-1",
 		},
-		doors.ContentIndicator{
+		doors.IndicatorContent{
 			Selector: doors.SelectorQuery("#q-target"),
 			Content:  "first",
 		},
@@ -38,16 +38,16 @@ templ (f *indicatorFragment) queue() {
 	@f.button("queue-2", []doors.Indicator{
 		// Partial update: does NOT touch data-a, so when this applies
 		// data-a should restore to original (A0).
-		doors.AttrIndicator{
+		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#q-target"),
 			Name:     "data-b",
 			Value:    "B2",
 		},
-		doors.ClassIndicator{
+		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#q-target"),
 			Class:    "class-2",
 		},
-		doors.ContentIndicator{
+		doors.IndicatorContent{
 			Selector: doors.SelectorQuery("#q-target"),
 			Content:  "second",
 		},
@@ -55,62 +55,61 @@ templ (f *indicatorFragment) queue() {
 	@f.button("queue-3", []doors.Indicator{
 		// Partial update: does NOT touch data-a, so when this applies
 		// data-a should restore to original (A0).
-		doors.AttrIndicator{
+		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#q-target"),
 			Name:     "data-b",
 			Value:    "B2",
 		},
-		doors.AttrIndicator{
+		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#q-target"),
 			Name:     "data-a",
 			Value:    "A3",
 		},
-		doors.ClassIndicator{
+		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#q-target"),
 			Class:    "class-2",
 		},
-		doors.ClassIndicator{
+		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#q-target"),
 			Class:    "class-3",
 		},
-		doors.ContentIndicator{
+		doors.IndicatorContent{
 			Selector: doors.SelectorQuery("#q-target"),
 			Content:  "second",
 		},
 	})
 }
 
-
 templ (f *indicatorFragment) restore() {
 	<div id="indicator-1" class="class-1 class-3" data-attr1="val-1">content-1</div>
 	@f.button("action-1", []doors.Indicator{
-		doors.AttrIndicator{
+		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#indicator-1"),
 			Name:     "data-attr1",
 			Value:    "val-other",
 		},
-		doors.AttrIndicator{
+		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#indicator-1"),
 			Name:     "data-attr2",
 			Value:    "val-2",
 		},
-		doors.ClassIndicator{
+		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#indicator-1"),
 			Class:    "class-1",
 		},
-		doors.ClassIndicator{
+		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#indicator-1"),
 			Class:    "class-1",
 		},
-		doors.ClassRemoveIndicator{
+		doors.IndicatorClassRemove{
 			Selector: doors.SelectorQuery("#indicator-1"),
 			Class:    "class-3",
 		},
-		doors.ClassIndicator{
+		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#indicator-1"),
 			Class:    "class-2",
 		},
-		doors.ContentIndicator{
+		doors.IndicatorContent{
 			Selector: doors.SelectorQuery("#indicator-1"),
 			Content:  "indication",
 		},
@@ -120,9 +119,9 @@ templ (f *indicatorFragment) restore() {
 templ (f *indicatorFragment) selectors() {
 	<div id="next" class="block"></div>
 	<div id="parent" class="block">
-		@f.button("indicate-parent", doors.IndicatorAttrQueryParent(".block", "data-check", "true"))
-		@f.button("indicate-self", doors.IndicatorContent("indication"))
-		@f.button("indicate-selector", doors.IndicatorAttrQuery("#next", "data-check", "true"))
+		@f.button("indicate-parent", doors.IndicatorOnlyAttrQueryParent(".block", "data-check", "true"))
+		@f.button("indicate-self", doors.IndicatorOnlyContent("indication"))
+		@f.button("indicate-selector", doors.IndicatorOnlyAttrQuery("#next", "data-check", "true"))
 	</div>
 }
 

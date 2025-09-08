@@ -105,9 +105,9 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 				}
 				currentMeta = newMeta
 				cancel()
-				cancel = Fire(ctx,
-					"update_metadata",
-					map[string]interface{}{
+				cancel = Call(ctx, ActionEmit{
+					Name: "d00r_head",
+					Arg: map[string]interface{}{
 						"title": newMeta.Title,
 						"meta": func() map[string]string {
 							escapedTags := make(map[string]string, len(newMeta.Meta))
@@ -117,7 +117,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 							return escapedTags
 						}(),
 					},
-				)
+				})
 			})
 		})
 		if !ok {
@@ -198,7 +198,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <script>\n            let tags = new Set($d.data(\"tags\"))\n\t\t\t$d.on(\"update_metadata\", (data) => {\n                document.title = data.title;\n                const removeTags = tags\n                tags = new Set()\n                for(const [name, content] of Object.entries(data.meta)) {\n                    removeTags.delete(name)\n                    tags.add(name)\n                    let meta = document.querySelector(`meta[name=\"${name}\"]`);\n                    if (meta) {\n                        meta.setAttribute('content', content);\n                        continue\n                    } \n                    meta = document.createElement('meta');\n                    meta.setAttribute('name', name);\n                    meta.setAttribute('content', content);\n                    document.head.appendChild(meta);\n                }\n                for(const name of removeTags) {\n                    const meta = document.querySelector(`meta[name=\"${name}\"]`)\n                    meta.remove();\n                }\n\t\t\t});\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <script>\n            let tags = new Set($d.data(\"tags\"))\n\t\t\t$d.on(\"d00r_head\", (data) => {\n                document.title = data.title;\n                const removeTags = tags\n                tags = new Set()\n                for(const [name, content] of Object.entries(data.meta)) {\n                    removeTags.delete(name)\n                    tags.add(name)\n                    let meta = document.querySelector(`meta[name=\"${name}\"]`);\n                    if (meta) {\n                        meta.setAttribute('content', content);\n                        continue\n                    } \n                    meta = document.createElement('meta');\n                    meta.setAttribute('name', name);\n                    meta.setAttribute('content', content);\n                    document.head.appendChild(meta);\n                }\n                for(const name of removeTags) {\n                    const meta = document.querySelector(`meta[name=\"${name}\"]`)\n                    meta.remove();\n                }\n\t\t\t});\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

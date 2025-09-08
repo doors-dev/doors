@@ -40,7 +40,7 @@ type focusIOEventHook struct {
 	On func(context.Context, REvent[FocusEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
 }
 
 func (p *focusIOEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
@@ -74,7 +74,7 @@ type focusEventHook struct {
 	On func(context.Context, REvent[FocusEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
 }
 
 func (p *focusEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
@@ -107,7 +107,7 @@ type AFocus struct {
 	On func(context.Context, REvent[FocusEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
 }
 
 func (f AFocus) Render(ctx context.Context, w io.Writer) error {
@@ -138,7 +138,7 @@ type ABlur struct {
 	On func(context.Context, REvent[FocusEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
 }
 
 func (b ABlur) Render(ctx context.Context, w io.Writer) error {
@@ -175,7 +175,7 @@ type AFocusIn struct {
 	On func(context.Context, REvent[FocusEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
 }
 
 func (f AFocusIn) Render(ctx context.Context, w io.Writer) error {
@@ -212,7 +212,7 @@ type AFocusOut struct {
 	On func(context.Context, REvent[FocusEvent]) bool
 
 	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	OnError []Action
 }
 
 func (f AFocusOut) Render(ctx context.Context, w io.Writer) error {

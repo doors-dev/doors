@@ -23,26 +23,22 @@ type PointerEvent = front.PointerEvent
 type pointerEventHook struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
-
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
-
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
 	ExactTarget bool
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
-
 	// On is the required backend handler for the click event.
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (p *pointerEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
@@ -58,6 +54,7 @@ func (p *pointerEventHook) init(event string, ctx context.Context, n door.Core, 
 		door:      n,
 		scope:     p.Scope,
 		ctx:       ctx,
+		before:    p.Before,
 		onError:   p.OnError,
 		indicator: p.Indicator,
 		on:        p.On,
@@ -68,26 +65,22 @@ func (p *pointerEventHook) init(event string, ctx context.Context, n door.Core, 
 type AClick struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
-
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
-
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
 	ExactTarget bool
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
-
 	// On is the required backend handler for the click event.
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (p AClick) Render(ctx context.Context, w io.Writer) error {
@@ -107,26 +100,22 @@ func (c AClick) Init(ctx context.Context, n door.Core, inst instance.Core, attrs
 type APointerDown struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
-
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
-
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
 	ExactTarget bool
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
-
 	// On is the required backend handler for the click event.
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (c APointerDown) Render(ctx context.Context, w io.Writer) error {
@@ -146,26 +135,22 @@ func (c APointerDown) Init(ctx context.Context, n door.Core, inst instance.Core,
 type APointerUp struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
-
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
-
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
 	ExactTarget bool
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
-
 	// On is the required backend handler for the click event.
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (c APointerUp) Render(ctx context.Context, w io.Writer) error {
@@ -185,26 +170,22 @@ func (c APointerUp) Init(ctx context.Context, n door.Core, inst instance.Core, a
 type APointerMove struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
-
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
-
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
 	ExactTarget bool
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
-
 	// On is the required backend handler for the click event.
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (c APointerMove) Render(ctx context.Context, w io.Writer) error {
@@ -240,26 +221,22 @@ func (c APointerOver) Init(ctx context.Context, n door.Core, inst instance.Core,
 type APointerOut struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
-
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
-
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
 	ExactTarget bool
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
-
 	// On is the required backend handler for the click event.
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (c APointerOut) Render(ctx context.Context, w io.Writer) error {
@@ -279,26 +256,22 @@ func (c APointerOut) Init(ctx context.Context, n door.Core, inst instance.Core, 
 type APointerEnter struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
-
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
-
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
 	ExactTarget bool
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
-
 	// On is the required backend handler for the click event.
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (c APointerEnter) Render(ctx context.Context, w io.Writer) error {
@@ -318,26 +291,22 @@ func (c APointerEnter) Init(ctx context.Context, n door.Core, inst instance.Core
 type APointerLeave struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
-
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
-
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
 	ExactTarget bool
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
-
 	// On is the required backend handler for the click event.
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (c APointerLeave) Render(ctx context.Context, w io.Writer) error {
@@ -357,26 +326,22 @@ func (c APointerLeave) Init(ctx context.Context, n door.Core, inst instance.Core
 type APointerCancel struct {
 	// StopPropagation, if true, stops the event from bubbling up the DOM.
 	StopPropagation bool
-
 	// PreventDefault, if true, prevents the browser's default action for the event.
 	PreventDefault bool
-
 	// ExactTarget, if true, only fires when the event occurs on this element itself.
 	ExactTarget bool
-
 	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate that the hook is running.
 	Indicator []Indicator
-
 	// On is the required backend handler for the click event.
 	// It receives a typed REvent[PointerEvent] and should return true
 	// when the hook is considered complete and can be removed.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
 }
 
 func (c APointerCancel) Render(ctx context.Context, w io.Writer) error {
@@ -393,7 +358,26 @@ func (c APointerCancel) Init(ctx context.Context, n door.Core, inst instance.Cor
 }
 
 // AGotPointerCapture is an attribute struct used with A(ctx, ...) to handle 'gotpointercapture' events via backend hooks.
-type AGotPointerCapture pointerEventHook
+type AGotPointerCapture struct {
+	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	StopPropagation bool
+	// PreventDefault, if true, prevents the browser's default action for the event.
+	PreventDefault bool
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
+	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	Scope []Scope
+	// Indicator specifies how to visually indicate that the hook is running.
+	Indicator []Indicator
+	// On is the required backend handler for the click event.
+	// It receives a typed REvent[PointerEvent] and should return true
+	// when the hook is considered complete and can be removed.
+	On func(context.Context, REvent[PointerEvent]) bool
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
+}
 
 func (c AGotPointerCapture) Render(ctx context.Context, w io.Writer) error {
 	return front.AttrRender(ctx, w, c)
@@ -409,7 +393,26 @@ func (c AGotPointerCapture) Init(ctx context.Context, n door.Core, inst instance
 }
 
 // ALostPointerCapture is an attribute struct used with A(ctx, ...) to handle 'lostpointercapture' events via backend hooks.
-type ALostPointerCapture pointerEventHook
+type ALostPointerCapture struct {
+	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	StopPropagation bool
+	// PreventDefault, if true, prevents the browser's default action for the event.
+	PreventDefault bool
+	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	ExactTarget bool
+	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	Scope []Scope
+	// Indicator specifies how to visually indicate that the hook is running.
+	Indicator []Indicator
+	// On is the required backend handler for the click event.
+	// It receives a typed REvent[PointerEvent] and should return true
+	// when the hook is considered complete and can be removed.
+	On func(context.Context, REvent[PointerEvent]) bool
+	// OnError determines what to do if error occured during hook request
+	OnError []Action
+	// Before derermines actions to do just before hook request
+	Before []Action
+}
 
 func (c ALostPointerCapture) Render(ctx context.Context, w io.Writer) error {
 	return front.AttrRender(ctx, w, c)

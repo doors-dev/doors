@@ -70,9 +70,9 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 			}
 			currentMeta = newMeta
 			cancel()
-			cancel = Fire(ctx,
-				"update_metadata",
-				map[string]interface{}{
+			cancel = Call(ctx, ActionEmit{
+				Name: "d00r_head",
+				Arg: map[string]interface{}{
 					"title": newMeta.Title,
 					"meta": func() map[string]string {
 						escapedTags := make(map[string]string, len(newMeta.Meta))
@@ -82,7 +82,7 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 						return escapedTags
 					}(),
 				},
-			)
+			})
 		})
 	})
 	if !ok {
@@ -107,7 +107,7 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 		}
 		<script>
             let tags = new Set($d.data("tags"))
-			$d.on("update_metadata", (data) => {
+			$d.on("d00r_head", (data) => {
                 document.title = data.title;
                 const removeTags = tags
                 tags = new Set()

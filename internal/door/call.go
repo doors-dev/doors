@@ -16,13 +16,13 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxwg"
+	"github.com/doors-dev/doors/internal/front/action"
 )
 
 type doorCall struct {
 	ctx     context.Context
-	name    string
 	ch      chan error
-	arg     any
+	action  action.Action
 	payload common.Writable
 	done    ctxwg.Done
 }
@@ -33,7 +33,7 @@ func (n *doorCall) Cancel() {
 
 func (n *doorCall) Result(_ json.RawMessage, err error) {
 	if err != nil {
-		slog.Error("door ["+n.name+"] rendering error", slog.String("error", err.Error()))
+		slog.Error("door rendering error", slog.String("error", err.Error()))
 	}
 	n.send(err)
 }
@@ -47,13 +47,13 @@ func (n *doorCall) send(err error) {
 	n.done()
 }
 
-func (n *doorCall) Data() *common.CallData {
-	if n.ctx.Err() != nil {
-		return nil
+func (c *doorCall) Action() (action.Action, bool) {
+	if c.ctx.Err() != nil {
+		return nil, false
 	}
-	return &common.CallData{
-		Name:    n.name,
-		Arg:     n.arg,
-		Payload: n.payload,
-	}
+	return c.action, true
+}
+
+func (c *doorCall) Payload() common.Writable {
+	return c.payload
 }

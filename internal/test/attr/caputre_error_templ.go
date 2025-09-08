@@ -59,7 +59,7 @@ func (f *errorFragment) Render() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<script>\n            const r = document.getElementById(\"report\")\n            $d.on(\"root\", (e) => {\n                    console.log(e)\n                r.innerHTML = \"root/\"+e.meta\n            })\n            $d.on(\"error\", (e) => {\n                    console.log(e)\n                r.innerHTML = \"root_error/\"+e.meta\n            })\n        </script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<script>\n            const r = document.getElementById(\"report\")\n            $d.on(\"root\", (arg, e) => {\n                    console.log(e)\n                r.innerHTML = \"root/\"+arg\n            })\n            $d.on(\"error\", (arg, e) => {\n                    console.log(e)\n                r.innerHTML = \"root_error/\"+arg\n            })\n        </script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -69,11 +69,11 @@ func (f *errorFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = f.button("err_1", doors.OnErrorCall("error", "err_1")).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = f.button("err_1", doors.ActionOnlyEmit("error", "err_1")).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = f.button("err_2", doors.OnErrorCall("root", "err_2")).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = f.button("err_2", doors.ActionOnlyEmit("root", "err_2")).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -101,7 +101,7 @@ func (f *errorFragment) Render() templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<script>\n                const r = document.getElementById(\"report\")\n                $d.on(\"n1\", (e) => {\n                    console.log(e)\n                    r.innerHTML = \"n1/\"+e.meta\n                })\n                $d.on(\"error\", (e) => {\n                    console.log(e)\n                    r.innerHTML = \"n1_error/\"+e.meta\n                })\n            </script>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<script>\n                const r = document.getElementById(\"report\")\n                $d.on(\"n1\", (arg, e) => {\n                    console.log(e)\n                    r.innerHTML = \"n1/\"+arg\n                })\n                $d.on(\"error\", (arg, e) => {\n                    console.log(e)\n                    r.innerHTML = \"n1_error/\"+arg\n                })\n            </script>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -139,7 +139,7 @@ func (f *errorFragment) Render() templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<script>\n                    const r = document.getElementById(\"report\")\n                    $d.on(\"n2\", (e) => {\n                    console.log(e)\n                        r.innerHTML = \"n2/\"+e.meta\n                    })\n                </script>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<script>\n                    const r = document.getElementById(\"report\")\n                    $d.on(\"n2\", (arg, e) => {\n                    console.log(e)\n                        r.innerHTML = \"n2/\"+arg\n                    })\n                </script>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -153,18 +153,18 @@ func (f *errorFragment) Render() templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = f.button("err_5", []doors.OnError{doors.CallOnError{
+				templ_7745c5c3_Err = f.button("err_5", []doors.Action{doors.ActionEmit{
 					Name: "n2",
-					Meta: "err_5",
-				}, doors.IndicateOnError{
+					Arg:  "err_5",
+				}, doors.ActionIndicate{
 					Duration: 500 * time.Millisecond,
 					Indicator: []doors.Indicator{
-						doors.AttrIndicator{
+						doors.IndicatorAttr{
 							Selector: doors.SelectorQuery("#indicator"),
 							Name:     "data-indicator",
 							Value:    "true",
 						},
-						doors.ContentIndicator{
+						doors.IndicatorContent{
 							Selector: doors.SelectorQuery("#indicator"),
 							Content:  "indicator",
 						},
@@ -177,7 +177,7 @@ func (f *errorFragment) Render() templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = f.button("err_6", doors.OnErrorCall("error", "err_6")).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = f.button("err_6", doors.ActionOnlyEmit("error", "err_6")).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -191,7 +191,7 @@ func (f *errorFragment) Render() templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = f.button("err_3", doors.OnErrorCall("error", "err_3")).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = f.button("err_3", doors.ActionOnlyEmit("error", "err_3")).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -199,7 +199,7 @@ func (f *errorFragment) Render() templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = f.button("err_4", doors.OnErrorCall("n1", "err_4")).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = f.button("err_4", doors.ActionOnlyEmit("n1", "err_4")).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -213,7 +213,7 @@ func (f *errorFragment) Render() templ.Component {
 	})
 }
 
-func (f *errorFragment) button(id string, on []doors.OnError) templ.Component {
+func (f *errorFragment) button(id string, on []doors.Action) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -276,7 +276,7 @@ func (f *errorFragment) button(id string, on []doors.OnError) templ.Component {
 	})
 }
 
-func (f *errorFragment) handler(on []doors.OnError) doors.Attr {
+func (f *errorFragment) handler(on []doors.Action) doors.Attr {
 	return doors.AClick{
 		OnError: on,
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {

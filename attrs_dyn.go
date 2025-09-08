@@ -20,6 +20,7 @@ import (
 	"github.com/doors-dev/doors/internal/common/ctxwg"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
 )
 
@@ -69,7 +70,6 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 	defer a.mu.Unlock()
 	prevValue := a.value
 	prevEnable := a.enable
-
 	if ctx.Err() != nil {
 		return
 	}
@@ -89,16 +89,13 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 		prevEnable: prevEnable,
 	}
 	if a.enable {
-		call.data = &common.CallData{
-			Name:    "dyna_set",
-			Arg:     []any{a.id, a.value},
-			Payload: common.WritableNone{},
+		call.action = &action.DynaSet{
+			Id:    a.id,
+			Value: a.value,
 		}
 	} else {
-		call.data = &common.CallData{
-			Name:    "dyna_remove",
-			Arg:     a.id,
-			Payload: common.WritableNone{},
+		call.action = &action.DynaRemove{
+			Id: a.id,
 		}
 	}
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
@@ -128,10 +125,9 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 		done: ctxwg.Add(ctx),
 		seq:  a.seq,
 		attr: a,
-		data: &common.CallData{
-			Name:    "dyna_set",
-			Arg:     []any{a.id, a.value},
-			Payload: common.WritableNone{},
+		action: &action.DynaSet{
+			Id:    a.id,
+			Value: a.value,
 		},
 		prevValue:  prevValue,
 		prevEnable: prevEnable,
@@ -165,7 +161,7 @@ type dynaCall struct {
 	done       func()
 	seq        int
 	attr       *aDyn
-	data       *common.CallData
+	action     action.Action
 	prevValue  string
 	prevEnable bool
 }
@@ -174,11 +170,15 @@ func (c *dynaCall) Cancel() {
 	c.done()
 }
 
-func (c *dynaCall) Data() *common.CallData {
+func (c *dynaCall) Action() (action.Action, bool) {
 	if c.seq != c.attr.getSeq() {
-		return nil
+		return nil, false
 	}
-	return c.data
+	return c.action, true
+}
+
+func (c *dynaCall) Payload() common.Writable {
+	return common.WritableNone{}
 }
 
 func (c *dynaCall) Result(_ json.RawMessage, err error) {
