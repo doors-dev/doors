@@ -224,7 +224,7 @@ templ menu() {
 					// active link highlighting settings
 					Active: doors.Active{
 						// indicate active link with attribute aria-current="page"
-						Indicator: doors.IndicatorAttr("aria-current", "page"),
+						Indicator: doors.IndicatorOnlyAttr("aria-current", "page"),
 					},
 				}
 				<a>home</a>
@@ -240,7 +240,7 @@ templ menu() {
 					// active link highlighting settings
 					Active: doors.Active{
 						// indicate active link with attribute aria-current="page"
-						Indicator: doors.IndicatorAttr("aria-current", "page"),
+						Indicator: doors.IndicatorOnlyAttr("aria-current", "page"),
 						// page path must start with href value to enable highlighting
 						PathMatcher: doors.PathMatcherStarts(),
 						// ignore query params 

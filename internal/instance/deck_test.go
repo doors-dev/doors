@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 )
@@ -27,7 +26,7 @@ func testCounters(t *testing.T, d *deck, queue int, pending int) {
 	}
 }
 
-func testNothing(t *testing.T, deck *deck, w io.Writer) {
+func testNothing(t *testing.T, deck *deck, w flushWriter) {
 	r, _ := deck.WriteNext(w)
 	if r != nothingToWrite {
 		t.Fatal("queue must be empty")
@@ -60,7 +59,7 @@ func (t testCalls) cancel(i int) {
 	t[i-1].cancel = true
 }
 
-func (t testCalls) insertWrite(deck *deck, w io.Writer, insertCount int, writeCount int) error {
+func (t testCalls) insertWrite(deck *deck, w flushWriter, insertCount int, writeCount int) error {
 	for i := range insertCount {
 		err := deck.Insert(t[i])
 		if err != nil {

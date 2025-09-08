@@ -9,73 +9,114 @@
 
 import doors from "./door"
 import navigator from "./navigator"
+import indicator, { IndicatorEntry } from "./indicator"
 import { removeAttr, setAttr } from "./dyna"
+import { HookErr } from "./capture"
+import { doAfter } from "./lib"
 
-const task = (f: () => void) => {
-    setTimeout(f, 0)
+
+type Options = {
+    error?: HookErr,
+    payload?: string,
+    element?: Element,
 }
 
-export default {
-    location_reload: () => {
-        task(() => {
+const actions = {
+    location_reload: (_: Options) => {
+        doAfter(() => {
             location.reload()
         })
     },
-    location_replace: ([href, origin]: [string, boolean]) => {
+    indicate: (opt: Options, duration: number, indicatations: Array<IndicatorEntry>) => {
+        const id = indicator.start(opt.element ?? null, indicatations)
+        if (id) {
+            setTimeout(() => indicator.end(id), duration)
+        }
+    },
+    location_replace: (_: Options, href: string, origin: boolean) => {
         let url: URL
         if (origin) {
             url = new URL(href, window.location.origin);
         } else {
             url = new URL(href)
         }
-        task(() => {
+        doAfter(() => {
             location.replace(url.toString())
         })
     },
-    scroll_into: ([selector, smooth]: [string, boolean]) => {
+    scroll: (_: Options, selector: string, smooth: boolean) => {
         const el = document.querySelector(selector)
         if (el) {
             el.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
         }
     },
-    location_assign: ([href, origin]: [string, boolean]) => {
+    location_assign: (_: Options, href: string, origin: boolean) => {
         let url: URL
         if (origin) {
             url = new URL(href, window.location.origin);
         } else {
             url = new URL(href)
         }
-        task(() => {
+        doAfter(() => {
             location.assign(url.toString())
         })
     },
-    call: ([name, arg, doorId]: [string, any, number]): any => {
+    emit: (opt: Options, name: string, arg: any, doorId: number): any => {
         const handler = doors.getHandler(doorId, name)
         if (!handler) {
             throw new Error(`Handler ${name} not found`)
         }
-        return handler(arg)
+        return handler(arg, opt.error as any)
     },
-    dyna_set: ([id, value]: [number, string]) => {
+    dyna_set: (_: Options, id: number, value: string) => {
         setAttr(id, value)
     },
-    dyna_remove: (id: number) => {
+    dyna_remove: (_: Options, id: number) => {
         removeAttr(id)
     },
-    set_path: ([p, replace]: [string, boolean]) => {
+    set_path: (_: Options, path: string, replace: boolean) => {
         if (replace) {
-            navigator.replace(p)
+            navigator.replace(path)
             return
         }
-        navigator.push(p)
+        navigator.push(path)
     },
+    door_replace: (opt: Options, doorId: number) => {
+        doors.replace(doorId, opt.payload!)
+    },
+    door_update: (opt: Options, doorId: number) => {
+        doors.update(doorId, opt.payload!)
+    },
+}
 
-    door_replace: (doorId: number, content: string) => {
-        doors.replace(doorId, content)
-    },
+type Output = Exclude<any, undefined>;
+type Err = {
+    message: string;
+    [key: string]: any;
+};
 
-    door_update: (doorId: number, content: string) => {
-        doors.update(doorId, content)
-    },
-    touch: (_: any) => { }
+export type CallResult = ([Output, undefined] | [undefined, Err])
+
+export type Action = [string, Array<any>]
+
+export default function action(name: string, args: Array<any>, options: Options = {}): CallResult {
+    try {
+        const fn = actions[name]
+        if (!fn) {
+            throw new Error(`action [${name}] not found`)
+        }
+        let output = fn(options, ...args)
+        if (output instanceof Promise) {
+            throw new Error("async actions are prohibited")
+        }
+        if (output === undefined) {
+            output = null
+        }
+        return [output, undefined]
+    } catch (e) {
+        if (e && typeof e === "object" && typeof e.message === "string") {
+            return [undefined, e]
+        }
+        return [undefined, new Error("unknown error")]
+    }
 }

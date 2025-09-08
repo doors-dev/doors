@@ -1,35 +1,43 @@
 # JavaScript
 
-For on-page interactivity,  extended event handling, and frontend frameworks integration.
+For on-page interactivity, extended event handling, and integration with frontend frameworks.
 
 ## `$d` Reference
 
-Magic variable to access framework features
+The magic `$d` variable provides access to framework features:
 
-* `$d.data(name: string)`
-  Retrieve data from `doors.AData` attribute
-* `$d.hook(name: string, arg: any): Promise<any>`
-  Call the hook from the `doors.AHook` or `doors.ARawHook` attributes and parse response
-* `$d.rawHook(name: string, arg: any): Promise<Response>`
-  Call the hook from the `doors.AHook` or `doors.ARawHook` and get raw response
-* `$d.CaptureEr`
-  Reference to the error class thrown by hooks, so in the exception, you can check `if(err instanceof $d.CaptureErr)`. A description of CaptureErr can be found in the [Error Handling](./ref/02-error-handling.md) article.
-* `$d.on(name string,  handler: (arg: any) => any)`
-  Register a handler to be called from Go or on error (checkout [Error Handling](./ref/02-error-handling.md) article). No async support.
-* `$d.G: { [key: string]: any }`
-  Getter for the global persistent object to share data between scripts.
-* `$d.clean(handler: () => void | Promise<void>): void`
-  Register a handler to be called when the script is removed from the DOM
+* `$d.data(name: string): any`  
+  Retrieve data provided via `doors.AData`.
 
-## 1. Script Component
+* `$d.hook(name: string, arg: any): Promise<any>`  
+  Call a Go hook defined by `doors.AHook`, serialize/deserialize input/output.
 
-The Script Component provides integration with framework functions. It:
+* `$d.rawHook(name: string, arg: any): Promise<Response>`  
+  Call a Go hook (`doors.AHook` or `doors.ARawHook`) and get the raw `Response`.
 
-* **Provides the magic `$d` variable to access framework features**
-* Converts an inline script to a loaded and cacheable one
-* Minifies (by default)
-* Compiles TypeScript (if attribute `type="application/typescript"` or `"text/typescript"` is provided)
-* Wraps in an anonymous async function, so you can **use await and do not care about global scope pollution** with your variables
+* `$d.HookErr`  
+  Reference to the error class thrown by hooks. You can check errors with  
+  `if (err instanceof $d.HookErr) { … }`.
+
+* `$d.on(name: string, handler: (arg: any, err?: $d.HookErr) => any): void`  
+  Register a handler callable from Go with `ActionEmit` or `Call`.  
+  (No async support in the handler itself.)
+
+* `$d.G: { [key: string]: any }`  
+  Persistent global object to share state between scripts.
+
+* `$d.clean(handler: () => void | Promise<void>): void`  
+  Register a cleanup function to run when the script is removed.
+
+## Script Component
+
+The Script Component integrates inline scripts with framework features:
+
+* Provides the magic `$d` variable
+* Converts inline scripts into loadable, cacheable resources
+* Minifies by default
+* Compiles TypeScript (when `type="application/typescript"` or `"text/typescript"`)
+* Wraps code in an async IIFE, so you can safely `await` and avoid polluting global scope
 
 ```templ
 @doors.Script() {
@@ -39,229 +47,213 @@ The Script Component provides integration with framework functions. It:
 }
 ```
 
-> Script type="module" is not supported by `doors.Script()` . If you need modules, include them via Imports (**ref/imports** article) and then require them in the script via `const module = await import("specifier")`
->
-> *That's intentional, because modules stay in memory for the whole page lifetime.*
+> ⚠️ `type="module"` is not supported in `doors.Script()`.  
+> For ES modules, use **Imports** (see ref/imports article) and load via `await import("specifier")`.
 
 ### Variants
 
-* `doors.Script()`
-  Creates a publicly accessible, cacheable static resource from inline script.
-* `doors.ScriptPrivate()`
-  Creates session-protected resource, internally caches script content.
-* `doors.ScriptDisposable()`
-  Creates a session-protected resource and does not cache content, preventing memory leaks with dynamic scripts.
+* `doors.Script()` — public, cacheable script resource  
+* `doors.ScriptPrivate()` — session-protected, cached script resource  
+* `doors.ScriptDisposable()` — session-protected, not cached, avoids leaks with dynamic scripts  
 
-## 2. Pass Data To JavaScript 
+## Pass Data To JavaScript
 
-With **doors.AData** attribute
+Use **doors.AData** to expose server-side values:
 
-```templ
+```go
 type AData struct {
-  // name to access in js
-	Name  string
-	// any value that can be marshalled to json
+	// Name of the data entry, accessed in JS via $d.data(name).
+	// Required.
+	Name string
+
+	// Value to expose. Marshaled to JSON.
+	// Required.
 	Value any
 }
 ```
 
 Example:
+
 ```templ
 @doors.Script() {
-	@doors.AData {
-		Name: "user_profile",
-		// user struct value
-		Value: user,
-  }
+	@doors.AData{
+		Name:  "user_profile",
+		Value: user, // any Go struct
+	}
 	<script>
-	  // JSONParsed user object
-		const user = $d.data("user_profile") 
+		const user = $d.data("user_profile") // parsed JSON
+		console.log(user.name)
 	</script>
 }
 ```
 
-##  3. Call Go from JavaScript
+## Call Go from JavaScript
 
-### Custom Hook
+### Structured Hook
 
-To call Go from JavaScript with automatic serialization/deserialization of data
+`doors.AHook` handles Go hooks with automatic JSON (un)marshaling:
 
-Attribute:
-
-```templ
+```go
 type AHook[I any, O any] struct {
-  // returns output and a bool value indicating whether
-  // you done (true, hook will be removed) or not (false, hook stays)
-	On        func(ctx context.Context, r RHook[I]) (O, bool)
-	Name      string
-	Scope     []Scope // Scopes API
-	Indicator []Indicator //Indicator API
+	// Hook name, called from JS with $d.hook(name, arg).
+	// Required.
+	Name string
+
+	// Backend handler, receives typed input and returns typed output.
+	// Bool return indicates whether the hook should be removed.
+	// Required.
+	On func(ctx context.Context, r RHook[I]) (O, bool)
+
+	// Optional scope control (see Scopes API).
+	Scope []Scope
+
+	// Optional visual indicators (see Indicator API).
+	Indicator []Indicator
 }
 ```
 
 #### Example
 
 ```templ
-// attach hook to script (attachement allowed inside and outside doors.Script)
 @doors.AHook[string, int]{
-    Name: "length",
-    On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
-      return len(r.Data()), false
-    },
+	Name: "length",
+	On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
+		return len(r.Data()), false
+	},
 }
-@doors.Script() {	
-  <script>
-	  // JSONParsed user object
+
+@doors.Script() {
+	<script>
 		const length = await $d.hook("length", "hello!") 
-		/* 
-		    // alternative, returns response instead of parced data
-				const response = await $d.rawHook("length", "hello!") 
-				const legth = await response.json()
-		*/
 		console.log(length) // 6
 	</script>
 }
 ```
 
-> ⚠️ It's your responsibility to handle exceptions in custom hooks on the front-end. Any hook error will throw an instance of `$d.CaptureErr` class. Please refer to the [Error Handling](./ref/02-error-handling.md) article.
+> ⚠️ On errors, hooks throw `$d.HookErr`. Handle exceptions explicitly.
 
-### Raw Custom Hook
+### Raw Hook
 
-Deal with http request yourself
+`doors.ARawHook` provides low-level access to the HTTP request:
 
-```templ
+```go
 type ARawHook struct {
-	Name      string
-	// RRawHook - request wrapper to parse/read body yourself
-	On        func(ctx context.Context, r RRawHook) bool
-	Scope     []Scope
+	// Hook name, called with $d.rawHook(name, arg).
+	// Required.
+	Name string
+
+	// Backend handler with direct access to body/form.
+	// Required.
+	On func(ctx context.Context, r RRawHook) bool
+
+	// Optional scope control.
+	Scope []Scope
+
+	// Optional visual indicators.
 	Indicator []Indicator
 }
-
 ```
 
-### Data Conversion
+### Data Conversion Rules
 
-When you pass an argument to hook `$d.hook(name, arg) or $d.rawHook(name, arg)`,  arg is converted to the request body:
+When calling `$d.hook` or `$d.rawHook`, the `arg` is converted to the request body:
 
-* `arg === undefined` - no request body
-* `FormData` as is
-* `URLSearchParams` as is with Content-Type "application/x-www-form-urlencoded;charset=UTF-8"
-* `Blob` as is with Content-Type blob.type
-* `File `and `ReadableStream` as octet-stream
-* All the rest as JSON
+* `undefined` → no body  
+* `FormData` → multipart body  
+* `URLSearchParams` → form-urlencoded body  
+* `Blob` → raw blob with `Content-Type`  
+* `File` / `ReadableStream` → octet-stream  
+* Any other value → JSON  
 
-> ℹ️ `$d.rawHook` on the frontend has no relation to  `doors.ARawHook` on the backend.
+> ℹ️ `$d.rawHook` (JS) is not related to `doors.ARawHook` (Go).  
 
-## 4. Call JavaScript from Go
+## Call JavaScript from Go
 
-You can register a JavaScript handler to be called at any time by the server. 
+You can invoke JS handlers registered with `$d.on`.  
 
-⚠️ Async functions are not supported, use hooks to report regarding long running operations
+⚠️ Handlers must be synchronous. For long tasks, use hooks to report back.
 
-**Example:**
+### Register a Handler
 
 ```templ
-@doors.Script() {	
+@doors.Script() {
 	<script>
-    $d.on("my_call", (input) => {
-      // logic
-      return output
-    })
-  </script>
+		$d.on("alert", (msg) => {
+			alert(msg)
+			return true
+		})
+	</script>
 }
 ```
 
-> Return value from the JavaScript handler will be serialized to JSON
+### Invoke a Handler
 
-## Invoke from Go (new API)
+From Go, use `ActionEmit` or the Call API:
 
-### Function
+```go
+// Fire-and-forget
+doors.Call(ctx, ActionEmit{Name: "alert", Arg: "Hello!"})
 
-```templ
-func Call[OUTPUT any](
-  ctx context.Context,
-  name string,
-  arg any,
-  onResult func(OUTPUT, error),
-  onCancel func(),
-) context.CancelFunc
+// Await a return value (best-effort cancelation)
+ch, cancel := doors.XCall[string](ctx, ActionEmit{Name: "alert", Arg: "Hello!"})
+defer cancel()
+res := <-ch
+if res.Err == nil {
+	log.Println("Handler returned:", res.Ok)
+}
 ```
 
-- **ctx**: must be valid 
-- **name**: JS handler name registered with `$d.on(name, fn)`.
-- **arg**: any value; marshaled to JSON and passed to JS.
-- **onResult**: called with the decoded JS return value (into `OUTPUT`) or an error. Pass `nil` if not needed.
-- **onCancel**: called if provided context is canceled, the call is canceled, or cannot be scheduled/delivered due to instance shutdown.  Pass `nil` if not needed.
-- **returns**: a `cancel` function (best-effort)
+### Call Lookup Rules
 
-> Provide `json.RawMessage`  as `OUTPUT` if you don't need parsing
+Handler resolution is scoped to the closest dynamic parent (Door).  
+When invoking:
 
-### Important: Call Registration/Invocation rules
+* A hook can only call handlers **in its parent door or above**  
+* Inner handlers shadow outer ones if names collide  
 
-You register a handler with  `$d.on(name, function)` to the **closest dynamic parent (Door)**. When you perform the Call from Go, it will look for a handler up the tree. 
+## Clean Up
 
-To clarify how it works, let's examine this code:
+Use `$d.clean` for cleanup when a script is removed:
 
-```templ
-@door_1 {
-  @door_2 {
-    @doors.Script() {
-      /* handler 2 */
-    }
-    @Click{/* hook 2 */}
-    <button>button</button>
-  }
-  @doors.Script() {
-    /* handler 1 */
-  }
-  @Click{/* hook 1 */}
-  <button>button</button>
-}
-@doors.Script() {
-  /* handler 0 */
-}
-@Click{/* hook 0 */}
-<button>button</button>
-```
-
-* **hook 0** is able to call only **handler 0**
-* **hook 1** is able to call  **handler 1** and **handler 0**, with priority for **handler 1** (if the name is the same), but not **handler 2**
-* **hook 2** is able to call **handler 2**, **handler 1** and **handler 0**
-
-### Example
-
-```templ
-@doors.Script() {
-  <script>
-    $d.on("alert", (msg) => { alert(msg); return true })
-  </script>
-}
-
-@doors.AClick{
-  On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-    doors.Call[bool](ctx, "alert", "Hello from Go",
-      func(ok bool, err error) { /* handle */ },
-      nil,
-    )
-    return false
-  }
-}
-<button>Alert Me!</button>
-
-```
-
-## 5. Clean Up
-
-You can launch long-running background operations inside a script. `$d` allows the registration of a cleanup handler that will run when the script is removed from the page.
-
-```templ
+```js
 <script>
-		const ctrl = new AbortController()
-		// register clean-up function
-		$d.clean(() => ctrl.abort())
-		
-	  /* start long-running process */
+	const ctrl = new AbortController()
+	$d.clean(() => ctrl.abort())
+	// start background process
 </script>
 ```
 
+## `HookErr` Reference
+
+Hook errors thrown in JS are instances of `$d.HookErr` (subclass of `Error`). If you need 
+
+Error reasons:
+
+* Canceled by scope  *(suppressed in event hooks)*
+* Not Found  - hook expired, 404 code  *(suppressed in event hooks)*
+* Unauthorized -  cause page reload (401 and 410 codes)
+* Bad Request -  not expected to occur (400 code)
+* Other - other 4XX code (not used by framework, if you issued)
+* **Network Error **
+* **Server Error  (5XX code)**
+* Capture Error - not expected to occur (means js side event handling issue)
+
+### Fields
+
+* `status: number | undefined` — HTTP status code (if available)  
+* `cause: Error | undefined` — original error object  
+* `kind: "canceled" | "unauthorized" | "not_found" | "network" | "server" | "bad_request" | "capture"`
+* `message: string` ` 
+
+### Methods
+
+Convenience type checks:
+
+* `canceled(): bool`  
+* `unauthorized(): bool`  
+* `notFound(): bool`  
+* `network(): bool`  
+* `server(): bool`  
+* `badRequest(): bool`  
+* `capture(): bool`  
+* `isOther(): bool`

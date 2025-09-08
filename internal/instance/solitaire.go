@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/action"
 )
 
 type solitaireInstance interface {
@@ -38,7 +39,7 @@ type solitaire struct {
 	conn   atomic.Pointer[conn]
 }
 
-func (s *solitaire) Call(call common.Call) {
+func (s *solitaire) Call(call action.Call) {
 	err := s.deck.Insert(call)
 	if err != nil {
 		return
@@ -70,6 +71,9 @@ func (s *solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn := newConn(s.conf, w, r, s.deck)
+	if conn.ack() != nil {
+		return
+	}
 	s.buffer.Swap(conn)
 	active := s.conn.Load()
 	ch := active.Roll()
@@ -128,6 +132,9 @@ func (c *conn) wait() {
 	}
 }
 
+func (c *conn) ack() (err error) {
+	return c.writer.writeAck()
+}
 func (c *conn) handleCause() {
 	cause := context.Cause(c.ctx)
 	switch cause {
@@ -145,6 +152,7 @@ func (c *conn) handleCause() {
 }
 
 func (c *conn) Run() {
+	defer c.writer.flush()
 	defer c.handleCause()
 	defer c.cleanup()
 	wait := false
@@ -176,6 +184,11 @@ func (c *conn) Run() {
 				c.writer.flush()
 				<-c.ctx.Done()
 			}
+			if writeResult == writeOk {
+				if c.writer.toFlush {
+					c.writer.flush()
+				}
+			}
 			if !zombie && time.Since(start) > c.conf.RollDuration {
 				zombie = true
 			}
@@ -185,7 +198,6 @@ func (c *conn) Run() {
 		}
 	}
 }
-
 
 func (c *conn) cleanup() {
 	c.cancel(nil)
@@ -228,21 +240,38 @@ type writer struct {
 	total       int
 	f           http.Flusher
 	w           http.ResponseWriter
-	flushed     bool
+	after       []func()
+	toFlush     bool
+}
+
+func (w *writer) afterFlush(f func()) {
+	w.after = append(w.after, f)
 }
 
 func (w *writer) flush() {
-	w.flushed = true
 	if w.total == 0 {
 		return
 	}
+	w.toFlush = false
 	w.f.Flush()
 	w.total = 0
 	w.lastFlushed = time.Now()
+	for _, f := range w.after {
+		f()
+	}
+	w.after = nil
 }
 
 var writerError = errors.New("actual write error")
 
+func (w *writer) writeAck() error {
+	_, err := w.w.Write(ackSignal)
+	if err != nil {
+		return writerError
+	}
+	w.f.Flush()
+	return nil
+}
 func (w *writer) Write(data []byte) (int, error) {
 	size, err := w.w.Write(data)
 	if err != nil {
@@ -251,12 +280,9 @@ func (w *writer) Write(data []byte) (int, error) {
 	w.total += size
 	if w.lastFlushed.IsZero() {
 		w.lastFlushed = time.Now()
-	} else if w.total >= w.sizeLimit {
-		w.flush()
-	} else if time.Since(w.lastFlushed) >= w.timeLimit {
-		w.flush()
+	}
+	if w.total >= w.sizeLimit || time.Since(w.lastFlushed) >= w.timeLimit {
+		w.toFlush = true
 	}
 	return size, nil
 }
-
-

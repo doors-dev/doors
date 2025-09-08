@@ -1,78 +1,73 @@
-# `href` and `src`
+# href and src
 
-## `AHref` for  internal links 
+## `AHref` for internal links
 
-Links can be of two types: one leads to a dynamic page update, the other to a new page load.  It depends on whether the Path Model type matches the current page or not.
+Links can be of two types:  
+- **Dynamic link**: updates the current page without reload.  
+- **Static link**: loads a new page.  
 
-To convert the path model to `href`, use  `AHref` attribute
+The behavior depends on whether the path model type matches the current page.
 
-```templ
+To convert a path model into an `href`, use the `AHref` attribute.
+
+```go
 type AHref struct {
-  // Target path model
-	Model           any
-	// Active link indicator configuration
-	Active          Active
+	// Target path model value. Required.
+	Model any
+	// Active link indicator configuration. Optional.
+	Active Active
 
 	// For dynamic links
-	StopPropagation bool  // stop click event propagation
-	// scrolls into specified selector (after action)
-  ScrollInto      string
-  // loading indicator
-	Indicator       []Indicator 
-	// error action 
-	OnError         []OnError  
+	StopPropagation bool        // stop event propagation
+	Before          []Action    // actions to run before hook request
+	Indicator       []Indicator // visual indicators while request is running
+	On              func(r RAfter) // handler triggered during link hook
+	OnError         []Action    // actions on error (default reload)
 }
 ```
 
 ### Active Link Indication
 
-Framework includes flexible tooling for active link indication via the indicator API. 
-
-If the browser URL matches both the PathMatcher and QueryMatcher, the indication is applied.
+Active link indication is configured through the `Active` struct.
+ If both `PathMatcher` and `QueryMatcher` match the current browser URL, indicators are applied.
 
 ```templ
- type Active struct {
-  // Configure how to match path
-	PathMatcher  PathMatcher
-	// Configure how to match query params
+type Active struct {
+	// Path match strategy
+	PathMatcher PathMatcher
+	// Query param match strategy
 	QueryMatcher QueryMatcher
-	// indicator API, check ref/indication article for details
-	Indicator    []Indicator
+	// Indicators to apply when active
+	Indicator []Indicator
 }
 ```
 
 #### PathMatcher
 
-* [Default] `PathMatcherFull`
-  The browser path must match the path in `href` exactly.
-* `PathMatcherStarts`
-  The browser path must start with the path in `href` .
-* `PathMatcherParts(n int)`
-  *The first n parts of the browser path and  `href` path must match.*
+- **PathMatcherFull** *(default)*
+   Browser path must match `href` exactly.
+- **PathMatcherStarts**
+   Browser path must start with `href`.
+- **PathMatcherParts(n uint8)**
+   First `n` path segments of browser path and `href` must match.
 
 #### QueryMatcher
 
-* [Default] `QueryMatcherAll `
-  *All query params must match between the page path and href*
-* `QueryMatcherIgnore`
-  *Query params do not matter*
-* `QueryMatcherSome(params ...string)`
-  *Values of the provided query params must match* 
+- **QueryMatcherAll** *(default)*
+   All query params must match.
+- **QueryMatcherIgnore**
+   Query params are ignored.
+- **QueryMatcherSome(params ...string)**
+   Specified query params must match.
 
 ### Example:
 
 ```templ
 @doors.AHref{
-  // link to the main variant of catalog page
-  Model: CatalogPath{
-    IsMain: true,
-  },
+  Model: CatalogPath{IsMain: true},
   Active: doors.Active{
-    // add "contrast" class to link if its active
-    Indicator:    doors.IndicatorClass("contrast"),
-    // browser path must start with href path
+    Indicator:    doors.IndicatorOnlyClass("contrast"),
     PathMatcher:  doors.PathMatcherStarts(),
-    // ignore query params for matching
     QueryMatcher: doors.QueryMatcherIgnore(),
   },
 }
@@ -81,19 +76,18 @@ If the browser URL matches both the PathMatcher and QueryMatcher, the indication
 
 ## File Src/Href
 
-**You can serve any file via a secure, unique link** (session scoped). This is useful for any resources inside a private, authorized space (images, documents).
+Files can be served via private, session-scoped links. This is useful for protected resources (images, documents) inside authorized spaces.
 
 ### Src From Path
 
 ```templ
-
 type ASrc struct {
-  // local path
-	Path string
-	// serve only once
+	// If true, resource is available for download only once.
 	Once bool
-	// file name, optional (default value is taken from path)
+	// File name. Optional.
 	Name string
+	// File system path to serve.
+	Path string
 }
 
 ```
@@ -109,35 +103,35 @@ example:
 <img alt="secret to my success">
 ```
 
-This will generate a temporary source that can only be accessed once and only by the session to which the page was served.
+The generated `src` can only be accessed once, bound to the session that received the page.
 
 ### Raw Src
 
-To handle the source as a raw HTTP request. Useful for proxying.
+Serve a resource directly via a custom HTTP handler. Useful for proxying or dynamic data.
 
 ```templ
 type ARawSrc struct {
-  // serve only once
-	Once    bool
-	// file name, optional (default value is taken from path)
-	Name    string
-	// http request handler
+	// If true, resource is available for download only once.
+	Once bool
+	// File name. Optional.
+	Name string
+	// Handler for serving the resource request.
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 ```
 
 ### File Href
 
-The same as `ASrc` but prepates href.
+Same as `ASrc`, but prepares an `href` instead of a `src`.
 
 ```templ
 type AFileHref struct {
-	// local path
-	Path string
-	// serve only once
+	// If true, resource is available for download only once.
 	Once bool
-	// file name, optional (default value is taken from path)
+	// File name. Optional.
 	Name string
+	// File system path to serve.
+	Path string
 }
 ```
 
@@ -147,17 +141,20 @@ Example:
 @doors.AFileHref{
 	Path: "./docs/passport.pdf",
 }
-<a target="_blank">downlod</a>
+<a target="_blank">download</a>
 ```
 
-### Raw file href
+### Raw File Href
 
-The same as raw src, to serve a resource via a raw http request handler
+Same as `ARawSrc`, but prepares an `href`.
 
 ```templ
 type ARawFileHref struct {
-	Once    bool
-	Name    string
+	// If true, resource is available for download only once.
+	Once bool
+	// File name. Optional.
+	Name string
+	// Handler for serving the resource request.
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 ```

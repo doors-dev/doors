@@ -17,7 +17,7 @@ func checkColor(t *testing.T, page *rod.Page) {
 		t.Fatalf("")
 	}
 	if styleValue.Value.Str() != "rgb(255, 0, 0)" {
-		t.Fatal("h1 expected color", " red ", "got ", styleValue.Value.Str() )
+		t.Fatal("h1 expected color", " red ", "got ", styleValue.Value.Str())
 	}
 }
 
@@ -26,11 +26,11 @@ func testStyle(t *testing.T, h func(doors.SourceBeam[test.Path]) templ.Component
 		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
 			return pr.Page(&test.Page{
 				Header: "Testing Imports",
-				H: h,
-				F: &ModuleFragment{},
+				H:      h,
+				F:      &ModuleFragment{},
 			})
 		}),
-		doors.UseDir("module", modulePath),
+		doors.UseRoute(doors.RouteDir{Prefix: "module", DirPath: modulePath}),
 	)
 	defer bro.Close()
 	page := bro.Page(t, "/")
@@ -43,11 +43,11 @@ func testModule(t *testing.T, h func(doors.SourceBeam[test.Path]) templ.Componen
 		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
 			return pr.Page(&test.Page{
 				Header: "Testing Imports",
-				H: h,
-				F: &ModuleFragment{},
+				H:      h,
+				F:      &ModuleFragment{},
 			})
 		}),
-		doors.UseDir("module", modulePath),
+		doors.UseRoute(doors.RouteDir{Prefix: "module", DirPath: modulePath}),
 	)
 	defer bro.Close()
 	page := bro.Page(t, "/")

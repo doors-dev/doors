@@ -25,10 +25,10 @@ func (f *scopeFragment) update(ctx context.Context, marker string) {
 
 templ (f *scopeFragment) scopePipeline() {
 	{{
-	ds := &doors.DebounceScope{}
-	ds2 := &doors.DebounceScope{}
-	ss := &doors.SerialScope{}
-	fs := &doors.FrameScope{}
+	ds := &doors.ScopeDebounce{}
+	ds2 := &doors.ScopeDebounce{}
+	ss := &doors.ScopeSerial{}
+	fs := &doors.ScopeFrame{}
 	}}
 	@f.button("p1", []doors.Scope{ds.Scope(100*time.Millisecond, 0)}, "1", false)
 	@f.button("p2", []doors.Scope{fs.Scope(false), ds.Scope(100*time.Millisecond, 0), ss}, "2", true)
@@ -40,27 +40,27 @@ templ (f *scopeFragment) scopePipeline() {
 templ (f *scopeFragment) Render() {
 	{{ f.update(ctx, "0") }}
 	@f.r.Render()
-	{{ blocking := doors.ScopeBlocking() }}
+	{{ blocking := doors.ScopeOnlyBlocking() }}
 	@f.button("b1", blocking, "1", true)
 	@f.button("b2", blocking, "2", true)
 	@f.button("b3", blocking, "3", true)
 	// serial
-	{{ serial := doors.ScopeSerial() }}
+	{{ serial := doors.ScopeOnlySerial() }}
 	@f.button("s1", serial, "1", true)
 	@f.button("s2", serial, "2", true)
 	@f.button("s3", serial, "3", true)
 	// debounce
-	{{ debouce := doors.ScopeDebounce(300*time.Millisecond, 0) }}
+	{{ debouce := doors.ScopeOnlyDebounce(300*time.Millisecond, 0) }}
 	@f.button("d1", debouce, "1", false)
 	@f.button("d2", debouce, "2", false)
 	@f.button("d3", debouce, "3", false)
 	// debounce with limit
-	{{ debouce = doors.ScopeDebounce(300*time.Millisecond, 700*time.Millisecond) }}
+	{{ debouce = doors.ScopeOnlyDebounce(300*time.Millisecond, 700*time.Millisecond) }}
 	@f.button("dl1", debouce, "1", false)
 	@f.button("dl2", debouce, "2", false)
 	@f.button("dl3", debouce, "3", false)
 	// frame
-	{{ frame := doors.FrameScope{} }}
+	{{ frame := doors.ScopeFrame{} }}
 	@f.button("f1", []doors.Scope{frame.Scope(false)}, "1", true)
 	@f.button("f2", []doors.Scope{frame.Scope(false)}, "2", false)
 	@f.button("f3", []doors.Scope{frame.Scope(true)}, "3", true)

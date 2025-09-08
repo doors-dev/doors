@@ -11,18 +11,20 @@ package front
 
 import (
 	"encoding/json"
+
 	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/front/action"
 )
 
-
 type Hook struct {
-	Error    []*ErrorAction
+	Before   action.Actions
+	OnError  action.Actions
 	Scope    []*ScopeSet
 	Indicate []*Indicate
 	*door.HookEntry
 }
 
 func (h *Hook) MarshalJSON() ([]byte, error) {
-	a := []any{h.DoorId, h.HookId, h.Scope, h.Indicate, h.Error}
+	a := []any{h.DoorId, h.HookId, h.Scope, h.Indicate, h.Before, h.OnError}
 	return json.Marshal(a)
 }

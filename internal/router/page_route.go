@@ -127,7 +127,7 @@ func (pr *pageRoute[M]) apply(rr *Router) {
 	rr.addPage(pr)
 }
 
-func RoutePage[M any](handler func(r *Request[M]) Response) Mod {
+func UsePage[M any](handler func(r *Request[M]) Response) Use {
 	adapter, err := path.NewAdapter[M]()
 	if err != nil {
 		log.Fatal(err.Error())

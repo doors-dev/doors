@@ -63,17 +63,15 @@ To attach it, use `doors.Attributes([]doors.Attr)` component:
 <input type="text" name="name">
 ```
 
->❌ If magic attribute is not followed by a valid HTML tag, it will be dropped, for example
->
->```templ
->@doors.AClick{
->/* setup */
->}
->Some text
-><button>Click Me!</button> 
->```
->
->"Some text" interrupts attribute insertion!
+❌ If a valid HTML tag does not follow magic attribute, it will be dropped, for example:
+
+```templ
+@doors.AClick{
+/* setup */
+}
+Some text // interrupts attribute attachement!
+<button>Click Me!</button> 
+```
 
 ### Pre-initialization
 
@@ -92,7 +90,7 @@ Sometimes you want to use the same handler for multiple elements. To do this, pr
 
 ```
 
-> Before rendering or initializing, there is no actual attribute object, `doors.A..` is only a  structure for configuration .
+> Before rendering or initializing, there is no actual attribute object, `doors.A..{}` is only a configuration structure.
 
 ## Attribute Spread
 
@@ -106,7 +104,7 @@ Alternatively to **Magic Attributes,** you can utilize templ spread syntax
 <button { doors.A(ctx, onclick)... }>Click Me!</button>
 ```
 
-> ⚠️ One element can't have magic and spread attributes; one overwrites another
+> ⚠️ One element can't have magic and spread attributes; one overwrites another.
 
 
 

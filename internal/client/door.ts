@@ -10,11 +10,11 @@
 import { rootId } from './params'
 import { doorId } from './lib'
 
-import { attach as attachCaptures } from "./capture"
+import { attach as attachCaptures, HookErr } from "./capture"
 import navigator from "./navigator"
 import { attach as attachDyna } from "./dyna"
 
-type Handler = (arg: any) => any
+type Handler = ((arg: any) => any) | ((arg: any, err: HookErr) => any)
 type Closure = () => void | Promise<void>
 
 
@@ -181,7 +181,7 @@ class Doors {
     on(
         element: Element,
         name: string,
-        handler: (arg: any) => any
+        handler: Handler,
     ): void {
         let id = getSelfId(element)
         if (id == undefined) {

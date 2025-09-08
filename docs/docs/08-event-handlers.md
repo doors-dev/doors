@@ -4,31 +4,33 @@ Attributes that are used to enable and configure the event handler.
 
 ```templ
 type AClick struct {
-
-	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	// If true, stops the event from bubbling up the DOM.
+	// Optional.
 	StopPropagation bool
-
-	// PreventDefault, if true, prevents the browser's default action for the event.
+	// If true, prevents the browser's default action for the event.
+	// Optional.
 	PreventDefault bool
-	
-	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	// If true, only fires when the event occurs on this element itself.
+	// Optional.
 	ExactTarget bool
-
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate that the hook is running on the frontent.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler for the click event.
-	// It receives a typed REvent[PointerEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
+	// Backend event handler.
+	// Receives a typed REvent[PointerEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[PointerEvent]) bool
-
-	// OnError determines front-end should do if an error occurred during the hook request
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
 }
-
 ```
 
 ## Available Event Hook Attributes
@@ -86,7 +88,7 @@ That's too relaxed for some cases.  So, precise control can be enabled on the fr
 ```templ
 @doors.AInput{
   // enable debounce for input event
-  Scope: doors.ScopeDebounce(300 * time.Millisecond, time.Second),
+  Scope: doors.ScopeOnlyDebounce(300 * time.Millisecond, time.Second),
 	On: func(ctx context.Context, r doors.REvent[doors.InputEvent]) bool {
 	  /* processing */
 		return false
@@ -94,7 +96,7 @@ That's too relaxed for some cases.  So, precise control can be enabled on the fr
 }
 ```
 
-Check out the [Scopes](./ref/04-scopes.md) article for details.
+Check out the [Scopes](./ref/03-scopes.md) article for details.
 
 ## Indication
 
@@ -104,8 +106,8 @@ For better UX apply pending indication with the **Indicator** API:
 @doors.ASubmit[loginData]{
     // indicate on element #login-submit by temporary setting (adding) attribute 
     // aria-busy with value "true"
-		Indicator: doors.IndicatorAttrQuery("#login-submit", "aria-busy", "true"),
-		Scope:     doors.ScopeBlocking(),
+		Indicator: doors.IndicatorOnlyAttrQuery("#login-submit", "aria-busy", "true"),
+		Scope:     doors.ScopeOnlyBlocking(),
 		On: func(ctx context.Context, r doors.RForm[loginData]) bool {
 			/* logic */
 			return true
@@ -113,23 +115,11 @@ For better UX apply pending indication with the **Indicator** API:
 }
 ```
 
-Refer to the [Indication](./ref/03-indication.md) article for more details.
+Refer to the [Indication](./ref/02-indication.md) article for more details.
 
 ## Error Handling
 
-Event processing can fail due to several reasons. Some reasons are automatically ignored (canceled by scope), some should be handled (such as network issues) for a better user experience, and some are not expected to ever occur (front-end exceptions during event handling).
+`OnError` defines actions that execute when an **error occurs during a hook’s processing**. It supports UI indication, custom client-side callbacks and navigation (check [Actions](./ref/04-actions.md) for the full list). 
 
-To configure front-end action on error use the `OnError` field:
-
-```templ
-@doors.ASubmit[loginData]{
-    /* attr setup */
-    
-    // use indication on error, add class "show" to
-    // #error_message for 3 seconds
-    OnError: doors.OnErrorIndicate(3 * time.Second, doors.IndicatorClassQuery("#error_message", "show")),
-}
-```
-
-You can set up an indicator or a JavaScript function call, or any combination thereof. Please refer to the [Error Handling](./ref/02-error-handling.md) article.
+>  Please refer to [JavaScript](./10-javascript.md) for details about error object.
 

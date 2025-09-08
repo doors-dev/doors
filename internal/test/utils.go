@@ -119,7 +119,7 @@ func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
 }
 
 
-func NewBro(browser *rod.Browser, mods ...doors.Mod) *Bro {
+func NewBro(browser *rod.Browser, mods ...doors.Use) *Bro {
 	r := doors.NewRouter()
 	r.Use(mods...)
 	limit := os.Getenv("LIMIT") != ""

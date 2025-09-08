@@ -27,16 +27,19 @@ type BuildProfiles interface {
 	Options(profile string) api.BuildOptions
 }
 
-func NewRegistry() *Registry {
+type settings interface {
+	Conf() *common.SystemConf
+	BuildProfiles() BuildProfiles
+}
+
+func NewRegistry(s settings) *Registry {
 	return &Registry{
-		Gzip:     true,
-		Profiles: BaseProfile{},
+		settings: s,
 	}
 }
 
 type Registry struct {
-	Gzip       bool
-	Profiles   BuildProfiles
+	settings   settings
 	cache      sync.Map
 	lookup     sync.Map
 	mainScript *Resource
@@ -54,19 +57,19 @@ func (rg *Registry) key16(b []byte) [16]byte {
 
 func (rg *Registry) initMain() {
 	rg.init.Do(func() {
-		profile := rg.Profiles.Options("")
+		profile := rg.settings.BuildProfiles().Options("")
 		profile.Format = api.FormatIIFE
 		profile.Footer = map[string]string{
 			"js": "_d00r = _d00r.default;",
 		}
 		profile.Bundle = true
 		profile.GlobalName = "_d00r"
-		scriptContent, err := BuildFS(internal.ClientSrc, "index.ts", profile)
+		mainScriptContent, err := BuildFS(internal.ClientSrc, "index.ts", profile)
 		if err != nil {
 			panic(errors.Join(errors.New("Client js build error"), err))
 		}
-		rg.mainScript = NewResource(scriptContent, "application/javascript", rg.Gzip)
-		rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.Gzip)
+		rg.mainScript = NewResource(mainScriptContent, "application/javascript", rg.settings)
+		rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.settings)
 	})
 }
 
@@ -94,7 +97,7 @@ func (rg *Registry) Serve(hash []byte, w http.ResponseWriter, r *http.Request) {
 }
 
 func (r *Registry) create(key []byte, content []byte, lookup bool, contentType string) *Resource {
-	s := NewResource(content, contentType, r.Gzip)
+	s := NewResource(content, contentType, r.settings)
 	existing, existed := r.cache.LoadOrStore(r.key32(key), s)
 	if existed {
 		s = existing.(*Resource)
@@ -178,7 +181,7 @@ func (r *Registry) InlineStyle(data []byte, mode InlineMode) (*InlineResource, e
 			return nil, err
 		}
 		if mode == InlineModeNoCache {
-			s = NewResource(min, "text/css", r.Gzip)
+			s = NewResource(min, "text/css", r.settings)
 		} else {
 			s = r.create(key, min, mode == InlineModeHost, "text/css")
 		}
@@ -229,18 +232,18 @@ func (r *Registry) InlineScript(data []byte, mode InlineMode) (*InlineResource, 
 		buf.WriteString("\n})")
 		var content []byte
 		if ts {
-			content, err = TransformBytesTS(buf.Bytes(), r.Profiles.Options(""))
+			content, err = TransformBytesTS(buf.Bytes(), r.settings.BuildProfiles().Options(""))
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			content, err = TransformBytes(buf.Bytes(), r.Profiles.Options(""))
+			content, err = TransformBytes(buf.Bytes(), r.settings.BuildProfiles().Options(""))
 			if err != nil {
 				return nil, err
 			}
 		}
 		if mode == InlineModeNoCache {
-			s = NewResource(content, "application/json", r.Gzip)
+			s = NewResource(content, "application/json", r.settings)
 		} else {
 			s = r.create(key, content, mode == InlineModeHost, "application/javascript")
 		}
@@ -262,7 +265,7 @@ func (r *Registry) ModuleBundle(entry string, profile string) (*Resource, error)
 	if s != nil {
 		return s, nil
 	}
-	countent, err := Bundle(entry, r.Profiles.Options(profile))
+	countent, err := Bundle(entry, r.settings.BuildProfiles().Options(profile))
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +284,7 @@ func (r *Registry) ModuleBundleFS(cacheKey string, fs fs.FS, entry string, profi
 	if s != nil {
 		return s, nil
 	}
-	countent, err := BundleFS(fs, entry, r.Profiles.Options(profile))
+	countent, err := BundleFS(fs, entry, r.settings.BuildProfiles().Options(profile))
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +301,7 @@ func (r *Registry) Module(path string, profile string) (*Resource, error) {
 	if s != nil {
 		return s, nil
 	}
-	countent, err := Transform(path, r.Profiles.Options(profile))
+	countent, err := Transform(path, r.settings.BuildProfiles().Options(profile))
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +318,7 @@ func (r *Registry) ModuleBytes(content []byte, profile string) (*Resource, error
 	if s != nil {
 		return s, nil
 	}
-	countent, err := TransformBytes(content, r.Profiles.Options(profile))
+	countent, err := TransformBytes(content, r.settings.BuildProfiles().Options(profile))
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +334,7 @@ func (r *Registry) ModuleBytesTS(content []byte, profile string) (*Resource, err
 	if s != nil {
 		return s, nil
 	}
-	countent, err := TransformBytesTS(content, r.Profiles.Options(profile))
+	countent, err := TransformBytesTS(content, r.settings.BuildProfiles().Options(profile))
 	if err != nil {
 		return nil, err
 	}

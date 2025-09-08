@@ -20,15 +20,20 @@ import (
 	"github.com/doors-dev/doors/internal/common/ctxwg"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
 )
 
+// ADyn is a dynamic attribute that can be updated at runtime.
 type ADyn interface {
 	Attr
+	// Value sets the attribute's value.
 	Value(ctx context.Context, value string)
+	// Enable adds or removes the attribute.
 	Enable(ctx context.Context, enable bool)
 }
 
+// NewADyn returns a new dynamic attribute with the given name, value, and state.
 func NewADyn(name string, value string, enable bool) ADyn {
 	return &aDyn{
 		name:   name,
@@ -69,7 +74,6 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 	defer a.mu.Unlock()
 	prevValue := a.value
 	prevEnable := a.enable
-
 	if ctx.Err() != nil {
 		return
 	}
@@ -81,27 +85,25 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 	if !a.initialized {
 		return
 	}
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	call := &dynaCall{
 		done:       ctxwg.Add(ctx),
 		seq:        a.seq,
 		attr:       a,
 		prevValue:  prevValue,
 		prevEnable: prevEnable,
+		optimistic: inst.Conf().OptimisicSync,
 	}
 	if a.enable {
-		call.data = &common.CallData{
-			Name:    "dyna_set",
-			Arg:     []any{a.id, a.value},
-			Payload: common.WritableNone{},
+		call.action = &action.DynaSet{
+			Id:    a.id,
+			Value: a.value,
 		}
 	} else {
-		call.data = &common.CallData{
-			Name:    "dyna_remove",
-			Arg:     a.id,
-			Payload: common.WritableNone{},
+		call.action = &action.DynaRemove{
+			Id: a.id,
 		}
 	}
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(call)
 }
 
@@ -124,19 +126,19 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 	if !a.initialized {
 		return
 	}
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	call := &dynaCall{
 		done: ctxwg.Add(ctx),
 		seq:  a.seq,
 		attr: a,
-		data: &common.CallData{
-			Name:    "dyna_set",
-			Arg:     []any{a.id, a.value},
-			Payload: common.WritableNone{},
+		action: &action.DynaSet{
+			Id:    a.id,
+			Value: a.value,
 		},
 		prevValue:  prevValue,
 		prevEnable: prevEnable,
+		optimistic: inst.Conf().OptimisicSync,
 	}
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(call)
 }
 
@@ -165,20 +167,33 @@ type dynaCall struct {
 	done       func()
 	seq        int
 	attr       *aDyn
-	data       *common.CallData
+	action     action.Action
 	prevValue  string
 	prevEnable bool
+	optimistic bool
+}
+
+func (c *dynaCall) Params() action.CallParams {
+	return action.CallParams{
+		Optimistic: c.optimistic,
+	}
+}
+func (c *dynaCall) Clean() {
 }
 
 func (c *dynaCall) Cancel() {
 	c.done()
 }
 
-func (c *dynaCall) Data() *common.CallData {
+func (c *dynaCall) Action() (action.Action, bool) {
 	if c.seq != c.attr.getSeq() {
-		return nil
+		return nil, false
 	}
-	return c.data
+	return c.action, true
+}
+
+func (c *dynaCall) Payload() common.Writable {
+	return common.WritableNone{}
 }
 
 func (c *dynaCall) Result(_ json.RawMessage, err error) {

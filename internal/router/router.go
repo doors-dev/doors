@@ -11,11 +11,8 @@ package router
 
 import (
 	"log"
-	"log/slog"
 	"net/http"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/a-h/templ"
@@ -26,42 +23,26 @@ import (
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-func NewRouter() *Router {
+func NewRouter() (router *Router) {
 	conf := &common.SystemConf{}
 	common.InitDefaults(conf)
-	return &Router{
-		pool:           shredder.NewPool(conf.InstanceGoroutineLimit),
-		sess:           sync.Map{},
-		adapters:       make(map[string]path.AnyAdapter),
-		pageRoutes:     make(map[string]anyPageRoute),
-		pageRouteOrder: make([]string, 0),
-		fallback:       nil,
-		dirs:           make([]*static, 0),
-		registry:       resources.NewRegistry(),
-		conf:           conf,
-		sessionCallback:   sessionHooks{},
+	router = &Router{
+		pool:            shredder.NewPool(conf.InstanceGoroutineLimit),
+		sessions:        sync.Map{},
+		adapters:        make(map[string]path.AnyAdapter),
+		pageRoutes:      make(map[string]anyPageRoute),
+		fallback:        nil,
+		conf:            conf,
+		buildProfiles:   resources.BaseProfile{},
+		sessionCallback: sessionHooks{},
 	}
+	router.registry = resources.NewRegistry(router)
+	return
 }
 
-type static struct {
-	prefix  bool
-	path    string
-	handler http.Handler
-}
-
-func (d *static) tryServe(w http.ResponseWriter, r *http.Request) bool {
-	if d.prefix {
-		if !strings.HasPrefix(r.URL.Path, d.path) {
-			return false
-		}
-		d.handler.ServeHTTP(w, r)
-		return true
-	}
-	if d.path != r.URL.Path {
-		return false
-	}
-	d.handler.ServeHTTP(w, r)
-	return true
+type Route interface {
+	Match(r *http.Request) bool
+	Serve(w http.ResponseWriter, r *http.Request)
 }
 
 type ErrorPageComponent = func(message string) templ.Component
@@ -73,23 +54,19 @@ func (s sessionHooks) Create(string, http.Header) {}
 func (s sessionHooks) Delete(string) {}
 
 type Router struct {
-	sess           sync.Map
-	adapters       map[string]path.AnyAdapter
-	pageRoutes     map[string]anyPageRoute
-	pageRouteOrder []string
-	fallback       http.Handler
-	dirs           []*static
-	pool           *shredder.Pool
-	errPage        ErrorPageComponent
-	sessionCallback   SessionCallback
-	registry       *resources.Registry
-	csp            *common.CSP
-	conf           *common.SystemConf
-	used           atomic.Bool
-}
-
-func (rr *Router) Gzip() bool {
-	return rr.registry.Gzip
+	sessions        sync.Map
+	adapters        map[string]path.AnyAdapter
+	pageRoutes      map[string]anyPageRoute
+	pageRouteList   []anyPageRoute
+	routes          []Route
+	fallback        http.Handler
+	pool            *shredder.Pool
+	errPage         ErrorPageComponent
+	sessionCallback SessionCallback
+	registry        *resources.Registry
+	csp             *common.CSP
+	conf            *common.SystemConf
+	buildProfiles   resources.BuildProfiles
 }
 
 func (rr *Router) CSP() *common.CSP {
@@ -105,11 +82,15 @@ func (rr *Router) Spawner(op shredder.OnPanic) *shredder.Spawner {
 }
 
 func (rr *Router) RemoveSession(id string) {
-	rr.sess.Delete(id)
+	rr.sessions.Delete(id)
 	rr.sessionCallback.Delete(id)
 }
 func (rr *Router) Adapters() map[string]path.AnyAdapter {
 	return rr.adapters
+}
+
+func (rr *Router) BuildProfiles() resources.BuildProfiles {
+	return rr.buildProfiles
 }
 
 func (rr *Router) Conf() *common.SystemConf {
@@ -134,7 +115,7 @@ func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *
 		SameSite: http.SameSiteLaxMode,
 		Expires:  expires,
 	}
-	rr.sess.Store(s.Id(), s)
+	rr.sessions.Store(s.Id(), s)
 	rr.sessionCallback.Create(s.Id(), r.Header)
 	http.SetCookie(w, cookie)
 	return true, s
@@ -145,7 +126,7 @@ func (rr *Router) getSession(r *http.Request) *instance.Session {
 	if err != nil {
 		return nil
 	}
-	v, ok := rr.sess.Load(c.Value)
+	v, ok := rr.sessions.Load(c.Value)
 	if !ok {
 		return nil
 	}
@@ -160,15 +141,15 @@ func (rr *Router) addPage(page anyPageRoute) {
 	}
 	rr.pageRoutes[name] = page
 	rr.adapters[name] = page.getAdapter()
-	rr.pageRouteOrder = append(rr.pageRouteOrder, name)
+	rr.pageRouteList = append(rr.pageRouteList, page)
 }
 
-func (rr *Router) Use(mods ...Mod) {
-	if rr.used.Load() {
-		slog.Error("IMPORTANT! Router mod used after first request is handled, ignoring mod.")
-		return
-	}
-	for _, r := range mods {
+func (rr *Router) addRoute(r Route) {
+	rr.routes = append(rr.routes, r)
+}
+
+func (rr *Router) Use(use ...Use) {
+	for _, r := range use {
 		r.apply(rr)
 	}
 }

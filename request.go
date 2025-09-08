@@ -11,149 +11,81 @@ package doors
 
 import (
 	"context"
-	"github.com/doors-dev/doors/internal/front"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 )
 
-type afterFunc func(context.Context) (*front.After, error)
-
-func (a afterFunc) after(ctx context.Context) (*front.After, error) {
-	return a(ctx)
-}
-
-// After represents a client-side action to execute after a request completes.
-// After actions can perform navigation, page reloads, or other browser operations.
-type After interface {
-	after(context.Context) (*front.After, error)
-}
-
-// AfterLocationReload creates an After action that reloads the current page.
-// This triggers a full page refresh in the browser.
-func AfterLocationReload() After {
-	return afterFunc(func(context.Context) (*front.After, error) {
-		return &front.After{
-			Name: "location_reload",
-		}, nil
-	})
-}
-
-// AfterLocationAssign creates an After action that navigates to a new URL.
-// This adds the new URL to the browser's history stack. The model parameter
-// is used to generate the target URL using the application's routing system.
-func AfterScrollInto(selector string, smooth bool) After {
-	return afterFunc(func(ctx context.Context) (*front.After, error) {
-		return &front.After{
-			Name: "scroll_into",
-			Arg:  []any{selector, smooth},
-		}, nil
-	})
-}
-
-// AfterLocationAssign creates an After action that navigates to a new URL.
-// This adds the new URL to the browser's history stack. The model parameter
-// is used to generate the target URL using the application's routing system.
-func AfterLocationAssign(model any) After {
-	return afterFunc(func(ctx context.Context) (*front.After, error) {
-		l, err := NewLocation(ctx, model)
-		if err != nil {
-			return nil, err
-		}
-		return &front.After{
-			Name: "location_assign",
-			Arg:  []any{l.String(), true},
-		}, nil
-	})
-}
-
-// AfterLocationReplace creates an After action that replaces the current URL.
-// This navigates to a new URL without adding an entry to the browser's history stack.
-// The model parameter is used to generate the target URL using the application's routing system.
-func AfterLocationReplace(model any) After {
-	return afterFunc(func(ctx context.Context) (*front.After, error) {
-		l, err := NewLocation(ctx, model)
-		if err != nil {
-			return nil, err
-		}
-		return &front.After{
-			Name: "location_replace",
-			Arg:  []any{l.String(), true},
-		}, nil
-	})
-}
-
-// RAfter provides the ability to set an After action to execute client-side
-// after the request completes.
+// RAfter allows setting client-side actions to run after a request completes.
 type RAfter interface {
-	After(After) error
+	// After sets client-side actions to run once the request finishes.
+	After([]Action) error
 }
 
-// R provides basic request functionality including cookie management.
+// R provides basic request operations including cookie management.
 type R interface {
+	// SetCookie adds a cookie to the response.
 	SetCookie(cookie *http.Cookie)
+	// GetCookie retrieves a cookie by name.
 	GetCookie(name string) (*http.Cookie, error)
+	// Done signals when the request context is canceled or completed.
 	Done() <-chan struct{}
 }
 
-// REvent represents a request context for event handlers with typed event data.
-// The generic type E represents the structure of the event data.
+// REvent provides request handling for event hooks with typed event data.
 type REvent[E any] interface {
 	R
-	Event() E // Returns the event data
 	RAfter
+	// Event returns the event payload.
+	Event() E
 }
 
-// RForm represents a request context for form submissions with typed form data.
-// The generic type D represents the structure of the parsed form data.
+// RForm provides request handling for form submissions with typed form data.
 type RForm[D any] interface {
 	R
-	Data() D // Returns the parsed form data
 	RAfter
+	// Data returns the parsed form payload.
+	Data() D
 }
 
-// RRawForm provides access to raw multipart form data and parsing capabilities.
-// This is used when you need direct access to the form parsing process or
-// when working with file uploads.
+// RRawForm provides access to raw multipart form data for streaming or custom parsing.
 type RRawForm interface {
 	R
+	RAfter
+	// W returns the HTTP response writer.
 	W() http.ResponseWriter
-	Reader() (*multipart.Reader, error)          // Returns a multipart reader for streaming
-	ParseForm(maxMemory int) (ParsedForm, error) // Parses form data with memory limit
-	RAfter
+	// Reader returns a multipart reader for streaming form parts.
+	Reader() (*multipart.Reader, error)
+	// ParseForm parses the form data with a memory limit.
+	ParseForm(maxMemory int) (ParsedForm, error)
 }
 
-// ParsedForm provides access to parsed form data including values and files.
+// ParsedForm exposes parsed form values and uploaded files.
 type ParsedForm interface {
-	FormValues() url.Values                                             // Returns all form values
-	FormValue(key string) string                                        // Returns a single form value
-	FormFile(key string) (multipart.File, *multipart.FileHeader, error) // Returns an uploaded file
-	Form() *multipart.Form                                              // Returns the underlying multipart form
+	// FormValues returns all parsed form values.
+	FormValues() url.Values
+	// FormValue returns the first value for the given key.
+	FormValue(key string) string
+	// FormFile returns the uploaded file for the given key.
+	FormFile(key string) (multipart.File, *multipart.FileHeader, error)
+	// Form returns the underlying multipart.Form.
+	Form() *multipart.Form
 }
 
-// RCall represents a request context for direct HTTP calls with full access
-// to the response writer and request body. This provides the most control
-// over the HTTP request/response cycle.
-type RCall interface {
-	RRawForm
-	Body() io.ReadCloser // Returns the request body
-	RAfter
-}
-
-// RHook represents a request context for hook handlers with typed data.
-// The generic type D represents the structure of the hook data.
+// RHook provides request handling for hook handlers with typed data.
 type RHook[D any] interface {
 	R
-	Data() D // Returns the hook data
 	RAfter
+	// Data returns the parsed hook payload.
+	Data() D
 }
 
-// RRawHook provides access to raw request data for hook handlers without
-// automatic data parsing. This gives full control over request processing.
+// RRawHook provides access to raw request data for hook handlers without parsing.
 type RRawHook interface {
 	RRawForm
-	Body() io.ReadCloser // Returns the request body
+	// Body returns the raw request body reader.
+	Body() io.ReadCloser
 }
 
 type request struct {
@@ -162,12 +94,9 @@ type request struct {
 	ctx context.Context
 }
 
-func (r *request) After(a After) error {
-	after, err := a.after(r.ctx)
-	if err != nil {
-		return err
-	}
-	err = after.Set(r.w.Header())
+func (r *request) After(action []Action) error {
+	actions := intoActions(r.ctx, action)
+	err := actions.Set(r.w.Header())
 	if err != nil {
 		panic(err)
 	}

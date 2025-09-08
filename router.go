@@ -11,8 +11,9 @@ package doors
 
 import (
 	"io/fs"
+	"log/slog"
 	"net/http"
-	"os"
+	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
@@ -23,7 +24,7 @@ import (
 // It implements http.Handler and provides configuration through Use().
 type Router interface {
 	http.Handler
-	Use(...Mod)
+	Use(...Use)
 }
 
 // NewRouter creates a new router instance with default configuration.
@@ -32,13 +33,11 @@ func NewRouter() Router {
 	return router.NewRouter()
 }
 
-// Mod represents a router modification that can be used to configure routing behavior.
-type Mod = router.Mod
+// Use represents a router modification that can be used to configure routing behavior.
+type Use = router.Use
 
-// UsePage registers a page handler for a specific path model type.
-// The model type M defines URL patterns through struct field tags, allowing the router
-// to decode request URIs into structured data. Path patterns are declared using `path` tags
-// on boolean fields, with parameter capture using `:FieldName` syntax.
+// UsePage registers a page handler for a path model type M.
+// The model defines path/query patterns via struct tags.
 //
 // Example:
 //
@@ -47,14 +46,14 @@ type Mod = router.Mod
 //	    Post bool   `path:"/post/:ID"`           // Match /post/123, capture ID
 //	    List bool   `path:"/posts"`              // Match /posts
 //	    ID   int                                  // Captured from :ID parameter
-//	    Tag  string `query:"tag"`               // Query parameter ?tag=golang
+//	    Tag  *string `query:"tag"`               // Query parameter ?tag=golang
 //	}
 //
 //	router.Use(UsePage(func(p PageRouter[BlogPath], r RPage[BlogPath]) PageRoute {
 //	   return p.Page(&blog{})
 //	}))
-func UsePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Mod {
-	return router.RoutePage(func(r *router.Request[M]) router.Response {
+func UsePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Use {
+	return router.UsePage(func(r *router.Request[M]) router.Response {
 		pr := &pageRequest[M]{
 			r: r,
 		}
@@ -62,67 +61,161 @@ func UsePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Mod {
 	})
 }
 
-// Deprecated: use UsePage
-func ServePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Mod {
-	return UsePage(handler)
+type Route = router.Route
+
+type responseWriter struct {
+	w           http.ResponseWriter
+	setHeaders  func(h http.Header)
+	wroteHeader bool
 }
 
-// UseFS serves static files from an embedded filesystem at the specified URL prefix.
-// This is useful for serving embedded assets using Go's embed.FS.
-//
-// Parameters:
-//   - prefix: URL prefix (e.g., "/assets/")
-//   - fs: Filesystem to serve from (typically embed.FS)
-func UseFS(prefix string, fs fs.FS) Mod {
-	httpFS := http.FS(fs)
-	return router.ServeDir(prefix, httpFS)
+func (w *responseWriter) Header() http.Header {
+	return w.w.Header()
 }
 
-// Deprecated: use UseFS
-func ServeFS(prefix string, fs fs.FS) Mod {
-	return UseFS(prefix, fs)
+func (w *responseWriter) WriteHeader(code int) {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
+	if code >= 200 && code < 300 {
+		w.setHeaders(w.w.Header())
+	}
+	w.w.WriteHeader(code)
 }
 
-// UseDir serves static files from a local directory using os.DirFS.
-// This creates a filesystem from the directory and serves it at the prefix.
-//
-// Parameters:
-//   - prefix: URL prefix (e.g., "/public/")
-//   - path: Local directory path
-func UseDir(prefix string, path string) Mod {
-	fs := os.DirFS(path)
-	httpFS := http.FS(fs)
-	return router.ServeDir(prefix, httpFS)
+func (w *responseWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.wroteHeader = true
+		w.setHeaders(w.w.Header())
+	}
+	return w.w.Write(b)
 }
 
-// Deprecated: use UseDir
-func ServeDir(prefix string, path string) Mod {
-	return UseDir(prefix, path)
+func normalizePrefix(prefix string) string {
+	if !strings.HasPrefix(prefix, "/") {
+		prefix = "/" + prefix
+	}
+	if !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
+	return prefix
+}
+func serveFS(prefix string, fs http.FileSystem, cacheControl string, w http.ResponseWriter, r *http.Request) {
+	rw := &responseWriter{
+		w: w,
+		setHeaders: func(h http.Header) {
+			if cacheControl == "" {
+				return
+			}
+			h.Set("Cache-Control", cacheControl)
+		},
+	}
+	http.StripPrefix(normalizePrefix(prefix), http.FileServer(fs)).ServeHTTP(rw, r)
 }
 
-// UseFile serves a single file at the specified URL path.
-//
-// Parameters:
-//   - path: URL path (e.g., "/favicon.ico")
-//   - localPath: Local file path
-func UseFile(path string, localPath string) Mod {
-	return router.ServeFile(path, localPath)
+// RouteFS serves files from an fs.FS under a URL prefix.
+// The prefix must not be root ("/").
+type RouteFS struct {
+	// URL prefix under which files are served.
+	// Required.
+	Prefix string
+	// Filesystem to serve files from.
+	// Required.
+	FS fs.FS
+	// Optional Cache-Control header applied to responses.
+	// Optional.
+	CacheControl string
 }
 
-// Deprecated: use UseFile
-func ServeFile(path string, localPath string) Mod {
-	return UseFile(path, localPath)
+func (rt RouteFS) Match(r *http.Request) bool {
+	if rt.Prefix == "/" || rt.Prefix == "" {
+		slog.Error("RouteFS can serve root prefix!")
+		return false
+	}
+	return strings.HasPrefix(r.URL.Path, normalizePrefix(rt.Prefix))
+}
+
+func (rt RouteFS) Serve(w http.ResponseWriter, r *http.Request) {
+	httpFS := http.FS(rt.FS)
+	serveFS(rt.Prefix, httpFS, rt.CacheControl, w, r)
+}
+
+// RouteDir serves files from a local directory under a URL prefix.
+// The prefix must not be root ("/").
+type RouteDir struct {
+	// URL prefix under which files are served.
+	// Required.
+	Prefix string
+	// Filesystem directory path to serve.
+	// Required.
+	DirPath string
+	// Cache-Control header applied to responses.
+	// Optional.
+	CacheControl string
+}
+
+func (rt RouteDir) Match(r *http.Request) bool {
+	if rt.Prefix == "/" || rt.Prefix == "" {
+		slog.Error("RouteDir cannot serve root prefix")
+		return false
+	}
+	return strings.HasPrefix(r.URL.Path, normalizePrefix(rt.Prefix))
+}
+func (rt RouteDir) Serve(w http.ResponseWriter, r *http.Request) {
+	httpFS := http.Dir(rt.DirPath)
+	serveFS(rt.Prefix, httpFS, rt.CacheControl, w, r)
+}
+
+// RouteFile serves a single file at a fixed URL path.
+// The path must not be root ("/").
+type RouteFile struct {
+	// URL path at which the file is served.
+	// Required.
+	Path string
+	// Filesystem path to the file to serve.
+	// Reuired.
+	FilePath string
+	// Cache-Control header applied to the response.
+	// Optional.
+	CacheControl string
+}
+
+func (rt RouteFile) Match(r *http.Request) bool {
+	if rt.Path == "/" || rt.Path == "" {
+		slog.Error("RouteFile cannot serve root path")
+		return false
+	}
+	if !strings.HasPrefix(rt.Path, "/") {
+		rt.Path = "/" + rt.Path
+	}
+	return r.URL.Path == rt.Path
+}
+func (rt RouteFile) Serve(w http.ResponseWriter, r *http.Request) {
+	rw := &responseWriter{
+		w: w,
+		setHeaders: func(h http.Header) {
+			if rt.CacheControl == "" {
+				return
+			}
+			h.Set("Cache-Control", rt.CacheControl)
+		},
+	}
+	http.ServeFile(rw, r, rt.FilePath)
+}
+
+// UseRoute adds a custom Route to the router.
+// A Route must implement:
+//   - Match(*http.Request) bool: whether the route handles the request
+//   - Serve(http.ResponseWriter, *http.Request): serve the matched request
+func UseRoute(r Route) Use {
+	return router.UseRoute(r)
 }
 
 // UseFallback sets a fallback handler for requests that don't match any routes.
 // This is useful for integrating with other HTTP handlers or serving custom 404 pages.
-func UseFallback(handler http.Handler) Mod {
-	return router.ServeFallback(handler)
-}
-
-// Deprecated: use UseFallback
-func ServeFallback(handler http.Handler) Mod {
-	return UseFallback(handler)
+func UseFallback(handler http.Handler) Use {
+	return router.UseFallback(handler)
 }
 
 type SessionCallback = router.SessionCallback
@@ -130,19 +223,14 @@ type SessionCallback = router.SessionCallback
 // UseSessionCallback registers callbacks for session lifecycle events.
 // The Create callback is called when a new session is created.
 // The Delete callback is called when a session is removed.
-func UseSessionCallback(callback SessionCallback) Mod {
-	return router.SetSessionCallback(callback)
+func UseSessionCallback(callback SessionCallback) Use {
+	return router.UseSessionCallback(callback)
 }
 
 // UseESConf configures esbuild profiles for JavaScript/TypeScript processing.
 // Different profiles can be used for development vs production builds.
-func UseESConf(conf ESConf) Mod {
-	return router.SetBuildProfiles(conf)
-}
-
-// Deprecated: use UseESConf
-func SetESConf(conf ESConf) Mod {
-	return UseESConf(conf)
+func UseESConf(conf ESConf) Use {
+	return router.UseESConf(conf)
 }
 
 // SystemConf contains system-wide configuration options for the framework.
@@ -150,24 +238,14 @@ type SystemConf = common.SystemConf
 
 // UseSystemConf applies system-wide configuration including timeouts,
 // limits, and other framework behavior settings.
-func UseSystemConf(conf SystemConf) Mod {
-	return router.SetSystemConf(conf)
-}
-
-// Deprecated: use UseSystemConf
-func SetSystemConf(conf SystemConf) Mod {
-	return UseSystemConf(conf)
+func UseSystemConf(conf SystemConf) Use {
+	return router.UseSystemConf(conf)
 }
 
 // UseErrorPage sets a custom error page component for handling internal errors.
 // The component receives the error message as a parameter.
-func UseErrorPage(page func(message string) templ.Component) Mod {
-	return router.SetErrorPage(page)
-}
-
-// Deprecated: use SetErrorPage
-func SetErrorPage(page func(message string) templ.Component) Mod {
-	return UseErrorPage(page)
+func UseErrorPage(page func(message string) templ.Component) Use {
+	return router.UseErrorPage(page)
 }
 
 // CSP represents Content Security Policy configuration.
@@ -175,11 +253,6 @@ type CSP = common.CSP
 
 // UseCSP configures Content Security Policy headers for enhanced security.
 // This helps prevent XSS attacks and other security vulnerabilities.
-func UseCSP(csp CSP) Mod {
-	return router.SetCSP(&csp)
-}
-
-// Deprecated: use UseCSP
-func EnableCSP(csp CSP) Mod {
-	return UseCSP(csp)
+func UseCSP(csp CSP) Use {
+	return router.UseCSP(&csp)
 }

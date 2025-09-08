@@ -59,7 +59,7 @@ func (n *Door) Clear(ctx context.Context) {
 // The channel will receive nil on success or an error if the operation fails.
 // The channel is closed after sending the result. If the door is not active,
 // the channel is closed immediately without sending any value.
-// A blocking context warning is logged if called from a blocking context.
+// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
 func (n *Door) XReload(ctx context.Context) <-chan error {
 	common.LogBlockingWarning(ctx, "Door", "XUpdate")
 	return n.reload(ctx)
@@ -69,7 +69,7 @@ func (n *Door) XReload(ctx context.Context) <-chan error {
 // The channel will receive nil on success or an error if the operation fails.
 // The channel is closed after sending the result. If the door is not active,
 // the channel is closed immediately without sending any value.
-// A blocking context warning is logged if called from a blocking context.
+// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
 func (n *Door) XUpdate(ctx context.Context, content templ.Component) <-chan error {
 	common.LogBlockingWarning(ctx, "Door", "XUpdate")
 	return n.update(ctx, content)
@@ -79,7 +79,7 @@ func (n *Door) XUpdate(ctx context.Context, content templ.Component) <-chan erro
 // The channel will receive nil on success or an error if the operation fails.
 // The channel is closed after sending the result. If the door is not active,
 // the channel is closed immediately without sending any value.
-// A blocking context warning is logged if called from a blocking context.
+// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
 func (n *Door) XReplace(ctx context.Context, content templ.Component) <-chan error {
 	common.LogBlockingWarning(ctx, "Door", "XReplace")
 	return n.replace(ctx, content)
@@ -89,7 +89,7 @@ func (n *Door) XReplace(ctx context.Context, content templ.Component) <-chan err
 // The channel will receive nil on success or an error if the operation fails.
 // The channel is closed after sending the result. If the door is not active,
 // the channel is closed immediately without sending any value.
-// A blocking context warning is logged if called from a blocking context.
+// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
 func (n *Door) XRemove(ctx context.Context) <-chan error {
 	common.LogBlockingWarning(ctx, "Door", "XRemove")
 	return n.remove(ctx)
@@ -99,7 +99,7 @@ func (n *Door) XRemove(ctx context.Context) <-chan error {
 // The channel will receive nil on success or an error if the operation fails.
 // The channel is closed after sending the result. If the door is not active,
 // the channel is closed immediately without sending any value.
-// This is equivalent to XUpdate(ctx, nil) and empties the door's content.
+// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
 func (n *Door) XClear(ctx context.Context) <-chan error {
 	return n.clear(ctx)
 }

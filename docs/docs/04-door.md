@@ -1,19 +1,17 @@
-## Door
+# Door
 
 `doors.Door` controls a dynamic **container** in the DOM tree that can be updated, replaced, or removed at runtime. It is a fundamental building block of *doors* framework, enabling reactive HTML updates without a virtual DOM.
 
-`doors.Door` act as an insertion point in your template where content can be dynamically manipulated from Go code. 
+By default `doors.Door` does not affect layout (custom element with display: contents).  However, some HTML tags expect only specific children (`<table>`, for example). So, you can use any tag as *door* by providing `Tag` field value:
 
-> By default `doors.Door` does not affect layout (custom element with display: contents).  However, some HTML tags expect only specific children (<table>, for example). So, you can use any tag as *door* by providing `Tag` field value:
->
-> ```templ 
-> door = doors.Door{
-> 	Tag: "tr", // now it can be used inside <table> and <tbody>
-> 	A: [string]any{"class":"row"}, // attributes (id will be overwritten)
-> }
-> ```
->
-> ✅ Specify the tag only if necessary
+```
+door = doors.Door{
+	Tag: "tr", // now it can be used inside <table> and <tbody>
+	A: [string]any{"class":"row"}, // attributes (id will be overwritten)
+}
+```
+
+✅ Specify the tag only if necessary Specify the tag only if necessary
 
 ## Lifecycle
 

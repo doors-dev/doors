@@ -18,7 +18,7 @@ templ pageA(b doors.SourceBeam[PathA]) {
 			<div id="path">A</div>
 			@doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-					doors.LocationAssign(ctx, PathC{PathC1: true})
+					doors.Call(ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
 					return false
 				},
 			}
@@ -72,7 +72,7 @@ templ pageC(b doors.SourceBeam[PathC]) {
 			<a id="c2">c2</a>
 			@doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-					doors.LocationReplace(ctx, PathC{PathC2: true})
+					doors.Call(ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
 					return true
 				},
 			}
@@ -80,29 +80,28 @@ templ pageC(b doors.SourceBeam[PathC]) {
 			<div id="marker">{ doors.RandId() }</div>
 			@doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-					doors.LocationReload(ctx)
+					doors.Call(ctx, doors.ActionLocationReload{})
 					return false
 				},
 			}
 			<button id="reload">reload</button>
-
 			@doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-					r.After(doors.AfterLocationAssign(PathB{}))
+					r.After(doors.ActionOnlyLocationAssign(PathB{}))
 					return false
 				},
 			}
 			<button id="assign_after">assign_after</button>
 			@doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-					r.After(doors.AfterLocationReplace(PathB{}))
+					r.After(doors.ActionOnlyLocationReplace(PathB{}))
 					return false
 				},
 			}
 			<button id="replace_after">replace_after</button>
 			@doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
-					r.After(doors.AfterLocationReload())
+					r.After(doors.ActionOnlyLocationReload())
 					return false
 				},
 			}

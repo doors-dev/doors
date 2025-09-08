@@ -194,7 +194,7 @@ templ (d *categoryFragment) nav() {
 						},
 						Active: doors.Active{
 							// indicate with attribute
-							Indicator: doors.IndicatorAttr("aria-current", "page"),
+							Indicator: doors.IndicatorOnlyAttr("aria-current", "page"),
 							// path must start with href
 							PathMatcher: doors.PathMatcherStarts(),
 							// ignore query params

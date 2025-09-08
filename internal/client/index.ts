@@ -8,8 +8,8 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 import door from './door'
-import { capture, CaptureErr, captureErrKinds } from './capture'
-
+import { capture } from './capture'
+import { HookErr, hookErrKinds } from './capture'
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
     const attrName = `data-d00r-hook:${name}`
@@ -22,7 +22,7 @@ function getHookParams(element: HTMLElement, name: string): any | undefined {
 const global: { [key: string]: any } = {}
 
 class $D {
-    CaptureErr = CaptureErr
+    HookErr = HookErr
 
     constructor(private anchor: HTMLElement) { }
 
@@ -41,7 +41,7 @@ class $D {
     async rawHook(name: string, arg: any): Promise<Response> {
         const hook = getHookParams(this.anchor, name)
         if (hook === undefined) {
-            throw new CaptureErr(captureErrKinds.capture, new Error("hook " + name + " not found"))
+            throw new HookErr(hookErrKinds.capture, new Error("hook " + name + " not found"))
         }
         return await capture("default", undefined, arg, undefined, hook)
     }
@@ -69,3 +69,4 @@ function init(anchor: HTMLElement, f?: ($d: $D) => (Promise<void> | void)): (voi
     f($d)
 }
 export default init
+export { HookErr }

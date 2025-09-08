@@ -15,13 +15,11 @@ import (
 	"time"
 )
 
-// Scope controls event processing concurrency by managing how multiple events
-// are queued, debounced, blocked, or serialized. Scopes provide fine-grained
-// control over event handling behavior to prevent race conditions and improve UX.
+// Scope controls concurrency for event processing.
+// It defines how events are queued, blocked, debounced, or serialized.
 type Scope = front.Scope
 
-// ScopeSet represents the configuration data for a specific scope instance.
-// It contains the scope type, ID, and any additional parameters needed for execution.
+// ScopeSet holds the configuration of a scope instance.
 type ScopeSet = front.ScopeSet
 
 type scopeFunc func(inst instance.Core) *ScopeSet
@@ -30,127 +28,95 @@ func (s scopeFunc) Scope(inst instance.Core) *ScopeSet {
 	return s(inst)
 }
 
-// BlockingScope prevents concurrent event processing within the same scope.
-// When an event is already being processed, subsequent events are cancelled
-// until the current event completes. This is useful for preventing double-clicks
-// or rapid form submissions.
-type BlockingScope struct {
+// ScopeBlocking cancels new events while one is processing.
+// Useful for preventing double-clicks or duplicate submissions.
+type ScopeBlocking struct {
 	id front.ScopeAutoId
 }
 
-// ScopeBlocking creates a blocking scope that cancels subsequent events while
-// one is already processing. Use this to prevent duplicate operations like
-// double form submissions or multiple API calls from rapid clicking.
-func ScopeBlocking() []Scope {
-	return []Scope{&BlockingScope{}}
-}
-
-func (b *BlockingScope) Scope(inst instance.Core) *ScopeSet {
+func (b *ScopeBlocking) Scope(inst instance.Core) *ScopeSet {
 	return front.BlockingScope(b.id.Id(inst))
 }
 
-// SerialScope processes events one at a time in the order they were received.
-// Events are queued and processed sequentially.
-type SerialScope struct {
+// ScopeOnlyBlocking creates a blocking scope that cancels concurrent events.
+func ScopeOnlyBlocking() []Scope {
+	return []Scope{&ScopeBlocking{}}
+}
+
+// ScopeSerial queues events and processes them in order.
+type ScopeSerial struct {
 	id front.ScopeAutoId
 }
 
-func (b *SerialScope) Scope(inst instance.Core) *ScopeSet {
+func (b *ScopeSerial) Scope(inst instance.Core) *ScopeSet {
 	return front.SerialScope(b.id.Id(inst))
 }
 
-// ScopeSerial creates a serial scope that processes events one at a time in order.
-// Events are queued and executed sequentially.
-func ScopeSerial() []Scope {
-	return []Scope{&SerialScope{}}
+// ScopeOnlySerial creates a serial scope that executes events sequentially.
+func ScopeOnlySerial() []Scope {
+	return []Scope{&ScopeSerial{}}
 }
 
-// LatestScope cancels previous events and only processes the most recent one.
-// When a new event arrives, any currently processing event is cancelled
-// and the new event takes priority. This is useful for search-as-you-type
-// or real-time filtering scenarios.
-type LatestScope struct {
+// ScopeLatest cancels previous events and only runs the most recent one.
+// Useful for search-as-you-type or live filtering.
+type ScopeLatest struct {
 	id front.ScopeAutoId
 }
 
-func (b *LatestScope) Scope(inst instance.Core) *ScopeSet {
+func (b *ScopeLatest) Scope(inst instance.Core) *ScopeSet {
 	return front.LatestScope(b.id.Id(inst))
 }
 
-// ScopeLatest creates a scope that only processes the most recent event,
-// cancelling any previous events that are still processing. This ensures
-// only the latest user action is processed.
-func ScopeLatest() []Scope {
-	return []Scope{&LatestScope{}}
+// ScopeOnlyLatest creates a scope that processes only the latest event.
+func ScopeOnlyLatest() []Scope {
+	return []Scope{&ScopeLatest{}}
 }
 
-// DebounceScope delays event processing using a debounce mechanism with both
-// duration and limit parameters. Events are delayed by the duration, but
-// will always execute within the limit timeframe regardless of new events.
-type DebounceScope struct {
+// ScopeDebounce delays events by duration but guarantees execution
+// within the specified limit. New events reset the delay.
+type ScopeDebounce struct {
 	id front.ScopeAutoId
 }
 
-// Scope creates a debounced scope with the specified timing parameters.
-// The duration parameter sets the debounce delay - events are delayed by this amount
-// and reset if new events arrive. The limit parameter sets the maximum time an event
-// can be delayed - events will execute after this time regardless of new events.
-//
-// Parameters:
-//   - duration: Debounce delay time (resets on new events)
-//   - limit: Maximum delay time (executes regardless of new events)
-func (d *DebounceScope) Scope(duration time.Duration, limit time.Duration) Scope {
+// Scope creates a debounced scope.
+//   - duration: debounce delay, reset by new events
+//   - limit: maximum wait before execution regardless of new events
+func (d *ScopeDebounce) Scope(duration, limit time.Duration) Scope {
 	return scopeFunc(func(inst instance.Core) *ScopeSet {
 		return front.DebounceScope(d.id.Id(inst), duration, limit)
 	})
 }
 
-// ScopeDebounce creates a debounced scope that delays event execution.
-// Events are delayed by duration, but will always execute within limit time.
-// This is useful for preventing excessive API calls during rapid user input.
-//
-// Parameters:
-//   - duration: How long to wait after the last event before executing
-//   - limit: Maximum time to wait before forcing execution
-func ScopeDebounce(duration time.Duration, limit time.Duration) []Scope {
-	return []Scope{(&DebounceScope{}).Scope(duration, limit)}
+// ScopeOnlyDebounce creates a debounced scope with duration and limit.
+func ScopeOnlyDebounce(duration, limit time.Duration) []Scope {
+	return []Scope{(&ScopeDebounce{}).Scope(duration, limit)}
 }
 
-// FrameScope manages two types of events: immediate events and frame events.
-// Immediate events (frame=false) executed normaly.
-// Frame events (frame=true) wait until all previous events in the scope complete,
-// while blocking new events, and then execute in blocking manner.
-type FrameScope struct {
+// ScopeFrame distinguishes immediate and frame events.
+// Immediate events run normally. Frame events wait for all prior
+// events to finish, block new ones, then run exclusively.
+type ScopeFrame struct {
 	id front.ScopeAutoId
 }
 
-// Scope creates a frame-based scope with the specified event type.
-// Immediate events (frame=false) executed normaly.
-// Frame events (frame=true) wait until all previous events in the scope complete,
-// while blocking new events (frame=true and frame=false), and then execute in
-// blocking manner.
-//
-// Parameters:
-//   - frame: false for immediate execution, true to wait for other events to complete
-func (d *FrameScope) Scope(frame bool) Scope {
+// Scope creates a frame-based scope.
+//   - frame=false: execute immediately
+//   - frame=true: wait for completion of all events, then execute exclusively
+func (d *ScopeFrame) Scope(frame bool) Scope {
 	return scopeFunc(func(inst instance.Core) *ScopeSet {
 		return front.FrameScope(d.id.Id(inst), frame)
 	})
 }
 
-type PriorityScope struct {
+// ScopePriority cancels lower-priority events (pending or running)
+// when a higher-priority event is triggered.
+type ScopePriority struct {
 	id front.ScopeAutoId
 }
 
-// Scope creates a frame-based scope with the specified event type.
-// Immediate events (frame=false) executed normaly.
-// Frame events (frame=true) wait until all previous events in the scope complete,
-// while blocking new events (frame=true and frame=false), and then execute normaly.
-//
-// Parameters:
-//   - frame: false for immediate execution, true to wait for other events to complete
-func (d *PriorityScope) Scope(priority uint8) Scope {
+func (d *ScopePriority) Scope(priority uint8) Scope {
 	return scopeFunc(func(inst instance.Core) *ScopeSet {
 		return front.PriorityScope(d.id.Id(inst), priority)
 	})
 }
+

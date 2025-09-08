@@ -15,62 +15,38 @@ import (
 	"net/http"
 )
 
-// Page defines the interface for page components that can be rendered with reactive data.
-// Pages receive a SourceBeam containing the model data and return a templ.Component.
-//
-// Example:
-//
-//	type BlogPage struct {
-//	    beam doors.SourceBeam[BlogPath]
-//	}
-//
-//	func (p *BlogPage) Render(beam doors.SourceBeam[BlogPath]) templ.Component {
-//	    p.beam = beam
-//	    return common.Template(p)
-//	}
-//
-//	func (p *BlogPage) Body() templ.Component {
-//	    return doors.Sub(p.beam, func(path BlogPath) templ.Component {
-//	        switch {
-//	        case path.Home:
-//	            return homePage()
-//	        case path.Post:
-//	            return postPage(path.ID)
-//	        }
-//	    })
-//	}
+// Page defines a renderable page component that the application must implement.
+// M - the path model type.
 type Page[M any] interface {
 	Render(SourceBeam[M]) templ.Component
 }
 
-// PageRoute represents a response that can be returned from page handlers.
-// This includes page responses, redirects, reroutes, and static content.
+// PageRoute provides the response type for page handlers
+// (page, redirect, reroute, or static content).
 type PageRoute = router.Response
 
-// RPage provides access to request data and response control for page handlers.
-// It combines basic request/response functionality with model access.
+// RPage provides request data and response control for page handlers.
 type RPage[M any] interface {
 	R
-	// Returns the decoded URL model
+	// GetModel returns the decoded URL model.
 	GetModel() M
-	// Access to incoming request headers
+	// RequestHeader returns the incoming request headers.
 	RequestHeader() http.Header
-	// Access to outgoing response headers
+	// ResponseHeader returns the outgoing response headers.
 	ResponseHeader() http.Header
 }
 
-// PageRouter provides methods for creating different types of page responses.
-// It allows rendering pages, redirecting, rerouting, and serving static content.
+// PageRouter provides helpers to produce page responses.
 type PageRouter[M any] interface {
-	// Serve page
+	// Page renders a Page.
 	Page(page Page[M]) PageRoute
-	// Serve func page
+	// PageFunc renders a Page from a function.
 	PageFunc(pageFunc func(SourceBeam[M]) templ.Component) PageRoute
-	// Serve static page
+	// StaticPage returns a static page with status.
 	StaticPage(content templ.Component, status int) PageRoute
-	// Internal reroute to different model (detached=true disables path synchronization)
+	// Reroute performs an internal reroute to model (detached=true disables path sync).
 	Reroute(model any, detached bool) PageRoute
-	// HTTP redirect with status
+	// Redirect issues an HTTP redirect to model with status.
 	Redirect(model any, status int) PageRoute
 }
 
@@ -97,7 +73,6 @@ func (r *pageRequest[M]) ResponseHeader() http.Header {
 func (r *pageRequest[M]) GetCookie(name string) (*http.Cookie, error) {
 	return r.r.R.Cookie(name)
 }
-
 
 func (r *pageRequest[M]) SetCookie(cookie *http.Cookie) {
 	http.SetCookie(r.r.W, cookie)

@@ -13,26 +13,26 @@ Session-scoped storage persists for the lifetime of a session and is shared acro
 Stores a key-value pair in session storage.
 
 ```go
-func SessionSave(ctx context.Context, key any, value any) bool
+func SessionSave(ctx context.Context, key any, value any) any
 ```
 
 - **key**: any type, identifier for the stored value.  
 - **value**: any type, value to persist.  
-- Returns **true** if the value was successfully stored, otherwise **false**.  
+- Returns the previous value under the key or nil
 
 **Example**:
 
 ```go
-// Store user preferences globally across session
+// Store user preferences globally across the session
 type Preferences struct {
     Theme    string
     Language string
 }
 
-saved := doors.SessionSave(ctx, "prefs", Preferences{
+oldPrefs, ok := doors.SessionSave(ctx, "prefs", Preferences{
     Theme:    "dark",
     Language: "en",
-})
+}).(Preferences)
 ```
 
 ---
@@ -46,7 +46,6 @@ func SessionLoad(ctx context.Context, key any) any
 ```
 
 - Returns the stored value, or **nil** if no value exists.  
-- The result must be **type-asserted** to its original type.  
 
 **Example**:
 
@@ -66,10 +65,11 @@ applyTheme(prefs.Theme)
 Deletes a key-value pair from session storage.
 
 ```go
-func SessionRemove(ctx context.Context, key any)
+func SessionRemove(ctx context.Context, key any) any
 ```
 
 - If the key does not exist, no action is taken.  
+- Returns the removed value or nil.
 
 **Example**:
 
@@ -89,12 +89,12 @@ Instance-scoped storage persists only for the lifetime of the current **instance
 Stores a key-value pair in instance storage.
 
 ```go
-func InstanceSave(ctx context.Context, key any, value any) bool
+func InstanceSave(ctx context.Context, key any, value any) any
 ```
 
 - **key**: any type, identifier for the stored value.  
 - **value**: any type, value to persist.  
-- Returns **true** if the value was successfully stored, otherwise **false**.  
+- Returns previous value under the key or nil
 
 **Example**:
 
@@ -140,10 +140,10 @@ if prefs, ok := doors.InstanceLoad(ctx, "prefs").(Preferences); ok {
 Deletes a key-value pair from instance storage.
 
 ```go
-func InstanceRemove(ctx context.Context, key any)
+func InstanceRemove(ctx context.Context, key any) any
 ```
 
-- If the key does not exist, no action is taken.  
+- Returns the removed value or nil
 
 **Example**:
 

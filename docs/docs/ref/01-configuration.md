@@ -20,9 +20,11 @@ type SystemConf struct {
 	SessionTTL							 time.Duration
 	InstanceGoroutineLimit   int
 	InstanceTTL              time.Duration
+	ServerCacheControl       string
 	ServerDisableGzip        bool
 	DisconnectHiddenTimer    time.Duration
 	RequestTimeout           time.Duration
+	OptimisticSync           bool
 	SolitairePing            time.Duration
 	SolitaireSyncTimeout     time.Duration
 	SolitaireRollTimeout     time.Duration
@@ -31,7 +33,6 @@ type SystemConf struct {
 	SolitaireQueue           int
 	SolitairePending         int
 }
-
 ```
 > If you’d like certain options configurable per instance or dynamicaly, please open a GitHub issue.
 
@@ -43,7 +44,7 @@ Key settings to understand:
    *Default: 12*
    
 - **SessionTTL** — Session lifetime policy. *Default: 0*
-   
+  
    Behavior at `0`: session ends when **no instances remain**, and the session cookie expires when the **browser closes**.
    
 - **InstanceGoroutineLimit** — Max goroutines per instance for rendering and reactivity.
@@ -78,8 +79,10 @@ Key settings to understand:
 
 ### Other
 
+* **OptimisticSync** — Makes all system front-end sync resolve optimistically on successful flush without front-end reporting, leading to early indication canceling.  Can improve or hurt UX.
 * **RequestTimeout** — Max duration of a client-server request (hook).
    *Default: 30s*
+* **ServerCacheControl** -  Cache control header value for JS and CSS resources prepared by the framework.
+   *Default: public, max-age=31536000, immutable*
 * **ServerDisableGzip** — Disables gzip compression when true. Applies to HTML, JS, and CSS.
    *Default: false*.
-

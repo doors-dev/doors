@@ -83,16 +83,16 @@ func (f *indicatorFragment) queue() templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = f.button("queue-1", []doors.Indicator{
-			doors.AttrIndicator{
+			doors.IndicatorAttr{
 				Selector: doors.SelectorQuery("#q-target"),
 				Name:     "data-a",
 				Value:    "A1",
 			},
-			doors.ClassIndicator{
+			doors.IndicatorClass{
 				Selector: doors.SelectorQuery("#q-target"),
 				Class:    "class-1",
 			},
-			doors.ContentIndicator{
+			doors.IndicatorContent{
 				Selector: doors.SelectorQuery("#q-target"),
 				Content:  "first",
 			},
@@ -103,16 +103,16 @@ func (f *indicatorFragment) queue() templ.Component {
 		templ_7745c5c3_Err = f.button("queue-2", []doors.Indicator{
 			// Partial update: does NOT touch data-a, so when this applies
 			// data-a should restore to original (A0).
-			doors.AttrIndicator{
+			doors.IndicatorAttr{
 				Selector: doors.SelectorQuery("#q-target"),
 				Name:     "data-b",
 				Value:    "B2",
 			},
-			doors.ClassIndicator{
+			doors.IndicatorClass{
 				Selector: doors.SelectorQuery("#q-target"),
 				Class:    "class-2",
 			},
-			doors.ContentIndicator{
+			doors.IndicatorContent{
 				Selector: doors.SelectorQuery("#q-target"),
 				Content:  "second",
 			},
@@ -123,25 +123,25 @@ func (f *indicatorFragment) queue() templ.Component {
 		templ_7745c5c3_Err = f.button("queue-3", []doors.Indicator{
 			// Partial update: does NOT touch data-a, so when this applies
 			// data-a should restore to original (A0).
-			doors.AttrIndicator{
+			doors.IndicatorAttr{
 				Selector: doors.SelectorQuery("#q-target"),
 				Name:     "data-b",
 				Value:    "B2",
 			},
-			doors.AttrIndicator{
+			doors.IndicatorAttr{
 				Selector: doors.SelectorQuery("#q-target"),
 				Name:     "data-a",
 				Value:    "A3",
 			},
-			doors.ClassIndicator{
+			doors.IndicatorClass{
 				Selector: doors.SelectorQuery("#q-target"),
 				Class:    "class-2",
 			},
-			doors.ClassIndicator{
+			doors.IndicatorClass{
 				Selector: doors.SelectorQuery("#q-target"),
 				Class:    "class-3",
 			},
-			doors.ContentIndicator{
+			doors.IndicatorContent{
 				Selector: doors.SelectorQuery("#q-target"),
 				Content:  "second",
 			},
@@ -179,33 +179,33 @@ func (f *indicatorFragment) restore() templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = f.button("action-1", []doors.Indicator{
-			doors.AttrIndicator{
+			doors.IndicatorAttr{
 				Selector: doors.SelectorQuery("#indicator-1"),
 				Name:     "data-attr1",
 				Value:    "val-other",
 			},
-			doors.AttrIndicator{
+			doors.IndicatorAttr{
 				Selector: doors.SelectorQuery("#indicator-1"),
 				Name:     "data-attr2",
 				Value:    "val-2",
 			},
-			doors.ClassIndicator{
+			doors.IndicatorClass{
 				Selector: doors.SelectorQuery("#indicator-1"),
 				Class:    "class-1",
 			},
-			doors.ClassIndicator{
+			doors.IndicatorClass{
 				Selector: doors.SelectorQuery("#indicator-1"),
 				Class:    "class-1",
 			},
-			doors.ClassRemoveIndicator{
+			doors.IndicatorClassRemove{
 				Selector: doors.SelectorQuery("#indicator-1"),
 				Class:    "class-3",
 			},
-			doors.ClassIndicator{
+			doors.IndicatorClass{
 				Selector: doors.SelectorQuery("#indicator-1"),
 				Class:    "class-2",
 			},
-			doors.ContentIndicator{
+			doors.IndicatorContent{
 				Selector: doors.SelectorQuery("#indicator-1"),
 				Content:  "indication",
 			},
@@ -242,15 +242,15 @@ func (f *indicatorFragment) selectors() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = f.button("indicate-parent", doors.IndicatorAttrQueryParent(".block", "data-check", "true")).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = f.button("indicate-parent", doors.IndicatorOnlyAttrQueryParent(".block", "data-check", "true")).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = f.button("indicate-self", doors.IndicatorContent("indication")).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = f.button("indicate-self", doors.IndicatorOnlyContent("indication")).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = f.button("indicate-selector", doors.IndicatorAttrQuery("#next", "data-check", "true")).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = f.button("indicate-selector", doors.IndicatorOnlyAttrQuery("#next", "data-check", "true")).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -290,7 +290,7 @@ func (f *indicatorFragment) button(id string, indicator []doors.Indicator) templ
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/test/attr/indicator.templ`, Line: 130, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/test/attr/indicator.templ`, Line: 129, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -311,7 +311,7 @@ func (f *indicatorFragment) button(id string, indicator []doors.Indicator) templ
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/test/attr/indicator.templ`, Line: 130, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/test/attr/indicator.templ`, Line: 129, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {

@@ -14,9 +14,11 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/action"
 )
 
 func newDeck(inst solitaireInstance, queueLimit int, issueLimit int, syncTimeout time.Duration) *deck {
@@ -57,7 +59,8 @@ func (d *deck) End() {
 	d.expirator.Shutdown()
 	d.killed = true
 	for seq := range d.issued {
-		d.issued[seq].call.Cancel()
+		d.issued[seq].call.cancel()
+		d.issued[seq].call.clean()
 	}
 	if d.top == nil {
 		return
@@ -81,14 +84,19 @@ func (d *deck) Pending() bool {
 type writeResult int
 
 const (
-	nothingToWrite writeResult = iota
-	pendingLimit
-	writeOk
+	writeOk writeResult = iota
+	nothingToWrite
 	writeErr
+	pendingLimit
 	writeSyncErr
 )
 
-func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
+type flushWriter interface {
+	io.Writer
+	afterFlush(func())
+}
+
+func (d *deck) WriteNext(w flushWriter) (res writeResult, err error) {
 	defer func() {
 		if res == writeSyncErr {
 			d.inst.syncError(err)
@@ -115,16 +123,17 @@ func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
 			}
 			return writeOk, nil
 		}
-		data := card.call.Data()
-		if data == nil {
+		action, ok := card.call.action()
+		if !ok {
 			d.expirator.Report(card.seq())
-			card.call.Cancel()
+			card.call.cancel()
+			card.call.clean()
 			d.skipRange(card.startSeq, card.endSeq)
 			continue
 		}
 		issuedCall := &issuedCall{
-			data: data,
-			call: card.call,
+			invocation: action.Invocation(),
+			call:       card.call,
 		}
 		err := issuedCall.write(header, w)
 		if err != nil {
@@ -135,7 +144,8 @@ func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
 				return writeErr, err
 			}
 			d.expirator.Report(card.seq())
-			issuedCall.call.Result(nil, errors.Join(errors.New("call serialization error"), err))
+			issuedCall.call.result(nil, errors.Join(errors.New("call serialization error"), err))
+			issuedCall.call.clean()
 			d.skipRange(card.startSeq, card.endSeq)
 			_, err := w.Write(errorTerminator)
 			if err != nil {
@@ -144,6 +154,7 @@ func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
 			return writeOk, nil
 		}
 		d.issued[card.seq()] = issuedCall
+		w.afterFlush(issuedCall.call.written)
 		return writeOk, nil
 	}
 }
@@ -175,22 +186,24 @@ func (d *deck) OnReport(s *report) (err error) {
 			d.latestReport = seq
 		}
 		result := s.Results[seq]
-		call, ok := d.issued[seq]
+		issued, ok := d.issued[seq]
 		if !ok {
-			card, err := d.extractRestored(seq)
+			restored, err := d.extractRestored(seq)
 			if err != nil {
 				return err
 			}
-			if card == nil {
+			if restored == nil {
 				continue
 			}
 			d.expirator.Report(seq)
-			card.call.Result(result.output, result.err)
+			restored.call.result(result.output, result.err)
+			restored.call.clean()
 			continue
 		}
 		delete(d.issued, seq)
 		d.expirator.Report(seq)
-		call.call.Result(result.output, result.err)
+		issued.call.result(result.output, result.err)
+		issued.call.clean()
 	}
 	prevEnd := d.latestReport
 	for _, gap := range s.Gaps {
@@ -222,7 +235,7 @@ func (d *deck) OnReport(s *report) (err error) {
 	}
 	return nil
 }
-func (d *deck) Insert(call common.Call) (err error) {
+func (d *deck) Insert(c action.Call) (err error) {
 	defer func() {
 		if err != nil {
 			d.inst.syncError(err)
@@ -231,13 +244,21 @@ func (d *deck) Insert(call common.Call) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.killed {
-		call.Cancel()
+		c.Cancel()
 		return errors.New("killed")
 	}
 	d.seq += 1
-	door := newCard(d.seq, call)
+	dc := &deckCall{
+		call:   c,
+		params: c.Params(),
+	}
+	if dc.params.Timeout == 0 {
+		dc.params.Timeout = d.syncTimeout
+	}
+	door := newCard(d.seq, dc)
 	d.insertTail(door)
-	d.expirator.Track(d.seq, time.Now().Add(d.syncTimeout))
+	deadline := time.Now().Add(dc.params.Timeout)
+	d.expirator.Track(d.seq, deadline)
 	return d.inc()
 }
 
@@ -262,8 +283,8 @@ func (d *deck) dec() {
 	d.deckSize -= 1
 }
 
-func (d *deck) restore(seq uint64, call common.Call) error {
-	n := newRestoredCard(seq, call)
+func (d *deck) restore(seq uint64, c *deckCall) error {
+	n := newRestoredCard(seq, c)
 	if d.top == nil {
 		d.top = n
 		d.bottom = n
@@ -330,20 +351,20 @@ type head interface {
 	setTail(*card)
 }
 
-func newRestoredCard(seq uint64, call common.Call) *card {
+func newRestoredCard(seq uint64, c *deckCall) *card {
 	return &card{
 		startSeq: seq,
 		endSeq:   seq,
-		call:     call,
+		call:     c,
 		restored: true,
 	}
 }
 
-func newCard(seq uint64, call common.Call) *card {
+func newCard(seq uint64, c *deckCall) *card {
 	return &card{
 		startSeq: seq,
 		endSeq:   seq,
-		call:     call,
+		call:     c,
 	}
 }
 func newFillerCard(seq uint64) *card {
@@ -357,14 +378,15 @@ func newFillerCard(seq uint64) *card {
 type card struct {
 	startSeq uint64
 	endSeq   uint64
-	call     common.Call
+	call     *deckCall
 	tail     *card
 	restored bool
 }
 
 func (s *card) cancel() {
 	if !s.isFiller() {
-		s.call.Cancel()
+		s.call.cancel()
+		s.call.clean()
 	}
 	if s.tail == nil {
 		return
@@ -459,18 +481,19 @@ func (c *card) skipSeq(seq uint64, h head) {
 
 func newHeader(startSeq uint64, endSeq uint64) header {
 	if startSeq == endSeq {
-		return []any{endSeq}
+		return []any{[]uint64{endSeq}}
 	}
-	return []any{endSeq, startSeq}
+	return []any{[]uint64{endSeq, startSeq}}
 
 }
 
 type header []any
 
-var callSignal = []byte{0x00}
-var rollSignal = []byte{0x01}
-var suspendSignal = []byte{0x02}
-var killSignal = []byte{0x03}
+var ackSignal = []byte{0x00}
+var actionSignal = []byte{0x01}
+var rollSignal = []byte{0x02}
+var suspendSignal = []byte{0x03}
+var killSignal = []byte{0x04}
 
 var continueWithPayload = []byte{0xFC}
 var terminator = []byte{0xFF}
@@ -486,7 +509,7 @@ func (h header) writeFiller(w io.Writer) error {
 }
 
 func (h header) write(w io.Writer) error {
-	_, err := w.Write(callSignal)
+	_, err := w.Write(actionSignal)
 	if err != nil {
 		return err
 	}
@@ -497,17 +520,18 @@ func (h header) write(w io.Writer) error {
 }
 
 type issuedCall struct {
-	call common.Call
-	data *common.CallData
+	call       *deckCall
+	invocation *action.Invocation
 }
 
 func (i *issuedCall) write(h header, w io.Writer) error {
-	header := append(h, i.data.Name, i.data.Arg)
+	header := append(h, i.invocation)
 	err := header.write(w)
 	if err != nil {
 		return err
 	}
-	if _, ok := i.data.Payload.(common.WritableNone); ok {
+	payload := i.call.payload()
+	if _, ok := payload.(common.WritableNone); ok {
 		_, err = w.Write(terminator)
 		return err
 	}
@@ -515,7 +539,7 @@ func (i *issuedCall) write(h header, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = i.data.Payload.Write(w)
+	err = payload.Write(w)
 	if err != nil {
 		return err
 	}
@@ -580,4 +604,43 @@ func (m *gap) UnmarshalJSON(data []byte) error {
 type report struct {
 	Gaps    []gap             `json:"Gaps"`
 	Results map[uint64]result `json:"results"`
+}
+
+type deckCall struct {
+	call     action.Call
+	reported atomic.Bool
+	params   action.CallParams
+}
+
+func (p *deckCall) written() {
+	if !p.params.Optimistic {
+		return
+	}
+	p.result([]byte("null"), nil)
+}
+
+func (c *deckCall) payload() common.Writable {
+	return c.call.Payload()
+}
+
+func (c *deckCall) action() (action.Action, bool) {
+	return c.call.Action()
+}
+
+func (c *deckCall) clean() {
+	c.call.Clean()
+}
+
+func (c *deckCall) cancel() {
+	if c.reported.Swap(true) {
+		return
+	}
+	c.call.Cancel()
+}
+
+func (c *deckCall) result(ok json.RawMessage, err error) {
+	if c.reported.Swap(true) {
+		return
+	}
+	c.call.Result(ok, err)
 }

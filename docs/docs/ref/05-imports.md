@@ -4,7 +4,7 @@ The framework provides the various import components for including JavaScript an
 
 JavasScript module import map  and  CSP headers  are automatically generated along with the necessary `<script>` and `<link>` tags.
 
-> Refer to **ref/esbuild** article for esbult configuration 
+> Refer to [esbuild](./ref/06-esbuild) for esbuild configuration 
 
 - Stylesheets, created from files, byte slices, or hosted/external URLs.
 
@@ -28,11 +28,11 @@ Builds (not bundeles) a JS/TS file into an ES module via the framework’s build
 - Loads immediately with a `<script>` tag when `Load` is true.
 
 ```templ
-@doors.Imports(doors.ImportModule{
+@doors.ImportModule{
     Specifier: "utils",
     Path:      "src/index.ts",
     Load:      false,
-})
+}
 ```
 
 Then it can be imported into the script via the **specifier** ("utis")
@@ -139,15 +139,12 @@ References an external CSS file and adds its URL to CSP `style-src`.
  Bundle and import module and stylesheet from local sources
 
 ```templ
-@doors.Imports(
-    doors.ImportModuleBundle{
-        Specifier: "module",
-        Entry:      modulePath + "/index.ts",
-    },
-    doors.ImportStyle{
-        Path: modulePath + "/style.css",
-    },
-)
-
+@doors.ImportModuleBundle{
+    Specifier: "module",
+    Entry:      modulePath + "/index.ts",
+}
+@doors.ImportStyle{
+    Path: modulePath + "/style.css",
+}
 ```
 

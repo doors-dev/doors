@@ -81,7 +81,7 @@ func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page anyPage
 		if new {
 			panic("New session can't end")
 		}
-		rr.sess.Delete(session.Id())
+		rr.sessions.Delete(session.Id())
 		rr.servePage(w, r, page, opt)
 		return
 	}
@@ -197,8 +197,8 @@ main:
 			}
 			continue
 		}
-		for _, name := range rr.pageRouteOrder {
-			resp, ok := rr.pageRoutes[name].handleLocation(w, r, l)
+		for _, route := range rr.pageRouteList {
+			resp, ok := route.handleLocation(w, r, l)
 			if ok {
 				response = resp
 				continue main
@@ -248,7 +248,7 @@ func (rr *Router) tryServePut(w http.ResponseWriter, r *http.Request) bool {
 
 func (rr *Router) tryServeJs(w http.ResponseWriter, r *http.Request) bool {
 	main := rr.registry.MainScript()
-	if r.URL.Path != "/"+main.HashString()+".doors.js" {
+	if r.URL.Path != "/"+main.HashString()+".d00r.js" {
 		return false
 	}
 	main.Serve(w, r)
@@ -257,18 +257,20 @@ func (rr *Router) tryServeJs(w http.ResponseWriter, r *http.Request) bool {
 
 func (rr *Router) tryServeCss(w http.ResponseWriter, r *http.Request) bool {
 	main := rr.registry.MainStyle()
-	if r.URL.Path != "/"+main.HashString()+".doors.css" {
+	if r.URL.Path != "/"+main.HashString()+".d00r.css" {
 		return false
 	}
 	main.Serve(w, r)
 	return true
 }
 
-func (rr *Router) tryServeDir(w http.ResponseWriter, r *http.Request) bool {
-	for _, dir := range rr.dirs {
-		if dir.tryServe(w, r) {
-			return true
+func (rr *Router) tryServeRoute(w http.ResponseWriter, r *http.Request) bool {
+	for _, route := range rr.routes {
+		if !route.Match(r) {
+			continue
 		}
+		route.Serve(w, r)
+		return true
 	}
 	return false
 }
@@ -302,7 +304,7 @@ func (rr *Router) tryServeGet(w http.ResponseWriter, r *http.Request) bool {
 	if rr.tryServeImport(w, r) {
 		return true
 	}
-	if rr.tryServeDir(w, r) {
+	if rr.tryServeRoute(w, r) {
 		return true
 	}
 	if rr.tryServePage(w, r) {
@@ -312,7 +314,6 @@ func (rr *Router) tryServeGet(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (rr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rr.used.Store(true)
 	if rr.tryServeHook(w, r) {
 		return
 	}

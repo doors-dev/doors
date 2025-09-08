@@ -45,7 +45,7 @@ type Options struct {
 func NewInstance[M any](sess *Session, page Page[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
 	inst := &Instance[M]{
 		id:        common.RandId(),
-		navigator: newNavigator(adapter, sess.router.Adapters(), m, opt.Detached, opt.Rerouted),
+		navigator: newNavigator(adapter, sess.router.Adapters(), m, opt.Detached, opt.Rerouted, sess.router.Conf().OptimisicSync),
 		page:      page,
 		opt:       opt,
 		session:   sess,

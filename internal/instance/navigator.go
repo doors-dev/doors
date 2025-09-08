@@ -19,16 +19,19 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/beam"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/path"
 )
 
-func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyAdapter, model *M, detached bool, rerouted bool) *navigator[M] {
+func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyAdapter, model *M, detached bool, rerouted bool, optimistic bool) *navigator[M] {
 	return &navigator[M]{
 		adapter:     adapter,
 		adapters:    adapters,
 		detached:    detached,
 		rerouted:    rerouted,
+		optimistic:  optimistic,
 		historyHead: &historyHead[M]{},
+		cancelPrev:  func() {},
 		model: beam.NewSourceBeamExt(*model, func(new, old M) bool {
 			return !reflect.DeepEqual(new, old)
 		}),
@@ -38,15 +41,16 @@ func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyA
 const historyLimit = 32
 
 type navigator[M any] struct {
+	inst        Core
 	adapter     *path.Adapter[M]
 	adapters    map[string]path.AnyAdapter
+	optimistic  bool
 	detached    bool
 	rerouted    bool
 	model       beam.SourceBeam[M]
-	solitaire   *solitaire
 	mu          sync.Mutex
 	historyHead *historyHead[M]
-	pathCall    *setPathCall
+	cancelPrev  context.CancelFunc
 	ctx         context.Context
 }
 
@@ -99,8 +103,8 @@ func (n *navigator[M]) newLink(m any) (*Link, error) {
 	}, nil
 }
 
-func (n *navigator[M]) init(ctx context.Context, solitaire *solitaire) {
-	n.solitaire = solitaire
+func (n *navigator[M]) init(ctx context.Context, inst Core) {
+	n.inst = inst
 	n.ctx = ctx
 	state := beam.NewBeam(n.model, func(m M) navigatorState[M] {
 		l, err := n.adapter.Encode(&m)
@@ -121,13 +125,13 @@ func (n *navigator[M]) init(ctx context.Context, solitaire *solitaire) {
 		}
 	})
 	ns, ok := state.ReadAndSub(ctx, func(ctx context.Context, ns navigatorState[M]) bool {
-		n.pushHistory(&ns, !n.detached, false)
+		n.pushHistory(ctx, &ns, !n.detached, false)
 		return false
 	})
 	if !ok {
 		return
 	}
-	n.pushHistory(&ns, n.rerouted && !n.detached, true)
+	n.pushHistory(ctx, &ns, n.rerouted && !n.detached, true)
 }
 
 func (n *navigator[M]) restore(r *http.Request) bool {
@@ -141,18 +145,12 @@ func (n *navigator[M]) restore(r *http.Request) bool {
 	return false
 }
 
-func (n *navigator[M]) pushHistory(ns *navigatorState[M], sync bool, replace bool) {
+func (n *navigator[M]) pushHistory(ctx context.Context, ns *navigatorState[M], sync bool, replace bool) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if sync {
-		if n.pathCall != nil {
-			n.pathCall.cancel()
-		}
-		n.pathCall = &setPathCall{
-			path:    ns.path,
-			replace: replace,
-		}
-		n.solitaire.Call(n.pathCall)
+		n.cancelPrev()
+		n.cancelPrev = n.inst.SimpleCall(ctx, &action.SetPath{Path: ns.path, Replace: replace}, nil, nil, action.CallParams{Optimistic: n.optimistic})
 	}
 	n.historyHead.push(ns)
 }

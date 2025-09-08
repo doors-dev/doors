@@ -12,7 +12,9 @@ package doors
 import (
 	"context"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
@@ -60,6 +62,7 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 		return nil
 	}
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
+	door := ctx.Value(common.CtxKeyDoor).(door.Core)
 	var cancel = func() {}
 	var currentMeta HeadData
 	m, ok := b.ReadAndSub(ctx, func(ctx context.Context, m M) bool {
@@ -70,9 +73,9 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 			}
 			currentMeta = newMeta
 			cancel()
-			cancel = Fire(ctx,
-				"update_metadata",
-				map[string]interface{}{
+			cancel = inst.SimpleCall(ctx, &action.Emit{
+				Name: "d00r_head",
+				Arg: map[string]interface{}{
 					"title": newMeta.Title,
 					"meta": func() map[string]string {
 						escapedTags := make(map[string]string, len(newMeta.Meta))
@@ -82,7 +85,8 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 						return escapedTags
 					}(),
 				},
-			)
+				DoorId: door.Id(),
+			}, nil, nil, action.CallParams{Optimistic: inst.Conf().OptimisicSync})
 		})
 	})
 	if !ok {
@@ -107,7 +111,7 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 		}
 		<script>
             let tags = new Set($d.data("tags"))
-			$d.on("update_metadata", (data) => {
+			$d.on("d00r_head", (data) => {
                 document.title = data.title;
                 const removeTags = tags
                 tags = new Set()

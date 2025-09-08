@@ -20,11 +20,34 @@ import (
 	"github.com/doors-dev/doors/internal/door"
 )
 
+// AHook binds a backend handler to a named client-side hook, allowing
+// JavaScript code to call Go functions via $d.hook(name, ...).
+//
+// Input data is unmarshaled from JSON into type I.
+// Output data is marshaled to JSON from type O.
+//
+// Generic parameters:
+//   - I: input data type, sent from the client
+//   - O: output data type, returned to the client
 type AHook[I any, O any] struct {
-	On        func(ctx context.Context, r RHook[I]) (O, bool)
-	Name      string
-	Scope     []Scope
+	// Name of the hook to call from JavaScript via $d.hook(name, ...).
+	// Required.
+	Name string
+
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
+	Scope []Scope
+
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
+
+	// Backend handler for the hook.
+	// Receives typed input (I) through RHook (unmarshaled from JSON),
+	// and must return typed output (O) which will be marshaled to JSON.
+	// The bool return indicates whether the hook should remain active.
+	// Required.
+	On func(ctx context.Context, r RHook[I]) (O, bool)
 }
 
 func (h AHook[I, O]) Render(ctx context.Context, w io.Writer) error {
@@ -82,12 +105,33 @@ func (h *AHook[I, O]) handle(ctx context.Context, w http.ResponseWriter, r *http
 
 }
 
+
+// ARawHook binds a backend handler to a named client-side hook, allowing
+// JavaScript code to call Go functions via $d.hook(name, ...).
+//
+// Unlike AHook, ARawHook does not perform JSON unmarshaling or marshaling.
+// Instead, it gives full access to the raw request body and multipart form data,
+// useful for streaming, custom parsing, or file uploads.
 type ARawHook struct {
-	Name      string
-	On        func(ctx context.Context, r RRawHook) bool
-	Scope     []Scope
+	// Name of the hook to call from JavaScript via $d.hook(name, ...).
+	// Required.
+	Name string
+
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
+	Scope []Scope
+
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
+
+	// Backend handler for the hook.
+	// Provides raw access via RRawHook (body reader, multipart parser).
+	// The bool return indicates whether the hook should remain active.
+	// Required.
+	On func(ctx context.Context, r RRawHook) bool
 }
+
 
 func (h ARawHook) Render(ctx context.Context, w io.Writer) error {
 	return front.AttrRender(ctx, w, h)
@@ -123,8 +167,18 @@ func (h *ARawHook) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	})
 }
 
+// AData exposes server-provided data to JavaScript via $d.data(name).
+//
+// The Value is marshaled to JSON and made available for client-side access.
+// This is useful for passing initial state, configuration, or constants
+// directly into the client runtime.
 type AData struct {
-	Name  string
+	// Name of the data entry to read via JavaScript with $d.data(name).
+	// Required.
+	Name string
+
+	// Value to expose to the client. Marshaled to JSON.
+	// Required.
 	Value any
 }
 

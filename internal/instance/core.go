@@ -12,6 +12,7 @@ package instance
 import (
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxstore"
 	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
 )
@@ -61,15 +63,17 @@ type Core interface {
 	CSPCollector() *common.CSPCollector
 	ImportRegistry() *resources.Registry
 	SessionId() string
-	ClientConf() *common.ClientConf
+	Conf() *common.SystemConf
 	Id() string
 	NewId() uint64
 	Cinema() *door.Cinema
 	NewLink(any) (*Link, error)
 	SessionExpire(d time.Duration)
 	SessionEnd()
-	Call(call common.Call)
+	Call(call action.Call)
+	SimpleCall(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc
 	End()
+	IsDetached() bool
 }
 
 type core[M any] struct {
@@ -88,6 +92,9 @@ type core[M any] struct {
 func (c *core[M]) Spawn(f func()) bool {
 	return c.spawner.Go(f)
 }
+func (c *core[M]) IsDetached() bool {
+	return c.navigator.isDetached()
+}
 
 func (c *core[M]) OnPanic(err error) {
 	c.instance.OnPanic(err)
@@ -97,10 +104,8 @@ func (c *core[M]) SleepTimeout() time.Duration {
 	return c.instance.conf().DisconnectHiddenTimer
 }
 
-func (c *core[M]) ClientConf() *common.ClientConf {
-	conf := common.GetClientConf(c.instance.conf())
-	conf.Detached = c.navigator.isDetached()
-	return conf
+func (c *core[M]) Conf() *common.SystemConf {
+	return c.instance.conf()
 }
 
 func (c *core[M]) CSPCollector() *common.CSPCollector {
@@ -154,7 +159,7 @@ func (c *core[M]) Thread() *shredder.Thread {
 	return c.spawner.NewThead()
 }
 
-func (c *core[M]) Call(call common.Call) {
+func (c *core[M]) Call(call action.Call) {
 	c.solitaire.Call(call)
 }
 
@@ -164,7 +169,7 @@ func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M]) er
 	ctx = c.instance.getSession().getStorage().Inject(ctx)
 	ctx = context.WithValue(ctx, common.CtxKeyAdapters, c.instance.getSession().getRouter().Adapters())
 	c.root = door.NewRoot(ctx, c)
-	c.navigator.init(c.root.Ctx(), c.solitaire)
+	c.navigator.init(c.root.Ctx(), c)
 	ch := c.root.Render(page.Render(c.navigator.getBeam()))
 	render, ok := <-ch
 	if !ok {
