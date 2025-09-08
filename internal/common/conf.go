@@ -29,7 +29,7 @@ type SystemConf struct {
 	InstanceGoroutineLimit int
 
 	// InstanceTTL is how long an inactive instance is kept before cleanup.
-	// Active = browser connected. Default: 40minutes or ≥2×RequestTimeout.
+	// Active = browser connected. Default: 40minutes.
 	InstanceTTL time.Duration
 
 	// ServerDisableGzip disables gzip compression for HTML, JS, and CSS if true.
@@ -42,6 +42,13 @@ type SystemConf struct {
 	// RequestTimeout is the max duration of a client-server request (hook).
 	// Default: 30s.
 	RequestTimeout time.Duration
+
+	// OptimisicSync makes all system front-end syncs
+	// resolve optimistically on successfull flush
+	// without front-end reporting, leading to early
+	// indication canceling. 
+	// 
+	OptimisicSync bool
 
 	// SolitairePing is the max idle time before rolling the request.
 	// Default: 15s.
@@ -95,28 +102,14 @@ func GetSolitaireConf(s *SystemConf) *SolitaireConf {
 	}
 }
 
-type ClientConf struct {
-	TTL            time.Duration
-	RequestTimeout time.Duration
-	Ping           time.Duration
-	SleepTimeout   time.Duration
-	Detached       bool
-}
-
-func GetClientConf(s *SystemConf) *ClientConf {
-	return &ClientConf{
-		TTL:            s.InstanceTTL,
-		SleepTimeout:   s.DisconnectHiddenTimer,
-		RequestTimeout: s.RequestTimeout,
-		Ping:           s.SolitairePing,
-	}
-}
-
 func (s *SystemConf) solitaireDefaults() {
 	if s.SolitaireFlushSizeLimit <= 0 {
 		s.SolitaireFlushSizeLimit = 32 * 1024
 	}
 	if s.SolitaireSyncTimeout <= 0 {
+		s.SolitaireSyncTimeout = s.InstanceTTL
+	}
+	if s.SolitaireSyncTimeout > s.InstanceTTL {
 		s.SolitaireSyncTimeout = s.InstanceTTL
 	}
 	if s.SolitaireFlushTimeout <= 0 {

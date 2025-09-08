@@ -35,13 +35,13 @@ func NewRegistry() *Registry {
 }
 
 type Registry struct {
-	Gzip       bool
-	Profiles   BuildProfiles
-	cache      sync.Map
-	lookup     sync.Map
-	mainScript *Resource
-	mainStyle  *Resource
-	init       sync.Once
+	Gzip         bool
+	Profiles     BuildProfiles
+	cache        sync.Map
+	lookup       sync.Map
+	mainScript   *Resource
+	mainStyle    *Resource
+	init         sync.Once
 }
 
 func (rg *Registry) key32(b []byte) [32]byte {
@@ -61,11 +61,11 @@ func (rg *Registry) initMain() {
 		}
 		profile.Bundle = true
 		profile.GlobalName = "_d00r"
-		scriptContent, err := BuildFS(internal.ClientSrc, "index.ts", profile)
+		mainScriptContent, err := BuildFS(internal.ClientSrc, "index.ts", profile)
 		if err != nil {
 			panic(errors.Join(errors.New("Client js build error"), err))
 		}
-		rg.mainScript = NewResource(scriptContent, "application/javascript", rg.Gzip)
+		rg.mainScript = NewResource(mainScriptContent, "application/javascript", rg.Gzip)
 		rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.Gzip)
 	})
 }
@@ -79,6 +79,7 @@ func (rg *Registry) MainScript() *Resource {
 	rg.initMain()
 	return rg.mainScript
 }
+
 
 func (rg *Registry) Serve(hash []byte, w http.ResponseWriter, r *http.Request) {
 	if len(hash) != 16 {

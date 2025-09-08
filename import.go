@@ -37,16 +37,26 @@ func importPath(r *resources.Resource, path string, name string, ext string) str
 	return router.ResourcePath(r, fileName)
 }
 
-// ImportModule imports a JavaScript/TypeScript file, processes it through esbuild,
-// and makes it available as an ES module. The module can be added to the import map
-// with a specifier name and/or loaded directly via script tag.
+// ImportModule imports a JS/TS file, processes it with esbuild, and exposes it as an ES module.
 type ImportModule struct {
-	Specifier string           // Import map specifier name (optional)
-	Path      string           // File system path to the module
-	Profile   string           // Build profile for esbuild options
-	Load      bool             // Whether to load the module immediately via script tag
-	Name      string           // Custom name for the generated file (optional)
-	Attrs     templ.Attributes // Additional html attributes
+	// Import map specifier name.
+	// Optional.
+	Specifier string
+	// File system path to the module.
+	// Required.
+	Path string
+	// Build profile for esbuild options.
+	// Optional.
+	Profile string
+	// Load the module immediately via a script tag.
+	// Optional.
+	Load bool
+	// Custom name for the generated file.
+	// Optional.
+	Name string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
 }
 
 func (m ImportModule) info() string {
@@ -72,16 +82,28 @@ func (m ImportModule) Render(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
-// ImportModuleBytes imports JavaScript/TypeScript content from a byte slice,
-// processes it through esbuild, and makes it available as an ES module.
+// ImportModuleBytes imports JS/TS content from bytes, processes it with esbuild, and exposes it as an ES module.
 type ImportModuleBytes struct {
-	Specifier string           // Import map specifier name (optional)
-	Content   []byte           // Module source code
-	Profile   string           // Build profile for esbuild options
-	Load      bool             // Whether to load the module immediately via script tag
-	Name      string           // Custom name for the generated file
-	Attrs     templ.Attributes // Additional html attributes
+	// Import map specifier name.
+	// Optional.
+	Specifier string
+	// Module source code.
+	// Required.
+	Content []byte
+	// Build profile for esbuild options.
+	// Optional.
+	Profile string
+	// Load the module immediately via a script tag.
+	// Optional.
+	Load bool
+	// Custom name for the generated file.
+	// Required.
+	Name string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
 }
+
 
 func (m ImportModuleBytes) info() string {
 	return "module bytes"
@@ -107,14 +129,23 @@ func (m ImportModuleBytes) Render(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
-// ImportModuleRaw imports a JavaScript file without any processing or transformation.
-// The file is served as-is without going through esbuild.
+// ImportModuleRaw imports a JS file as-is without processing.
 type ImportModuleRaw struct {
-	Specifier string           // Import map specifier name (optional)
-	Path      string           // File system path to the module
-	Load      bool             // Whether to load the module immediately via script tag
-	Name      string           // Custom name for the generated file (optional)
-	Attrs     templ.Attributes // Additional html attributes
+	// Import map specifier name.
+	// Optional.
+	Specifier string
+	// File system path to the module.
+	// Required.
+	Path string
+	// Load the module immediately via a script tag.
+	// Optional.
+	Load bool
+	// Custom name for the generated file.
+	// Optional.
+	Name string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
 }
 
 func (m ImportModuleRaw) info() string {
@@ -141,14 +172,23 @@ func (m ImportModuleRaw) Render(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
-// ImportModuleRawBytes imports JavaScript content from a byte slice without
-// any processing or transformation. The content is served as-is.
+// ImportModuleRawBytes serves raw JS content from bytes without processing.
 type ImportModuleRawBytes struct {
-	Specifier string           // Import map specifier name (optional)
-	Content   []byte           // Raw JavaScript content
-	Load      bool             // Whether to load the module immediately via script tag
-	Name      string           // Custom name for the generated file
-	Attrs     templ.Attributes // Additional html attributes
+	// Import map specifier name.
+	// Optional.
+	Specifier string
+	// Raw JavaScript content.
+	// Required.
+	Content []byte
+	// Load the module immediately via a script tag.
+	// Optional.
+	Load bool
+	// Custom name for the generated file.
+	// Required.
+	Name string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
 }
 
 func (m ImportModuleRawBytes) info() string {
@@ -175,15 +215,27 @@ func (m ImportModuleRawBytes) Render(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
-// ImportModuleBundle creates a bundled JavaScript module from an entry point,
-// bundling all local imports and dependencies into a single file using esbuild.
+
+// ImportModuleBundle bundles a JS entry with its deps into one file using esbuild.
 type ImportModuleBundle struct {
-	Specifier string           // Import map specifier name (optional)
-	Entry     string           // Entry point file for the bundle
-	Profile   string           // Build profile for esbuild options
-	Load      bool             // Whether to load the module immediately via script tag
-	Name      string           // Custom name for the generated file (optional)
-	Attrs     templ.Attributes // Additional html attributes
+	// Import map specifier name.
+	// Optional.
+	Specifier string
+	// Entry point file for the bundle.
+	// Required.
+	Entry string
+	// Build profile for esbuild options.
+	// Optional.
+	Profile string
+	// Load the module immediately via a script tag.
+	// Optional.
+	Load bool
+	// Custom name for the generated file.
+	// Optional.
+	Name string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
 }
 
 func (m ImportModuleBundle) info() string {
@@ -210,18 +262,33 @@ func (m ImportModuleBundle) Render(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
-// ImportModuleBundleFS creates a bundled JavaScript module from a file system entry point,
-// bundling all local imports and dependencies into a single file using esbuild.
-// This is useful for embedding assets or working with embed.FS.
+
+// ImportModuleBundleFS bundles a JS entry from an fs.FS using esbuild.
 type ImportModuleBundleFS struct {
-	CacheKey  string           // Unique cache key for this filesystem/bundle combination
-	Specifier string           // Import map specifier name (optional)
-	FS        fs.FS            // File system to read from
-	Entry     string           // Entry point file within the filesystem
-	Profile   string           // Build profile for esbuild options
-	Load      bool             // Whether to load the module immediately via script tag
-	Name      string           // Custom name for the generated file (optional)
-	Attrs     templ.Attributes // Additional html attributes
+	// Unique cache key for this filesystem/bundle combination.
+	// Required.
+	CacheKey string
+	// Import map specifier name.
+	// Optional.
+	Specifier string
+	// File system to read from.
+	// Required.
+	FS fs.FS
+	// Entry point file within the filesystem.
+	// Required.
+	Entry string
+	// Build profile for esbuild options.
+	// Optional.
+	Profile string
+	// Load the module immediately via a script tag.
+	// Optional.
+	Load bool
+	// Custom name for the generated file.
+	// Optional.
+	Name string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
 }
 
 func (m ImportModuleBundleFS) info() string {
@@ -248,14 +315,21 @@ func (m ImportModuleBundleFS) Render(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
-// ImportModuleHosted imports a JavaScript module that is hosted locally
-// but not processed by the build system. The Src should be a full path
-// starting from the application root.
+
+// ImportModuleHosted registers a locally hosted JS module without processing.
 type ImportModuleHosted struct {
-	Specifier string           // Import map specifier name (optional)
-	Load      bool             // Whether to load the module immediately via script tag
-	Src       string           // Full path to the hosted module
-	Attrs     templ.Attributes // Additional html attributes
+	// Import map specifier name.
+	// Optional.
+	Specifier string
+	// Load the module immediately via a script tag.
+	// Optional.
+	Load bool
+	// Full path to the hosted module (application root).
+	// Required.
+	Src string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
 }
 
 func (m ImportModuleHosted) info() string {
@@ -277,14 +351,23 @@ func (m ImportModuleHosted) Render(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
-// ImportModuleExternal imports a JavaScript module from an external URL.
-// This adds the URL to the Content Security Policy script sources.
+
+// ImportModuleExternal registers an external JS module URL and adds it to CSP.
 type ImportModuleExternal struct {
-	Specifier string           // Import map specifier name (optional)
-	Load      bool             // Whether to load the module immediately via script tag
-	Src       string           // External URL to the module
-	Attrs     templ.Attributes // Additional html attributes
+	// Import map specifier name.
+	// Optional.
+	Specifier string
+	// Load the module immediately via a script tag.
+	// Optional.
+	Load bool
+	// External URL to the module.
+	// Required.
+	Src string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
 }
+
 
 func (m ImportModuleExternal) info() string {
 	return "external module " + m.Src
@@ -306,12 +389,14 @@ func (m ImportModuleExternal) Render(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
-// ImportStyleHosted imports a CSS stylesheet that is hosted locally
-// but not processed by the build system. The Href should be a full path
-// starting from the application root.
+// ImportStyleHosted links a locally hosted CSS file without processing.
 type ImportStyleHosted struct {
-	Href  string           // Full path to the hosted stylesheet
-	Attrs templ.Attributes // Additional html attributes
+	// Path to the hosted stylesheet.
+	// Required.
+	Href string
+	// Additional HTML attributes for the link tag.
+	// Optional.
+	Attrs templ.Attributes
 }
 
 func (m ImportStyleHosted) info() string {
@@ -322,11 +407,14 @@ func (m ImportStyleHosted) Render(ctx context.Context, w io.Writer) error {
 	return importStyle(m.Href, m.Attrs).Render(ctx, w)
 }
 
-// ImportStyleExternal imports a CSS stylesheet from an external URL.
-// This adds the URL to the Content Security Policy style sources.
+// ImportStyleExternal links a CSS stylesheet from an external URL and adds it to CSP.
 type ImportStyleExternal struct {
-	Href  string           // External URL to the stylesheet
-	Attrs templ.Attributes // Additional html attributes
+	// External URL to the stylesheet.
+	// Required.
+	Href string
+	// Additional HTML attributes for the link tag.
+	// Optional.
+	Attrs templ.Attributes
 }
 
 func (m ImportStyleExternal) info() string {
@@ -339,13 +427,20 @@ func (m ImportStyleExternal) Render(ctx context.Context, w io.Writer) error {
 	return importStyle(m.Href, m.Attrs).Render(ctx, w)
 }
 
-// ImportStyle imports a CSS file, processes it (minification), and makes it
-// available as a stylesheet link in the HTML head.
+
+// ImportStyle processes a CSS file (e.g., minify) and links it.
 type ImportStyle struct {
-	Path  string           // File system path to the CSS file
-	Name  string           // Custom name for the generated file (optional)
-	Attrs templ.Attributes // Additional html attributes
+	// File system path to the CSS file.
+	// Required.
+	Path string
+	// Custom name for the generated file.
+	// Optional.
+	Name string
+	// Additional HTML attributes for the link tag.
+	// Optional.
+	Attrs templ.Attributes
 }
+
 
 func (m ImportStyle) info() string {
 	return "style " + m.Path
@@ -361,13 +456,20 @@ func (m ImportStyle) Render(ctx context.Context, w io.Writer) error {
 	return importStyle(path, m.Attrs).Render(ctx, w)
 }
 
-// ImportStyleBytes imports CSS content from a byte slice, processes it
-// (minification), and makes it available as a stylesheet link.
+
+// ImportStyleBytes processes CSS content from bytes (e.g., minify) and links it.
 type ImportStyleBytes struct {
-	Content []byte           // CSS source code
-	Name    string           // Custom name for the generated file
-	Attrs   templ.Attributes // Additional html attributes
+	// CSS source code.
+	// Required.
+	Content []byte
+	// Custom name for the generated file.
+	// Required.
+	Name string
+	// Additional HTML attributes for the link tag.
+	// Optional.
+	Attrs templ.Attributes
 }
+
 
 func (m ImportStyleBytes) info() string {
 	return "style bytes"
@@ -399,9 +501,4 @@ func newImportManager(ctx context.Context) *importManager {
 		collector: collector,
 		rm:        rm,
 	}
-}
-
-// Deprecated: Direct import render supported
-func Imports(content ...templ.Component) templ.Component {
-	return Components(content...)
 }

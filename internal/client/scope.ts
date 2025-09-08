@@ -7,25 +7,32 @@
 // For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
-import { CaptureErr, captureErrKinds } from './capture'
+import { HookErr, hookErrKinds } from './capture'
 import captures from './captures'
 import indicator, { IndicatorEntry } from './indicator'
 import { requestTimeout, id } from './params'
 import { AbortTimer } from './lib'
-import calls from './calls'
+import action, { Action } from './calls'
 
 export type ScopeSet = [keyof typeof newScope, string, any]
 
 
 export class Hook {
     private res: (value: Response) => void
-    private rej: (reason: CaptureErr) => void
+    private rej: (reason: HookErr) => void
     private promise: Promise<Response>
     private scopeStack: Array<Scope> = []
     private abortTimer: AbortTimer | null = null
     private fetch: any = {}
     private scopeQueue: Array<ScopeSet>
-    constructor(private params: { doorId: number, hookId: number, event?: Event, scopeQueue: Array<ScopeSet>, indicator: Array<IndicatorEntry> }) {
+    constructor(private params: {
+        doorId: number,
+        hookId: number,
+        event?: Event,
+        scopeQueue: Array<ScopeSet>,
+        indicator: Array<IndicatorEntry>,
+        before: Array<Action>
+    }) {
         this.promise = new Promise((res, rej) => {
             this.res = res
             this.rej = rej
@@ -40,17 +47,17 @@ export class Hook {
     capture(name: string, opt: any, arg: any) {
         const captureFunction = captures[name]
         if (!captureFunction) {
-            this.err(new CaptureErr(captureErrKinds.capture, new Error("capture " + name + " not found")))
+            this.err(new HookErr(hookErrKinds.capture, new Error("capture " + name + " not found")))
             return this.promise
         }
         try {
             this.fetch = captureFunction(arg, opt)
             if (this.fetch === undefined) {
-                this.rej(new CaptureErr(captureErrKinds.canceled))
+                this.rej(new HookErr(hookErrKinds.canceled))
                 return this.promise
             }
         } catch (e) {
-            this.rej(new CaptureErr(captureErrKinds.capture, e))
+            this.rej(new HookErr(hookErrKinds.capture, e))
             return this.promise
         }
         r.submit(this)
@@ -62,19 +69,12 @@ export class Hook {
     stackScope(scope: Scope) {
         this.scopeStack.unshift(scope)
     }
-    private afterHook(name: string, arg: any) {
-        try {
-            const fn = (calls as any)[name]
-            if (!fn) {
-                console.error(`after hook callable [${name}] not found`)
-                return
+    private actions(actions: Array<Action>) {
+        for (const [name, arg] of actions) {
+            const [_, err] = action(name, arg, { element: this.params.event?.target as any })
+            if (err) {
+                console.error("after hookaction err", err)
             }
-            const result = fn(arg)
-            if (result && result instanceof Promise) {
-                result.then().catch(e => console.error("after hook  err", e))
-            }
-        } catch (e) {
-            console.error("after hook  err", e)
         }
     }
     execute() {
@@ -82,6 +82,7 @@ export class Hook {
         if (this.params.event?.target) {
             target = this.params.event.target as Element
         }
+        this.actions(this.params.before)
         const indicatorId = indicator.start(target, this.params.indicator)
         this.abortTimer = new AbortTimer(requestTimeout)
         fetch(`/d00r/${id}/${this.params.doorId}/${this.params.hookId}`, {
@@ -93,30 +94,29 @@ export class Hook {
             if (r.ok) {
                 const after = r.headers.get("D00r-After")
                 if (after) {
-                    const [name, arg] = JSON.parse(after)
-                    this.afterHook(name, arg)
+                    this.actions(JSON.parse(after))
                 }
                 this.ok(r)
                 return
             }
             if (r.status === 401 || r.status === 410) {
-                this.rej(new CaptureErr(captureErrKinds.unauthorized, r))
+                this.rej(new HookErr(hookErrKinds.unauthorized, r))
             } else if (r.status === 400) {
-                this.rej(new CaptureErr(captureErrKinds.bad_request))
+                this.rej(new HookErr(hookErrKinds.bad_request))
             } else if (r.status === 404) {
-                this.rej(new CaptureErr(captureErrKinds.not_found))
+                this.rej(new HookErr(hookErrKinds.not_found))
             } else if (r.status >= 500 && r.status < 600) {
-                this.rej(new CaptureErr(captureErrKinds.server, r))
+                this.rej(new HookErr(hookErrKinds.server, r))
             } else {
-                this.rej(new CaptureErr(captureErrKinds.other, r))
+                this.rej(new HookErr(hookErrKinds.other, r))
             }
         }).catch(e => {
             this.abortTimer!.cancel()
             if (this.abortTimer!.status == "aborted") {
-                this.rej(new CaptureErr(captureErrKinds.canceled))
+                this.rej(new HookErr(hookErrKinds.canceled))
                 return
             }
-            this.err(new CaptureErr(captureErrKinds.network, e))
+            this.err(new HookErr(hookErrKinds.network, e))
         }).finally(() => {
             indicator.end(indicatorId)
         })
@@ -133,13 +133,13 @@ export class Hook {
             this.params.event.preventDefault()
             this.params.event.stopPropagation()
         }
-        this.err(new CaptureErr(captureErrKinds.canceled))
+        this.err(new HookErr(hookErrKinds.canceled))
     }
     private ok(r: Response) {
         this.res(r)
         this.done()
     }
-    private err(r: CaptureErr) {
+    private err(r: HookErr) {
         this.rej(r)
         this.done()
     }

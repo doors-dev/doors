@@ -14,6 +14,7 @@ import (
 	"log/slog"
 )
 
+
 func NewAttrs() *Attrs {
 	return &Attrs{
 		regular: make(templ.Attributes),

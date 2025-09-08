@@ -16,17 +16,19 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type instance interface {
+	Conf() *common.SystemConf
 	OnPanic(error)
 	Thread() *shredder.Thread
 	CancelHooks(uint64, error)
 	CancelHook(uint64, uint64, error)
 	RegisterHook(uint64, uint64, *DoorHook)
 	NewId() uint64
-	Call(common.Call)
+	Call(action.Call)
 }
 
 type doorMode int
@@ -39,7 +41,7 @@ const (
 
 type Door struct {
 	Tag       string
-	A     templ.Attributes
+	A         templ.Attributes
 	mu        sync.Mutex
 	parent    *tracker
 	container *container

@@ -53,10 +53,10 @@ func (f *scopeFragment) scopePipeline() templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 
-		ds := &doors.DebounceScope{}
-		ds2 := &doors.DebounceScope{}
-		ss := &doors.SerialScope{}
-		fs := &doors.FrameScope{}
+		ds := &doors.ScopeDebounce{}
+		ds2 := &doors.ScopeDebounce{}
+		ss := &doors.ScopeSerial{}
+		fs := &doors.ScopeFrame{}
 		templ_7745c5c3_Err = f.button("p1", []doors.Scope{ds.Scope(100*time.Millisecond, 0)}, "1", false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -107,7 +107,7 @@ func (f *scopeFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		blocking := doors.ScopeBlocking()
+		blocking := doors.ScopeOnlyBlocking()
 		templ_7745c5c3_Err = f.button("b1", blocking, "1", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -120,7 +120,7 @@ func (f *scopeFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		serial := doors.ScopeSerial()
+		serial := doors.ScopeOnlySerial()
 		templ_7745c5c3_Err = f.button("s1", serial, "1", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -133,7 +133,7 @@ func (f *scopeFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		debouce := doors.ScopeDebounce(300*time.Millisecond, 0)
+		debouce := doors.ScopeOnlyDebounce(300*time.Millisecond, 0)
 		templ_7745c5c3_Err = f.button("d1", debouce, "1", false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -146,7 +146,7 @@ func (f *scopeFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		debouce = doors.ScopeDebounce(300*time.Millisecond, 700*time.Millisecond)
+		debouce = doors.ScopeOnlyDebounce(300*time.Millisecond, 700*time.Millisecond)
 		templ_7745c5c3_Err = f.button("dl1", debouce, "1", false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -159,7 +159,7 @@ func (f *scopeFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		frame := doors.FrameScope{}
+		frame := doors.ScopeFrame{}
 		templ_7745c5c3_Err = f.button("f1", []doors.Scope{frame.Scope(false)}, "1", true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

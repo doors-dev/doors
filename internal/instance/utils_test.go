@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/action"
 )
 
 type testInstance struct {
@@ -39,22 +40,31 @@ func (t *testCall) Destroy() {
 
 }
 
+func (y *testCall) Params() action.CallParams {
+	return action.CallParams{}
+}
+
 func (t *testCall) Write(w io.Writer) error {
 	_, err := w.Write([]byte(t.payload))
 	return err
 }
 
-func (t *testCall) Data() *common.CallData {
-	if t.cancel {
-		return nil
-	}
-	return &common.CallData{
-		Name:    "test",
-		Arg:     t.arg,
-		Payload: t,
-	}
+func (t *testCall) Payload() common.Writable {
+	return t
 }
 
+func (t *testCall) Action() (action.Action, bool) {
+	if t.cancel {
+		return nil, false
+	}
+	return &action.Test{
+		Arg: t.arg,
+	}, true
+}
+
+func (t *testCall) Clean() {
+
+}
 func (t *testCall) Cancel() {
 
 }
@@ -78,6 +88,9 @@ type testWriter struct {
 	errNextWrite bool
 }
 
+func (*testWriter) afterFlush(f func()) {
+	f()
+}
 func (w *testWriter) readPackage() (*testPackage, error) {
 	if w.buf.Len() < 5 {
 		return nil, errors.New("not enogh data")
@@ -86,7 +99,7 @@ func (w *testWriter) readPackage() (*testPackage, error) {
 	if err != nil {
 		return nil, err
 	}
-	if b != 0x00 {
+	if b != 0x01 {
 		return &testPackage{
 			isSignal: true,
 			signal:   b,
@@ -125,38 +138,38 @@ func (w *testWriter) readPackage() (*testPackage, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(header) == 0 || len(header) > 4 {
+	if len(header) == 0 || len(header) > 2 {
 		return nil, errors.New("wrong sized header")
 	}
-	err = json.Unmarshal(header[0], &pkg.endSeq)
+	rg := make([]uint64, 0)
+	err = json.Unmarshal(header[0], &rg)
 	if err != nil {
 		return nil, err
 	}
-	pkg.startSeq = pkg.endSeq
+	pkg.endSeq = rg[0]
+	if len(rg) == 2 {
+		pkg.startSeq = rg[1]
+	} else {
+		pkg.startSeq = pkg.endSeq
+	}
 	if len(header) == 1 {
 		return pkg, nil
 	}
-	if len(header) == 2 || len(header) == 4 {
-		err = json.Unmarshal(header[1], &pkg.startSeq)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if len(header) == 2 {
-		return pkg, nil
-	}
-	index := 1
-	if len(header) == 4 {
-		index += 1
-	}
-	err = json.Unmarshal(header[index], &pkg.name)
+	var inv [2]json.RawMessage
+	err = json.Unmarshal(header[1], &inv)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(header[index+1], &pkg.arg)
+	err = json.Unmarshal(inv[0], &pkg.name)
 	if err != nil {
 		return nil, err
 	}
+	var arg [1]int
+	err = json.Unmarshal(inv[1], &arg)
+	if err != nil {
+		return nil, err
+	}
+	pkg.arg = arg[0]
 	return pkg, nil
 
 }

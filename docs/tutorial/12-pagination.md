@@ -48,7 +48,7 @@ func (f *itemListFragment) pageHref(page int) doors.Attr {
 	return doors.AHref{
 		Active: doors.Active{
 			// indicate with an attribute
-			Indicator: doors.IndicatorAttr("aria-current", "true"),
+			Indicator: doors.IndicatorOnlyAttr("aria-current", "true"),
 			// match path start (/catalog/:CatId)
 			PathMatcher: doors.PathMatcherStarts(),
 			// match query param page (not necessary in this case, just for demo)
@@ -230,7 +230,7 @@ We learned how to use the **door** as a "cursor" for HTML insertion.
 
 
 
-## 3. Dynamic links
+## 3. Links Update
 
 The issue is that the item link is rendered with the page number to which this item belongs. We need item links to be updated dynamically on page change.
 

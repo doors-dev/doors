@@ -21,26 +21,29 @@ import (
 type FocusEvent = front.FocusEvent
 
 type focusIOEventHook struct {
-	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	// If true, stops the event from bubbling up the DOM.
+	// Optional.
 	StopPropagation bool
-
-	// ExactTarget, if true, only fires when the event occurs on this element itself.
+	// If true, only fires when the event occurs on this element itself.
+	// Optional.
 	ExactTarget bool
-
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler that runs when the event is triggered.
-	//
-	// The function receives a typed EventRequest[FocusEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
+	// Backend event handler.
+	// Receives a typed REvent[FocusEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[FocusEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
 }
 
 func (p *focusIOEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
@@ -61,20 +64,23 @@ func (p *focusIOEventHook) init(event string, ctx context.Context, n door.Core, 
 }
 
 type focusEventHook struct {
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler that runs when the event is triggered.
-	//
-	// The function receives a typed EventRequest[FocusEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
+	// Backend event handler.
+	// Receives a typed REvent[FocusEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[FocusEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
 }
 
 func (p *focusEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
@@ -86,28 +92,33 @@ func (p *focusEventHook) init(event string, ctx context.Context, n door.Core, in
 		ctx:       ctx,
 		inst:      inst,
 		onError:   p.OnError,
+		before:    p.Before,
 		scope:     p.Scope,
 		indicator: p.Indicator,
 		on:        p.On,
 	}).init(attrs)
 }
 
-// AFocus is an attribute struct used with A(ctx, ...) to handle 'focus' events via backend hooks.
+// AFocus prepares a focus event hook for DOM elements,
+// with configurable propagation, scheduling, indicators, and handlers.
 type AFocus struct {
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler that runs when the event is triggered.
-	//
-	// The function receives a typed EventRequest[FocusEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
+	// Backend event handler.
+	// Receives a typed REvent[FocusEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[FocusEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
 }
 
 func (f AFocus) Render(ctx context.Context, w io.Writer) error {
@@ -123,22 +134,26 @@ func (f AFocus) Init(ctx context.Context, n door.Core, inst instance.Core, attrs
 	p.init("focus", ctx, n, inst, attrs)
 }
 
-// ABlur is an attribute struct used with A(ctx, ...) to handle 'blur' events via backend hooks.
+// ABlur prepares a blur event hook for DOM elements,
+// with configurable propagation, scheduling, indicators, and handlers.
 type ABlur struct {
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler that runs when the event is triggered.
-	//
-	// The function receives a typed EventRequest[FocusEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
+	// Backend event handler.
+	// Receives a typed REvent[FocusEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[FocusEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
 }
 
 func (b ABlur) Render(ctx context.Context, w io.Writer) error {
@@ -154,28 +169,32 @@ func (b ABlur) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 	p.init("blur", ctx, n, inst, attrs)
 }
 
-// AFocusIn is an attribute struct used with A(ctx, ...) to handle 'focusin' events via backend hooks.
+// AFocusIn prepares a focusin event hook for DOM elements,
+// with configurable propagation, scheduling, indicators, and handlers.
 type AFocusIn struct {
-	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	// If true, stops the event from bubbling up the DOM.
+	// Optional.
 	StopPropagation bool
-
-	// ExactTarget, if true, only fires when the event occurs on this element itself.
-	ExactTarget bool `json:"exactTarget"`
-
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// If true, only fires when the event occurs on this element itself.
+	// Optional.
+	ExactTarget bool
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler that runs when the event is triggered.
-	//
-	// The function receives a typed EventRequest[FocusEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
+	// Backend event handler.
+	// Receives a typed REvent[FocusEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[FocusEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
 }
 
 func (f AFocusIn) Render(ctx context.Context, w io.Writer) error {
@@ -191,28 +210,32 @@ func (f AFocusIn) Init(ctx context.Context, n door.Core, inst instance.Core, att
 	p.init("focusin", ctx, n, inst, attrs)
 }
 
-// AFocusOut is an attribute struct used with A(ctx, ...) to handle 'focusout' events via backend hooks.
+// AFocusOut prepares a focusout event hook for DOM elements,
+// with configurable propagation, scheduling, indicators, and handlers.
 type AFocusOut struct {
-	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	// If true, stops the event from bubbling up the DOM.
+	// Optional.
 	StopPropagation bool
-
-	// ExactTarget, if true, only fires when the event occurs on this element itself.
-	ExactTarget bool `json:"exactTarget"`
-
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// If true, only fires when the event occurs on this element itself.
+	// Optional.
+	ExactTarget bool
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate the hook is running (e.g., spinner, class, content). Optional.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler that runs when the event is triggered.
-	//
-	// The function receives a typed EventRequest[FocusEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
+	// Backend event handler.
+	// Receives a typed REvent[FocusEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[FocusEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
 }
 
 func (f AFocusOut) Render(ctx context.Context, w io.Writer) error {

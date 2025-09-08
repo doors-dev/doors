@@ -7,8 +7,8 @@
 // For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
-import { id } from "./params"
-import { arraysEqual } from "./lib"
+import { detached, id } from "./params"
+import { arraysEqual, doAfter } from "./lib"
 import indicator from "./indicator"
 
 
@@ -146,24 +146,24 @@ export class Navigator {
     private urlAreEqual(url1: URL, url2: URL) {
         return url1.pathname === url2.pathname && this.searchEqual(url1.searchParams, url2.searchParams)
     }
-
-    public push(path: string): void {
-        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
+    public push(path: string, activate: boolean = true) {
         const newUrl = new URL(path, window.location.origin);
-        if (this.urlAreEqual(currentUrl, newUrl)) {
-            return
+        if (activate) {
+            this.activateLinks(newUrl);
         }
-        this.activateLinks(newUrl);
-        history.pushState(null, '', path);
+        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
+        if (!this.urlAreEqual(currentUrl, newUrl) && !detached) {
+            history.pushState(null, '', path);
+        }
     }
     public replace(path: string): void {
-        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
         const newUrl = new URL(path, window.location.origin);
-        if (this.urlAreEqual(currentUrl, newUrl)) {
+        this.activateLinks(newUrl);
+        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
+        if (!this.urlAreEqual(currentUrl, newUrl) &&  !detached) {
+            history.replaceState(null, '', path);
             return
         }
-        this.activateLinks(newUrl);
-        history.replaceState(null, '', path);
     }
 
 }

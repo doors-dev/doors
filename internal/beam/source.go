@@ -42,7 +42,9 @@ type SourceBeam[T any] interface {
 	// The returned channel receives nil on successful propagation or an error if
 	// provided context is invalid or instance ended before propagation finished.
 	//
-	// Returns the completion ch<D-s>annel
+	// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
+	//
+	// Returns the completion channel
 	XUpdate(context.Context, T) <-chan error
 
 	// Mutate allows modifying the current value using the provided function.
@@ -58,13 +60,14 @@ type SourceBeam[T any] interface {
 	//
 	// The returned channel receives nil on successful propagation or an error if
 	// provided context is invalid or instance ended before propagation finished.
+	// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
 	//
 	// Returns the completion channel
 	XMutate(context.Context, func(T) T) <-chan error
 
 	// Latest returns the most recently set or mutated value without requiring a context.
 	// This provides direct access to the current state and is not affected by
-	// context cancellation and Door tree state, unlike Read.
+	// context cancellation and doors tree state, unlike Read.
 	//
 	// WARNING: Latest() does not participate in render cycle consistency guarantees.
 	// Use Read() to ensure consistent values across the component tree.

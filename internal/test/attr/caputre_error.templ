@@ -19,29 +19,29 @@ templ (f *errorFragment) Render() {
 	@doors.Script() {
 		<script>
             const r = document.getElementById("report")
-            $d.on("root", (e) => {
+            $d.on("root", (arg, e) => {
                     console.log(e)
-                r.innerHTML = "root/"+e.meta
+                r.innerHTML = "root/"+arg
             })
-            $d.on("error", (e) => {
+            $d.on("error", (arg, e) => {
                     console.log(e)
-                r.innerHTML = "root_error/"+e.meta
+                r.innerHTML = "root_error/"+arg
             })
         </script>
 	}
-	@f.button("err_1", doors.OnErrorCall("error", "err_1"))
-	@f.button("err_2", doors.OnErrorCall("root", "err_2"))
+	@f.button("err_1", doors.ActionOnlyEmit("error", "err_1"))
+	@f.button("err_2", doors.ActionOnlyEmit("root", "err_2"))
 	@f.n1 {
 		@doors.Script() {
 			<script>
                 const r = document.getElementById("report")
-                $d.on("n1", (e) => {
+                $d.on("n1", (arg, e) => {
                     console.log(e)
-                    r.innerHTML = "n1/"+e.meta
+                    r.innerHTML = "n1/"+arg
                 })
-                $d.on("error", (e) => {
+                $d.on("error", (arg, e) => {
                     console.log(e)
-                    r.innerHTML = "n1_error/"+e.meta
+                    r.innerHTML = "n1_error/"+arg
                 })
             </script>
 		}
@@ -49,44 +49,44 @@ templ (f *errorFragment) Render() {
 			@doors.Script() {
 				<script>
                     const r = document.getElementById("report")
-                    $d.on("n2", (e) => {
+                    $d.on("n2", (arg, e) => {
                     console.log(e)
-                        r.innerHTML = "n2/"+e.meta
+                        r.innerHTML = "n2/"+arg
                     })
                 </script>
 			}
 			<div id="indicator">init</div>
-			@f.button("err_5", []doors.OnError{doors.CallOnError{
+			@f.button("err_5", []doors.Action{doors.ActionEmit{
 				Name: "n2",
-				Meta: "err_5",
-			}, doors.IndicateOnError{
+				Arg:  "err_5",
+			}, doors.ActionIndicate{
 				Duration: 500 * time.Millisecond,
 				Indicator: []doors.Indicator{
-					doors.AttrIndicator{
+					doors.IndicatorAttr{
 						Selector: doors.SelectorQuery("#indicator"),
 						Name:     "data-indicator",
 						Value:    "true",
 					},
-					doors.ContentIndicator{
+					doors.IndicatorContent{
 						Selector: doors.SelectorQuery("#indicator"),
 						Content:  "indicator",
 					},
 				},
 			}})
-			@f.button("err_6", doors.OnErrorCall("error", "err_6"))
+			@f.button("err_6", doors.ActionOnlyEmit("error", "err_6"))
 		}
-		@f.button("err_3", doors.OnErrorCall("error", "err_3"))
-		@f.button("err_4", doors.OnErrorCall("n1", "err_4"))
+		@f.button("err_3", doors.ActionOnlyEmit("error", "err_3"))
+		@f.button("err_4", doors.ActionOnlyEmit("n1", "err_4"))
 	}
 }
 
-templ (f *errorFragment) button(id string, on []doors.OnError) {
+templ (f *errorFragment) button(id string, on []doors.Action) {
 	<button id={ id } { doors.A(ctx, f.handler(on))... }>
 		{ id }
 	</button>
 }
 
-func (f *errorFragment) handler(on []doors.OnError) doors.Attr {
+func (f *errorFragment) handler(on []doors.Action) doors.Attr {
 	return doors.AClick{
 		OnError: on,
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {

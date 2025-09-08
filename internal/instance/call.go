@@ -10,80 +10,81 @@
 package instance
 
 import (
+	"context"
 	"encoding/json"
-	"sync/atomic"
+	"errors"
+	"log/slog"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/common/ctxwg"
+	"github.com/doors-dev/doors/internal/front/action"
 )
 
-type setPathCall struct {
-	path     string
-	replace  bool
-	canceled atomic.Bool
-}
-
-func (t *setPathCall) cancel() {
-	t.canceled.Store(true)
-}
-
-func (t *setPathCall) Data() *common.CallData {
-	if t.canceled.Load() {
-		return nil
+func (c *core[M]) SimpleCall(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc {
+	if ctx.Err() != nil {
+		if onCancel != nil {
+			onCancel()
+		}
+		return func() {}
 	}
-	return &common.CallData{
-		Name:    "set_path",
-		Arg:     t.arg(),
-		Payload: common.WritableNone{},
+	done := ctxwg.Add(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
+	call := &SimpleCall{
+		ctx:      ctx,
+		done:     done,
+		action:   action,
+		onResult: onResult,
+		onCancel: onCancel,
+		params:   params,
 	}
+	c.Call(call)
+	return cancel
 }
 
-func (t *setPathCall) arg() []any {
-	return []any{t.path, t.replace}
+type SimpleCall struct {
+	ctx      context.Context
+	action   action.Action
+	done     func()
+	onResult func(json.RawMessage, error)
+	onCancel func()
+	params   action.CallParams
 }
 
-func (t *setPathCall) Result(json.RawMessage, error) {}
-func (t *setPathCall) Cancel()                       {}
-
-type LocatinReload struct {
+func (c *SimpleCall) Params() action.CallParams {
+	return c.params
 }
 
-func (l *LocatinReload) Data() *common.CallData {
-	return &common.CallData{
-		Name:    "location_reload",
-		Arg:     []any{},
-		Payload: common.WritableNone{},
+func (c *SimpleCall) Action() (action.Action, bool) {
+	if c.ctx.Err() != nil {
+		return nil, false
 	}
-}
-func (t *LocatinReload) Result(json.RawMessage, error) {}
-func (t *LocatinReload) Cancel()                       {}
-
-type LocationReplace struct {
-	Href   string
-	Origin bool
+	return c.action, true
 }
 
-func (l *LocationReplace) Data() *common.CallData {
-	return &common.CallData{
-		Name:    "location_replace",
-		Arg:     []any{l.Href, l.Origin},
-		Payload: common.WritableNone{},
+func (C *SimpleCall) Payload() common.Writable {
+	return common.WritableNone{}
+}
+
+func (c SimpleCall) Cancel() {
+	defer c.done()
+	if c.onCancel == nil {
+		return
 	}
+	c.onCancel()
 }
-func (t *LocationReplace) Result(json.RawMessage, error) {}
-func (t *LocationReplace) Cancel()                       {}
-
-type LocationAssign struct {
-	Href   string
-	Origin bool
-}
-
-func (l *LocationAssign) Data() *common.CallData {
-	return &common.CallData{
-		Name:    "location_assign",
-		Arg:     []any{l.Href, l.Origin},
-		Payload: common.WritableNone{},
+func (c *SimpleCall) Result(r json.RawMessage, err error) {
+	if err != nil {
+		slog.Error("Call failed", slog.String("action", c.action.Log()), slog.String("error", err.Error()))
 	}
+	defer c.done()
+	if c.onResult == nil {
+		return
+	}
+	if err != nil {
+		c.onResult(r, errors.Join(errors.New("execution error"), err))
+		return
+	}
+	c.onResult(r, err)
 }
 
-func (t *LocationAssign) Result(json.RawMessage, error) {}
-func (t *LocationAssign) Cancel()                       {}
+func (c *SimpleCall) Clean() {}

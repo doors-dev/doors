@@ -60,9 +60,6 @@ func Include() templ.Component {
 // consistent state (Beam), ensuring stable and predictable rendering.
 type Door = door.Door
 
-// Deprecated: Use Door instead
-type Node = Door
-
 // Fragment is a helper interface for defining composable, stateful, and code-interactive components.
 //
 // A Fragment groups fields, methods, and rendering logic into a reusable unit.
@@ -326,7 +323,7 @@ type script struct {
 // frontend framework functions.
 //
 // The content must be wrapped in <script> tags. TypeScript is supported by adding
-// type="text/typescript" attribute.
+// type="application/typescript" (or "text/typescript") attribute.
 //
 // Example:
 //
@@ -342,7 +339,7 @@ type script struct {
 // Or with TypeScript:
 //
 //	@Script() {
-//	    <script type="text/typescript">
+//	    <script type="application/typescript">
 //	        const message: string = "TypeScript works!";
 //	        console.log(message);
 //	    </script>

@@ -8,6 +8,10 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 
+export const doAfter = (f: () => void) => {
+    setTimeout(f, 0)
+}
+
 export const setDiff = (a: Set<string>, b: Set<string>): [Array<string>, Array<string>] => {
     const inANotB = [...a].filter(item => !b.has(item))
     const inBNotA = [...b].filter(item => !a.has(item))

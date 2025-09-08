@@ -33,7 +33,7 @@ templ (f *createItemFragment) Render() {
 	@f.door
 	// render form in the door on click
 	@doors.AClick{
-		Scope: doors.ScopeBlocking(),
+		Scope: doors.ScopeOnlyBlocking(),
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			// display form
 			f.door.Update(ctx, f.form())
@@ -135,7 +135,7 @@ templ (f *createItemFragment) Render() {
     // render form in closed state
 	@f.form()
 	@doors.AClick{
-		Scope: doors.ScopeBlocking(),
+		Scope: doors.ScopeOnlyBlocking(),
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			// display form with dynamic attribute
 			f.open.Enable(ctx, true)
@@ -381,9 +381,7 @@ func (f *createItemFragment) submit(ctx context.Context, r doors.RForm[itemFormD
 }
 
 templ (f *createItemFragment) form() {
-	// attach attribute
 	@f.open
-	// remove "open" attribute (closed state)
 	<dialog>
 		<article>
 			<header>
@@ -392,9 +390,9 @@ templ (f *createItemFragment) form() {
 			// add submit handler
 			@doors.ASubmit[itemFormData]{
 				// indicate pending state on the button
-				Indicator: doors.IndicatorAttrQuery("#item-create", "aria-busy", "true"),
+				Indicator: doors.IndicatorOnlyAttrQuery("#item-create", "aria-busy", "true"),
 				// block rapid resubmittion
-				Scope: doors.ScopeBlocking(),
+				Scope: doors.ScopeOnlyBlocking(),
 				On:    f.submit,
 			}
 			<form>

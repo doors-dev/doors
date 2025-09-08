@@ -69,7 +69,7 @@ templ (l *loginFragment) Render() {
 			doors.SessionExpire(ctx, sessionDuration)
 			
 			// reload after request to initiate instance with private space
-			r.After(doors.AfterLocationReload())
+			r.After(doors.ActionOnlyLocationReload())
 			return true
 		},
 	}
@@ -109,9 +109,7 @@ templ logout() {
 
 > ⚠️ Ending the session causes pages to reload. In theory, it could happen before the browser receives a response and clears the cookies. To be on the safe side, **rely on session storage (remove on logout, check in the page handler)**. 
 
-## After Actions
 
-Use [After Actions](./ref/07-after-actions.md) in login handlers to "redirect" the user to the authorized page.
 
 
 

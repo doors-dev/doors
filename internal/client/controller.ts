@@ -8,10 +8,12 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 import { id, disconnectAfter, ttl, solitairePing } from "./params"
-import calls from "./calls"
+import action from "./calls"
 import { ProgressiveDelay, AbortTimer, ReliableTimer } from "./lib"
 
 import doors from "./door"
+import { Package, PackageBuilder } from "./package";
+
 
 const controlBytes = {
     terminator: 0xFF,
@@ -19,59 +21,11 @@ const controlBytes = {
     content: 0xFC,
 }
 const signals = {
-    call: 0x00,
-    roll: 0x01,
-    suspend: 0x02,
-    kill: 0x03,
-}
-
-const decoder = new TextDecoder()
-
-class Package {
-    start: number
-    end: number
-    call: string
-    arg: any
-    private payloadParts: Array<string> = []
-    private headerParts: Array<string> = []
-    filler = false
-    get seq(): number {
-        return this.end
-    }
-    parseHeader() {
-        const arr = JSON.parse(this.headerParts.join(""))
-        if (arr.length == 1) {
-            this.end = arr[0]
-            this.start = arr[0]
-            this.filler = true
-            return
-        }
-        if (arr.length == 2) {
-            [this.end, this.start] = arr
-            this.filler = true
-        }
-        if (arr.length == 3) {
-            [this.end, this.call, this.arg] = arr
-            this.start = this.end
-            return
-        }
-        [this.end, this.start, this.call, this.arg] = arr
-    }
-    get payload(): string {
-        return this.payloadParts.join("")
-    }
-    appendHeaderData(buf: Uint8Array) {
-        if (buf.length == 0) {
-            return
-        }
-        this.headerParts.push(decoder.decode(buf))
-    }
-    appendPayloadData(buf: Uint8Array) {
-        if (buf.length == 0) {
-            return
-        }
-        this.payloadParts.push(decoder.decode(buf))
-    }
+    ack: 0x00,
+    action: 0x01,
+    roll: 0x02,
+    suspend: 0x03,
+    kill: 0x04,
 }
 
 
@@ -118,7 +72,7 @@ class Solitaire {
         this.top.collect(a, this)
         const tail = a[a.length - 1]
         this.cursor = tail.end + 1
-        return a.filter(p => !p.filler)
+        return a.filter(p => !p.isFiller)
     }
     insert(p: Package) {
         // console.log(this.cursor, !!this.top, "ARRIVED", p.start, p.end, [...this.collectedLost])
@@ -280,9 +234,7 @@ class Connection {
         })
         this.run()
     }
-    private offset = 0
-    private buf = new Uint8Array(4)
-    private package: Package | undefined
+    private package: PackageBuilder | undefined
     abort() {
         this.abortTimer.abort()
     }
@@ -355,14 +307,12 @@ class Connection {
                 if (result.done) {
                     throw new Error()
                 }
-                /* connection loss simulation
-                if (Math.random() > 0.3) {
+                /*
+                if (Math.random() > 0.5) {
                     throw new Error()
-                }
+                } 
                 */
-                if (result.value.length > 0) {
-                    this.ack()
-                }
+
                 value = result.value
                 const done = this.onChunk(value)
                 this.ctrl.flush()
@@ -383,9 +333,15 @@ class Connection {
         if (this.status == connectorStatus.signal) {
             const signal = data[0]
             switch (signal) {
-                case signals.call:
+                case signals.ack:
+                    this.ack()
+                    if (data.length == 1) {
+                        return false
+                    }
+                    return this.onChunk(data.subarray(1))
+                case signals.action:
                     this.status = connectorStatus.header
-                    this.package = new Package()
+                    this.package = new PackageBuilder()
                     if (data.length == 1) {
                         return false
                     }
@@ -418,9 +374,8 @@ class Connection {
                     continue
                 }
                 this.package!.appendHeaderData(data.subarray(0, i))
-                this.package!.parseHeader()
                 if (byte == controlBytes.terminator) {
-                    this.ctrl.onPackage(this.package!)
+                    this.ctrl.onPackage(this.package!.build())
                     this.package = undefined
                     this.status = connectorStatus.signal
                 } else {
@@ -448,7 +403,7 @@ class Connection {
                 continue
             }
             this.package!.appendPayloadData(data.subarray(0, i))
-            this.ctrl.onPackage(this.package!)
+            this.ctrl.onPackage(this.package!.build())
             this.package = undefined
             this.status = connectorStatus.signal
             if (i + 1 == data.length) {
@@ -461,29 +416,14 @@ class Connection {
     }
 }
 
-type Results = Map<number, [any, string | undefined]>
+type Results = Map<number, [any, undefined] | [undefined, string]>
 
 class Tracker {
     private buffered: Results = new Map()
     process(p: Package) {
-        const fn = (calls as any)[p.call]
-        if (!fn) {
-            this.respond(p.seq, undefined, `callable [${p.call}] not found`)
-            return
-        }
-        try {
-            const result = fn(p.arg, p.payload)
-            if (result instanceof Promise) {
-                this.respond(p.seq, undefined, "async calls are prohibited")
-                return
-            }
-            this.respond(p.seq, result)
-        } catch (e: any) {
-            this.respond(p.seq, undefined, e?.message ? e.message : "unkown error")
-        }
-    }
-    private respond(seq: number, result: any, error?: string) {
-        this.buffered.set(seq, [result, error])
+        const [ok, err] = action(p.action, p.arg, { payload: p.payload })
+
+        this.buffered.set(p.end, [ok, err?.message])
     }
     return(collected: Results) {
         for (const [seq, entry] of collected.entries()) {

@@ -13,33 +13,40 @@ import (
 	"context"
 	"io"
 
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 )
 
 type KeyboardEvent = front.KeyboardEvent
 
 type keyEventHook struct {
-	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	// If true, stops the event from bubbling up the DOM.
+	// Optional.
 	StopPropagation bool
-
-	// PreventDefault, if true, prevents the browser's default action for the event.
+	// If true, prevents the browser's default action for the event.
+	// Optional.
 	PreventDefault bool
-
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// If true, only fires when the event occurs on this element itself.
+	// Optional.
+	ExactTarget bool
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate that the hook is running.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler for the click event.
-	// It receives a typed EventRequest[KeyboardEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Backend event handler.
+	// Receives a typed REvent[KeyboardEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[KeyboardEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
 }
 
 func (k *keyEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
@@ -52,6 +59,7 @@ func (k *keyEventHook) init(event string, ctx context.Context, n door.Core, inst
 			StopPropagation: k.StopPropagation,
 		},
 		inst:      inst,
+		before:    k.Before,
 		scope:     k.Scope,
 		onError:   k.OnError,
 		indicator: k.Indicator,
@@ -59,27 +67,35 @@ func (k *keyEventHook) init(event string, ctx context.Context, n door.Core, inst
 	}).init(attrs)
 }
 
-// AKeyDown is an attribute struct used with A(ctx, ...) to handle 'keydown' events via backend hooks.
+// AKeyDown prepares a key down event hook for DOM elements,
+// with configurable propagation, scheduling, indicators, and handlers.
 type AKeyDown struct {
-	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	// If true, stops the event from bubbling up the DOM.
+	// Optional.
 	StopPropagation bool
-
-	// PreventDefault, if true, prevents the browser's default action for the event.
+	// If true, prevents the browser's default action for the event.
+	// Optional.
 	PreventDefault bool
-
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// If true, only fires when the event occurs on this element itself.
+	// Optional.
+	ExactTarget bool
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate that the hook is running.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler for the click event.
-	// It receives a typed EventRequest[KeyboardEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Backend event handler.
+	// Receives a typed REvent[KeyboardEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[KeyboardEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
 }
 
 func (k AKeyDown) Render(ctx context.Context, w io.Writer) error {
@@ -95,27 +111,35 @@ func (k AKeyDown) Init(ctx context.Context, n door.Core, inst instance.Core, att
 	p.init("keydown", ctx, n, inst, attrs)
 }
 
-// AKeyUp is an attribute struct used with A(ctx, ...) to handle 'keyup' events via backend hooks.
+// AKeyUp prepares a key up event hook for DOM elements,
+// with configurable propagation, scheduling, indicators, and handlers.
 type AKeyUp struct {
-	// StopPropagation, if true, stops the event from bubbling up the DOM.
+	// If true, stops the event from bubbling up the DOM.
+	// Optional.
 	StopPropagation bool
-
-	// PreventDefault, if true, prevents the browser's default action for the event.
+	// If true, prevents the browser's default action for the event.
+	// Optional.
 	PreventDefault bool
-
-	// Scope determines how this hook is scheduled (e.g., blocking, debounce).
+	// If true, only fires when the event occurs on this element itself.
+	// Optional.
+	ExactTarget bool
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Indicator specifies how to visually indicate that the hook is running.
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
-
-	// On is the required backend handler for the click event.
-	// It receives a typed EventRequest[KeyboardEvent] and should return true
-	// when the hook is considered complete and can be removed.
+	// Backend event handler.
+	// Receives a typed REvent[KeyboardEvent].
+	// Should return true when the hook is complete and can be removed.
+	// Required.
 	On func(context.Context, REvent[KeyboardEvent]) bool
-
-	// OnError determines what to do if error occured during hook requrest
-	OnError []OnError
+	// Actions to run on error.
+	// Optional.
+	OnError []Action
+	// Actions to run before the hook request.
+	// Optional.
+	Before []Action
 }
 
 func (k AKeyUp) Render(ctx context.Context, w io.Writer) error {
@@ -130,4 +154,3 @@ func (k AKeyUp) Init(ctx context.Context, n door.Core, inst instance.Core, attrs
 	p := (*keyEventHook)(&k)
 	p.init("keyup", ctx, n, inst, attrs)
 }
-

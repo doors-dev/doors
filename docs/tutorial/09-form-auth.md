@@ -118,7 +118,7 @@ That's what **scopes** are here for.
 templ (f *loginFragment) Render() {
 	/* ... */
 	@doors.ASubmit[loginData]{
-		Scope: doors.ScopeBlocking(),
+		Scope: doors.ScopeOnlyBlocking(),
 		On:    f.submit,
 	}
 	<form>
@@ -128,7 +128,7 @@ templ (f *loginFragment) Render() {
 
 ```
 
-> There are multiple types of scopes; additionally, they can be shared between hooks and combined in a pipeline. `doors.Scope{Type}` is a helper for creating a scope pipeline of one scope of a specific type. Please refer to [Scopes](../docs/ref/04-scopes.md) for details.
+> There are multiple types of scopes; additionally, they can be shared between hooks and combined in a pipeline. `doors.Scope{Type}` is a helper for creating a scope pipeline of one scope of a specific type. Please refer to [Scopes](../docs/ref/03-scopes.md) for details.
 
 #### Indication
 
@@ -147,9 +147,9 @@ templ (f *loginFragment) Render() {
 	/* ... */
 	@doors.ASubmit[loginData]{
 		// query element with id login-submit and set attr area-busy to true during hook execution
-		Indicator: doors.IndicatorAttrQuery("#login-submit", "aria-busy", "true"),
+		Indicator: doors.IndicatorOnlyAttrQuery("#login-submit", "aria-busy", "true"),
 		// blocks new submission (on front-end), until the previous one is processed
-		Scope: doors.ScopeBlocking(),
+		Scope: doors.ScopeOnlyBlocking(),
 		On:    f.submit,
 	}
 	<form>
@@ -160,7 +160,7 @@ templ (f *loginFragment) Render() {
 
 ```
 
-> `doors.Indicator{Type}{Selector}` is a helper function to define a single indicator of a specific type and selector.  There are multiple indication types  (attribute, class, content) and selectors (target, query, parent query).  You can also specify multiple indicators. Please refer to [Indication](../docs/ref/03-indication.md) for details.
+> `doors.IndicatorOnly{Type}{Selector}` is a helper function to define a single indicator of a specific type and selector.  There are multiple indication types  (attribute, class, content) and selectors (target, query, parent query).  You can also specify multiple indicators. Please refer to [Indication](../docs/ref/02-indication.md) for details.
 
 ## 3. Form Error Message
 
@@ -237,7 +237,7 @@ func (f *loginFragment) submit(ctx context.Context, r doors.RForm[loginData]) bo
 	})
 
     // tell frontent to reload the page after the form submit request
-	r.After(doors.AfterLocationReload())
+	r.After(doors.ActionOnlyLocationReload())
     // limit doors internal session to cookie session duration
     // to ensure that pages won't outlive authenitifacation
 	doors.SessionExpire(ctx, sessionDuration)
@@ -245,7 +245,7 @@ func (f *loginFragment) submit(ctx context.Context, r doors.RForm[loginData]) bo
 }
 ```
 
-> `r.After(doors.After)` allows you to specify an action to execute on the front-end after the hook request is finished. `doors.AfterLocationReload()` is useful for situations when you need to reinitialize the page after hook execution.
+> `r.After([]doors.Action)` allows you to specify an action to execute on the front-end after the hook request is finished. `doors.ActionOnlyLocationReload()` is useful for situations when you need to reinitialize the page after hook execution.
 >
 > `doors.SessionExpire` is a safe precaution to ensure that opened pages with access to authorized functionality will not outlive the authorization session. 
 

@@ -58,7 +58,7 @@ func PathMatcherStarts() PathMatcher {
 	return pathMatch([]any{"starts"})
 }
 
-func PathMatcherParts(n int) PathMatcher {
+func PathMatcherParts(n uint8) PathMatcher {
 	return pathMatch([]any{"parts", n})
 }
 func QueryMatcherAll() QueryMatcher {
@@ -73,27 +73,37 @@ func QueryMatcherSome(params ...string) QueryMatcher {
 	return queryMatch([]any{"some", params})
 }
 
+// Active configures active link
+// indication
 type Active struct {
-	PathMatcher  PathMatcher
+	// Path match strategy
+	PathMatcher PathMatcher
+	// Query param match strategy
 	QueryMatcher QueryMatcher
-	Indicator    []Indicator
+	// Indicators to apply when active
+	Indicator []Indicator
 }
 
+// AHref prepares the href attribute for internal navigation
+// and configures dynamic link behavior.
 type AHref struct {
-	// Target path model value
+	// Target path model value. Required.
 	Model any
-	// Active link indicator configuration
+	// Active link indicator configuration. Optional.
 	Active Active
-	// Stops event propagation (for dynamic link)
+	// Stop event propagation (for dynamic links). Optional.
 	StopPropagation bool
-	// Scrolls into selector (for dynamic link)
-	ScrollInto string
-	// Loading indications (for dynamic link)
+	// Visual indicators while the hook is running
+	// (for dynamic links). Optional.
 	Indicator []Indicator
-	// Action on error (for dynamic link)
-	OnError []OnError
-	// For analytics purposes
-	Callback func()
+	// Actions to run before the hook request (for dynamic links). Optional.
+	Before []Action
+	// Handler triggered during the internal link hook
+	// (for dynamic links). Optional.
+	On func(r RAfter)
+	// Actions to run on error (for dynamic links).
+	// Default (nil) triggers a location reload.
+	OnError []Action
 }
 
 func (h *AHref) active() []any {
@@ -127,16 +137,8 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 	if ok {
 		entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 			Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-				if h.Callback != nil {
-					defer h.Callback()
-				}
-				if h.ScrollInto != "" {
-					r := request{
-						w:   w,
-						r:   r,
-						ctx: ctx,
-					}
-					r.After(AfterScrollInto(h.ScrollInto, false))
+				if h.On != nil {
+					defer h.On(&request{w: w, r: r, ctx: ctx})
 				}
 				on(ctx)
 				return false
@@ -145,12 +147,16 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 		if !ok {
 			return
 		}
+		if h.OnError == nil {
+			h.OnError = ActionOnlyLocationReload()
+		}
 		attrs.AppendCapture(&front.LinkCapture{
 			StopPropagation: h.StopPropagation,
 		}, &front.Hook{
 			Scope:     []*ScopeSet{front.LatestScope("link")},
 			Indicate:  front.IntoIndicate(h.Indicator),
-			Error:     front.IntoErrorAction(h.OnError),
+			Before:    intoActions(ctx, h.Before),
+			OnError:   intoActions(ctx, h.OnError),
 			HookEntry: entry,
 		})
 	}
@@ -164,9 +170,14 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 	}
 }
 
+// ARawSrc prepares the src attribute for a downloadable resource
+// served directly and privately through a custom handler.
 type ARawSrc struct {
-	Once    bool
-	Name    string
+	// If true, resource is available for download only once.
+	Once bool
+	// File name. Optional.
+	Name string
+	// Handler for serving the resource request.
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -205,11 +216,15 @@ func (s *ARawSrc) handle(_ context.Context, w http.ResponseWriter, r *http.Reque
 	return s.Once
 }
 
-// attribute to securely serve a file
+// ASrc prepares the src attribute for a downloadable resource
+// served privately from a file system path.
 type ASrc struct {
-	Path string
+	// If true, resource is available for download only once.
 	Once bool
+	// File name. Optional.
 	Name string
+	// File system path to serve.
+	Path string
 }
 
 func (s ASrc) init(ctx context.Context, n door.Core, inst instance.Core) (string, bool) {
@@ -247,10 +262,15 @@ func (s *ASrc) handle(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return s.Once
 }
 
+// AFileHref prepares the href attribute for a downloadable resource
+// served privately from a file system path.
 type AFileHref struct {
-	Path string
+	// If true, resource is available for download only once.
 	Once bool
+	// File name. Optional.
 	Name string
+	// File system path to serve.
+	Path string
 }
 
 func (s AFileHref) Render(ctx context.Context, w io.Writer) error {
@@ -269,9 +289,14 @@ func (s AFileHref) Init(ctx context.Context, n door.Core, inst instance.Core, at
 	attrs.Set("href", link)
 }
 
+// ARawFileHref prepares the href attribute for a downloadable resource
+// served privately and directly through a custom handler.
 type ARawFileHref struct {
-	Once    bool
-	Name    string
+	// If true, resource is available for download only once.
+	Once bool
+	// File name. Optional.
+	Name string
+	// Handler for serving the resource request.
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 

@@ -62,11 +62,6 @@ func UsePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Mod {
 	})
 }
 
-// Deprecated: use UsePage
-func ServePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Mod {
-	return UsePage(handler)
-}
-
 // UseFS serves static files from an embedded filesystem at the specified URL prefix.
 // This is useful for serving embedded assets using Go's embed.FS.
 //
@@ -76,11 +71,6 @@ func ServePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Mod {
 func UseFS(prefix string, fs fs.FS) Mod {
 	httpFS := http.FS(fs)
 	return router.ServeDir(prefix, httpFS)
-}
-
-// Deprecated: use UseFS
-func ServeFS(prefix string, fs fs.FS) Mod {
-	return UseFS(prefix, fs)
 }
 
 // UseDir serves static files from a local directory using os.DirFS.
@@ -95,11 +85,6 @@ func UseDir(prefix string, path string) Mod {
 	return router.ServeDir(prefix, httpFS)
 }
 
-// Deprecated: use UseDir
-func ServeDir(prefix string, path string) Mod {
-	return UseDir(prefix, path)
-}
-
 // UseFile serves a single file at the specified URL path.
 //
 // Parameters:
@@ -109,20 +94,10 @@ func UseFile(path string, localPath string) Mod {
 	return router.ServeFile(path, localPath)
 }
 
-// Deprecated: use UseFile
-func ServeFile(path string, localPath string) Mod {
-	return UseFile(path, localPath)
-}
-
 // UseFallback sets a fallback handler for requests that don't match any routes.
 // This is useful for integrating with other HTTP handlers or serving custom 404 pages.
 func UseFallback(handler http.Handler) Mod {
 	return router.ServeFallback(handler)
-}
-
-// Deprecated: use UseFallback
-func ServeFallback(handler http.Handler) Mod {
-	return UseFallback(handler)
 }
 
 type SessionCallback = router.SessionCallback
@@ -140,11 +115,6 @@ func UseESConf(conf ESConf) Mod {
 	return router.SetBuildProfiles(conf)
 }
 
-// Deprecated: use UseESConf
-func SetESConf(conf ESConf) Mod {
-	return UseESConf(conf)
-}
-
 // SystemConf contains system-wide configuration options for the framework.
 type SystemConf = common.SystemConf
 
@@ -154,20 +124,10 @@ func UseSystemConf(conf SystemConf) Mod {
 	return router.SetSystemConf(conf)
 }
 
-// Deprecated: use UseSystemConf
-func SetSystemConf(conf SystemConf) Mod {
-	return UseSystemConf(conf)
-}
-
 // UseErrorPage sets a custom error page component for handling internal errors.
 // The component receives the error message as a parameter.
 func UseErrorPage(page func(message string) templ.Component) Mod {
 	return router.SetErrorPage(page)
-}
-
-// Deprecated: use SetErrorPage
-func SetErrorPage(page func(message string) templ.Component) Mod {
-	return UseErrorPage(page)
 }
 
 // CSP represents Content Security Policy configuration.
@@ -177,9 +137,4 @@ type CSP = common.CSP
 // This helps prevent XSS attacks and other security vulnerabilities.
 func UseCSP(csp CSP) Mod {
 	return router.SetCSP(&csp)
-}
-
-// Deprecated: use UseCSP
-func EnableCSP(csp CSP) Mod {
-	return UseCSP(csp)
 }
