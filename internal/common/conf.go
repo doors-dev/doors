@@ -24,6 +24,13 @@ type SystemConf struct {
 	// instances left, cookie expires when browser closes.
 	SessionTTL time.Duration
 
+	// OptimisicSync makes all system front-end syncs
+	// resolve optimistically on write, without
+	// waiting for the report. Removes roundtrip
+	// delay on indication.
+	// 
+	OptimisicSync bool
+
 	// InstanceGoroutineLimit is the max goroutines per page instance.
 	// Controls resource use for rendering and reactive updates. Default: 16.
 	InstanceGoroutineLimit int
@@ -74,6 +81,7 @@ type SystemConf struct {
 }
 
 type SolitaireConf struct {
+	InstanceTTL  time.Duration
 	Ping         time.Duration
 	FlushSize    int
 	RollDuration time.Duration
@@ -85,6 +93,7 @@ type SolitaireConf struct {
 
 func GetSolitaireConf(s *SystemConf) *SolitaireConf {
 	return &SolitaireConf{
+		InstanceTTL:  s.InstanceTTL,
 		SyncTimeout:  s.SolitaireSyncTimeout,
 		Ping:         s.SolitairePing,
 		FlushSize:    s.SolitaireFlushSizeLimit,
@@ -95,28 +104,14 @@ func GetSolitaireConf(s *SystemConf) *SolitaireConf {
 	}
 }
 
-type ClientConf struct {
-	TTL            time.Duration
-	RequestTimeout time.Duration
-	Ping           time.Duration
-	SleepTimeout   time.Duration
-	Detached       bool
-}
-
-func GetClientConf(s *SystemConf) *ClientConf {
-	return &ClientConf{
-		TTL:            s.InstanceTTL,
-		SleepTimeout:   s.DisconnectHiddenTimer,
-		RequestTimeout: s.RequestTimeout,
-		Ping:           s.SolitairePing,
-	}
-}
-
 func (s *SystemConf) solitaireDefaults() {
 	if s.SolitaireFlushSizeLimit <= 0 {
 		s.SolitaireFlushSizeLimit = 32 * 1024
 	}
 	if s.SolitaireSyncTimeout <= 0 {
+		s.SolitaireSyncTimeout = s.InstanceTTL
+	}
+	if s.SolitaireSyncTimeout > s.InstanceTTL {
 		s.SolitaireSyncTimeout = s.InstanceTTL
 	}
 	if s.SolitaireFlushTimeout <= 0 {

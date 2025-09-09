@@ -14,19 +14,21 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
-func newDeck(inst solitaireInstance, queueLimit int, issueLimit int, syncTimeout time.Duration) *deck {
+func newDeck(inst solitaireInstance, queueLimit int, issueLimit int, syncTimeout time.Duration, instanceTTL time.Duration) *deck {
 	return &deck{
 		inst:        inst,
 		issueLimit:  issueLimit,
 		queueLimit:  queueLimit,
 		issued:      make(map[uint64]*issuedCall),
 		syncTimeout: syncTimeout,
+		instanceTTL: instanceTTL,
 		expirator: common.NewExpirator(func() {
 			inst.syncError(errors.New("sync timeout"))
 		}),
@@ -38,6 +40,7 @@ type deck struct {
 	issueLimit   int
 	queueLimit   int
 	syncTimeout  time.Duration
+	instanceTTL  time.Duration
 	seq          uint64
 	top          *card
 	bottom       *card
@@ -58,7 +61,7 @@ func (d *deck) End() {
 	d.expirator.Shutdown()
 	d.killed = true
 	for seq := range d.issued {
-		d.issued[seq].call.Cancel()
+		d.issued[seq].call.cancel()
 	}
 	if d.top == nil {
 		return
@@ -116,16 +119,15 @@ func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
 			}
 			return writeOk, nil
 		}
-		action, ok := card.call.Action()
+		action, ok := card.call.action()
 		if !ok {
 			d.expirator.Report(card.seq())
-			card.call.Cancel()
+			card.call.cancel()
 			d.skipRange(card.startSeq, card.endSeq)
 			continue
 		}
 		issuedCall := &issuedCall{
 			invocation: action.Invocation(),
-			payload:    card.call.Payload(),
 			call:       card.call,
 		}
 		err := issuedCall.write(header, w)
@@ -137,7 +139,7 @@ func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
 				return writeErr, err
 			}
 			d.expirator.Report(card.seq())
-			issuedCall.call.Result(nil, errors.Join(errors.New("call serialization error"), err))
+			issuedCall.call.result(nil, errors.Join(errors.New("call serialization error"), err))
 			d.skipRange(card.startSeq, card.endSeq)
 			_, err := w.Write(errorTerminator)
 			if err != nil {
@@ -146,6 +148,7 @@ func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
 			return writeOk, nil
 		}
 		d.issued[card.seq()] = issuedCall
+		issuedCall.call.written()
 		return writeOk, nil
 	}
 }
@@ -187,12 +190,12 @@ func (d *deck) OnReport(s *report) (err error) {
 				continue
 			}
 			d.expirator.Report(seq)
-			card.call.Result(result.output, result.err)
+			card.call.result(result.output, result.err)
 			continue
 		}
 		delete(d.issued, seq)
 		d.expirator.Report(seq)
-		call.call.Result(result.output, result.err)
+		call.call.result(result.output, result.err)
 	}
 	prevEnd := d.latestReport
 	for _, gap := range s.Gaps {
@@ -224,7 +227,7 @@ func (d *deck) OnReport(s *report) (err error) {
 	}
 	return nil
 }
-func (d *deck) Insert(call action.Call) (err error) {
+func (d *deck) Insert(c action.Call) (err error) {
 	defer func() {
 		if err != nil {
 			d.inst.syncError(err)
@@ -233,13 +236,17 @@ func (d *deck) Insert(call action.Call) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.killed {
-		call.Cancel()
+		c.Cancel()
 		return errors.New("killed")
 	}
 	d.seq += 1
-	door := newCard(d.seq, call)
+	door := newCard(d.seq, &call{call: c})
 	d.insertTail(door)
-	d.expirator.Track(d.seq, time.Now().Add(d.syncTimeout))
+	deadline := time.Now().Add(d.syncTimeout)
+	if c.Optimistic() {
+		deadline = time.Now().Add(d.instanceTTL)
+	}
+	d.expirator.Track(d.seq, deadline)
 	return d.inc()
 }
 
@@ -264,8 +271,8 @@ func (d *deck) dec() {
 	d.deckSize -= 1
 }
 
-func (d *deck) restore(seq uint64, call action.Call) error {
-	n := newRestoredCard(seq, call)
+func (d *deck) restore(seq uint64, c *call) error {
+	n := newRestoredCard(seq, c)
 	if d.top == nil {
 		d.top = n
 		d.bottom = n
@@ -332,20 +339,20 @@ type head interface {
 	setTail(*card)
 }
 
-func newRestoredCard(seq uint64, call action.Call) *card {
+func newRestoredCard(seq uint64, c *call) *card {
 	return &card{
 		startSeq: seq,
 		endSeq:   seq,
-		call:     call,
+		call:     c,
 		restored: true,
 	}
 }
 
-func newCard(seq uint64, call action.Call) *card {
+func newCard(seq uint64, c *call) *card {
 	return &card{
 		startSeq: seq,
 		endSeq:   seq,
-		call:     call,
+		call:     c,
 	}
 }
 func newFillerCard(seq uint64) *card {
@@ -359,14 +366,14 @@ func newFillerCard(seq uint64) *card {
 type card struct {
 	startSeq uint64
 	endSeq   uint64
-	call     action.Call
+	call     *call
 	tail     *card
 	restored bool
 }
 
 func (s *card) cancel() {
 	if !s.isFiller() {
-		s.call.Cancel()
+		s.call.cancel()
 	}
 	if s.tail == nil {
 		return
@@ -499,9 +506,8 @@ func (h header) write(w io.Writer) error {
 }
 
 type issuedCall struct {
-	call       action.Call
+	call       *call
 	invocation *action.Invocation
-	payload    common.Writable
 }
 
 func (i *issuedCall) write(h header, w io.Writer) error {
@@ -510,7 +516,8 @@ func (i *issuedCall) write(h header, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if _, ok := i.payload.(common.WritableNone); ok {
+	payload := i.call.payload()
+	if _, ok := payload.(common.WritableNone); ok {
 		_, err = w.Write(terminator)
 		return err
 	}
@@ -518,7 +525,7 @@ func (i *issuedCall) write(h header, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = i.payload.Write(w)
+	err = payload.Write(w)
 	if err != nil {
 		return err
 	}
@@ -583,4 +590,38 @@ func (m *gap) UnmarshalJSON(data []byte) error {
 type report struct {
 	Gaps    []gap             `json:"Gaps"`
 	Results map[uint64]result `json:"results"`
+}
+
+type call struct {
+	call     action.Call
+	reported atomic.Bool
+}
+
+func (p *call) written() {
+	if !p.call.Optimistic() {
+		return
+	}
+	p.result([]byte("null"), nil)
+}
+
+func (c *call) payload() common.Writable {
+	return c.call.Payload()
+}
+
+func (c *call) action() (action.Action, bool) {
+	return c.call.Action()
+}
+
+func (c *call) cancel() {
+	if c.reported.Swap(true) {
+		return
+	}
+	c.call.Cancel()
+}
+
+func (c *call) result(ok json.RawMessage, err error) {
+	if c.reported.Swap(true) {
+		return
+	}
+	c.call.Result(ok, err)
 }

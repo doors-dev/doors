@@ -89,7 +89,7 @@ func newTestCalls() testCalls {
 
 func TestRange(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 10, 11, time.Minute)
+	deck := newDeck(ti, 10, 11, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	ps := newTestCalls()
 	ps.insertWrite(deck, w, 10, 10)
@@ -110,7 +110,7 @@ func TestRange(t *testing.T) {
 
 func TestRetry(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 1, 1, time.Minute)
+	deck := newDeck(ti, 1, 1, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	deck.Insert(&testCall{
 		arg:     123,
@@ -138,7 +138,7 @@ func TestRetry(t *testing.T) {
 
 func TestSkip(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 5, 6, time.Minute)
+	deck := newDeck(ti, 5, 6, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	ps := newTestCalls()
 	ps.cancel(1)
@@ -159,7 +159,7 @@ func TestSkip(t *testing.T) {
 
 func TestReportResult(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 5, 6, time.Minute)
+	deck := newDeck(ti, 5, 6, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 5, 5)
@@ -202,7 +202,7 @@ func TestReportResult(t *testing.T) {
 
 func TestReportGap(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 6, 7, time.Minute)
+	deck := newDeck(ti, 6, 7, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 6, 5)
@@ -252,7 +252,7 @@ func TestReportGap(t *testing.T) {
 
 func TestExtraction(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 6, 7, time.Minute)
+	deck := newDeck(ti, 6, 7, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 5, 4)
@@ -295,7 +295,7 @@ func TestExtraction(t *testing.T) {
 
 func TestSkipTail(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 6, 7, time.Minute)
+	deck := newDeck(ti, 6, 7, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 4, 3)
@@ -337,7 +337,7 @@ func TestSkipTail(t *testing.T) {
 
 func TestLimits(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 6, 6, time.Minute)
+	deck := newDeck(ti, 6, 6, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 6, 0)
@@ -385,7 +385,7 @@ func TestLimits(t *testing.T) {
 
 func TestReportNonIssued(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 6, 6, time.Minute)
+	deck := newDeck(ti, 6, 6, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 6, 4)
@@ -417,7 +417,7 @@ func TestReportNonIssued(t *testing.T) {
 }
 func TestReport(t *testing.T) {
 	ti := &testInstance{}
-	deck := newDeck(ti, 7, 7, time.Minute)
+	deck := newDeck(ti, 7, 7, time.Minute, time.Minute * 2)
 	w := &testWriter{}
 	ps := newTestCalls()
 	err := ps.insertWrite(deck, w, 7, 7)

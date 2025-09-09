@@ -117,10 +117,11 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 	rw, _ := rm.Writer(c.id)
 
 	call := &doorCall{
-		ctx:    c.parentCtx,
-		action: &action.DoorReplace{Id: c.id},
-		ch:     ch,
-		done:   ctxwg.Add(userCtx),
+		ctx:        c.parentCtx,
+		optimistic: c.inst.Conf().OptimisicSync,
+		action:     &action.DoorReplace{Id: c.id},
+		ch:         ch,
+		done:       ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{
 			Rm:    rm,
 			Index: c.id,
@@ -166,10 +167,11 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 	rw, _ := rm.Writer(c.id)
 
 	call := &doorCall{
-		ctx:    parentCtx,
-		action: &action.DoorUpdate{Id: c.id},
-		ch:     ch,
-		done:   ctxwg.Add(userCtx),
+		ctx:        parentCtx,
+		optimistic: c.inst.Conf().OptimisicSync,
+		action:     &action.DoorUpdate{Id: c.id},
+		ch:         ch,
+		done:       ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{
 			Rm:    rm,
 			Index: c.id,

@@ -38,7 +38,7 @@ func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], cont
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	door := ctx.Value(common.CtxKeyDoor).(door.Core)
 	ch := make(chan CallResult[T], 1)
-	a, err := action.action(ctx, inst, door)
+	a, optimisic, err := action.action(ctx, inst, door)
 	res := CallResult[T]{}
 	if err != nil {
 		slog.Error("Action preparation errror", slog.String("error", err.Error()))
@@ -68,6 +68,7 @@ func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], cont
 		func() {
 			close(ch)
 		},
+		optimisic,
 	)
 	return ch, cancel
 }

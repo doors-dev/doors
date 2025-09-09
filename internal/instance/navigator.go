@@ -23,12 +23,13 @@ import (
 	"github.com/doors-dev/doors/internal/path"
 )
 
-func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyAdapter, model *M, detached bool, rerouted bool) *navigator[M] {
+func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyAdapter, model *M, detached bool, rerouted bool, optimistic bool) *navigator[M] {
 	return &navigator[M]{
 		adapter:     adapter,
 		adapters:    adapters,
 		detached:    detached,
 		rerouted:    rerouted,
+		optimistic:  optimistic,
 		historyHead: &historyHead[M]{},
 		cancelPrev:  func() {},
 		model: beam.NewSourceBeamExt(*model, func(new, old M) bool {
@@ -43,6 +44,7 @@ type navigator[M any] struct {
 	inst        Core
 	adapter     *path.Adapter[M]
 	adapters    map[string]path.AnyAdapter
+	optimistic  bool
 	detached    bool
 	rerouted    bool
 	model       beam.SourceBeam[M]
@@ -148,7 +150,7 @@ func (n *navigator[M]) pushHistory(ctx context.Context, ns *navigatorState[M], s
 	defer n.mu.Unlock()
 	if sync {
 		n.cancelPrev()
-		n.cancelPrev = n.inst.SimpleCall(ctx, &action.SetPath{Path: ns.path, Replace: replace}, nil, nil)
+		n.cancelPrev = n.inst.SimpleCall(ctx, &action.SetPath{Path: ns.path, Replace: replace}, nil, nil, n.optimistic)
 	}
 	n.historyHead.push(ns)
 }

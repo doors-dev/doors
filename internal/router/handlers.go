@@ -246,14 +246,6 @@ func (rr *Router) tryServePut(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (rr *Router) tryServeWorker(w http.ResponseWriter, r *http.Request) bool {
-	if r.URL.Path != "/worker.d00r.js" {
-		return false
-	}
-	worker := rr.registry.WorkerScript()
-	worker.ServeCache(w, r, false)
-	return true
-}
 func (rr *Router) tryServeJs(w http.ResponseWriter, r *http.Request) bool {
 	main := rr.registry.MainScript()
 	if r.URL.Path != "/"+main.HashString()+".d00r.js" {
@@ -302,9 +294,6 @@ func (rr *Router) tryServeGet(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	if rr.tryServeJs(w, r) {
-		return true
-	}
-	if rr.tryServeWorker(w, r) {
 		return true
 	}
 	if rr.tryServeCss(w, r) {

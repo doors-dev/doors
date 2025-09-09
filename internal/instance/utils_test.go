@@ -40,6 +40,10 @@ func (t *testCall) Destroy() {
 
 }
 
+func (y *testCall) Optimistic() bool {
+	return false
+}
+
 func (t *testCall) Write(w io.Writer) error {
 	_, err := w.Write([]byte(t.payload))
 	return err

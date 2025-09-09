@@ -21,6 +21,7 @@ import (
 )
 
 type instance interface {
+	Conf() *common.SystemConf
 	OnPanic(error)
 	Thread() *shredder.Thread
 	CancelHooks(uint64, error)
@@ -40,7 +41,7 @@ const (
 
 type Door struct {
 	Tag       string
-	A     templ.Attributes
+	A         templ.Attributes
 	mu        sync.Mutex
 	parent    *tracker
 	container *container

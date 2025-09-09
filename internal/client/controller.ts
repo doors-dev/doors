@@ -8,13 +8,12 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 import { id, disconnectAfter, ttl, solitairePing } from "./params"
-import action, { CallResult } from "./calls"
+import action from "./calls"
 import { ProgressiveDelay, AbortTimer, ReliableTimer } from "./lib"
 
 import doors from "./door"
 import { Package, PackageBuilder } from "./package";
 
-// navigator.serviceWorker.register('/worker.d00r.js', { scope: '/' });
 
 const controlBytes = {
     terminator: 0xFF,
@@ -27,8 +26,6 @@ const signals = {
     suspend: 0x02,
     kill: 0x03,
 }
-
-
 
 
 class Solitaire {

@@ -12,7 +12,9 @@ package doors
 import (
 	"context"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
@@ -60,6 +62,7 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 		return nil
 	}
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
+	door := ctx.Value(common.CtxKeyDoor).(door.Core)
 	var cancel = func() {}
 	var currentMeta HeadData
 	m, ok := b.ReadAndSub(ctx, func(ctx context.Context, m M) bool {
@@ -70,7 +73,7 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 			}
 			currentMeta = newMeta
 			cancel()
-			cancel = Call(ctx, ActionEmit{
+			cancel = inst.SimpleCall(ctx, &action.Emit{
 				Name: "d00r_head",
 				Arg: map[string]interface{}{
 					"title": newMeta.Title,
@@ -82,7 +85,8 @@ templ Head[M any](b Beam[M], cast func(M) HeadData) {
 						return escapedTags
 					}(),
 				},
-			})
+				DoorId: door.Id(),
+			}, nil, nil, inst.Conf().OptimisicSync)
 		})
 	})
 	if !ok {

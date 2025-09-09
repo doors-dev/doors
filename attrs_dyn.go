@@ -81,12 +81,14 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 	if !a.initialized {
 		return
 	}
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	call := &dynaCall{
 		done:       ctxwg.Add(ctx),
 		seq:        a.seq,
 		attr:       a,
 		prevValue:  prevValue,
 		prevEnable: prevEnable,
+		optimisic:  inst.Conf().OptimisicSync,
 	}
 	if a.enable {
 		call.action = &action.DynaSet{
@@ -98,7 +100,6 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 			Id: a.id,
 		}
 	}
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(call)
 }
 
@@ -121,6 +122,7 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 	if !a.initialized {
 		return
 	}
+	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	call := &dynaCall{
 		done: ctxwg.Add(ctx),
 		seq:  a.seq,
@@ -131,8 +133,8 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 		},
 		prevValue:  prevValue,
 		prevEnable: prevEnable,
+		optimisic:  inst.Conf().OptimisicSync,
 	}
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	inst.Call(call)
 }
 
@@ -164,6 +166,11 @@ type dynaCall struct {
 	action     action.Action
 	prevValue  string
 	prevEnable bool
+	optimisic  bool
+}
+
+func (c *dynaCall) Optimistic() bool {
+	return c.optimisic
 }
 
 func (c *dynaCall) Cancel() {

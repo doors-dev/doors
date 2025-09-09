@@ -1,9 +1,17 @@
+// doors
+// Copyright (c) 2025 doors dev LLC
+//
+// Licensed under the Business Source License 1.1 (BUSL-1.1).
+// See LICENSE.txt for details.
+//
+// For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
+// To purchase a license, visit https://doors.dev or contact sales@doors.dev.
+
 package action
 
 import (
 	"encoding/json"
 	"net/http"
-
 	"github.com/doors-dev/doors/internal/common"
 )
 
@@ -36,6 +44,7 @@ type Action interface {
 }
 
 type Call interface {
+	Optimistic() bool
 	Action() (Action, bool)
 	Payload() common.Writable
 	Cancel()

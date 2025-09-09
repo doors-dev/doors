@@ -40,16 +40,16 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	conf := inst.ClientConf()
+	conf := inst.Conf()
 	attrs := map[string]any{
 		"src":             "/" + script.HashString() + ".d00r.js",
 		"id":              inst.Id(),
 		"data-root":       door.Id(),
-		"data-ttl":        conf.TTL.Milliseconds(),
-		"data-disconnect": conf.SleepTimeout.Milliseconds(),
+		"data-ttl":        conf.InstanceTTL.Milliseconds(),
+		"data-disconnect": conf.DisconnectHiddenTimer.Milliseconds(),
 		"data-request":    conf.RequestTimeout.Milliseconds(),
-		"data-ping":       conf.Ping.Milliseconds(),
-		"data-detached":   conf.Detached,
+		"data-ping":       conf.SolitairePing.Milliseconds(),
+		"data-detached":   inst.IsDetached(),
 	}
 	_, err = fmt.Fprint(w, "<script")
 	if err != nil {

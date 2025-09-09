@@ -20,7 +20,7 @@ import (
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
-func (c *core[M]) SimpleCall(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func()) context.CancelFunc {
+func (c *core[M]) SimpleCall(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), optimisic bool) context.CancelFunc {
 	if ctx.Err() != nil {
 		if onCancel != nil {
 			onCancel()
@@ -30,22 +30,28 @@ func (c *core[M]) SimpleCall(ctx context.Context, action action.Action, onResult
 	done := ctxwg.Add(ctx)
 	ctx, cancel := context.WithCancel(context.Background())
 	call := &SimpleCall{
-		ctx:      ctx,
-		done:     done,
-		action:   action,
-		onResult: onResult,
-		onCancel: onCancel,
+		ctx:       ctx,
+		done:      done,
+		action:    action,
+		onResult:  onResult,
+		onCancel:  onCancel,
+		optimisic: optimisic,
 	}
 	c.Call(call)
 	return cancel
 }
 
 type SimpleCall struct {
-	ctx      context.Context
-	action   action.Action
-	done     func()
-	onResult func(json.RawMessage, error)
-	onCancel func()
+	ctx       context.Context
+	action    action.Action
+	done      func()
+	onResult  func(json.RawMessage, error)
+	onCancel  func()
+	optimisic bool
+}
+
+func (c *SimpleCall) Optimistic() bool {
+	return c.optimisic
 }
 
 func (c *SimpleCall) Action() (action.Action, bool) {

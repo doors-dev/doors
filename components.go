@@ -60,9 +60,6 @@ func Include() templ.Component {
 // consistent state (Beam), ensuring stable and predictable rendering.
 type Door = door.Door
 
-// Deprecated: Use Door instead
-type Node = Door
-
 // Fragment is a helper interface for defining composable, stateful, and code-interactive components.
 //
 // A Fragment groups fields, methods, and rendering logic into a reusable unit.

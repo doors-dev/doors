@@ -28,7 +28,7 @@ type solitaireInstance interface {
 func newSolitaire(inst solitaireInstance, conf *common.SolitaireConf) *solitaire {
 	return &solitaire{
 		conf: conf,
-		deck: newDeck(inst, conf.Queue, conf.Pending, conf.SyncTimeout),
+		deck: newDeck(inst, conf.Queue, conf.Pending, conf.SyncTimeout, conf.InstanceTTL),
 	}
 }
 

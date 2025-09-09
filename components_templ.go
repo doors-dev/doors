@@ -27,7 +27,9 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"context"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
@@ -95,6 +97,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 			return nil
 		}
 		inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
+		door := ctx.Value(common.CtxKeyDoor).(door.Core)
 		var cancel = func() {}
 		var currentMeta HeadData
 		m, ok := b.ReadAndSub(ctx, func(ctx context.Context, m M) bool {
@@ -105,7 +108,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 				}
 				currentMeta = newMeta
 				cancel()
-				cancel = Call(ctx, ActionEmit{
+				cancel = inst.SimpleCall(ctx, &action.Emit{
 					Name: "d00r_head",
 					Arg: map[string]interface{}{
 						"title": newMeta.Title,
@@ -117,7 +120,8 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 							return escapedTags
 						}(),
 					},
-				})
+					DoorId: door.Id(),
+				}, nil, nil, inst.Conf().OptimisicSync)
 			})
 		})
 		if !ok {
@@ -137,7 +141,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(currentMeta.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 99, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 103, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -155,7 +159,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 101, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 105, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -168,7 +172,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(content)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 101, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components.templ`, Line: 105, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {

@@ -20,11 +20,12 @@ import (
 )
 
 type doorCall struct {
-	ctx     context.Context
-	ch      chan error
-	action  action.Action
-	payload common.Writable
-	done    ctxwg.Done
+	ctx        context.Context
+	ch         chan error
+	action     action.Action
+	payload    common.Writable
+	done       ctxwg.Done
+	optimistic bool
 }
 
 func (n *doorCall) Cancel() {
@@ -56,4 +57,8 @@ func (c *doorCall) Action() (action.Action, bool) {
 
 func (c *doorCall) Payload() common.Writable {
 	return c.payload
+}
+
+func (c *doorCall) Optimistic() bool {
+	return c.optimistic
 }

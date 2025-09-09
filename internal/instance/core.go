@@ -63,7 +63,7 @@ type Core interface {
 	CSPCollector() *common.CSPCollector
 	ImportRegistry() *resources.Registry
 	SessionId() string
-	ClientConf() *common.ClientConf
+	Conf() *common.SystemConf
 	Id() string
 	NewId() uint64
 	Cinema() *door.Cinema
@@ -71,8 +71,9 @@ type Core interface {
 	SessionExpire(d time.Duration)
 	SessionEnd()
 	Call(call action.Call)
-	SimpleCall(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func()) context.CancelFunc
+	SimpleCall(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), optimisic bool) context.CancelFunc
 	End()
+	IsDetached() bool
 }
 
 type core[M any] struct {
@@ -91,6 +92,9 @@ type core[M any] struct {
 func (c *core[M]) Spawn(f func()) bool {
 	return c.spawner.Go(f)
 }
+func (c *core[M]) IsDetached() bool {
+	return c.navigator.isDetached()
+}
 
 func (c *core[M]) OnPanic(err error) {
 	c.instance.OnPanic(err)
@@ -100,10 +104,8 @@ func (c *core[M]) SleepTimeout() time.Duration {
 	return c.instance.conf().DisconnectHiddenTimer
 }
 
-func (c *core[M]) ClientConf() *common.ClientConf {
-	conf := common.GetClientConf(c.instance.conf())
-	conf.Detached = c.navigator.isDetached()
-	return conf
+func (c *core[M]) Conf() *common.SystemConf {
+	return c.instance.conf()
 }
 
 func (c *core[M]) CSPCollector() *common.CSPCollector {
