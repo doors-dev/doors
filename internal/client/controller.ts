@@ -421,7 +421,6 @@ type Results = Map<number, [any, undefined] | [undefined, string]>
 class Tracker {
     private buffered: Results = new Map()
     process(p: Package) {
-        console.log(p)
         const [ok, err] = action(p.action, p.arg, { payload: p.payload })
 
         this.buffered.set(p.end, [ok, err?.message])

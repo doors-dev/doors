@@ -234,8 +234,8 @@ type writer struct {
 	total       int
 	f           http.Flusher
 	w           http.ResponseWriter
-	toFlush     bool
 	after       []func()
+	toFlush     bool
 }
 
 func (w *writer) afterFlush(f func()) {
@@ -243,6 +243,9 @@ func (w *writer) afterFlush(f func()) {
 }
 
 func (w *writer) flush() {
+	if w.total == 0 {
+		return
+	}
 	w.toFlush = false
 	w.f.Flush()
 	w.total = 0
@@ -264,12 +267,8 @@ func (w *writer) Write(data []byte) (int, error) {
 	if w.lastFlushed.IsZero() {
 		w.lastFlushed = time.Now()
 	}
-	if !w.toFlush {
-		if w.total >= w.sizeLimit {
-			w.toFlush = true
-		} else if time.Since(w.lastFlushed) >= w.timeLimit {
-			w.toFlush = true
-		}
+	if w.total >= w.sizeLimit || time.Since(w.lastFlushed) >= w.timeLimit {
+		w.toFlush = true
 	}
 	return size, nil
 }

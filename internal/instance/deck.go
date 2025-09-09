@@ -86,10 +86,10 @@ func (d *deck) Pending() bool {
 type writeResult int
 
 const (
-	nothingToWrite writeResult = iota
-	pendingLimit
-	writeOk
+	writeOk writeResult = iota
+	nothingToWrite 	
 	writeErr
+	pendingLimit
 	writeSyncErr
 )
 
