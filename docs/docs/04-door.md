@@ -2,7 +2,7 @@
 
 `doors.Door` controls a dynamic **container** in the DOM tree that can be updated, replaced, or removed at runtime. It is a fundamental building block of *doors* framework, enabling reactive HTML updates without a virtual DOM.
 
-By default `doors.Door` does not affect layout (custom element with display: contents).  However, some HTML tags expect only specific children (<table>, for example). So, you can use any tag as *door* by providing `Tag` field value:
+By default `doors.Door` does not affect layout (custom element with display: contents).  However, some HTML tags expect only specific children (`<table>`, for example). So, you can use any tag as *door* by providing `Tag` field value:
 
 ```
 door = doors.Door{
