@@ -146,6 +146,7 @@ func (c *conn) handleCause() {
 }
 
 func (c *conn) Run() {
+	defer c.writer.flush()
 	defer c.handleCause()
 	defer c.cleanup()
 	wait := false
@@ -177,6 +178,11 @@ func (c *conn) Run() {
 				c.writer.flush()
 				<-c.ctx.Done()
 			}
+			if writeResult == writeOk {
+				if c.writer.toFlush {
+					c.writer.flush()
+				}
+			}
 			if !zombie && time.Since(start) > c.conf.RollDuration {
 				zombie = true
 			}
@@ -186,7 +192,6 @@ func (c *conn) Run() {
 		}
 	}
 }
-
 
 func (c *conn) cleanup() {
 	c.cancel(nil)
@@ -229,17 +234,23 @@ type writer struct {
 	total       int
 	f           http.Flusher
 	w           http.ResponseWriter
-	flushed     bool
+	toFlush     bool
+	after       []func()
+}
+
+func (w *writer) afterFlush(f func()) {
+	w.after = append(w.after, f)
 }
 
 func (w *writer) flush() {
-	w.flushed = true
-	if w.total == 0 {
-		return
-	}
+	w.toFlush = false
 	w.f.Flush()
 	w.total = 0
 	w.lastFlushed = time.Now()
+	for _, f := range w.after {
+		f()
+	}
+	w.after = nil
 }
 
 var writerError = errors.New("actual write error")
@@ -252,12 +263,13 @@ func (w *writer) Write(data []byte) (int, error) {
 	w.total += size
 	if w.lastFlushed.IsZero() {
 		w.lastFlushed = time.Now()
-	} else if w.total >= w.sizeLimit {
-		w.flush()
-	} else if time.Since(w.lastFlushed) >= w.timeLimit {
-		w.flush()
+	}
+	if !w.toFlush {
+		if w.total >= w.sizeLimit {
+			w.toFlush = true
+		} else if time.Since(w.lastFlushed) >= w.timeLimit {
+			w.toFlush = true
+		}
 	}
 	return size, nil
 }
-
-

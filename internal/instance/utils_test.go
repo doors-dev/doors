@@ -85,6 +85,10 @@ type testWriter struct {
 	errNextWrite bool
 }
 
+
+func (*testWriter) afterFlush(f func()) {
+	f()
+}
 func (w *testWriter) readPackage() (*testPackage, error) {
 	if w.buf.Len() < 5 {
 		return nil, errors.New("not enogh data")

@@ -92,7 +92,12 @@ const (
 	writeSyncErr
 )
 
-func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
+type flushWriter interface {
+	io.Writer
+	afterFlush(func())
+}
+
+func (d *deck) WriteNext(w flushWriter) (res writeResult, err error) {
 	defer func() {
 		if res == writeSyncErr {
 			d.inst.syncError(err)
@@ -148,7 +153,7 @@ func (d *deck) WriteNext(w io.Writer) (res writeResult, err error) {
 			return writeOk, nil
 		}
 		d.issued[card.seq()] = issuedCall
-		issuedCall.call.written()
+		w.afterFlush(issuedCall.call.written)
 		return writeOk, nil
 	}
 }
