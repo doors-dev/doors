@@ -145,6 +145,7 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 	thread.Write(func(t *shredder.Thread) {
 		if t == nil || c.parentCtx.Err() != nil {
 			call.Cancel()
+			call.Clean()
 			return
 		}
 		if err != nil {
@@ -181,6 +182,7 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 	tracker.thread.Write(func(t *shredder.Thread) {
 		if t == nil || parentCtx.Err() != nil {
 			call.Cancel()
+			call.Clean()
 			return
 		}
 
@@ -200,6 +202,7 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 		t.Write(func(t *shredder.Thread) {
 			if t == nil || parentCtx.Err() != nil {
 				call.Cancel()
+				call.Clean()
 				return
 			}
 			if err != nil {

@@ -28,6 +28,12 @@ type doorCall struct {
 	optimistic bool
 }
 
+func (n *doorCall) Clean() {
+	if n.payload != nil {
+		n.payload.Destroy()
+	}
+}
+
 func (n *doorCall) Cancel() {
 	n.send(context.Canceled)
 }
@@ -42,9 +48,6 @@ func (n *doorCall) Result(_ json.RawMessage, err error) {
 func (n *doorCall) send(err error) {
 	n.ch <- err
 	close(n.ch)
-	if n.payload != nil {
-		n.payload.Destroy()
-	}
 	n.done()
 }
 

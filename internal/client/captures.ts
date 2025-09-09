@@ -82,9 +82,7 @@ export default {
         }
         const href = (event.currentTarget as HTMLAnchorElement).href;
         if (href) {
-            if (!navigator.push(href)) {
-                return undefined
-            }
+            navigator.push(href, false)
         }
         return {};
     },

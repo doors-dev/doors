@@ -62,6 +62,9 @@ func (t *testCall) Action() (action.Action, bool) {
 	}, true
 }
 
+func (t *testCall) Clean() {
+
+}
 func (t *testCall) Cancel() {
 
 }

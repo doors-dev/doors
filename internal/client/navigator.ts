@@ -146,29 +146,24 @@ export class Navigator {
     private urlAreEqual(url1: URL, url2: URL) {
         return url1.pathname === url2.pathname && this.searchEqual(url1.searchParams, url2.searchParams)
     }
-
-    public push(path: string): boolean {
-        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
+    public push(path: string, activate: boolean = true) {
         const newUrl = new URL(path, window.location.origin);
-        if (this.urlAreEqual(currentUrl, newUrl)) {
-            return false
+        if (activate) {
+            this.activateLinks(newUrl);
         }
-        if (!detached) {
-            doAfter(() => {
-                this.activateLinks(newUrl);
-                history.pushState(null, '', path);
-            })
+        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
+        if (!this.urlAreEqual(currentUrl, newUrl) && !detached) {
+            history.pushState(null, '', path);
         }
-        return true
     }
     public replace(path: string): void {
-        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
         const newUrl = new URL(path, window.location.origin);
-        if (this.urlAreEqual(currentUrl, newUrl)) {
+        this.activateLinks(newUrl);
+        const currentUrl = new URL(this.urlCurrent(), window.location.origin)
+        if (!this.urlAreEqual(currentUrl, newUrl) &&  !detached) {
+            history.replaceState(null, '', path);
             return
         }
-        this.activateLinks(newUrl);
-        history.replaceState(null, '', path);
     }
 
 }

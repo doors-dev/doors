@@ -62,6 +62,7 @@ func (d *deck) End() {
 	d.killed = true
 	for seq := range d.issued {
 		d.issued[seq].call.cancel()
+		d.issued[seq].call.clean()
 	}
 	if d.top == nil {
 		return
@@ -128,6 +129,7 @@ func (d *deck) WriteNext(w flushWriter) (res writeResult, err error) {
 		if !ok {
 			d.expirator.Report(card.seq())
 			card.call.cancel()
+			card.call.clean()
 			d.skipRange(card.startSeq, card.endSeq)
 			continue
 		}
@@ -145,6 +147,7 @@ func (d *deck) WriteNext(w flushWriter) (res writeResult, err error) {
 			}
 			d.expirator.Report(card.seq())
 			issuedCall.call.result(nil, errors.Join(errors.New("call serialization error"), err))
+			issuedCall.call.clean()
 			d.skipRange(card.startSeq, card.endSeq)
 			_, err := w.Write(errorTerminator)
 			if err != nil {
@@ -185,22 +188,24 @@ func (d *deck) OnReport(s *report) (err error) {
 			d.latestReport = seq
 		}
 		result := s.Results[seq]
-		call, ok := d.issued[seq]
+		issued, ok := d.issued[seq]
 		if !ok {
-			card, err := d.extractRestored(seq)
+			restored, err := d.extractRestored(seq)
 			if err != nil {
 				return err
 			}
-			if card == nil {
+			if restored == nil {
 				continue
 			}
 			d.expirator.Report(seq)
-			card.call.result(result.output, result.err)
+			restored.call.result(result.output, result.err)
+			restored.call.clean()
 			continue
 		}
 		delete(d.issued, seq)
 		d.expirator.Report(seq)
-		call.call.result(result.output, result.err)
+		issued.call.result(result.output, result.err)
+		issued.call.clean()
 	}
 	prevEnd := d.latestReport
 	for _, gap := range s.Gaps {
@@ -379,6 +384,7 @@ type card struct {
 func (s *card) cancel() {
 	if !s.isFiller() {
 		s.call.cancel()
+		s.call.clean()
 	}
 	if s.tail == nil {
 		return
@@ -615,6 +621,10 @@ func (c *call) payload() common.Writable {
 
 func (c *call) action() (action.Action, bool) {
 	return c.call.Action()
+}
+
+func (c *call) clean() {
+	c.call.Clean()
 }
 
 func (c *call) cancel() {

@@ -173,6 +173,9 @@ func (c *dynaCall) Optimistic() bool {
 	return c.optimisic
 }
 
+func (c *dynaCall) Clean() {
+} 
+
 func (c *dynaCall) Cancel() {
 	c.done()
 }

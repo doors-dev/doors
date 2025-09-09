@@ -11,8 +11,8 @@ package action
 
 import (
 	"encoding/json"
-	"net/http"
 	"github.com/doors-dev/doors/internal/common"
+	"net/http"
 )
 
 type Actions []Action
@@ -44,6 +44,7 @@ type Action interface {
 }
 
 type Call interface {
+	Clean()
 	Optimistic() bool
 	Action() (Action, bool)
 	Payload() common.Writable

@@ -306,14 +306,19 @@ class Connection {
                 if (result.done) {
                     throw new Error()
                 }
-                /* connection loss simulation
-                if (Math.random() > 0.3) {
-                    throw new Error()
-                }
+                /*               
+                if (Math.random() > 0.9) {
+                   throw new Error()
+                } 
                 */
                 if (result.value.length > 0) {
                     this.ack()
                 }
+                /*
+                if (Math.random() > 0.3) {
+                    throw new Error()
+                }
+                */
                 value = result.value
                 const done = this.onChunk(value)
                 this.ctrl.flush()

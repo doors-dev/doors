@@ -90,7 +90,7 @@ type AHref struct {
 	Indicator []Indicator
 	// For analytics purposes
 	On func(r RAfter)
-	// Action on error (for dynamic link)
+	// Action on error (for dynamic link), default (nil) - LocationReload
 	OnError []Action
 	// Before derermines actions to do just before hook request
 	Before []Action
@@ -136,6 +136,9 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 		})
 		if !ok {
 			return
+		}
+		if h.OnError == nil {
+			h.OnError = ActionOnlyLocationReload()
 		}
 		attrs.AppendCapture(&front.LinkCapture{
 			StopPropagation: h.StopPropagation,
