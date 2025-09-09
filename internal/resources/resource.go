@@ -72,6 +72,8 @@ func (s *Resource) ServeCache(w http.ResponseWriter, r *http.Request, cache bool
 	w.Header().Set("Content-Type", s.contentType)
 	if cache {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		w.Header().Set("Cache-Control", "no-cache")
 	}
 	if s.gzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		s.once.Do(func() {

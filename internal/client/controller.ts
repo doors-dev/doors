@@ -12,6 +12,9 @@ import action, { CallResult } from "./calls"
 import { ProgressiveDelay, AbortTimer, ReliableTimer } from "./lib"
 
 import doors from "./door"
+import { Package, PackageBuilder } from "./package";
+
+// navigator.serviceWorker.register('/worker.d00r.js', { scope: '/' });
 
 const controlBytes = {
     terminator: 0xFF,
@@ -25,48 +28,7 @@ const signals = {
     kill: 0x03,
 }
 
-const decoder = new TextDecoder()
 
-class Package {
-    start: number
-    end: number
-    call: string
-    arg: any
-    private payloadParts: Array<string> = []
-    private headerParts: Array<string> = []
-    filler = false
-    get seq(): number {
-        return this.end
-    }
-    private parseRange(range: Array<number>) {
-        this.end = range[0]
-        this.start = range.length == 2 ? range[1] : range[0]
-    }
-    parseHeader() {
-        const arr = JSON.parse(this.headerParts.join(""))
-        this.parseRange(arr[0])
-        if (arr.length == 1) {
-            this.filler = true
-            return
-        }
-        [this.call, this.arg] = arr[1]
-    }
-    get payload(): string {
-        return this.payloadParts.join("")
-    }
-    appendHeaderData(buf: Uint8Array) {
-        if (buf.length == 0) {
-            return
-        }
-        this.headerParts.push(decoder.decode(buf))
-    }
-    appendPayloadData(buf: Uint8Array) {
-        if (buf.length == 0) {
-            return
-        }
-        this.payloadParts.push(decoder.decode(buf))
-    }
-}
 
 
 class Solitaire {
@@ -112,7 +74,7 @@ class Solitaire {
         this.top.collect(a, this)
         const tail = a[a.length - 1]
         this.cursor = tail.end + 1
-        return a.filter(p => !p.filler)
+        return a.filter(p => !p.isFiller)
     }
     insert(p: Package) {
         // console.log(this.cursor, !!this.top, "ARRIVED", p.start, p.end, [...this.collectedLost])
@@ -274,7 +236,7 @@ class Connection {
         })
         this.run()
     }
-    private package: Package | undefined
+    private package: PackageBuilder | undefined
     abort() {
         this.abortTimer.abort()
     }
@@ -377,7 +339,7 @@ class Connection {
             switch (signal) {
                 case signals.action:
                     this.status = connectorStatus.header
-                    this.package = new Package()
+                    this.package = new PackageBuilder()
                     if (data.length == 1) {
                         return false
                     }
@@ -410,9 +372,8 @@ class Connection {
                     continue
                 }
                 this.package!.appendHeaderData(data.subarray(0, i))
-                this.package!.parseHeader()
                 if (byte == controlBytes.terminator) {
-                    this.ctrl.onPackage(this.package!)
+                    this.ctrl.onPackage(this.package!.build())
                     this.package = undefined
                     this.status = connectorStatus.signal
                 } else {
@@ -440,7 +401,7 @@ class Connection {
                 continue
             }
             this.package!.appendPayloadData(data.subarray(0, i))
-            this.ctrl.onPackage(this.package!)
+            this.ctrl.onPackage(this.package!.build())
             this.package = undefined
             this.status = connectorStatus.signal
             if (i + 1 == data.length) {
@@ -453,13 +414,15 @@ class Connection {
     }
 }
 
-type Results = Map<number, CallResult>
+type Results = Map<number, [any, undefined] | [undefined, string]>
 
 class Tracker {
     private buffered: Results = new Map()
     process(p: Package) {
-        const result = action(p.call, p.arg, { payload: p.payload })
-        this.buffered.set(p.seq, result)
+        console.log(p)
+        const [ok, err] = action(p.action, p.arg, { payload: p.payload })
+
+        this.buffered.set(p.end, [ok, err?.message])
     }
     return(collected: Results) {
         for (const [seq, entry] of collected.entries()) {

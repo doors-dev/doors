@@ -42,20 +42,16 @@ type ARawSubmit struct {
 	// Mode determines how this hook is scheduled (e.g., blocking, debounce).
 	// See ModeDefault, ModeBlock, ModeFrame, etc.
 	Scope []Scope
-
 	// Indicator specifies how to visually indicate the hook is running
 	// (e.g., by applying a class, attribute, or replacing content). Optional.
 	Indicator []Indicator
-
 	// On is the required backend handler for the form submission.
 	//
 	// It receives a RawFormRequest and should return true (is done)
 	// when processing is complete and the hook can be removed.
 	On func(context.Context, RRawForm) bool
-
 	// OnError determines what to do if error occured during hook requrest
 	OnError []Action
-
 	// Before derermines actions to do just before hook request
 	Before []Action
 }

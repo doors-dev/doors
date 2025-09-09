@@ -35,13 +35,14 @@ func NewRegistry() *Registry {
 }
 
 type Registry struct {
-	Gzip       bool
-	Profiles   BuildProfiles
-	cache      sync.Map
-	lookup     sync.Map
-	mainScript *Resource
-	mainStyle  *Resource
-	init       sync.Once
+	Gzip         bool
+	Profiles     BuildProfiles
+	cache        sync.Map
+	lookup       sync.Map
+	mainScript   *Resource
+	workerScript *Resource
+	mainStyle    *Resource
+	init         sync.Once
 }
 
 func (rg *Registry) key32(b []byte) [32]byte {
@@ -56,16 +57,22 @@ func (rg *Registry) initMain() {
 	rg.init.Do(func() {
 		profile := rg.Profiles.Options("")
 		profile.Format = api.FormatIIFE
-		profile.Footer = map[string]string{
+		mainProfile := profile
+		mainProfile.Footer = map[string]string{
 			"js": "_d00r = _d00r.default;",
 		}
-		profile.Bundle = true
-		profile.GlobalName = "_d00r"
-		scriptContent, err := BuildFS(internal.ClientSrc, "index.ts", profile)
+		mainProfile.Bundle = true
+		mainProfile.GlobalName = "_d00r"
+		mainScriptContent, err := BuildFS(internal.ClientSrc, "index.ts", mainProfile)
 		if err != nil {
 			panic(errors.Join(errors.New("Client js build error"), err))
 		}
-		rg.mainScript = NewResource(scriptContent, "application/javascript", rg.Gzip)
+		workerScriptContent, err := BuildFS(internal.ClientSrc, "worker.ts", profile)
+		if err != nil {
+			panic(errors.Join(errors.New("Client js build error"), err))
+		}
+		rg.mainScript = NewResource(mainScriptContent, "application/javascript", rg.Gzip)
+		rg.workerScript = NewResource(workerScriptContent, "application/javascript", rg.Gzip)
 		rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.Gzip)
 	})
 }
@@ -78,6 +85,11 @@ func (rg *Registry) MainStyle() *Resource {
 func (rg *Registry) MainScript() *Resource {
 	rg.initMain()
 	return rg.mainScript
+}
+
+func (rg *Registry) WorkerScript() *Resource {
+	rg.initMain()
+	return rg.workerScript
 }
 
 func (rg *Registry) Serve(hash []byte, w http.ResponseWriter, r *http.Request) {

@@ -36,13 +36,13 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 	}
 	style := inst.ImportRegistry().MainStyle()
 	script := inst.ImportRegistry().MainScript()
-	_, err := fmt.Fprintf(w, "<link rel=\"stylesheet\" href=\"/%s.doors.css\"/>", style.HashString())
+	_, err := fmt.Fprintf(w, "<link rel=\"stylesheet\" href=\"/%s.d00r.css\"/>", style.HashString())
 	if err != nil {
 		return err
 	}
 	conf := inst.ClientConf()
 	attrs := map[string]any{
-		"src":             "/" + script.HashString() + ".doors.js",
+		"src":             "/" + script.HashString() + ".d00r.js",
 		"id":              inst.Id(),
 		"data-root":       door.Id(),
 		"data-ttl":        conf.TTL.Milliseconds(),
