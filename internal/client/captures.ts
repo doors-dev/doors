@@ -9,7 +9,6 @@
 
 import { fetchOpt, fetchOptJson, fetchOptForm, date } from "./lib";
 import navigator from "./navigator";
-import { detached } from "./params";
 
 interface EventOpt {
     preventDefault?: boolean;
@@ -82,8 +81,10 @@ export default {
             return undefined
         }
         const href = (event.currentTarget as HTMLAnchorElement).href;
-        if (href && !detached) {
-            navigator.push(href);
+        if (href) {
+            if (!navigator.push(href)) {
+                return undefined
+            }
         }
         return {};
     },

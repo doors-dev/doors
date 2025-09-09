@@ -7,8 +7,8 @@
 // For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
-import { id } from "./params"
-import { arraysEqual } from "./lib"
+import { detached, id } from "./params"
+import { arraysEqual, doAfter } from "./lib"
 import indicator from "./indicator"
 
 
@@ -147,14 +147,19 @@ export class Navigator {
         return url1.pathname === url2.pathname && this.searchEqual(url1.searchParams, url2.searchParams)
     }
 
-    public push(path: string): void {
+    public push(path: string): boolean {
         const currentUrl = new URL(this.urlCurrent(), window.location.origin)
         const newUrl = new URL(path, window.location.origin);
         if (this.urlAreEqual(currentUrl, newUrl)) {
-            return
+            return false
         }
-        this.activateLinks(newUrl);
-        history.pushState(null, '', path);
+        if (!detached) {
+            doAfter(() => {
+                this.activateLinks(newUrl);
+                history.pushState(null, '', path);
+            })
+        }
+        return true
     }
     public replace(path: string): void {
         const currentUrl = new URL(this.urlCurrent(), window.location.origin)

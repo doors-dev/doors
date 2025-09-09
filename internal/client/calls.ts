@@ -12,10 +12,8 @@ import navigator from "./navigator"
 import indicator, { IndicatorEntry } from "./indicator"
 import { removeAttr, setAttr } from "./dyna"
 import { CaptureErr } from "./capture"
+import { doAfter } from "./lib"
 
-const task = (f: () => void) => {
-    setTimeout(f, 0)
-}
 
 type Options = {
     error?: CaptureErr,
@@ -25,7 +23,7 @@ type Options = {
 
 const actions = {
     location_reload: (_: Options) => {
-        task(() => {
+        doAfter(() => {
             location.reload()
         })
     },
@@ -42,7 +40,7 @@ const actions = {
         } else {
             url = new URL(href)
         }
-        task(() => {
+        doAfter(() => {
             location.replace(url.toString())
         })
     },
@@ -59,7 +57,7 @@ const actions = {
         } else {
             url = new URL(href)
         }
-        task(() => {
+        doAfter(() => {
             location.assign(url.toString())
         })
     },
