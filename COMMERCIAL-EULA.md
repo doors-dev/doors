@@ -75,7 +75,9 @@ Fees are stated in the Order Form or checkout page and are non-refundable except
 ---
 
 ## 7. Verification and True-Up
-Startup Licensees shall, upon reasonable request, self-certify ongoing eligibility. Licensor may, on reasonable notice no more than once per 12 months, request records sufficient to confirm licensed domain usage and tier eligibility. If under-licensing is discovered, Licensee will promptly procure the appropriate license(s).
+Startup Licensees shall, upon request, self-certify eligibility. Licensor may, on reasonable notice once per 12 months, request records to confirm domain usage and tier. If under-licensed, Licensee must obtain the required license(s).
+
+Tier upgrades are optional but encouraged. They become mandatory only if restrictions are breached: no Client Work, no deployments on Client or third-party domains.
 
 ---
 
