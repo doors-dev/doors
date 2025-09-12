@@ -14,13 +14,17 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
+	"reflect"
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/doors/internal/router"
 )
 
 // Include returns a component that includes the framework's main client-side script and styles.
@@ -220,7 +224,6 @@ func If(beam Beam[bool]) templ.Component {
 	return Switch(beam, func(v bool) bool { return v })
 }
 
-
 // E evaluates the provided function at render time and returns the resulting templ.Component.
 //
 // This is useful when rendering logic is complex or better expressed in plain Go code,
@@ -394,6 +397,24 @@ func (s script) Render(ctx context.Context, w io.Writer) error {
 	return scriptRender(resource, s.mode, attrs).Render(ctx, w)
 }
 
+func scriptRender(i *resources.InlineResource, mode resources.InlineMode, attrs *front.Attrs) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		name := inlineName(i.Attrs, "js")
+		if mode == resources.InlineModeHost {
+			attrs.Set("src", router.ResourcePath(i.Resource(), name))
+		} else {
+			attrs.Join(A(ctx, ARawSrc{
+				Once: true,
+				Name: name,
+				Handler: func(w http.ResponseWriter, r *http.Request) {
+					i.Serve(w, r)
+				},
+			}))
+		}
+		return renderRaw("script", attrs, nil, true).Render(ctx, w)
+	})
+}
+
 type style struct {
 	mode resources.InlineMode
 }
@@ -462,7 +483,26 @@ func (s style) Render(ctx context.Context, w io.Writer) error {
 	return styleRender(resource, s.mode, attrs).Render(ctx, w)
 }
 
-func renderRaw(tag string, attrs templ.Attributer, content []byte) templ.Component {
+func styleRender(i *resources.InlineResource, mode resources.InlineMode, attrs *front.Attrs) templ.ComponentFunc {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		name := inlineName(i.Attrs, "css")
+		attrs.Set("rel", "stylesheet")
+		if mode == resources.InlineModeHost {
+			attrs.Set("href", router.ResourcePath(i.Resource(), name))
+		} else {
+			attrs.Join(front.A(ctx, ARawFileHref{
+				Name: name,
+				Once: false,
+				Handler: func(w http.ResponseWriter, r *http.Request) {
+					i.Serve(w, r)
+				},
+			}))
+		}
+		return renderRaw("link", attrs, nil, false).Render(ctx, w)
+	})
+}
+
+func renderRaw(tag string, attrs templ.Attributer, content []byte, close bool) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		_, err := fmt.Fprintf(w, "<%s", tag)
 		if err != nil {
@@ -475,6 +515,9 @@ func renderRaw(tag string, attrs templ.Attributer, content []byte) templ.Compone
 		_, err = fmt.Fprint(w, ">")
 		if err != nil {
 			return err
+		}
+		if !close {
+			return nil
 		}
 		_, err = w.Write(content)
 		if err != nil {
@@ -547,3 +590,147 @@ func Any(v any) templ.Component {
 	}
 	return Text(v)
 }
+
+// HeadData represents page metadata including title and meta tags
+type HeadData struct {
+	Title string
+	Meta  map[string]string
+}
+
+type headUsed struct{}
+
+const headScript = `
+let tags = new Set($d.data("tags"))
+$d.on("d00r_head", (data) => {
+    document.title = data.title;
+    const removeTags = tags
+    tags = new Set()
+    for(const [name, content] of Object.entries(data.meta)) {
+        removeTags.delete(name)
+        tags.add(name)
+        let meta = document.querySelector('meta[name="'+name+'"]');
+        if (meta) {
+            meta.setAttribute('content', content);
+            continue
+        } 
+        meta = document.createElement('meta');
+        meta.setAttribute('name', name);
+        meta.setAttribute('content', content);
+        document.head.appendChild(meta);
+    }
+    for(const name of removeTags) {
+        const meta = document.querySelector('meta[name="'+name+'"]');
+        meta.remove();
+    }
+});
+`
+
+// Head renders both <title> and <meta> elements that update dynamically based on a Beam value.
+//
+// It outputs HTML <title> and <meta> tags, and includes the necessary script bindings
+// to ensure all metadata updates reactively when the Beam changes on the server.
+//
+// Example:
+//
+//	@doors.Head(beam, func(p Path) HeadData {
+//	    return HeadData{
+//	        Title: "Product: " + p.Name,
+//	        Meta: map[string]string{
+//	            "description": "Buy " + p.Name + " at the best price",
+//	            "keywords": p.Name + ", product, buy",
+//	            "og:title": p.Name,
+//	            "og:description": "Check out this amazing product",
+//	        },
+//	    }
+//	})
+//
+// Parameters:
+//   - b: a Beam providing the input value (usually page path Beam)
+//   - cast: a function that maps the Beam value to a HeadData struct.
+//
+// Returns:
+//   - A templ.Component that renders title and meta elements with remote call scripts.
+func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		_, ok := InstanceSave(ctx, headUsed{}, headUsed{}).(headUsed)
+		if ok {
+			return nil
+		}
+		inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
+		door := ctx.Value(common.CtxKeyDoor).(door.Core)
+		var cancel = func() {}
+		var currentMeta HeadData
+		m, ok := b.ReadAndSub(ctx, func(ctx context.Context, m M) bool {
+			return !inst.Spawn(func() {
+				newMeta := cast(m)
+				if reflect.DeepEqual(newMeta, currentMeta) {
+					return
+				}
+				currentMeta = newMeta
+				cancel()
+				cancel = inst.SimpleCall(ctx, &action.Emit{
+					Name: "d00r_head",
+					Arg: map[string]interface{}{
+						"title": newMeta.Title,
+						"meta": func() map[string]string {
+							escapedTags := make(map[string]string, len(newMeta.Meta))
+							for k, v := range newMeta.Meta {
+								escapedTags[k] = templ.EscapeString(v)
+							}
+							return escapedTags
+						}(),
+					},
+					DoorId: door.Id(),
+				}, nil, nil, action.CallParams{Optimistic: inst.Conf().OptimisicSync})
+			})
+		})
+		if !ok {
+			return nil
+		}
+		currentMeta = cast(m)
+		tags := make([]string, len(currentMeta.Meta))
+		i := 0
+		for k := range currentMeta.Meta {
+			tags[i] = k
+			i++
+		}
+		_, err := fmt.Fprintf(w, "<title>%s</title>", templ.EscapeString(currentMeta.Title))
+		if err != nil {
+			return err
+		}
+		for name, content := range currentMeta.Meta {
+			_, err := fmt.Fprintf(w, "<meta name=\"%s\" content=\"%s\"/>", templ.EscapeString(name), templ.EscapeString(content))
+			if err != nil {
+				return err
+			}
+		}
+		content := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+			err := AData{
+				Name:  "tags",
+				Value: tags,
+			}.Render(ctx, w)
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(w, "<script>%s</script>", headScript)
+			return err
+
+		})
+		childenCtx := templ.WithChildren(ctx, content)
+		return Script().Render(childenCtx, w)
+	})
+}
+
+func inlineName(attr templ.Attributes, ext string) string {
+	name := "inline"
+	dataName, ok := attr["data-name"]
+	if ok {
+		dataNameStr, ok := dataName.(string)
+		if ok {
+			name = dataNameStr
+		}
+	}
+	return name + "." + ext
+}
+
+

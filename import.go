@@ -502,3 +502,21 @@ func newImportManager(ctx context.Context) *importManager {
 		rm:        rm,
 	}
 }
+
+func importScript(src string, attrs templ.Attributes) templ.Component {
+	if attrs == nil {
+		attrs = make(templ.Attributes, 2)
+	}
+    attrs["type"] = "module"
+    attrs["src"] = src
+    return renderRaw("script", attrs, nil, true)
+}
+
+func importStyle(href string, attrs templ.Attributes) templ.Component {
+	if attrs == nil {
+		attrs = make(templ.Attributes, 2)
+	}
+    attrs["rel"] = "stylesheet"
+    attrs["href"] = href
+    return renderRaw("link", attrs, nil, false)
+}
