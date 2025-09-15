@@ -84,33 +84,37 @@ func (s *Screen) tryKill() bool {
 	})
 }
 
-
 func (s *Screen) sync(syncThread *shredder.Thread, ctx context.Context, seq uint, c *common.FuncCollector) {
 	s.thread.WriteInstant(func(t *shredder.Thread) {
 		if t == nil {
 			return
 		}
-		var children []*Screen
 		t.Write(func(t *shredder.Thread) {
 			if t == nil {
 				return
 			}
-			var watchers []Watcher
-			watchers, children = s.commit(seq)
+			watchers, children := s.commit(seq)
+			syncChildren := func() {
+				for _, screen := range children {
+					screen.sync(syncThread, ctx, seq, c)
+				}
+			}
+			if len(watchers) == 0 {
+				syncChildren()
+				return
+			}
 			for _, w := range watchers {
 				t.Read(func(t *shredder.Thread) {
 					w.Sync(ctx, seq, c)
 				})
 			}
+			t.Write(func(t *shredder.Thread) {
+				if t == nil {
+					return
+				}
+				syncChildren()
+			})
 		}, shredder.R(s.coreThread))
-		t.Write(func(t *shredder.Thread) {
-			if t == nil {
-				return
-			}
-			for _, screen := range children {
-				screen.sync(syncThread, ctx, seq, c)
-			}
-		})
 	}, shredder.R(syncThread))
 }
 
