@@ -13,52 +13,49 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/door"
 )
 
 // AHook binds a backend handler to a named client-side hook, allowing
 // JavaScript code to call Go functions via $d.hook(name, ...).
 //
-// Input data is unmarshaled from JSON into type I.
-// Output data is marshaled to JSON from type O.
+// Input data is unmarshaled from JSON into type T.
+// Output data is marshaled to JSON from any.
 //
 // Generic parameters:
-//   - I: input data type, sent from the client
-//   - O: output data type, returned to the client
-type AHook[I any, O any] struct {
+//   - T: input data type, sent from the client
+type AHook[T any] struct {
 	// Name of the hook to call from JavaScript via $d.hook(name, ...).
 	// Required.
 	Name string
-
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
 	Scope []Scope
-
 	// Visual indicators while the hook is running.
 	// Optional.
 	Indicator []Indicator
-
 	// Backend handler for the hook.
-	// Receives typed input (I) through RHook (unmarshaled from JSON),
-	// and must return typed output (O) which will be marshaled to JSON.
-	// The bool return indicates whether the hook should remain active.
+	// Receives typed input (T, unmarshaled from JSON) through RHook,
+	// and returns any output which will be marshaled to JSON.
+	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(ctx context.Context, r RHook[I]) (O, bool)
+	On func(ctx context.Context, r RHook[T]) (any, bool)
 }
 
-func (h AHook[I, O]) Render(ctx context.Context, w io.Writer) error {
+func (h AHook[T]) Render(ctx context.Context, w io.Writer) error {
 	return front.AttrRender(ctx, w, h)
 }
 
-func (h AHook[I, O]) Attr() AttrInit {
+func (h AHook[T]) Attr() AttrInit {
 	return h
 }
 
-func (h AHook[I, O]) Init(ctx context.Context, n door.Core, inst instance.Core, attr *front.Attrs) {
+func (h AHook[T]) Init(ctx context.Context, n door.Core, inst instance.Core, attr *front.Attrs) {
 	if h.On == nil {
 		println("Hook withoud handler")
 		return
@@ -76,8 +73,8 @@ func (h AHook[I, O]) Init(ctx context.Context, n door.Core, inst instance.Core, 
 	})
 }
 
-func (h *AHook[I, O]) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	var input I
+func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	var input T
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&input)
 	r.Body.Close()
@@ -86,7 +83,7 @@ func (h *AHook[I, O]) handle(ctx context.Context, w http.ResponseWriter, r *http
 		w.WriteHeader(400)
 		return false
 	}
-	output, done := h.On(ctx, &formHookRequest[I]{
+	output, done := h.On(ctx, &formHookRequest[T]{
 		data: &input,
 		request: request{
 			w:   w,
@@ -98,13 +95,13 @@ func (h *AHook[I, O]) handle(ctx context.Context, w http.ResponseWriter, r *http
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(&output)
 	if err != nil {
+		slog.Error("Hook output encoding error", slog.String("json_error", err.Error()))
 		println(err.Error())
 		w.WriteHeader(500)
 	}
 	return done
 
 }
-
 
 // ARawHook binds a backend handler to a named client-side hook, allowing
 // JavaScript code to call Go functions via $d.hook(name, ...).
@@ -116,22 +113,18 @@ type ARawHook struct {
 	// Name of the hook to call from JavaScript via $d.hook(name, ...).
 	// Required.
 	Name string
-
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
 	Scope []Scope
-
 	// Visual indicators while the hook is running.
 	// Optional.
 	Indicator []Indicator
-
 	// Backend handler for the hook.
 	// Provides raw access via RRawHook (body reader, multipart parser).
-	// The bool return indicates whether the hook should remain active.
+	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(ctx context.Context, r RRawHook) bool
 }
-
 
 func (h ARawHook) Render(ctx context.Context, w io.Writer) error {
 	return front.AttrRender(ctx, w, h)
@@ -176,7 +169,6 @@ type AData struct {
 	// Name of the data entry to read via JavaScript with $d.data(name).
 	// Required.
 	Name string
-
 	// Value to expose to the client. Marshaled to JSON.
 	// Required.
 	Value any

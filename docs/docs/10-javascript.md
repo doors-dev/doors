@@ -94,30 +94,31 @@ Example:
 `doors.AHook` handles Go hooks with automatic JSON (un)marshaling:
 
 ```go
-type AHook[I any, O any] struct {
-	// Hook name, called from JS with $d.hook(name, arg).
+type AHook[T any] struct {
+	// Name of the hook to call from JavaScript via $d.hook(name, ...).
 	// Required.
 	Name string
-
-	// Backend handler, receives typed input and returns typed output.
-	// Bool return indicates whether the hook should be removed.
-	// Required.
-	On func(ctx context.Context, r RHook[I]) (O, bool)
-
-	// Optional scope control (see Scopes API).
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
 	Scope []Scope
-
-	// Optional visual indicators (see Indicator API).
+	// Visual indicators while the hook is running.
+	// Optional.
 	Indicator []Indicator
+	// Backend handler for the hook.
+	// Receives typed input (T, unmarshaled from JSON) through RHook,
+	// and returns any output which will be marshaled to JSON.
+	// Should return true when the hook is complete and can be removed.
+	// Required.
+	On func(ctx context.Context, r RHook[T]) (any, bool)
 }
 ```
 
 #### Example
 
 ```templ
-@doors.AHook[string, int]{
+@doors.AHook[string]{
 	Name: "length",
-	On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
+	On: func(ctx context.Context, r doors.RHook[string]) (any, bool) {
 		return len(r.Data()), false
 	},
 }

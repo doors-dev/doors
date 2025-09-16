@@ -192,9 +192,9 @@ func (f *callFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = doors.AHook[string, int]{
+		templ_7745c5c3_Err = doors.AHook[string]{
 			Name: "myHook",
-			On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
+			On: func(ctx context.Context, r doors.RHook[string]) (any, bool) {
 				f.r.Update(ctx, 0, r.Data())
 				ch, _ := doors.XCall[string](ctx, doors.ActionEmit{Name: "myCall", Arg: len(r.Data())})
 				res := <-ch
@@ -245,9 +245,9 @@ type hookFragment struct {
 }
 
 func (d *hookFragment) attr() []doors.Attr {
-	return []doors.Attr{doors.AHook[string, int]{
+	return []doors.Attr{doors.AHook[string]{
 		Name: "myHook",
-		On: func(ctx context.Context, r doors.RHook[string]) (int, bool) {
+		On: func(ctx context.Context, r doors.RHook[string]) (any, bool) {
 			d.r.Update(ctx, 0, r.Data())
 			return len(r.Data()), true
 		},
