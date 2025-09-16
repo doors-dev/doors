@@ -23,16 +23,19 @@ import (
 
 type solitaireInstance interface {
 	syncError(error)
+	touch()
 }
 
 func newSolitaire(inst solitaireInstance, conf *common.SolitaireConf) *solitaire {
 	return &solitaire{
+		inst: inst,
 		conf: conf,
 		deck: newDeck(inst, conf.Queue, conf.Pending, conf.SyncTimeout),
 	}
 }
 
 type solitaire struct {
+	inst   solitaireInstance
 	conf   *common.SolitaireConf
 	deck   *deck
 	buffer atomic.Pointer[conn]
@@ -70,6 +73,7 @@ func (s *solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	s.inst.touch()
 	conn := newConn(s.conf, w, r, s.deck)
 	if conn.ack() != nil {
 		return

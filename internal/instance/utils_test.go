@@ -25,6 +25,9 @@ type testInstance struct {
 	err error
 }
 
+func (t *testInstance) touch() {
+}
+
 func (t *testInstance) syncError(err error) {
 	t.err = err
 }

@@ -14,6 +14,8 @@ import (
 	"sync"
 )
 
+const hpStep int = 2
+
 type player struct {
 	leader  *player
 	hp      int
@@ -49,15 +51,14 @@ func (p *player) normalize() {
 }
 
 func (p *player) promote(new *player, debuff bool) {
-	new.maxHp += 1
+	new.maxHp += hpStep
 	if debuff {
-		p.maxHp--
+		p.maxHp -= hpStep
 		p.normalize()
 	}
 	if !p.hasLeader() {
 		p.leader = new
-		new.reset()
-		new.hp = new.hp / 2
+		new.resetLow()
 		return
 	}
 	p.leader.promote(new, debuff)
@@ -68,22 +69,28 @@ func (p *player) up() {
 		p.hp += 1
 	}
 	player := p
-	for player.hasLeader() {
+	hits := len(p.limiter.players) / 2
+	for player.hasLeader() && hits > 0 {
 		if player.leader.hit() {
 			leaderId := player.leader.id
 			player.leader.id = player.id
 			player.id = leaderId
-			player.reset()
-			player.leader.reset()
+			player.resetFull()
+			player.leader.resetLow()
 			p.limiter.players[player.id] = player
 			p.limiter.players[player.leader.id] = player.leader
 		}
 		player = player.leader
+		hits -= 1
 	}
 }
 
-func (p *player) reset() {
+func (p *player) resetFull() {
 	p.hp = p.maxHp
+}
+
+func (p *player) resetLow() {
+	p.hp = p.maxHp / 2
 }
 
 func (p *player) hit() bool {

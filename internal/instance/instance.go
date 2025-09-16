@@ -100,9 +100,13 @@ func (inst *Instance[M]) TriggerHook(doorId uint64, hookId uint64, w http.Respon
 	inst.mu.RUnlock()
 	ok := inst.core.TriggerHook(doorId, hookId, w, r)
 	if ok {
-		inst.session.limiter.touch(inst.id)
+		inst.touch()
 	}
 	return ok
+}
+
+func (inst *Instance[M]) touch() {
+	inst.session.limiter.touch(inst.id)
 }
 
 func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {

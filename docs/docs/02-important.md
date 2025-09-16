@@ -4,7 +4,7 @@ Practices you should understand and follow.
 
 ## 1. Use local context
 
-In all `templ` components. handlers and listeners framework provides `context.Context` value. 
+In all `templ` components, handlers and listeners framework provides `context.Context` value. 
 
 ❌ Using `context.Background()` or any external context instead of the `ctx` provided by the framework in framework-related operations. **It panics**.
 
@@ -163,8 +163,6 @@ templ (f *fragment) Render() {
 }
 ```
 
-
-
 ## 3. Understand the security model.
 
 * For protected pages, **verify cookie authentication in the `ServePage` handler**
@@ -174,7 +172,23 @@ templ (f *fragment) Render() {
   * **Verify user view permissions during render** to ensure that the user can't access previously available views with dynamic navigation. 
   * **Verify user write permissions in the transactions** to ensure that even if the permission is revoked after rendering, you are still safe.
 
-## 4. Avoid storing database data in state.
+## 4. Understand the page instance lifecycle.
+
+Every page opened by a user has a representation in the server memory. And so, they need to be cleaned up. 
+
+After the page instance is cleaned up, it enters a suspended state on the client side, and upon tab switch on the interaction, the page is automatically reloaded.
+
+There are certain configuration options related to the instance lifecycle:
+
+1. **Max instances per session**. Upon reaching the limit, older and less active instances are suspended and cleaned up.
+2. **Instance time to live.** Disconnected instances get cleaned up after a certain time.
+3. **Time after the hidden page is disconnected.** If the browser tab is not active, the client disconnects from the server after a certain time and then gets cleaned up after the "instance time to live".
+
+Instance memory consumption depends highly on page complexity, but I expect it to typically be around 50-150KB and low enough to choose generous, UX friendly values for those settings. 
+
+> Refer to [Configuration](./ref/01-configutation.md) for more details.
+
+## 5. Avoid storing database data in state.
 
 In general, you don't need to store database query results in fields or `Beams`.
 
@@ -238,7 +252,7 @@ itemBeam := doors.NewBeam(pathBeam, func(p Path) db.Item {
 
 If you need data **only to produce render output** - render and forget, so you won't waste server memory for nothing.  However, it's your decision.
 
-## 5. Be conscious with front-end manipulations via JavaScript 
+## 6. Be careful with front-end manipulations via JavaScript 
 
-Parts of the DOM are controlled by the framework, so separate concerns clearly.
+The framework controls parts of the DOM, so separate concerns clearly.
 

@@ -19,9 +19,9 @@ type AHref struct {
 
 	// For dynamic links
 	StopPropagation bool        // stop event propagation
-	Before          []Action    // actions to run before hook request
-	Indicator       []Indicator // visual indicators while request is running
-	On              func(r RAfter) // handler triggered during link hook
+	Before          []Action    // actions to run before the hook request
+	Indicator       []Indicator // visual indicators while the request is running
+	Before          []Action // actions to run after the hook request
 	OnError         []Action    // actions on error (default reload)
 }
 ```

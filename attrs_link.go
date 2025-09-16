@@ -98,9 +98,8 @@ type AHref struct {
 	Indicator []Indicator
 	// Actions to run before the hook request (for dynamic links). Optional.
 	Before []Action
-	// Handler triggered during the internal link hook
-	// (for dynamic links). Optional.
-	On func(r RAfter)
+	// Actions to run after the hook request (for dynamic links). Optional.
+	After []Action
 	// Actions to run on error (for dynamic links).
 	// Default (nil) triggers a location reload.
 	OnError []Action
@@ -137,8 +136,9 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 	if ok {
 		entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 			Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-				if h.On != nil {
-					defer h.On(&request{w: w, r: r, ctx: ctx})
+				if len(h.After) != 0 {
+					req := &request{w: w, r: r, ctx: ctx}
+					req.After(h.After)
 				}
 				on(ctx)
 				return false
