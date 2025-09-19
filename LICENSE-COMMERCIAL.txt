@@ -23,11 +23,11 @@ TIERS
    • Custom terms for large organizations or special use cases.
    • Scope may be domain-linked, company-wide, or enterprise-wide as defined in the Order Form.
 
-KEYS
-• Commercial licenses are delivered as License Keys.
-• License Keys may encode domain(s), company name, or enterprise scope.
-• Unless otherwise stated, keys are permanent (no expiration).
-• Keys may be shared, but activate only for the scope encoded in the key.
+CERTIFICATES
+• Commercial licenses are delivered as signed, encoded License Certificates.
+• License Certificates may encode domain(s), company name, or enterprise scope.
+• Unless otherwise stated, certificates are permanent (no expiration).
+• Certificates may be shared, but activate only for the scope encoded.
 • See COMMERCIAL-EULA.md for the binding terms.
 
 DEFINITIONS (summary)

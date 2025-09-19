@@ -256,3 +256,11 @@ type CSP = common.CSP
 func UseCSP(csp CSP) Use {
 	return router.UseCSP(&csp)
 }
+
+// UseLicense verifies and adds license certificate.
+// License is required for commercial production use.
+// You can purchase suitable license at https://doors.dev
+// or via email sales@doors.dev
+func UseLicense(cert string) Use {
+	return router.UseLicense(cert)
+}

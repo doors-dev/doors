@@ -290,3 +290,12 @@ type SessionCallback interface {
 
 func UseSessionCallback(callback SessionCallback) Use
 ```
+
+## License
+
+Verifies and adds license certificate. License is required for commercial production use. 
+
+```go
+func UseLicense(cert string) Use
+```
+

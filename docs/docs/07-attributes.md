@@ -41,7 +41,7 @@ It's also allowed to **stack multiple magic attributes**
 @doors.AChange{
 /* setup */
 }
-// attach onfocys handler
+// attach onfocus handler
 @doors.AFocus{
 /* setup */
 }
@@ -106,5 +106,20 @@ Alternatively to **Magic Attributes,** you can utilize templ spread syntax
 
 > ⚠️ One element can't have magic and spread attributes; one overwrites another.
 
+## Dynamic Attribute
 
+Dynamic attributes let you **update or toggle HTML attributes at runtime** without re-rendering the whole element.
 
+```go
+// ADyn is a dynamic attribute that can be updated at runtime.
+type ADyn interface {
+	doors.Attr
+	// Value sets the attribute's value.
+	Value(ctx context.Context, value string)
+	// Enable adds or removes the attribute.
+	Enable(ctx context.Context, enable bool)
+}
+
+// NewADyn returns a new dynamic attribute with the given name, value, and state.
+func NewADyn(name string, value string, enable bool) ADyn
+```

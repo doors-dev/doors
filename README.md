@@ -110,16 +110,19 @@ Each version of doors automatically converts to **AGPL-3.0** after 4 years.
 
 ### Commercial Licensing
 
-Commercial licenses are delivered as **License Keys**:
+Commercial licenses are delivered as signed **License Certificates**:
 
 - **Startup License** (per production domain) — strict startup criteria, internal use only  
 - **Business License** (per production domain / per client domain) — internal + client work  
-- **Enterprise License** — custom scope (domain-linked, company-wide, or enterprise-wide)  
+- **Enterprise License** — custom scope (domain-linked, company-linked, or enterprise-wide)  
 
-Unless otherwise stated, License Keys are **permanent (no expiration)**. Keys may be shared, but they only activate for the scope encoded in the key.
+Unless otherwise stated, License Certificates are **permanent (no expiration)**.  
+Certificates may be shared, but they only enable Production use for the scope encoded in the certificate.  
 
-At this stage (beta), licenses are not purchasable directly on the website.  
-For commercial use, please contact [sales@doors.dev](mailto:sales@doors.dev) to obtain a License Key.
+To activate a commercial license, the License Certificate must be provided to the framework via the API described in the official documentation.
+
+To purchase a license, visit [https://doors.dev](https://doors.dev).  
+For Enterprise terms, you may also contact [sales@doors.dev](mailto:sales@doors.dev).
 
 ### Full License Texts
 

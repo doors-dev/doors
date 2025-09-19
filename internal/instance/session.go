@@ -15,6 +15,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxstore"
+	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -31,6 +32,7 @@ type router interface {
 	Adapters() map[string]path.AnyAdapter
 	RemoveSession(string)
 	Conf() *common.SystemConf
+	License() license.License
 	Spawner(shredder.OnPanic) *shredder.Spawner
 }
 

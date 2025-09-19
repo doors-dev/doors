@@ -23,6 +23,7 @@ import (
 	"github.com/doors-dev/doors/internal/common/ctxstore"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
 )
@@ -74,6 +75,7 @@ type Core interface {
 	SimpleCall(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc
 	End()
 	IsDetached() bool
+	License() license.License
 }
 
 type core[M any] struct {
@@ -87,6 +89,10 @@ type core[M any] struct {
 	navigator    *navigator[M]
 	spawner      *shredder.Spawner
 	cspCollector *common.CSPCollector
+}
+
+func (c *core[M]) License() license.License {
+	return c.instance.getSession().getRouter().License()
 }
 
 func (c *core[M]) Spawn(f func()) bool {

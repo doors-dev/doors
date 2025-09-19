@@ -18,6 +18,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -54,6 +55,7 @@ func (s sessionHooks) Create(string, http.Header) {}
 func (s sessionHooks) Delete(string) {}
 
 type Router struct {
+	lisence         license.License
 	sessions        sync.Map
 	adapters        map[string]path.AnyAdapter
 	pageRoutes      map[string]anyPageRoute
@@ -67,6 +69,10 @@ type Router struct {
 	csp             *common.CSP
 	conf            *common.SystemConf
 	buildProfiles   resources.BuildProfiles
+}
+
+func (rr *Router) License() license.License {
+	return rr.lisence
 }
 
 func (rr *Router) CSP() *common.CSP {

@@ -51,6 +51,10 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 		"data-ping":       conf.SolitairePing.Milliseconds(),
 		"data-detached":   inst.IsDetached(),
 	}
+	lic := inst.License()
+	if lic != nil {
+		attrs["data-license"] = fmt.Sprintf("%s:%s:%s", lic.GetId(), lic.GetTier().String(), lic.GetDomain())
+	}
 	_, err = fmt.Fprint(w, "<script")
 	if err != nil {
 		return err
