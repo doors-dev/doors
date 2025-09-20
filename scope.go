@@ -57,20 +57,6 @@ func ScopeOnlySerial() []Scope {
 	return []Scope{&ScopeSerial{}}
 }
 
-// ScopeLatest cancels previous events and only runs the most recent one.
-// Useful for search-as-you-type or live filtering.
-type ScopeLatest struct {
-	id front.ScopeAutoId
-}
-
-func (b *ScopeLatest) Scope(inst instance.Core) *ScopeSet {
-	return front.LatestScope(b.id.Id(inst))
-}
-
-// ScopeOnlyLatest creates a scope that processes only the latest event.
-func ScopeOnlyLatest() []Scope {
-	return []Scope{&ScopeLatest{}}
-}
 
 // ScopeDebounce delays events by duration but guarantees execution
 // within the specified limit. New events reset the delay.

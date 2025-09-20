@@ -96,6 +96,10 @@ Returns the most recently set or mutated value **without** requiring a context.
 - Not affected by context cancellation, unlike `Read`.
 - **Warning**: `Latest()` does **not** participate in render cycle consistency guarantees. During rendering, use `Read()` to ensure consistent values across the component tree.
 
+### DisableSkipping()
+
+Makes data propagation continue even if a new value is issued. Useful if you use **Beam** as a communication channel.
+
 ## Extra `SourceBeam` API
 
 ```
@@ -103,10 +107,10 @@ XMutate(ctx context.Context, f func(T) T) (<-chan error, bool)
 XUpdate(ctx context.Context, value T) (<-chan error, bool)
 ```
 
-Do the same, and return a channel that signals when the mutation has been fully propagated to all subscribers. This allows coordination of dependent operations that must wait for the mutation to complete.
+Do the same, and return a channel that signals when the mutation has been fully propagated to all subscribers or skipped due to overwrite. This allows coordination of dependent operations that must wait for the mutation to complete.
 
-* Channel receives `nil` on successful propagation
-* Channel receives `error` if the provided context is invalid or the instance ended before propagation finished
+* Channel receives `nil` on successful propagation or skip
+* Channel receives `error` if the provided context is invalid or the instance ended before propagation finished 
 * Channel closed without any value if the distinct check failed, so no update is needed
 
 ## Helper Components

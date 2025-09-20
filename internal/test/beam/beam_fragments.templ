@@ -5,12 +5,50 @@ import (
 	"fmt"
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
+	"time"
 )
 
 type state struct {
 	Int int
 	Str string
 }
+
+type BeamSkipFragment struct {
+	r    *test.Reporter
+	b    doors.SourceBeam[state]
+	node doors.Door
+	test.NoBeam
+}
+
+templ (f *BeamSkipFragment) Render() {
+	@doors.Run(func(ctx context.Context) {
+		f.r.Update(ctx, 0, "init")
+		f.b.ReadAndSub(ctx, func(ctx context.Context, s state) bool {
+			<-time.After(300 * time.Millisecond)
+			return false
+		})
+	})
+	@f.node {
+		@doors.Run(func(ctx context.Context) {
+			f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+				if s.Str == "1" {
+					f.r.Update(ctx, 0, "propagated")
+				}
+				return false
+			})
+		})
+	}
+	@test.Button("update1", func(ctx context.Context) bool {
+		f.b.Update(ctx, state{Str: "1"})
+		return false
+	})
+	@test.Button("update2", func(ctx context.Context) bool {
+		f.b.Update(ctx, state{Str: "2"})
+		return false
+	})
+	@f.r.Render()
+}
+
 type BeamDeriveFragment struct {
 	r *test.Reporter
 	b doors.SourceBeam[state]

@@ -126,7 +126,6 @@ export class Hook {
     }
     cancel() {
         if (this.abortTimer) {
-            this.abortTimer.abort()
             return
         }
         if (this.params.event) {
@@ -213,7 +212,6 @@ const newScope = {
     "priority": (runtime: Runtime, id: string) => new PriorityScope(runtime, id),
     "serial": (runtime: Runtime, id: string) => new SerialScope(runtime, id),
     "frame": (runtime: Runtime, id: string) => new FrameScope(runtime, id),
-    "latest": (runtime: Runtime, id: string) => new LatestScope(runtime, id),
     "free": (runtime: Runtime, id: string) => new FreeScope(runtime, id),
 } as const;
 
@@ -363,22 +361,6 @@ class FrameScope extends Scope {
     }
 }
 
-class LatestScope extends Scope {
-    private last: Hook | null = null
-    protected complete(hook: Hook): void {
-        if (this.last !== hook) {
-            return
-        }
-        this.last = null
-    }
-    protected process(hook: Hook, _opt: any): void {
-        if (this.last) {
-            this.last.cancel()
-        }
-        this.last = hook
-        this.promote(hook)
-    }
-}
 
 class FreeScope extends Scope {
     protected complete(_hook: Hook): void {

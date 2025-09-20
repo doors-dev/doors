@@ -153,7 +153,6 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 		attrs.AppendCapture(&front.LinkCapture{
 			StopPropagation: h.StopPropagation,
 		}, &front.Hook{
-			Scope:     []*ScopeSet{front.LatestScope("link")},
 			Indicate:  front.IntoIndicate(h.Indicator),
 			Before:    intoActions(ctx, h.Before),
 			OnError:   intoActions(ctx, h.OnError),

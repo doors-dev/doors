@@ -11,8 +11,8 @@ package beam
 
 import (
 	"context"
-	"errors"
 	"sync"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxwg"
@@ -52,7 +52,7 @@ type SourceBeam[T any] interface {
 	// The mutation is applied only if the result passes the source's distinct function.
 	// Return of copy without modification will do nothing (if distinct function != nil)
 
-	Mutate(context.Context, func(T) T) 
+	Mutate(context.Context, func(T) T)
 
 	// XMutate performs a mutation and returns a channel that signals when the mutation
 	// has been fully propagated to all subscribers. This allows coordination of
@@ -72,17 +72,23 @@ type SourceBeam[T any] interface {
 	// WARNING: Latest() does not participate in render cycle consistency guarantees.
 	// Use Read() to ensure consistent values across the component tree.
 	Latest() T
+
+	// DisableSkipping makes data propagation continue even if a new value
+	// is issued. Useful, if you use beam as a communication channel
+	// and want all data to be delivered to subscribers.
+	DisableSkipping()
 }
 
 type source[T any] struct {
-	null   T
-	seq    uint
-	values map[uint]*T
-	inst   instance
-	id     uint64
-	init   sync.Once
-	distinct    func(new T, old T) bool
-	mu     sync.RWMutex
+	null     T
+	seq      uint
+	values   map[uint]*T
+	inst     instance
+	id       uint64
+	init     sync.Once
+	distinct func(new T, old T) bool
+	mu       sync.RWMutex
+	noSkip   bool
 }
 
 func NewSourceBeamExt[T any](init T, distinct func(new T, old T) bool) SourceBeam[T] {
@@ -91,10 +97,10 @@ func NewSourceBeamExt[T any](init T, distinct func(new T, old T) bool) SourceBea
 		values: map[uint]*T{
 			1: &init,
 		},
-		inst: nil,
-		id:   0,
-		init: sync.Once{},
-		distinct:  distinct,
+		inst:     nil,
+		id:       0,
+		init:     sync.Once{},
+		distinct: distinct,
 	}
 }
 
@@ -103,6 +109,10 @@ func NewSourceBeam[T comparable](init T) SourceBeam[T] {
 		return new != old
 	}
 	return NewSourceBeamExt(init, upd)
+}
+
+func (s *source[T]) DisableSkipping() {
+	s.noSkip = true
 }
 
 func (s *source[T]) Latest() T {
@@ -180,20 +190,43 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 	done := ctxwg.Add(ctx)
 	syncThread := s.inst.Thread()
 	c := common.NewFuncCollector()
-	cinema.InitSync(syncThread, ctx, s.id, seq, c)
+	stopped := atomic.Bool{}
+	stop := func() bool {
+		if s.noSkip {
+			return false
+		}
+		if stopped.Load() {
+			return true
+		}
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if seq == s.seq {
+			return false
+		}
+		stopped.Store(true)
+		return true
+	}
+	cinema.InitSync(syncThread, ctx, s.id, seq, c, stop)
 	syncThread.WriteStarving(func(t *shredder.Thread) {
 		defer done()
 		if t == nil {
-			ch <- errors.New("instance ended")
+			ch <- context.Canceled
 			close(ch)
+			return
+		}
+		ch <- nil
+		close(ch)
+		if stopped.Load() {
 			return
 		}
 		c.Apply()
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		delete(s.values, seq-1)
-		ch <- nil
-		close(ch)
+		for oldSeq := range s.values {
+			if oldSeq < seq {
+				delete(s.values, oldSeq)
+			}
+		}
 	})
 	return ch
 

@@ -84,19 +84,22 @@ func (s *Screen) tryKill() bool {
 	})
 }
 
-func (s *Screen) sync(syncThread *shredder.Thread, ctx context.Context, seq uint, c *common.FuncCollector) {
+func (s *Screen) sync(syncThread *shredder.Thread, ctx context.Context, seq uint, c *common.FuncCollector, stop func() bool) {
 	s.thread.WriteInstant(func(t *shredder.Thread) {
 		if t == nil {
 			return
 		}
 		t.Write(func(t *shredder.Thread) {
-			if t == nil {
+			if t == nil || stop() {
 				return
 			}
 			watchers, children := s.commit(seq)
 			syncChildren := func() {
+				if stop() {
+					return
+				}
 				for _, screen := range children {
-					screen.sync(syncThread, ctx, seq, c)
+					screen.sync(syncThread, ctx, seq, c, stop)
 				}
 			}
 			if len(watchers) == 0 {
@@ -279,7 +282,7 @@ func (ss *Cinema) tryKill(id uint64) {
 	})
 }
 
-func (ss *Cinema) InitSync(syncThread *shredder.Thread, ctx context.Context, id uint64, seq uint, c *common.FuncCollector) {
+func (ss *Cinema) InitSync(syncThread *shredder.Thread, ctx context.Context, id uint64, seq uint, c *common.FuncCollector, stop func() bool) {
 	if !ss.isRoot() {
 		log.Fatal("Only root door can init sync")
 	}
@@ -289,7 +292,7 @@ func (ss *Cinema) InitSync(syncThread *shredder.Thread, ctx context.Context, id 
 	if !ok {
 		return
 	}
-	s.sync(syncThread, ctx, seq, c)
+	s.sync(syncThread, ctx, seq, c, stop)
 }
 
 func (ss *Cinema) kill(init bool) {

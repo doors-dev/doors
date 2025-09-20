@@ -90,13 +90,6 @@ func PriorityScope(id string, priority uint8) *ScopeSet {
 	}
 }
 
-
-func LatestScope(id string) *ScopeSet {
-	return &ScopeSet{
-		Id:   id,
-		Type: "latest",
-	}
-}
 func FreeScope(id string) *ScopeSet {
 	return &ScopeSet{
 		Id:   id,

@@ -67,3 +67,38 @@ func TestDerive(t *testing.T) {
 		}
 	})
 }
+
+func TestSkip(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamSkipFragment{
+				r: test.NewReporter(1),
+				b: doors.NewSourceBeam(state{}),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+	test.ClickNow(t, page, "#update1")
+	test.ClickNow(t, page, "#update2")
+	<-time.After(500 * time.Millisecond)
+	test.TestReport(t, page, "init")
+}
+
+func TestNoSkip(t *testing.T) {
+	b := doors.NewSourceBeam(state{})
+	b.DisableSkipping()
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamSkipFragment{
+				r: test.NewReporter(1),
+				b: b,
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+	test.ClickNow(t, page, "#update1")
+	<-time.After(500 * time.Millisecond)
+	test.TestReport(t, page, "propagated")
+}

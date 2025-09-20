@@ -12,8 +12,6 @@ The Scopes API provides concurrency control for event processing. Scopes determi
 * If an event clears all scopes, it is sent to the backend.  
 * **Scopes can be shared** between handlers to coordinate behavior across them.
 
----
-
 ## Scope Types
 
 ### Blocking
@@ -38,8 +36,6 @@ Cancels new events while one is processing. Prevents double-clicks or repeated s
 }
 ```
 
----
-
 ### Serial
 
 Queues events and processes them sequentially in arrival order.
@@ -61,32 +57,6 @@ Queues events and processes them sequentially in arrival order.
   Scope: []doors.Scope{serial},
 }
 ```
-
----
-
-### Latest
-
-Cancels previous events and processes only the most recent one. Useful for search-as-you-type.
-
-**Simple usage:**
-
-```templ
-@doors.AInput{
-  Scope: doors.ScopeOnlyLatest(),
-}
-```
-
-**Advanced usage:**
-
-```templ
-{{ latest := &doors.ScopeLatest{} }}
-
-@doors.AInput{
-  Scope: []doors.Scope{latest},
-}
-```
-
----
 
 ### Debounce
 
@@ -111,8 +81,6 @@ New events reset the delay timer; execution is guaranteed after the *limit* even
 }
 ```
 
----
-
 ### Frame
 
 Separates immediate and frame events.  
@@ -134,8 +102,6 @@ Separates immediate and frame events.
 }
 ```
 
----
-
 ### Priority
 
 Cancels lower-priority events (pending or running) when a higher-priority event is triggered.
@@ -149,8 +115,6 @@ Cancels lower-priority events (pending or running) when a higher-priority event 
   Scope: []doors.Scope{prio.Scope(10)}, // higher number = higher priority
 }
 ```
-
----
 
 ## Scope Pipelining
 
