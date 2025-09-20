@@ -85,40 +85,35 @@ func (s *Screen) tryKill() bool {
 }
 
 func (s *Screen) sync(syncThread *shredder.Thread, ctx context.Context, seq uint, c *common.FuncCollector, stop func() bool) {
-	s.thread.WriteInstant(func(t *shredder.Thread) {
-		if t == nil {
+	shredder.Run(func(t *shredder.Thread) {
+		if t == nil || stop() {
 			return
 		}
-		t.Write(func(t *shredder.Thread) {
-			if t == nil || stop() {
+		watchers, children := s.commit(seq)
+		syncChildren := func() {
+			if stop() {
 				return
 			}
-			watchers, children := s.commit(seq)
-			syncChildren := func() {
-				if stop() {
-					return
-				}
-				for _, screen := range children {
-					screen.sync(syncThread, ctx, seq, c, stop)
-				}
+			for _, screen := range children {
+				screen.sync(syncThread, ctx, seq, c, stop)
 			}
-			if len(watchers) == 0 {
-				syncChildren()
+		}
+		if len(watchers) == 0 {
+			syncChildren()
+			return
+		}
+		for _, w := range watchers {
+			shredder.Run(func(t *shredder.Thread) {
+				w.Sync(ctx, seq, c)
+			}, shredder.R(t))
+		}
+		shredder.Run(func(t *shredder.Thread) {
+			if t == nil {
 				return
 			}
-			for _, w := range watchers {
-				t.Read(func(t *shredder.Thread) {
-					w.Sync(ctx, seq, c)
-				})
-			}
-			t.Write(func(t *shredder.Thread) {
-				if t == nil {
-					return
-				}
-				syncChildren()
-			})
-		}, shredder.R(s.coreThread))
-	}, shredder.R(syncThread))
+			syncChildren()
+		}, shredder.W(t))
+	}, shredder.W(s.thread), shredder.Ri(syncThread), shredder.R(s.coreThread))
 }
 
 func (s *Screen) watchersSlice() []Watcher {
@@ -265,7 +260,7 @@ func (ss *Cinema) ensure(id uint64, lastSeq uint) (*Screen, bool) {
 }
 
 func (ss *Cinema) tryKill(id uint64) {
-	ss.coreThread.Read(func(t *shredder.Thread) {
+	shredder.Run(func(t *shredder.Thread) {
 		ss.mu.Lock()
 		defer ss.mu.Unlock()
 		if ss.killed {
@@ -279,7 +274,7 @@ func (ss *Cinema) tryKill(id uint64) {
 		if killed {
 			delete(ss.screens, id)
 		}
-	})
+	}, shredder.R(ss.coreThread))
 }
 
 func (ss *Cinema) InitSync(syncThread *shredder.Thread, ctx context.Context, id uint64, seq uint, c *common.FuncCollector, stop func() bool) {
