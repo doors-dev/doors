@@ -10,6 +10,7 @@
 package shredder
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -22,12 +23,20 @@ type threadHead interface {
 type Thread struct {
 	mu      sync.Mutex
 	main    func(*Thread)
+	counter int
 	heads   []threadHead
 	killed  bool
 	running bool
 	spawner *Spawner
 	tail    *frame
 	after   func()
+}
+
+func (t *Thread) addHead(h threadHead) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.counter += 1
+	t.heads[len(t.heads)-t.counter] = h
 }
 
 func (t *Thread) IsDone() bool {
@@ -188,32 +197,21 @@ func (th *Thread) writeTask(t task, tryStarve bool) bool {
 	}
 	th.tail = frame
 	return true
-} 
-
-func (th *Thread) Read(f func(*Thread), joined ...*JoinedThread) {
-	th.executeMulti(f, R(th), joined)
 }
 
-func (th *Thread) WriteStarving(f func(*Thread), joined ...*JoinedThread) {
-	th.executeMulti(f, WS(th), joined)
-}
-func (th *Thread) Write(f func(*Thread), joined ...*JoinedThread) {
-	th.executeMulti(f, W(th), joined)
-}
-func (th *Thread) ReadInstant(f func(*Thread), joined ...*JoinedThread) {
-	th.executeInstant(f, R(th), joined)
-}
-
-func (th *Thread) WriteInstant(f func(*Thread), joined ...*JoinedThread) {
-	th.executeInstant(f, W(th), joined)
-}
-func (th *Thread) WriteInstantStarving(f func(*Thread), joined ...*JoinedThread) {
-	th.executeInstant(f, WS(th), joined)
-}
-
-func (th *Thread) executeMulti(f func(*Thread), self *JoinedThread, joined []*JoinedThread) {
-	runMultiTask(th.spawner, f, append([]*JoinedThread{self}, joined...))
-}
-func (th *Thread) executeInstant(f func(*Thread), self *JoinedThread, joined []*JoinedThread) {
-	runInstantTask(th.spawner, f, append([]*JoinedThread{self}, joined...))
+func Run(f func(*Thread), threads ...*JoinedThread) {
+	if len(threads) == 0 {
+		panic(errors.New("Threads to run on are not provided"))
+	}
+	task := &multitask{
+		queue: threads,
+		thread: &Thread{
+			mu:      sync.Mutex{},
+			main:    f,
+			heads:   make([]threadHead, len(threads)),
+			spawner: threads[0].thread.spawner,
+			tail:    nil,
+		},
+	}
+	task.next()
 }

@@ -23,10 +23,10 @@ func NewRoot(ctx context.Context, inst instance) *Root {
 	id := inst.NewId()
 	ctx, cancel := context.WithCancel(ctx)
 	t := &tracker{
-		cinema:      newCinema(nil, inst, thread, id),
-		children:    common.NewSet[*Door](),
-		thread:      thread,
-		cancel:      cancel,
+		cinema:   newCinema(nil, inst, thread, id),
+		children: common.NewSet[*Door](),
+		thread:   thread,
+		cancel:   cancel,
 	}
 	r := &Root{
 		id:      id,
@@ -105,7 +105,7 @@ func (r *RootRender) Write(w io.Writer) error {
 func (r *Root) Render(content templ.Component) <-chan *RootRender {
 	ch := make(chan *RootRender, 1)
 	parentCtx := context.WithValue(r.ctx, common.CtxKeyParent, r.ctx)
-	r.tracker.thread.Write(func(t *shredder.Thread) {
+	shredder.Run(func(t *shredder.Thread) {
 		if t == nil {
 			close(ch)
 			return
@@ -115,7 +115,7 @@ func (r *Root) Render(content templ.Component) <-chan *RootRender {
 		rw, _ := rm.Writer(r.id)
 
 		var err error
-		t.Write(func(t *shredder.Thread) {
+		shredder.Run(func(t *shredder.Thread) {
 			if t == nil {
 				close(ch)
 				return
@@ -124,8 +124,8 @@ func (r *Root) Render(content templ.Component) <-chan *RootRender {
 			ctx := context.WithValue(parentCtx, common.CtxKeyRenderMap, rm)
 			ctx = context.WithValue(ctx, common.CtxKeyThread, t)
 			err = content.Render(ctx, rw)
-		})
-		t.Write(func(t *shredder.Thread) {
+		}, shredder.W(t))
+		shredder.Run(func(t *shredder.Thread) {
 			if t == nil {
 				close(ch)
 				return
@@ -143,7 +143,7 @@ func (r *Root) Render(content templ.Component) <-chan *RootRender {
 				err: err,
 			}
 			close(ch)
-		})
-	})
+		}, shredder.W(t))
+	}, shredder.W(r.tracker.thread))
 	return ch
 }

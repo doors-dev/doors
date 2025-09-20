@@ -56,39 +56,33 @@ func (f *frame) threadDone(t *Thread) {
 	f.threads.Remove(t)
 }
 
-func (f *frame) run(task task, killed bool) {
-	thread := task.spawn(f, killed)
-	if thread == nil {
-		return
-	}
+func (f *frame) run(task task, killed bool) func() {
+	thread, after := task.spawn(f, killed)
 	f.threads.Add(thread)
+	return after
 }
 
 func (f *frame) start(killed bool) func() {
 	f.mu.Lock()
+	defer f.mu.Unlock()
+	after := make([]func(), len(f.tasks))
+	for i, task := range f.tasks {
+		after[i] = f.run(task, killed)
+	}
+	f.tasks = nil
 	return func() {
-		defer func() {
-			done := f.threads.Len() == 0
-			f.mu.Unlock()
-			if done {
-				f.parent.frameDone(f)
-			}
-		}()
-		for _, task := range f.tasks {
-			f.run(task, killed)
+		for _, af := range after {
+			af()
 		}
-		f.tasks = nil
 	}
 }
 
 func (f *frame) add(task task, killed bool) func() {
 	f.mu.Lock()
-	return func() {
-		defer f.mu.Unlock()
-		if f.tasks == nil {
-			f.run(task, killed)
-			return
-		}
-		f.tasks = append(f.tasks, task)
+	defer f.mu.Unlock()
+	if f.tasks == nil {
+		return f.run(task, killed)
 	}
+	f.tasks = append(f.tasks, task)
+	return func() {}
 }

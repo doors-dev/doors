@@ -12,10 +12,13 @@ package doors
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"reflect"
+	"sync/atomic"
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
@@ -658,47 +661,44 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 		}
 		inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 		door := ctx.Value(common.CtxKeyDoor).(door.Core)
-		var cancel = func() {}
-		var currentMeta HeadData
+		currentSeq := &atomic.Uint32{}
+		lastData := &atomic.Pointer[HeadData]{}
 		m, ok := b.ReadAndSub(ctx, func(ctx context.Context, m M) bool {
+			seq := currentSeq.Add(1)
 			return !inst.Spawn(func() {
-				newMeta := cast(m)
-				if reflect.DeepEqual(newMeta, currentMeta) {
+				newData := cast(m)
+				if seq != currentSeq.Load() {
 					return
 				}
-				currentMeta = newMeta
-				cancel()
-				cancel = inst.SimpleCall(ctx, &action.Emit{
-					Name: "d00r_head",
-					Arg: map[string]interface{}{
-						"title": newMeta.Title,
-						"meta": func() map[string]string {
-							escapedTags := make(map[string]string, len(newMeta.Meta))
-							for k, v := range newMeta.Meta {
-								escapedTags[k] = templ.EscapeString(v)
-							}
-							return escapedTags
-						}(),
-					},
-					DoorId: door.Id(),
-				}, nil, nil, action.CallParams{Optimistic: inst.Conf().OptimisicSync})
+				if reflect.DeepEqual(&newData, lastData.Load()) {
+					return
+				}
+				inst.Call(&headCall{
+					seq:        seq,
+					optimisic:  inst.Conf().OptimisicSync,
+					currentSec: currentSeq,
+					doorId:     door.Id(),
+					data:       &newData,
+					lastData:   lastData,
+				})
 			})
 		})
 		if !ok {
 			return nil
 		}
-		currentMeta = cast(m)
-		tags := make([]string, len(currentMeta.Meta))
+		headData := cast(m)
+		lastData.Store(&headData)
+		tags := make([]string, len(headData.Meta))
 		i := 0
-		for k := range currentMeta.Meta {
+		for k := range headData.Meta {
 			tags[i] = k
 			i++
 		}
-		_, err := fmt.Fprintf(w, "<title>%s</title>", templ.EscapeString(currentMeta.Title))
+		_, err := fmt.Fprintf(w, "<title>%s</title>", templ.EscapeString(headData.Title))
 		if err != nil {
 			return err
 		}
-		for name, content := range currentMeta.Meta {
+		for name, content := range headData.Meta {
 			_, err := fmt.Fprintf(w, "<meta name=\"%s\" content=\"%s\"/>", templ.EscapeString(name), templ.EscapeString(content))
 			if err != nil {
 				return err
@@ -721,6 +721,57 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 	})
 }
 
+type headCall struct {
+	seq        uint32
+	currentSec *atomic.Uint32
+	optimisic  bool
+	doorId     uint64
+	data       *HeadData
+	lastData   *atomic.Pointer[HeadData]
+}
+
+func (c *headCall) Clean() {
+}
+func (c *headCall) Params() action.CallParams {
+	return action.CallParams{
+		Optimistic: c.optimisic,
+	}
+}
+func (c *headCall) Action() (action.Action, bool) {
+	if c.currentSec.Load() != c.seq {
+		return nil, false
+	}
+	return &action.Emit{
+		Name: "d00r_head",
+		Arg: map[string]any{
+			"title": c.data.Title,
+			"meta": func() map[string]string {
+				escapedTags := make(map[string]string, len(c.data.Meta))
+				for k, v := range c.data.Meta {
+					escapedTags[k] = templ.EscapeString(v)
+				}
+				return escapedTags
+			}(),
+		},
+		DoorId: c.doorId,
+	}, true
+}
+
+func (c *headCall) Payload() common.Writable {
+	return common.WritableNone{}
+}
+
+func (c *headCall) Cancel() {
+}
+
+func (c *headCall) Result(_ json.RawMessage, err error) {
+	if err != nil {
+		slog.Error("Head call err " + err.Error())
+		return
+	}
+	c.lastData.Store(c.data)
+}
+
 func inlineName(attr templ.Attributes, ext string) string {
 	name := "inline"
 	dataName, ok := attr["data-name"]
@@ -732,5 +783,3 @@ func inlineName(attr templ.Attributes, ext string) string {
 	}
 	return name + "." + ext
 }
-
-

@@ -60,40 +60,35 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 		return err
 	}
 	tracker, parentCtx := c.newTacker()
-	thread.Read(func(t *shredder.Thread) {
+	shredder.Run(func(t *shredder.Thread) {
 		if t == nil || parentCtx.Err() != nil {
 			rw.SubmitEmpty()
 			return
 		}
 		var err error
-		t.Write(func(t *shredder.Thread) {
-			if t == nil || parentCtx.Err() != nil {
-				return
-			}
-			ctx := context.WithValue(parentCtx, common.CtxKeyParent, parentCtx)
-			ctx = context.WithValue(ctx, common.CtxKeyRenderMap, rm)
-			ctx = context.WithValue(ctx, common.CtxKeyThread, t)
-			_, err = fmt.Fprintf(rw, "<%s", tag)
+		ctx := context.WithValue(parentCtx, common.CtxKeyParent, parentCtx)
+		ctx = context.WithValue(ctx, common.CtxKeyRenderMap, rm)
+		ctx = context.WithValue(ctx, common.CtxKeyThread, t)
+		_, err = fmt.Fprintf(rw, "<%s", tag)
+		if err != nil {
+			return
+		}
+		err = templ.RenderAttributes(ctx, rw, attrs)
+		if err != nil {
+			return
+		}
+		_, err = rw.Write([]byte{'>'})
+		if err != nil {
+			return
+		}
+		if content != nil {
+			err = content.Render(ctx, rw)
 			if err != nil {
 				return
 			}
-			err = templ.RenderAttributes(ctx, rw, attrs)
-			if err != nil {
-				return
-			}
-			_, err = rw.Write([]byte{'>'})
-			if err != nil {
-				return
-			}
-			if content != nil {
-				err = content.Render(ctx, rw)
-				if err != nil {
-					return
-				}
-			}
-			_, err = fmt.Fprintf(rw, "</%s>", tag)
-		})
-		t.Write(func(t *shredder.Thread) {
+		}
+		_, err = fmt.Fprintf(rw, "</%s>", tag)
+		shredder.Run(func(t *shredder.Thread) {
 			if t == nil || parentCtx.Err() != nil {
 				rw.SubmitEmpty()
 				return
@@ -103,8 +98,8 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 			} else {
 				rw.Submit()
 			}
-		})
-	}, shredder.W(tracker.thread))
+		}, shredder.W(t))
+	}, shredder.R(thread), shredder.Wi(tracker.thread))
 	c.tracker = tracker
 	return nil
 }
@@ -130,7 +125,7 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 
 	var err error
 
-	thread.Write(func(t *shredder.Thread) {
+	shredder.Run(func(t *shredder.Thread) {
 		if t == nil || c.parentCtx.Err() != nil {
 			return
 		}
@@ -140,9 +135,8 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 		if content != nil {
 			err = content.Render(ctx, rw)
 		}
-	})
-
-	thread.Write(func(t *shredder.Thread) {
+	}, shredder.W(thread))
+	shredder.Run(func(t *shredder.Thread) {
 		if t == nil || c.parentCtx.Err() != nil {
 			call.Cancel()
 			call.Clean()
@@ -154,7 +148,7 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 		}
 		rw.Submit()
 		c.inst.Call(call)
-	})
+	}, shredder.W(thread))
 }
 
 func (c *container) update(userCtx context.Context, content templ.Component, ch chan error) {
@@ -179,27 +173,21 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 		},
 	}
 
-	tracker.thread.Write(func(t *shredder.Thread) {
+	shredder.Run(func(t *shredder.Thread) {
 		if t == nil || parentCtx.Err() != nil {
 			call.Cancel()
 			call.Clean()
 			return
 		}
 
+		ctx := context.WithValue(parentCtx, common.CtxKeyParent, parentCtx)
+		ctx = context.WithValue(ctx, common.CtxKeyRenderMap, rm)
+		ctx = context.WithValue(ctx, common.CtxKeyThread, t)
 		var err error
-
-		t.Write(func(t *shredder.Thread) {
-			if t == nil || parentCtx.Err() != nil {
-				return
-			}
-			ctx := context.WithValue(parentCtx, common.CtxKeyParent, parentCtx)
-			ctx = context.WithValue(ctx, common.CtxKeyRenderMap, rm)
-			ctx = context.WithValue(ctx, common.CtxKeyThread, t)
-			if content != nil {
-				err = content.Render(ctx, rw)
-			}
-		})
-		t.Write(func(t *shredder.Thread) {
+		if content != nil {
+			err = content.Render(ctx, rw)
+		}
+		shredder.Run(func(t *shredder.Thread) {
 			if t == nil || parentCtx.Err() != nil {
 				call.Cancel()
 				call.Clean()
@@ -211,8 +199,8 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 			}
 			rw.Submit()
 			c.inst.Call(call)
-		})
-	})
+		}, shredder.W(t))
+	}, shredder.W(tracker.thread))
 	c.tracker = tracker
 }
 
@@ -281,25 +269,25 @@ func (c *tracker) addChild(door *Door) {
 	if c == nil {
 		return
 	}
-	c.thread.Write(func(t *shredder.Thread) {
+	shredder.Run(func(t *shredder.Thread) {
 		if t == nil {
 			door.suspend(c)
 			return
 		}
 		c.children.Add(door)
-	})
+	}, shredder.W(c.thread))
 }
 
 func (c *tracker) removeChild(door *Door) {
 	if c == nil {
 		return
 	}
-	c.thread.Write(func(t *shredder.Thread) {
+	shredder.Run(func(t *shredder.Thread) {
 		if t == nil {
 			return
 		}
 		c.children.Remove(door)
-	})
+	}, shredder.W(c.thread))
 }
 
 func (t *tracker) suspend(init bool) {

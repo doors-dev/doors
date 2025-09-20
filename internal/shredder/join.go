@@ -9,25 +9,46 @@
 
 package shredder
 
-
-
 func R(t *Thread) *JoinedThread {
 	return &JoinedThread{
-		mode: joinRead,
+		mode:   joinRead,
 		thread: t,
 	}
 }
 
 func W(t *Thread) *JoinedThread {
 	return &JoinedThread{
-		mode: joinWrite,
+		mode:   joinWrite,
 		thread: t,
 	}
 }
-func WS(t *Thread) *JoinedThread {
+func Ws(t *Thread) *JoinedThread {
 	return &JoinedThread{
-		mode: joinWriteStarve,
+		mode:   joinWriteStarve,
 		thread: t,
+	}
+}
+
+func Ri(t *Thread) *JoinedThread {
+	return &JoinedThread{
+		mode:    joinRead,
+		thread:  t,
+		instant: true,
+	}
+}
+
+func Wi(t *Thread) *JoinedThread {
+	return &JoinedThread{
+		mode:    joinWrite,
+		thread:  t,
+		instant: true,
+	}
+}
+func Wsi(t *Thread) *JoinedThread {
+	return &JoinedThread{
+		mode:    joinWriteStarve,
+		thread:  t,
+		instant: true,
 	}
 }
 
@@ -40,9 +61,11 @@ const (
 )
 
 type JoinedThread struct {
-	mode   joinMode
-	thread *Thread
+	mode    joinMode
+	thread  *Thread
+	instant bool
 }
+
 
 func (j *JoinedThread) start(t task) bool {
 	switch j.mode {

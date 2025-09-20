@@ -207,7 +207,7 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 		return true
 	}
 	cinema.InitSync(syncThread, ctx, s.id, seq, c, stop)
-	syncThread.WriteStarving(func(t *shredder.Thread) {
+	shredder.Run(func(t *shredder.Thread) {
 		defer done()
 		if t == nil {
 			ch <- context.Canceled
@@ -227,7 +227,7 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 				delete(s.values, oldSeq)
 			}
 		}
-	})
+	}, shredder.Ws(syncThread))
 	return ch
 
 }
