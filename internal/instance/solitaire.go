@@ -69,11 +69,13 @@ func (s *solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = s.deck.OnReport(rep)
+	counter, err := s.deck.OnReport(rep)
 	if err != nil {
 		return
 	}
-	s.inst.touch()
+	if counter > 0 {
+		s.inst.touch()
+	}
 	conn := newConn(s.conf, w, r, s.deck)
 	if conn.ack() != nil {
 		return

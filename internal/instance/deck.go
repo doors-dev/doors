@@ -170,7 +170,7 @@ func (d *deck) extractRestored(seq uint64) (*card, error) {
 	return card, err
 }
 
-func (d *deck) OnReport(s *report) (err error) {
+func (d *deck) OnReport(s *report) (counter int, err error) {
 	defer func() {
 		if err != nil {
 			d.inst.syncError(err)
@@ -180,7 +180,7 @@ func (d *deck) OnReport(s *report) (err error) {
 	defer d.mu.Unlock()
 	for seq := range s.Results {
 		if seq > d.seq {
-			return errors.New("ready overflows last seq")
+			return counter, errors.New("ready overflows last seq")
 		}
 		if d.latestReport < seq {
 			d.latestReport = seq
@@ -190,17 +190,19 @@ func (d *deck) OnReport(s *report) (err error) {
 		if !ok {
 			restored, err := d.extractRestored(seq)
 			if err != nil {
-				return err
+				return counter, err
 			}
 			if restored == nil {
 				continue
 			}
+			counter += 1
 			d.expirator.Report(seq)
 			restored.call.result(result.output, result.err)
 			restored.call.clean()
 			continue
 		}
 		delete(d.issued, seq)
+		counter += 1
 		d.expirator.Report(seq)
 		issued.call.result(result.output, result.err)
 		issued.call.clean()
@@ -208,13 +210,13 @@ func (d *deck) OnReport(s *report) (err error) {
 	prevEnd := d.latestReport
 	for _, gap := range s.Gaps {
 		if gap.end < gap.start {
-			return errors.New("gap range issue")
+			return counter, errors.New("gap range issue")
 		}
 		if gap.end > d.seq {
-			return errors.New("gap overflows last seq")
+			return counter, errors.New("gap overflows last seq")
 		}
 		if prevEnd >= gap.start {
-			return errors.New("gap overlap")
+			return counter, errors.New("gap overlap")
 		}
 		prevEnd = gap.end
 		for seq := gap.start; seq <= gap.end; seq++ {
@@ -225,7 +227,7 @@ func (d *deck) OnReport(s *report) (err error) {
 			}
 			delete(d.issued, seq)
 			if err := d.restore(seq, call.call); err != nil {
-				return err
+				return counter, err
 			}
 		}
 	}
@@ -233,7 +235,7 @@ func (d *deck) OnReport(s *report) (err error) {
 		d.seq += 1
 		d.skipSeq(d.seq)
 	}
-	return nil
+	return counter, nil
 }
 func (d *deck) Insert(c action.Call) (err error) {
 	defer func() {
