@@ -12,7 +12,6 @@ package router
 import (
 	"log/slog"
 	"net/http"
-	"reflect"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/license"
@@ -84,11 +83,11 @@ func UseLicense(cert string) Use {
 	return useFunc(func(rr *Router) {
 		lic, err := license.ReadCert(cert)
 		if err != nil {
-			slog.Error("license reading error", slog.String("error", err.Error()))
+			slog.Error("license error", slog.String("error", err.Error()))
 			return
 		}
-		if !reflect.DeepEqual(lic.GetIssuer(), issuer) {
-			slog.Error("license reading error", slog.String("error", "wrong issuer key"))
+		if lic.GetIssuer() != issuer {
+			slog.Error("license error", slog.String("error", "wrong issuer key"))
 			return
 		}
 		rr.lisence = lic
