@@ -6,8 +6,8 @@ Back-end UI Framework for feature-rich, secure, and fast web apps in Go.
 
 ## Getting Started
 
-* See the [Tutorial](./docs/tutorial) for building your first doors application.
-* Read the [Docs](./docs/docs) to dive into details.
+* See the [Tutorial](https://doors.dev/tutorial/) for building your first doors application.
+* Read the [Docs](https://doors.dev/docs/) to dive into details.
 * Check out the [API Reference](https://docs.doors.dev).
 
 ## Philosophy 
@@ -19,7 +19,7 @@ Build direct connections between events, state, and HTML in a completely type-sa
 Fast loading, non-blocking execution environment, minimal memory footprint
 
 ### Server Centric
-Business logic runs on the server, browser acts like a human I/0. 
+Business logic runs on the server, and the browser acts like a human I/O. 
 
 ### Straight
 Native experience of classic MPA with natural reactive UI capabilities.
@@ -42,19 +42,24 @@ If you need - integration, bundling, and serving tools included.
 
 ### Core Components
 
-**Doors** - Dynamic placeholders in HTML where content can change:
-- Update, Replace, Remove, Clear, Reload operations
-- Explicit control over what changes and when
+**Door** - Dynamic container in HTML where content can change:
 
-**Beams** - Reactive state primitives on the server:
+- Update, Replace, Remove, Clear, Reload operations
+- Form a tree structure, where each branch has its own lifecycle
+- Provides local [context](https://pkg.go.dev/context) that can be used as an unmount hook.
+
+**Beam** - Reactive state primitive on the server:
+
 - SourceBeam for mutable state
 - Derived beams for computed values
-- Automatic propagation of changes
+- Respects the dynamic container tree, guaranteeing render consistency
 
 **Path Models** - Type-safe routing through Go structs:
-- URL patterns as struct tags
-- Variants within single model for related routes
-- Compile-time parameter validation
+
+- Declare multiple path variants (the matched field becomes true)
+* Use type-safe parameter capturing 
+* Use splat parameter to capture the remaining path tail
+* Use almost any types for query parameters ([go-playground/form](https://github.com/go-playground/form) under the hood)
 
 ### Instance and Session Model
 
@@ -65,17 +70,17 @@ If you need - integration, bundling, and serving tools included.
 
 ### Real-Time Sync Protocol
 
-- Client maintains connection for syncronization via short-living, handover HTTP requests
+- Client maintains a connection for synchronization via short-lived, handover HTTP requests
 - Works through proxies and firewalls
-- Takes advatage of QUIC
+- Takes advantage of QUIC
 
 ### Event Handling
 - Secure session-scoped DOM event handeling in Go 
 - Events as separate HTTP requests
-- Advanced concurrency control (blocking, debounce and more)
+- Advanced concurrency control (blocking, debounce, and more)
 
 
-## When to Use doors
+## When to use *doors*
 
 **Excellent for:**
 - SaaS products
@@ -86,7 +91,7 @@ If you need - integration, bundling, and serving tools included.
 - Other form-heavy applications
 
 **Not ideal for:**
-- Public marketing websites with minmal interactivity
+- Public marketing websites with minimal interactivity
 - Offline-first applications
 - Static content sites
 
@@ -96,30 +101,17 @@ Unlike **React/Vue**: No business logic on the client side, no hydration, NPM-fr
 
 Unlike **htmx**: Full type safety, reactive state, and programmatic control from Go.
 
-Unlike **Phoenix LiveView**: Go instead of Elixir, explicit update model, superior concurrency model and QUIC friendly
+Unlike **Phoenix LiveView**: Explicit update model, parallel rendering & non-blocking event handling and QUIC friendly
 
 ## License
 
-doors is source-available under the **Business Source License 1.1 (BUSL-1.1)** from **doors dev LLC**.
+*doors* is source-available under the **Business Source License 1.1 (BUSL-1.1)** from **doors dev LLC**.
 
 - **Free for development** (non-production)  
 - **Free for non-commercial production** (personal, education, research, non-profit) — optional pay-what-you-want support  
-- **Commercial production** requires a paid license (Startup, Business, or Enterprise)  
+- **Commercial production** requires a paid license (lifetime, no subscription)
 
 Each version of doors automatically converts to **AGPL-3.0** after 4 years.
-
-### Commercial Licensing
-
-Commercial licenses are delivered as signed **License Certificates**:
-
-- **Startup License** (per production domain) — strict startup criteria, internal use only  
-- **Business License** (per production domain / per client domain) — internal + client work  
-- **Enterprise License** — custom scope (domain-linked, company-linked, or enterprise-wide)  
-
-Unless otherwise stated, License Certificates are **permanent (no expiration)**.  
-Certificates may be shared, but they only enable Production use for the scope encoded in the certificate.  
-
-To activate a commercial license, the License Certificate must be provided to the framework via the API described in the official documentation.
 
 To purchase a license, visit [https://doors.dev](https://doors.dev).  
 For Enterprise terms, you may also contact [sales@doors.dev](mailto:sales@doors.dev).
@@ -130,7 +122,5 @@ For Enterprise terms, you may also contact [sales@doors.dev](mailto:sales@doors.
 - [LICENSE-COMMERCIAL.txt](./LICENSE-COMMERCIAL.txt) — Commercial license summary  
 - [COMMERCIAL-EULA.md](./COMMERCIAL-EULA.md) — Full commercial terms  
 
----
 
-**Note:** This README section is a summary. The binding terms are in the license files listed above.
 
