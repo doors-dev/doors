@@ -13,6 +13,7 @@ import indicator, { IndicatorEntry } from "./indicator"
 import { removeAttr, setAttr } from "./dyna"
 import { HookErr } from "./capture"
 import { doAfter } from "./lib"
+import { report } from "./scope.ts"
 
 
 type Options = {
@@ -32,6 +33,9 @@ const actions = {
         if (id) {
             setTimeout(() => indicator.end(id), duration)
         }
+    },
+    report_hook: (_: Options, track: number) => {
+        report(track)
     },
     location_replace: (_: Options, href: string, origin: boolean) => {
         let url: URL

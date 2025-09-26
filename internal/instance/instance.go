@@ -28,7 +28,7 @@ type AnyInstance interface {
 	Id() string
 	Serve(http.ResponseWriter, *http.Request) error
 	RestorePath(*http.Request) bool
-	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request) bool
+	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request, uint64) bool
 	Connect(w http.ResponseWriter, r *http.Request)
 	end(endCause)
 }
@@ -76,7 +76,7 @@ func (inst *Instance[M]) resetKillTimer() bool {
 		inst.killTimer.Reset(inst.conf().InstanceTTL)
 		return true
 	}
-	inst.killTimer = time.AfterFunc(inst.conf().InstanceTTL, func() {
+	inst.killTimer = time.AfterFunc(inst.conf().InstanceConnectTimeout, func() {
 		slog.Debug("Inactive instance killed by timeout", slog.String("type", "message"), slog.String("instance_id", inst.id))
 		inst.end(causeKilled)
 	})
@@ -91,14 +91,14 @@ func (inst *Instance[M]) getSession() coreSession {
 	return inst.session
 }
 
-func (inst *Instance[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request) bool {
+func (inst *Instance[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
 	inst.mu.RLock()
 	if inst.killed || inst.core == nil {
 		inst.mu.RUnlock()
 		return false
 	}
 	inst.mu.RUnlock()
-	ok := inst.core.TriggerHook(doorId, hookId, w, r)
+	ok := inst.core.TriggerHook(doorId, hookId, w, r, track)
 	if ok {
 		inst.touch()
 	}
@@ -167,6 +167,7 @@ func (inst *Instance[M]) end(cause endCause) {
 		inst.mu.Unlock()
 		return
 	}
+	inst.mu.Unlock()
 	inst.core.end(cause)
 }
 

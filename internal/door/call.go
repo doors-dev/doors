@@ -15,7 +15,6 @@ import (
 	"log/slog"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxwg"
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
@@ -24,7 +23,6 @@ type doorCall struct {
 	ch         chan error
 	action     action.Action
 	payload    common.Writable
-	done       ctxwg.Done
 	optimistic bool
 }
 
@@ -48,7 +46,6 @@ func (n *doorCall) Result(_ json.RawMessage, err error) {
 func (n *doorCall) send(err error) {
 	n.ch <- err
 	close(n.ch)
-	n.done()
 }
 
 func (c *doorCall) Action() (action.Action, bool) {

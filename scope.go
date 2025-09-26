@@ -94,15 +94,15 @@ func (d *ScopeFrame) Scope(frame bool) Scope {
 	})
 }
 
-// ScopePriority cancels lower-priority events (pending or running)
-// when a higher-priority event is triggered.
-type ScopePriority struct {
+// ScopeConcurrent can be occupied by events with the same
+// groupId, other - blocked
+type ScopeConcurrent struct {
 	id front.ScopeAutoId
 }
 
-func (d *ScopePriority) Scope(priority uint8) Scope {
+func (d *ScopeConcurrent) Scope(groupId int) Scope {
 	return scopeFunc(func(inst instance.Core) *ScopeSet {
-		return front.PriorityScope(d.id.Id(inst), priority)
+		return front.ConcurrentScope(d.id.Id(inst), groupId)
 	})
 }
 

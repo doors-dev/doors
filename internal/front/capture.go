@@ -30,10 +30,11 @@ func (pc *PointerCapture) Listen() string {
 }
 
 type KeyboardEventCapture struct {
-	Event           string `json:"-"`
-	PreventDefault  bool   `json:"preventDefault"`
-	StopPropagation bool   `json:"stopPropagation"`
-	ExactTarget     bool   `json:"exactTarget"`
+	Event           string   `json:"-"`
+	Filter          []string `json:"filter"`
+	PreventDefault  bool     `json:"preventDefault"`
+	StopPropagation bool     `json:"stopPropagation"`
+	ExactTarget     bool     `json:"exactTarget"`
 }
 
 func (c *KeyboardEventCapture) Name() string {
@@ -56,7 +57,7 @@ func (c *FormCapture) Listen() string {
 }
 
 type LinkCapture struct {
-	StopPropagation bool   `json:"stopPropagation"`
+	StopPropagation bool `json:"stopPropagation"`
 }
 
 func (c *LinkCapture) Name() string {

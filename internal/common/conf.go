@@ -24,6 +24,10 @@ type SystemConf struct {
 	// Default behavior (value 0): session ends, when no more
 	// instances left, cookie expires when browser closes.
 	SessionTTL time.Duration
+	// InstanceConnectTimeout controls how long new instance waits
+	// before shutdown for the first client connection.
+	// Default: RequestTimeout
+	InstanceConnectTimeout time.Duration
 	// InstanceGoroutineLimit is the max goroutines per page instance.
 	// Controls resource use for rendering and reactive updates. Default: 16.
 	InstanceGoroutineLimit int
@@ -129,6 +133,9 @@ func InitDefaults(s *SystemConf) {
 	}
 	if s.InstanceGoroutineLimit <= 0 {
 		s.InstanceGoroutineLimit = 16
+	}
+	if s.InstanceConnectTimeout <= 0 {
+		s.InstanceConnectTimeout = s.RequestTimeout
 	}
 	if s.InstanceTTL <= 0 {
 		s.InstanceTTL = 40 * time.Minute

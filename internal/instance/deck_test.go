@@ -177,7 +177,7 @@ func TestReportResult(t *testing.T) {
 			5: result{output: nil, err: re},
 		},
 	}
-	err = deck.OnReport(rep)
+	_, err = deck.OnReport(rep)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestReportGap(t *testing.T) {
 		t.Fatal(err)
 	}
 	ps.cancel(2)
-	err = deck.OnReport(rep)
+	_, err = deck.OnReport(rep)
 	testCounters(t, deck, 4, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -323,7 +323,7 @@ func TestSkipTail(t *testing.T) {
 		}},
 		Results: map[uint64]result{},
 	}
-	err = deck.OnReport(rep)
+	_, err = deck.OnReport(rep)
 	testCounters(t, deck, 3, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -398,7 +398,7 @@ func TestReportNonIssued(t *testing.T) {
 			5: result{output: nil, err: nil},
 		},
 	}
-	err = deck.OnReport(rep)
+	_, err = deck.OnReport(rep)
 	if err == nil {
 		t.Fatal("must error - reported non issued")
 	}
@@ -408,7 +408,7 @@ func TestReportNonIssued(t *testing.T) {
 			7: result{output: nil, err: nil},
 		},
 	}
-	err = deck.OnReport(rep)
+	_, err = deck.OnReport(rep)
 	if err == nil {
 		t.Fatal("must error - reported non overflow")
 	}
@@ -433,7 +433,7 @@ func TestReport(t *testing.T) {
 			3: result{output: nil, err: nil},
 		},
 	}
-	err = deck.OnReport(rep)
+	_, err = deck.OnReport(rep)
 	if err == nil {
 		t.Fatal("must error - reported  overflow")
 	}
@@ -445,7 +445,7 @@ func TestReport(t *testing.T) {
 		}},
 		Results: map[uint64]result{},
 	}
-	err = deck.OnReport(rep)
+	_, err = deck.OnReport(rep)
 	if err == nil {
 		t.Fatal("must error - reported gap after result")
 	}
@@ -459,7 +459,7 @@ func TestReport(t *testing.T) {
 		}},
 		Results: map[uint64]result{},
 	}
-	err = deck.OnReport(rep)
+	_, err = deck.OnReport(rep)
 	if err == nil {
 		t.Fatal("must error - reported gap overlap")
 	}
@@ -471,7 +471,7 @@ func TestReport(t *testing.T) {
 		}},
 		Results: map[uint64]result{},
 	}
-	err = deck.OnReport(rep)
+	_, err = deck.OnReport(rep)
 	if err == nil {
 		t.Fatal("must error - reported gap order")
 	}

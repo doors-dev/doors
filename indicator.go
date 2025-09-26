@@ -39,6 +39,11 @@ func SelectorQuery(query string) Selector {
 	return (*selector)(front.SelectQuery(query))
 }
 
+// SelectorQuery selects all elements matching a CSS query (e.g. "#id", ".class").
+func SelectorQueryAll(query string) Selector {
+	return (*selector)(front.SelectQueryAll(query))
+}
+
 // SelectorParentQuery selects the closest ancestor matching a CSS query.
 func SelectorParentQuery(query string) Selector {
 	return (*selector)(front.SelectParentQuery(query))
@@ -150,6 +155,39 @@ func IndicatorOnlyClassQuery(query string, class string) []Indicator {
 func IndicatorOnlyClassRemoveQuery(query string, class string) []Indicator {
 	return []Indicator{IndicatorClassRemove{
 		Selector: SelectorQuery(query),
+		Class:    class,
+	}}
+}
+
+// IndicatorOnlyContentQueryAll sets content on all elements matching a CSS query.
+func IndicatorOnlyContentQueryAll(query string, content string) []Indicator {
+	return []Indicator{IndicatorContent{
+		Selector: SelectorQueryAll(query),
+		Content:  content,
+	}}
+}
+
+// IndicatorOnlyAttrQueryAll sets an attribute on all elements matching a CSS query.
+func IndicatorOnlyAttrQueryAll(query string, attr string, value string) []Indicator {
+	return []Indicator{IndicatorAttr{
+		Selector: SelectorQueryAll(query),
+		Name:     attr,
+		Value:    value,
+	}}
+}
+
+// IndicatorOnlyClassQueryAll adds classes to all elements matching a CSS query.
+func IndicatorOnlyClassQueryAll(query string, class string) []Indicator {
+	return []Indicator{IndicatorClass{
+		Selector: SelectorQueryAll(query),
+		Class:    class,
+	}}
+}
+
+// IndicatorOnlyClassRemoveQueryAll removes classes from all elements matching a CSS query.
+func IndicatorOnlyClassRemoveQueryAll(query string, class string) []Indicator {
+	return []Indicator{IndicatorClassRemove{
+		Selector: SelectorQueryAll(query),
 		Class:    class,
 	}}
 }

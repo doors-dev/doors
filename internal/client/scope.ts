@@ -22,9 +22,9 @@ export class Hook {
     private rej: (reason: HookErr) => void
     private promise: Promise<Response>
     private scopeStack: Array<Scope> = []
-    private abortTimer: AbortTimer | null = null
     private fetch: any = {}
     private scopeQueue: Array<ScopeSet>
+    private indiciatorId: number | undefined = undefined
     constructor(private params: {
         doorId: number,
         hookId: number,
@@ -60,7 +60,7 @@ export class Hook {
             this.rej(new HookErr(hookErrKinds.capture, e))
             return this.promise
         }
-        r.submit(this)
+        runtime.submitHook(this)
         return this.promise
     }
     nextScope() {
@@ -77,55 +77,52 @@ export class Hook {
             }
         }
     }
+    private launched = false
     execute() {
         let target: Element | null = null
         if (this.params.event?.target) {
             target = this.params.event.target as Element
         }
         this.actions(this.params.before)
-        const indicatorId = indicator.start(target, this.params.indicator)
-        this.abortTimer = new AbortTimer(requestTimeout)
-        fetch(`/d00r/${id}/${this.params.doorId}/${this.params.hookId}`, {
+        this.indiciatorId = indicator.start(target, this.params.indicator)
+        const abortTimer = new AbortTimer(requestTimeout)
+        const track = runtime.hookRegister(this)
+        this.launched = true
+        fetch(`/d00r/${id}/${this.params.doorId}/${this.params.hookId}?t=${track}`, {
             method: "POST",
-            signal: this.abortTimer.signal,
+            signal: abortTimer.signal,
             ...this.fetch,
         }).then(r => {
-            this.abortTimer!.cancel()
+            abortTimer!.cancel()
             if (r.ok) {
                 const after = r.headers.get("D00r-After")
                 if (after) {
                     this.actions(JSON.parse(after))
                 }
-                this.ok(r)
+                runtime.hookOk(track, r)
                 return
             }
             if (r.status === 401 || r.status === 410) {
-                this.rej(new HookErr(hookErrKinds.unauthorized, r))
+                runtime.hookErr(track, new HookErr(hookErrKinds.unauthorized, r))
             } else if (r.status === 400) {
-                this.rej(new HookErr(hookErrKinds.bad_request))
+                runtime.hookErr(track, new HookErr(hookErrKinds.bad_request))
             } else if (r.status === 404) {
-                this.rej(new HookErr(hookErrKinds.not_found))
+                runtime.hookErr(track, new HookErr(hookErrKinds.not_found))
             } else if (r.status >= 500 && r.status < 600) {
-                this.rej(new HookErr(hookErrKinds.server, r))
+                runtime.hookErr(track, new HookErr(hookErrKinds.server, r))
             } else {
-                this.rej(new HookErr(hookErrKinds.other, r))
+                runtime.hookErr(track, new HookErr(hookErrKinds.other, r))
             }
         }).catch(e => {
-            this.abortTimer!.cancel()
-            if (this.abortTimer!.status == "aborted") {
-                this.rej(new HookErr(hookErrKinds.canceled))
-                return
-            }
-            this.err(new HookErr(hookErrKinds.network, e))
-        }).finally(() => {
-            indicator.end(indicatorId)
+            abortTimer!.cancel()
+            runtime.hookErr(track, new HookErr(hookErrKinds.network, e))
         })
     }
     private done() {
         this.scopeStack.forEach(s => s.done(this))
     }
     cancel() {
-        if (this.abortTimer) {
+        if (this.launched) {
             return
         }
         if (this.params.event) {
@@ -134,13 +131,30 @@ export class Hook {
         }
         this.err(new HookErr(hookErrKinds.canceled))
     }
-    private ok(r: Response) {
+
+    private response: Response | undefined = undefined
+    private reported = false
+    report(): boolean {
+        this.reported = true
+        if (this.response) {
+            return this.ok(this.response)
+        }
+        return false
+    }
+    ok(r: Response): boolean {
+        if (!this.reported) {
+            this.response = r
+            return false
+        }
         this.res(r)
         this.done()
+        indicator.end(this.indiciatorId)
+        return true
     }
-    private err(r: HookErr) {
+    err(r: HookErr) {
         this.rej(r)
         this.done()
+        indicator.end(this.indiciatorId)
     }
 }
 
@@ -148,17 +162,44 @@ export class Hook {
 
 class Runtime {
     private scopes = new Map<string, Scope>()
+    private hooks = new Map<number, Hook>()
+    private track = 0
     constructor() {
 
     }
-    public done(id: string) {
+    public hookIsRegistered(track: number): boolean {
+        return this.hooks.has(track)
+    }
+    public hookRegister(hook: Hook): number {
+        this.track += 1
+        this.hooks.set(this.track, hook)
+        return this.track
+    }
+    public hookErr(track: number, err: HookErr) {
+        this.hooks.get(track)!.err(err)
+        this.hooks.delete(track)
+    }
+    public hookOk(track: number, r: Response) {
+        if (this.hooks.get(track)!.ok(r)) {
+            this.hooks.delete(track)
+        }
+    }
+    public hookReport(track: number) {
+        if (!this.hookIsRegistered(track)) {
+            return
+        }
+        if (this.hooks.get(track)!.report()) {
+            this.hooks.delete(track)
+        }
+    }
+    public scopeDone(id: string) {
         this.scopes.delete(id)
     }
-    public submit(hook: Hook) {
+    public submitHook(hook: Hook) {
         const set = hook.nextScope()!
-        this.next(hook, set)
+        this.nextScope(hook, set)
     }
-    public next(hook: Hook, set: ScopeSet) {
+    public nextScope(hook: Hook, set: ScopeSet) {
         const [type, id, opt] = set
         let scope = this.scopes.get(id)
         if (!scope) {
@@ -184,7 +225,7 @@ abstract class Scope {
         if (this.counter > 0) {
             return
         }
-        this.runtime.done(this.id)
+        this.runtime.scopeDone(this.id)
     }
     public submit(hook: Hook, opt: any) {
         hook.stackScope(this)
@@ -197,7 +238,7 @@ abstract class Scope {
             hook.execute()
             return
         }
-        this.runtime.next(hook, next)
+        this.runtime.nextScope(hook, next)
     }
     protected abstract process(hook: Hook, opt: any): void
     protected abstract complete(hook: Hook): void
@@ -209,7 +250,7 @@ abstract class Scope {
 const newScope = {
     "debounce": (runtime: Runtime, id: string) => new DebounceScope(runtime, id),
     "blocking": (runtime: Runtime, id: string) => new BlockingScope(runtime, id),
-    "priority": (runtime: Runtime, id: string) => new PriorityScope(runtime, id),
+    "concurrent": (runtime: Runtime, id: string) => new ConcurrentScope(runtime, id),
     "serial": (runtime: Runtime, id: string) => new SerialScope(runtime, id),
     "frame": (runtime: Runtime, id: string) => new FrameScope(runtime, id),
     "free": (runtime: Runtime, id: string) => new FreeScope(runtime, id),
@@ -303,26 +344,18 @@ class BlockingScope extends Scope {
     }
 }
 
-class PriorityScope extends Scope {
-    private active = new Map<Hook, number>
+class ConcurrentScope extends Scope {
+    private groupId: number = 0
 
-    protected complete(hook: Hook): void {
-        this.active.delete(hook)
+    protected complete(_hook: Hook): void {
     }
 
     protected process(hook: Hook, opt: any): void {
-        const priority = opt as number
-        for (const [pendingHook, pendingPriority] of this.active.entries()) {
-            if (pendingPriority > priority) {
-                hook.cancel()
-                return
-            }
-            if (pendingPriority < priority) {
-                pendingHook.cancel()
-                this.active.delete(pendingHook)
-            }
+        const id = opt as number
+        if (this.size != 1 && this.groupId != id) {
+            hook.cancel()
         }
-        this.active.set(hook, priority)
+        this.groupId = id
         this.promote(hook)
     }
 }
@@ -370,5 +403,8 @@ class FreeScope extends Scope {
     }
 }
 
-const r = new Runtime()
+const runtime = new Runtime()
 
+export function report(id: number) {
+    runtime.hookReport(id)
+}

@@ -15,7 +15,7 @@ import (
 	"github.com/doors-dev/doors/internal/door"
 )
 
-func (i *core[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request) bool {
+func (i *core[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
 	hook := i.getHook(doorId, hookId)
 	if hook == nil {
 		return false
@@ -23,6 +23,9 @@ func (i *core[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWrite
 	done, ok := hook.Trigger(w, r)
 	if !ok {
 		return false
+	}
+	if track != 0 {
+		i.solitaire.Call(reportHook(track))
 	}
 	if done {
 		i.removeHook(doorId, hookId)

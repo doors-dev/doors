@@ -293,7 +293,7 @@ func UseSessionCallback(callback SessionCallback) Use
 
 ## License
 
-Verifies and adds license certificate. License is required for commercial production use. 
+Verifies and adds the license certificate. A license is required for commercial production use. 
 
 ```go
 func UseLicense(cert string) Use

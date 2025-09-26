@@ -17,10 +17,15 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
+type spawnTask struct {
+	run    func()
+	result func(error)
+}
+
 type Spawner struct {
 	mu     sync.Mutex
 	pool   *Pool
-	queue  []func()
+	queue  []*spawnTask
 	ch     chan struct{}
 	killed bool
 	op     OnPanic
@@ -47,15 +52,18 @@ func (s *Spawner) Kill() {
 	s.notify()
 }
 
-func (s *Spawner) Go(f func()) bool {
+func (s *Spawner) Spawn(run func(), result func(error)) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.killed {
 		return false
 	}
-	s.queue = append(s.queue, f)
+	s.queue = append(s.queue, &spawnTask{run: run, result: result})
 	s.notify()
 	return true
+}
+func (s *Spawner) Go(f func()) bool {
+	return s.Spawn(f, nil)
 }
 
 func (s *Spawner) notify() {
@@ -83,9 +91,9 @@ func (s *Spawner) run() {
 			break
 		}
 		queue := s.queue
-		s.queue = make([]func(), 0)
+		s.queue = make([]*spawnTask, 0)
 		s.mu.Unlock()
-		for _, f := range queue {
+		for _, task := range queue {
 			mu.Lock()
 			if doneCh != nil {
 				temp := doneCh
@@ -108,9 +116,12 @@ func (s *Spawner) run() {
 						doneCh = nil
 					}
 				}()
-				err := common.Catch(f)
+				err := common.Catch(task.run)
 				if err != nil {
 					s.op.OnPanic(err)
+				}
+				if task.result != nil {
+					task.result(err)
 				}
 			})
 		}
@@ -176,7 +187,7 @@ func (p *Pool) Spawner(op OnPanic) *Spawner {
 	s := &Spawner{
 		mu:    sync.Mutex{},
 		pool:  p,
-		queue: make([]func(), 0),
+		queue: make([]*spawnTask, 0),
 		op:    op,
 	}
 	go s.run()

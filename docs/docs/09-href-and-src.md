@@ -36,7 +36,7 @@ type Active struct {
 	// Path match strategy
 	PathMatcher PathMatcher
 	// Query param match strategy
-	QueryMatcher QueryMatcher
+	QueryMatcher []QueryMatcher
 	// Indicators to apply when active
 	Indicator []Indicator
 }
@@ -53,14 +53,41 @@ type Active struct {
 
 #### QueryMatcher
 
-- **QueryMatcherAll** *(default)*
-   All query params must match.
-- **QueryMatcherIgnore**
-   Query params are ignored.
-- **QueryMatcherSome(params ...string)**
-   Specified query params must match.
+Controls how query parameters are checked when matching URLs.  
+Matchers run left-to-right. Each step may compare specific keys or remove keys from further checks.  
+At the end, all remaining parameters are always compared for equality (`All` is implicit).
 
-### Example:
+- **QueryMatcherIgnoreAll**  
+  Ignore all parameters and stop. No further comparison is performed.
+
+- **QueryMatcherIgnoreSome(params ...string)**  
+  Remove the listed parameters from both URLs, then continue.
+
+- **QueryMatcherSome(params ...string)**  
+  Compare only the listed parameters, remove them, stop on mismatch, then continue.
+
+- **QueryMatcherIfPresent(params ...string)**  
+  For the listed parameters that exist in the new URL, compare and remove them; missing ones are ignored. Stop on mismatch, then continue.
+
+
+#### Helpers
+
+Helpers wrap the base matchers to form a complete configuration:
+
+- **QueryMatcherOnlyIgnoreAll**  
+  `[IgnoreAll]` — ignore all parameters.  
+
+- **QueryMatcherOnlyIgnoreSome(params ...string)**  
+  `[IgnoreSome(params)]` + implicit final compare of all remaining.  
+
+- **QueryMatcherOnlySome(params ...string)**  
+  `[Some(params), IgnoreAll]` — match the listed ones, ignore the rest.  
+
+- **QueryMatcherOnlyIfPresent(params ...string)**  
+  `[IfPresent(params), IgnoreAll]` — match the listed ones if present, ignore the rest.  
+
+
+### Example
 
 ```templ
 @doors.AHref{
@@ -68,7 +95,7 @@ type Active struct {
   Active: doors.Active{
     Indicator:    doors.IndicatorOnlyClass("contrast"),
     PathMatcher:  doors.PathMatcherStarts(),
-    QueryMatcher: doors.QueryMatcherIgnore(),
+    QueryMatcher: doors.QueryMatcherIgnoreAll(),
   },
 }
 <a>catalog</a>

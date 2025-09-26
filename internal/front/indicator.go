@@ -16,6 +16,7 @@ type SelectorMode string
 const (
 	SelectModeTarget      SelectorMode = "target"
 	SelectModeQuery       SelectorMode = "query"
+	SelectModeQueryAll    SelectorMode = "query_all"
 	SelectModeParentQuery SelectorMode = "parent_query"
 )
 
@@ -40,6 +41,12 @@ func SelectTarget() *Selector {
 func SelectQuery(query string) *Selector {
 	return &Selector{
 		mode:  SelectModeQuery,
+		query: query,
+	}
+}
+func SelectQueryAll(query string) *Selector {
+	return &Selector{
+		mode:  SelectModeQueryAll,
 		query: query,
 	}
 }

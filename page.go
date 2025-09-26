@@ -15,7 +15,7 @@ import (
 	"net/http"
 )
 
-// Page defines a renderable page component that the application must implement.
+// Page defines a renderable page component that the page must implement.
 // M - the path model type.
 type Page[M any] interface {
 	Render(SourceBeam[M]) templ.Component
@@ -28,8 +28,8 @@ type PageRoute = router.Response
 // RPage provides request data and response control for page handlers.
 type RPage[M any] interface {
 	R
-	// GetModel returns the decoded URL model.
-	GetModel() M
+	// Model returns the decoded path model.
+	Model() M
 	// RequestHeader returns the incoming request headers.
 	RequestHeader() http.Header
 	// ResponseHeader returns the outgoing response headers.
@@ -54,7 +54,7 @@ type pageRequest[M any] struct {
 	r *router.Request[M]
 }
 
-func (r *pageRequest[M]) GetModel() M {
+func (r *pageRequest[M]) Model() M {
 	return *r.r.Model
 }
 

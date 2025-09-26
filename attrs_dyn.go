@@ -17,7 +17,6 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxwg"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
@@ -87,7 +86,6 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 	}
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	call := &dynaCall{
-		done:       ctxwg.Add(ctx),
 		seq:        a.seq,
 		attr:       a,
 		prevValue:  prevValue,
@@ -128,7 +126,6 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 	}
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	call := &dynaCall{
-		done: ctxwg.Add(ctx),
 		seq:  a.seq,
 		attr: a,
 		action: &action.DynaSet{
@@ -164,7 +161,6 @@ func (a *aDyn) Render(ctx context.Context, w io.Writer) error {
 }
 
 type dynaCall struct {
-	done       func()
 	seq        int
 	attr       *aDyn
 	action     action.Action
@@ -182,7 +178,6 @@ func (c *dynaCall) Clean() {
 }
 
 func (c *dynaCall) Cancel() {
-	c.done()
 }
 
 func (c *dynaCall) Action() (action.Action, bool) {
@@ -197,7 +192,6 @@ func (c *dynaCall) Payload() common.Writable {
 }
 
 func (c *dynaCall) Result(_ json.RawMessage, err error) {
-	defer c.done()
 	if err == nil {
 		return
 	}

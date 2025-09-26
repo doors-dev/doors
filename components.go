@@ -22,6 +22,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/common/ctxwg"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
@@ -665,7 +666,9 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 		lastData := &atomic.Pointer[HeadData]{}
 		m, ok := b.ReadAndSub(ctx, func(ctx context.Context, m M) bool {
 			seq := currentSeq.Add(1)
+			report := ctxwg.Add(ctx)
 			return !inst.Spawn(func() {
+				defer report()
 				newData := cast(m)
 				if seq != currentSeq.Load() {
 					return

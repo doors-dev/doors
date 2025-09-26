@@ -179,7 +179,10 @@ func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M]) er
 	ch := c.root.Render(page.Render(c.navigator.getBeam()))
 	render, ok := <-ch
 	if !ok {
-		return errors.New("instance killed before render")
+		return errors.New("isntance killed during render, please check the logs")
+	}
+	if render.Err() != nil {
+		return render.Err()
 	}
 	render.InitImportMap(c.cspCollector)
 	if c.cspCollector != nil {
@@ -190,9 +193,6 @@ func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M]) er
 	gz := !c.instance.conf().ServerDisableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 	if gz {
 		w.Header().Set("Content-Encoding", "gzip")
-	}
-	if render.Err() != nil {
-		return render.Err()
 	}
 	if code, ok := c.store.Load(common.CtxStorageKeyStatus).(int); ok {
 		w.WriteHeader(code)

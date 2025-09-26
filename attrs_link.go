@@ -61,16 +61,45 @@ func PathMatcherStarts() PathMatcher {
 func PathMatcherParts(n uint8) PathMatcher {
 	return pathMatch([]any{"parts", n})
 }
-func QueryMatcherAll() QueryMatcher {
-	return queryMatch([]any{"all"})
+
+// QueryMatcherIgnoreSome excludes the given query parameters from comparison.
+func QueryMatcherIgnoreSome(params ...string) QueryMatcher {
+	return queryMatch([]any{"ignore_some", params})
 }
 
-func QueryMatcherIgnore() QueryMatcher {
-	return queryMatch([]any{"ignore"})
+// QueryMatcherOnlyIgnoreSome ignores the given parameters and matches all remaining.
+func QueryMatcherOnlyIgnoreSome(params ...string) []QueryMatcher {
+	return []QueryMatcher{QueryMatcherIgnoreSome(params...)}
 }
 
+// QueryMatcherIgnoreAll excludes all remaining query parameters from comparison.
+func QueryMatcherIgnoreAll() QueryMatcher {
+	return queryMatch([]any{"ignore_all"})
+}
+
+// QueryMatcherOnlyIgnoreAll ignores all query parameters.
+func QueryMatcherOnlyIgnoreAll() []QueryMatcher {
+	return []QueryMatcher{QueryMatcherIgnoreAll()}
+}
+
+// QueryMatcherSome matches only the provided query parameters.
 func QueryMatcherSome(params ...string) QueryMatcher {
-	return queryMatch([]any{"some", params})
+	return queryMatch([]any{"some"})
+}
+
+// QueryMatcherOnlySome matches the provided query parameters and ignores all others.
+func QueryMatcherOnlySome(params ...string) []QueryMatcher {
+	return []QueryMatcher{QueryMatcherSome(params...), QueryMatcherIgnoreAll()}
+}
+
+// QueryMatcherIfPresent matches the given parameters only if they are present.
+func QueryMatcherIfPresent(params ...string) QueryMatcher {
+	return queryMatch([]any{"if", params})
+}
+
+// QueryMatcherOnlyIfPresent matches the given parameters if present and ignores all others.
+func QueryMatcherOnlyIfPresent(params ...string) []QueryMatcher {
+	return []QueryMatcher{QueryMatcherIfPresent(params...), QueryMatcherIgnoreAll()}
 }
 
 // Active configures active link
@@ -78,8 +107,8 @@ func QueryMatcherSome(params ...string) QueryMatcher {
 type Active struct {
 	// Path match strategy
 	PathMatcher PathMatcher
-	// Query param match strategy
-	QueryMatcher QueryMatcher
+	// Query param match strategy, applied sequientially
+	QueryMatcher []QueryMatcher
 	// Indicators to apply when active
 	Indicator []Indicator
 }
@@ -93,6 +122,9 @@ type AHref struct {
 	Active Active
 	// Stop event propagation (for dynamic links). Optional.
 	StopPropagation bool
+	// Defines how the hook is scheduled (e.g. blocking, debounce).
+	// Optional.
+	Scope []Scope
 	// Visual indicators while the hook is running
 	// (for dynamic links). Optional.
 	Indicator []Indicator
@@ -109,9 +141,7 @@ func (h *AHref) active() []any {
 	if len(h.Active.Indicator) == 0 {
 		return nil
 	}
-	if common.IsNill(h.Active.QueryMatcher) {
-		h.Active.QueryMatcher = QueryMatcherAll()
-	}
+	h.Active.QueryMatcher = append(h.Active.QueryMatcher, queryMatch([]any{"all"}))
 	if common.IsNill(h.Active.PathMatcher) {
 		h.Active.PathMatcher = PathMatcherFull()
 	}
@@ -133,6 +163,7 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 		return
 	}
 	on, ok := link.ClickHandler()
+	h.Scope = append([]Scope{&ScopeBlocking{}}, h.Scope...)
 	if ok {
 		entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
 			Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
@@ -154,6 +185,7 @@ func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs 
 			StopPropagation: h.StopPropagation,
 		}, &front.Hook{
 			Indicate:  front.IntoIndicate(h.Indicator),
+			Scope:     front.IntoScopeSet(inst, h.Scope),
 			Before:    intoActions(ctx, h.Before),
 			OnError:   intoActions(ctx, h.OnError),
 			HookEntry: entry,

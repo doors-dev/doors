@@ -30,6 +30,9 @@ type keyEventHook struct {
 	// If true, only fires when the event occurs on this element itself.
 	// Optional.
 	ExactTarget bool
+	// Filters by event.key if provided.
+	// Optional.
+	Filter []string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
 	Scope []Scope
@@ -55,6 +58,7 @@ func (k *keyEventHook) init(event string, ctx context.Context, n door.Core, inst
 		ctx:  ctx,
 		capture: &front.KeyboardEventCapture{
 			Event:           event,
+			Filter:          k.Filter,
 			PreventDefault:  k.PreventDefault,
 			StopPropagation: k.StopPropagation,
 		},
@@ -79,6 +83,9 @@ type AKeyDown struct {
 	// If true, only fires when the event occurs on this element itself.
 	// Optional.
 	ExactTarget bool
+	// Filters by event.key if provided.
+	// Optional.
+	Filter []string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
 	Scope []Scope
@@ -123,6 +130,9 @@ type AKeyUp struct {
 	// If true, only fires when the event occurs on this element itself.
 	// Optional.
 	ExactTarget bool
+	// Filters by event.key if provided.
+	// Optional.
+	Filter []string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
 	Scope []Scope

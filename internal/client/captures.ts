@@ -14,6 +14,7 @@ interface EventOpt {
     preventDefault?: boolean;
     stopPropagation?: boolean;
     exactTarget?: boolean;
+    filter?: Array<string> | null;
 }
 interface InputOpt {
     excludeValue: boolean;
@@ -30,6 +31,11 @@ function applyEventOpt(event: Event, opt: EventOpt): boolean {
     }
     if (opt.stopPropagation) {
         event.stopPropagation();
+    }
+    if (opt.filter && opt.filter.length > 0) {
+        if (!opt.filter.includes(event['key'])) {
+            return false
+        }
     }
     return true
 }

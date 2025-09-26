@@ -89,10 +89,8 @@ func (n *Door) suspend(parent *tracker) {
 func (n *Door) reload(ctx context.Context) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx, "Door reload")
-	if !ok {
-		return ch
-	}
+	ch := make(chan error, 1)
+	common.LogCanceled(ctx, "Door reload")
 	if n.container == nil {
 		close(ch)
 		return ch
@@ -105,10 +103,8 @@ func (n *Door) reload(ctx context.Context) <-chan error {
 func (n *Door) clear(ctx context.Context) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx, "Door clear")
-	if !ok {
-		return ch
-	}
+	ch := make(chan error, 1)
+	common.LogCanceled(ctx, "Door clear")
 	n.content = nil
 	if n.container == nil {
 		n.mode = dynamic
@@ -122,10 +118,8 @@ func (n *Door) clear(ctx context.Context) <-chan error {
 func (n *Door) update(ctx context.Context, content templ.Component) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx, "Door update")
-	if !ok {
-		return ch
-	}
+	ch := make(chan error, 1)
+	common.LogCanceled(ctx, "Door update")
 	n.content = content
 	if n.container == nil {
 		n.mode = dynamic
@@ -140,10 +134,8 @@ func (n *Door) update(ctx context.Context, content templ.Component) <-chan error
 func (n *Door) remove(ctx context.Context) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx, "Door remove")
-	if !ok {
-		return ch
-	}
+	ch := make(chan error, 1)
+	common.LogCanceled(ctx, "Door remove")
 	n.mode = removed
 	if n.container == nil {
 		close(ch)
@@ -160,10 +152,8 @@ func (n *Door) remove(ctx context.Context) <-chan error {
 func (n *Door) replace(ctx context.Context, content templ.Component) <-chan error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx, "Door replace")
-	if !ok {
-		return ch
-	}
+	ch := make(chan error, 1)
+	common.LogCanceled(ctx, "Door replace")
 	n.mode = static
 	n.content = content
 	if n.container == nil {

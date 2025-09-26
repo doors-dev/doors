@@ -9,7 +9,7 @@
   ```
 
 - Install the [templ](https://templ.guide/quick-start/installation) CLI tool.
-- *Optional:* install [wgo](https://github.com/bokwoon95/wgo) for "live" reload 
+- Optional: install wgo for "live" reload 
 
 ##  2. Initialize the Go project and add *doors*
 

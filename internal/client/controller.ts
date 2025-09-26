@@ -455,7 +455,12 @@ class Controller {
     private delay = new ProgressiveDelay()
     deck = new Solitaire()
     tracker = new Tracker()
+    ready: Promise<undefined>
     constructor() {
+        let ready: any
+        this.ready = new Promise((res) => {
+            ready = res
+        })
         window.addEventListener("pagehide", () => {
             this.sleep()
         })
@@ -467,7 +472,8 @@ class Controller {
             }
         })
         document.addEventListener("DOMContentLoaded", () => {
-            this.ready()
+            this.onReady()
+            ready()
         })
         this.roll()
     }
@@ -475,7 +481,7 @@ class Controller {
     private resetTtl() {
         this.ttlTimer.reset()
     }
-    private ready() {
+    private onReady() {
         this.loaded = true
         doors.scan(document)
         if (this.state == state.dead) {
@@ -520,14 +526,12 @@ class Controller {
     private connect() {
         const results = this.tracker.collect()
         const lost = this.deck.collectLost()
-        // console.log("CONNECT", lost, results, this.connections.size)
         if (lost.length == 0 && results.size == 0 && this.connections.size > 1) {
             return
         }
         this.connections.add(new Connection(this, results, lost))
     }
     requestRoll(connection: Connection) {
-        // console.log("ROLL REQUESTED", this.connections.has(connection), this.connections.size)
         if (!this.connections.has(connection)) {
             return
         }
@@ -538,7 +542,6 @@ class Controller {
     }
     report(connection: Connection, report: Report, results: Results, lost: Lost) {
         this.connections.delete(connection)
-        // console.log(result, returned !== undefined, this.connections.size)
         if (lost.length > 0) {
             if (report == reports.ok) {
                 setTimeout(() => {
@@ -635,6 +638,7 @@ class Controller {
 const c = new Controller()
 
 export default {
+    ready: c.ready,
     gone() {
         c.kill()
     }

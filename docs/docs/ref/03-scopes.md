@@ -96,25 +96,33 @@ Separates immediate and frame events.
 @doors.AInput{
   Scope: []doors.Scope{frame.Scope(false)}, // immediate
 }
-
+<input>
 @doors.AClick{
   Scope: []doors.Scope{frame.Scope(true)}, // frame
 }
+<button>Submit</button>
 ```
 
-### Priority
+### Concurrent
 
-Cancels lower-priority events (pending or running) when a higher-priority event is triggered.
-
-**Advanced usage:**
+Can be "occupied" only by events with the same group id.
 
 ```templ
-{{ prio := &doors.ScopePriority{} }}
+{{ scope := &doors.ScopeConcurrent{} }}
+
+@doors.AInput{
+  Scope: []doors.Scope{scope.Scope(1)}, // group 1
+}
+<input>
 
 @doors.AClick{
-  Scope: []doors.Scope{prio.Scope(10)}, // higher number = higher priority
+  Scope: []doors.Scope{frame.Scope(0)},  // group 0
 }
+<button>Submit</button>
+
 ```
+
+
 
 ## Scope Pipelining
 

@@ -39,6 +39,22 @@ func A(ctx context.Context, a ...Attr) *Attrs {
 	}
 	return front.A(ctx, ar...)
 }
+/*
+type ASet struct {
+	Name string
+	Value string
+}
+func (a ASet) Init(_ context.Context, _ door.Core, _ instance.Core, attrs *front.Attrs) {
+	attrs.Set(a.Name, a.Value)
+}
+
+func (a ASet) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, a)
+}
+
+func (a ASet) Attr() AttrInit {
+	return a
+} */
 
 type eventAttr[E any] struct {
 	door      door.Core

@@ -110,13 +110,12 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 	thread := c.inst.Thread()
 	rm := common.NewRenderMap()
 	rw, _ := rm.Writer(c.id)
-
+	report := ctxwg.Add(userCtx)
 	call := &doorCall{
 		ctx:        c.parentCtx,
 		optimistic: c.inst.Conf().OptimisicSync,
 		action:     &action.DoorReplace{Id: c.id},
 		ch:         ch,
-		done:       ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{
 			Rm:    rm,
 			Index: c.id,
@@ -137,6 +136,7 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 		}
 	}, shredder.W(thread))
 	shredder.Run(func(t *shredder.Thread) {
+		defer report()
 		if t == nil || c.parentCtx.Err() != nil {
 			call.Cancel()
 			call.Clean()
@@ -160,13 +160,12 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 	tracker, parentCtx := c.newTacker()
 	rm := common.NewRenderMap()
 	rw, _ := rm.Writer(c.id)
-
+	report := ctxwg.Add(userCtx)
 	call := &doorCall{
 		ctx:        parentCtx,
 		optimistic: c.inst.Conf().OptimisicSync,
 		action:     &action.DoorUpdate{Id: c.id},
 		ch:         ch,
-		done:       ctxwg.Add(userCtx),
 		payload: &common.WritableRenderMap{
 			Rm:    rm,
 			Index: c.id,
@@ -177,6 +176,7 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 		if t == nil || parentCtx.Err() != nil {
 			call.Cancel()
 			call.Clean()
+			report()
 			return
 		}
 
@@ -188,6 +188,7 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 			err = content.Render(ctx, rw)
 		}
 		shredder.Run(func(t *shredder.Thread) {
+			defer report()
 			if t == nil || parentCtx.Err() != nil {
 				call.Cancel()
 				call.Clean()

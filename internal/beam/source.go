@@ -167,10 +167,8 @@ func (s *source[T]) Mutate(ctx context.Context, m func(T) T) {
 func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-chan error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	ch, ok := common.ResultChannel(ctx, "SourceBeam mutation")
-	if !ok {
-		return ch
-	}
+	ch := make(chan error, 1)
+	common.LogCanceled(ctx, "SourceBeam mutation")
 	ctx = common.ClearBlockingCtx(ctx)
 	new, update := m(s.values[s.seq])
 	if !update {

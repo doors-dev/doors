@@ -86,6 +86,7 @@ func RandId() string {
 	if err != nil {
 		log.Fatalf("failed to generate random bytes: %v", err)
 	}
+	randomBytes[0] |= 0x80
 	return base58.Encode(randomBytes)
 }
 

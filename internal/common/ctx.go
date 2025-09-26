@@ -30,13 +30,10 @@ const (
 	CtxStorageKeyStatus
 )
 
-func ResultChannel(ctx context.Context, action string) (chan error, bool) {
+func LogCanceled(ctx context.Context, action string)  {
 	ch := make(chan error, 1)
 	if ctx.Err() != nil {
 		ch <- context.Canceled
-		slog.Warn("Tried to perfrom " + action + " from canceled context")
-		close(ch)
-		return ch, false
+		slog.Warn("Tried to perfrom " + action + " from the canceled context")
 	}
-	return ch, true
 }

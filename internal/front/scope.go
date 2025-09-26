@@ -19,7 +19,7 @@ import (
 )
 
 func IntoScopeSet(inst instance.Core, scope []Scope) []*ScopeSet {
-	a := make([]*ScopeSet, len(scope)) 
+	a := make([]*ScopeSet, len(scope))
 	for i, s := range scope {
 		a[i] = s.Scope(inst)
 	}
@@ -82,11 +82,11 @@ func FrameScope(id string, frame bool) *ScopeSet {
 	}
 }
 
-func PriorityScope(id string, priority uint8) *ScopeSet {
+func ConcurrentScope(id string, groupId int) *ScopeSet {
 	return &ScopeSet{
 		Id:   id,
-		Type: "priority",
-		Opt:  priority,
+		Type: "concurrent",
+		Opt:  groupId,
 	}
 }
 

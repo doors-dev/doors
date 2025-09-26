@@ -8,12 +8,21 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 import { detached, id } from "./params"
-import { arraysEqual, doAfter } from "./lib"
+import { arraysEqual} from "./lib"
 import indicator from "./indicator"
 
 
 type PathMatchType = "full" | "starts" | "parts";
-type QueryMatchType = "all" | "some";
+
+const queryMatcherTypes = {
+    all: "all",
+    some: "some",
+    ignoreAll: "ignore_all",
+    ignoreSome: "ignore_some",
+    ifPresent: "if"
+} as const;
+
+type QueryMatchType = typeof queryMatcherTypes[keyof typeof queryMatcherTypes]
 
 
 type Cache = {
@@ -34,29 +43,23 @@ export class Navigator {
 
     }
 
+    private searchToMap(searchParams: URLSearchParams): Map<string, string[]> {
+        const map = new Map<string, string[]>();
+        for (const key of searchParams.keys()) {
+            map.set(key, searchParams.getAll(key));
+        }
+        return map;
+    }
+
     private searchEqual(
-        search1: URLSearchParams,
-        search2: URLSearchParams,
-        params?: string[]
+        a: Map<string, string[]>,
+        b: Map<string, string[]>
     ): boolean {
-        const toObj = (searchParams: URLSearchParams): Record<string, string[]> => {
-            const obj: Record<string, string[]> = {};
-            for (const key of searchParams.keys()) {
-                if (!params || params.length === 0 || params.includes(key)) {
-                    obj[key] = searchParams.getAll(key);
-                }
-            }
-            return obj;
-        };
-
-        const obj1 = toObj(search1);
-        const obj2 = toObj(search2);
-
-        if (!arraysEqual(Object.keys(obj1), Object.keys(obj2), false)) {
+        if (!arraysEqual([...a.keys()], [...b.keys()], false)) {
             return false;
         }
-        for (const key in obj1) {
-            if (!arraysEqual(obj1[key], obj2[key])) {
+        for (const [key, value] of a.entries()) {
+            if (!arraysEqual(value, b.get(key)!)) {
                 return false;
             }
         }
@@ -88,11 +91,9 @@ export class Navigator {
                 settings = JSON.parse(link.getAttribute(attrName)!)
                 link.setAttribute(attrName, "cached")
             }
-            const [pathMatchTuple, queryMatchTuple, indicators]: any = settings;
+            const [pathMatchTuple, queryMatchers, indicators]: any = settings;
             const pathMatch: PathMatchType = pathMatchTuple[0];
             const pathMatchArg: number | undefined = pathMatchTuple[1];
-            const queryMatch: QueryMatchType = queryMatchTuple[0];
-            const queryMatchArg: string[] | undefined = queryMatchTuple[1];
             const url = new URL(href, window.location.origin);
             let match = false;
             const newPath = this.trim(newUrl.pathname)
@@ -106,10 +107,44 @@ export class Navigator {
                 const linkMatchPath = linkPath.split("/").slice(0, pathMatchArg).join("/");
                 match = newMatchPath === linkMatchPath;
             }
-            if (match && queryMatch === "all") {
-                match = this.searchEqual(newUrl.searchParams, url.searchParams);
-            } else if (match && queryMatch === "some" && queryMatchArg) {
-                match = this.searchEqual(newUrl.searchParams, url.searchParams, queryMatchArg);
+            if (match) {
+                const newSearch = this.searchToMap(newUrl.searchParams)
+                const search = this.searchToMap(url.searchParams)
+                for (const matcher of queryMatchers) {
+                    const matchType: QueryMatchType = matcher[0];
+                    const matchArg: string[] | undefined = matcher[1];
+                    if (matchType == queryMatcherTypes.all) {
+                        match = this.searchEqual(newSearch, search);
+                        break
+                    }
+                    if (matchType == queryMatcherTypes.ignoreAll) {
+                        break
+                    }
+                    if (matchType == queryMatcherTypes.ignoreSome) {
+                        for (const param of matchArg!) {
+                            newSearch.delete(param)
+                            search.delete(param)
+                        }
+                    }
+                    if (matchType == queryMatcherTypes.ifPresent || matchType == queryMatcherTypes.some) {
+                        const a = new Map()
+                        const b = new Map()
+                        for (const param of matchArg!) {
+                            if (matchType == queryMatcherTypes.ifPresent && !newSearch.has(param)) {
+                                search.delete(param)
+                                continue
+                            }
+                            a.set(param, newSearch.get(param))
+                            newSearch.delete(param)
+                            b.set(param, search.get(param))
+                            search.delete(param)
+                        }
+                        match = this.searchEqual(a, b);
+                        if (!match) {
+                            break
+                        }
+                    }
+                }
             }
             const prevIndicator = cache?.indicator
             if (match) {
@@ -144,7 +179,7 @@ export class Navigator {
     }
 
     private urlAreEqual(url1: URL, url2: URL) {
-        return url1.pathname === url2.pathname && this.searchEqual(url1.searchParams, url2.searchParams)
+        return url1.pathname === url2.pathname && this.searchEqual(this.searchToMap(url1.searchParams), this.searchToMap(url2.searchParams))
     }
     public push(path: string, activate: boolean = true) {
         const newUrl = new URL(path, window.location.origin);
@@ -160,7 +195,7 @@ export class Navigator {
         const newUrl = new URL(path, window.location.origin);
         this.activateLinks(newUrl);
         const currentUrl = new URL(this.urlCurrent(), window.location.origin)
-        if (!this.urlAreEqual(currentUrl, newUrl) &&  !detached) {
+        if (!this.urlAreEqual(currentUrl, newUrl) && !detached) {
             history.replaceState(null, '', path);
             return
         }

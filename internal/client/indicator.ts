@@ -7,10 +7,10 @@
 // For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
-import {setDiff, arrayDiff, splitClass } from "./lib"
+import { setDiff, arrayDiff, splitClass } from "./lib"
 
 
-type SelectorType = "target" | "query" | "parent_query"
+type SelectorType = "target" | "query" | "query_all" | "parent_query"
 type Kind = "attr" | "class" | "remove_class" | "content"
 
 
@@ -31,41 +31,49 @@ function newIndicator(
 
     for (const entry of indicators) {
         const [[selectorType, query], kind, param1, param2] = entry
-        let el = target
+        const elements: Array<Element> = []
         if (selectorType === "query") {
-            el = document.querySelector(query!)
-        }
-        if (selectorType === "parent_query") {
-            if (el && el.parentElement) {
-                el = el.parentElement.closest(query!)
+            const element = document.querySelector(query!)
+            if (element) {
+                elements.push(element)
             }
-        }
-        if (!el) {
-            continue
-        }
-        let indication = indications.get(el)
-        if (!indication) {
-            indication = {
-                attrs: new Map<string, string>(),
-                classes: new Set(),
-                removeClasses: new Set(),
-                content: null,
+        } else if (selectorType === "query_all") {
+            elements.push(...document.querySelectorAll(query!))
+        } else if (selectorType === "parent_query") {
+            if (target && target.parentElement) {
+                const anchestor = target.parentElement.closest(query!)
+                if (anchestor) {
+                    elements.push(anchestor)
+                }
             }
-            indications.set(el, indication)
+        } else if (target) {
+            elements.push(target)
         }
-        switch (kind) {
-            case "attr":
-                indication.attrs.set(param1, param2!)
-                break
-            case "class":
-                splitClass(param1).forEach(c => indication.classes.add(c))
-                break
-            case "remove_class":
-                splitClass(param1).forEach(c => indication.removeClasses.add(c))
-                break
-            case "content":
-                indication.content = param1
-                break
+        for (const el of elements) {
+            let indication = indications.get(el)
+            if (!indication) {
+                indication = {
+                    attrs: new Map<string, string>(),
+                    classes: new Set(),
+                    removeClasses: new Set(),
+                    content: null,
+                }
+                indications.set(el, indication)
+            }
+            switch (kind) {
+                case "attr":
+                    indication.attrs.set(param1, param2!)
+                    break
+                case "class":
+                    splitClass(param1).forEach(c => indication.classes.add(c))
+                    break
+                case "remove_class":
+                    splitClass(param1).forEach(c => indication.removeClasses.add(c))
+                    break
+                case "content":
+                    indication.content = param1
+                    break
+            }
         }
     }
 

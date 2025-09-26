@@ -10,6 +10,7 @@
 import door from './door'
 import { capture } from './capture'
 import { HookErr, hookErrKinds } from './capture'
+import controller from './controller'
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
     const attrName = `data-d00r-hook:${name}`
@@ -34,11 +35,14 @@ class $D {
         return global
     }
 
+    ready(): Promise<undefined> {
+        return controller.ready
+    }
+
     on(name: string, handler: (arg: any) => any): void {
         door.on(this.anchor, name, handler)
     }
-
-    async rawHook(name: string, arg: any): Promise<Response> {
+    async fetchHook(name: string, arg: any): Promise<Response> {
         const hook = getHookParams(this.anchor, name)
         if (hook === undefined) {
             throw new HookErr(hookErrKinds.capture, new Error("hook " + name + " not found"))
@@ -47,7 +51,7 @@ class $D {
     }
 
     async hook(name: string, arg: any): Promise<any> {
-        const res = await this.rawHook(name, arg)
+        const res = await this.fetchHook(name, arg)
         return await res.json()
     }
 

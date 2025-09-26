@@ -25,6 +25,12 @@ export const arrayDiff = (a: Array<string>, b: Array<string>): [Array<string>, A
 }
 
 export const arraysEqual = (a: Array<string>, b: Array<string>, ordered = true) => {
+    if(a === b) {
+        return true
+    }
+    if(!a || !b) {
+        return false
+    }
     return a.length === b.length && a.every((val, i) => ordered ? val === b[i] : b.includes(val))
 }
 

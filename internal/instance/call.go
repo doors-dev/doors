@@ -88,3 +88,21 @@ func (c *SimpleCall) Result(r json.RawMessage, err error) {
 }
 
 func (c *SimpleCall) Clean() {}
+
+type reportHook uint64
+
+func (c reportHook) Params() action.CallParams {
+	return action.CallParams{}
+}
+
+func (c reportHook) Action() (action.Action, bool) {
+	return &action.ReportHook{HookId: uint64(c)}, true
+}
+
+func (C reportHook) Payload() common.Writable {
+	return common.WritableNone{}
+}
+
+func (c reportHook) Cancel()                             {}
+func (c reportHook) Result(r json.RawMessage, err error) {}
+func (c reportHook) Clean()                              {}

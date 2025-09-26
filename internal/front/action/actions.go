@@ -171,6 +171,20 @@ func (a *Indicate) Invocation() *Invocation {
 	}
 }
 
+type ReportHook struct {
+	HookId uint64
+}
+
+func (a *ReportHook) Log() string {
+	return "report hook"
+}
+func (a *ReportHook) Invocation() *Invocation {
+	return &Invocation{
+		name: "report_hook",
+		arg:  []any{a.HookId},
+	}
+}
+
 type Test struct {
 	Arg any
 }
