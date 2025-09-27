@@ -72,7 +72,8 @@ type Core interface {
 	SessionExpire(d time.Duration)
 	SessionEnd()
 	Call(call action.Call)
-	SimpleCall(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc
+	CallCtx(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc
+	CallCheck(check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
 	End()
 	IsDetached() bool
 	License() license.License

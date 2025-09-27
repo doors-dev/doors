@@ -23,15 +23,13 @@ import (
 	"github.com/doors-dev/doors/internal/path"
 )
 
-func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyAdapter, model *M, detached bool, rerouted bool, optimistic bool) *navigator[M] {
+func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyAdapter, model *M, detached bool, rerouted bool) *navigator[M] {
 	return &navigator[M]{
 		adapter:     adapter,
 		adapters:    adapters,
 		detached:    detached,
 		rerouted:    rerouted,
-		optimistic:  optimistic,
 		historyHead: &historyHead[M]{},
-		cancelPrev:  func() {},
 		model: beam.NewSourceBeamExt(*model, func(new, old M) bool {
 			return !reflect.DeepEqual(new, old)
 		}),
@@ -44,14 +42,13 @@ type navigator[M any] struct {
 	inst        Core
 	adapter     *path.Adapter[M]
 	adapters    map[string]path.AnyAdapter
-	optimistic  bool
 	detached    bool
 	rerouted    bool
 	model       beam.SourceBeam[M]
 	mu          sync.Mutex
 	historyHead *historyHead[M]
-	cancelPrev  context.CancelFunc
 	ctx         context.Context
+	seq         int
 }
 
 func (n *navigator[M]) isDetached() bool {
@@ -149,8 +146,19 @@ func (n *navigator[M]) pushHistory(ctx context.Context, ns *navigatorState[M], s
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if sync {
-		n.cancelPrev()
-		n.cancelPrev = n.inst.SimpleCall(ctx, &action.SetPath{Path: ns.path, Replace: replace}, nil, nil, action.CallParams{Optimistic: n.optimistic})
+		n.seq += 1
+		seq := n.seq
+		n.inst.CallCheck(
+			func() bool {
+				n.mu.Lock()
+				defer n.mu.Unlock()
+				return seq == n.seq
+			},
+			&action.SetPath{Path: ns.path, Replace: replace},
+			nil,
+			nil,
+			action.CallParams{},
+		)
 	}
 	n.historyHead.push(ns)
 }

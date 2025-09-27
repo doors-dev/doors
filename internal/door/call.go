@@ -23,7 +23,6 @@ type doorCall struct {
 	ch         chan error
 	action     action.Action
 	payload    common.Writable
-	optimistic bool
 }
 
 func (n *doorCall) Clean() {
@@ -60,7 +59,5 @@ func (c *doorCall) Payload() common.Writable {
 }
 
 func (c *doorCall) Params() action.CallParams {
-	return action.CallParams{
-		Optimistic: c.optimistic,
-	}
+	return action.CallParams{}
 }

@@ -46,11 +46,6 @@ type SystemConf struct {
 	// RequestTimeout is the max duration of a client-server request (hook).
 	// Default: 30s.
 	RequestTimeout time.Duration
-	// OptimisicSync makes all system front-end syncs
-	// resolve optimistically on successfull flush
-	// without front-end reporting, leading to early
-	// indication canceling.
-	OptimisicSync bool
 	// SolitairePing is the max idle time before rolling the request.
 	// Default: 15s.
 	SolitairePing time.Duration

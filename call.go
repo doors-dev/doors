@@ -62,7 +62,7 @@ func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], cont
 		slog.Error("Call attempt from the canceled context", slog.String("action", a.Log()))
 		return ch, func() {}
 	}
-	cancel := inst.SimpleCall(
+	cancel := inst.CallCtx(
 		ctx,
 		a,
 		func(rm json.RawMessage, err error) {

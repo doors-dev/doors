@@ -113,7 +113,6 @@ func (c *container) replace(userCtx context.Context, content templ.Component, ch
 	report := ctxwg.Add(userCtx)
 	call := &doorCall{
 		ctx:        c.parentCtx,
-		optimistic: c.inst.Conf().OptimisicSync,
 		action:     &action.DoorReplace{Id: c.id},
 		ch:         ch,
 		payload: &common.WritableRenderMap{
@@ -163,7 +162,6 @@ func (c *container) update(userCtx context.Context, content templ.Component, ch 
 	report := ctxwg.Add(userCtx)
 	call := &doorCall{
 		ctx:        parentCtx,
-		optimistic: c.inst.Conf().OptimisicSync,
 		action:     &action.DoorUpdate{Id: c.id},
 		ch:         ch,
 		payload: &common.WritableRenderMap{

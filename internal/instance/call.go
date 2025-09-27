@@ -20,7 +20,63 @@ import (
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
-func (c *core[M]) SimpleCall(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc {
+func (c *core[M]) CallCheck(check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+	call := &seqCall{
+		check:    check,
+		action:   action,
+		onResult: onResult,
+		onCancel: onCancel,
+		params:   params,
+	}
+	c.Call(call)
+}
+
+type seqCall struct {
+	check    func() bool
+	action   action.Action
+	onResult func(json.RawMessage, error)
+	onCancel func()
+	params   action.CallParams
+}
+
+func (c *seqCall) Params() action.CallParams {
+	return c.params
+}
+
+func (c *seqCall) Action() (action.Action, bool) {
+	if !c.check() {
+		return nil, false
+	}
+	return c.action, true
+}
+
+func (C *seqCall) Payload() common.Writable {
+	return common.WritableNone{}
+}
+
+func (c seqCall) Cancel() {
+	if c.onCancel == nil {
+		return
+	}
+	c.onCancel()
+}
+func (c *seqCall) Result(r json.RawMessage, err error) {
+	if err != nil {
+		slog.Error("Call failed", slog.String("action", c.action.Log()), slog.String("error", err.Error()))
+	}
+	if c.onResult == nil {
+		return
+	}
+	if err != nil {
+		c.onResult(r, errors.Join(errors.New("execution error"), err))
+		return
+	}
+	c.onResult(r, err)
+}
+
+func (c *seqCall) Clean() {}
+
+func (c *core[M]) CallCtx(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc {
 	if ctx.Err() != nil {
 		if onCancel != nil {
 			onCancel()
@@ -29,7 +85,7 @@ func (c *core[M]) SimpleCall(ctx context.Context, action action.Action, onResult
 	}
 	done := ctxwg.Add(ctx)
 	ctx, cancel := context.WithCancel(context.Background())
-	call := &SimpleCall{
+	call := &ctxCall{
 		ctx:      ctx,
 		done:     done,
 		action:   action,
@@ -41,7 +97,7 @@ func (c *core[M]) SimpleCall(ctx context.Context, action action.Action, onResult
 	return cancel
 }
 
-type SimpleCall struct {
+type ctxCall struct {
 	ctx      context.Context
 	action   action.Action
 	done     func()
@@ -50,29 +106,29 @@ type SimpleCall struct {
 	params   action.CallParams
 }
 
-func (c *SimpleCall) Params() action.CallParams {
+func (c *ctxCall) Params() action.CallParams {
 	return c.params
 }
 
-func (c *SimpleCall) Action() (action.Action, bool) {
+func (c *ctxCall) Action() (action.Action, bool) {
 	if c.ctx.Err() != nil {
 		return nil, false
 	}
 	return c.action, true
 }
 
-func (C *SimpleCall) Payload() common.Writable {
+func (C *ctxCall) Payload() common.Writable {
 	return common.WritableNone{}
 }
 
-func (c SimpleCall) Cancel() {
+func (c ctxCall) Cancel() {
 	defer c.done()
 	if c.onCancel == nil {
 		return
 	}
 	c.onCancel()
 }
-func (c *SimpleCall) Result(r json.RawMessage, err error) {
+func (c *ctxCall) Result(r json.RawMessage, err error) {
 	if err != nil {
 		slog.Error("Call failed", slog.String("action", c.action.Log()), slog.String("error", err.Error()))
 	}
@@ -87,7 +143,7 @@ func (c *SimpleCall) Result(r json.RawMessage, err error) {
 	c.onResult(r, err)
 }
 
-func (c *SimpleCall) Clean() {}
+func (c *ctxCall) Clean() {}
 
 type reportHook uint64
 

@@ -51,10 +51,10 @@ type aDyn struct {
 	seq         int
 }
 
-func (a *aDyn) getSeq() int {
+func (a *aDyn) check(seq int) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.seq
+	return a.seq == seq
 }
 
 func (a *aDyn) restore(seq int, value string, enable bool) {
@@ -71,43 +71,51 @@ func (a *aDyn) restore(seq int, value string, enable bool) {
 func (a *aDyn) Enable(ctx context.Context, enable bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	common.LogCanceled(ctx, "dynamic attribute enable")
 	prevValue := a.value
 	prevEnable := a.enable
-	if ctx.Err() != nil {
-		return
-	}
 	if a.enable == enable {
 		return
 	}
 	a.enable = enable
 	a.seq += 1
+	seq := a.seq
 	if !a.initialized {
 		return
 	}
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	call := &dynaCall{
-		seq:        a.seq,
-		attr:       a,
-		prevValue:  prevValue,
-		prevEnable: prevEnable,
-		optimistic: inst.Conf().OptimisicSync,
-	}
+	var act action.Action
 	if a.enable {
-		call.action = &action.DynaSet{
+		act = &action.DynaSet{
 			Id:    a.id,
 			Value: a.value,
 		}
 	} else {
-		call.action = &action.DynaRemove{
+		act = &action.DynaRemove{
 			Id: a.id,
 		}
 	}
-	inst.Call(call)
+	inst.CallCheck(
+		func() bool {
+			return a.check(seq)
+		},
+		act,
+		func(rm json.RawMessage, err error) {
+			if err == nil {
+				return
+			}
+			slog.Error("Dynamic attribute call err " + err.Error())
+			a.restore(seq, prevValue, prevEnable)
+		},
+		nil,
+		action.CallParams{},
+	)
 }
 
 func (a *aDyn) Value(ctx context.Context, value string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	common.LogCanceled(ctx, "dynamic attribute value")
 	prevValue := a.value
 	prevEnable := a.enable
 	if ctx.Err() != nil {
@@ -118,6 +126,7 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 	}
 	a.value = value
 	a.seq += 1
+	seq := a.seq
 	if !a.enable {
 		return
 	}
@@ -125,18 +134,24 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 		return
 	}
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	call := &dynaCall{
-		seq:  a.seq,
-		attr: a,
-		action: &action.DynaSet{
+	inst.CallCheck(
+		func() bool {
+			return a.check(seq)
+		},
+		&action.DynaSet{
 			Id:    a.id,
 			Value: a.value,
 		},
-		prevValue:  prevValue,
-		prevEnable: prevEnable,
-		optimistic: inst.Conf().OptimisicSync,
-	}
-	inst.Call(call)
+		func(rm json.RawMessage, err error) {
+			if err == nil {
+				return
+			}
+			slog.Error("Dynamic attribute call err " + err.Error())
+			a.restore(seq, prevValue, prevEnable)
+		},
+		nil,
+		action.CallParams{},
+	)
 }
 
 func (a *aDyn) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
@@ -158,43 +173,4 @@ func (a *aDyn) Attr() AttrInit {
 
 func (a *aDyn) Render(ctx context.Context, w io.Writer) error {
 	return front.AttrRender(ctx, w, a)
-}
-
-type dynaCall struct {
-	seq        int
-	attr       *aDyn
-	action     action.Action
-	prevValue  string
-	prevEnable bool
-	optimistic bool
-}
-
-func (c *dynaCall) Params() action.CallParams {
-	return action.CallParams{
-		Optimistic: c.optimistic,
-	}
-}
-func (c *dynaCall) Clean() {
-}
-
-func (c *dynaCall) Cancel() {
-}
-
-func (c *dynaCall) Action() (action.Action, bool) {
-	if c.seq != c.attr.getSeq() {
-		return nil, false
-	}
-	return c.action, true
-}
-
-func (c *dynaCall) Payload() common.Writable {
-	return common.WritableNone{}
-}
-
-func (c *dynaCall) Result(_ json.RawMessage, err error) {
-	if err == nil {
-		return
-	}
-	slog.Error("Dynamic attribute call err " + err.Error())
-	c.attr.restore(c.seq, c.prevValue, c.prevEnable)
 }
