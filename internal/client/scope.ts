@@ -95,10 +95,6 @@ export class Hook {
         }).then(r => {
             abortTimer!.cancel()
             if (r.ok) {
-                const after = r.headers.get("D00r-After")
-                if (after) {
-                    this.actions(JSON.parse(after))
-                }
                 runtime.hookOk(track, r)
                 return
             }
@@ -146,9 +142,13 @@ export class Hook {
             this.response = r
             return false
         }
-        this.res(r)
-        this.done()
+        const after = r.headers.get("D00r-After")
+        if (after) {
+            this.actions(JSON.parse(after))
+        }
         indicator.end(this.indiciatorId)
+        this.done()
+        this.res(r)
         return true
     }
     err(r: HookErr) {
