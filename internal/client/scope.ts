@@ -354,6 +354,7 @@ class ConcurrentScope extends Scope {
         const id = opt as number
         if (this.size != 1 && this.groupId != id) {
             hook.cancel()
+            return
         }
         this.groupId = id
         this.promote(hook)
