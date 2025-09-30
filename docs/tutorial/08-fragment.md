@@ -198,7 +198,7 @@ templ (d *categoryFragment) nav() {
 							// path must start with href
 							PathMatcher: doors.PathMatcherStarts(),
 							// ignore query params
-							QueryMatcher: doors.QueryMatcherIgnore(),
+							QueryMatcher: doors.QueryMatcherOnlyIgnoreAll(),
 						},
 					}
 					<a class="contrast">{ cat.Name }</a>

@@ -1,5 +1,7 @@
 # Initialize the Project
 
+> An alternative tutorial is available [here](https://dev.to/derstruct/go-devs-just-got-superpowers-2lb3).
+
 ## 1. Prepare the system
 
 * Ensure your [Go](https://go.dev/) is at least `1.24.1`; you can check in the terminal by running:
@@ -20,8 +22,6 @@ mkdir project
 cd project
 go mod init github.com/derstruct/project # address of your repo (actually can be anything)
 ```
-
-> You can find the code from this tutorial here [https://github.com/derstruct/doors-tutorial](https://github.com/derstruct/doors-tutorial). Branch name ~= part name.
 
 2. Get the *doors* dependency
 

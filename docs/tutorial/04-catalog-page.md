@@ -244,7 +244,7 @@ templ menu() {
 						// page path must start with href value to enable highlighting
 						PathMatcher: doors.PathMatcherStarts(),
 						// ignore query params 
-						QueryMatcher: doors.QueryMatcherIgnore(),
+						QueryMatcher: doors.QueryMatcherOnlyIgnoreAll(),
 					},
 				}
 				<a>services</a>

@@ -52,7 +52,7 @@ func (f *itemListFragment) pageHref(page int) doors.Attr {
 			// match path start (/catalog/:CatId)
 			PathMatcher: doors.PathMatcherStarts(),
 			// match query param page (not necessary in this case, just for demo)
-			QueryMatcher: doors.QueryMatcherSome("page"),
+			QueryMatcher: doors.QueryMatcherOnlySome("page"),
 		},
 		Model: Path{
 			IsCat: true,
