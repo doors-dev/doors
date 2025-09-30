@@ -17,8 +17,9 @@ router.Use(doors.UseSystemConf(doors.SystemConf{
 ```templ
 type SystemConf struct {
 	SessionInstanceLimit     int
-	SessionTTL							 time.Duration
+	SessionTTL				 time.Duration
 	InstanceGoroutineLimit   int
+	InstanceConnectTimeout   time.Duration
 	InstanceTTL              time.Duration
 	ServerCacheControl       string
 	ServerDisableGzip        bool
@@ -42,10 +43,13 @@ Key settings to understand:
 - **SessionInstanceLimit** — Max page instances per session. Oldest inactive suspended if exceeded.
    *Default: 12*
    
+
 - **SessionTTL** — Session lifetime policy. *Default: 0*
   
    Behavior at `0`: session ends when **no instances remain**, and the session cookie expires when the **browser closes**.
    
+- **InstanceConnectTimeout** — Controls how long new instance waits before shutdown for the first client connection. *Default: RequestTimeout*
+
 - **InstanceGoroutineLimit** — Max goroutines per instance for rendering and reactivity.
    *Default: 16*
    
