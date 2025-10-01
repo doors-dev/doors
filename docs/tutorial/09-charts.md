@@ -326,7 +326,7 @@ func (f *dashboardFragment) chartLoader(days bool) []doors.Indicator {
 > ![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/a863wm92vgjeozc7vugw.png)
 > where ~13 KB is PicoCSS and ~10 KB is the doors client.
 
-Next: [Authentication](./10-authentification.md)
+Next: [Authentication](./10-authentication.md)
 ---
 
 ## Code

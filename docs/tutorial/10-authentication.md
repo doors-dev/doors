@@ -1,4 +1,4 @@
-# Form & Authentification
+# Form & Authentication
 
 Let's make our dashboard protected,
 
