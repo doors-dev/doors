@@ -1,6 +1,6 @@
 # Form & Authentication
 
-Let's make our dashboard protected,
+Let's make our dashboard protected.
 
 ## 1. Database
 
