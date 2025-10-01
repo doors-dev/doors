@@ -45,9 +45,7 @@ func (p *player) hasLeader() bool {
 }
 
 func (p *player) normalize() {
-	if p.hp > p.maxHp {
-		p.hp = p.maxHp
-	}
+	p.hp = max(p.hp, p.maxHp)
 }
 
 func (p *player) promote(new *player, debuff bool) {
@@ -68,21 +66,19 @@ func (p *player) up() {
 	if p.hp < p.maxHp {
 		p.hp += 1
 	}
-	player := p
-	hits := len(p.limiter.players) / 2
-	for player.hasLeader() && hits > 0 {
-		if player.leader.hit() {
-			leaderId := player.leader.id
-			player.leader.id = player.id
-			player.id = leaderId
-			player.resetFull()
-			player.leader.resetLow()
-			p.limiter.players[player.id] = player
-			p.limiter.players[player.leader.id] = player.leader
-		}
-		player = player.leader
-		hits -= 1
+	if !p.hasLeader() {
+		return
 	}
+	if !p.leader.hit() {
+		return
+	}
+	leaderId := p.leader.id
+	p.leader.id = p.id
+	p.id = leaderId
+	p.resetFull()
+	p.leader.resetLow()
+	p.limiter.players[p.id] = p
+	p.limiter.players[p.leader.id] = p.leader
 }
 
 func (p *player) resetFull() {
@@ -90,7 +86,7 @@ func (p *player) resetFull() {
 }
 
 func (p *player) resetLow() {
-	p.hp = p.maxHp / 2
+	p.hp = max(p.maxHp/2, 1)
 }
 
 func (p *player) hit() bool {
@@ -107,7 +103,7 @@ type limiter struct {
 
 func newLimiter(limit int) *limiter {
 	if limit < 1 {
-		log.Fatalf("Limit can't be less than 1")
+		log.Fatalf("limiter: limit can't be less than 1")
 	}
 	return &limiter{
 		mu:      sync.Mutex{},
@@ -149,7 +145,7 @@ func (l *limiter) add(id string) string {
 	}
 	_, has := l.players[id]
 	if has {
-		log.Fatal("duplicate")
+		log.Fatal("limiter: duplicate")
 	}
 	l.players[id] = p
 	removed := ""
@@ -157,7 +153,7 @@ func (l *limiter) add(id string) string {
 		removed = l.tail.id
 		l.tail = l.tail.leader
 		if l.tail != nil && removed == l.tail.id {
-			log.Fatal("REMOVED ", removed, " new tail", l.tail.id)
+			log.Fatal("limiter: removed ", removed, " new tail", l.tail.id)
 		}
 		delete(l.players, removed)
 	}
