@@ -1,5 +1,7 @@
 # Initialize the Project
 
+> An alternative tutorial is available [here](https://dev.to/derstruct/go-devs-just-got-superpowers-2lb3).
+
 ## 1. Prepare the system
 
 * Ensure your [Go](https://go.dev/) is at least `1.24.1`; you can check in the terminal by running:
@@ -18,7 +20,7 @@
 ```bash
 mkdir project
 cd project
-go mod init github.com/derstruct/doors-dashboard # address of your repo (actually can be anything)
+go mod init github.com/derstruct/project # address of your repo (actually can be anything)
 ```
 
 2. Get the *doors* dependency
@@ -51,4 +53,4 @@ hello world
 
 ---
 
-Next: [Page](./02-page.md)
+Next: [Home Page](./02-home-page.md)

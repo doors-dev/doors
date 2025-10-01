@@ -22,8 +22,12 @@ Run in your project dir:
 >
 > I will research ways to improve this experience later.
 
-**From this point, live reloading is always enabled.**
+## 3. Check
+
+Open https://localhost:8443/, then edit the `<h1>` content in your `./home/page.templ`; the page should automatically reload with the new version.
+
+
 
 ---
 
-Next: [Integrations](./04-integrations.md)
+Next: [Catalog Page](./04-catalog-page.md)
