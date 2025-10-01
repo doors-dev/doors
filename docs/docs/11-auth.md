@@ -1,4 +1,4 @@
-# Authentification
+# Authentication
 
 For protected resources, you need to control authentication & authorization in the page handler.
 
