@@ -223,7 +223,7 @@ func (f *dashboardFragment) chartLoader() []doors.Indicator {
 
 ![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/czbrrzagzqst4ntm6nu6.gif)
 
-## 2. Optimization
+## 4. Optimization
 
 You may have noticed that weather and humidity don’t depend on the `units` value.
 

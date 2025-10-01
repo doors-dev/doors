@@ -161,7 +161,7 @@ templ (f *dashboardFragment) changeLocation(s dashboardSettings) {
 
 After clicking, the query parameters appear with default values. It’s okay, but not ideal.
 
-Provide nil for the defaults so the behavior is consistent:
+Provide `nil` for the defaults so the behavior is consistent:
 
 ```templ
 templ (f *dashboardFragment) changeLocation(s dashboardSettings) {
@@ -188,6 +188,7 @@ templ (f *dashboardFragment) changeLocation(s dashboardSettings) {
 ```
 
 **Result:**
+
 ![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/kg15lmf5psmrwsjvqo1i.gif)
 
 ### Switch Units
