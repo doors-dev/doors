@@ -71,7 +71,7 @@ export class Hook {
     }
     private actions(actions: Array<Action>) {
         for (const [name, arg] of actions) {
-            const [_, err] = action(name, arg, { element: this.params.event?.target as any, now: true })
+            const [_, err] = action(name, arg, { element: this.params.event?.target as any })
             if (err) {
                 console.error("after hookaction err", err)
             }

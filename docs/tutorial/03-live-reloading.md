@@ -24,6 +24,5 @@ Run in your project dir:
 
 **From this point, live reloading is always enabled.**
 
----
-
 Next: [Integrations](./04-integrations.md)
+---

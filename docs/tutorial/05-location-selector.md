@@ -202,7 +202,9 @@ templ (f *locationSelectorFragment) input() {
 
 Country and city selection can use **Door** only, without any reactive state.
 
-However, in multi-step forms and complex UIs, this "low-level" approach spreads logic across handlers and hurts readability and debuggability. A single source of truth in that case significantly reduces mental overhead.
+However, in multi-step forms and complex UIs, this "low-level" approach spreads logic across handlers and hurts readability and debuggability. 
+
+A single source of truth in that case significantly reduces mental overhead.
 
 ### Country Selection
 
@@ -301,6 +303,7 @@ templ (f *locationSelectorFragment) options(term string) {
 ```
 
 > `BlockingScope` cancels all new events while the previous one is being processed. It reduces unnecessary requests and clarifies intent.
+>
 > Also, note that we used the same scope set for all search options, which effectively means that events from all handlers pass through a single pipeline, allowing only one active handler.
 
 **Let's see how selection works with reactive state:**
@@ -329,15 +332,11 @@ The country selector is a prototype for an abstract place selector. Comment it o
 
 Plan:
 
-
-
 1. Add **Source Beam** to the location selector that holds combined country and city data. 
 
 2. Derive separate **Beams** for country and city values.
 
 3. Transform our previous country selector into an abstract "place" selector.
-
-   
 
 4. Write the location selector render function with the place selectors.
 
@@ -576,19 +575,11 @@ templ (f *locationSelectorFragment) Render() {
 It has a few important properties:
 1. **Triggers subscribers only on value change.** By default it uses `== `to decide if an update is needed; you can supply a custom equality function.
 
-   
-
 1. **Synchronized with rendering.** During a render pass, all participating nodes observe the same value.
-
-   
 
 1. **Propagates changes top-to-bottom.** In other words, subscribers who are responsible for more significant parts of the DOM will be triggered first.
 
-   
-
 1. **Stale propagation is canceled**. Cancels stale propagation if the value changes mid-propagation (override with `NoSkip` on **Source Beam** if needed).
-
-   
 
 1. **Derived beams update as a group.** Subscription handlers run in parallel on a goroutine pool.
 
@@ -601,8 +592,6 @@ Missing keyboard support in a form is annoying.
 Add keyboard support:
 
 1. Autofocus on the input.
-
-   
 
 2. Tab and enter support on options.
 
@@ -694,15 +683,12 @@ templ (f *placeSelector) options(term string) {
 
 ![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/td8ivowweqpjb0ibptpw.gif)
 
----
-
 Next: [Path and Title](./06-path-and-title.md)
-
 ---
 
 ## Code
 
-`./location_selector.templ`
+./location_selector.templ
 
 ```templ
 package main
@@ -908,4 +894,3 @@ templ (f *placeSelector) options(term string) {
 	}
 }
 ```
-

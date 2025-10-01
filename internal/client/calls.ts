@@ -20,18 +20,13 @@ type Options = {
     error?: HookErr,
     payload?: string,
     element?: Element,
-    now?: boolean
 }
 
 const actions = {
-    location_reload: (opt: Options) => {
-        if (opt.now) {
+    location_reload: (_: Options) => {
+        doAfter(() => {
             location.reload()
-        } else {
-            doAfter(() => {
-                location.reload()
-            })
-        }
+        })
     },
     indicate: (opt: Options, duration: number, indicatations: Array<IndicatorEntry>) => {
         const id = indicator.start(opt.element ?? null, indicatations)
@@ -42,20 +37,16 @@ const actions = {
     report_hook: (_: Options, track: number) => {
         report(track)
     },
-    location_replace: (opt: Options, href: string, origin: boolean) => {
+    location_replace: (_: Options, href: string, origin: boolean) => {
         let url: URL
         if (origin) {
             url = new URL(href, window.location.origin);
         } else {
             url = new URL(href)
         }
-        if (opt.now) {
+        doAfter(() => {
             location.replace(url.toString())
-        } else {
-            doAfter(() => {
-                location.replace(url.toString())
-            })
-        }
+        })
     },
     scroll: (_: Options, selector: string, smooth: boolean) => {
         const el = document.querySelector(selector)
@@ -63,20 +54,16 @@ const actions = {
             el.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
         }
     },
-    location_assign: (opt: Options, href: string, origin: boolean) => {
+    location_assign: (_: Options, href: string, origin: boolean) => {
         let url: URL
         if (origin) {
             url = new URL(href, window.location.origin);
         } else {
             url = new URL(href)
         }
-        if (opt.now) {
+        doAfter(() => {
             location.assign(url.toString())
-        } else {
-            doAfter(() => {
-                location.assign(url.toString())
-            })
-        }
+        })
     },
     emit: (opt: Options, name: string, arg: any, doorId: number): any => {
         const handler = doors.getHandler(doorId, name)

@@ -11,8 +11,11 @@ Let’s build a dynamic, reactive dashboard app — written entirely in Go. Alon
 Framework is optimized for HTTP/2/3. Without SSL, the browser limits the number of simultaneous requests to 6, which can cause issues in some rare, highly interactive and heavy-sync scenarios.
 
 > _6 requests are not enough?_ 
+>
 > Each event goes via an individual HTTP request (it has benefits, e.g., native form data support). With some long-running processing and no concurrency control enabled, it's easy to hit the limit.
+>
 > _What about overhead?_
+>
 > The HTTP/2/3 multiplexing and header compression keep the cost of additional requests low; we are cool. 
 
 Cook self-signed SSL certs:
@@ -87,7 +90,9 @@ templ Template(p Page) {
 ```
 
 Two notes:
+
 1. We include the framework’s assets; that’s crucial.
+
 2. Instead of just `<link rel="stylesheet" href="...">`, we used `doors.ImportExternalStyle`, which also collects information for. [CSP](https://content-security-policy.com/) header generation. CSP is disabled by default, but this prepares us for it.
 
 > `doors.Import...` handles local, embedded, and external CSS and JS assets. For JavaScript/TypeScript modules, it eenables build/bundle steps and generates an import map
@@ -101,13 +106,19 @@ Two notes:
 In _doors_, the URI is decoded into a **Path Model**. It supports path variants, parameters, and query values. 
 
 Our path will have two variants:
+
 * `/` location selector
+
 * `/:Id` dashboard for selected location
 
 One parameter:
+
 * Id of the city
-And two query values: 
+
+ And two query values: 
+
 * forecast days 
+
 * units (metric/imperial)
 
 We’ll omit query values for now and add them later.
@@ -123,6 +134,7 @@ type Path struct {
 ```
 
 * The framework uses `path` tags to match the request path against the provided pattern. 
+
 * The matched variant’s field is set to true.
 
 ### Page Component
@@ -208,11 +220,11 @@ templ generate && go run .
 
 ![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/4u2ulst63r75togk3dfg.png)
 
----
+
 
 Next: [Live Reloading](./03-live-reloading.md)
-
 ---
+
 
 ## Code
 
@@ -320,4 +332,3 @@ func main() {
 	}
 }
 ```
-

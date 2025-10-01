@@ -159,8 +159,6 @@ templ (f *dashboardFragment) changeLocation(s dashboardSettings) {
 
 ![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/3lk0hxej1q53ans2h2qg.gif)
 
-
-
 After clicking, the query parameters appear with default values. It’s okay, but not ideal.
 
 Provide nil for the defaults so the behavior is consistent:
@@ -396,10 +394,7 @@ templ (f *dashboardFragment) changeDays(u driver.Units) {
 
 ![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ommxxt8egdwxbcnrwc8a.gif)
 
----
-
 Next:  [Charts](./09-charts.md)
-
 ---
 
 ## Code

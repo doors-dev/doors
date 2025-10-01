@@ -157,17 +157,15 @@ func (inst *Instance[M]) Id() string {
 
 func (inst *Instance[M]) end(cause endCause) {
 	inst.mu.Lock()
+	defer inst.mu.Unlock()
 	if inst.killed {
-		inst.mu.Unlock()
 		return
 	}
 	inst.session.removeInstance(inst.id)
 	inst.killed = true
 	if inst.core == nil {
-		inst.mu.Unlock()
 		return
 	}
-	inst.mu.Unlock()
 	inst.core.end(cause)
 }
 

@@ -540,6 +540,5 @@ func init() {
 
 ```
 
----
-
 Next: [Location Selector](./05-location-selector.md)
+---

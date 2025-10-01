@@ -359,7 +359,7 @@ templ (hp *page) logout() {
 
 ---
 
-## Final Code
+##  Code
 
 `./page.templ`
 

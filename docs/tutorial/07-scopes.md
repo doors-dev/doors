@@ -117,10 +117,7 @@ templ (f *locationSelectorFragment) submit(p driver.Place) {
 
 > Concurrency control is necessary due to the framework’s non-blocking event model. This is a major advantage of _doors_ over Phoenix LiveView or Blazor Server, enabling highly interactive UIs without UX compromises.
 
----
-
 Next: [Menu](./08-menu.md)
-
 ---
 
 Code
@@ -360,4 +357,3 @@ templ (f *placeSelector) options(term string) {
 	}
 }
 ```
-

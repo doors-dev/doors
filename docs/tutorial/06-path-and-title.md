@@ -1,4 +1,4 @@
-## Path and Title
+# Path and Title
 
 ## 1. Path Variants
 
@@ -209,10 +209,7 @@ templ (hp *page) Head() {
 
 > Besides `title`, it also supports `<meta>` tags.
 
----
-
-Next: [Advanced Scopes Usage](./07-scopes.md)
-
+Next: [Advanced Scope Usage](./07-scopes.md)
 ---
 
 ## Code

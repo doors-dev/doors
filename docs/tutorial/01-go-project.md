@@ -47,8 +47,5 @@ $ go run .
 hello world
 ```
 
-
-
----
-
 Next: [Page](./02-page.md)
+---
