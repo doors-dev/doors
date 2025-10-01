@@ -1,10 +1,10 @@
 # Form & Authentification
 
-Let's make our dashboard protected
+Let's make our dashboard protected,
 
 ## 1. Database
 
-Basic session storage with sqlite
+Basic session storage with sqlite:
 
 `./driver/sessions.db`
 
@@ -489,6 +489,123 @@ templ (hp *page) logout() {
 		}
 		<button class="secondary">Log Out</button>
 	</section>
+}
+```
+
+`./login.templ`
+
+```templ
+package main
+
+import (
+	"context"
+	"github.com/derstruct/doors-dashboard/driver"
+	"github.com/doors-dev/doors"
+	"net/http"
+	"time"
+)
+
+func login() templ.Component {
+	return doors.F(&loginFragment{
+		// create dynamic attribute "class" with value "hide"
+		// to use on the login error message
+		messageClass: doors.NewADyn("class", "hide", true),
+	})
+}
+
+// login credentials ("tutorial style")
+const userLogin = "admin"
+const userPassword = "password123"
+const sessionDuration = time.Hour * 24
+
+type loginFragment struct {
+	messageClass doors.ADyn
+}
+
+// type to decode the form data
+type loginData struct {
+	Login    string `form:"login"`
+	Password string `form:"password"`
+}
+
+func (f *loginFragment) submit(ctx context.Context, r doors.RForm[loginData]) bool {
+	// check user credentials
+	if r.Data().Login != userLogin || r.Data().Password != userPassword {
+		// unset dynamic class attribute, show error message
+		f.messageClass.Enable(ctx, false)
+		return false
+	}
+	// add session
+	session := driver.Sessions.Add(r.Data().Login, sessionDuration)
+	// set cookie
+	r.SetCookie(&http.Cookie{
+		Name:     "session",
+		Value:    session.Token,
+		Expires:  time.Now().Add(sessionDuration),
+		Path:     "/",
+		HttpOnly: true,
+	})
+	// perform actions after the request on the client side
+	r.After([]doors.Action{
+		// reload the page
+		doors.ActionLocationReload{},
+		// pro tip: keep showing indication while the page is reloading
+		doors.ActionIndicate{
+			Duration:  10 * time.Second,
+			Indicator: doors.IndicatorOnlyAttrQuery("#login-submit", "aria-busy", "true"),
+		},
+	})
+	// set doors session expiration (to not outlive authorization)
+	doors.SessionExpire(ctx, sessionDuration)
+	return true
+}
+
+templ (f *loginFragment) Render() {
+	<h1>Log In</h1>
+	// form submit handler 
+	@doors.ASubmit[loginData]{
+		// to prevent repeated submission
+		Scope: doors.ScopeOnlyBlocking(),
+		// indicate on the button
+		Indicator: doors.IndicatorOnlyAttrQuery("#login-submit", "aria-busy", "true"),
+		// handle
+		On: f.submit,
+	}
+	<form>
+		<fieldset>
+			<label>
+				Login
+				<input
+					name="login"
+					required="true"
+				/>
+			</label>
+			<label>
+				Password
+				<input
+					type="password"
+					name="password"
+					required="true"
+				/>
+			</label>
+			@f.errorMessage()
+		</fieldset>
+		<button id="login-submit" role="submit">Log In</button>
+	</form>
+}
+
+// error message component
+templ (l *loginFragment) errorMessage() {
+	@doors.Style() {
+		<style>
+            .hide {
+                display: none
+            }
+        </style>
+	}
+	// attach dynamic attribute
+	@l.messageClass
+	<p><mark>wrong password or login</mark></p>
 }
 ```
 

@@ -342,7 +342,7 @@ Plan:
 
 Let's **Go**!
 
-### 1. Create a **Source Beam** that holds country and city data.
+### Create a **Source Beam** that holds country and city data.
 
 ```templ
 type selectedLocation struct {
@@ -362,7 +362,7 @@ type locationSelectorFragment struct {
 }
 ```
 
-### 2. Derive the country and city **Beams**.
+### Derive the country and city **Beams**.
 
 ```templ
 func locationSelector() templ.Component {
@@ -389,7 +389,7 @@ type locationSelectorFragment struct {
 }
 ```
 
-### 3. Abstract the place selector.
+### Abstract the place selector.
 
 Structure:
 
@@ -521,7 +521,7 @@ templ (f *placeSelector) options(term string) {
 }
 ```
 
-### 4. Use our place selectors in the location selector render.
+### Use our place selectors in the location selector render.
 
 ```templ
 templ (f *locationSelectorFragment) Render() {
@@ -644,7 +644,7 @@ templ focus(id string) {
 
 > `doors.Script` is awesome. It converts inline script into a minified (unless configured otherwise), cacheable script with src, protects global scope, and enables `await`.  Additionally, it compiles TypeScript if you provide `type="application/typescript"` attribute.
 
-### Enabling Tab + Enter
+#### Enabling Tab + Enter
 
 Attach a key event hook and add `tabindex` to options:
 

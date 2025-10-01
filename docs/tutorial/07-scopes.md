@@ -120,7 +120,7 @@ templ (f *locationSelectorFragment) submit(p driver.Place) {
 Next: [Menu](./08-menu.md)
 ---
 
-Code
+## Code
 
 `./location_selector.templ`
 

@@ -19,13 +19,10 @@ templ (f *dashboardFragment) temperatureChart(city driver.City) {
 			@doors.E(func(ctx context.Context) templ.Component {
 				// read the injected value
 				s := ctx.Value("settings").(dashboardSettings)
-			
 				// request temperature data
 				values, _ := driver.Weather.Temperature(ctx, city, s.units, s.days)
-			
 				// generate SVG
 				svg, _ := driver.ChartLine(values.Values, values.Labels, s.units.Temperature())
-			
 				// src with the custom request handler attached
 				return doors.ARawSrc{
 					// remove the hook when served to allow svg garbage collection
