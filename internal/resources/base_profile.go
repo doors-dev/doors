@@ -18,7 +18,7 @@ const minify bool = true
 
 func (b BaseProfile) Options(profile string) api.BuildOptions {
 	return api.BuildOptions{
-		Target:            api.ES2017,
+		Target:            api.ES2022,
 		MinifySyntax:      minify,
 		MinifyWhitespace:  minify,
 		MinifyIdentifiers: minify,

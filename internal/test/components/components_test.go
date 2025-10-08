@@ -12,7 +12,7 @@ import (
 func TestTitle(t *testing.T) {
 	p := common.RandId()
 	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
+		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
 			return pr.Page(&test.Page{
 				H: head,
 				F: &LinksFragment{

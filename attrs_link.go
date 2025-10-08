@@ -58,8 +58,9 @@ func PathMatcherStarts() PathMatcher {
 	return pathMatch([]any{"starts"})
 }
 
-func PathMatcherParts(n uint8) PathMatcher {
-	return pathMatch([]any{"parts", n})
+// PathMatcherParts checks if path parts by specified indexes matche
+func PathMatcherParts(i ...int) PathMatcher {
+	return pathMatch([]any{"parts", i})
 }
 
 // QueryMatcherIgnoreSome excludes the given query parameters from comparison.

@@ -12,11 +12,14 @@ package doors
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxstore"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
-	"time"
+	"github.com/mr-tron/base58"
+	"github.com/zeebo/blake3"
 )
 
 // SessionExpire sets the maximum lifetime of the current session.
@@ -94,7 +97,7 @@ func InstanceRemove(ctx context.Context, key any) any {
 type Location = path.Location
 
 // NewLocation encodes model into a Location using the registered adapter
-// for the model's type. 
+// for the model's type.
 // Returns an error if no adapter is registered or encoding fails.
 func NewLocation(ctx context.Context, model any) (Location, error) {
 	adapters := ctx.Value(common.CtxKeyAdapters).(map[string]path.AnyAdapter)
@@ -113,9 +116,18 @@ func NewLocation(ctx context.Context, model any) (Location, error) {
 }
 
 // RandId returns a cryptographically secure, URL-safe random ID.
-// Suitable for sessions, instances, tokens. Case-sensitive.
+// Suitable for sessions, instances, tokens, attributes. Case-sensitive.
 func RandId() string {
 	return common.RandId()
+}
+
+// HashId creates ID using provided string, hashbased.
+// For the same string outputs the same result.
+// Suitable for HTML attributes.
+func HashId(string string) string {
+	hash := blake3.Sum256(common.AsBytes(string))
+	hash[0] |= 0x80
+	return base58.Encode(hash[:16])
 }
 
 // AllowBlocking returns a context that suppresses warnings when used
@@ -123,4 +135,3 @@ func RandId() string {
 func AllowBlocking(ctx context.Context) context.Context {
 	return common.SetBlockingCtx(ctx)
 }
-

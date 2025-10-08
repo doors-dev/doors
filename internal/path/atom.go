@@ -20,6 +20,7 @@ const (
 	NoCapture Capture = iota
 	CapturePart
 	CaptureToEnd
+	CaptureToEndOpt
 )
 
 type atom struct {
@@ -47,6 +48,9 @@ func (a *atom) encode(m any) ([]string, error) {
 	}
 	part := a.capture.get(m)
 	if len(part) == 0 {
+		if a.captureType == CaptureToEndOpt {
+			return []string{}, nil
+		}
 		return nil, errors.New("Part value cannot be empty")
 	}
 	parts := []string{part}
@@ -57,7 +61,7 @@ func (a *atom) encode(m any) ([]string, error) {
 }
 
 func (a *atom) decode(p []rune, next []*atom) (mutations, bool) {
-	if a.captureType == CaptureToEnd {
+	if a.captureType == CaptureToEnd || a.captureType == CaptureToEndOpt {
 		return a.matchCaptureToEnd(p)
 	}
 	if a.captureType == NoCapture {
@@ -67,6 +71,9 @@ func (a *atom) decode(p []rune, next []*atom) (mutations, bool) {
 }
 
 func (a *atom) matchCaptureToEnd(p []rune) (mutations, bool) {
+	if len(p) == 0 && a.captureType == CaptureToEnd {
+		return nil, false
+	}
 	muts := []mutation{func(m any) error {
 		return a.capture.set(m, string(p))
 	}}
@@ -83,22 +90,16 @@ func (a *atom) matchNoCapture(p []rune, next []*atom) (mutations, bool) {
 		}
 	}
 	start := len(a.runes)
-	if len(p) == start {
-		if len(next) != 0 {
-			return nil, false
-		}
-		return []mutation{}, true
-	}
-	if a.tail {
+	if a.tail && len(p) > start {
 		if p[start] != '/' {
 			return nil, false
 		}
 		start += 1
 	}
+	if len(p) == start && len(next) == 0 {
+		return []mutation{}, true
+	}
 	if len(next) == 0 {
-		if len(p) == start {
-			return []mutation{}, true
-		}
 		return nil, false
 	}
 	return next[0].decode(p[start:], next[1:])
@@ -124,15 +125,12 @@ func (a *atom) matchCapturePart(p []rune, next []*atom) (mutations, bool) {
 	muts := []mutation{func(m any) error {
 		return a.capture.set(m, string(value))
 	}}
-	if len(p) == start {
-		if len(next) == 0 {
-			return muts, true
-		}
+	if len(p) == start && len(next) == 0 {
+		return muts, true
+	}
+	if len(next) == 0 {
 		return nil, false
 	}
-    if len(p) > start && len(next) == 0 {
-        return nil, false
-    }
 	m, ok := next[0].decode(p[start:], next[1:])
 	if !ok {
 		return nil, false
@@ -141,7 +139,7 @@ func (a *atom) matchCapturePart(p []rune, next []*atom) (mutations, bool) {
 }
 
 func (a *atom) collectParams(s map[string][]*atom) {
-	if a.captureType == CapturePart || a.captureType == CaptureToEnd {
+	if a.captureType == CapturePart || a.captureType == CaptureToEnd || a.captureType == CaptureToEndOpt {
 		name := string(a.runes)
 		arr, has := s[name]
 		if !has {
@@ -159,7 +157,7 @@ func (a *atom) setCapture(c *capture) {
 
 func (a *atom) addTo(branch *branch) error {
 	if len(a.runes) == 0 {
-		if a.captureType == CapturePart || a.captureType == CaptureToEnd {
+		if a.captureType == CapturePart || a.captureType == CaptureToEnd || a.captureType == CaptureToEndOpt {
 			return errors.New("Capture syntax error: capture name not provided")
 		}
 		if a.tail {
@@ -174,7 +172,7 @@ func (a *atom) addTo(branch *branch) error {
 }
 
 func (a *atom) append(r rune) error {
-	if a.captureType == CaptureToEnd {
+	if a.captureType == CaptureToEnd || a.captureType == CaptureToEndOpt {
 		return errors.New("To end capture syntax error")
 	}
 	a.runes = append(a.runes, r)
@@ -194,7 +192,7 @@ func (a *atom) setTail() {
 }
 
 func (a *atom) isEnd() bool {
-	return a.captureType == CaptureToEnd
+	return a.captureType == CaptureToEnd || a.captureType == CaptureToEndOpt
 }
 
 func (a *atom) captureToEnd() error {
@@ -205,5 +203,16 @@ func (a *atom) captureToEnd() error {
 		return errors.New("Capture syntax error, name not provided")
 	}
 	a.captureType = CaptureToEnd
+	return nil
+}
+
+func (a *atom) captureToEndOpt() error {
+	if a.captureType != CapturePart {
+		return errors.New("Capture to end syntax error: provide field name")
+	}
+	if len(a.runes) == 0 {
+		return errors.New("Capture syntax error, name not provided")
+	}
+	a.captureType = CaptureToEndOpt
 	return nil
 }

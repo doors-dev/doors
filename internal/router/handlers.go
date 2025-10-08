@@ -83,7 +83,7 @@ func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page anyPageResponse, opt *instance.Options) {
+func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page responseAnyApp, opt *instance.Options) {
 	new, session := rr.ensureSession(r, w)
 	inst, ok := page.intoInstance(session, opt)
 	if !ok {
@@ -130,7 +130,7 @@ func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
 	l := path.NewRequestLocation(r)
 	var model any = nil
 	var response Response = nil
-	var page anyPageResponse = nil
+	var page responseAnyApp = nil
 	var counter = 0
 	opt := &instance.Options{
 		Detached: false,
@@ -151,7 +151,7 @@ main:
 			m := model
 			model = nil
 			name := path.GetAdapterName(m)
-			pageRoute, ok := rr.pageRoutes[name]
+			pageRoute, ok := rr.modelRoutes[name]
 			if !ok {
 				break
 			}
@@ -172,15 +172,18 @@ main:
 				ctx := context.WithValue(r.Context(), common.CtxKeyAdapters, rr.Adapters())
 				res.Content.Render(ctx, w)
 				return true
-			case *RerouteResponse:
+			case *ResponseReroute:
 				if res.Detached {
 					opt.Detached = true
 				}
 				opt.Rerouted = true
 				model = res.Model
-			case *RedirectResponse:
+			case *ResponseRawRedirect:
+				http.Redirect(w, r, res.URL, res.Status)
+				return true
+			case *ResponseRedirect:
 				name := path.GetAdapterName(res.Model)
-				adapter, ok := rr.adapters[name]
+				adapter, ok := rr.modelAdapters[name]
 				if !ok {
 					msg := "Adapter " + name + " not found"
 					slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", msg))
@@ -199,14 +202,14 @@ main:
 				}
 				http.Redirect(w, r, location.String(), res.Status)
 				return true
-			case anyPageResponse:
+			case responseAnyApp:
 				page = res
 			default:
 				log.Fatalf("Unsupported response type")
 			}
 			continue
 		}
-		for _, route := range rr.pageRouteList {
+		for _, route := range rr.modelRouteList {
 			resp, ok := route.handleLocation(w, r, l)
 			if ok {
 				response = resp

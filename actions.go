@@ -116,6 +116,23 @@ func (a ActionLocationAssign) action(ctx context.Context, inst instance.Core, do
 	}, action.CallParams{Timeout: inst.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
+// ActionRawLocationAssign navigates to a specified URL
+type ActionRawLocationAssign struct {
+	URL string
+}
+
+// ActionOnlyRawLocationAssign returns a single ActionLocationAssign.
+func ActionOnlyRawLocationAssign(url string) []Action {
+	return []Action{ActionRawLocationAssign{URL: url}}
+}
+
+func (a ActionRawLocationAssign) action(ctx context.Context, inst instance.Core, door door.Core) (action.Action, action.CallParams, error) {
+	return &action.LocationAssign{
+		URL:    a.URL,
+		Origin: false,
+	}, action.CallParams{Timeout: inst.Conf().InstanceTTL, Optimistic: true}, nil
+}
+
 // ActionScroll scrolls to the first element matching Selector.
 type ActionScroll struct {
 	Selector string

@@ -36,7 +36,14 @@ func NewRouter() Router {
 // Use represents a router modification that can be used to configure routing behavior.
 type Use = router.Use
 
-// UsePage registers a page handler for a path model type M.
+// Deprecated: Use UseModel
+func UsePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Use {
+	return UseModel(func(m ModelRouter[M], r RModel[M]) ModelRoute {
+		return handler(m.(PageRouter[M]), r)
+	})
+}
+
+// UseModel registers a model handler for a path model type M.
 // The model defines path/query patterns via struct tags.
 //
 // Example:
@@ -48,16 +55,12 @@ type Use = router.Use
 //	    ID   int                                  // Captured from :ID parameter
 //	    Tag  *string `query:"tag"`               // Query parameter ?tag=golang
 //	}
-//
-//	router.Use(UsePage(func(p PageRouter[BlogPath], r RPage[BlogPath]) PageRoute {
-//	   return p.Page(&blog{})
-//	}))
-func UsePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Use {
-	return router.UsePage(func(r *router.Request[M]) router.Response {
-		pr := &pageRequest[M]{
+func UseModel[M any](handler func(m ModelRouter[M], r RModel[M]) ModelRoute) Use {
+	return router.UseModel(func(r *router.Request[M]) router.Response {
+		mr := &modelRequest[M]{
 			r: r,
 		}
-		return handler(pr, pr)
+		return handler(mr, mr)
 	})
 }
 

@@ -45,8 +45,13 @@ func newBranch(path string, marker field) (*branch, error) {
 			if err != nil {
 				return nil, err
 			}
+		case '*':
+			err := a.captureToEndOpt()
+			if err != nil {
+				return nil, err
+			}
 		case '/':
-            a.setTail()
+			a.setTail()
 			err := a.addTo(b)
 			if err != nil {
 				return nil, err
@@ -56,7 +61,7 @@ func newBranch(path string, marker field) (*branch, error) {
 			a.append(r)
 		}
 	}
-    a.setTail()
+	a.setTail()
 	a.addTo(b)
 	return b, nil
 }
@@ -69,7 +74,7 @@ func (b *branch) setLastTail() {
 }
 
 func (b *branch) setMark(m any) {
-    b.marker.set(m)
+	b.marker.set(m)
 }
 
 func (b *branch) encode(m any) ([]string, error) {
@@ -109,7 +114,6 @@ func (b *branch) collectParams(s map[string][]*atom) {
 		p.collectParams(s)
 	}
 }
-
 
 func (b *branch) append(part *atom) error {
 	if len(b.atoms) > 0 && b.atoms[len(b.atoms)-1].isEnd() {

@@ -33,8 +33,9 @@ type AnyInstance interface {
 	end(endCause)
 }
 
-type Page[M any] interface {
-	Render(s beam.SourceBeam[M]) templ.Component
+type App[M any] interface {
+	Init(path beam.SourceBeam[M])
+	Render() templ.Component
 }
 
 type Options struct {
@@ -42,7 +43,7 @@ type Options struct {
 	Rerouted bool
 }
 
-func NewInstance[M any](sess *Session, page Page[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
+func NewInstance[M any](sess *Session, page App[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
 	inst := &Instance[M]{
 		id:        common.RandId(),
 		navigator: newNavigator(adapter, sess.router.Adapters(), m, opt.Detached, opt.Rerouted),
@@ -59,7 +60,7 @@ type Instance[M any] struct {
 	killed    bool
 	id        string
 	navigator *navigator[M]
-	page      Page[M]
+	page      App[M]
 	opt       *Options
 	core      *core[M]
 	session   *Session

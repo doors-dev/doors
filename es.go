@@ -46,7 +46,7 @@ type ESOptions struct {
 
 func (opt ESOptions) Options(_profile string) api.BuildOptions {
 	return api.BuildOptions{
-		Target:            api.ES2017,
+		Target:            api.ES2022,
 		External:          opt.External,
 		MinifySyntax:      opt.Minify,
 		MinifyWhitespace:  opt.Minify,

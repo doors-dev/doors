@@ -10,7 +10,7 @@
 package router
 
 import (
-	"log"
+	"errors"
 	"net/http"
 	"sync"
 	"time"
@@ -30,8 +30,8 @@ func NewRouter() (router *Router) {
 	router = &Router{
 		pool:            shredder.NewPool(conf.InstanceGoroutineLimit),
 		sessions:        sync.Map{},
-		adapters:        make(map[string]path.AnyAdapter),
-		pageRoutes:      make(map[string]anyPageRoute),
+		modelAdapters:   make(map[string]path.AnyAdapter),
+		modelRoutes:     make(map[string]anyModelRoute),
 		fallback:        nil,
 		conf:            conf,
 		buildProfiles:   resources.BaseProfile{},
@@ -57,9 +57,9 @@ func (s sessionHooks) Delete(string) {}
 type Router struct {
 	lisence         license.License
 	sessions        sync.Map
-	adapters        map[string]path.AnyAdapter
-	pageRoutes      map[string]anyPageRoute
-	pageRouteList   []anyPageRoute
+	modelAdapters   map[string]path.AnyAdapter
+	modelRoutes     map[string]anyModelRoute
+	modelRouteList  []anyModelRoute
 	routes          []Route
 	fallback        http.Handler
 	pool            *shredder.Pool
@@ -92,7 +92,7 @@ func (rr *Router) RemoveSession(id string) {
 	rr.sessionCallback.Delete(id)
 }
 func (rr *Router) Adapters() map[string]path.AnyAdapter {
-	return rr.adapters
+	return rr.modelAdapters
 }
 
 func (rr *Router) BuildProfiles() resources.BuildProfiles {
@@ -139,15 +139,15 @@ func (rr *Router) getSession(r *http.Request) *instance.Session {
 	return v.(*instance.Session)
 }
 
-func (rr *Router) addPage(page anyPageRoute) {
-	name := page.getName()
-	_, has := rr.pageRoutes[name]
+func (rr *Router) addModelRoute(modelRoute anyModelRoute) {
+	name := modelRoute.getName()
+	_, has := rr.modelRoutes[name]
 	if has {
-		log.Fatal("Can't register same model twice ", name)
+		panic(errors.New("Can't register same model twice " + name))
 	}
-	rr.pageRoutes[name] = page
-	rr.adapters[name] = page.getAdapter()
-	rr.pageRouteList = append(rr.pageRouteList, page)
+	rr.modelRoutes[name] = modelRoute
+	rr.modelAdapters[name] = modelRoute.getAdapter()
+	rr.modelRouteList = append(rr.modelRouteList, modelRoute)
 }
 
 func (rr *Router) addRoute(r Route) {

@@ -170,14 +170,15 @@ func (c *core[M]) Call(call action.Call) {
 	c.solitaire.Call(call)
 }
 
-func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page Page[M]) error {
+func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page App[M]) error {
 	ctx := context.WithValue(context.Background(), common.CtxKeyInstance, c)
 	ctx = c.store.Inject(ctx)
 	ctx = c.instance.getSession().getStorage().Inject(ctx)
 	ctx = context.WithValue(ctx, common.CtxKeyAdapters, c.instance.getSession().getRouter().Adapters())
 	c.root = door.NewRoot(ctx, c)
 	c.navigator.init(c.root.Ctx(), c)
-	ch := c.root.Render(page.Render(c.navigator.getBeam()))
+	page.Init(c.navigator.getBeam())
+	ch := c.root.Render(page.Render())
 	render, ok := <-ch
 	if !ok {
 		return errors.New("isntance killed during render, please check the logs")

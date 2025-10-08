@@ -8,7 +8,7 @@
 // To purchase a license, visit https://doors.dev or contact sales@doors.dev.
 
 import { detached, id } from "./params"
-import { arraysEqual} from "./lib"
+import { arraysEqual } from "./lib"
 import indicator from "./indicator"
 
 
@@ -93,7 +93,7 @@ export class Navigator {
             }
             const [pathMatchTuple, queryMatchers, indicators]: any = settings;
             const pathMatch: PathMatchType = pathMatchTuple[0];
-            const pathMatchArg: number | undefined = pathMatchTuple[1];
+            const pathMatchArg: [number] | undefined = pathMatchTuple[1];
             const url = new URL(href, window.location.origin);
             let match = false;
             const newPath = this.trim(newUrl.pathname)
@@ -103,9 +103,14 @@ export class Navigator {
             } else if (pathMatch === "starts") {
                 match = newPath.startsWith(linkPath);
             } else if (pathMatch === "parts" && pathMatchArg !== undefined) {
-                const newMatchPath = newPath.split("/").slice(0, pathMatchArg).join("/");
-                const linkMatchPath = linkPath.split("/").slice(0, pathMatchArg).join("/");
-                match = newMatchPath === linkMatchPath;
+                const newMatchPath = newPath.split("/")
+                const linkMatchPath = linkPath.split("/")
+                for (const index of pathMatchArg) {
+                    if (newMatchPath[index] !== linkMatchPath[index]) {
+                        match = false
+                        break
+                    }
+                }
             }
             if (match) {
                 const newSearch = this.searchToMap(newUrl.searchParams)

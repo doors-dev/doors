@@ -133,8 +133,11 @@ func newToEndCapture(f field) (*capture, error) {
 		}
 	} else if f.f.Type.Kind() == reflect.Slice && f.f.Type.Elem().Kind() == reflect.String {
 		set = func(m any, value string) error {
-			vals := strings.Split(value, "/")
 			v := reflect.ValueOf(m).Elem()
+			vals := make([]string, 0)
+			if len(value) > 0 {
+				vals = strings.Split(value, "/")
+			}
 			v.Field(f.i).Set(reflect.ValueOf(vals))
 			return nil
 		}

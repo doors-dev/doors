@@ -12,6 +12,7 @@ package doors
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/a-h/templ"
@@ -39,22 +40,32 @@ func A(ctx context.Context, a ...Attr) *Attrs {
 	}
 	return front.A(ctx, ar...)
 }
-/*
-type ASet struct {
-	Name string
-	Value string
-}
-func (a ASet) Init(_ context.Context, _ door.Core, _ instance.Core, attrs *front.Attrs) {
-	attrs.Set(a.Name, a.Value)
+
+func AList(pairs ...string) AMap {
+	m := make(map[string]any, len(pairs)/2)
+	for i := 0; i < len(pairs); i += 2 {
+		value := ""
+		if len(pairs) > i+1 {
+			value = pairs[i+1]
+		}
+		m[pairs[i]] = value
+	}
+	return m
 }
 
-func (a ASet) Render(ctx context.Context, w io.Writer) error {
+type AMap map[string]any
+
+func (a AMap) Init(_ context.Context, _ door.Core, _ instance.Core, attrs *front.Attrs) {
+	attrs.SetRaw(templ.Attributes(a))
+}
+
+func (a AMap) Render(ctx context.Context, w io.Writer) error {
 	return front.AttrRender(ctx, w, a)
 }
 
-func (a ASet) Attr() AttrInit {
+func (a AMap) Attr() AttrInit {
 	return a
-} */
+}
 
 type eventAttr[E any] struct {
 	door      door.Core

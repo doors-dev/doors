@@ -341,7 +341,7 @@ func (r *Registry) ModuleBytesTS(content []byte, profile string) (*Resource, err
 	return r.create(key, countent, true, "application/javascript"), nil
 }
 
-func (r *Registry) ModuleRaw(path string) (*Resource, error) {
+func (r *Registry) JSRaw(path string) (*Resource, error) {
 	h := blake3.New()
 	h.WriteString("raw")
 	h.WriteString(path)
@@ -357,7 +357,7 @@ func (r *Registry) ModuleRaw(path string) (*Resource, error) {
 	return r.create(key, content, true, "application/javascript"), nil
 }
 
-func (r *Registry) ModuleRawBytes(content []byte) (*Resource, error) {
+func (r *Registry) JSRawBytes(content []byte) (*Resource, error) {
 	h := blake3.New()
 	h.WriteString("raw_bytes")
 	h.Write(content)

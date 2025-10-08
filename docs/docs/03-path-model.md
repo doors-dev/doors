@@ -42,7 +42,7 @@ type Path struct {
 
 ### Capture To End
 
-You can also match and capture any path "to end" using `+` after the last (must be last) part capture.
+You can also match and capture any path "to end" using `+` after the last (must be last) part capture. Cannot be empty.
 
 ```go
 type Path struct {
@@ -55,6 +55,20 @@ type Path struct {
 >
 > For ease of use, the path pattern is matched to an already URL-decoded string. That means you can't match or use "/", ":", and "+" characters inside path part values, as they will always be treated as pattern syntax. 
 
+### Optional Capture To End
+
+You can also match and capture any path "to end" using `*` after the last (must be last) part capture.  Can be empty.
+
+```go
+type Path struct {
+  Path bool `path:"/info/:Rest*"` // match /info/* where * any path (incl. empty)
+	Rest string // must be string or []string for "to end" capture
+}
+```
+
+> **LIMITATIONS**
+>
+> For ease of use, the path pattern is matched to an already URL-decoded string. That means you can't match or use "/", ":", "+", "*" characters inside path part values, as they will always be treated as pattern syntax. 
 
 ### Query Params
 

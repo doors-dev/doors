@@ -110,7 +110,7 @@ func (s *Bro) url(path string) string {
 
 func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
 	return NewBro(b,
-		doors.UsePage(func(pr doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
+		doors.UsePage(func(pr doors.PageRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
 			return pr.Page(&Page{
 				F: f(),
 			})

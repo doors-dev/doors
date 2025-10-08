@@ -37,6 +37,71 @@ func importPath(r *resources.Resource, path string, name string, ext string) str
 	return router.ResourcePath(r, fileName)
 }
 
+// ImportCommon imports a Common JS from the provided path
+type ImportCommon struct {
+	// File system path to the module.
+	// Required.
+	Path string
+	// Custom name.
+	// Optional.
+	Name string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
+}
+
+func (m ImportCommon) info() string {
+	return "common raw " + m.Path
+}
+
+func (m ImportCommon) Render(ctx context.Context, w io.Writer) error {
+	man := newImportManager(ctx)
+	s, err := man.registry.JSRaw(m.Path)
+	if err != nil {
+		return err
+	}
+	path := importPath(s, m.Path, m.Name, "js")
+	return importCommon(path, m.Attrs).Render(ctx, w)
+}
+
+// ImportCommonExternal imports an external Common JS and adds it to CSP.
+type ImportCommonExternal struct {
+	// External URL to the module.
+	// Required.
+	Src string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
+}
+
+func (m ImportCommonExternal) info() string {
+	return "external common " + m.Src
+}
+
+func (m ImportCommonExternal) Render(ctx context.Context, w io.Writer) error {
+	man := newImportManager(ctx)
+	man.collector.ScriptSource(m.Src)
+	return importCommon(m.Src, m.Attrs).Render(ctx, w)
+}
+
+// ImportCommonHosted just generates script tag
+type ImportCommonHosted struct {
+	// Full path to the hosted module (application root).
+	// Required.
+	Src string
+	// Additional HTML attributes for the script tag.
+	// Optional.
+	Attrs templ.Attributes
+}
+
+func (m ImportCommonHosted) info() string {
+	return "hosted common " + m.Src
+}
+
+func (m ImportCommonHosted) Render(ctx context.Context, w io.Writer) error {
+	return importCommon(m.Src, m.Attrs).Render(ctx, w)
+}
+
 // ImportModule imports a JS/TS file, processes it with esbuild, and exposes it as an ES module.
 type ImportModule struct {
 	// Import map specifier name.
@@ -77,12 +142,13 @@ func (m ImportModule) Render(ctx context.Context, w io.Writer) error {
 		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		return importScript(path, m.Attrs).Render(ctx, w)
+		return importModule(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
 
 // ImportModuleBytes imports JS/TS content from bytes, processes it with esbuild, and exposes it as an ES module.
+// Deprecated: use ImportModule instead.
 type ImportModuleBytes struct {
 	// Import map specifier name.
 	// Optional.
@@ -97,13 +163,12 @@ type ImportModuleBytes struct {
 	// Optional.
 	Load bool
 	// Custom name for the generated file.
-	// Required.
+	// Optional.
 	Name string
 	// Additional HTML attributes for the script tag.
 	// Optional.
 	Attrs templ.Attributes
 }
-
 
 func (m ImportModuleBytes) info() string {
 	return "module bytes"
@@ -124,7 +189,7 @@ func (m ImportModuleBytes) Render(ctx context.Context, w io.Writer) error {
 		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		return importScript(path, m.Attrs).Render(ctx, w)
+		return importModule(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -158,7 +223,7 @@ func (m ImportModuleRaw) Render(ctx context.Context, w io.Writer) error {
 		return nil
 	}
 	man := newImportManager(ctx)
-	s, err := man.registry.ModuleRaw(m.Path)
+	s, err := man.registry.JSRaw(m.Path)
 	if err != nil {
 		return err
 	}
@@ -167,12 +232,13 @@ func (m ImportModuleRaw) Render(ctx context.Context, w io.Writer) error {
 		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		return importScript(path, m.Attrs).Render(ctx, w)
+		return importModule(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
 
 // ImportModuleRawBytes serves raw JS content from bytes without processing.
+// Deprecated: use ImportModuleRaw instead.
 type ImportModuleRawBytes struct {
 	// Import map specifier name.
 	// Optional.
@@ -201,7 +267,7 @@ func (m ImportModuleRawBytes) Render(ctx context.Context, w io.Writer) error {
 		return nil
 	}
 	man := newImportManager(ctx)
-	s, err := man.registry.ModuleRawBytes(m.Content)
+	s, err := man.registry.JSRawBytes(m.Content)
 	if err != nil {
 		return err
 	}
@@ -210,11 +276,10 @@ func (m ImportModuleRawBytes) Render(ctx context.Context, w io.Writer) error {
 		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		return importScript(path, m.Attrs).Render(ctx, w)
+		return importModule(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
-
 
 // ImportModuleBundle bundles a JS entry with its deps into one file using esbuild.
 type ImportModuleBundle struct {
@@ -257,11 +322,10 @@ func (m ImportModuleBundle) Render(ctx context.Context, w io.Writer) error {
 		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		return importScript(path, m.Attrs).Render(ctx, w)
+		return importModule(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
-
 
 // ImportModuleBundleFS bundles a JS entry from an fs.FS using esbuild.
 type ImportModuleBundleFS struct {
@@ -310,11 +374,10 @@ func (m ImportModuleBundleFS) Render(ctx context.Context, w io.Writer) error {
 		man.rm.AddImport(m.Specifier, path)
 	}
 	if m.Load {
-		return importScript(path, m.Attrs).Render(ctx, w)
+		return importModule(path, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
-
 
 // ImportModuleHosted registers a locally hosted JS module without processing.
 type ImportModuleHosted struct {
@@ -346,11 +409,10 @@ func (m ImportModuleHosted) Render(ctx context.Context, w io.Writer) error {
 		man.rm.AddImport(m.Specifier, m.Src)
 	}
 	if m.Load {
-		return importScript(m.Src, m.Attrs).Render(ctx, w)
+		return importModule(m.Src, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
-
 
 // ImportModuleExternal registers an external JS module URL and adds it to CSP.
 type ImportModuleExternal struct {
@@ -368,7 +430,6 @@ type ImportModuleExternal struct {
 	Attrs templ.Attributes
 }
 
-
 func (m ImportModuleExternal) info() string {
 	return "external module " + m.Src
 }
@@ -384,7 +445,7 @@ func (m ImportModuleExternal) Render(ctx context.Context, w io.Writer) error {
 		man.rm.AddImport(m.Specifier, m.Src)
 	}
 	if m.Load {
-		return importScript(m.Src, m.Attrs).Render(ctx, w)
+		return importModule(m.Src, m.Attrs).Render(ctx, w)
 	}
 	return nil
 }
@@ -427,7 +488,6 @@ func (m ImportStyleExternal) Render(ctx context.Context, w io.Writer) error {
 	return importStyle(m.Href, m.Attrs).Render(ctx, w)
 }
 
-
 // ImportStyle processes a CSS file (e.g., minify) and links it.
 type ImportStyle struct {
 	// File system path to the CSS file.
@@ -440,7 +500,6 @@ type ImportStyle struct {
 	// Optional.
 	Attrs templ.Attributes
 }
-
 
 func (m ImportStyle) info() string {
 	return "style " + m.Path
@@ -456,8 +515,8 @@ func (m ImportStyle) Render(ctx context.Context, w io.Writer) error {
 	return importStyle(path, m.Attrs).Render(ctx, w)
 }
 
-
 // ImportStyleBytes processes CSS content from bytes (e.g., minify) and links it.
+// Deprecated: use ImportStyle instead.
 type ImportStyleBytes struct {
 	// CSS source code.
 	// Required.
@@ -469,7 +528,6 @@ type ImportStyleBytes struct {
 	// Optional.
 	Attrs templ.Attributes
 }
-
 
 func (m ImportStyleBytes) info() string {
 	return "style bytes"
@@ -503,20 +561,28 @@ func newImportManager(ctx context.Context) *importManager {
 	}
 }
 
-func importScript(src string, attrs templ.Attributes) templ.Component {
+func importModule(src string, attrs templ.Attributes) templ.Component {
 	if attrs == nil {
 		attrs = make(templ.Attributes, 2)
 	}
-    attrs["type"] = "module"
-    attrs["src"] = src
-    return renderRaw("script", attrs, nil, true)
+	attrs["type"] = "module"
+	attrs["src"] = src
+	return renderRaw("script", attrs, nil, true)
+}
+
+func importCommon(src string, attrs templ.Attributes) templ.Component {
+	if attrs == nil {
+		attrs = make(templ.Attributes, 2)
+	}
+	attrs["src"] = src
+	return renderRaw("script", attrs, nil, true)
 }
 
 func importStyle(href string, attrs templ.Attributes) templ.Component {
 	if attrs == nil {
 		attrs = make(templ.Attributes, 2)
 	}
-    attrs["rel"] = "stylesheet"
-    attrs["href"] = href
-    return renderRaw("link", attrs, nil, false)
+	attrs["rel"] = "stylesheet"
+	attrs["href"] = href
+	return renderRaw("link", attrs, nil, false)
 }

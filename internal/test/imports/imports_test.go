@@ -23,7 +23,7 @@ func checkColor(t *testing.T, page *rod.Page) {
 
 func testStyle(t *testing.T, h func(doors.SourceBeam[test.Path]) templ.Component) {
 	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
+		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
 			return pr.Page(&test.Page{
 				Header: "Testing Imports",
 				H:      h,
@@ -40,7 +40,7 @@ func testStyle(t *testing.T, h func(doors.SourceBeam[test.Path]) templ.Component
 }
 func testModule(t *testing.T, h func(doors.SourceBeam[test.Path]) templ.Component) {
 	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
+		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
 			return pr.Page(&test.Page{
 				Header: "Testing Imports",
 				H:      h,
@@ -96,7 +96,7 @@ func TestStyle(t *testing.T) {
 
 func TestReact(t *testing.T) {
 	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
+		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
 			return pr.Page(&test.Page{
 				H: reactHead,
 				F: &ReactFragment{},
@@ -122,7 +122,7 @@ func TestReact(t *testing.T) {
 
 func TestFiles(t *testing.T) {
 	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RPage[test.Path]) doors.PageRoute {
+		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
 			return pr.Page(&test.Page{
 				H: staticFiles,
 				F: &Empty{},
