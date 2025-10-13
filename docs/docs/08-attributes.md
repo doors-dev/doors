@@ -58,10 +58,10 @@ func attrs() []doors.Attr {
 }
 ```
 
-Attach them using `@doors.Any()`:
+Attach them using `doors.Attributes` or `doors.Any`:
 
 ```templ
-@doors.Any(attrs())
+@doors.Attributes(attrs())
 <input type="text" name="name">
 ```
 

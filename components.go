@@ -202,14 +202,16 @@ func Inject[T any](key any, beam Beam[T]) templ.Component {
 	})
 }
 
-func Switch[T any](beam Beam[T], showIf func(T) bool) templ.Component {
+
+// If shows children if the beam value is true
+func If(beam Beam[bool]) templ.Component {
 	return E(func(ctx context.Context) templ.Component {
 		children := templ.GetChildren(ctx)
 		ctx = templ.ClearChildren(ctx)
 		door := &Door{}
-		ok := beam.Sub(ctx, func(ctx context.Context, v T) bool {
-			if !showIf(v) {
-				door.Update(ctx, nil)
+		ok := beam.Sub(ctx, func(ctx context.Context, v bool) bool {
+			if !v {
+				door.Clear(ctx)
 				return false
 			}
 			door.Update(ctx, children)
@@ -220,9 +222,6 @@ func Switch[T any](beam Beam[T], showIf func(T) bool) templ.Component {
 		}
 		return door
 	})
-}
-func If(beam Beam[bool]) templ.Component {
-	return Switch(beam, func(v bool) bool { return v })
 }
 
 // E evaluates the provided function at render time and returns the resulting templ.Component.
@@ -545,6 +544,13 @@ func Text(value any) templ.Component {
 	})
 }
 
+func Attributes(a []Attr) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		attrs := A(ctx, a...)
+		return attrs.Render(ctx, w)
+	})
+}
+
 
 func Any(v any) templ.Component {
 	c, ok := v.(templ.Component)
@@ -561,11 +567,7 @@ func Any(v any) templ.Component {
 	}
 	as, ok := v.([]Attr)
 	if ok {
-		com := make([]templ.Component, len(as))
-		for i, a := range as {
-			com[i] = a
-		}
-		return templ.Join(com...)
+		return Attributes(as)
 	}
 	e, ok := v.(func(context.Context) templ.Component)
 	if ok {

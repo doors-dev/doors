@@ -47,16 +47,15 @@ func Inject[T any](key any, beam Beam[T]) templ.Component
 
 Writes the Beam value into `context.Context` for children. Re-renders on updates.
 
-### `Switch` and `If`
+### `If`
 
 ```go
-func Switch[T any](beam Beam[T], showIf func(T) bool) templ.Component
 func If(beam Beam[bool]) templ.Component
 ```
 
 Conditional rendering based on a Beam.
 
-> It's not recommended to use ` If` and `Switch` to change the content. **Only show-hide single block**. For content switching  use `Sub` or `Inject` helpers to guarantee smooth behavior.
+> It's not recommended to use multiple `If` to change the content. **Only show-hide single block**. For content switching  use `Sub` or `Inject` helpers to guarantee smooth behavior.
 
 ---
 
@@ -129,6 +128,16 @@ Render any value as escaped text.
 
 ---
 
+## Attributes
+
+```go
+func Attributes([]Attr) templ.Component
+```
+
+Renders slice of attributes sequentialy
+
+---
+
 ## Any
 
 ```go
@@ -140,7 +149,7 @@ Type-directed rendering:
 - `templ.Component` → render directly  
 - `doors.Fragment` → via `F()`  
 - `[]templ.Component` → sequential render  
-- `[]Attr` → each rendered as attribute  
+- `[]Attr` → renders attributes
 - `func(context.Context) templ.Component` → via `E()`  
 - `func(context.Context)` → via `Run()`  
 - otherwise → `Text()`
