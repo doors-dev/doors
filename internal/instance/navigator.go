@@ -30,8 +30,8 @@ func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyA
 		detached:    detached,
 		rerouted:    rerouted,
 		historyHead: &historyHead[M]{},
-		model: beam.NewSourceBeamExt(*model, func(new, old M) bool {
-			return !reflect.DeepEqual(new, old)
+		model: beam.NewSourceBeamEqual(*model, func(new, old M) bool {
+			return reflect.DeepEqual(new, old)
 		}),
 	}
 }

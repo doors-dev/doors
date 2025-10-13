@@ -34,8 +34,7 @@ type AnyInstance interface {
 }
 
 type App[M any] interface {
-	Init(path beam.SourceBeam[M])
-	Render() templ.Component
+	Render(path beam.SourceBeam[M]) templ.Component
 }
 
 type Options struct {

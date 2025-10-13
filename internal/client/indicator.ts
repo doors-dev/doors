@@ -28,7 +28,6 @@ function newIndicator(
     indicators: IndicatorEntry[]
 ): Map<Element, Indication> | undefined {
     const indications = new Map<Element, Indication>()
-
     for (const entry of indicators) {
         const [[selectorType, query], kind, param1, param2] = entry
         const elements: Array<Element> = []

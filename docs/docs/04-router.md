@@ -1,7 +1,7 @@
 # Router
 
 The doors framework provides a router that plugs into the standard Go `http.Server`.  
-It handles page routing, static files, hooks, and framework resources.
+It handles app routing, static files, hooks, and framework resources.
 
 ```go
 func main() {
@@ -20,19 +20,23 @@ func main() {
 
 Call `router.Use(...doors.Use)` to configure.
 
-## Pages
+## Apps
 
-### Page as struct
+### App as struct
 
-Implements the `doors.Page[M any]` interface:
+Implements the `doors.App[M any]` interface:
 
 ```go
-type Page[M any] interface {
+type App[M any] interface {
 	Render(SourceBeam[M]) templ.Component
 }
 ```
 
-### Page as function
+> App render function must provide full page HTML. 
+>
+> **You must render `@doors.Include()` component in the page `<head>` block to include framework resources**.
+
+### App as function
 
 Any function with this signature:
 
@@ -40,61 +44,64 @@ Any function with this signature:
 func(SourceBeam[M any]) templ.Component
 ```
 
-Where `M` is the **Path Model** (see [Path Model](./03-path-model.md)).
+Where `M` is the **Path Model** (see [Path Model](./05-path-model.md)).
 
-### Register a page
+### Register an app
 
-Use `UsePage` to bind a handler for a path model:
+Use `UseModel` to bind a handler for a path model:
 
 ```go
-func UsePage[M any](
-  handler func(p PageRouter[M], r RPage[M]) PageRoute,
+func UseModel[M any](
+  handler func(m ModelRouter[M], r RModel[M]) ModelRoute,
 ) Use
 ```
 
 Example:
 
 ```go
-func homePage(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
-  	// serve home page (implements doors.Page[BlogPath])
-   return p.Page(&homePage{}) 
+func homeApp(m doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
+  	// serve home app (implements doors.App[Path])
+   return m.App(&homeApp{}) 
 }
 
-router.Use(doors.UsePage(homePage))
+router.Use(doors.UseModel(homeApp))
 ```
 
-### Page Router (`doors.PageRouter[M]`)
+### Model Router (`doors.ModelRouter[M]`)
 
 Provides routing options for serving a given path model:
 
-1. **Page(page Page[M]) PageRoute**  
-   Serve a page struct implementing `doors.Page[M]`.
+1. **App(app App[M]) ModelRoute**  
+   Serve an app struct implementing `doors.App[M]`.
 
-2. **PageFunc(func(SourceBeam[M]) templ.Component) PageRoute**  
-   Serve a page via a function.
+2. **AppFunc(func(SourceBeam[M]) templ.Component) ModelRoute**  
+   Serve an app via a function.
 
-3. **Reroute(model any, detached bool) PageRoute**  
+3. **Reroute(model any, detached bool) ModelRoute**  
    Internally reroute to another path model.  
    If `detached = true`, the URL is not updated on the frontend.
 
-4. **Redirect(model any, status int) PageRoute**  
+4. **Redirect(model any, status int) ModelRoute**  
    Perform an HTTP redirect to the URL built from `model`.
 
-5. **StaticPage(content templ.Component, status int) PageRoute**  
+5. **StaticPage(content templ.Component, status int) ModelRoute**  
    Serve a static page with the given status code.  
    ⚠️ Using beams/doors inside a static page will panic.
 
-> To set a status code on dynamic pages, use `@doors.Status(code)` component or `doors.SetStatus(ctx, code)` function.
+> To set a status code on dynamic apps, use `@doors.Status(code)` component or `doors.SetStatus(ctx, code)` function.
 
-### Page Request `doors.RPage[M any]`
+### Model Request `doors.RModel[M any]`
 
 Gives access to cookies, headers, and the requested path in the form of a typed **Path Model**.  
-Use it to check user authentication or inject per-request data before serving a page.
+Use it to check user authentication or inject per-request data before serving an app.
 
 ### Notes
 
 * Each **Path Model** type can be registered only once.  
-* The route handler inside `doors.UsePage` is the right place to enforce cookie/session access control.
+* The route handler inside `doors.UseModel` is the right place to enforce cookie/session access control.
+
+---
+
 ## Custom Routes
 
 You can define your own route types by implementing the `Route` interface:
@@ -129,7 +136,9 @@ func (h HealthRoute) Serve(w http.ResponseWriter, r *http.Request) {
 router.Use(doors.UseRoute(HealthRoute{}))
 ```
 
-> All routes matched **before** pages
+> All routes matched **before** apps
+
+---
 
 ## Static File Routes
 
@@ -201,11 +210,11 @@ router.Use(doors.UseRoute(doors.RouteFile{
 }))
 ```
 
-
+---
 
 ## Fallback
 
-Set a fallback handler for unmatched requests.  Useful for integrating with another router.
+Set a fallback handler for unmatched requests. Useful for integrating with another router.
 
 ```go
 func UseFallback(handler http.Handler) Use
@@ -216,6 +225,8 @@ Example:
 ```go
 router.Use(doors.UseFallback(myOtherMux))
 ```
+
+---
 
 ## System Configuration
 
@@ -235,6 +246,8 @@ router.Use(doors.UseSystemConf(doors.SystemConf{
 }))
 ```
 
+---
+
 ## Error Page
 
 Provide a custom component for error handling.
@@ -250,6 +263,8 @@ router.Use(doors.UseErrorPage(func(msg string) templ.Component {
   return myErrorPage{Message: msg}
 }))
 ```
+
+---
 
 ## Security (CSP)
 
@@ -267,6 +282,8 @@ router.Use(doors.UseCSP(doors.CSP{
 }))
 ```
 
+---
+
 ## Build Profiles
 
 Configure esbuild options and profiles for JavaScript/TypeScript.
@@ -276,6 +293,8 @@ func UseESConf(conf ESConf) Use
 ```
 
 > Check [esbuild](./ref/06-esbuild.md) for details
+
+---
 
 ## Session Callback
 
@@ -291,6 +310,8 @@ type SessionCallback interface {
 func UseSessionCallback(callback SessionCallback) Use
 ```
 
+---
+
 ## License
 
 Verifies and adds the license certificate. A license is required for commercial production use. 
@@ -298,4 +319,3 @@ Verifies and adds the license certificate. A license is required for commercial 
 ```go
 func UseLicense(cert string) Use
 ```
-

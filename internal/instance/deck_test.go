@@ -446,9 +446,11 @@ func TestReport(t *testing.T) {
 		Results: map[uint64]result{},
 	}
 	_, err = deck.OnReport(rep)
+	/* not error anymore, gap just ignored
 	if err == nil {
 		t.Fatal("must error - reported gap after result")
 	}
+	*/
 	rep = &report{
 		Gaps: []gap{{
 			start: 4,

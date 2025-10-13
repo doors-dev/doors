@@ -17,7 +17,6 @@ import (
 	"github.com/doors-dev/doors/internal/door"
 )
 
-
 type Beam[T any] interface {
 	// Sub subscribes to the value stream. The onValue callback is called immediately
 	// with the current value (in the same goroutine), and again on every update.
@@ -30,13 +29,13 @@ type Beam[T any] interface {
 	// false means the context was already canceled.
 	Sub(ctx context.Context, onValue func(context.Context, T) bool) bool
 
-	// SubExt is an extended version of Sub that provides additional control.
+	// XSub is an extended version of Sub that provides additional control.
 	// It behaves the same as Sub, but also:
 	//   - Accepts an onCancel callback, invoked when the subscription ends due to context cancellation
 	//   - Returns a Cancel function for manual subscription termination
 	//
 	// Returns the Cancel function and a boolean indicating whether the subscription was established.
-	SubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (context.CancelFunc, bool)
+	XSub(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (context.CancelFunc, bool)
 
 	// ReadAndSub returns the current value and then subscribes to future updates.
 	// The onValue function is invoked on every subsequent update.
@@ -53,7 +52,7 @@ type Beam[T any] interface {
 	//
 	// Returns the initial value, Cancel function, and success boolean.
 	// If the boolean is false, the value is undefined and no subscription was established.
-	ReadAndSubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, context.CancelFunc, bool)
+	XReadAndSub(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, context.CancelFunc, bool)
 
 	// Read returns the current value of the Beam without establishing a subscription.
 	//
@@ -73,7 +72,7 @@ type Beam[T any] interface {
 	sync(uint, *common.FuncCollector) (*T, bool)
 }
 
-func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(new T2, old T2) bool) Beam[T2] {
+func NewBeamEqual[T any, T2 any](source Beam[T], cast func(T) T2, equal func(new T2, old T2) bool) Beam[T2] {
 	return &beam[T, T2]{
 		source: source,
 		values: make(map[uint]*entry[T2]),
@@ -82,13 +81,13 @@ func NewBeamExt[T any, T2 any](source Beam[T], cast func(T) T2, distinct func(ne
 			v2 := cast(*v)
 			return &v2
 		},
-		upd: distinct,
+		equal: equal,
 	}
 }
 
 func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
-	upd := func(new T2, old T2) bool {
-		return new != old
+	equal := func(new T2, old T2) bool {
+		return new == old
 	}
 	return &beam[T, T2]{
 		source: source,
@@ -98,7 +97,7 @@ func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
 			v2 := cast(*v)
 			return &v2
 		},
-		upd: upd,
+		equal: equal,
 	}
 }
 
@@ -112,7 +111,7 @@ type beam[T any, T2 any] struct {
 	values map[uint]*entry[T2]
 	mu     sync.Mutex
 	cast   func(*T) *T2
-	upd    func(new T2, old T2) bool
+	equal  func(new T2, old T2) bool
 	null   T2
 }
 
@@ -154,7 +153,7 @@ func (b *beam[T, T2]) syncEntry(seq uint, c *common.FuncCollector) *entry[T2] {
 		}
 	}
 	newVal := b.cast(sourceVal)
-	if b.upd == nil {
+	if b.equal == nil {
 		return &entry[T2]{
 			val:     newVal,
 			updated: true,
@@ -176,7 +175,7 @@ func (b *beam[T, T2]) syncEntry(seq uint, c *common.FuncCollector) *entry[T2] {
 			updated: true,
 		}
 	}
-	if !b.upd(*newVal, *prevVal) {
+	if b.equal(*newVal, *prevVal) {
 		return &entry[T2]{
 			val:     prevVal,
 			updated: false,

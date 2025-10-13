@@ -169,7 +169,7 @@ templ (f *hookFragment) Render() {
 	<div id="target"></div>
 	<div id="target2"></div>
 	@doors.Script() {
-		@doors.Attributes(f.attr())
+		@doors.Any(f.attr())
 		<script>
             const a = await $d.hook("myHook", $d.data("myData"))
             document.getElementById("target").innerHTML = `${a}`

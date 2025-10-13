@@ -177,8 +177,7 @@ func (c *core[M]) serve(w http.ResponseWriter, r *http.Request, page App[M]) err
 	ctx = context.WithValue(ctx, common.CtxKeyAdapters, c.instance.getSession().getRouter().Adapters())
 	c.root = door.NewRoot(ctx, c)
 	c.navigator.init(c.root.Ctx(), c)
-	page.Init(c.navigator.getBeam())
-	ch := c.root.Render(page.Render())
+	ch := c.root.Render(page.Render(c.navigator.getBeam()))
 	render, ok := <-ch
 	if !ok {
 		return errors.New("isntance killed during render, please check the logs")

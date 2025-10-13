@@ -334,9 +334,9 @@ type script struct {
 //	@Script() {
 //	    <script>
 //	        console.log("Hello from [not] inline script!");
-//	        // $d provides access to framework functions
+//	        // $... provides access to framework functions
 //	        // await is supported due to async wrapper
-//	        await $d.hook("hello","world");
+//	        await $hook("hello","world");
 //	    </script>
 //	}
 //
@@ -545,24 +545,6 @@ func Text(value any) templ.Component {
 	})
 }
 
-func Components(content ...templ.Component) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		for _, c := range content {
-			err := c.Render(ctx, w)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-func Attributes(a []Attr) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		attrs := A(ctx, a...)
-		return attrs.Render(ctx, w)
-	})
-}
 
 func Any(v any) templ.Component {
 	c, ok := v.(templ.Component)
@@ -575,11 +557,15 @@ func Any(v any) templ.Component {
 	}
 	m, ok := v.([]templ.Component)
 	if ok {
-		return Components(m...)
+		return templ.Join(m...)
 	}
 	as, ok := v.([]Attr)
 	if ok {
-		return Attributes(as)
+		com := make([]templ.Component, len(as))
+		for i, a := range as {
+			com[i] = a
+		}
+		return templ.Join(com...)
 	}
 	e, ok := v.(func(context.Context) templ.Component)
 	if ok {
@@ -601,8 +587,8 @@ type HeadData struct {
 type headUsed struct{}
 
 const headScript = `
-let tags = new Set($d.data("tags"))
-$d.on("d00r_head", (data) => {
+let tags = new Set($data("tags"))
+$on("d00r_head", (data) => {
     document.title = data.title;
     const removeTags = tags
     tags = new Set()

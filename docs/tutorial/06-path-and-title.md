@@ -2,9 +2,9 @@
 
 ## 1. Path Variants
 
-`./page.templ`
+`./app.templ`
 
-Here’s the page code again:
+Here’s the app code again:
 
 ```templ
 package main
@@ -17,43 +17,42 @@ type Path struct {
 	Id        int  
 }
 
-func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
-	return p.Page(&page{})
+func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
+	return p.App(&app{})
 }
 
-type page struct{}
+type app struct{}
 
-func (hp *page) Render(path doors.SourceBeam[Path]) templ.Component {
-	return Template(hp)
+func (a *app) Render(path doors.SourceBeam[Path]) templ.Component {
+	return Template(a)
 }
 
-templ (hp *page) Head() {
+templ (a *app) Head() {
 	<title>Dashboard App</title>
 }
 
-templ (hp *page) Body() {
+templ (a *app) Body() {
 	@locationSelector()
 }
-
 ```
 
 It always displays the location selector. However, we have two path variants: `/` and `/:Id`. The second is used when a location is selected.
 
-Look closely at the render function argument: `path doors.SourceBeam[Path]`. To have multiple page variants based on the path, we just need to subscribe to the provided beam. 
+Look closely at the render function argument: `path doors.SourceBeam[Path]`. To have multiple app variants based on the path, we just need to subscribe to the provided beam. 
 
 But remember, we’ll also have query parameters, but we don’t want the whole page to rerender on each query change, so _derive_:
 
 ```templ
-type page struct {
+type app struct {
 	path doors.SourceBeam[Path]
 	id   doors.Beam[int]
 }
 
-func (hp *page) Render(path doors.SourceBeam[Path]) templ.Component {
+func (a *app) Render(path doors.SourceBeam[Path]) templ.Component {
 	// store path beam
-	hp.path = path
+	a.path = path
 	// derive beam with id
-	hp.id = doors.NewBeam(path, func(p Path) int {
+	a.id = doors.NewBeam(path, func(p Path) int {
 		// if the dashboard variant is active
 		if p.Dashboard {
 			return p.Id
@@ -61,25 +60,25 @@ func (hp *page) Render(path doors.SourceBeam[Path]) templ.Component {
 		// means location is not selected
 		return -1
 	})
-	return Template(hp)
+	return Template(a)
 }
 ```
 
 And then subscribe:
 
 ```templ
-templ (hp *page) Body() {
-    @doors.Sub(hp.id, func(id int) templ.Component {
+templ (a *app) Body() {
+    @doors.Sub(a.id, func(id int) templ.Component {
         // no location selected
         if id == -1 {
             return locationSelector()
         }
         // display selected location
-        return hp.showLocation(id)
+        return a.showLocation(id)
     })
 }
 
-templ (hp *page) showLocation(id int) {
+templ (a *app) showLocation(id int) {
     <article>
         {{ city, _ := driver.Cities.Get(id) }}
         if city.Name == "" {
@@ -148,15 +147,15 @@ templ (f *locationSelectorFragment) submit(p driver.Place) {
 
 Provide the apply function to the selector:
 
-`./page.templ`
+`./app.templ`
 
 ```templ
-templ (hp *page) Body() {
-	@doors.Sub(hp.id, func(id int) templ.Component {
+templ (a *app) Body() {
+	@doors.Sub(a.id, func(id int) templ.Component {
 		if id == -1 {
 			return locationSelector(func(ctx context.Context, city driver.Place) {
 				// mutate the path beam
-				hp.path.Mutate(ctx, func(p Path) Path {
+				a.path.Mutate(ctx, func(p Path) Path {
 					// switch from selector to dashboard
 					p.Selector = false
 					p.Dashboard = true
@@ -166,7 +165,7 @@ templ (hp *page) Body() {
 				})
 			})
 		}
-		return hp.showLocation(id)
+		return a.showLocation(id)
 	})
 }
 ```
@@ -184,9 +183,9 @@ In *doors* you can register a JS handler on the front end with `$d.on(...)` and 
 However, you can just use premade `doors.Head` component:
 
 ```templ
-templ (hp *page) Head() {
+templ (a *app) Head() {
 	// title depends on the beam with id
-	@doors.Head(hp.id, func(id int) doors.HeadData {
+	@doors.Head(a.id, func(id int) doors.HeadData {
 		if id == -1 {
 			return doors.HeadData{
 				Title: "Select Location",
@@ -403,7 +402,7 @@ templ focus(id string) {
 	}
 	@doors.Script() {
 		<script>
-            const id = $d.data("id")
+            const id = $data("id")
             const el = document.getElementById(id)
             el.focus()
         </script>
@@ -449,7 +448,7 @@ templ (f *placeSelector) options(term string) {
 }
 ```
 
-`./page.templ`
+`./app.templ`
 
 ```templ
 package main
@@ -466,20 +465,20 @@ type Path struct {
 	Id        int
 }
 
-func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
-	return p.Page(&page{})
+func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
+	return p.App(&app{})
 }
 
-type page struct {
+type app struct {
 	path doors.SourceBeam[Path]
 	id   doors.Beam[int]
 }
 
-func (hp *page) Render(path doors.SourceBeam[Path]) templ.Component {
+func (a *app) Render(path doors.SourceBeam[Path]) templ.Component {
 	// store path beam
-	hp.path = path
+	a.path = path
 	// derive beam with id
-	hp.id = doors.NewBeam(path, func(p Path) int {
+	a.id = doors.NewBeam(path, func(p Path) int {
 		// if the dashboard variant is active
 		if p.Dashboard {
 			return p.Id
@@ -487,12 +486,12 @@ func (hp *page) Render(path doors.SourceBeam[Path]) templ.Component {
 		// means location is not selected
 		return -1
 	})
-	return Template(hp)
+	return Template(a)
 }
 
-templ (hp *page) Head() {
+templ (a *app) Head() {
 	// title depends on the beam with id
-	@doors.Head(hp.id, func(id int) doors.HeadData {
+	@doors.Head(a.id, func(id int) doors.HeadData {
 		if id == -1 {
 			return doors.HeadData{
 				Title: "Select Location",
@@ -512,12 +511,12 @@ templ (hp *page) Head() {
 	})
 }
 
-templ (hp *page) Body() {
-	@doors.Sub(hp.id, func(id int) templ.Component {
+templ (a *app) Body() {
+	@doors.Sub(a.id, func(id int) templ.Component {
 		if id == -1 {
 			return locationSelector(func(ctx context.Context, city driver.Place) {
 				// mutate the path beam
-				hp.path.Mutate(ctx, func(p Path) Path {
+				a.path.Mutate(ctx, func(p Path) Path {
 					// switch from selector to dashboard
 					p.Selector = false
 					p.Dashboard = true
@@ -527,11 +526,11 @@ templ (hp *page) Body() {
 				})
 			})
 		}
-		return hp.showLocation(id)
+		return a.showLocation(id)
 	})
 }
 
-templ (hp *page) showLocation(id int) {
+templ (a *app) showLocation(id int) {
 	<article>
 		{{ city, _ := driver.Cities.Get(id) }}
 		if city.Name == "" {

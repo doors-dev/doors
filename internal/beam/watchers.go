@@ -118,7 +118,7 @@ func (s *source[T]) ReadAndSub(ctx context.Context, onValue func(context.Context
 	return *v, true
 }
 
-func (b *beam[T, T2]) ReadAndSubExt(ctx context.Context, onValue func(context.Context, T2) bool, onCancel func()) (T2, context.CancelFunc, bool) {
+func (b *beam[T, T2]) XReadAndSub(ctx context.Context, onValue func(context.Context, T2) bool, onCancel func()) (T2, context.CancelFunc, bool) {
 	v, cancel, ok := readAndSub(b, ctx, onValue, onCancel)
 	if !ok {
 		return b.null, cancel, false
@@ -126,7 +126,7 @@ func (b *beam[T, T2]) ReadAndSubExt(ctx context.Context, onValue func(context.Co
 	return *v, cancel, ok
 }
 
-func (s *source[T]) ReadAndSubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, context.CancelFunc, bool) {
+func (s *source[T]) XReadAndSub(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, context.CancelFunc, bool) {
 	v, cancel, ok := readAndSub(s, ctx, onValue, onCancel)
 	if !ok {
 		return s.null, cancel, false
@@ -150,11 +150,11 @@ func (s *source[T]) Read(ctx context.Context) (T, bool) {
 	return *v, ok
 }
 
-func (b *beam[T, T2]) SubExt(ctx context.Context, onValue func(context.Context, T2) bool, onCancel func()) (context.CancelFunc, bool) {
+func (b *beam[T, T2]) XSub(ctx context.Context, onValue func(context.Context, T2) bool, onCancel func()) (context.CancelFunc, bool) {
 	return sub(b, ctx, onValue, onCancel)
 }
 
-func (s *source[T]) SubExt(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (context.CancelFunc, bool) {
+func (s *source[T]) XSub(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (context.CancelFunc, bool) {
 	return sub(s, ctx, onValue, onCancel)
 }
 

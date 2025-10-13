@@ -80,8 +80,8 @@ export class Hook {
     private launched = false
     execute() {
         let target: Element | null = null
-        if (this.params.event?.target) {
-            target = this.params.event.target as Element
+        if (this.params.event?.currentTarget) {
+            target = this.params.event.currentTarget as Element
         }
         this.actions(this.params.before)
         this.indiciatorId = indicator.start(target, this.params.indicator)

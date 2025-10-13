@@ -16,11 +16,8 @@ Run in your project dir:
  wgo -file=.go -file=.templ  -xfile=_templ.go templ generate :: go run .
 ```
 
-> Sometimes, the reload happens at the wrong moment, causing the browser to show the "Unable to connect" page. In that situation, manually reload the page.
+> Sometimes, the reload happens when your code is broken, causing the browser to show the "Unable to connect" page. In that situation, manually reload the page.
 >
-> Additionally, the **templ** included watcher struggles with my lib as a dependency.
->
-> I will research ways to improve this experience later.
 
 **From this point, live reloading is always enabled.**
 

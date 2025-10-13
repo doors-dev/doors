@@ -22,7 +22,7 @@ import (
 )
 
 // AHook binds a backend handler to a named client-side hook, allowing
-// JavaScript code to call Go functions via $d.hook(name, ...).
+// JavaScript code to call Go functions via $hook(name, ...).
 //
 // Input data is unmarshaled from JSON into type T.
 // Output data is marshaled to JSON from any.
@@ -30,7 +30,7 @@ import (
 // Generic parameters:
 //   - T: input data type, sent from the client
 type AHook[T any] struct {
-	// Name of the hook to call from JavaScript via $d.hook(name, ...).
+	// Name of the hook to call from JavaScript via $hook(name, ...).
 	// Required.
 	Name string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
@@ -104,13 +104,13 @@ func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 }
 
 // ARawHook binds a backend handler to a named client-side hook, allowing
-// JavaScript code to call Go functions via $d.hook(name, ...).
+// JavaScript code to call Go functions via $hook(name, ...).
 //
 // Unlike AHook, ARawHook does not perform JSON unmarshaling or marshaling.
 // Instead, it gives full access to the raw request body and multipart form data,
 // useful for streaming, custom parsing, or file uploads.
 type ARawHook struct {
-	// Name of the hook to call from JavaScript via $d.hook(name, ...).
+	// Name of the hook to call from JavaScript via $hook(name, ...).
 	// Required.
 	Name string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
@@ -160,13 +160,13 @@ func (h *ARawHook) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	})
 }
 
-// AData exposes server-provided data to JavaScript via $d.data(name).
+// AData exposes server-provided data to JavaScript via $data(name).
 //
 // The Value is marshaled to JSON and made available for client-side access.
 // This is useful for passing initial state, configuration, or constants
 // directly into the client runtime.
 type AData struct {
-	// Name of the data entry to read via JavaScript with $d.data(name).
+	// Name of the data entry to read via JavaScript with $data(name).
 	// Required.
 	Name string
 	// Value to expose to the client. Marshaled to JSON.

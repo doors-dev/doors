@@ -24,7 +24,7 @@ Notice I used reference types. Otherwise, query parameters get a zero value and 
 
 `./dashboard.templ`
 
-To keep the page simple, let's move the dashboard to a separate fragment.
+To keep the app simple, let's move the dashboard to a separate fragment.
 
 ```templ
 func dashboard(id int) templ.Component {
@@ -50,7 +50,7 @@ templ (f *dashboardFragment) Render() {
 }
 ```
 
-The dashboard depends on the location ID (provided by the page already) and the days and units query parameters:
+The dashboard depends on the location ID (provided by the app already) and the days and units query parameters:
 
 We derive those from the path:
 
@@ -90,14 +90,14 @@ type dashboardFragment struct {
 
 Render the dashboard on the page:
 
-`./page.templ`
+`./app.templ`
 
 ```templ
-templ (hp *page) Body() {
-	@doors.Sub(hp.id, func(id int) templ.Component {
+templ (a *app) Body() {
+	@doors.Sub(a.id, func(id int) templ.Component {
 		if id == -1 {
 			return locationSelector(func(ctx context.Context, city driver.Place) {
-				hp.path.Mutate(ctx, func(p Path) Path {
+				a.path.Mutate(ctx, func(p Path) Path {
 					p.Selector = false
 					p.Dashboard = true
 					p.Id = city.Id
@@ -105,7 +105,7 @@ templ (hp *page) Body() {
 				})
 			})
 		}
-		// render dashboard component
+		// render the dashboard component
 		return dashboard(id, hp.path)
 	})
 }

@@ -28,7 +28,7 @@ type Router interface {
 }
 
 // NewRouter creates a new router instance with default configuration.
-// The router handles page routing, static files, hooks, and framework resources.
+// The router handles app routing, static files, hooks, and framework resources.
 func NewRouter() Router {
 	return router.NewRouter()
 }

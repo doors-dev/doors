@@ -97,11 +97,11 @@ Two notes:
 
 > `doors.Import...` handles local, embedded, and external CSS and JS assets. For JavaScript/TypeScript modules, it eenables build/bundle steps and generates an import map
 
-## 3. Page and Path
+## 3. App and Path
 
-`./page.templ`
+`./app.templ`
 
-### Page Path
+### App Path
 
 In _doors_, the URI is decoded into a **Path Model**. It supports path variants, parameters, and query values. 
 
@@ -137,51 +137,51 @@ type Path struct {
 
 * The matched variant’s field is set to true.
 
-### Page Component
+### App Component
 
-The path structure is wrapped in the state primitive (**Beam**) and passed to the page render function:
+The path structure is wrapped in the state primitive (**Beam**) and passed to the app render function:
 
 ```templ
-type page struct{}
+type app struct{}
 
-// page render function, follows doors.Page interface
-func (hp *page) Render(path doors.SourceBeam[Path]) templ.Component {
+// app render function, follows doors.App interface
+func (a *app) Render(path doors.SourceBeam[Path]) templ.Component {
 	return Template(hp)
 }
 
 // head component for our template
-templ (hp *page) Head() {
+templ (a *app) Head() {
 	<title>Dashboard App</title>
 }
 
 // body component for our template
-templ (hp *page) Body() {
+templ (a *app) Body() {
 	<h1>Hello <i>doors</i>!</h1>
 }
 ```
 
-> To be compatible with the framework, the page type must implement Render(), return a component, and accept a **Beam** with the path model.
+> To be compatible with the framework, the app type must implement Render(), return a component, and accept a **Beam** with the path model.
 
-### Page Handler
+### Model Handler
 
-A function that runs when the path matches. It reads request data (`doors.RPage`) and chooses the response (`doors.PageRouter`).
+A function that runs when the path matches. It reads request data (`doors.RModel`) and chooses the response (`doors.ModelRouter`).
 
 In our case, it's straightforward:
 
 ```templ
-func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
-	// just serve the page instance, no checks
-	return p.Page(&page{})
+func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
+	// just serve the app instance, no checks
+	return p.App(&app{})
 }
 ```
 
-> `doors.PageRouter` also supports soft (internal) and hard (HTTP) redirects and serving static pages.
+> `doors.AppRouter` also supports soft (internal) and hard (HTTP) redirects and serving static pages.
 
 ## 4. Router
 
 `./main.go`
 
-Create a *doors* router, provide a page handler, and launch the server.
+Create a *doors* router, provide the app handler, and launch the server.
 
 ```templ
 package main
@@ -194,9 +194,10 @@ import (
 func main() {
 	// create doors router
 	dr := doors.NewRouter()
+	
 	dr.Use(
-		// attach page handler function
-		doors.UsePage(Handler),
+		// attach app handler function
+		doors.UseModel(Handler),
 	)
 
 	// start standard Go server with our self signed cert
@@ -270,7 +271,7 @@ templ Template(p Page) {
 }
 ```
 
-`page.templ`
+`app.templ`
 
 ```templ
 package main
@@ -283,25 +284,25 @@ type Path struct {
 	Id        int  // path parameter with City Id
 }
 
-func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
-	// just serve the page instance, no checks
-	return p.Page(&page{})
+func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
+	// just serve the app instance, no checks
+	return p.App(&app{})
 }
 
-type page struct{}
+type app struct{}
 
-// page render function, follows doors.Page interface
-func (hp *page) Render(path doors.SourceBeam[Path]) templ.Component {
+// app render function, follows doors.App interface
+func (a *app) Render(path doors.SourceBeam[Path]) templ.Component {
 	return Template(hp)
 }
 
 // head component for our template
-templ (hp *page) Head() {
+templ (a *app) Head() {
 	<title>Dashboard App</title>
 }
 
 // body component for our template
-templ (hp *page) Body() {
+templ (a *app) Body() {
 	<h1>Hello <i>doors</i>!</h1>
 }
 ```
@@ -319,9 +320,10 @@ import (
 func main() {
 	// create doors router
 	dr := doors.NewRouter()
+	
 	dr.Use(
-		// attach page handler function
-		doors.UsePage(Handler),
+		// attach app handler function
+		doors.UseModel(Handler),
 	)
 
 	// start standard Go server with our self signed cert

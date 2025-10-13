@@ -92,7 +92,7 @@ templ (f *fragment) Render() (
 
 ❌  Block framework runtime to wait for other runtime-dependent operations to complete, like :
 
-```temp
+```templ
 pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
   // XUpdate returns channel to track when frontend applies update
 	err, ok := <- door.XUpdate(ctx, itemInfo(item))  // can cause a deadlock!
@@ -103,7 +103,7 @@ pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
 
 ✅   Instead, do this:
 
-```temlp
+```templ
 pathBeam.Sub(ctx, func(ctx context.Context, p Path) bool {
 	// spawn independent goroutine
 	go func() {
@@ -186,13 +186,13 @@ There are certain configuration options related to the instance lifecycle:
 
 Instance memory consumption depends highly on page complexity, but I expect it to typically be around 50-150KB and low enough to choose generous, UX friendly values for those settings. 
 
-> Refer to [Configuration](./ref/01-configutation.md) for more details.
+> Refer to [Configuration](./03-configutation.md) for more details.
 
 ## 5. Avoid storing database data in state.
 
 In general, you don't need to store database query results in fields or `Beams`.
 
-✅  Store the ID in the **Fragment** field.
+✅  Store the ID in the Fragment field.
 
 ```templ
 func newCard(id string) *card {

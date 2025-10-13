@@ -43,7 +43,7 @@ func intoActions(ctx context.Context, actions []Action) action.Actions {
 }
 
 // ActionEmit invokes a client-side handler registered with
-// $d.on(name: string, func: (arg: any, err?: Error) => any).
+// $on(name: string, func: (arg: any, err?: Error) => any).
 type ActionEmit struct {
 	Name string
 	Arg  any

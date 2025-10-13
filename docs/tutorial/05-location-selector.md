@@ -90,10 +90,10 @@ templ (f *locationSelectorFragment) options(term string) {
 
 ### Render the fragment 
 
-`./page.templ`
+`./app.templ`
 
 ```templ
-templ (hp *page) Body() {
+templ (a *app) Body() {
 	@locationSelector()
 }
 ```
@@ -609,12 +609,12 @@ templ (f *placeSelector) input() {
 		Name:  "id",
 		Value: inputId,
 	}
-	// wraps script in anonymous function, provides $d variable to access the framework,
+	// wraps script in anonymous function, provides $... variables to access the framework,
 	// enables await, and converts inline script to cacheable, static and minified resource (!)
 	@doors.Script() {
 		<script>
             // read id with magic $d
-            const id = $d.data("id")
+            const id = $data("id")
             // get the element and focus
             const el = document.getElementById(id)
             el.focus()
@@ -634,7 +634,7 @@ templ focus(id string) {
 	}
 	@doors.Script() {
         <script>
-            const id = $d.data("id")
+            const id = $data("id")
             const el = document.getElementById(id)
             el.focus()
         </script>
@@ -849,7 +849,7 @@ templ focus(id string) {
 	}
 	@doors.Script() {
 		<script>
-            const id = $d.data("id")
+            const id = $data("id")
             const el = document.getElementById(id)
             el.focus()
         </script>

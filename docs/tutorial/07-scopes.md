@@ -312,7 +312,7 @@ templ focus(id string) {
 	}
 	@doors.Script() {
 		<script>
-            const id = $d.data("id")
+            const id = $data("id")
             const el = document.getElementById(id)
             el.focus()
         </script>

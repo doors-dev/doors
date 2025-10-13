@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/door"
@@ -41,16 +42,22 @@ func A(ctx context.Context, a ...Attr) *Attrs {
 	return front.A(ctx, ar...)
 }
 
-func AList(pairs ...string) AMap {
-	m := make(map[string]any, len(pairs)/2)
-	for i := 0; i < len(pairs); i += 2 {
-		value := ""
-		if len(pairs) > i+1 {
-			value = pairs[i+1]
-		}
-		m[pairs[i]] = value
-	}
-	return m
+func AClass(class ...string) AOne {
+	return AOne{"class", strings.Join(class, " ")}
+}
+
+type AOne [2]string
+
+func (a AOne) Init(_ context.Context, _ door.Core, _ instance.Core, attrs *front.Attrs) {
+	attrs.Set(a[0], a[1])
+}
+
+func (a AOne) Render(ctx context.Context, w io.Writer) error {
+	return front.AttrRender(ctx, w, a)
+}
+
+func (a AOne) Attr() AttrInit {
+	return a
 }
 
 type AMap map[string]any

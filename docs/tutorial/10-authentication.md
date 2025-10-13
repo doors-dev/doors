@@ -247,9 +247,9 @@ templ (l *loginFragment) errorMessage() {
 
 > `doors.SessionExpire` is a safe precaution to ensure that opened pages with access to authorized functionality will not outlive the authorization session. 
 
-## 2. Read the Session in the Page Handler
+## 2. Read the Session in the Model Handler
 
-`./page.templ`
+`./app.templ`
 
 ```templ
 // read cookies and obtain the session from the database
@@ -265,24 +265,24 @@ func getSession(r doors.R) *driver.Session {
 	return &s
 }
 
-func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
-	return p.Page(&page{
-        session: getSession(r),
-    })
+func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
+	return p.App(&app{
+		 session: getSession(r),
+	})
 }
 ```
 
 ## 3. Show the Login Form 
 
 ```templ
-templ (hp *page) Body() {
-	if hp.session == nil {
+templ (a *app) Body() {
+	if a.session == nil {
 		@login()
 	} else {
-		@doors.Sub(hp.id, func(id int) templ.Component {
+		@doors.Sub(a.id, func(id int) templ.Component {
 			if id == -1 {
 				return locationSelector(func(ctx context.Context, city driver.Place) {
-					hp.path.Mutate(ctx, func(p Path) Path {
+					a.path.Mutate(ctx, func(p Path) Path {
 						p.Selector = false
 						p.Dashboard = true
 						p.Id = city.Id
@@ -291,7 +291,7 @@ templ (hp *page) Body() {
 				})
 			}
 			// render dashboard component
-			return dashboard(id, hp.path)
+			return dashboard(id, a.path)
 		})
 	}
 }
@@ -300,11 +300,11 @@ templ (hp *page) Body() {
 ## 4. Adapt the Title
 
 ```templ
-templ (hp *page) Head() {
-	if hp.session == nil {
+templ (a *app) Head() {
+	if a.session == nil {
 		<title>Login</title>
 	} else {
-		@doors.Head(hp.id, func(id int) doors.HeadData {
+		@doors.Head(a.id, func(id int) doors.HeadData {
 			if id == -1 {
 				return doors.HeadData{
 					Title: "Select Location",
@@ -330,7 +330,7 @@ templ (hp *page) Head() {
 ## 5. Log Out Button
 
 ```templ
-templ (hp *page) logout() {
+templ (a *app) logout() {
 	<section>
 		@doors.AClick{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
@@ -361,7 +361,7 @@ templ (hp *page) logout() {
 
 ##  Code
 
-`./page.templ`
+`./app.templ`
 
 ```templ
 package main
@@ -394,39 +394,45 @@ func getSession(r doors.R) *driver.Session {
 	return &s
 }
 
-func Handler(p doors.PageRouter[Path], r doors.RPage[Path]) doors.PageRoute {
-	return p.Page(&page{
-		session: getSession(r),
+func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
+	return p.App(&app{
+		 session: getSession(r),
 	})
 }
 
-type page struct {
+type app struct {
 	// add the session property
 	session *driver.Session
 	path    doors.SourceBeam[Path]
 	id      doors.Beam[int]
 }
 
-func (hp *page) Render(path doors.SourceBeam[Path]) templ.Component {
-	// store path beam
-	hp.path = path
-	// derive beam with id
-	hp.id = doors.NewBeam(path, func(p Path) int {
-		// if the dashboard variant is active
-		if p.Dashboard {
-			return p.Id
-		}
-		// means location is not selected
-		return -1
-	})
-	return Template(hp)
+templ (a *app) Body() {
+	if a.session == nil {
+		@login()
+	} else {
+		@doors.Sub(a.id, func(id int) templ.Component {
+			if id == -1 {
+				return locationSelector(func(ctx context.Context, city driver.Place) {
+					a.path.Mutate(ctx, func(p Path) Path {
+						p.Selector = false
+						p.Dashboard = true
+						p.Id = city.Id
+						return p
+					})
+				})
+			}
+			// render dashboard component
+			return dashboard(id, a.path)
+		})
+	}
 }
 
-templ (hp *page) Head() {
-	if hp.session == nil {
+templ (a *app) Head() {
+	if a.session == nil {
 		<title>Login</title>
 	} else {
-		@doors.Head(hp.id, func(id int) doors.HeadData {
+		@doors.Head(a.id, func(id int) doors.HeadData {
 			if id == -1 {
 				return doors.HeadData{
 					Title: "Select Location",
@@ -447,14 +453,14 @@ templ (hp *page) Head() {
 	}
 }
 
-templ (hp *page) Body() {
-	if hp.session == nil {
+templ (a *app) Body() {
+	if a.session == nil {
 		@login()
 	} else {
-		@doors.Sub(hp.id, func(id int) templ.Component {
+		@doors.Sub(a.id, func(id int) templ.Component {
 			if id == -1 {
 				return locationSelector(func(ctx context.Context, city driver.Place) {
-					hp.path.Mutate(ctx, func(p Path) Path {
+					a.path.Mutate(ctx, func(p Path) Path {
 						p.Selector = false
 						p.Dashboard = true
 						p.Id = city.Id
@@ -463,13 +469,12 @@ templ (hp *page) Body() {
 				})
 			}
 			// render dashboard component
-			return dashboard(id, hp.path)
+			return dashboard(id, a.path)
 		})
-		@hp.logout()
 	}
 }
 
-templ (hp *page) logout() {
+templ (a *app) logout() {
 	<section>
 		@doors.AClick{
 			On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {

@@ -80,35 +80,35 @@ type SourceBeam[T any] interface {
 }
 
 type source[T any] struct {
-	null     T
-	seq      uint
-	values   map[uint]*T
-	inst     instance
-	id       uint64
-	init     sync.Once
-	distinct func(new T, old T) bool
-	mu       sync.RWMutex
-	noSkip   bool
+	null   T
+	seq    uint
+	values map[uint]*T
+	inst   instance
+	id     uint64
+	init   sync.Once
+	equal  func(new T, old T) bool
+	mu     sync.RWMutex
+	noSkip bool
 }
 
-func NewSourceBeamExt[T any](init T, distinct func(new T, old T) bool) SourceBeam[T] {
+func NewSourceBeamEqual[T any](init T, equal func(new T, old T) bool) SourceBeam[T] {
 	return &source[T]{
 		seq: 1,
 		values: map[uint]*T{
 			1: &init,
 		},
-		inst:     nil,
-		id:       0,
-		init:     sync.Once{},
-		distinct: distinct,
+		inst:  nil,
+		id:    0,
+		init:  sync.Once{},
+		equal: equal,
 	}
 }
 
 func NewSourceBeam[T comparable](init T) SourceBeam[T] {
-	upd := func(new T, old T) bool {
-		return new != old
+	equal := func(new T, old T) bool {
+		return new == old
 	}
-	return NewSourceBeamExt(init, upd)
+	return NewSourceBeamEqual(init, equal)
 }
 
 func (s *source[T]) DisableSkipping() {
@@ -130,7 +130,7 @@ func (s *source[T]) sync(seq uint, _ *common.FuncCollector) (*T, bool) {
 
 func (s *source[T]) update(ctx context.Context, v *T) <-chan error {
 	return s.applyMutation(ctx, func(l *T) (*T, bool) {
-		if s.distinct != nil && !s.distinct(*l, *v) {
+		if s.equal != nil && s.equal(*l, *v) {
 			return nil, false
 		}
 		return v, true
@@ -149,7 +149,7 @@ func (s *source[T]) Update(ctx context.Context, v T) {
 func (s *source[T]) mutate(ctx context.Context, m func(T) T) <-chan error {
 	return s.applyMutation(ctx, func(l *T) (*T, bool) {
 		new := m(*l)
-		if s.distinct != nil && !s.distinct(*l, new) {
+		if s.equal != nil && s.equal(*l, new) {
 			return nil, false
 		}
 		return &new, true

@@ -18,8 +18,7 @@ import (
 // App defines a renderable app component, where Render() must output page HTML
 // M - the path model type.
 type App[M any] interface {
-	Init(SourceBeam[M])
-	Render() templ.Component
+	Render(SourceBeam[M]) templ.Component
 }
 
 // ModelRoute provides the response type for page handlers
@@ -117,47 +116,25 @@ func (r *modelRequest[M]) StaticPage(content templ.Component, status int) ModelR
 	}
 }
 
-type appFunc[M any] struct {
-	model  SourceBeam[M]
-	render func(SourceBeam[M]) templ.Component
-}
+type appFunc[M any] func(SourceBeam[M]) templ.Component
 
-func (af *appFunc[M]) Init(model SourceBeam[M]) {
-	af.model = model
-}
 
-func (af *appFunc[M]) Render() templ.Component {
-	return af.render(af.model)
+func (af appFunc[M]) Render(model SourceBeam[M]) templ.Component {
+	return af(model)
 }
 
 func (r *modelRequest[M]) AppFunc(f func(SourceBeam[M]) templ.Component) ModelRoute {
 	return &router.ResponseApp[M]{
-		App: &appFunc[M]{
-			render: f,
-		},
+		App: appFunc[M](f),
 		Model:   r.r.Model,
 		Adapter: r.r.Adapter,
 	}
 }
 
 func (r *modelRequest[M]) PageFunc(f func(SourceBeam[M]) templ.Component) PageRoute {
-	return &router.ResponseApp[M]{
-		App: &appFunc[M]{
-			render: f,
-		},
-		Model:   r.r.Model,
-		Adapter: r.r.Adapter,
-	}
+	return r.AppFunc(f)
 }
 
 func (r *modelRequest[M]) Page(page Page[M]) PageRoute {
-	return &router.ResponseApp[M]{
-		App: &appFunc[M]{
-			render: func(model SourceBeam[M]) templ.Component {
-				return page.Render(model)
-			},
-		},
-		Model:   r.r.Model,
-		Adapter: r.r.Adapter,
-	}
+	return r.App(page)
 }

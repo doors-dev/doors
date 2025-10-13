@@ -178,13 +178,12 @@ func (d *deck) OnReport(s *report) (counter int, err error) {
 	}()
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	latest := uint64(0)
 	for seq := range s.Results {
 		if seq > d.seq {
 			return counter, errors.New("ready overflows last seq")
 		}
-		if d.latestReport < seq {
-			d.latestReport = seq
-		}
+		latest = max(latest, seq)
 		result := s.Results[seq]
 		issued, ok := d.issued[seq]
 		if !ok {
@@ -207,7 +206,13 @@ func (d *deck) OnReport(s *report) (counter int, err error) {
 		issued.call.result(result.output, result.err)
 		issued.call.clean()
 	}
-	prevEnd := d.latestReport
+	prevEnd := latest
+	if latest < d.latestReport {
+		tolarance := min(uint64(d.issueLimit), d.seq)
+		prevEnd = max(d.latestReport, tolarance) - tolarance
+	} else {
+		d.latestReport = latest
+	}
 	for _, gap := range s.Gaps {
 		if gap.end < gap.start {
 			return counter, errors.New("gap range issue")
@@ -220,6 +225,9 @@ func (d *deck) OnReport(s *report) (counter int, err error) {
 		}
 		prevEnd = gap.end
 		for seq := gap.start; seq <= gap.end; seq++ {
+			if seq <= d.latestReport {
+				continue
+			}
 			call, ok := d.issued[seq]
 			if !ok {
 				d.skipSeq(seq)

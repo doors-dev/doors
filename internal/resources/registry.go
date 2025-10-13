@@ -227,7 +227,7 @@ func (r *Registry) InlineScript(data []byte, mode InlineMode) (*InlineResource, 
 	}
 	if s == nil {
 		buf := &bytes.Buffer{}
-		buf.WriteString("_d00r(document.currentScript, async ($d) => {\n")
+		buf.WriteString("_d00r(document.currentScript, async ($d, $on, $data, $hook, $fetch, $G, $ready, $clean, HookErr) => {\n")
 		buf.Write(element.Content)
 		buf.WriteString("\n})")
 		var content []byte
