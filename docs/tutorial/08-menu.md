@@ -111,7 +111,7 @@ templ (a *app) Body() {
 }
 ```
 
-## 2. Menu
+## 3. Menu
 
 `./dashboard.templ`
 
@@ -355,7 +355,7 @@ templ (f *dashboardFragment) changeDays(u driver.Units) {
 
 > _doors_ doesn’t keep the whole DOM in memory. With beam derivation, you explicitly tie a specific HTML section to a specific piece of data. **Diff data, not DOM.**
 
-## 3. Active Link Highlighting
+## 4. Active Link Highlighting
 
 The client can automatically apply active-link highlighting if you configure it in `doors.AHref`:
 

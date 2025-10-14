@@ -6,6 +6,8 @@ Let's simulate conflicting actions:
 
 ![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ehntbc7v1q1f7qr5mf9f.gif)
 
+## Concurrent Scope
+
 This issue can be easily mitigated with **Concurrent Scope** from the **Scopes API**.
 
 > Concurrent Scope can be “occupied” only by events with the same group id.
@@ -106,6 +108,8 @@ templ (f *locationSelectorFragment) submit(p driver.Place) {
 	}
 }
 ```
+
+## Result
 
 **This setup ensures that either the submit or the change-place event can run, not both at the same time:**
 

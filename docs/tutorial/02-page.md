@@ -6,7 +6,7 @@ Let’s build a dynamic, reactive dashboard app — written entirely in Go. Alon
 
 > For tutorial purposes, I deliberately omitted error handling to reduce LOC; that's not how it should be done!
 
-### 0. SSL Certs (optional, but recommended)
+## 1. SSL Certs (optional, but recommended)
 
 Framework is optimized for HTTP/2/3. Without SSL, the browser limits the number of simultaneous requests to 6, which can cause issues in some rare, highly interactive and heavy-sync scenarios.
 
@@ -211,7 +211,7 @@ func main() {
 
 > Notice how `doors.Router` just plugs into the Go standard server! Go is awesome.
 
-## 4. Launch
+## 5. Launch
 
 Build & launch
 

@@ -148,7 +148,7 @@ func (d *CitiesDb) Search(country int, term string) ([]Place, error) {
 }
 ```
 
-## 3. Weather API
+## 2. Weather API
 
 Connect a weather API to retrieve time-series data for the dashboard charts.
 
