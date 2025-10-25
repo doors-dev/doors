@@ -146,7 +146,7 @@ type app struct{}
 
 // app render function, follows doors.App interface
 func (a *app) Render(path doors.SourceBeam[Path]) templ.Component {
-	return Template(hp)
+	return Template(a)
 }
 
 // head component for our template
@@ -171,7 +171,7 @@ In our case, it's straightforward:
 ```templ
 func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
 	// just serve the app instance, no checks
-	return p.App(&app{})
+	return m.App(&app{})
 }
 ```
 
@@ -284,16 +284,16 @@ type Path struct {
 	Id        int  // path parameter with City Id
 }
 
-func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
+func Handler(m doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
 	// just serve the app instance, no checks
-	return p.App(&app{})
+	return m.App(&app{})
 }
 
 type app struct{}
 
 // app render function, follows doors.App interface
 func (a *app) Render(path doors.SourceBeam[Path]) templ.Component {
-	return Template(hp)
+	return Template(a)
 }
 
 // head component for our template
