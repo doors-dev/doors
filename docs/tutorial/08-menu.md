@@ -106,7 +106,7 @@ templ (a *app) Body() {
 			})
 		}
 		// render the dashboard component
-		return dashboard(id, hp.path)
+		return dashboard(id, a.path)
 	})
 }
 ```

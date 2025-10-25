@@ -266,7 +266,7 @@ func getSession(r doors.R) *driver.Session {
 }
 
 func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
-	return p.App(&app{
+	return m.App(&app{
 		 session: getSession(r),
 	})
 }
@@ -341,7 +341,7 @@ templ (a *app) logout() {
 					MaxAge: -1,
 				})
 				// remove the db entry
-				driver.Sessions.Remove(hp.session.Token)
+				driver.Sessions.Remove(a.session.Token)
 				// end internal framework session
 				// to end all authiorized instances (pages)
 				doors.SessionEnd(ctx)
@@ -395,7 +395,7 @@ func getSession(r doors.R) *driver.Session {
 }
 
 func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
-	return p.App(&app{
+	return m.App(&app{
 		 session: getSession(r),
 	})
 }
@@ -485,7 +485,7 @@ templ (a *app) logout() {
 					MaxAge: -1,
 				})
 				// remove the db entry
-				driver.Sessions.Remove(hp.session.Token)
+				driver.Sessions.Remove(a.session.Token)
 				// end internal framework session
 				// to end all authiorized instances (pages)
 				doors.SessionEnd(ctx)

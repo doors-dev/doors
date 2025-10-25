@@ -18,7 +18,7 @@ type Path struct {
 }
 
 func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
-	return p.App(&app{})
+	return m.App(&app{})
 }
 
 type app struct{}
@@ -466,7 +466,7 @@ type Path struct {
 }
 
 func Handler(m doors.doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
-	return p.App(&app{})
+	return m.App(&app{})
 }
 
 type app struct {
