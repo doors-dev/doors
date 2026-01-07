@@ -105,22 +105,18 @@ Unlike **Phoenix LiveView**: Explicit update model, parallel rendering & non-blo
 
 ## License
 
-*doors* is source-available under the **Business Source License 1.1 (BUSL-1.1)** from **doors dev LLC**.
+*doors* is **dual-licensed** by **doors dev LLC**:
 
-- **Free for development** (non-production)  
-- **Free for non-commercial production** (personal, education, research, non-profit) — optional pay-what-you-want support  
-- **Commercial production** requires a paid license (lifetime, no subscription)
+- **Open Source:** **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**  
+- **Commercial:** a paid commercial license for proprietary / closed-source use or other non-AGPL-compliant use
 
-Each version of doors automatically converts to **AGPL-3.0** after 4 years.
+If you cannot (or do not want to) comply with the AGPL requirements (including providing Corresponding Source to users who interact with the software over a network), you must obtain a commercial license.
 
-To purchase a license, visit [https://doors.dev](https://doors.dev).  
-For Enterprise terms, you may also contact [sales@doors.dev](mailto:sales@doors.dev).
+Commercial inquiries: [sales@doors.dev](mailto:sales@doors.dev)
 
 ### Full License Texts
 
-- [LICENSE.txt](./LICENSE.txt) — BUSL with parameters  
-- [LICENSE-COMMERCIAL.txt](./LICENSE-COMMERCIAL.txt) — Commercial license summary  
-- [COMMERCIAL-EULA.md](./COMMERCIAL-EULA.md) — Full commercial terms  
-
-
+- [LICENSE](./LICENSE) — AGPL-3.0-only text  
+- [LICENSING.md](./LICENSING.md) — Dual-licensing terms (AGPL or commercial)  
+- [COMMERCIAL.md](./COMMERCIAL.md) — Commercial licensing summary
 
