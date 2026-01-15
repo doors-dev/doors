@@ -21,26 +21,29 @@ const (
 	increment  uint64 = 1442695040888963407
 )
 
-type Primea struct {
+type Prime struct {
 	counter atomic.Uint64
 }
 
-func NewPrima() *Primea {
+func NewPrime() *Prime {
 	var b [8]byte
 	_, err := rand.Read(b[:])
 	if err != nil {
 		panic(err)
 	}
-	seed := binary.NativeEndian.Uint64(b[:]) 
-	p := &Primea{}
-    p.counter.Store(seed)
+	seed := binary.NativeEndian.Uint64(b[:])
+	p := &Prime{}
+	p.counter.Store(seed)
 	return p
 }
 
-func (p *Primea) Gen() uint64 {
-    c := p.counter.Add(1)
-    _, lo := bits.Mul64(c, multiplier)
+func (p *Prime) Gen() uint64 {
+	c := p.counter.Add(1)
+	_, lo := bits.Mul64(c, multiplier)
 	lo, _ = bits.Add64(lo, increment, 0)
-	return lo & mod
+	num := lo & mod
+	if num == 0 {
+		return p.Gen()
+	}
+	return num
 }
-

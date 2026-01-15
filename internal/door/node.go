@@ -17,6 +17,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/shredder"
+	"github.com/doors-dev/gox"
 )
 
 type instance interface {
@@ -212,4 +213,8 @@ func (n *Door) Render(ctx context.Context, w io.Writer) error {
 		door:         n,
 	}
 	return n.container.render(thread, rm, w, n.Tag, n.A, n.content)
+}
+
+func (d *Door) Main() gox.Elem {
+	return nil
 }

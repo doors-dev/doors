@@ -105,7 +105,6 @@ func (c *container) render(thread *shredder.Thread, rm *common.RenderMap, w io.W
 
 func (c *container) replace(userCtx context.Context, content templ.Component, ch chan error) {
 	c.tracker.suspend(true)
-
 	thread := c.inst.Thread()
 	rm := common.NewRenderMap()
 	rw, _ := rm.Writer(c.id)

@@ -47,7 +47,7 @@ func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredde
 	return &core[M]{
 		instance:     inst,
 		store:        ctxstore.NewStore(common.CtxKeyInstanceStore),
-		gen:          common.NewPrima(),
+		gen:          common.NewPrime(),
 		hooksMu:      sync.Mutex{},
 		hooks:        make(map[uint64]map[uint64]*door.DoorHook),
 		spawner:      spawner,
@@ -81,7 +81,7 @@ type Core interface {
 type core[M any] struct {
 	instance     coreInstance[M]
 	store        *ctxstore.Store
-	gen          *common.Primea
+	gen          *common.Prime
 	hooksMu      sync.Mutex
 	hooks        map[uint64]map[uint64]*door.DoorHook
 	root         *door.Root

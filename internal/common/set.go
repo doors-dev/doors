@@ -8,56 +8,55 @@
 
 package common
 
-
 func NewSet[T comparable]() Set[T] {
-	return Set[T]{
-		m: make(map[T]struct{}),
-	}
+	return Set[T](make(map[T]struct{}))
 }
 
-type Set[T comparable] struct {
-	m map[T]struct{}
-}
+type Set[T comparable] map[T]struct{}
 
-func (s *Set[T]) Slice() []T {
-	slice := make([]T, len(s.m))
+func (s Set[T]) Slice() []T {
+	slice := make([]T, len(s))
 	i := 0
-	for v := range s.m {
+	for v := range s {
 		slice[i] = v
 		i += 1
 	}
 	return slice
 }
 
-func (s *Set[T]) Iter() map[T]struct{} {
-	return s.m
+func (s Set[T]) Iter() map[T]struct{} {
+	return s
 }
 
-func (s *Set[T]) Len() int {
-	return len(s.m)
+func (s Set[T]) Len() int {
+	return len(s)
 }
 
-func (s *Set[T]) IsEmpty() bool {
+func (s Set[T]) IsEmpty() bool {
 	return s.Len() == 0
 }
 
-func (s *Set[T]) Has(v T) bool {
-	_, has := s.m[v]
+func (s Set[T]) Has(v T) bool {
+	_, has := s[v]
 	return has
 }
 
-func (s *Set[T]) Add(v T) bool {
+func (s Set[T]) Add(v T) bool {
 	if s.Has(v) {
 		return false
 	}
-	s.m[v] = struct{}{}
+	s[v] = struct{}{}
 	return true
 }
 
-func (s *Set[T]) Remove(v T) bool {
+func (s Set[T]) Remove(v T) bool {
 	if !s.Has(v) {
 		return false
 	}
-	delete(s.m, v)
+	delete(s, v)
 	return true
+}
+
+func (s Set[T]) Clear() {
+	clear(s)
 }
