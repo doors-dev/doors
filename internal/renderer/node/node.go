@@ -73,7 +73,8 @@ type node struct {
 	ctx     context.Context
 	door    *door
 	kind    nodeKind
-	guard   *sh.Guard
+	guard   sh.Guard
+	shread  sh.Shread
 	tracker *tracker
 	view    *view
 }
@@ -94,6 +95,7 @@ func (n *node) takeover(prev *node) {
 }
 
 func (n *node) proxyTakeover(prev *node) {
+	renderFrame := n.shread.Frame()
 	panic("unimplemented")
 }
 
@@ -105,22 +107,29 @@ func (n *node) updatedTakeover(prev *node) {
 	case replacedNode:
 		n.kind = unmountedNode
 	case updatedNode, proxyNode, jobNode:
-		prev.guard.Run(updateGuard, func() {
+		prev.guard.Run(nil, updateGuard, func() {
 			n.guard.Open(updateGuard)
 		})
+		renderFrame := n.shread.Frame()
+		sendFrame := n.shread.Frame()
+		trackerFrame := n.shread.Frame()
 		prev.unmount(false)
 		n.view.attrs = prev.view.attrs
 		n.view.tag = prev.view.tag
-		n.tracker = newTrackerFrom(prev.tracker)
+		n.tracker = newTrackerFrom(prev.tracker, trackerFrame)
 		n.tracker.parent.addChild(n)
 		pipe := newPipe()
 		pipe.parent = n.tracker
-		sh.Run(func(t *sh.Thread) {
-			pipe.thread = t
+		pipe.frame = renderFrame
+		renderFrame.Run(nil, func() {
+			defer renderFrame.Release()
 			defer pipe.close()
 			cur := gox.NewCursor(n.tracker.getContext(), pipe)
 			cur.Any(n.view.content)
-			sh.Run(func(t *sh.Thread) {
+		})
+		shredder2.Run(func(t *shredder2.Thread) {
+			pipe.thread = t
+			shredder2.Run(func(t *shredder2.Thread) {
 				prev.guard.Run(updateGuard, func() {
 					// deploy update ->
 				})
@@ -138,14 +147,14 @@ func (n *node) replacedTakeover(prev *node) {
 		prev.unmount(false)
 		id := prev.tracker.id
 		thread := prev.tracker.root.newThread()
-		sh.Run(func(t *sh.Thread) {
+		shredder2.Run(func(t *shredder2.Thread) {
 			pipe := newPipe()
 			pipe.thread = t
 			pipe.parent = prev.tracker.parent
 			cur := gox.NewCursor(prev.tracker.parent.getContext(), pipe)
 			cur.Any(n.view.content)
 		}, thread.W())
-		sh.Run(func(t *sh.Thread) {
+		shredder2.Run(func(t *shredder2.Thread) {
 			prev.guard.Run(updateGuard, func() {
 				// deploy replace ->
 			})
@@ -170,7 +179,9 @@ func (n *node) jobTakeover(prev *node) {
 func (n *node) render(parent parent, parentPipe *pipe) error {
 	pipe := newPipe()
 	parentPipe.put(pipe)
-	n.guard.Run(renderGuard, func() {
+	renderFrame := sh.Join(n.shread.Frame(), parentPipe.frame)
+	trackerFrame := n.shread.Frame()
+	renderFrame.Run(nil, func() {
 		if n.kind == replacedNode {
 			defer pipe.close()
 			cur := gox.NewCursor(parent.getContext(), pipe)
@@ -180,12 +191,9 @@ func (n *node) render(parent parent, parentPipe *pipe) error {
 		if n.kind != jobNode && n.kind != proxyNode {
 			panic("wrong node to render")
 		}
-		n.tracker = newTracker(parent)
-		sh.Run(func(t *sh.Thread) {
-		}, n.)
-
+		n.tracker = newTracker(parent, trackerFrame)
 	})
-
+	return nil
 }
 
 func (c *node) unmount(remove bool) {
@@ -208,7 +216,6 @@ func (n *node) Output(io.Writer) error {
 
 type parent interface {
 	getContext() context.Context
-	getThread() *sh.Thread
 	getRoot() *root
 	addChild(child *node)
 }
@@ -220,22 +227,18 @@ func (r *root) newId() uint64 {
 	panic("unimpl")
 }
 
-func (r *root) newThread() *sh.Thread {
+func newTrackerFrom(old *tracker, frame sh.Frame) *tracker {
 	panic("unimpl")
 }
 
-func newTrackerFrom(old *tracker) *tracker {
-	panic("unimpl")
-}
-
-func newTracker(parent parent) *tracker {
+func newTracker(parent parent, frame sh.Frame) *tracker {
 	panic("unimpl")
 }
 
 type tracker struct {
 	id       uint64
-	thread   *sh.Thread
 	ctx      context.Context
+	frame    sh.Frame
 	cancel   context.CancelFunc
 	root     *root
 	parent   parent
@@ -249,10 +252,6 @@ func (t *tracker) getContext() context.Context {
 
 func (t *tracker) getRoot() *root {
 	return t.root
-}
-
-func (t *tracker) getThread() *sh.Thread {
-	return t.thread
 }
 
 var _ parent = &tracker{}

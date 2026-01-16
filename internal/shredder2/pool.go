@@ -6,7 +6,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
-package sh
+package shredder2
 
 import (
 	"runtime"

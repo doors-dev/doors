@@ -1,4 +1,4 @@
-package sh
+package shredder2
 
 import (
 	"slices"
@@ -8,17 +8,6 @@ import (
 type guardTask struct {
 	group uint8
 	f     func()
-	s     Spawner
-}
-
-func (s *guardTask) run() {
-	if s.s == nil {
-		s.f()
-		return
-	}
-	s.s.Spawn(func() {
-		s.f()
-	})
 }
 
 type Guard struct {
@@ -27,20 +16,17 @@ type Guard struct {
 	tasks        []guardTask
 }
 
-
-func (v *Guard) Run(s Spawner, group uint8, f func()) {
+func (v *Guard) Run(group uint8, f func()) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	task := guardTask{
-		group: group,
-		f:     f,
-		s:     s,
-	}
 	if slices.Contains(v.openedGroups, group) {
-		task.run()
+		f()
 		return
 	}
-	v.tasks = append(v.tasks, task)
+	v.tasks = append(v.tasks, guardTask{
+		group: group,
+		f:     f,
+	})
 }
 
 func (v *Guard) Open(group ...uint8) {
@@ -53,7 +39,7 @@ func (v *Guard) Open(group ...uint8) {
 			n++
 			continue
 		}
-		t.run()
+		t.f()
 	}
 	for i := n; i < len(v.tasks); i++ {
 		v.tasks[i] = guardTask{}

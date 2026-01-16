@@ -4,13 +4,13 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/sh"
+	"github.com/doors-dev/doors/internal/shredder2"
 	"github.com/doors-dev/gox"
 	"github.com/gammazero/deque"
 )
 
 func newPipe() *pipe {
-	return &pipe{
-	}
+	return &pipe{}
 }
 
 type pipe struct {
@@ -19,16 +19,15 @@ type pipe struct {
 	signal chan struct{}
 	closed bool
 	parent parent
-	thread *sh.Thread
+	frame  sh.Frame
 }
 
 
 func (p *pipe) Send(job gox.Job) error {
 	switch job := job.(type) {
-	case *jobState:
-		job.render(p.parent, p, p.thread)
-	case *proxyState:
-		job.render(p.parent, p, p.thread)
+	case *node:
+		p.parent.addChild(job)
+		job.render(p.parent, p)
 	case *gox.JobComp:
 		newPipe := newPipe()
 		newPipe.parent = p.parent
@@ -37,9 +36,13 @@ func (p *pipe) Send(job gox.Job) error {
 		comp := job.Comp
 		ctx := job.Ctx
 		gox.Release(job)
-		sh.Run(func(t *sh.Thread) {
+		sh.Run(nil, func(ok bool) {
 			comp.Main().Print(ctx, newPipe)
-		}, p.thread.R())
+		}, p.shread)
+		/*
+			sh.Run(func(t *sh.Thread) {
+				comp.Main().Print(ctx, newPipe)
+			}, p.thread.R()) */
 	default:
 		p.put(job)
 	}
@@ -81,4 +84,3 @@ func (p *pipe) get() (any, bool) {
 	defer p.mu.Unlock()
 	return p.innie.PopFront(), true
 }
-
