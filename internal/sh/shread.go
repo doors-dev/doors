@@ -9,8 +9,12 @@ type executable interface {
 	Execute(callback func())
 }
 
-type Frame interface {
+type Guard interface {
 	Release()
+}
+
+type Frame interface {
+	Guard
 	SimpleFrame
 }
 
@@ -23,10 +27,6 @@ type AnyFrame interface {
 	schedule(executable)
 }
 
-
-type Releaser interface {
-	Release()
-}
 
 type baseFrame struct {
 	mu         sync.Mutex
@@ -196,6 +196,10 @@ type Shread struct {
 	frame atomic.Pointer[shreadFrame]
 }
 
+func (s *Shread) Guard() Guard {
+	return s.Frame()
+}
+
 func (s *Shread) Frame() Frame {
 	frame := &shreadFrame{}
 	frame.baseFrame = &baseFrame{
@@ -227,39 +231,38 @@ func Join(first AnyFrame, others ...AnyFrame) Frame {
 type ValveFrame struct {
 	mu     sync.Mutex
 	buffer []executable
-	active bool
+	active atomic.Bool
 }
 
 func (m *ValveFrame) Activate() {
 	m.mu.Lock()
-	if m.active {
+	if m.active.Load() {
 		m.mu.Unlock()
 		panic("frame: already active")
 	}
-	m.active = true
+	m.active.Store(true)
+	buf := m.buffer
+	m.buffer = nil
 	m.mu.Unlock()
-	for i, e := range m.buffer {
+	for i, e := range buf {
 		m.schedule(e)
-		m.buffer[i] = nil
+		buf[i] = nil
 	}
 }
 
 func (m *ValveFrame) Run(s Spawner, fun func()) {
+	if m.active.Load() {
+		m.schedule(&simpleExecutable{spawner: s, fun: fun})
+		return
+	}
 	m.mu.Lock()
-	if !m.active {
-		m.buffer = append(m.buffer, &simpleExecutable{
-			fun:     fun,
-			spawner: s,
-		})
+	if !m.active.Load() {
+		m.buffer = append(m.buffer, &simpleExecutable{spawner: s, fun: fun})
 		m.mu.Unlock()
 		return
 	}
 	m.mu.Unlock()
-	m.schedule(&simpleExecutable{
-		spawner: s,
-		fun:     fun,
-	})
-
+	m.schedule(&simpleExecutable{spawner: s, fun: fun})
 }
 
 func (m *ValveFrame) schedule(e executable) {
@@ -269,7 +272,6 @@ func (m *ValveFrame) schedule(e executable) {
 var _ SimpleFrame = &ValveFrame{}
 
 type FreeFrame struct{}
-
 
 func (f FreeFrame) Run(s Spawner, fun func()) {
 	f.schedule(&simpleExecutable{
