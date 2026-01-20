@@ -35,7 +35,7 @@ type screen struct {
 	seq      uint
 }
 
-func (s *screen) sync(ctx context.Context, afterFrame sh.SimpleFrame, sourceFrame sh.SimpleFrame, seq uint, isStopped func() bool) {
+func (s *screen) sync(ctx context.Context, cleanFrame sh.SimpleFrame, sourceFrame sh.SimpleFrame, seq uint, isStopped func() bool) {
 
 	doorFrame := s.cinema.door.NewFrame()
 	defer doorFrame.Release()
@@ -65,7 +65,7 @@ func (s *screen) sync(ctx context.Context, afterFrame sh.SimpleFrame, sourceFram
 
 		for _, watcher := range watchers {
 			syncWatchersFrame.Run(s.cinema.spawner, func() {
-				watcher.sync(ctx, seq, afterFrame)
+				watcher.sync(ctx, seq, cleanFrame)
 			})
 		}
 
@@ -74,7 +74,7 @@ func (s *screen) sync(ctx context.Context, afterFrame sh.SimpleFrame, sourceFram
 				return
 			}
 			for _, screen := range subs {
-				screen.sync(ctx, afterFrame, sourceFrame, seq, isStopped)
+				screen.sync(ctx, cleanFrame, sourceFrame, seq, isStopped)
 			}
 		})
 	})

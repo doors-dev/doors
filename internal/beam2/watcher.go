@@ -46,8 +46,8 @@ func (s *innerWatcher[T]) init(seq uint) bool {
 	return s.w.Init(s.ctx, v, seq)
 }
 
-func (s *innerWatcher[T]) sync(ctx context.Context, seq uint, after sh.SimpleFrame) bool {
-	v, updated := s.beam.sync(seq, after)
+func (s *innerWatcher[T]) sync(ctx context.Context, seq uint, cleanFrame sh.SimpleFrame) bool {
+	v, updated := s.beam.sync(seq, cleanFrame)
 	if v == nil {
 		panic("update sync logic error:" + fmt.Sprint(seq))
 	}
@@ -86,12 +86,12 @@ func (w *watcher) Cancel() {
 	w.screen.removeWatcher(w)
 }
 
-func (w *watcher) sync(ctx context.Context, seq uint, after sh.SimpleFrame) {
+func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame sh.SimpleFrame) {
 	<-w.initGuard
 	if w.done.Load() {
 		return
 	}
-	if w.inner.sync(ctx, seq, after) {
+	if w.inner.sync(ctx, seq, cleanFrame) {
 		if !w.done.CompareAndSwap(false, true) {
 			return
 		}

@@ -18,7 +18,6 @@ import (
 	"github.com/doors-dev/doors/internal/sh"
 )
 
-
 type SourceBeam[T any] interface {
 	Beam[T]
 
@@ -80,10 +79,8 @@ type anySource interface {
 
 type source[T any] struct {
 	id     common.ID
-	null   T
 	seq    uint
 	values map[uint]*T
-	init   sync.Once
 	equal  func(new T, old T) bool
 	mu     sync.RWMutex
 	noSkip bool
@@ -143,68 +140,49 @@ func (s *source[T]) sync(seq uint, _ sh.SimpleFrame) (*T, bool) {
 	return value, ok
 }
 
-func (s *source[T]) update(ctx context.Context, v *T) <-chan error {
-	return s.applyMutation(ctx, func(l *T) (*T, bool) {
-		if s.equal != nil && s.equal(*l, *v) {
-			return nil, false
-		}
-		return v, true
-	})
-}
-
 func (s *source[T]) XUpdate(ctx context.Context, v T) <-chan error {
 	common.LogBlockingWarning(ctx, "SourceBeam", "XUpdate")
-	return s.update(ctx, &v)
+	return s.mutateOrUpdate(ctx, nil, &v)
 }
 
 func (s *source[T]) Update(ctx context.Context, v T) {
-	s.update(ctx, &v)
-}
-
-func (s *source[T]) mutate(ctx context.Context, m func(T) T) <-chan error {
-	return s.applyMutation(ctx, func(l *T) (*T, bool) {
-		new := m(*l)
-		if s.equal != nil && s.equal(*l, new) {
-			return nil, false
-		}
-		return &new, true
-	})
+	s.mutateOrUpdate(ctx, nil, &v)
 }
 
 func (s *source[T]) XMutate(ctx context.Context, m func(T) T) <-chan error {
 	common.LogBlockingWarning(ctx, "SourceBeam", "XMutate")
-	return s.mutate(ctx, m)
-}
-func (s *source[T]) Mutate(ctx context.Context, m func(T) T) {
-	s.mutate(ctx, m)
+	return s.mutateOrUpdate(ctx, m, nil)
 }
 
-func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-chan error {
+func (s *source[T]) Mutate(ctx context.Context, m func(T) T) {
+	s.mutateOrUpdate(ctx, m, nil)
+}
+
+func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T) <-chan error {
 	s.mu.Lock()
 	ch := make(chan error, 1)
 	common.LogCanceled(ctx, "SourceBeam mutation")
 	ctx = common.ClearBlockingCtx(ctx)
-	new, update := m(s.values[s.seq])
-	if !update {
-		close(ch)
+
+	seq, commited := s.commit(mut, value)
+	if !commited {
 		s.mu.Unlock()
+		close(ch)
 		return ch
 	}
-	s.seq += 1
-	seq := s.seq
-	s.values[seq] = new
+
 	if len(s.subs) == 0 {
-		delete(s.values, seq-1)
+		s.cleanBefore(seq)
 		s.mu.Unlock()
 		ch <- nil
 		close(ch)
 		return ch
 	}
-	subs := s.subs.Slice()
-	s.mu.Unlock()
 
 	done := ctxwg.Add(ctx)
+
 	stopped := atomic.Bool{}
+
 	isStopped := func() bool {
 		if s.noSkip {
 			return false
@@ -223,17 +201,16 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 
 	sh := sh.Shread{}
 	syncFrame := sh.Frame()
-	defer syncFrame.Release()
-
 	checkFrame := sh.Frame()
+	cleanFrame := sh.Frame()
 
-	finalFrame := sh.Frame()
-
-	for _, sub := range subs {
-		syncFrame.Run(nil, func() {
-			sub.sync(ctx, finalFrame, syncFrame, seq, isStopped)
-		})
+	for _, sub := range s.subs.Slice() {
+		sub.sync(ctx, cleanFrame, syncFrame, seq, isStopped)
 	}
+
+	syncFrame.Release()
+
+	s.mu.Unlock()
 
 	checkFrame.Run(nil, func() {
 		defer done()
@@ -245,17 +222,43 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 		checkFrame.Release()
 	})
 
-	finalFrame.Run(nil, func() {
+	cleanFrame.Run(nil, func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		for oldSeq := range s.values {
-			if oldSeq < seq {
-				delete(s.values, oldSeq)
-			}
-		}
+		s.cleanBefore(seq)
 	})
 
 	return ch
+}
+
+func (s *source[T]) commit(mut func(T) T, value *T) (uint, bool) {
+	prev := s.values[s.seq]
+	var next *T
+	switch true {
+	case mut != nil:
+		updated := mut(*prev)
+		next = &updated
+	case value != nil:
+		next = value
+	default:
+		panic("SourceBeam: no value or mutation provided")
+	}
+	if s.equal != nil && s.equal(*prev, *next) {
+		return 0, false
+	}
+	s.seq += 1
+	seq := s.seq
+	s.values[seq] = next
+	return seq, true
+}
+
+func (s *source[T]) cleanBefore(seq uint) {
+	for oldSeq := range s.values {
+		if oldSeq < seq {
+			delete(s.values, oldSeq)
+		}
+	}
+
 }
 
 type Core interface {
