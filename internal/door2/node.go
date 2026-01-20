@@ -1,4 +1,4 @@
-package door
+package door2
 
 import (
 	"context"
@@ -40,8 +40,6 @@ func (n *node) Output(io.Writer) error {
 
 func (n *node) takover(prev *node) {
 	switch n.kind {
-	case unmountedNode:
-		panic("door: unmounted node can't takeover")
 	case jobNode, proxyNode:
 		n.shread = &sh.Shread{}
 		renderGuard := n.shread.Guard()
@@ -58,6 +56,8 @@ func (n *node) takover(prev *node) {
 		prev.takoverFrame.Run(nil, func() {
 			defer n.takoverFrame.Activate()
 			switch n.kind {
+			case unmountedNode:
+				n.replaceTakeover(prev)
 			case updatedNode:
 				n.updatedTakeover(prev)
 			case replacedNode:
@@ -95,9 +95,15 @@ func (n *node) replaceTakeover(prev *node) {
 		return
 	}
 	prev.kill(unmount)
+	if n.view.content == nil {
+		prev.communicationFrame.Run(nil, func() {
+			// push remove
+		})
+		return
+	}
 	shread := sh.Shread{}
 	parent := prev.tracker.parent
-	parentFrame := parent.newWriteFrame()
+	parentFrame := parent.newRenderFrame()
 	defer parentFrame.Release()
 	renderFrame := shread.Frame()
 	defer renderFrame.Release()
@@ -137,6 +143,13 @@ func (n *node) updatedTakeover(prev *node) {
 	n.tracker = newTrackerFrom(prev.tracker, trackerShread)
 	n.view.attrs = prev.view.attrs
 	n.view.tag = prev.view.tag
+	if n.view.content == nil {
+		n.communicationFrame.Run(nil, func() {
+			// push empty
+		})
+		return
+	}
+
 	renderShread := sh.Shread{}
 	renderFrame := renderShread.Frame()
 	defer renderFrame.Release()
@@ -151,7 +164,7 @@ func (n *node) updatedTakeover(prev *node) {
 	})
 	finalFrame := renderShread.Frame()
 	defer finalFrame.Release()
-	updateFrame := sh.Join(finalFrame, prev.communicationFrame)
+	updateFrame := sh.Join(finalFrame, n.communicationFrame)
 	defer updateFrame.Release()
 	updateFrame.Run(nil, func() {
 		// push replace
@@ -185,12 +198,12 @@ func (n *node) render(parent parent, parentPipe *pipe) {
 		switch n.kind {
 		case jobNode:
 			n.takoverFrame.Activate()
-			open, close := n.view.headFrame(n.tracker.getContext(), n.tracker.id, cur.NewId())
+			open, close := n.view.headFrame(parent.getContext(), n.tracker.id, cur.NewId())
 			cur.Job(open)
 			cur.Any(n.view.content)
 			cur.Job(close)
 		case proxyNode:
-			proxy := newProxyRenderer(n.tracker.id, cur, n.view)
+			proxy := newProxyRenderer(n.tracker.id, cur, n.view, parent.getContext())
 			proxy.render()
 			proxy.InitFrame().Run(nil, func() {
 				n.takoverFrame.Activate()
@@ -204,7 +217,7 @@ func (n *node) render(parent parent, parentPipe *pipe) {
 type killKind int
 
 const (
-	silent killKind = iota
+	cascade killKind = iota
 	unmount
 	remove
 )
@@ -213,17 +226,20 @@ func (n *node) kill(kind killKind) {
 	if n.kind == unmountedNode || n.kind == replacedNode {
 		panic("door: unmounted/replaced node can't be killed")
 	}
-	if kind != silent {
+	switch kind {
+	case cascade:
+		if !n.door.node.CompareAndSwap(n, nil){
+			return
+		}
+		n.tracker.kill()
+	case unmount:
 		n.tracker.parent.removeChild(n)
+		n.tracker.kill()
+	case remove:
+		n.tracker.parent.removeChild(n)
+		n.tracker.kill()
+		n.communicationFrame.Run(nil, func() {
+			// push update
+		})
 	}
-	n.tracker.kill()
-	for child := range n.tracker.children {
-		child.kill(silent)
-	}
-	if kind != remove {
-		return
-	}
-	n.communicationFrame.Run(nil, func() {
-		// push update
-	})
 }

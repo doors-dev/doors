@@ -1,7 +1,6 @@
-package door
+package door2
 
 import (
-	"sync"
 
 	"github.com/doors-dev/doors/internal/sh"
 	"github.com/doors-dev/gox"
@@ -20,6 +19,7 @@ type pipe struct {
 
 
 func (p *pipe) Send(job gox.Job) error {
+	/*
 	switch job := job.(type) {
 	case *node:
 		p.parent.addChild(job)
@@ -38,10 +38,10 @@ func (p *pipe) Send(job gox.Job) error {
 		/*
 			sh.Run(func(t *sh.Thread) {
 				comp.Main().Print(ctx, newPipe)
-			}, p.thread.R()) */
+			}, p.thread.R()) 
 	default:
 		p.put(job)
-	}
-	return nil
+	} */
+	return nil 
 }
 

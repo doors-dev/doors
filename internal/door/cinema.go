@@ -44,9 +44,9 @@ func newScreen(id uint64, cinema screenCinema, coreThread *shredder.Thread) *Scr
 }
 
 type Screen struct {
+	mu         sync.Mutex
 	id         uint64
 	counter    uint
-	mu         sync.Mutex
 	thread     *shredder.Thread
 	coreThread *shredder.Thread
 	watchers   map[uint]Watcher

@@ -1,4 +1,4 @@
-package door
+package door2
 
 import (
 	"context"
@@ -9,6 +9,26 @@ import (
 
 type Door struct {
 	node atomic.Pointer[node]
+}
+
+func (d *Door) Remove(ctx context.Context) {
+	node := &node{
+		ctx:  ctx,
+		door: d,
+		kind: unmountedNode,
+		view: &view{},
+	}
+	d.takeover(node)
+}
+
+func (d *Door) Clear(ctx context.Context) {
+	node := &node{
+		ctx:  ctx,
+		door: d,
+		kind: updatedNode,
+		view: &view{},
+	}
+	d.takeover(node)
 }
 
 func (d *Door) Update(ctx context.Context, content any) {
@@ -69,4 +89,3 @@ func (d *Door) takeover(next *node) {
 	}
 	next.takover(prev)
 }
-

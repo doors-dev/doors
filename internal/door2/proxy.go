@@ -1,6 +1,7 @@
-package door
+package door2
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -16,11 +17,12 @@ const (
 	closing
 )
 
-func newProxyRenderer(doorId uint64, cursor gox.Cursor, view *view) *proxyRenderer {
+func newProxyRenderer(doorId uint64, cursor gox.Cursor, view *view, parentCtx context.Context) *proxyRenderer {
 	return &proxyRenderer{
 		doorId: doorId,
 		cursor: cursor,
 		view:   view,
+		parentCtx: parentCtx,
 	}
 }
 
@@ -33,6 +35,7 @@ type proxyRenderer struct {
 	headId    uint64
 	close     *gox.JobHeadClose
 	initReady sh.ValveFrame
+	parentCtx context.Context
 }
 
 func (r *proxyRenderer) render() error {
@@ -119,7 +122,7 @@ func (r *proxyRenderer) init(job gox.Job) error {
 		}
 	}
 	r.headId = openJob.Id
-	open, close := r.view.headFrame(openJob.Ctx, r.doorId, r.cursor.NewId())
+	open, close := r.view.headFrame(r.parentCtx, r.doorId, r.cursor.NewId())
 	r.close = close
 	return r.cursor.Job(open)
 }

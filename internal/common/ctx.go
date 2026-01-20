@@ -27,6 +27,7 @@ const (
 	CtxKeyParent
 	CtxKeyAttrs
 	CtxStorageKeyStatus
+	CtxKeyCore
 )
 
 func LogCanceled(ctx context.Context, action string)  {

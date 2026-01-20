@@ -1,4 +1,4 @@
-package door
+package door2
 
 import (
 	"context"
@@ -18,6 +18,10 @@ func (r *Root) Spawner() sh.Spawner {
 	return r.spawner
 }
 
+func (r *Root) getContext() context.Context {
+	return r.ctx
+}
+
 func (r *Root) getRoot() *Root {
 	return r
 }
@@ -26,6 +30,3 @@ func (r *Root) newId() uint64 {
 	return r.prime.Gen()
 }
 
-func (r *Root) newCtx() (context.Context, context.CancelFunc) {
-	return context.WithCancel(r.ctx)
-}
