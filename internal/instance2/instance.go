@@ -11,16 +11,19 @@ package instance2
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"sync"
-	"time"
+	"sync/atomic"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/door2"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/path"
+	"github.com/doors-dev/doors/internal/sh"
+	"github.com/doors-dev/doors/internal/solitaire"
+	"github.com/doors-dev/gox"
 )
 
 type AnyInstance interface {
@@ -29,11 +32,11 @@ type AnyInstance interface {
 	RestorePath(*http.Request) bool
 	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request, uint64) bool
 	Connect(w http.ResponseWriter, r *http.Request)
-	end(endCause)
+	end(common.EndCause)
 }
 
 type App[M any] interface {
-	Render(path beam.SourceBeam[M]) templ.Component
+	Main(path beam.SourceBeam[M]) gox.Elem
 }
 
 type Options struct {
@@ -41,134 +44,160 @@ type Options struct {
 	Rerouted bool
 }
 
-func NewInstance[M any](sess *Session, page App[M], adapter *path.Adapter[M], m *M, opt *Options) (AnyInstance, bool) {
+type setup[M any] struct {
+	adapter  *path.Adapter[M]
+	model    *M
+	app      App[M]
+	detached bool
+	rerouted bool
+}
+
+func NewInstance[M any](sess *Session, app App[M], adapter *path.Adapter[M], m *M, detached bool, rerouted bool) (AnyInstance, bool) {
 	inst := &Instance[M]{
-		id:        common.RandId(),
-		navigator: newNavigator(adapter, sess.router.Adapters(), m, opt.Detached, opt.Rerouted),
-		page:      page,
-		opt:       opt,
-		session:   sess,
+		id: common.RandId(),
+		setup: &setup[M]{
+			adapter:  adapter,
+			model:    m,
+			app:      app,
+			detached: detached,
+			rerouted: rerouted,
+		},
+		session: sess,
+		store:   ctex.NewStore(),
 	}
-	inst.resetKillTimer()
 	return inst, sess.AddInstance(inst)
 }
 
+const (
+	initial int32 = iota
+	active
+	killed
+)
+
 type Instance[M any] struct {
-	mu        sync.RWMutex
-	killed    bool
 	id        string
-	navigator *navigator[M]
-	page      App[M]
-	opt       *Options
-	core      *core[M]
+	state     atomic.Int32
+	setup     *setup[M]
 	session   *Session
-	ctx       context.Context
-	killTimer *time.Timer
+	navigator *navigator[M]
+	solitaire solitaire.Solitaire
+	root      door2.Root
+	killTimer *killTimer
+	store     ctex.Store
+	csp       *common.CSPCollector
 }
 
-func (inst *Instance[M]) resetKillTimer() bool {
-	if inst.killTimer != nil {
-		stopped := inst.killTimer.Stop()
-		if !stopped {
-			return false
-		}
-		inst.killTimer.Reset(inst.conf().InstanceTTL)
-		return true
-	}
-	inst.killTimer = time.AfterFunc(inst.conf().InstanceConnectTimeout, func() {
-		slog.Debug("Inactive instance killed by timeout", slog.String("type", "message"), slog.String("instance_id", inst.id))
-		inst.end(causeKilled)
-	})
-	return true
+func (c *Instance[M]) CSPCollector() *common.CSPCollector {
+	return c.csp
 }
 
-func (inst *Instance[M]) conf() *common.SystemConf {
+func (c *Instance[M]) Call(call action.Call) {
+	panic("unimplemented")
+}
+
+func (inst *Instance[M]) Conf() *common.SystemConf {
 	return inst.session.router.Conf()
 }
 
-func (inst *Instance[M]) getSession() coreSession {
-	return inst.session
-}
-
-func (inst *Instance[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
-	inst.mu.RLock()
-	if inst.killed || inst.core == nil {
-		inst.mu.RUnlock()
-		return false
-	}
-	inst.mu.RUnlock()
-	ok := inst.core.TriggerHook(doorId, hookId, w, r, track)
-	if ok {
-		inst.touch()
-	}
-	return ok
-}
-
-func (inst *Instance[M]) touch() {
+func (inst *Instance[M]) Touch() {
 	inst.session.limiter.touch(inst.id)
 }
 
+func (inst *Instance[M]) init() error {
+	ok := inst.state.CompareAndSwap(initial, active)
+	if !ok {
+		return errors.New("Instance already started or killed")
+	}
+	ctx := context.Background()
+	ctx = inst.session.store.Inject(ctx, ctex.KeySessionStore)
+	ctx = inst.store.Inject(ctx, ctex.KeyInstanceStore)
+	inst.root = door2.NewRoot(ctx, inst)
+	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Conf()))
+	inst.navigator = newNavigator(
+		inst,
+		inst.setup.adapter,
+		inst.session.router.Adapters(),
+		inst.setup.model,
+		inst.root.Context(),
+		inst.setup.detached,
+		inst.setup.rerouted,
+	)
+	inst.killTimer = &killTimer{
+		initial: inst.Conf().InstanceConnectTimeout,
+		regular: inst.Conf().InstanceTTL,
+		inst:    inst,
+	}
+	inst.csp = inst.session.router.CSP().NewCollector()
+	inst.killTimer.keepAlive()
+	return nil
+}
+
+func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
+	if err := inst.init(); err != nil {
+		return err
+	}
+	el := inst.setup.app.Main(inst.navigator.getBeam())
+	inst.setup = nil
+	sh := sh.Shread{}
+	renderFrame := sh.Frame()
+	defer renderFrame.Release()
+	js := inst.root.Render(renderFrame, el)
+	ch := make(chan struct{})
+	sh.Frame().Run(nil, func() {
+		close(ch)
+	})
+	<-ch
+	return inst.render(w, r, js)
+}
+
+func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, js door2.JobStream) error {
+
+}
+
+func (inst *Instance[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) (ok bool) {
+	defer func() {
+		if ok {
+			inst.Touch()
+		}
+	}()
+	if inst.state.Load() != active {
+		return false
+	}
+	return inst.root.TriggerHook(doorId, hookId, w, r, track)
+}
+
 func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {
-	inst.mu.RLock()
-	if inst.killed || inst.core == nil {
-		inst.mu.RUnlock()
+	if inst.state.Load() != active {
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	inst.resetKillTimer()
-	inst.mu.RUnlock()
-	inst.core.solitaire.Connect(w, r)
+	inst.killTimer.keepAlive()
+	inst.solitaire.Connect(w, r)
 }
 
-func (inst *Instance[M]) syncError(err error) {
+func (inst *Instance[M]) SyncError(err error) {
 	slog.Debug("Instance syncronization error", slog.String("error", err.Error()), slog.String("type", "error"), slog.String("instance_id", inst.id))
-	inst.end(causeSyncError)
-}
-func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
-	inst.mu.Lock()
-	if inst.killed {
-		inst.mu.Unlock()
-		return errors.New("Instance killed before render")
-	}
-	if inst.core != nil {
-		inst.mu.Unlock()
-		panic("Instance rendered twice")
-	}
-	spawner := inst.session.router.Spawner(inst)
-	solitaire := newSolitaire(inst, common.GetSolitaireConf(inst.conf()))
-	inst.core = newCore(inst, solitaire, spawner, inst.navigator)
-	inst.mu.Unlock()
-	err := inst.core.serve(w, r, inst.page)
-	if err != nil {
-		defer inst.end(causeKilled)
-	}
-	return err
+	inst.end(common.EndCauseSyncError)
 }
 
 func (inst *Instance[M]) OnPanic(err error) {
 	slog.Error(err.Error(), slog.String("type", "panic"), slog.String("instance_id", inst.id))
-	inst.end(causeKilled)
+	inst.end(common.EndCauseKilled)
 }
 
 func (inst *Instance[M]) Id() string {
 	return inst.id
 }
 
-func (inst *Instance[M]) end(cause endCause) {
-	inst.mu.Lock()
-	defer inst.mu.Unlock()
-	if inst.killed {
+func (inst *Instance[M]) end(cause common.EndCause) {
+	if !inst.state.CompareAndSwap(active, killed) {
 		return
 	}
 	inst.session.removeInstance(inst.id)
-	inst.killed = true
-	if inst.core == nil {
-		return
-	}
-	inst.core.end(cause)
+	inst.root.Kill()
+	inst.solitaire.End(cause)
 }
 
 func (inst *Instance[M]) RestorePath(r *http.Request) bool {
 	return inst.navigator.restore(r)
 }
-

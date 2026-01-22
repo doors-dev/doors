@@ -8,16 +8,23 @@ import (
 
 	"github.com/doors-dev/doors/internal/beam2"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/sh"
 )
 
-type parent interface {
-	getRoot() *Root
-	getContext() context.Context
-	Cinema() beam2.Cinema
-	newRenderFrame() sh.Frame
-	addChild(t *node) bool
-	removeChild(t *node)
+func newRootTracker(ctx context.Context, r *root) *tracker {
+	t := &tracker{
+		id:       r.newId(),
+		root:     r,
+		parent:   nil,
+		children: common.NewSet[*node](),
+	}
+	t.cinema = beam2.NewCinema(nil, t, r.spawner)
+	core := core.NewCore(r.inst, t)
+	ctx = context.WithValue(ctx, ctex.KeyCore, core)
+	t.ctx, t.cancel = context.WithCancel(ctx)
+	return t
 }
 
 func newTrackerFrom(prev *tracker, shread *sh.Shread) *tracker {
@@ -29,38 +36,39 @@ func newTrackerFrom(prev *tracker, shread *sh.Shread) *tracker {
 		shread:   shread,
 		children: common.NewSet[*node](),
 	}
-	t.readFrame.Store(shread.Frame())
-	t.cinema = beam2.NewCinema(t.parent.Cinema(), t, root.Spawner())
-	core := newCore(t.cinema)
-	ctx := context.WithValue(prev.parent.getContext(), common.CtxKeyCore, core)
+	t.initShread(shread)
+	t.cinema = beam2.NewCinema(t.parent.cinema, t, root.spawner)
+	t.core = core.NewCore(root.inst, t)
+	ctx := context.WithValue(prev.parent.ctx, ctex.KeyCore, t.core)
 	t.ctx, t.cancel = context.WithCancel(ctx)
 	root.addTracker(t)
 	return t
 }
 
-func newTracker(p parent, shread *sh.Shread) *tracker {
-	root := p.getRoot()
+func newTracker(parent *tracker, shread *sh.Shread) *tracker {
 	t := &tracker{
-		root:     root,
-		id:       root.newId(),
-		parent:   p,
-		shread:   shread,
+		root:     parent.root,
+		id:       parent.root.newId(),
+		parent:   parent,
 		children: common.NewSet[*node](),
 	}
-	t.readFrame.Store(shread.Frame())
-	t.cinema = beam2.NewCinema(t.parent.Cinema(), t, root.Spawner())
-	core := newCore(t.cinema)
-	ctx := context.WithValue(p.getContext(), common.CtxKeyCore, core)
+	t.initShread(shread)
+	t.cinema = beam2.NewCinema(t.parent.cinema, t, t.root.spawner)
+	t.core = core.NewCore(t.root.inst, t)
+	ctx := context.WithValue(parent.ctx, ctex.KeyCore, t.core)
 	t.ctx, t.cancel = context.WithCancel(ctx)
-	root.addTracker(t)
+	t.root.addTracker(t)
 	return t
 }
+
+var _ core.Door = &tracker{}
+var _ beam2.Door = &tracker{}
 
 type tracker struct {
 	mu        sync.Mutex
 	id        uint64
-	root      *Root
-	parent    parent
+	root      *root
+	parent    *tracker
 	shread    *sh.Shread
 	readFrame atomic.Value
 	ctx       context.Context
@@ -68,23 +76,32 @@ type tracker struct {
 	children  common.Set[*node]
 	cinema    beam2.Cinema
 	hooks     map[uint64]*hook
+	core      core.Core
+}
+
+func (t *tracker) initShread(shread *sh.Shread) {
+	t.readFrame.Store(shread.Frame())
+	t.shread = shread
 }
 
 func (t *tracker) Cinema() beam2.Cinema {
 	return t.cinema
 }
 
-func (t *tracker) registerHook(h Hook) HookEntry {
+func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	hook := newHook(h, t)
+	hook := newHook(t, onTrigger, onCancel)
 	id := t.root.newId()
 	t.hooks[id] = hook
-	return HookEntry{
-		DoorID:  t.id,
-		HookID:  id,
-		tracker: t,
-	}
+	return core.Hook{
+		DoorID: t.id,
+		HookID: id,
+		Cancel: func() {
+			t.cancelHook(id)
+		},
+	}, true
+
 }
 
 func (t *tracker) cancelHook(hookId uint64) {
@@ -124,7 +141,7 @@ func (t *tracker) kill() {
 		child.kill(cascade)
 	}
 	t.children.Clear()
-	t.root.Spawner().Spawn(func() {
+	t.root.spawner.Spawn(func() {
 		t.mu.Lock()
 		defer t.mu.Unlock()
 		for _, hook := range t.hooks {
@@ -159,12 +176,4 @@ func (t *tracker) newRenderFrame() sh.Frame {
 	prev := t.readFrame.Swap(t.shread.Frame()).(sh.Frame)
 	prev.Release()
 	return frame
-}
-
-func (t *tracker) getContext() context.Context {
-	return t.ctx
-}
-
-func (t *tracker) getRoot() *Root {
-	return t.root
 }

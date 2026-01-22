@@ -16,7 +16,7 @@ import (
 	"github.com/doors-dev/doors/internal/sh"
 )
 
-type door interface {
+type Door interface {
 	NewFrame() sh.Frame
 }
 
@@ -144,7 +144,7 @@ func (s *screen) removeSub(sub *screen) {
 
 type Cinema = *cinema
 
-func NewCinema(parent Cinema, door door, spawner sh.Spawner) Cinema {
+func NewCinema(parent Cinema, door Door, spawner sh.Spawner) Cinema {
 	return &cinema{
 		parent:  parent,
 		door:    door,
@@ -155,7 +155,7 @@ func NewCinema(parent Cinema, door door, spawner sh.Spawner) Cinema {
 type cinema struct {
 	mu      sync.Mutex
 	parent  *cinema
-	door    door
+	door    Door
 	spawner sh.Spawner
 	screens map[common.ID]*screen
 }

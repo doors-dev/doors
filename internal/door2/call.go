@@ -25,3 +25,4 @@ func (c reportHook) Cancel()                             {}
 func (c reportHook) Result(r json.RawMessage, err error) {}
 func (c reportHook) Clean()                              {}
 
+

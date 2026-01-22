@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxstore"
+	"github.com/doors-dev/doors/internal/common/store"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/license"
@@ -28,7 +28,7 @@ import (
 )
 
 type coreSession interface {
-	getStorage() *ctxstore.Store
+	getStorage() *store.Store
 	SetExpiration(time.Duration)
 	Kill()
 	Id() string
@@ -46,7 +46,7 @@ type coreInstance[M any] interface {
 func newCore[M any](inst coreInstance[M], solitaire *solitaire, spawner *shredder.Spawner, navigator *navigator[M]) *core[M] {
 	return &core[M]{
 		instance:     inst,
-		store:        ctxstore.NewStore(common.CtxKeyInstanceStore),
+		store:        store.NewStore(common.CtxKeyInstanceStore),
 		gen:          common.NewPrime(),
 		hooksMu:      sync.Mutex{},
 		hooks:        make(map[uint64]map[uint64]*door.DoorHook),
@@ -80,7 +80,7 @@ type Core interface {
 
 type core[M any] struct {
 	instance     coreInstance[M]
-	store        *ctxstore.Store
+	store        *store.Store
 	gen          *common.Prime
 	hooksMu      sync.Mutex
 	hooks        map[uint64]map[uint64]*door.DoorHook

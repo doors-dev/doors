@@ -25,7 +25,9 @@ type Instance interface {
 	Touch()
 }
 
-func NewSolitaire(inst Instance, conf *common.SolitaireConf) *solitaire {
+type Solitaire = *solitaire
+
+func NewSolitaire(inst Instance, conf *common.SolitaireConf) Solitaire {
 	return &solitaire{
 		inst: inst,
 		conf: conf,
@@ -41,7 +43,7 @@ type solitaire struct {
 	conn   atomic.Pointer[conn]
 }
 
-func (s *solitaire) Call(call action.Call) {
+func (s Solitaire) Call(call action.Call) {
 	err := s.deck.Insert(call)
 	if err != nil {
 		return
@@ -50,7 +52,7 @@ func (s *solitaire) Call(call action.Call) {
 	c.Trigger()
 }
 
-func (s *solitaire) End(cause common.EndCause) {
+func (s Solitaire) End(cause common.EndCause) {
 	defer s.deck.End()
 	conn := s.conn.Swap(nil)
 	if conn == nil {
@@ -59,7 +61,7 @@ func (s *solitaire) End(cause common.EndCause) {
 	conn.End(cause)
 }
 
-func (s *solitaire) Connect(w http.ResponseWriter, r *http.Request) {
+func (s Solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	rep := &report{}
 	err := decoder.Decode(rep)

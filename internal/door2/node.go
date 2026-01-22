@@ -108,10 +108,10 @@ func (n *node) replaceTakeover(prev *node) {
 	renderFrame := shread.Frame()
 	defer renderFrame.Release()
 	pipe := newPipe()
-	pipe.parent = parent
+	pipe.tracker = parent
 	pipe.frame = sh.Join(parentFrame, renderFrame)
 	defer pipe.frame.Release()
-	pipe.frame.Run(parent.getRoot().Spawner(), func() {
+	pipe.frame.Run(parent.getRoot().getSpawner(), func() {
 		defer pipe.Close()
 		cur := gox.NewCursor(parent.getContext(), pipe)
 		cur.Any(n.view.content)
@@ -154,10 +154,10 @@ func (n *node) updatedTakeover(prev *node) {
 	renderFrame := renderShread.Frame()
 	defer renderFrame.Release()
 	pipe := newPipe()
-	pipe.parent = n.tracker
+	pipe.tracker = n.tracker
 	pipe.frame = sh.Join(trackerRenderFrame, renderFrame)
 	defer pipe.frame.Release()
-	pipe.frame.Run(n.tracker.parent.getRoot().Spawner(), func() {
+	pipe.frame.Run(n.tracker.parent.getRoot().getSpawner(), func() {
 		defer pipe.Close()
 		cur := gox.NewCursor(n.tracker.getContext(), pipe)
 		cur.Any(n.view.content)
@@ -171,17 +171,17 @@ func (n *node) updatedTakeover(prev *node) {
 	})
 }
 
-func (n *node) render(parent parent, parentPipe *pipe) {
+func (n *node) render(parent *tracker, parentPipe *pipe) {
 	renderFrame := n.shread.Frame()
 	defer renderFrame.Release()
 	pipe := newPipe()
 	parentPipe.Put(pipe)
 	pipe.frame = sh.Join(parentPipe.frame, renderFrame)
 	pipe.frame.Release()
-	pipe.frame.Run(parent.getRoot().Spawner(), func() {
+	pipe.frame.Run(parent.getRoot().getSpawner(), func() {
 		defer pipe.Close()
 		if n.kind == replacedNode {
-			pipe.parent = parent
+			pipe.tracker = parent
 			cur := gox.NewCursor(parent.getContext(), pipe)
 			cur.Any(n.view.content)
 			return
@@ -189,7 +189,7 @@ func (n *node) render(parent parent, parentPipe *pipe) {
 		n.communicationFrame = &sh.ValveFrame{}
 		n.tracker = newTracker(parent, n.shread)
 		parent.addChild(n)
-		pipe.parent = n.tracker
+		pipe.tracker = n.tracker
 		cur := gox.NewCursor(n.tracker.getContext(), pipe)
 		cur.Func(func(io.Writer) error {
 			n.communicationFrame.Activate()

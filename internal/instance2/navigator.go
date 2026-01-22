@@ -22,13 +22,23 @@ import (
 	"github.com/doors-dev/doors/internal/path"
 )
 
-func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyAdapter, model *M, detached bool, rerouted bool) *navigator[M] {
+func newNavigator[M any](
+	inst *Instance[M],
+	adapter *path.Adapter[M],
+	adapters map[string]path.AnyAdapter,
+	model *M,
+	ctx context.Context,
+	detached bool,
+	rerouted bool,
+) *navigator[M] {
 	return &navigator[M]{
+		inst:        inst,
 		adapter:     adapter,
 		adapters:    adapters,
 		detached:    detached,
 		rerouted:    rerouted,
 		historyHead: &historyHead[M]{},
+		ctx:         ctx,
 		model: beam.NewSourceBeamEqual(*model, func(new, old M) bool {
 			return reflect.DeepEqual(new, old)
 		}),
@@ -38,7 +48,7 @@ func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyA
 const historyLimit = 32
 
 type navigator[M any] struct {
-	inst        Core
+	inst        *Instance[M]
 	adapter     *path.Adapter[M]
 	adapters    map[string]path.AnyAdapter
 	detached    bool
@@ -99,9 +109,7 @@ func (n *navigator[M]) newLink(m any) (*Link, error) {
 	}, nil
 }
 
-func (n *navigator[M]) init(ctx context.Context, inst Core) {
-	n.inst = inst
-	n.ctx = ctx
+func (n *navigator[M]) init() {
 	state := beam.NewBeam(n.model, func(m M) navigatorState[M] {
 		l, err := n.adapter.Encode(&m)
 		if err != nil {
@@ -120,14 +128,14 @@ func (n *navigator[M]) init(ctx context.Context, inst Core) {
 			path:  l.String(),
 		}
 	})
-	ns, ok := state.ReadAndSub(ctx, func(ctx context.Context, ns navigatorState[M]) bool {
-		n.pushHistory(ctx, &ns, !n.detached, false)
+	ns, ok := state.ReadAndSub(n.ctx, func(ctx context.Context, ns navigatorState[M]) bool {
+		n.pushHistory(n.ctx, &ns, !n.detached, false)
 		return false
 	})
 	if !ok {
 		return
 	}
-	n.pushHistory(ctx, &ns, n.rerouted && !n.detached, true)
+	n.pushHistory(n.ctx, &ns, n.rerouted && !n.detached, true)
 }
 
 func (n *navigator[M]) restore(r *http.Request) bool {

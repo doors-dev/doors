@@ -14,35 +14,10 @@ import (
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxwg"
+	"github.com/doors-dev/doors/internal/ctex"
 )
 
 type Done = bool
-
-type HookEntry struct {
-	DoorID  uint64
-	HookID  uint64
-	tracker *tracker
-}
-
-func (h HookEntry) Cancel() {
-	h.tracker.cancelHook(h.HookID)
-}
-
-type Hook struct {
-	Trigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done
-	Cancel  func(ctx context.Context)
-}
-
-func (s *Hook) trigger(ctx context.Context, w http.ResponseWriter, r *http.Request) Done {
-	return s.Trigger(ctx, w, r)
-}
-
-func (s *Hook) cancel(ctx context.Context) {
-	if s.Cancel != nil {
-		s.Cancel(ctx)
-	}
-}
 
 const (
 	hookActive int32 = iota
@@ -51,16 +26,18 @@ const (
 )
 
 type hook struct {
-	hook    Hook
-	state   atomic.Int32
-	ch      atomic.Pointer[chan struct{}]
-	done    atomic.Bool
-	tracker *tracker
+	triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done
+	cancelFunc  func(ctx context.Context)
+	state       atomic.Int32
+	ch          atomic.Pointer[chan struct{}]
+	done        atomic.Bool
+	tracker     *tracker
 }
 
-func newHook(h Hook, t *tracker) *hook {
+func newHook(t *tracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, cancelFunc func(ctx context.Context)) *hook {
 	return &hook{
-		hook: h,
+		triggerFunc: triggerFunc,
+		cancelFunc:  cancelFunc,
 		tracker: t,
 	}
 }
@@ -75,7 +52,10 @@ func (h *hook) cancel() {
 	if h.state.Load() != hookCanceled {
 		return
 	}
-	h.hook.cancel(h.tracker.ctx)
+	if h.cancelFunc == nil {
+		return
+	}
+	h.cancelFunc(h.tracker.ctx)
 }
 
 func (h *hook) wait() chan struct{} {
@@ -93,21 +73,21 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
 		close(ch)
 		return false, false
 	}
-	ctx := ctxwg.Insert(h.tracker.getContext())
+	ctx := ctex.WgInsert(h.tracker.ctx)
 	ctx = common.SetBlockingCtx(ctx)
 	done, err := common.CatchValue(func() bool {
-		return h.hook.trigger(ctx, w, r)
+		return h.triggerFunc(ctx, w, r)
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		defer h.tracker.getRoot().onPanic(err)
+		defer h.tracker.root.onPanic(err)
 	}
 	if done {
 		h.state.Store(hookDone)
 	}
 	close(ch)
 	if err != nil {
-		ctxwg.Wait(ctx)
+		ctex.WgWait(ctx)
 	}
 	return done, true
 }

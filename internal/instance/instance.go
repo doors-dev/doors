@@ -135,7 +135,7 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 		panic("Instance rendered twice")
 	}
 	spawner := inst.session.router.Spawner(inst)
-	solitaire := newSolitaire(inst, common.GetSolitaireConf(inst.conf()))
+	solitaire := NewSolitaire(inst, common.GetSolitaireConf(inst.conf()))
 	inst.core = newCore(inst, solitaire, spawner, inst.navigator)
 	inst.mu.Unlock()
 	err := inst.core.serve(w, r, inst.page)

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxstore"
+	"github.com/doors-dev/doors/internal/common/store"
 	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
@@ -37,7 +37,7 @@ type router interface {
 
 func NewSession(r router) *Session {
 	sess := &Session{
-		store:     ctxstore.NewStore(common.CtxKeySessionStore),
+		store:     store.NewStore(common.CtxKeySessionStore),
 		id:        common.RandId(),
 		instances: make(map[string]AnyInstance),
 		mu:        sync.Mutex{},
@@ -60,7 +60,7 @@ func (sess *Session) setTTL() {
 }
 
 type Session struct {
-	store     *ctxstore.Store
+	store     *store.Store
 	mu        sync.Mutex
 	killed    bool
 	id        string
@@ -74,7 +74,7 @@ type Session struct {
 func (sess *Session) getRouter() router {
 	return sess.router
 }
-func (sess *Session) getStorage() *ctxstore.Store {
+func (sess *Session) getStorage() *store.Store {
 	return sess.store
 }
 

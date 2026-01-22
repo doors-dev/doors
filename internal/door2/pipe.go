@@ -1,11 +1,10 @@
 package door2
 
 import (
-
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/sh"
 	"github.com/doors-dev/gox"
 )
-
 
 func newPipe() *pipe {
 	return &pipe{}
@@ -13,35 +12,30 @@ func newPipe() *pipe {
 
 type pipe struct {
 	sh.Queue
-	parent parent
-	frame  sh.Frame
+	tracker *tracker
+	frame   sh.Frame
 }
 
-
 func (p *pipe) Send(job gox.Job) error {
-	/*
 	switch job := job.(type) {
 	case *node:
-		p.parent.addChild(job)
-		job.render(p.parent, p)
+		job.render(p.tracker, p)
+	case core.JobCore:
+		job.Apply(p.tracker.core)
 	case *gox.JobComp:
 		newPipe := newPipe()
-		newPipe.parent = p.parent
-		newPipe.thread = p.thread
-		p.put(newPipe)
+		newPipe.tracker = p.tracker
+		newPipe.frame = p.frame
+		p.Put(newPipe)
 		comp := job.Comp
 		ctx := job.Ctx
 		gox.Release(job)
-		sh.Run(nil, func(ok bool) {
+		p.frame.Run(p.tracker.root.spawner, func() {
+			defer newPipe.Close()
 			comp.Main().Print(ctx, newPipe)
-		}, p.shread)
-		/*
-			sh.Run(func(t *sh.Thread) {
-				comp.Main().Print(ctx, newPipe)
-			}, p.thread.R()) 
+		})
 	default:
-		p.put(job)
-	} */
-	return nil 
+		p.Put(job)
+	}
+	return nil
 }
-

@@ -16,7 +16,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxstore"
+	"github.com/doors-dev/doors/internal/common/store"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/instance"
 )
@@ -28,7 +28,7 @@ type included struct{}
 func (_ include) Render(ctx context.Context, w io.Writer) error {
 	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
 	door := ctx.Value(common.CtxKeyDoor).(door.Core)
-	_, already := ctxstore.Swap(ctx, common.CtxKeyInstanceStore, included{}, included{}).(included)
+	_, already := store.Swap(ctx, common.CtxKeyInstanceStore, included{}, included{}).(included)
 	if already {
 		slog.Warn("doors header included multiple times on the page, keeping first", slog.String("instance_id", inst.Id()))
 		return nil

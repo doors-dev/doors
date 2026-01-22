@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxstore"
+	"github.com/doors-dev/doors/internal/common/store"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/mr-tron/base58"
@@ -58,37 +58,37 @@ func SessionId(ctx context.Context) string {
 // SessionSave stores a key/value in session-scoped storage shared by all
 // instances in the session. Returns the previous value under the key.
 func SessionSave(ctx context.Context, key any, value any) any {
-	return ctxstore.Swap(ctx, common.CtxKeySessionStore, key, value)
+	return store.Swap(ctx, common.CtxKeySessionStore, key, value)
 }
 
 // SessionLoad gets a value from session-scoped storage by key.
 // Returns nil if absent. Callers must type-assert the result.
 func SessionLoad(ctx context.Context, key any) any {
-	return ctxstore.Load(ctx, common.CtxKeySessionStore, key)
+	return store.Load(ctx, common.CtxKeySessionStore, key)
 }
 
 // SessionRemove deletes a key/value from session-scoped storage.
 // Returns the removed value or nil if absent.
 func SessionRemove(ctx context.Context, key any) any {
-	return ctxstore.Remove(ctx, common.CtxKeySessionStore, key)
+	return store.Remove(ctx, common.CtxKeySessionStore, key)
 }
 
 // InstanceSave stores a key/value in instance-scoped storage,
 // isolated to the current instance. Returns the previous value.
 func InstanceSave(ctx context.Context, key any, value any) any {
-	return ctxstore.Swap(ctx, common.CtxKeyInstanceStore, key, value)
+	return store.Swap(ctx, common.CtxKeyInstanceStore, key, value)
 }
 
 // InstanceLoad gets a value from instance-scoped storage by key.
 // Returns nil if absent. Callers must type-assert the result.
 func InstanceLoad(ctx context.Context, key any) any {
-	return ctxstore.Load(ctx, common.CtxKeyInstanceStore, key)
+	return store.Load(ctx, common.CtxKeyInstanceStore, key)
 }
 
 // InstanceRemove deletes a key/value from instance-scoped storage.
 // Returns the removed value or nil if absent.
 func InstanceRemove(ctx context.Context, key any) any {
-	return ctxstore.Remove(ctx, common.CtxKeyInstanceStore, key)
+	return store.Remove(ctx, common.CtxKeyInstanceStore, key)
 }
 
 // Location represents a URL built from a path model: path plus query.

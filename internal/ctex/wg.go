@@ -6,7 +6,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
-package ctxwg
+package ctex
 
 import (
 	"context"
@@ -15,28 +15,25 @@ import (
 	"sync/atomic"
 )
 
-type ctxKeyWgType struct{}
-
-var ctxKeyWg = ctxKeyWgType{}
 
 type atomicWg = *atomic.Pointer[sync.WaitGroup]
 
-func Insert(ctx context.Context) context.Context {
+func WgInsert(ctx context.Context) context.Context {
 	awg := &atomic.Pointer[sync.WaitGroup]{}
 	awg.Store(&sync.WaitGroup{})
-	return context.WithValue(ctx, ctxKeyWg, awg)
+	return context.WithValue(ctx, keyWg, awg)
 }
 
-func Infect(source context.Context, target context.Context) context.Context {
-	awg, ok := source.Value(ctxKeyWg).(atomicWg)
+func WgInfect(source context.Context, target context.Context) context.Context {
+	awg, ok := source.Value(keyWg).(atomicWg)
 	if !ok {
 		return target
 	}
-	return context.WithValue(target, ctxKeyWg, awg)
+	return context.WithValue(target, keyWg, awg)
 }
 
-func Wait(ctx context.Context) {
-	awg, ok := ctx.Value(ctxKeyWg).(atomicWg)
+func WgWait(ctx context.Context) {
+	awg, ok := ctx.Value(keyWg).(atomicWg)
 	if !ok {
 		log.Fatal("Must have")
 	}
@@ -52,8 +49,8 @@ type Done = func()
 
 var none = func() {}
 
-func Add(ctx context.Context) Done {
-	awg, ok := ctx.Value(ctxKeyWg).(atomicWg)
+func WgAdd(ctx context.Context) Done {
+	awg, ok := ctx.Value(keyWg).(atomicWg)
 	if !ok {
 		return none
 	}

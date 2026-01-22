@@ -12,11 +12,15 @@ import (
 
 type Spawner = *spawner
 
-func NewSpawner(ctx context.Context, limit int, onError func(error)) Spawner {
+type Panicer interface {
+	OnPanic(error)
+}
+
+func NewSpawner(ctx context.Context, limit int, panicer Panicer) Spawner {
 	s := &spawner{
 		limit:   limit,
 		ctx:     ctx,
-		onError: onError,
+		panicer: panicer,
 	}
 	Go(s.run)
 	return s
@@ -27,7 +31,7 @@ type spawner struct {
 	ctx     context.Context
 	killed  bool
 	queue   deque.Deque[func()]
-	onError func(error)
+	panicer Panicer
 	ch      chan struct{}
 	limit   int
 }
@@ -38,7 +42,7 @@ func (s *spawner) Spawn(f func()) {
 	if s.ctx.Err() != nil {
 		err := common.Catch(f)
 		if err != nil {
-			s.onError(err)
+			s.panicer.OnPanic(err)
 		}
 		return
 	}
@@ -72,18 +76,11 @@ func (s *spawner) run() {
 		backpressure <- struct{}{}
 		Go(func() {
 			err := common.Catch(next)
-			s.onError(err)
 			<-backpressure
+			if err != nil {
+				s.panicer.OnPanic(err)
+			}
 		})
 	}
 }
 
-func catch(f func(bool), v bool) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v\n%s", r, debug.Stack())
-		}
-	}()
-	f(v)
-	return
-}
