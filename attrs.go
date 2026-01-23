@@ -11,94 +11,67 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"io"
+	"errors"
+	"log/slog"
 	"net/http"
-	"strings"
 
-	"github.com/a-h/templ"
-	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/gox"
 )
 
-type AttrInit = front.Attr
+type joinedAttrs struct {
+	attrs gox.Attrs
+}
 
+func (j joinedAttrs) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(j, cur, elem)
+}
+
+func (j joinedAttrs) Apply(ctx context.Context, attrs gox.Attrs) error {
+	attrs.Inherit(j.attrs)
+	return nil
+}
+
+// Attr is a doors attribute modifier.
 type Attr interface {
-	Attr() AttrInit
-	templ.Component
+	gox.AttrMod
+	gox.Proxy
 }
 
-// Attrs is a renderable and spreadable set of HTML attributes.
-type Attrs = front.Attrs
-
-// A builds an attribute set from the given attributes.
-// It can be spread in templ tags or rendered inline before an element.
-func A(ctx context.Context, a ...Attr) *Attrs {
-	ar := make([]front.Attr, len(a))
-	for i, attr := range a {
-		ar[i] = attr.Attr()
-	}
-	return front.A(ctx, ar...)
-}
-
-func AClass(class ...string) AOne {
-	return AOne{"class", strings.Join(class, " ")}
-}
-
-type AOne [2]string
-
-func (a AOne) Init(_ context.Context, _ door.Core, _ instance.Core, attrs *front.Attrs) {
-	attrs.Set(a[0], a[1])
-}
-
-func (a AOne) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, a)
-}
-
-func (a AOne) Attr() AttrInit {
-	return a
-}
-
-type AMap map[string]any
-
-func (a AMap) Init(_ context.Context, _ door.Core, _ instance.Core, attrs *front.Attrs) {
-	attrs.SetRaw(templ.Attributes(a))
-}
-
-func (a AMap) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, a)
-}
-
-func (a AMap) Attr() AttrInit {
-	return a
+func AJoin(ctx context.Context, a ...Attr) Attr {
+	 attrs := gox.NewAttrs(ctx)
+	 for _, mod := range a {
+	 	attrs.AddMod(mod)
+	 }
+	 attrs.ApplyMods()
+	 return joinedAttrs{attrs: attrs}
 }
 
 type eventAttr[E any] struct {
-	door      door.Core
-	ctx       context.Context
 	capture   front.Capture
 	onError   []Action
 	before    []Action
 	scope     []Scope
 	indicator []Indicator
-	inst      instance.Core
 	on        func(context.Context, REvent[E]) bool
 }
 
-func (p *eventAttr[E]) init(attrs *front.Attrs) {
-	entry, ok := p.door.RegisterAttrHook(p.ctx, &door.AttrHook{
-		Trigger: p.handle,
-	})
+func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	hook, ok := core.RegisterHook(p.handle, nil)
 	if !ok {
-		return
+		return errors.New("door: hook registration failed")
 	}
-	attrs.AppendCapture(p.capture, &front.Hook{
-		OnError:   intoActions(p.ctx, p.onError),
-		Before:    intoActions(p.ctx, p.before),
-		Scope:     front.IntoScopeSet(p.inst, p.scope),
-		Indicate:  front.IntoIndicate(p.indicator),
-		HookEntry: entry,
+	front.AttrsAppendCapture(attrs, p.capture, front.Hook{
+		OnError:  intoActions(ctx, p.onError),
+		Before:   intoActions(ctx, p.before),
+		Scope:    front.IntoScopeSet(core, p.scope),
+		Indicate: front.IntoIndicate(p.indicator),
+		Hook:     hook,
 	})
+	return nil
 }
 
 func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
@@ -118,4 +91,34 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		},
 		e: &e,
 	})
+}
+
+type proxyAttrModPrinter struct {
+	mod  gox.AttrMod
+	cur  gox.Cursor
+	elem gox.Elem
+}
+
+func (m *proxyAttrModPrinter) Send(job gox.Job) error {
+	if m.mod == nil {
+		return m.cur.Job(job)
+	}
+	mod := m.mod
+	m.mod = nil
+	open, ok := job.(*gox.JobHeadOpen)
+	if !ok || open.Kind == gox.KindContainer || open.Tag == "d0-0r" || open.Attrs.Get("data-d00r").IsSet() {
+		slog.Error("Can't attach attribute modifer on non-tag or door")
+	} else {
+		open.Attrs.AddMod(mod)
+	}
+	return m.Send(job)
+}
+
+func proxyAddAttrMod(mod gox.AttrMod, cur gox.Cursor, elem gox.Elem) error {
+	printer := &proxyAttrModPrinter{
+		mod:  mod,
+		cur:  cur,
+		elem: elem,
+	}
+	return elem.Print(cur.Context(), printer)
 }

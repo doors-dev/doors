@@ -6,14 +6,29 @@ import (
 	"github.com/gammazero/deque"
 )
 
-type Queue struct {
+var queuePool = sync.Pool{
+	New: func() any {
+		return &deque.Deque[any]{}
+	},
+}
+
+type Queue = *queue
+
+func NewQueue() Queue {
+	q := queuePool.Get().(*deque.Deque[any])
+	return &queue{
+		innie: q,
+	}
+}
+
+type queue struct {
 	mu     sync.Mutex
-	innie  deque.Deque[any]
+	innie  *deque.Deque[any]
 	signal chan struct{}
 	closed bool
 }
 
-func (p *Queue) Put(a any) {
+func (p Queue) Put(a any) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.closed {
@@ -26,7 +41,7 @@ func (p *Queue) Put(a any) {
 	}
 }
 
-func (p *Queue) Close() {
+func (p Queue) Close() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.closed {
@@ -39,10 +54,15 @@ func (p *Queue) Close() {
 	p.closed = true
 }
 
-func (p *Queue) Get() (any, bool) {
+func (p Queue) Get() (any, bool) {
 	p.mu.Lock()
+	if p.innie == nil {
+		return nil, false
+	}
 	if p.innie.Len() == 0 {
 		if p.closed {
+			queuePool.Put(p.innie)
+			p.innie = nil
 			p.mu.Unlock()
 			return nil, false
 		}

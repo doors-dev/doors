@@ -11,13 +11,14 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"io"
+	"errors"
 	"log/slog"
 	"net/http"
 
-	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/gox"
 )
 
 // AHook binds a backend handler to a named client-side hook, allowing
@@ -46,30 +47,22 @@ type AHook[T any] struct {
 	On func(ctx context.Context, r RHook[T]) (any, bool)
 }
 
-func (h AHook[T]) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, h)
+func (h AHook[T]) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(h, cur, elem)
 }
 
-func (h AHook[T]) Attr() AttrInit {
-	return h
-}
-
-func (h AHook[T]) Init(ctx context.Context, n door.Core, inst instance.Core, attr *front.Attrs) {
-	if h.On == nil {
-		println("Hook withoud handler")
-		return
-	}
-	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
-		Trigger: h.handle,
-	})
+func (h AHook[T]) Apply(ctx context.Context, attrs gox.Attrs) error {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	hook, ok := core.RegisterHook(h.handle, nil)
 	if !ok {
-		return
+		return errors.New("door: hook registration failed")
 	}
-	attr.SetHook(h.Name, &front.Hook{
-		Scope:     front.IntoScopeSet(inst, h.Scope),
-		Indicate:  front.IntoIndicate(h.Indicator),
-		HookEntry: entry,
+	front.AttrsSetHook(attrs, h.Name, front.Hook{
+		Scope:    front.IntoScopeSet(core, h.Scope),
+		Indicate: front.IntoIndicate(h.Indicator),
+		Hook:     hook,
 	})
+	return nil
 }
 
 func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
@@ -125,30 +118,22 @@ type ARawHook struct {
 	On func(ctx context.Context, r RRawHook) bool
 }
 
-func (h ARawHook) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, h)
+func (h ARawHook) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(h, cur, elem)
 }
 
-func (h ARawHook) Attr() AttrInit {
-	return h
-}
-
-func (h ARawHook) Init(ctx context.Context, n door.Core, inst instance.Core, attr *front.Attrs) {
-	if h.On == nil {
-		println("Hook withoud handler")
-		return
-	}
-	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
-		Trigger: h.handle,
-	})
+func (h ARawHook) Apply(ctx context.Context, attrs gox.Attrs) error {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	hook, ok := core.RegisterHook(h.handle, nil)
 	if !ok {
-		return
+		return errors.New("door: hook registration failed")
 	}
-	attr.SetHook(h.Name, &front.Hook{
-		Scope:     front.IntoScopeSet(inst, h.Scope),
-		Indicate:  front.IntoIndicate(h.Indicator),
-		HookEntry: entry,
+	front.AttrsSetHook(attrs, h.Name, front.Hook{
+		Scope:    front.IntoScopeSet(core, h.Scope),
+		Indicate: front.IntoIndicate(h.Indicator),
+		Hook:     hook,
 	})
+	return nil
 }
 
 func (h *ARawHook) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
@@ -173,30 +158,24 @@ type AData struct {
 	Value any
 }
 
-func (a AData) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, a)
+func (a AData) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(a, cur, elem)
 }
 
-func (a AData) Attr() AttrInit {
-	return a
-}
-
-func (a AData) Init(_ context.Context, n door.Core, _ instance.Core, attr *front.Attrs) {
-	attr.SetData(a.Name, a.Value)
+func (a AData) Apply(ctx context.Context, attrs gox.Attrs) error {
+	front.AttrsSetData(attrs, a.Name, a.Value)
+	return nil
 }
 
 type ADataMap map[string]any
 
-func (dm ADataMap) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, dm)
+func (dm ADataMap) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(dm, cur, elem)
 }
 
-func (dm ADataMap) Attr() AttrInit {
-	return dm
-}
-
-func (dm ADataMap) Init(_ context.Context, n door.Core, _ instance.Core, attr *front.Attrs) {
-	for name := range dm {
-		attr.SetData(name, dm[name])
+func (dm ADataMap) Apply(ctx context.Context, attrs gox.Attrs) error {
+	for name, value := range dm {
+		front.AttrsSetData(attrs, name, value)
 	}
+	return nil
 }

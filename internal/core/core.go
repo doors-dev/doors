@@ -33,6 +33,7 @@ type Instance interface {
 	RootID() uint64
 	Conf() *common.SystemConf
 	Detached() bool
+	NewID() uint64
 }
 
 type Door interface {
@@ -72,6 +73,10 @@ func (c Core) InstanceID() string {
 
 func (c Core) RootID() uint64 {
 	return c.inst.RootID()
+}
+
+func (c Core) NewID() uint64 {
+	return c.inst.NewID()
 }
 
 func (c Core) Conf() *common.SystemConf {

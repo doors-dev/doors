@@ -11,25 +11,18 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"sync"
 
-	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/gox"
 )
 
 // ADyn is a dynamic attribute that can be updated at runtime.
-type ADyn interface {
-	Attr
-	// Value sets the attribute's value.
-	Value(ctx context.Context, value string)
-	// Enable adds or removes the attribute.
-	Enable(ctx context.Context, enable bool)
-}
+type ADyn = *aDyn
 
 // NewADyn returns a new dynamic attribute with the given name, value, and state.
 func NewADyn(name string, value string, enable bool) ADyn {
@@ -67,10 +60,12 @@ func (a *aDyn) restore(seq int, value string, enable bool) {
 	a.value = value
 }
 
-func (a *aDyn) Enable(ctx context.Context, enable bool) {
+
+// Enable adds or removes the attribute.
+func (a ADyn) Enable(ctx context.Context, enable bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	common.LogCanceled(ctx, "dynamic attribute enable")
+	ctex.LogCanceled(ctx, "dynamic attribute enable")
 	prevValue := a.value
 	prevEnable := a.enable
 	if a.enable == enable {
@@ -82,7 +77,7 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 	if !a.initialized {
 		return
 	}
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
+    core := ctx.Value(ctex.KeyCore).(core.Core)
 	var act action.Action
 	if a.enable {
 		act = &action.DynaSet{
@@ -94,7 +89,7 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 			Id: a.id,
 		}
 	}
-	inst.CallCheck(
+	core.CallCheck(
 		func() bool {
 			return a.check(seq)
 		},
@@ -111,10 +106,11 @@ func (a *aDyn) Enable(ctx context.Context, enable bool) {
 	)
 }
 
-func (a *aDyn) Value(ctx context.Context, value string) {
+// Value sets the attribute's value.
+func (a ADyn) Value(ctx context.Context, value string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	common.LogCanceled(ctx, "dynamic attribute value")
+	ctex.LogCanceled(ctx, "dynamic attribute value")
 	prevValue := a.value
 	prevEnable := a.enable
 	if ctx.Err() != nil {
@@ -132,8 +128,8 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 	if !a.initialized {
 		return
 	}
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	inst.CallCheck(
+    core := ctx.Value(ctex.KeyCore).(core.Core)
+	core.CallCheck(
 		func() bool {
 			return a.check(seq)
 		},
@@ -153,23 +149,19 @@ func (a *aDyn) Value(ctx context.Context, value string) {
 	)
 }
 
-func (a *aDyn) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
+func (a ADyn) Apply(ctx context.Context, attrs gox.Attrs) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	core := ctx.Value(ctex.KeyCore).(core.Core)
 	if !a.initialized {
 		a.initialized = true
-		a.id = inst.NewId()
+		a.id = core.NewID()
 	}
-	attrs.AppendDyna(a.id, a.name)
+	front.AttrsAppendDyna(attrs, a.id, a.name)
 	if a.enable {
-		attrs.Set(a.name, a.value)
+		attrs.Get(a.name).Set(a.value)
 	}
+	return nil
 }
 
-func (a *aDyn) Attr() AttrInit {
-	return a
-}
 
-func (a *aDyn) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, a)
-}

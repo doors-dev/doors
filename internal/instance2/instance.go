@@ -84,6 +84,10 @@ type Instance[M any] struct {
 	importMap *moduleImportMap
 }
 
+func (c *Instance[M]) NewID() uint64 {
+	return c.root.NewID()
+}
+
 func (c *Instance[M]) Detached() bool {
 	return c.navigator.isDetached()
 }
@@ -155,17 +159,22 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 	inst.setup = nil
 	sh := sh.Shread{}
 	renderFrame := sh.Frame()
-	defer renderFrame.Release()
 	js := inst.root.Render(renderFrame, el)
+	renderFrame.Release()
 	ch := make(chan struct{})
 	sh.Frame().Run(nil, func() {
 		close(ch)
 	})
 	<-ch
-	return inst.render(w, r, js)
+	if err := inst.render(w, r, js); err != nil {
+		defer inst.end(common.EndCauseKilled)
+		return err
+	}
+	return nil
+
 }
 
-func (inst *Instance[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) (ok bool) {
+func (inst *Instance[M]) TriggerHook(doorID uint64, hookID uint64, w http.ResponseWriter, r *http.Request, track uint64) (ok bool) {
 	defer func() {
 		if ok {
 			inst.Touch()
@@ -174,7 +183,7 @@ func (inst *Instance[M]) TriggerHook(doorId uint64, hookId uint64, w http.Respon
 	if inst.state.Load() != active {
 		return false
 	}
-	return inst.root.TriggerHook(doorId, hookId, w, r, track)
+	return inst.root.TriggerHook(doorID, hookID, w, r, track)
 }
 
 func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {
@@ -196,7 +205,7 @@ func (inst *Instance[M]) OnPanic(err error) {
 	inst.end(common.EndCauseKilled)
 }
 
-func (inst *Instance[M]) Id() string {
+func (inst *Instance[M]) ID() string {
 	return inst.id
 }
 

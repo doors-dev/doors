@@ -98,7 +98,8 @@ func (inst *Instance[M]) renderResources(ctx context.Context, w io.Writer, impor
 			return err
 		}
 	}
-	if err := cur.Comp(front.Include); err != nil {
+
+	if err := front.Include(cur); err != nil {
 		return err
 	}
 	if importMap != nil {

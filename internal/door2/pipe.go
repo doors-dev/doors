@@ -7,7 +7,9 @@ import (
 )
 
 func newPipe() *pipe {
-	return &pipe{}
+	return &pipe{
+		Queue: sh.NewQueue(),
+	}
 }
 
 type pipe struct {

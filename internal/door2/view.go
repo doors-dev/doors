@@ -14,32 +14,32 @@ type view struct {
 	elem    gox.Elem
 }
 
-func (v *view) headFrame(ctx context.Context, doorId uint64, headId uint64) (*gox.JobHeadOpen, *gox.JobHeadClose) {
+func (v *view) headFrame(ctx context.Context, doorID uint64, headID uint64) (*gox.JobHeadOpen, *gox.JobHeadClose) {
 	if v.tag == "" {
 		attrs := gox.NewAttrs(ctx)
-		attrs.Get("id").Set(fmt.Sprintf("d00r/%d", doorId))
+		attrs.Get("id").Set(fmt.Sprintf("d00r/%d", doorID))
 		return &gox.JobHeadOpen{
 			Kind: gox.KindRegular,
 			Tag:  "d0-0r",
 			Attrs: attrs,
-			Id: headId,
+			ID: headID,
 		}, &gox.JobHeadClose{
 			Kind: gox.KindRegular,
 			Tag:  "d0-0r",
-			Id: headId,
+			ID: headID,
 		}
 	} 
 	attrs := v.attrs.Clone()
-	attrs.Get("data-d00r").Set(fmt.Sprintf("%d", doorId))
+	attrs.Get("data-d00r").Set(fmt.Sprintf("%d", doorID))
 	return &gox.JobHeadOpen{
 		Kind: gox.KindRegular,
 		Tag:  v.tag,
 		Attrs: attrs,
-		Id: headId,
+		ID: headID,
 	}, &gox.JobHeadClose{
 		Kind: gox.KindRegular,
 		Tag:  v.tag,
-		Id: headId,
+		ID: headID,
 	}
 }
 

@@ -15,7 +15,7 @@ import (
 
 func newRootTracker(ctx context.Context, r *root) *tracker {
 	t := &tracker{
-		id:       r.newId(),
+		id:       r.newID(),
 		root:     r,
 		parent:   nil,
 		children: common.NewSet[*node](),
@@ -48,7 +48,7 @@ func newTrackerFrom(prev *tracker, shread *sh.Shread) *tracker {
 func newTracker(parent *tracker, shread *sh.Shread) *tracker {
 	t := &tracker{
 		root:     parent.root,
-		id:       parent.root.newId(),
+		id:       parent.root.newID(),
 		parent:   parent,
 		children: common.NewSet[*node](),
 	}
@@ -92,7 +92,7 @@ func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.Respon
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	hook := newHook(t, onTrigger, onCancel)
-	id := t.root.newId()
+	id := t.root.newID()
 	t.hooks[id] = hook
 	return core.Hook{
 		DoorID: t.id,
@@ -104,12 +104,12 @@ func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.Respon
 
 }
 
-func (t *tracker) cancelHook(hookId uint64) {
+func (t *tracker) cancelHook(hookID uint64) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if hook, ok := t.hooks[hookId]; ok {
+	if hook, ok := t.hooks[hookID]; ok {
 		hook.cancel()
-		delete(t.hooks, hookId)
+		delete(t.hooks, hookID)
 	}
 }
 

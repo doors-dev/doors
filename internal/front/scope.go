@@ -14,10 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/doors/internal/core"
 )
 
-func IntoScopeSet(inst instance.Core, scope []Scope) []*ScopeSet {
+func IntoScopeSet(inst core.Core, scope []Scope) []*ScopeSet {
 	a := make([]*ScopeSet, len(scope))
 	for i, s := range scope {
 		a[i] = s.Scope(inst)
@@ -37,7 +37,7 @@ func (s *ScopeSet) MarshalJSON() ([]byte, error) {
 }
 
 type Scope interface {
-	Scope(inst instance.Core) *ScopeSet
+	Scope(core core.Core) *ScopeSet
 }
 
 type ScopeAutoId struct {
@@ -45,9 +45,9 @@ type ScopeAutoId struct {
 	id   string
 }
 
-func (s *ScopeAutoId) Id(inst instance.Core) string {
+func (s *ScopeAutoId) Id(inst core.Core) string {
 	s.once.Do(func() {
-		id := inst.NewId()
+		id := inst.NewID()
 		s.id = fmt.Sprint(id)
 	})
 	return s.id

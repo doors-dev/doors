@@ -76,12 +76,12 @@ func (r Root) Render(instanceFrame sh.AnyFrame, el gox.Elem) JobStream {
 	return js
 }
 
-func (i Root) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
-	if i.tracker.id == doorId {
+func (i Root) TriggerHook(doorID uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
+	if i.tracker.id == doorID {
 		return i.tracker.trigger(hookId, w, r)
 	}
 	i.mu.Lock()
-	tracker, ok := i.tackers[doorId]
+	tracker, ok := i.tackers[doorID]
 	i.mu.Unlock()
 	if !ok {
 		return false
@@ -116,6 +116,6 @@ func (r *root) removeTracker(t *tracker) {
 	delete(r.tackers, t.id)
 }
 
-func (r *root) newId() uint64 {
+func (r *root) NewID() uint64 {
 	return r.prime.Gen()
 }

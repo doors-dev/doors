@@ -10,12 +10,13 @@ package doors
 
 import (
 	"context"
-	"io"
+	"errors"
 	"net/http"
 
-	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/gox"
 	"github.com/go-playground/form/v4"
 )
 
@@ -40,29 +41,26 @@ type ARawSubmit struct {
 	OnError []Action
 }
 
-func (s ARawSubmit) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, s)
+func (s ARawSubmit) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(s, cur, elem)
 }
 
-func (s ARawSubmit) Attr() AttrInit {
-	return s
-}
-
-func (s ARawSubmit) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
-		Trigger: s.handle,
-	})
+func (s ARawSubmit) Apply(ctx context.Context, attrs gox.Attrs) error {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	hook, ok := core.RegisterHook(s.handle, nil)
 	if !ok {
-		return
+		return errors.New("door: hook registration failed")
 	}
-	attrs.AppendCapture(&front.FormCapture{}, &front.Hook{
+	front.AttrsAppendCapture(attrs, &front.FormCapture{}, front.Hook{
 		OnError:   intoActions(ctx, s.OnError),
 		Before:    intoActions(ctx, s.Before),
-		Scope:     front.IntoScopeSet(inst, s.Scope),
+		Scope:     front.IntoScopeSet(core, s.Scope),
 		Indicate:  front.IntoIndicate(s.Indicator),
-		HookEntry: entry,
+		Hook:      hook,
 	})
+	return nil
 }
+
 
 func (s *ARawSubmit) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 	done := s.On(ctx, &request{
@@ -104,28 +102,24 @@ type ASubmit[T any] struct {
 	OnError []Action
 }
 
-func (s ASubmit[V]) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, s)
+func (s ASubmit[V]) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(s, cur, elem)
 }
 
-func (s ASubmit[V]) Attr() AttrInit {
-	return s
-}
-
-func (s ASubmit[V]) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
-		Trigger: s.handle,
-	})
+func (s ASubmit[V]) Apply(ctx context.Context, attrs gox.Attrs) error {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	hook, ok := core.RegisterHook(s.handle, nil)
 	if !ok {
-		return
+		return errors.New("door: hook registration failed")
 	}
-	attrs.AppendCapture(&front.FormCapture{}, &front.Hook{
+	front.AttrsAppendCapture(attrs, &front.FormCapture{}, front.Hook{
 		OnError:   intoActions(ctx, s.OnError),
 		Before:    intoActions(ctx, s.Before),
-		Scope:     front.IntoScopeSet(inst, s.Scope),
+		Scope:     front.IntoScopeSet(core, s.Scope),
 		Indicate:  front.IntoIndicate(s.Indicator),
-		HookEntry: entry,
+		Hook:      hook,
 	})
+	return nil
 }
 
 const defaultMaxMemory = 8 << 20
@@ -198,26 +192,19 @@ type AChange struct {
 	OnError []Action
 }
 
-func (p AChange) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, p)
+func (p AChange) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p AChange) Attr() AttrInit {
-	return p
-}
-
-func (p AChange) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	(&eventAttr[ChangeEvent]{
+func (p AChange) Apply(ctx context.Context, attrs gox.Attrs) error {
+	return eventAttr[ChangeEvent]{
 		capture:   &front.ChangeCapture{},
-		door:      n,
-		ctx:       ctx,
-		onError:   p.OnError,
-		before:    p.Before,
-		indicator: p.Indicator,
-		inst:      inst,
 		scope:     p.Scope,
+		before:    p.Before,
+		onError:   p.OnError,
+		indicator: p.Indicator,
 		on:        p.On,
-	}).init(attrs)
+	}.apply(ctx, attrs)
 }
 
 type InputEvent = front.InputEvent
@@ -245,26 +232,20 @@ type AInput struct {
 	OnError []Action
 }
 
-func (p AInput) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, p)
+func (p AInput) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p AInput) Attr() AttrInit {
-	return p
-}
-
-func (p AInput) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	(&eventAttr[InputEvent]{
+func (p AInput) Apply(ctx context.Context, attrs gox.Attrs) error {
+	return eventAttr[InputEvent]{
 		capture: &front.InputCapture{
 			ExcludeValue: p.ExcludeValue,
 		},
-		door:      n,
-		inst:      inst,
-		ctx:       ctx,
-		onError:   p.OnError,
-		before:    p.Before,
 		scope:     p.Scope,
+		before:    p.Before,
+		onError:   p.OnError,
 		indicator: p.Indicator,
 		on:        p.On,
-	}).init(attrs)
+	}.apply(ctx, attrs)
 }
+

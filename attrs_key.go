@@ -10,11 +10,8 @@ package doors
 
 import (
 	"context"
-	"io"
-
-	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/gox"
 )
 
 type KeyboardEvent = front.KeyboardEvent
@@ -51,23 +48,20 @@ type keyEventHook struct {
 	Before []Action
 }
 
-func (k *keyEventHook) init(event string, ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	(&eventAttr[KeyboardEvent]{
-		door: n,
-		ctx:  ctx,
+func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
+	return eventAttr[KeyboardEvent]{
 		capture: &front.KeyboardEventCapture{
 			Event:           event,
 			Filter:          k.Filter,
 			PreventDefault:  k.PreventDefault,
 			StopPropagation: k.StopPropagation,
 		},
-		inst:      inst,
 		before:    k.Before,
 		scope:     k.Scope,
 		onError:   k.OnError,
 		indicator: k.Indicator,
 		on:        k.On,
-	}).init(attrs)
+	}.apply(ctx, attrs)
 }
 
 // AKeyDown prepares a key down event hook for DOM elements,
@@ -104,17 +98,12 @@ type AKeyDown struct {
 	Before []Action
 }
 
-func (k AKeyDown) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, k)
+func (k AKeyDown) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(k, cur, elem)
 }
 
-func (k AKeyDown) Attr() AttrInit {
-	return k
-}
-
-func (k AKeyDown) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*keyEventHook)(&k)
-	p.init("keydown", ctx, n, inst, attrs)
+func (k AKeyDown) Apply(ctx context.Context, attrs gox.Attrs) error {
+	return (*keyEventHook)(&k).apply("keydown", ctx, attrs)
 }
 
 // AKeyUp prepares a key up event hook for DOM elements,
@@ -151,15 +140,10 @@ type AKeyUp struct {
 	Before []Action
 }
 
-func (k AKeyUp) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, k)
+func (k AKeyUp) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(k, cur, elem)
 }
 
-func (k AKeyUp) Attr() AttrInit {
-	return k
-}
-
-func (k AKeyUp) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	p := (*keyEventHook)(&k)
-	p.init("keyup", ctx, n, inst, attrs)
+func (k AKeyUp) Apply(ctx context.Context, attrs gox.Attrs) error {
+	return (*keyEventHook)(&k).apply("keyup", ctx, attrs)
 }

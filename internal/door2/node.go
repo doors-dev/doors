@@ -111,9 +111,9 @@ func (n *node) replaceTakeover(prev *node) {
 	pipe.tracker = parent
 	pipe.frame = sh.Join(parentFrame, renderFrame)
 	defer pipe.frame.Release()
-	pipe.frame.Run(parent.getRoot().getSpawner(), func() {
+	pipe.frame.Run(parent.root.spawner, func() {
 		defer pipe.Close()
-		cur := gox.NewCursor(parent.getContext(), pipe)
+		cur := gox.NewCursor(parent.ctx, pipe)
 		cur.Any(n.view.content)
 	})
 	finalFrame := shread.Frame()
@@ -157,9 +157,9 @@ func (n *node) updatedTakeover(prev *node) {
 	pipe.tracker = n.tracker
 	pipe.frame = sh.Join(trackerRenderFrame, renderFrame)
 	defer pipe.frame.Release()
-	pipe.frame.Run(n.tracker.parent.getRoot().getSpawner(), func() {
+	pipe.frame.Run(n.tracker.root.spawner, func() {
 		defer pipe.Close()
-		cur := gox.NewCursor(n.tracker.getContext(), pipe)
+		cur := gox.NewCursor(n.tracker.ctx, pipe)
 		cur.Any(n.view.content)
 	})
 	finalFrame := renderShread.Frame()
@@ -178,11 +178,11 @@ func (n *node) render(parent *tracker, parentPipe *pipe) {
 	parentPipe.Put(pipe)
 	pipe.frame = sh.Join(parentPipe.frame, renderFrame)
 	pipe.frame.Release()
-	pipe.frame.Run(parent.getRoot().getSpawner(), func() {
+	pipe.frame.Run(parent.root.spawner, func() {
 		defer pipe.Close()
 		if n.kind == replacedNode {
 			pipe.tracker = parent
-			cur := gox.NewCursor(parent.getContext(), pipe)
+			cur := gox.NewCursor(parent.ctx, pipe)
 			cur.Any(n.view.content)
 			return
 		}
@@ -190,7 +190,7 @@ func (n *node) render(parent *tracker, parentPipe *pipe) {
 		n.tracker = newTracker(parent, n.shread)
 		parent.addChild(n)
 		pipe.tracker = n.tracker
-		cur := gox.NewCursor(n.tracker.getContext(), pipe)
+		cur := gox.NewCursor(n.tracker.ctx, pipe)
 		cur.Func(func(io.Writer) error {
 			n.communicationFrame.Activate()
 			return nil
@@ -198,12 +198,12 @@ func (n *node) render(parent *tracker, parentPipe *pipe) {
 		switch n.kind {
 		case jobNode:
 			n.takoverFrame.Activate()
-			open, close := n.view.headFrame(parent.getContext(), n.tracker.id, cur.NewId())
+			open, close := n.view.headFrame(parent.ctx, n.tracker.id, cur.NewID())
 			cur.Job(open)
 			cur.Any(n.view.content)
 			cur.Job(close)
 		case proxyNode:
-			proxy := newProxyRenderer(n.tracker.id, cur, n.view, parent.getContext())
+			proxy := newProxyRenderer(n.tracker.id, cur, n.view, parent.ctx)
 			proxy.render()
 			proxy.InitFrame().Run(nil, func() {
 				n.takoverFrame.Activate()

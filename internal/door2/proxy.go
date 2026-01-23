@@ -64,7 +64,7 @@ func (r *proxyRenderer) Send(job gox.Job) error {
 		defer r.initReady.Activate()
 		close, ok := job.(*gox.JobHeadClose)
 		if ok {
-			if close.Id != r.headId {
+			if close.ID != r.headId {
 				return errors.New("door: invalid close")
 			}
 			err := r.cursor.Any(r.view.content)
@@ -78,7 +78,7 @@ func (r *proxyRenderer) Send(job gox.Job) error {
 		return r.Send(job)
 	case closing:
 		close, ok := job.(*gox.JobHeadClose)
-		if ok && close.Id == r.headId {
+		if ok && close.ID == r.headId {
 			if r.wrapOver {
 				err := r.cursor.Job(close)
 				if err != nil {
@@ -121,8 +121,8 @@ func (r *proxyRenderer) init(job gox.Job) error {
 			r.view.tag = openJob.Tag
 		}
 	}
-	r.headId = openJob.Id
-	open, close := r.view.headFrame(r.parentCtx, r.doorId, r.cursor.NewId())
+	r.headId = openJob.ID
+	open, close := r.view.headFrame(r.parentCtx, r.doorId, r.cursor.NewID())
 	r.close = close
 	return r.cursor.Job(open)
 }
