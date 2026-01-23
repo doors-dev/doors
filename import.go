@@ -18,9 +18,12 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
+	"github.com/doors-dev/gox"
 )
 
 func importPath(r *resources.Resource, path string, name string, ext string) string {
@@ -47,6 +50,12 @@ type ImportCommon struct {
 	// Additional HTML attributes for the script tag.
 	// Optional.
 	Attrs templ.Attributes
+}
+
+func (m ImportCommon) Job(ctx context.Context) gox.Job {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+
+	return nil
 }
 
 func (m ImportCommon) info() string {
@@ -353,6 +362,7 @@ type ImportModuleBundleFS struct {
 	// Optional.
 	Attrs templ.Attributes
 }
+
 
 func (m ImportModuleBundleFS) info() string {
 	return "module bundle fs " + m.CacheKey

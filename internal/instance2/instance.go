@@ -21,13 +21,14 @@ import (
 	"github.com/doors-dev/doors/internal/door2"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/path"
+	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/sh"
 	"github.com/doors-dev/doors/internal/solitaire"
 	"github.com/doors-dev/gox"
 )
 
 type AnyInstance interface {
-	Id() string
+	ID() string
 	Serve(http.ResponseWriter, *http.Request) error
 	RestorePath(*http.Request) bool
 	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request, uint64) bool
@@ -37,11 +38,6 @@ type AnyInstance interface {
 
 type App[M any] interface {
 	Main(path beam.SourceBeam[M]) gox.Elem
-}
-
-type Options struct {
-	Detached bool
-	Rerouted bool
 }
 
 type setup[M any] struct {
@@ -85,6 +81,24 @@ type Instance[M any] struct {
 	killTimer *killTimer
 	store     ctex.Store
 	csp       *common.CSPCollector
+	importMap *moduleImportMap
+}
+
+func (c *Instance[M]) Detached() bool {
+	return c.navigator.isDetached()
+}
+
+func (c *Instance[M]) RootID() uint64 {
+	return c.root.ID()
+}
+
+
+func (c *Instance[M]) ImportRegistry() *resources.Registry {
+	return  c.session.router.ImportRegistry()
+}
+
+func (c *Instance[M]) AddModuleImport(specifier string, path string) {
+	c.importMap.add(specifier, path)
 }
 
 func (c *Instance[M]) CSPCollector() *common.CSPCollector {
@@ -128,6 +142,7 @@ func (inst *Instance[M]) init() error {
 		inst:    inst,
 	}
 	inst.csp = inst.session.router.CSP().NewCollector()
+	inst.importMap = newImportMap()
 	inst.killTimer.keepAlive()
 	return nil
 }
@@ -148,10 +163,6 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 	})
 	<-ch
 	return inst.render(w, r, js)
-}
-
-func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, js door2.JobStream) error {
-
 }
 
 func (inst *Instance[M]) TriggerHook(doorId uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) (ok bool) {

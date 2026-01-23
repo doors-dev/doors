@@ -21,6 +21,8 @@ type Instance interface {
 
 type Root = *root
 
+
+
 func NewRoot(ctx context.Context, inst Instance) Root {
 	r := &root{
 		inst:    inst,
@@ -40,6 +42,10 @@ type root struct {
 	inst    Instance
 	tackers map[uint64]*tracker
 	tracker *tracker
+}
+
+func (r Root) ID() uint64 {
+	return r.tracker.id
 }
 
 func (r Root) Context() context.Context {

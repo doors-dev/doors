@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/store"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
@@ -58,7 +57,7 @@ func (sess *Session) setTTL() {
 
 type Session struct {
 	mu        sync.Mutex
-	store     store.Store
+	store     ctex.Store
 	killed    bool
 	id        string
 	instances map[string]AnyInstance
@@ -74,8 +73,8 @@ func (sess *Session) AddInstance(inst AnyInstance) bool {
 		sess.mu.Unlock()
 		return false
 	}
-	sess.instances[inst.Id()] = inst
-	toSuspend := sess.limiter.add(inst.Id())
+	sess.instances[inst.ID()] = inst
+	toSuspend := sess.limiter.add(inst.ID())
 	sess.mu.Unlock()
 	if toSuspend != "" {
 		sess.instances[toSuspend].end(common.EndCauseSuspend)
@@ -97,7 +96,7 @@ func (sess *Session) removeInstance(id string) {
 	}
 }
 
-func (sess *Session) Id() string {
+func (sess *Session) ID() string {
 	return sess.id
 }
 

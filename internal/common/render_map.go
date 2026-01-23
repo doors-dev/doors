@@ -365,4 +365,4 @@ func (i *importMap) init(c *CSPCollector) {
 	w.Write(json)
 	w.WriteString("</script>")
 	i.content = w.Bytes()
-}
+} 

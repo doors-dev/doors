@@ -18,7 +18,6 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxwg"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
@@ -27,11 +26,6 @@ import (
 	"github.com/doors-dev/doors/internal/router"
 )
 
-// Include returns a component that includes the framework's main client-side script and styles.
-// This should be placed in the HTML head section and is required for the framework to function.
-func Include() templ.Component {
-	return front.Include
-}
 
 // Door represents a dynamic placeholder in the DOM tree that can be updated,
 // replaced, or removed at runtime.

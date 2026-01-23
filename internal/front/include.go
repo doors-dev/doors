@@ -16,10 +16,71 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/store"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/gox"
 )
+
+
+var Include = gox.Elem(func(cur gox.Cursor) error {
+	core := cur.Context().Value(ctex.KeyCore).(core.Core)
+	conf := core.Conf()
+	registry := core.ImportRegistry()
+	style := registry.MainStyle()
+	script := registry.MainScript()
+	if err := cur.InitVoid("link"); err != nil {
+		return err
+	}
+	{
+		if err := cur.AttrSet("rel", "stylesheet"); err != nil {
+			return err
+		}
+		if err := cur.AttrSet("href", fmt.Sprintf("/%s.d00r.css", style.HashString())); err != nil {
+			return err
+		}
+	}
+	if err := cur.Submit(); err != nil {
+		return err
+	}
+	if err := cur.Init("script"); err != nil {
+		return err
+	}
+	{
+		if err := cur.AttrSet("src", fmt.Sprintf("/%s.d00r.js", script.HashString())); err != nil {
+			return err
+		}
+		if err := cur.AttrSet("data-id", core.InstanceID()); err != nil {
+			return err
+		}
+		if err := cur.AttrSetAny("data-root", core.RootID()); err != nil {
+			return err
+		}
+		if err := cur.AttrSetAny("data-ttl", conf.InstanceTTL.Milliseconds()); err != nil {
+			return err
+		}
+		if err := cur.AttrSetAny("data-disconnect", conf.DisconnectHiddenTimer.Milliseconds()); err != nil {
+			return err
+		}
+		if err := cur.AttrSetAny("data-request", conf.RequestTimeout.Milliseconds()); err != nil {
+			return err
+		}
+		if err := cur.AttrSetAny("data-ping", conf.SolitairePing.Milliseconds()); err != nil {
+			return err
+		}
+		if err := cur.AttrSetBool("data-detached", core.Detached()); err != nil {
+			return err
+		}
+		if err := cur.Submit(); err != nil {
+			return err
+		}
+	}
+	if err := cur.Close(); err != nil {
+		return err
+	}
+	return nil
+})
 
 type include struct{}
 
@@ -71,4 +132,4 @@ func (_ include) Render(ctx context.Context, w io.Writer) error {
 
 }
 
-var Include = include{}
+var OInclude = include{}
