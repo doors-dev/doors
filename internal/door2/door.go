@@ -11,6 +11,9 @@ type Door struct {
 	node atomic.Pointer[node]
 }
 
+var _ gox.Proxy = &Door{}
+var _ gox.Editor = &Door{}
+
 func (d *Door) Remove(ctx context.Context) {
 	node := &node{
 		ctx:  ctx,
@@ -55,9 +58,9 @@ func (d *Door) Replace(ctx context.Context, content any) {
 	d.takeover(node)
 }
 
-func (d *Door) Proxy(ctx context.Context, cur gox.Cursor, elem gox.Elem) error {
+func (d *Door) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	node := &node{
-		ctx:  ctx,
+		ctx:  cur.Context(),
 		door: d,
 		kind: proxyNode,
 		view: &view{
@@ -68,14 +71,14 @@ func (d *Door) Proxy(ctx context.Context, cur gox.Cursor, elem gox.Elem) error {
 	return cur.Job(node)
 }
 
-func (d *Door) Job(ctx context.Context) gox.Job {
+func (d *Door) Use(cur gox.Cursor) error {
 	node := &node{
-		ctx:  ctx,
+		ctx:  cur.Context(),
 		door: d,
-		kind: jobNode,
+		kind: editorNode,
 	}
 	d.takeover(node)
-	return node
+	return cur.Job(node)
 }
 
 func (d *Door) takeover(next *node) {

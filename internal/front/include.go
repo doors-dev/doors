@@ -9,20 +9,12 @@
 package front
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"log/slog"
 
-	"github.com/a-h/templ"
-	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/door"
-	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/gox"
 )
-
 
 var Include = gox.Elem(func(cur gox.Cursor) error {
 	core := cur.Context().Value(ctex.KeyCore).(core.Core)
@@ -72,6 +64,13 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.AttrSetBool("data-detached", core.Detached()); err != nil {
 			return err
 		}
+		lic := core.License()
+		if lic != nil {
+			licInfo := fmt.Sprintf("%s:%s:%s", lic.GetId(), lic.GetTier().String(), lic.GetDomain())
+			if err := cur.AttrSetAny("data-license", licInfo); err != nil {
+				return err
+			}
+		}
 		if err := cur.Submit(); err != nil {
 			return err
 		}
@@ -82,54 +81,3 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 	return nil
 })
 
-type include struct{}
-
-type included struct{}
-
-func (_ include) Render(ctx context.Context, w io.Writer) error {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	door := ctx.Value(common.CtxKeyDoor).(door.Core)
-	_, already := store.Swap(ctx, common.CtxKeyInstanceStore, included{}, included{}).(included)
-	if already {
-		slog.Warn("doors header included multiple times on the page, keeping first", slog.String("instance_id", inst.Id()))
-		return nil
-	}
-	style := inst.ImportRegistry().MainStyle()
-	script := inst.ImportRegistry().MainScript()
-	_, err := fmt.Fprintf(w, "<link rel=\"stylesheet\" href=\"/%s.d00r.css\"/>", style.HashString())
-	if err != nil {
-		return err
-	}
-	conf := inst.Conf()
-	attrs := map[string]any{
-		"src":             "/" + script.HashString() + ".d00r.js",
-		"id":              inst.Id(),
-		"data-root":       door.Id(),
-		"data-ttl":        conf.InstanceTTL.Milliseconds(),
-		"data-disconnect": conf.DisconnectHiddenTimer.Milliseconds(),
-		"data-request":    conf.RequestTimeout.Milliseconds(),
-		"data-ping":       conf.SolitairePing.Milliseconds(),
-		"data-detached":   inst.IsDetached(),
-	}
-	lic := inst.License()
-	if lic != nil {
-		attrs["data-license"] = fmt.Sprintf("%s:%s:%s", lic.GetId(), lic.GetTier().String(), lic.GetDomain())
-	}
-	_, err = fmt.Fprint(w, "<script")
-	if err != nil {
-		return err
-	}
-	err = templ.RenderAttributes(context.Background(), w, templ.Attributes(attrs))
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprint(w, "></script>")
-	if err != nil {
-		return err
-	}
-	rm := ctx.Value(common.CtxKeyRenderMap).(*common.RenderMap)
-	return rm.WriteImportMap(w)
-
-}
-
-var OInclude = include{}

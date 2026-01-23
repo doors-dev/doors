@@ -18,8 +18,8 @@ import (
 
 type Actions []Action
 
-func (a Actions) invocations() []*Invocation {
-	inv := make([]*Invocation, len(a))
+func (a Actions) invocations() []Invocation {
+	inv := make([]Invocation, len(a))
 	for i, a := range a {
 		inv[i] = a.Invocation()
 	}
@@ -40,7 +40,7 @@ func (a Actions) Set(h http.Header) error {
 }
 
 type Action interface {
-	Invocation() *Invocation
+	Invocation() Invocation
 	Log() string
 }
 
@@ -63,6 +63,6 @@ type Invocation struct {
 	arg  []any
 }
 
-func (a *Invocation) MarshalJSON() ([]byte, error) {
+func (a Invocation) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]any{a.name, a.arg})
 }

@@ -8,14 +8,14 @@
 
 package doors
 
-import "github.com/doors-dev/doors/internal/beam"
+import "github.com/doors-dev/doors/internal/beam2"
 
 // Beam represents a reactive value stream that can be read, subscribed to, or watched.
 //
 // When used in a render cycle, it is guaranteed that a Door and all of its children
 // will observe the exact same value for a given Beam. This ensures stable and predictable
 // rendering behavior, even when multiple components depend on the same reactive source.
-type Beam[T any] = beam.Beam[T]
+type Beam[T any] = beam2.Beam[T]
 
 // SourceBeam is the initial Beam (others are derived from it), which, in addition to its core
 // functionality, includes the ability to update values and propagate changes to all
@@ -29,7 +29,7 @@ type Beam[T any] = beam.Beam[T]
 // the data directly. Instead, create or provide a different instance.
 // Direct modification can break the consistency guarantees since subscribers may
 // observe partial changes or inconsistent state.
-type SourceBeam[T any] = beam.SourceBeam[T]
+type SourceBeam[T any] = beam2.SourceBeam[T]
 
 // NewSourceBeam creates a new SourceBeam with the given initial value.
 // Updates are only propagated when the new value passes the default distinct
@@ -41,7 +41,7 @@ type SourceBeam[T any] = beam.SourceBeam[T]
 // Returns:
 //   - A new SourceBeam[T] instance
 func NewSourceBeam[T comparable](init T) SourceBeam[T] {
-	return beam.NewSourceBeam(init)
+	return beam2.NewSourceBeam(init)
 }
 
 // NewSourceBeamEqual creates a new SourceBeam with a custom equality function.
@@ -58,12 +58,12 @@ func NewSourceBeam[T comparable](init T) SourceBeam[T] {
 // Returns:
 //   - A new SourceBeam[T] instance that uses the equality function for update filtering
 func NewSourceBeamEqual[T any](init T, equal func(new T, old T) bool) SourceBeam[T] {
-	return beam.NewSourceBeamEqual(init, equal)
+	return beam2.NewSourceBeamEqual(init, equal)
 }
 
 // NewBeam derives a new Beam[T2] from an existing Beam[T] by applying a transformation function.
 //
-// The cast function maps values from the source beam to the derived beam.
+// The cast function maps values from the source beam2.to the derived beam.
 // Updates are only propagated when the new value passes the default equality
 // function with != comparison to the old value
 //
@@ -74,7 +74,7 @@ func NewSourceBeamEqual[T any](init T, equal func(new T, old T) bool) SourceBeam
 // Returns:
 //   - A new Beam[T2] that emits transformed values when they differ from the previous value
 func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
-	return beam.NewBeam(source, cast)
+	return beam2.NewBeam(source, cast)
 }
 
 // NewBeamEqual derives a new Beam[T2] from an existing Beam[T] using custom transformation and filtering.
@@ -92,5 +92,5 @@ func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
 // Returns:
 //   - A new Beam[T2] that emits transformed values filtered by the equality function
 func NewBeamEqual[T any, T2 any](source Beam[T], cast func(T) T2, equal func(new T2, old T2) bool) Beam[T2] {
-	return beam.NewBeamEqual(source, cast, equal)
+	return beam2.NewBeamEqual(source, cast, equal)
 }

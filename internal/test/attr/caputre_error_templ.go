@@ -251,7 +251,7 @@ func (f *errorFragment) button(id string, on []doors.Action) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, f.handler(on)))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.Attr(ctx, f.handler(on)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -19,13 +19,14 @@ import (
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/door2"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
+	"github.com/doors-dev/gox"
 )
-
 
 // Door represents a dynamic placeholder in the DOM tree that can be updated,
 // replaced, or removed at runtime.
@@ -56,70 +57,12 @@ import (
 //
 // During a single render cycle, Doors and their children are guaranteed to observe
 // consistent state (Beam), ensuring stable and predictable rendering.
-type Door = door.Door
+type Door = door2.Door
 
-// Fragment is a helper interface for defining composable, stateful, and code-interactive components.
-//
-// A Fragment groups fields, methods, and rendering logic into a reusable unit.
-// This is especially useful when a simple templ function is not sufficient — for example,
-// when you need to manage internal state, expose multiple methods, or control updates from Go code.
-//
-// Fragments implement the Render method and can be rendered using the F() helper.
-//
-// A Fragment can be stored in a variable, rendered once, and later updated by calling custom methods.
-// These methods typically encapsulate internal Door updates — such as a Refresh() function
-// that re-renders part of the fragment's content manually.
-//
-// By default, a Fragment is static — its output does not change after rendering.
-// To enable dynamic behavior, use a root-level Door to support targeted updates.
-//
-// Example:
-//
-//	type Counter struct {
-//	    door  doors.Door
-//	    count int
-//	}
-//
-//	func (c *Counter) Refresh(ctx context.Context) {
-//	    c.door.Update(ctx, c.display())
-//	}
-//
-//	templ (c *Counter) Render() {
-//	    @c.door {
-//	        @c.display()
-//	    }
-//	    <button { doors.A(ctx, doors.AClick{
-//	        On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-//	            c.count++
-//	            c.Refresh(ctx)
-//	            return false
-//	        },
-//	    })... }>
-//	        Click Me!
-//	    </button>
-//	}
-//
-//	templ (c *Counter) display() {
-//	    Clicked { fmt.Sprint(c.count) } time(s)!
-//	}
-type Fragment interface {
-	Render() templ.Component
-}
+type editorFunc func(cur gox.Cursor) error
 
-// F renders a Fragment as a templ.Component.
-//
-// This helper wraps a Fragment and returns a valid templ.Component,
-// enabling Fragments to be used inside other templ components.
-//
-// Example:
-//
-//	templ Demo() {
-//	    @doors.F(&Counter{})
-//	}
-func F(f Fragment) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		return f.Render().Render(ctx, w)
-	})
+func (e editorFunc) Use(cur gox.Cursor) error {
+	return e(cur)
 }
 
 // Sub creates a reactive component that automatically updates when a Beam value changes.
@@ -147,17 +90,18 @@ func F(f Fragment) templ.Component {
 //
 // Returns:
 //   - A templ.Component that updates reactively as the Beam value changes
-func Sub[T any](beam Beam[T], render func(T) templ.Component) templ.Component {
-	return E(func(ctx context.Context) templ.Component {
+
+func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
+	return editorFunc(func(cur gox.Cursor) error {
 		door := &Door{}
-		ok := beam.Sub(ctx, func(ctx context.Context, v T) bool {
-			door.Update(ctx, render(v))
+		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
+			door.Update(ctx, el(v))
 			return false
 		})
 		if !ok {
 			return nil
 		}
-		return door
+		return cur.Editor(door)
 	})
 }
 
@@ -194,7 +138,6 @@ func Inject[T any](key any, beam Beam[T]) templ.Component {
 		return door
 	})
 }
-
 
 // If shows children if the beam value is true
 func If(beam Beam[bool]) templ.Component {
@@ -396,7 +339,7 @@ func scriptRender(i *resources.InlineResource, mode resources.InlineMode, attrs 
 		if mode == resources.InlineModeHost {
 			attrs.Set("src", router.ResourcePath(i.Resource(), name))
 		} else {
-			attrs.Join(A(ctx, ARawSrc{
+			attrs.Join(Attr(ctx, ARawSrc{
 				Once: true,
 				Name: name,
 				Handler: func(w http.ResponseWriter, r *http.Request) {
@@ -539,11 +482,10 @@ func Text(value any) templ.Component {
 
 func Attributes(a []Attr) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		attrs := A(ctx, a...)
+		attrs := Attr(ctx, a...)
 		return attrs.Render(ctx, w)
 	})
 }
-
 
 func Any(v any) templ.Component {
 	c, ok := v.(templ.Component)
@@ -666,7 +608,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 								return escapedTags
 							}(),
 						},
-						DoorId: door.Id(),
+						DoorID: door.Id(),
 					},
 					nil,
 					nil,

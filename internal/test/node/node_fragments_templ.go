@@ -393,7 +393,7 @@ func (f *EmbeddedFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.AClick{
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.Attr(ctx, doors.AClick{
 			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 				f.n2.Remove(ctx)
 				return true
@@ -406,7 +406,7 @@ func (f *EmbeddedFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.AClick{
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.Attr(ctx, doors.AClick{
 			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 				f.n1.Clear(ctx)
 				return true
@@ -419,7 +419,7 @@ func (f *EmbeddedFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.AClick{
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.Attr(ctx, doors.AClick{
 			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 				f.n2.Update(ctx, test.Marker("replaced"))
 				f.n3.Update(ctx, test.Marker("temp"))
@@ -474,7 +474,7 @@ func (f *DynamicFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.AClick{
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.Attr(ctx, doors.AClick{
 			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 				f.n1.Update(ctx, test.Marker("updated"))
 				return true
@@ -487,7 +487,7 @@ func (f *DynamicFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.AClick{
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.Attr(ctx, doors.AClick{
 			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 				f.n2.Update(ctx, test.Marker("replaced"))
 				f.n1.Replace(ctx, &f.n2)
@@ -501,7 +501,7 @@ func (f *DynamicFragment) Render() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, doors.AClick{
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.Attr(ctx, doors.AClick{
 			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 				f.n2.Remove(ctx)
 				return true

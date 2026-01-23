@@ -8,6 +8,7 @@ import (
 	"github.com/doors-dev/doors/internal/beam2"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 )
@@ -49,12 +50,14 @@ type Instance interface {
 	Conf() *common.SystemConf
 	Detached() bool
 	NewID() uint64
-	NewLink() (Link, error)
+	NewLink(any) (Link, error)
+	License() license.License
 }
 
 type Door interface {
 	Cinema() beam2.Cinema
 	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
+	ID() uint64
 }
 
 func NewCore(inst Instance, door Door) Core {
@@ -79,6 +82,13 @@ func (c Core) Cinema() beam2.Cinema {
 
 type Done = bool
 
+func (c Core) License() license.License {
+	return c.inst.License()
+}
+
+func (c Core) DoorID() uint64 {
+	return c.door.ID()
+}
 
 func (c Core) NewLink(m any) (Link, error) {
 	return c.inst.NewLink(m)

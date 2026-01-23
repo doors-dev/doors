@@ -1,36 +1,29 @@
 // doors
-// Copyright (c) 2025 doors dev LLC
+// Copyright (c) 2026 doors dev LLC
 //
-// Licensed under the Business Source License 1.1 (BUSL-1.1).
-// See LICENSE.txt for details.
+// Dual-licensed: AGPL-3.0-only (see LICENSE) OR a commercial license.
+// Commercial inquiries: sales@doors.dev
 //
-// For commercial use, see LICENSE-COMMERCIAL.txt and COMMERCIAL-EULA.md.
-// To purchase a license, visit https://doors.dev or contact sales@doors.dev.
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
 const license = document.currentScript!.dataset.license?.split(":")
-const purchaseMessage = "For commercial production use, purchase a license at https://doors.dev or via sales@doors.dev."
-const ncMessage = "Running in development/non-commercial mode."
+
+const agplMsg = "AGPL-3.0-only mode (see LICENSE).";
+
 
 if (license == null) {
-    console.warn(
-        [
-            "[doors] No license provided.",
-            ncMessage,
-            purchaseMessage,
-        ].join("\n")
-    );
+	console.info("[doors] " + agplMsg);
 } else {
     const [id, tier, domain] = license
     const isLocalHost = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)
     const correctDomain = domain === "*" || location.hostname === domain || location.hostname.endsWith("." + domain);
     if (!isLocalHost && !correctDomain) {
-        console.error(
+        console.warn(
             [
                 "[doors] Invalid license provided.",
-                ncMessage,
                 "Id: " + id,
                 "Licensed domain: " + domain,
-                purchaseMessage
+				"AGPL-3.0-only mode (see LICENSE).",
             ].join("\n")
         );
     } else {

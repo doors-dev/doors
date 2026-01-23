@@ -13,25 +13,23 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
 
-	"github.com/doors-dev/doors/internal/instance"
 )
 
 // Action performs a client-side operation
 type Action interface {
-	action(context.Context, instance.Core, door.Core) (action.Action, action.CallParams, error)
+	action(context.Context, core.Core) (action.Action, action.CallParams, error)
 }
 
 func intoActions(ctx context.Context, actions []Action) action.Actions {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	door := ctx.Value(common.CtxKeyDoor).(door.Core)
+	core := ctx.Value(ctex.KeyCore).(core.Core)
 	arr := make(action.Actions, 0)
 	for _, action := range actions {
-		a, _, err := action.action(ctx, inst, door)
+		a, _, err := action.action(ctx, core)
 		if err != nil {
 			slog.Error("Action preparation error", slog.String("error", err.Error()))
 			continue
@@ -53,11 +51,11 @@ func ActionOnlyEmit(name string, arg any) []Action {
 	return []Action{ActionEmit{Name: name, Arg: arg}}
 }
 
-func (a ActionEmit) action(ctx context.Context, inst instance.Core, door door.Core) (action.Action, action.CallParams, error) {
-	return &action.Emit{
+func (a ActionEmit) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+	return action.Emit{
 		Name:   a.Name,
 		Arg:    a.Arg,
-		DoorId: door.Id(),
+		DoorID: core.DoorID(),
 	}, action.CallParams{}, nil
 }
 
@@ -69,8 +67,8 @@ func ActionOnlyLocationReload() []Action {
 	return []Action{ActionLocationReload{}}
 }
 
-func (a ActionLocationReload) action(ctx context.Context, inst instance.Core, door door.Core) (action.Action, action.CallParams, error) {
-	return &action.LocationReload{}, action.CallParams{Timeout: inst.Conf().InstanceTTL, Optimistic: true}, nil
+func (a ActionLocationReload) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+	return &action.LocationReload{}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
 // ActionLocationReplace replaces the current location with a model-derived URL.
@@ -83,7 +81,7 @@ func ActionOnlyLocationReplace(model any) []Action {
 	return []Action{ActionLocationReplace{Model: model}}
 }
 
-func (a ActionLocationReplace) action(ctx context.Context, inst instance.Core, door door.Core) (action.Action, action.CallParams, error) {
+func (a ActionLocationReplace) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
 	l, err := NewLocation(ctx, a.Model)
 	if err != nil {
 		return nil, action.CallParams{}, err
@@ -91,7 +89,7 @@ func (a ActionLocationReplace) action(ctx context.Context, inst instance.Core, d
 	return &action.LocationReplace{
 		URL:    l.String(),
 		Origin: true,
-	}, action.CallParams{Timeout: inst.Conf().InstanceTTL, Optimistic: true}, nil
+	}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
 // ActionLocationAssign navigates to a model-derived URL.
@@ -104,7 +102,7 @@ func ActionOnlyLocationAssign(model any) []Action {
 	return []Action{ActionLocationAssign{Model: model}}
 }
 
-func (a ActionLocationAssign) action(ctx context.Context, inst instance.Core, door door.Core) (action.Action, action.CallParams, error) {
+func (a ActionLocationAssign) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
 	l, err := NewLocation(ctx, a.Model)
 	if err != nil {
 		return nil, action.CallParams{}, err
@@ -112,7 +110,7 @@ func (a ActionLocationAssign) action(ctx context.Context, inst instance.Core, do
 	return &action.LocationAssign{
 		URL:    l.String(),
 		Origin: true,
-	}, action.CallParams{Timeout: inst.Conf().InstanceTTL, Optimistic: true}, nil
+	}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
 // ActionRawLocationAssign navigates to a specified URL
@@ -125,11 +123,11 @@ func ActionOnlyRawLocationAssign(url string) []Action {
 	return []Action{ActionRawLocationAssign{URL: url}}
 }
 
-func (a ActionRawLocationAssign) action(ctx context.Context, inst instance.Core, door door.Core) (action.Action, action.CallParams, error) {
+func (a ActionRawLocationAssign) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
 	return &action.LocationAssign{
 		URL:    a.URL,
 		Origin: false,
-	}, action.CallParams{Timeout: inst.Conf().InstanceTTL, Optimistic: true}, nil
+	}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
 // ActionScroll scrolls to the first element matching Selector.
@@ -143,8 +141,8 @@ func ActionOnlyScroll(selector string, smooth bool) []Action {
 	return []Action{ActionScroll{Selector: selector, Smooth: smooth}}
 }
 
-func (a ActionScroll) action(ctx context.Context, inst instance.Core, door door.Core) (action.Action, action.CallParams, error) {
-	return &action.Scroll{
+func (a ActionScroll) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+	return action.Scroll{
 		Selector: a.Selector,
 		Smooth:   a.Smooth,
 	}, action.CallParams{}, nil
@@ -161,8 +159,8 @@ func ActionOnlyIndicate(indicator []Indicator, duration time.Duration) []Action 
 	return []Action{ActionIndicate{Indicator: indicator, Duration: duration}}
 }
 
-func (a ActionIndicate) action(ctx context.Context, inst instance.Core, door door.Core) (action.Action, action.CallParams, error) {
-	return &action.Indicate{
+func (a ActionIndicate) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+	return action.Indicate{
 		Indicate: front.IntoIndicate(a.Indicator),
 		Duration: a.Duration,
 	}, action.CallParams{}, nil

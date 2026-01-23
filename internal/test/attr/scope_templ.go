@@ -222,7 +222,7 @@ func (f *scopeFragment) button(id string, scope []doors.Scope, marker string, de
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, f.handler(scope, marker, delay)))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.Attr(ctx, f.handler(scope, marker, delay)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

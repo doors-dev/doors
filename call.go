@@ -14,8 +14,8 @@ import (
 	"log/slog"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/door"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 )
 
 // CallResult holds the outcome of an XCall.
@@ -44,10 +44,9 @@ func XCall[T any](ctx context.Context, action Action) (<-chan CallResult[T], con
 }
 
 func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], context.CancelFunc) {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	door := ctx.Value(common.CtxKeyDoor).(door.Core)
+	core := ctx.Value(ctex.KeyCore).(core.Core)
 	ch := make(chan CallResult[T], 1)
-	a, params, err := action.action(ctx, inst, door)
+	a, params, err := action.action(ctx, core)
 	res := CallResult[T]{}
 	if err != nil {
 		slog.Error("Action preparation errror", slog.String("error", err.Error()))
@@ -61,7 +60,7 @@ func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], cont
 		slog.Error("Call attempt from the canceled context", slog.String("action", a.Log()))
 		return ch, func() {}
 	}
-	cancel := inst.CallCtx(
+	cancel := core.CallCtx(
 		ctx,
 		a,
 		func(rm json.RawMessage, err error) {

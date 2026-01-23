@@ -21,6 +21,7 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door2"
 	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/sh"
@@ -83,6 +84,10 @@ type Instance[M any] struct {
 	store     ctex.Store
 	csp       *common.CSPCollector
 	importMap *moduleImportMap
+}
+
+func (d *Instance[M]) License() license.License {
+	return d.session.router.License()
 }
 
 func (c *Instance[M]) NewLink(m any) (core.Link, error) {

@@ -300,7 +300,7 @@ func (f *indicatorFragment) button(id string, indicator []doors.Indicator) templ
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.A(ctx, f.handler(indicator)))
+		templ_7745c5c3_Err = templ.RenderAttributes(ctx, templ_7745c5c3_Buffer, doors.Attr(ctx, f.handler(indicator)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

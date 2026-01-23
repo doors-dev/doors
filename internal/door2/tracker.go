@@ -15,7 +15,7 @@ import (
 
 func newRootTracker(ctx context.Context, r *root) *tracker {
 	t := &tracker{
-		id:       r.newID(),
+		id:       r.NewID(),
 		root:     r,
 		parent:   nil,
 		children: common.NewSet[*node](),
@@ -48,7 +48,7 @@ func newTrackerFrom(prev *tracker, shread *sh.Shread) *tracker {
 func newTracker(parent *tracker, shread *sh.Shread) *tracker {
 	t := &tracker{
 		root:     parent.root,
-		id:       parent.root.newID(),
+		id:       parent.root.NewID(),
 		parent:   parent,
 		children: common.NewSet[*node](),
 	}
@@ -77,6 +77,10 @@ type tracker struct {
 	cinema    beam2.Cinema
 	hooks     map[uint64]*hook
 	core      core.Core
+}
+
+func (t *tracker) ID() uint64 {
+	return t.id
 }
 
 func (t *tracker) initShread(shread *sh.Shread) {

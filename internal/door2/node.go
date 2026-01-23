@@ -15,7 +15,7 @@ const (
 	unmountedNode nodeKind = iota
 	replacedNode
 	updatedNode
-	jobNode
+	editorNode
 	proxyNode
 )
 
@@ -40,13 +40,13 @@ func (n *node) Output(io.Writer) error {
 
 func (n *node) takover(prev *node) {
 	switch n.kind {
-	case jobNode, proxyNode:
+	case editorNode, proxyNode:
 		n.shread = &sh.Shread{}
 		renderGuard := n.shread.Guard()
 		prev.takoverFrame.Run(nil, func() {
 			defer renderGuard.Release()
 			switch n.kind {
-			case jobNode:
+			case editorNode:
 				n.jobTakover(prev)
 			case proxyNode:
 				n.proxyTakeover(prev)
@@ -69,7 +69,7 @@ func (n *node) takover(prev *node) {
 
 func (n *node) proxyTakeover(prev *node) {
 	switch prev.kind {
-	case updatedNode, jobNode, proxyNode:
+	case updatedNode, editorNode, proxyNode:
 		n.view.content = prev.view.content
 		prev.kill(remove)
 	}
@@ -78,7 +78,7 @@ func (n *node) proxyTakeover(prev *node) {
 func (n *node) jobTakover(prev *node) {
 	n.view = prev.view
 	switch prev.kind {
-	case updatedNode, jobNode:
+	case updatedNode, editorNode:
 		prev.kill(remove)
 	case replacedNode:
 		n.kind = replacedNode
@@ -196,7 +196,7 @@ func (n *node) render(parent *tracker, parentPipe *pipe) {
 			return nil
 		})
 		switch n.kind {
-		case jobNode:
+		case editorNode:
 			n.takoverFrame.Activate()
 			open, close := n.view.headFrame(parent.ctx, n.tracker.id, cur.NewID())
 			cur.Job(open)
