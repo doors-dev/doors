@@ -9,9 +9,10 @@
 package doors
 
 import (
-	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/instance"
 	"time"
+
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/front"
 )
 
 // Scope controls concurrency for event processing.
@@ -21,10 +22,10 @@ type Scope = front.Scope
 // ScopeSet holds the configuration of a scope instance.
 type ScopeSet = front.ScopeSet
 
-type scopeFunc func(inst instance.Core) *ScopeSet
+type scopeFunc func(core core.Core) *ScopeSet
 
-func (s scopeFunc) Scope(inst instance.Core) *ScopeSet {
-	return s(inst)
+func (s scopeFunc) Scope(core core.Core) *ScopeSet {
+	return s(core)
 }
 
 // ScopeBlocking cancels new events while one is processing.
@@ -33,8 +34,8 @@ type ScopeBlocking struct {
 	id front.ScopeAutoId
 }
 
-func (b *ScopeBlocking) Scope(inst instance.Core) *ScopeSet {
-	return front.BlockingScope(b.id.Id(inst))
+func (b *ScopeBlocking) Scope(core core.Core) *ScopeSet {
+	return front.BlockingScope(b.id.Id(core))
 }
 
 // ScopeOnlyBlocking creates a blocking scope that cancels concurrent events.
@@ -47,8 +48,8 @@ type ScopeSerial struct {
 	id front.ScopeAutoId
 }
 
-func (b *ScopeSerial) Scope(inst instance.Core) *ScopeSet {
-	return front.SerialScope(b.id.Id(inst))
+func (b *ScopeSerial) Scope(core core.Core) *ScopeSet {
+	return front.SerialScope(b.id.Id(core))
 }
 
 // ScopeOnlySerial creates a serial scope that executes events sequentially.
@@ -67,8 +68,8 @@ type ScopeDebounce struct {
 //   - duration: debounce delay, reset by new events
 //   - limit: maximum wait before execution regardless of new events
 func (d *ScopeDebounce) Scope(duration, limit time.Duration) Scope {
-	return scopeFunc(func(inst instance.Core) *ScopeSet {
-		return front.DebounceScope(d.id.Id(inst), duration, limit)
+	return scopeFunc(func(core core.Core) *ScopeSet {
+		return front.DebounceScope(d.id.Id(core), duration, limit)
 	})
 }
 
@@ -88,8 +89,8 @@ type ScopeFrame struct {
 //   - frame=false: execute immediately
 //   - frame=true: wait for completion of all events, then execute exclusively
 func (d *ScopeFrame) Scope(frame bool) Scope {
-	return scopeFunc(func(inst instance.Core) *ScopeSet {
-		return front.FrameScope(d.id.Id(inst), frame)
+	return scopeFunc(func(core core.Core) *ScopeSet {
+		return front.FrameScope(d.id.Id(core), frame)
 	})
 }
 
@@ -100,8 +101,8 @@ type ScopeConcurrent struct {
 }
 
 func (d *ScopeConcurrent) Scope(groupId int) Scope {
-	return scopeFunc(func(inst instance.Core) *ScopeSet {
-		return front.ConcurrentScope(d.id.Id(inst), groupId)
+	return scopeFunc(func(core core.Core) *ScopeSet {
+		return front.ConcurrentScope(d.id.Id(core), groupId)
 	})
 }
 

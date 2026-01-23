@@ -45,7 +45,7 @@ type focusIOEventHook struct {
 
 func (p *focusIOEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
 	return eventAttr[FocusEvent]{
-		capture: &front.FocusIOCapture{
+		capture: front.FocusIOCapture{
 			Event:           event,
 			StopPropagation: p.StopPropagation,
 			ExactTarget:     p.ExactTarget,
@@ -81,7 +81,7 @@ type focusEventHook struct {
 
 func (p *focusEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
 	return eventAttr[FocusEvent]{
-		capture: &front.FocusCapture{
+		capture: front.FocusCapture{
 			Event: event,
 		},
 		scope:     p.Scope,

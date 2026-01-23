@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/beam"
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/path"
 )
@@ -74,7 +75,7 @@ type navigatorState[M any] struct {
 	err   error
 }
 
-func (n *navigator[M]) newLink(m any) (*Link, error) {
+func (n *navigator[M]) newLink(m any) (core.Link, error) {
 	thisModel, ok := m.(*M)
 	if !ok {
 		direct, ok := m.(M)
@@ -85,11 +86,11 @@ func (n *navigator[M]) newLink(m any) (*Link, error) {
 	if thisModel != nil {
 		location, err := n.adapter.Encode(thisModel)
 		if err != nil {
-			return nil, err
+			return core.Link{}, err
 		}
-		return &Link{
-			location: location,
-			on: func(ctx context.Context) {
+		return core.Link{
+			Location: location,
+			On: func(ctx context.Context) {
 				n.model.Update(ctx, *thisModel)
 			},
 		}, nil
@@ -97,15 +98,15 @@ func (n *navigator[M]) newLink(m any) (*Link, error) {
 	name := path.GetAdapterName(m)
 	adapter, found := n.adapters[name]
 	if !found {
-		return nil, errors.New(fmt.Sprint("Adapter for ", name, " is not registered"))
+		return core.Link{}, errors.New(fmt.Sprint("Adapter for ", name, " is not registered"))
 	}
 	location, err := adapter.EncodeAny(m)
 	if err != nil {
-		return nil, err
+		return core.Link{}, err
 	}
-	return &Link{
-		location: location,
-		on:       nil,
+	return core.Link{
+		Location: location,
+		On:       nil,
 	}, nil
 }
 
@@ -225,21 +226,3 @@ func (e *historyEntry[M]) shake(prev *historyEntry[M], path string, count int) {
 	e.next.shake(e, path, count+1)
 }
 
-type Link struct {
-	location *path.Location
-	on       func(context.Context)
-}
-
-func (h *Link) Path() (string, bool) {
-	if h.location == nil {
-		return "", false
-	}
-	return h.location.String(), true
-}
-
-func (h *Link) ClickHandler() (func(context.Context), bool) {
-	if h.on == nil {
-		return nil, false
-	}
-	return h.on, true
-}

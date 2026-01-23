@@ -50,7 +50,7 @@ type keyEventHook struct {
 
 func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
 	return eventAttr[KeyboardEvent]{
-		capture: &front.KeyboardEventCapture{
+		capture: front.KeyboardEventCapture{
 			Event:           event,
 			Filter:          k.Filter,
 			PreventDefault:  k.PreventDefault,

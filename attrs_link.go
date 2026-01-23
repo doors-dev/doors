@@ -11,15 +11,15 @@ package doors
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"path/filepath"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/gox"
 )
 
 type HrefActiveMatch int
@@ -148,58 +148,57 @@ func (h *AHref) active() []any {
 	return []any{h.Active.PathMatcher, h.Active.QueryMatcher, front.IntoIndicate(h.Active.Indicator)}
 }
 
-func (h AHref) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, h)
+func (h AHref) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(h, cur, elem)
 }
 
-func (h AHref) Attr() AttrInit {
-	return h
-}
-
-func (h AHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	link, err := inst.NewLink(h.Model)
+func (h AHref) Apply(ctx context.Context, attrs gox.Attrs) error {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	link, err := core.NewLink(h.Model)
 	if err != nil {
 		slog.Error("href creation  error", slog.String("link_error", err.Error()))
-		return
+		return nil
 	}
-	on, ok := link.ClickHandler()
 	h.Scope = append([]Scope{&ScopeBlocking{}}, h.Scope...)
+	on, ok := link.ClickHandler()
 	if ok {
-		entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
-			Trigger: func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-				if len(h.After) != 0 {
-					req := &request{w: w, r: r, ctx: ctx}
-					req.After(h.After)
-				}
-				on(ctx)
-				return false
-			},
-		})
+		handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+			if len(h.After) != 0 {
+				req := &request{w: w, r: r, ctx: ctx}
+				req.After(h.After)
+			}
+			on(ctx)
+			return false
+		}
+		hook, ok := core.RegisterHook(handler, nil)
 		if !ok {
-			return
+			return nil
 		}
 		if h.OnError == nil {
 			h.OnError = ActionOnlyLocationReload()
 		}
-		attrs.AppendCapture(&front.LinkCapture{
+		front.AttrsAppendCapture(attrs, front.LinkCapture{
 			StopPropagation: h.StopPropagation,
-		}, &front.Hook{
+		}, front.Hook{
 			Indicate:  front.IntoIndicate(h.Indicator),
-			Scope:     front.IntoScopeSet(inst, h.Scope),
+			Scope:     front.IntoScopeSet(core, h.Scope),
 			Before:    intoActions(ctx, h.Before),
 			OnError:   intoActions(ctx, h.OnError),
-			HookEntry: entry,
+			Hook: hook,
 		})
 	}
 	path, ok := link.Path()
 	if ok {
-		attrs.Set("href", path)
+		attrs.Get("href").Set(path)
 	}
 	active := h.active()
 	if active != nil {
-		attrs.SetObject("data-d00r-active", active)
+		attrs.Get("data-d00r-active").SetObject(active)
 	}
+	return nil
 }
+
+
 
 // ARawSrc prepares the src attribute for a downloadable resource
 // served directly and privately through a custom handler.
@@ -212,35 +211,32 @@ type ARawSrc struct {
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
-func (s ARawSrc) init(ctx context.Context, n door.Core, inst instance.Core) (string, bool) {
-	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
-		Trigger: s.handle,
-	})
+func (s ARawSrc) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(s, cur, elem)
+}
+
+func (s ARawSrc) init(ctx context.Context) (string, bool) {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	hook, ok := core.RegisterHook(s.handle, nil)
 	if !ok {
 		return "", false
 	}
-	src := fmt.Sprintf("/d00r/%s/%d/%d", inst.Id(), entry.DoorId, entry.HookId)
+	src := fmt.Sprintf("/d00r/%s/%d/%d", core.InstanceID(), hook.DoorID, hook.HookID)
 	if s.Name != "" {
 		src = src + "/" + s.Name
 	}
 	return src, true
 }
 
-func (s ARawSrc) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, s)
-}
-
-func (s ARawSrc) Attr() AttrInit {
-	return s
-}
-
-func (s ARawSrc) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	src, ok := s.init(ctx, n, inst)
+func (s ARawSrc) Apply(ctx context.Context, attrs gox.Attrs) error {
+	src, ok := s.init(ctx)
 	if !ok {
-		return
+		return nil
 	}
-	attrs.Set("src", src)
+	attrs.Get("src").Set(src)
+	return nil
 }
+
 
 func (s *ARawSrc) handle(_ context.Context, w http.ResponseWriter, r *http.Request) bool {
 	s.Handler(w, r)
@@ -258,34 +254,29 @@ type ASrc struct {
 	Path string
 }
 
-func (s ASrc) init(ctx context.Context, n door.Core, inst instance.Core) (string, bool) {
-	entry, ok := n.RegisterAttrHook(ctx, &door.AttrHook{
-		Trigger: s.handle,
-	})
+func (s ASrc) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(s, cur, elem)
+}
+
+func (s ASrc) init(ctx context.Context) (string, bool) {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	hook, ok := core.RegisterHook(s.handle, nil)
 	if !ok {
 		return "", false
 	}
 	if s.Name == "" {
 		s.Name = filepath.Base(s.Path)
 	}
-	link := fmt.Sprintf("/d00r/%s/%d/%d/%s", inst.Id(), entry.DoorId, entry.HookId, s.Name)
-	return link, true
+	return  fmt.Sprintf("/d00r/%s/%d/%d/%s", core.InstanceID(), hook.DoorID, hook.HookID, s.Name), true
 }
 
-func (s ASrc) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, s)
-}
-
-func (s ASrc) Attr() AttrInit {
-	return s
-}
-
-func (s ASrc) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	src, ok := s.init(ctx, n, inst)
+func (s ASrc) Apply(ctx context.Context, attrs gox.Attrs) error {
+	src, ok := s.init(ctx)
 	if !ok {
-		return
+		return nil
 	}
-	attrs.Set("src", src)
+	attrs.Get("src").Set(src)
+	return nil
 }
 
 func (s *ASrc) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
@@ -304,21 +295,19 @@ type AFileHref struct {
 	Path string
 }
 
-func (s AFileHref) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, s)
+func (s AFileHref) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(s, cur, elem)
 }
 
-func (s AFileHref) Attr() AttrInit {
-	return s
-}
-
-func (s AFileHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	link, ok := (*ASrc)(&s).init(ctx, n, inst)
+func (s AFileHref) Apply(ctx context.Context, attrs gox.Attrs) error {
+	link, ok := (*ASrc)(&s).init(ctx)
 	if !ok {
-		return
+		return nil
 	}
-	attrs.Set("href", link)
+	attrs.Get("href").Set(link)
+	return nil
 }
+
 
 // ARawFileHref prepares the href attribute for a downloadable resource
 // served privately and directly through a custom handler.
@@ -331,18 +320,15 @@ type ARawFileHref struct {
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
-func (s ARawFileHref) Render(ctx context.Context, w io.Writer) error {
-	return front.AttrRender(ctx, w, s)
+func (s ARawFileHref) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(s, cur, elem)
 }
 
-func (s ARawFileHref) Attr() AttrInit {
-	return s
-}
-
-func (s ARawFileHref) Init(ctx context.Context, n door.Core, inst instance.Core, attrs *front.Attrs) {
-	link, ok := (*ARawSrc)(&s).init(ctx, n, inst)
+func (s ARawFileHref) Apply(ctx context.Context, attrs gox.Attrs) error {
+	link, ok := (*ARawSrc)(&s).init(ctx)
 	if !ok {
-		return
+		return nil
 	}
-	attrs.Set("href", link)
+	attrs.Get("href").Set(link)
+	return nil
 }

@@ -8,19 +8,34 @@ import (
 	"github.com/doors-dev/doors/internal/beam2"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
-	"github.com/doors-dev/gox"
 )
-
-type JobCore interface {
-	gox.Job
-	Apply(core Core)
-}
 
 type Hook struct {
 	DoorID uint64
 	HookID uint64
 	Cancel context.CancelFunc
+}
+
+type Link struct {
+	Location *path.Location
+	On       func(context.Context)
+}
+
+
+func (h *Link) Path() (string, bool) {
+	if h.Location == nil {
+		return "", false
+	}
+	return h.Location.String(), true
+}
+
+func (h *Link) ClickHandler() (func(context.Context), bool) {
+	if h.On == nil {
+		return nil, false
+	}
+	return h.On, true
 }
 
 type Instance interface {
@@ -34,6 +49,7 @@ type Instance interface {
 	Conf() *common.SystemConf
 	Detached() bool
 	NewID() uint64
+	NewLink() (Link, error)
 }
 
 type Door interface {
@@ -62,6 +78,11 @@ func (c Core) Cinema() beam2.Cinema {
 }
 
 type Done = bool
+
+
+func (c Core) NewLink(m any) (Link, error) {
+	return c.inst.NewLink(m)
+}
 
 func (c Core) Detached() bool {
 	return c.inst.Detached()

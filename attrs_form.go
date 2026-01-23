@@ -51,7 +51,7 @@ func (s ARawSubmit) Apply(ctx context.Context, attrs gox.Attrs) error {
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}
-	front.AttrsAppendCapture(attrs, &front.FormCapture{}, front.Hook{
+	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
 		OnError:   intoActions(ctx, s.OnError),
 		Before:    intoActions(ctx, s.Before),
 		Scope:     front.IntoScopeSet(core, s.Scope),
@@ -112,7 +112,7 @@ func (s ASubmit[V]) Apply(ctx context.Context, attrs gox.Attrs) error {
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}
-	front.AttrsAppendCapture(attrs, &front.FormCapture{}, front.Hook{
+	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
 		OnError:   intoActions(ctx, s.OnError),
 		Before:    intoActions(ctx, s.Before),
 		Scope:     front.IntoScopeSet(core, s.Scope),
@@ -198,7 +198,7 @@ func (p AChange) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (p AChange) Apply(ctx context.Context, attrs gox.Attrs) error {
 	return eventAttr[ChangeEvent]{
-		capture:   &front.ChangeCapture{},
+		capture:   front.ChangeCapture{},
 		scope:     p.Scope,
 		before:    p.Before,
 		onError:   p.OnError,
@@ -238,7 +238,7 @@ func (p AInput) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (p AInput) Apply(ctx context.Context, attrs gox.Attrs) error {
 	return eventAttr[InputEvent]{
-		capture: &front.InputCapture{
+		capture: front.InputCapture{
 			ExcludeValue: p.ExcludeValue,
 		},
 		scope:     p.Scope,

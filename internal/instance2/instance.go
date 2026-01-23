@@ -17,6 +17,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door2"
 	"github.com/doors-dev/doors/internal/front/action"
@@ -82,6 +83,10 @@ type Instance[M any] struct {
 	store     ctex.Store
 	csp       *common.CSPCollector
 	importMap *moduleImportMap
+}
+
+func (c *Instance[M]) NewLink(m any) (core.Link, error) {
+	return c.navigator.newLink(m)
 }
 
 func (c *Instance[M]) NewID() uint64 {
