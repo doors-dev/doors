@@ -80,16 +80,16 @@ func (r *proxyRenderer) Send(job gox.Job) error {
 		close, ok := job.(*gox.JobHeadClose)
 		if ok && close.ID == r.headId {
 			if r.wrapOver {
-				err := r.cursor.Job(close)
+				err := r.cursor.Send(close)
 				if err != nil {
 					return err
 				}
 			} else {
 				gox.Release(close)
 			}
-			return r.cursor.Job(r.close)
+			return r.cursor.Send(r.close)
 		}
-		return r.cursor.Job(job)
+		return r.cursor.Send(job)
 	default:
 		panic("door: invalid state")
 	}
@@ -112,7 +112,7 @@ func (r *proxyRenderer) init(job gox.Job) error {
 			r.wrapOver = true
 			r.view.attrs = nil
 			r.view.tag = ""
-			if err := r.cursor.Job(openJob); err != nil {
+			if err := r.cursor.Send(openJob); err != nil {
 				return err
 			}
 		} else {
@@ -124,5 +124,5 @@ func (r *proxyRenderer) init(job gox.Job) error {
 	r.headId = openJob.ID
 	open, close := r.view.headFrame(r.parentCtx, r.doorId, r.cursor.NewID())
 	r.close = close
-	return r.cursor.Job(open)
+	return r.cursor.Send(open)
 }

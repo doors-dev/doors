@@ -95,7 +95,9 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
 	return editorFunc(func(cur gox.Cursor) error {
 		door := &Door{}
 		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
-			door.Update(ctx, el(v))
+			door.Update(ctx, gox.Elem(func(cur gox.Cursor) error {
+				return el(v)(cur)
+			}))
 			return false
 		})
 		if !ok {
@@ -108,7 +110,7 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
 // Inject creates a reactive component that injects Beam values into the context for child components.
 //
 // It subscribes to the Beam and re-renders its children whenever the value changes,
-// making the current value available to child components via Extract().
+// making the current value available to child components.
 //
 // This enables passing reactive values down the component tree without explicit prop drilling.
 //
@@ -117,25 +119,21 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
 //	@Inject("user", userBeam) {
 //	    @UserProfile() // Can use ctx.Value("user").(User) to get current user
 //	}
-func Inject[T any](key any, beam Beam[T]) templ.Component {
-	return E(func(ctx context.Context) templ.Component {
-		children := templ.GetChildren(ctx)
-		ctx = templ.ClearChildren(ctx)
+func Inject[T any](key any, beam Beam[T], content gox.Comp) gox.Editor {
+	return editorFunc(func(cur gox.Cursor) error {
 		door := &Door{}
-		ok := beam.Sub(ctx, func(ctx context.Context, v T) bool {
-			door.Update(
-				ctx,
-				templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-					ctx = context.WithValue(ctx, key, v)
-					return children.Render(ctx, w)
-				}),
-			)
+		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
+			door.Update(ctx, gox.Elem(func(cur gox.Cursor) error {
+				ctx := context.WithValue(cur.Context(), key, v)
+				cur = gox.NewCursor(ctx, cur)
+				return content.Main()(cur)
+			}))
 			return false
 		})
 		if !ok {
 			return nil
 		}
-		return door
+		return cur.Editor(door)
 	})
 }
 
@@ -160,44 +158,6 @@ func If(beam Beam[bool]) templ.Component {
 	})
 }
 
-// E evaluates the provided function at render time and returns the resulting templ.Component.
-//
-// This is useful when rendering logic is complex or better expressed in plain Go code,
-// rather than templ syntax. The function is called with the current render context.
-//
-// Example:
-//
-//	@doors.E(func(ctx context.Context) templ.Component {
-//	    user, err := db.Get(id)
-//	    if err != nil {
-//	        return RenderError(err)
-//	    }
-//	    return RenderUser(user)
-//	})
-//
-// Parameters:
-//   - f: a function that returns a templ.Component, given the current render context
-//
-// Returns:
-//   - A templ.Component produced by evaluating f during rendering
-func E(f func(context.Context) templ.Component) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		content := f(ctx)
-		if content == nil {
-			return nil
-		}
-		return content.Render(ctx, w)
-	})
-}
-
-// Run runs function at render time
-// useful for intitialization logic
-func Run(f func(context.Context)) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, _ io.Writer) error {
-		f(ctx)
-		return nil
-	})
-}
 
 // Go starts a goroutine at render time using a blocking-safe context tied to the component's lifecycle.
 //
@@ -224,10 +184,8 @@ func Run(f func(context.Context)) templ.Component {
 //
 // Returns:
 //   - A non-visual templ.Component that starts the goroutine when rendered
-func Go(f func(context.Context)) templ.Component {
-	return E(func(ctx context.Context) templ.Component {
-		ctx = common.SetBlockingCtx(ctx)
-		go f(ctx)
+func Go(f func(context.Context)) gox.Editor {
+	return editorFunc(func(cur gox.Cursor) error {
 		return nil
 	})
 }

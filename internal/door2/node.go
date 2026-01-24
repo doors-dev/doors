@@ -1,10 +1,12 @@
 package door2
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/sh"
 	"github.com/doors-dev/gox"
 )
@@ -112,7 +114,7 @@ func (n *node) replaceTakeover(prev *node) {
 	pipe.frame = sh.Join(parentFrame, renderFrame)
 	defer pipe.frame.Release()
 	pipe.frame.Run(parent.root.spawner, func() {
-		defer pipe.Close()
+		defer pipe.close()
 		cur := gox.NewCursor(parent.ctx, pipe)
 		cur.Any(n.view.content)
 	})
@@ -149,7 +151,6 @@ func (n *node) updatedTakeover(prev *node) {
 		})
 		return
 	}
-
 	renderShread := sh.Shread{}
 	renderFrame := renderShread.Frame()
 	defer renderFrame.Release()
@@ -157,10 +158,16 @@ func (n *node) updatedTakeover(prev *node) {
 	pipe.tracker = n.tracker
 	pipe.frame = sh.Join(trackerRenderFrame, renderFrame)
 	defer pipe.frame.Release()
+	printer := common.NewBufferPrinter()
+	pipe.SendTo(printer)
 	pipe.frame.Run(n.tracker.root.spawner, func() {
-		defer pipe.Close()
+		defer pipe.close()
 		cur := gox.NewCursor(n.tracker.ctx, pipe)
-		cur.Any(n.view.content)
+		if comp, ok := n.view.content.(gox.Comp); ok {
+			comp.Main()(cur)
+		} else {
+			cur.Any(n.view.content)
+		}
 	})
 	finalFrame := renderShread.Frame()
 	defer finalFrame.Release()
@@ -171,17 +178,16 @@ func (n *node) updatedTakeover(prev *node) {
 	})
 }
 
-func (n *node) render(parent *tracker, parentPipe *pipe) {
+func (n *node) render(parentRenderer *pipe) {
 	renderFrame := n.shread.Frame()
 	defer renderFrame.Release()
-	pipe := newPipe()
-	parentPipe.Put(pipe)
-	pipe.frame = sh.Join(parentPipe.frame, renderFrame)
+	parent := parentRenderer.tracker
+	pipe := parentRenderer.branch()
+	pipe.frame = sh.Join(parentRenderer.frame, renderFrame)
 	pipe.frame.Release()
 	pipe.frame.Run(parent.root.spawner, func() {
-		defer pipe.Close()
+		defer pipe.close()
 		if n.kind == replacedNode {
-			pipe.tracker = parent
 			cur := gox.NewCursor(parent.ctx, pipe)
 			cur.Any(n.view.content)
 			return
@@ -199,9 +205,9 @@ func (n *node) render(parent *tracker, parentPipe *pipe) {
 		case editorNode:
 			n.takoverFrame.Activate()
 			open, close := n.view.headFrame(parent.ctx, n.tracker.id, cur.NewID())
-			cur.Job(open)
+			cur.Send(open)
 			cur.Any(n.view.content)
-			cur.Job(close)
+			cur.Send(close)
 		case proxyNode:
 			proxy := newProxyRenderer(n.tracker.id, cur, n.view, parent.ctx)
 			proxy.render()
@@ -228,7 +234,7 @@ func (n *node) kill(kind killKind) {
 	}
 	switch kind {
 	case cascade:
-		if !n.door.node.CompareAndSwap(n, nil){
+		if !n.door.node.CompareAndSwap(n, nil) {
 			return
 		}
 		n.tracker.kill()

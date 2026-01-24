@@ -68,7 +68,7 @@ func (d *Door) Proxy(cur gox.Cursor, elem gox.Elem) error {
 		},
 	}
 	d.takeover(node)
-	return cur.Job(node)
+	return cur.Send(node)
 }
 
 func (d *Door) Use(cur gox.Cursor) error {
@@ -78,7 +78,7 @@ func (d *Door) Use(cur gox.Cursor) error {
 		kind: editorNode,
 	}
 	d.takeover(node)
-	return cur.Job(node)
+	return cur.Send(node)
 }
 
 func (d *Door) takeover(next *node) {

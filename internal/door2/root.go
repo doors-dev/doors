@@ -21,8 +21,6 @@ type Instance interface {
 
 type Root = *root
 
-
-
 func NewRoot(ctx context.Context, inst Instance) Root {
 	r := &root{
 		inst:    inst,
@@ -56,7 +54,7 @@ func (r Root) Kill() {
 	r.tracker.kill()
 }
 
-func (r Root) Render(instanceFrame sh.AnyFrame, el gox.Elem) JobStream {
+func (r Root) Renderer(instanceFrame sh.AnyFrame, el gox.Elem) Pipe {
 	shread := sh.Shread{}
 	renderFrame := shread.Frame()
 	defer renderFrame.Release()
@@ -65,15 +63,17 @@ func (r Root) Render(instanceFrame sh.AnyFrame, el gox.Elem) JobStream {
 	pipe.tracker = r.tracker
 	pipe.frame = sh.Join(instanceFrame, renderFrame)
 	defer pipe.frame.Release()
-	js := newJobStream(pipe)
+	pipe.tracker = r.tracker
+	pipe.frame = sh.Join(instanceFrame, renderFrame)
+	defer pipe.frame.Release()
 	pipe.frame.Run(r.spawner, func() {
-		defer pipe.Close()
+		defer pipe.close()
 		err := el.Print(pipe.tracker.ctx, pipe)
 		if err != nil {
 			pipe.Send(gox.NewJobError(pipe.tracker.ctx, err))
 		}
 	})
-	return js
+	return pipe
 }
 
 func (i Root) TriggerHook(doorID uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {

@@ -96,7 +96,7 @@ func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.Respon
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	hook := newHook(t, onTrigger, onCancel)
-	id := t.root.newID()
+	id := t.root.NewID()
 	t.hooks[id] = hook
 	return core.Hook{
 		DoorID: t.id,
