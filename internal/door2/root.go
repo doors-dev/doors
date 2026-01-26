@@ -8,6 +8,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/sh"
 	"github.com/doors-dev/gox"
 )
@@ -42,6 +43,10 @@ type root struct {
 	tracker *tracker
 }
 
+func (r *root) resourceRegistry() *resources.Registry {
+	return r.inst.ResourceRegistry()
+}
+
 func (r Root) ID() uint64 {
 	return r.tracker.id
 }
@@ -60,9 +65,6 @@ func (r Root) Renderer(instanceFrame sh.AnyFrame, el gox.Elem) Pipe {
 	defer renderFrame.Release()
 	r.tracker.initShread(&shread)
 	pipe := newPipe()
-	pipe.tracker = r.tracker
-	pipe.frame = sh.Join(instanceFrame, renderFrame)
-	defer pipe.frame.Release()
 	pipe.tracker = r.tracker
 	pipe.frame = sh.Join(instanceFrame, renderFrame)
 	defer pipe.frame.Release()

@@ -44,7 +44,7 @@ type Instance interface {
 	CallCheck(check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
 	CSPCollector() *common.CSPCollector
 	AddModuleImport(specifier string, path string)
-	ImportRegistry() *resources.Registry
+	ResourceRegistry() *resources.Registry
 	ID() string
 	RootID() uint64
 	Conf() *common.SystemConf
@@ -52,6 +52,7 @@ type Instance interface {
 	NewID() uint64
 	NewLink(any) (Link, error)
 	License() license.License
+	SetStatus(int)
 }
 
 type Door interface {
@@ -81,6 +82,10 @@ func (c Core) Cinema() beam2.Cinema {
 }
 
 type Done = bool
+
+func (c Core) SetStatus(status int) {
+	c.inst.SetStatus(status)
+}
 
 func (c Core) License() license.License {
 	return c.inst.License()
@@ -114,8 +119,8 @@ func (c Core) Conf() *common.SystemConf {
 	return c.inst.Conf()
 }
 
-func (c Core) ImportRegistry() *resources.Registry {
-	return c.inst.ImportRegistry()
+func (c Core) ResourceRegistry() *resources.Registry {
+	return c.inst.ResourceRegistry()
 }
 
 func (c Core) AddModuleImport(specifier string, path string) {

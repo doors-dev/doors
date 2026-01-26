@@ -1,7 +1,6 @@
 package door2
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -113,6 +112,8 @@ func (n *node) replaceTakeover(prev *node) {
 	pipe.tracker = parent
 	pipe.frame = sh.Join(parentFrame, renderFrame)
 	defer pipe.frame.Release()
+	printer := common.NewBufferPrinter()
+	pipe.SendTo(printer)
 	pipe.frame.Run(parent.root.spawner, func() {
 		defer pipe.close()
 		cur := gox.NewCursor(parent.ctx, pipe)

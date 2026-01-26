@@ -158,24 +158,17 @@ const (
 	InlineModeNoCache
 )
 
-func (r *Registry) InlineStyle(data []byte, mode InlineMode) (*InlineResource, error) {
-	element, err := HTMLParseElement("style", data)
-	if err != nil {
-		return nil, err
-	}
-	if element == nil {
-		return nil, nil
-	}
+func (r *Registry) InlineStyle(text string, mode InlineMode) (*Resource, error) {
 	h := blake3.New()
 	h.WriteString("inline_style")
-	h.Write(data)
+	h.WriteString(text)
 	key := h.Sum(nil)
 	var s *Resource
 	if mode != InlineModeNoCache {
 		s = r.get(key)
 	}
 	if s == nil {
-		min, err := common.MinifyCSS(element.Content)
+		min, err := common.MinifyCSS(common.AsBytes(text))
 		if err != nil {
 			return nil, err
 		}
@@ -185,40 +178,13 @@ func (r *Registry) InlineStyle(data []byte, mode InlineMode) (*InlineResource, e
 			s = r.create(key, min, mode == InlineModeHost, "text/css")
 		}
 	}
-	return &InlineResource{
-		Attrs:    element.Attrs,
-		resource: s,
-	}, nil
-
+	return s, nil
 }
 
-func (r *Registry) InlineScript(data []byte, mode InlineMode) (*InlineResource, error) {
-	element, err := HTMLParseElement("script", data)
-	if err != nil {
-		return nil, err
-	}
-	if element == nil {
-		return nil, nil
-	}
-	attr, ok := element.Attrs["type"]
-	ts := false
-	if ok {
-		t := attr.(string)
-		if t == "module" {
-			return nil, errors.New("Module scripts are disallowed. Check the docs")
-		}
-		if t == "text/typescript" || t == "application/typescript" {
-			ts = true
-			delete(element.Attrs, "type")
-		}
-	}
+func (r *Registry) InlineScript(data string, mode InlineMode) (*Resource, error) {
 	h := blake3.New()
-	if ts {
-		h.WriteString("inline_ts")
-	} else {
-		h.WriteString("inline_js")
-	}
-	h.Write(data)
+	h.WriteString("inline_js")
+	h.WriteString(data)
 	key := h.Sum(nil)
 	var s *Resource
 	if mode != InlineModeNoCache {
@@ -226,31 +192,20 @@ func (r *Registry) InlineScript(data []byte, mode InlineMode) (*InlineResource, 
 	}
 	if s == nil {
 		buf := &bytes.Buffer{}
-		buf.WriteString("_d00r(document.currentScript, async ($d, $on, $data, $hook, $fetch, $G, $ready, $clean, HookErr) => {\n")
-		buf.Write(element.Content)
+		buf.WriteString("_d00r(document.currentScript, async ($on, $data, $hook, $fetch, $G, $ready, $clean, HookErr) => {\n")
+		buf.WriteString(data)
 		buf.WriteString("\n})")
-		var content []byte
-		if ts {
-			content, err = TransformBytesTS(buf.Bytes(), r.settings.BuildProfiles().Options(""))
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			content, err = TransformBytes(buf.Bytes(), r.settings.BuildProfiles().Options(""))
-			if err != nil {
-				return nil, err
-			}
+		content, err := TransformBytes(buf.Bytes(), r.settings.BuildProfiles().Options(""))
+		if err != nil {
+			return nil, err
 		}
 		if mode == InlineModeNoCache {
-			s = NewResource(content, "application/json", r.settings)
+			s = NewResource(content, "application/javascript", r.settings)
 		} else {
 			s = r.create(key, content, mode == InlineModeHost, "application/javascript")
 		}
 	}
-	return &InlineResource{
-		Attrs:    element.Attrs,
-		resource: s,
-	}, nil
+	return  s, nil
 
 }
 

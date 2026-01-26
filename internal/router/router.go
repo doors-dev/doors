@@ -16,7 +16,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/doors/internal/instance2"
 	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
@@ -78,7 +78,7 @@ func (rr *Router) CSP() *common.CSP {
 	return rr.csp
 }
 
-func (rr *Router) ImportRegistry() *resources.Registry {
+func (rr *Router) ResourceRegistry() *resources.Registry {
 	return rr.registry
 }
 
@@ -102,31 +102,31 @@ func (rr *Router) Conf() *common.SystemConf {
 	return rr.conf
 }
 
-func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *instance.Session) {
+func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *instance2.Session) {
 	s := rr.getSession(r)
 	if s != nil {
 		return false, s
 	}
-	s = instance.NewSession(rr)
+	s = instance2.NewSession(rr)
 	var expires time.Time
 	if rr.conf.SessionTTL != 0 {
 		expires = time.Now().Add(rr.conf.SessionTTL)
 	}
 	cookie := &http.Cookie{
 		Name:     "d00r",
-		Value:    s.Id(),
+		Value:    s.ID(),
 		HttpOnly: true,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 		Expires:  expires,
 	}
-	rr.sessions.Store(s.Id(), s)
-	rr.sessionCallback.Create(s.Id(), r.Header)
+	rr.sessions.Store(s.ID(), s)
+	rr.sessionCallback.Create(s.ID(), r.Header)
 	http.SetCookie(w, cookie)
 	return true, s
 }
 
-func (rr *Router) getSession(r *http.Request) *instance.Session {
+func (rr *Router) getSession(r *http.Request) *instance2.Session {
 	c, err := r.Cookie("d00r")
 	if err != nil {
 		return nil
@@ -135,7 +135,7 @@ func (rr *Router) getSession(r *http.Request) *instance.Session {
 	if !ok {
 		return nil
 	}
-	return v.(*instance.Session)
+	return v.(*instance2.Session)
 }
 
 func (rr *Router) addModelRoute(modelRoute anyModelRoute) {

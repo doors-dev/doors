@@ -14,6 +14,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/sh"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
@@ -42,6 +43,15 @@ type Root struct {
 	tracker *tracker
 	inst    instance
 	ctx     context.Context
+}
+
+func (r *Root) Go(f func()) {
+	sh.Go(func() {
+		err := common.Catch(f)
+		if err != nil {
+			r.inst.OnPanic(err)
+		}
+	})
 }
 
 func (r *Root) Ctx() context.Context {

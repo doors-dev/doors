@@ -9,7 +9,6 @@
 package router
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -18,8 +17,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/doors/internal/instance2"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/mr-tron/base58"
@@ -33,18 +31,18 @@ func ResourcePath(r *resources.Resource, ext string) string {
 	return fmt.Sprint("/d00r/r/" + r.HashString() + "." + ext)
 }
 
-func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceId string, doorId uint64, hookId uint64, track uint64) {
+func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceID string, doorID uint64, hookID uint64, track uint64) {
 	sess := rr.getSession(r)
 	if sess == nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	inst, found := sess.GetInstance(instanceId)
+	inst, found := sess.GetInstance(instanceID)
 	if !found {
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	found = inst.TriggerHook(doorId, hookId, w, r, track)
+	found = inst.TriggerHook(doorID, hookID, w, r, track)
 	if !found {
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -58,7 +56,7 @@ func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
 	if len(matches) == 0 {
 		return false
 	}
-	instanceId := matches[1]
+	instanceID := matches[1]
 	doorId, err := strconv.ParseUint(matches[2], 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -78,11 +76,11 @@ func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
 			return true
 		}
 	}
-	rr.serveHook(w, r, instanceId, doorId, hookId, track)
+	rr.serveHook(w, r, instanceID, doorId, hookId, track)
 	return true
 }
 
-func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page responseAnyApp, opt *instance.Options) {
+func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page responseAnyApp, opt *instance2.Options) {
 	new, session := rr.ensureSession(r, w)
 	inst, ok := page.intoInstance(session, opt)
 	if !ok {
@@ -168,8 +166,8 @@ main:
 					res.Status = http.StatusOK
 				}
 				w.WriteHeader(res.Status)
-				ctx := context.WithValue(r.Context(), common.CtxKeyAdapters, rr.Adapters())
-				res.Content.Render(ctx, w)
+				// ctx := context.WithValue(r.Context(), common.CtxKeyAdapters, rr.Adapters())
+				// res.Content.Render(ctx, w)
 				return true
 			case *ResponseReroute:
 				if res.Detached {

@@ -25,7 +25,7 @@ type ScriptOptions struct {
 }
 
 type router interface {
-	ImportRegistry() *resources.Registry
+	ResourceRegistry() *resources.Registry
 	CSP() *common.CSP
 	Adapters() map[string]path.AnyAdapter
 	RemoveSession(string)

@@ -2,8 +2,6 @@ package sh
 
 import (
 	"context"
-	"fmt"
-	"runtime/debug"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -22,14 +20,13 @@ func NewSpawner(ctx context.Context, limit int, panicer Panicer) Spawner {
 		ctx:     ctx,
 		panicer: panicer,
 	}
-	Go(s.run)
+	go s.run()
 	return s
 }
 
 type spawner struct {
 	mu      sync.Mutex
 	ctx     context.Context
-	killed  bool
 	queue   deque.Deque[func()]
 	panicer Panicer
 	ch      chan struct{}
@@ -54,13 +51,14 @@ func (s *spawner) Spawn(f func()) {
 }
 
 func (s *spawner) run() {
-	backpressure := make(chan struct{}, s.limit)
+	backpressure := make(chan chan<- task, s.limit)
+	issued := 0
 	for {
 		s.mu.Lock()
 		if s.queue.Len() == 0 {
 			if s.ctx.Err() != nil {
 				s.mu.Unlock()
-				return
+				break
 			}
 			ch := make(chan struct{})
 			s.ch = ch
@@ -73,14 +71,46 @@ func (s *spawner) run() {
 		}
 		next := s.queue.PopFront()
 		s.mu.Unlock()
-		backpressure <- struct{}{}
-		Go(func() {
-			err := common.Catch(next)
-			<-backpressure
-			if err != nil {
-				s.panicer.OnPanic(err)
+		var ch chan<- task
+		if issued == s.limit {
+			ch = <-backpressure
+		} else {
+			select {
+			case ch = <-backpressure:
+			default:
+				issued += 1
+				ch = spawn()
 			}
-		})
+		}
+		ch <- task{
+			run:     next,
+			panicer: s.panicer,
+			ch:      backpressure,
+		}
+	}
+	for issued > 0 {
+		ch := <-backpressure
+		close(ch)
+		issued -= 1
 	}
 }
 
+type task struct {
+	run     func()
+	panicer Panicer
+	ch      chan chan<- task
+}
+
+func spawn() chan<- task {
+	ch := make(chan task, 0)
+	go func() {
+		for t := range ch {
+			err := common.Catch(t.run)
+			if err != nil {
+				t.panicer.OnPanic(err)
+			}
+			t.ch <- ch
+		}
+	}()
+	return ch
+}

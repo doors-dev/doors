@@ -9,22 +9,19 @@
 package doors
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"sync/atomic"
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/door2"
-	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/resources"
-	"github.com/doors-dev/doors/internal/router"
 	"github.com/doors-dev/gox"
 )
 
@@ -158,7 +155,6 @@ func If(beam Beam[bool]) templ.Component {
 	})
 }
 
-
 // Go starts a goroutine at render time using a blocking-safe context tied to the component's lifecycle.
 //
 // The goroutine runs only if the component is rendered. The context is canceled when the component
@@ -190,287 +186,16 @@ func Go(f func(context.Context)) gox.Editor {
 	})
 }
 
-// SetStatus sets an HTTP status code for the page.
-// Makes effect only at initial page render
-func SetStatus(ctx context.Context, statusCode int) {
-	InstanceSave(ctx, common.CtxStorageKeyStatus, statusCode)
-}
-
-// Status is a templ.Component that sets the HTTP status code
-// when rendered in a template (e.g. @doors.Status(404)).
+// Status sets the HTTP status code
+// when rendered in a template.
 // Makes effect only at initial page render.
-func Status(statusCode int) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, _w io.Writer) error {
-		SetStatus(ctx, statusCode)
+// Example: ~(doors.Status(404))
+func Status(statusCode int) gox.Editor {
+	return editorFunc(func(cur gox.Cursor) error {
+		core := cur.Context().Value(ctex.KeyCore).(core.Core)
+		core.SetStatus(statusCode)
 		return nil
 	})
-}
-
-type script struct {
-	mode resources.InlineMode
-}
-
-// Script converts inline script content to an external resource.
-// The JavaScript/TypeScript content is processed by esbuild and served as an external
-// resource with a src attribute. This is the default mode - the resource is publicly
-// accessible as a static asset.
-//
-// The script content is automatically wrapped in an anonymous async function to support
-// await and protect the global context. A special $d variable is provided to access
-// frontend framework functions.
-//
-// The content must be wrapped in <script> tags. TypeScript is supported by adding
-// type="application/typescript" (or "text/typescript") attribute.
-//
-// Example:
-//
-//	@Script() {
-//	    <script>
-//	        console.log("Hello from [not] inline script!");
-//	        // $... provides access to framework functions
-//	        // await is supported due to async wrapper
-//	        await $hook("hello","world");
-//	    </script>
-//	}
-//
-// Or with TypeScript:
-//
-//	@Script() {
-//	    <script type="application/typescript">
-//	        const message: string = "TypeScript works!";
-//	        console.log(message);
-//	    </script>
-//	}
-func Script() templ.Component {
-	return script{
-		mode: resources.InlineModeHost,
-	}
-}
-
-// ScriptPrivate converts inline script content to an external resource that is served
-// securely within the current context scope. The script is processed and served with
-// a src attribute, but not exposed as a publicly accessible static asset.
-// The script content is wrapped in an anonymous async function and provides the $d variable.
-// The content must be wrapped in <script> tags.
-func ScriptPrivate() templ.Component {
-	return script{
-		mode: resources.InlineModeLocal,
-	}
-}
-
-// ScriptDisposable converts inline script content to an external resource within
-// the current context scope without caching. The script is processed on every render
-// and served with a src attribute, but not exposed as a static resource.
-// The script content is wrapped in an anonymous async function and provides the $d variable.
-// The content must be wrapped in <script> tags.
-func ScriptDisposable() templ.Component {
-	return script{
-		mode: resources.InlineModeNoCache,
-	}
-}
-
-func (s script) Render(ctx context.Context, w io.Writer) error {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	script := templ.GetChildren(ctx)
-	ctx = templ.ClearChildren(ctx)
-	attrs := front.NewAttrs()
-	ctx = context.WithValue(ctx, common.CtxKeyAttrs, attrs)
-	buf := &bytes.Buffer{}
-	err := script.Render(ctx, buf)
-	if err != nil {
-		return err
-	}
-	resource, err := inst.ImportRegistry().InlineScript(buf.Bytes(), s.mode)
-	if err != nil {
-		return err
-	}
-	if resource == nil {
-		return nil
-	}
-	attrs.SetRaw(resource.Attrs)
-	return scriptRender(resource, s.mode, attrs).Render(ctx, w)
-}
-
-func scriptRender(i *resources.InlineResource, mode resources.InlineMode, attrs *front.Attrs) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		name := inlineName(i.Attrs, "js")
-		if mode == resources.InlineModeHost {
-			attrs.Set("src", router.ResourcePath(i.Resource(), name))
-		} else {
-			attrs.Join(Attr(ctx, ARawSrc{
-				Once: true,
-				Name: name,
-				Handler: func(w http.ResponseWriter, r *http.Request) {
-					i.Serve(w, r)
-				},
-			}))
-		}
-		return renderRaw("script", attrs, nil, true).Render(ctx, w)
-	})
-}
-
-type style struct {
-	mode resources.InlineMode
-}
-
-// Style converts inline CSS content to an external resource.
-// The CSS is minified and served as an external resource with an href attribute.
-// This is the default mode - the resource is publicly accessible as a static asset.
-//
-// The content must be wrapped in <style> tags.
-//
-// Example:
-//
-//	@Style() {
-//	    <style>
-//	        .my-class {
-//	            color: blue;
-//	            font-size: 14px;
-//	        }
-//	    </style>
-//	}
-func Style() templ.Component {
-	return style{
-		mode: resources.InlineModeHost,
-	}
-}
-
-// StylePrivate converts inline CSS content to an external resource that is served
-// securely within the current context scope. The CSS is processed and served with
-// an href attribute, but not exposed as a publicly accessible static asset.
-// The content must be wrapped in <style> tags.
-func StylePrivate() templ.Component {
-	return style{
-		mode: resources.InlineModeLocal,
-	}
-}
-
-// StyleDisposable converts inline CSS content to an external resource within
-// the current context scope without caching. The CSS is processed on every render
-// and served with an href attribute, but not exposed as a static resource.
-// The content must be wrapped in <style> tags.
-func StyleDisposable() templ.Component {
-	return style{
-		mode: resources.InlineModeNoCache,
-	}
-}
-
-func (s style) Render(ctx context.Context, w io.Writer) error {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	style := templ.GetChildren(ctx)
-	ctx = templ.ClearChildren(ctx)
-	attrs := front.NewAttrs()
-	ctx = context.WithValue(ctx, common.CtxKeyAttrs, attrs)
-	buf := &bytes.Buffer{}
-	err := style.Render(ctx, buf)
-	if err != nil {
-		return err
-	}
-	resource, err := inst.ImportRegistry().InlineStyle(buf.Bytes(), s.mode)
-	if err != nil {
-		return err
-	}
-	if resource == nil {
-		return nil
-	}
-	attrs.SetRaw(resource.Attrs)
-	return styleRender(resource, s.mode, attrs).Render(ctx, w)
-}
-
-func styleRender(i *resources.InlineResource, mode resources.InlineMode, attrs *front.Attrs) templ.ComponentFunc {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		name := inlineName(i.Attrs, "css")
-		attrs.Set("rel", "stylesheet")
-		if mode == resources.InlineModeHost {
-			attrs.Set("href", router.ResourcePath(i.Resource(), name))
-		} else {
-			attrs.Join(front.A(ctx, ARawFileHref{
-				Name: name,
-				Once: false,
-				Handler: func(w http.ResponseWriter, r *http.Request) {
-					i.Serve(w, r)
-				},
-			}))
-		}
-		return renderRaw("link", attrs, nil, false).Render(ctx, w)
-	})
-}
-
-func renderRaw(tag string, attrs templ.Attributer, content []byte, close bool) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, err := fmt.Fprintf(w, "<%s", tag)
-		if err != nil {
-			return err
-		}
-		err = templ.RenderAttributes(ctx, w, attrs)
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprint(w, ">")
-		if err != nil {
-			return err
-		}
-		if !close {
-			return nil
-		}
-		_, err = w.Write(content)
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintf(w, "</%s>", tag)
-		return err
-	})
-}
-
-// Text converts any value to a component with escaped string using default formats.
-//
-// Example:
-//
-//	@Text("Hello <world>")  // Output: Hello &lt;world&gt;
-//	@Text(42)               // Output: 42
-//	@Text(user.Name)        // Output: John
-func Text(value any) templ.Component {
-	str := fmt.Sprint(value)
-	escaped := templ.EscapeString(str)
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, err := w.Write(common.AsBytes(escaped))
-		return err
-	})
-}
-
-func Attributes(a []Attr) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		attrs := Attr(ctx, a...)
-		return attrs.Render(ctx, w)
-	})
-}
-
-func Any(v any) templ.Component {
-	c, ok := v.(templ.Component)
-	if ok {
-		return c
-	}
-	f, ok := v.(Fragment)
-	if ok {
-		return F(f)
-	}
-	m, ok := v.([]templ.Component)
-	if ok {
-		return templ.Join(m...)
-	}
-	as, ok := v.([]Attr)
-	if ok {
-		return Attributes(as)
-	}
-	e, ok := v.(func(context.Context) templ.Component)
-	if ok {
-		return E(e)
-	}
-	r, ok := v.(func(context.Context))
-	if ok {
-		return Run(r)
-	}
-	return Text(v)
 }
 
 // HeadData represents page metadata including title and meta tags

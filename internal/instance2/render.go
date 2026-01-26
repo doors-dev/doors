@@ -46,6 +46,7 @@ func (inst *Instance[M]) renderHeaders(w http.ResponseWriter, gz bool, importHas
 	if gz {
 		w.Header().Set("Content-Encoding", "gzip")
 	}
+	w.WriteHeader(int(inst.pageStatus.Load()))
 }
 
 func (inst *Instance[M]) renderResources(ctx context.Context, w io.Writer, importMap []byte, wrap bool) error {

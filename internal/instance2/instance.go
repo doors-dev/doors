@@ -63,6 +63,7 @@ func NewInstance[M any](sess *Session, app App[M], adapter *path.Adapter[M], m *
 		session: sess,
 		store:   ctex.NewStore(),
 	}
+	inst.SetStatus(http.StatusOK)
 	return inst, sess.AddInstance(inst)
 }
 
@@ -84,6 +85,11 @@ type Instance[M any] struct {
 	store     ctex.Store
 	csp       *common.CSPCollector
 	importMap *moduleImportMap
+	pageStatus atomic.Int32
+}
+
+func (d *Instance[M]) SetStatus(status int) {
+	d.pageStatus.Store(int32(status))
 }
 
 func (d *Instance[M]) License() license.License {
@@ -107,8 +113,8 @@ func (c *Instance[M]) RootID() uint64 {
 }
 
 
-func (c *Instance[M]) ImportRegistry() *resources.Registry {
-	return  c.session.router.ImportRegistry()
+func (c *Instance[M]) ResourceRegistry() *resources.Registry {
+	return  c.session.router.ResourceRegistry()
 }
 
 func (c *Instance[M]) AddModuleImport(specifier string, path string) {

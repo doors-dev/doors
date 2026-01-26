@@ -1,8 +1,14 @@
 package door2
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"strings"
 	"sync"
 
+	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/sh"
 	"github.com/doors-dev/gox"
 	"github.com/gammazero/deque"
@@ -16,7 +22,7 @@ var bufferPool = sync.Pool{
 
 func newPipe() *pipe {
 	return &pipe{
-		buffer:  bufferPool.Get().(*deque.Deque[any]),
+		buffer: bufferPool.Get().(*deque.Deque[any]),
 	}
 }
 
@@ -24,14 +30,25 @@ type Pipe interface {
 	SendTo(gox.Printer)
 }
 
+type resourceState int
+
+const (
+	lookForResource resourceState = iota
+	resourceContent
+	closeResource
+)
+
 type pipe struct {
-	mu      sync.Mutex
-	closed  bool
-	parent  *pipe
-	buffer  *deque.Deque[any]
-	tracker *tracker
-	frame   sh.Frame
-	printer gox.Printer
+	mu               sync.Mutex
+	closed           bool
+	parent           *pipe
+	buffer           *deque.Deque[any]
+	tracker          *tracker
+	frame            sh.Frame
+	printer          gox.Printer
+	resourceState    resourceState
+	resourceOpenHead *gox.JobHeadOpen
+	resourceText     string
 }
 
 func (r *pipe) SendTo(printer gox.Printer) {
@@ -42,6 +59,19 @@ func (r *pipe) SendTo(printer gox.Printer) {
 }
 
 func (r *pipe) Send(job gox.Job) error {
+	switch r.resourceState {
+	case lookForResource:
+		return r.lookForResource(job)
+	case resourceContent:
+		return r.resourceContent(job)
+	case closeResource:
+		return r.closeResource(job)
+	default:
+		panic("invalid pipe resource state")
+	}
+}
+
+func (r *pipe) send(job gox.Job) error {
 	switch job := job.(type) {
 	case *node:
 		job.render(r)
@@ -60,6 +90,117 @@ func (r *pipe) Send(job gox.Job) error {
 	return nil
 }
 
+func (r *pipe) lookForResource(job gox.Job) error {
+	head, ok := job.(*gox.JobHeadOpen)
+	switch true {
+	case ok && strings.EqualFold(head.Tag, "script") || strings.EqualFold(head.Tag, "style"):
+		if src := head.Attrs.Get("src"); src.IsSet() {
+			return r.send(job)
+		}
+		if escape := head.Attrs.Get("escape"); escape.IsSet() {
+			escape.SetBool(false)
+			return r.send(job)
+		}
+		r.resourceState = resourceContent
+		r.resourceOpenHead = head
+		return nil
+	default:
+		return r.send(job)
+	}
+}
+
+func (r *pipe) resourceContent(job gox.Job) error {
+	raw, ok := job.(*gox.JobRaw)
+	if !ok {
+		return errors.New("door: invalid resource content")
+	}
+	r.resourceText = raw.Text
+	r.resourceState = closeResource
+	gox.Release(raw)
+	return nil
+}
+
+func (r *pipe) prepareResource(res *resources.Resource, mode resources.InlineMode, name string, ext string) (string, bool) {
+	if name == "" {
+		name = "inline"
+	}
+	if mode == resources.InlineModeHost {
+		return fmt.Sprintf("/d00r/r/%s.%s.%s", res.HashString(), name, ext), true
+	} else {
+		hook, ok := r.tracker.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+			res.Serve(w, r)
+			return false
+		}, nil)
+		if !ok {
+			return "", false
+		}
+		return fmt.Sprintf("/d00r/%s/%d/%d/%s.%s", r.tracker.root.inst.ID(), hook.DoorID, hook.HookID, name, ext), true
+	}
+
+}
+
+func (r *pipe) closeResource(job gox.Job) error {
+	openHead := r.resourceOpenHead
+	content := r.resourceText
+	r.resourceState = lookForResource
+	r.resourceText = ""
+	r.resourceOpenHead = nil
+	close, ok := job.(*gox.JobHeadClose)
+	if !ok || close.ID != openHead.ID {
+		return errors.New("door: invalid resource close job")
+	}
+	nocacheAttr := openHead.Attrs.Get("nocache")
+	local := openHead.Attrs.Get("local")
+	var mode resources.InlineMode
+	switch true {
+	case nocacheAttr.IsSet():
+		nocacheAttr.SetBool(false)
+		mode = resources.InlineModeNoCache
+	case local.IsSet():
+		local.SetBool(false)
+		mode = resources.InlineModeLocal
+	default:
+		mode = resources.InlineModeHost
+	}
+	name, _ := openHead.Attrs.Get("data-name").ReadString()
+	registry := r.tracker.root.resourceRegistry()
+	switch true {
+	case strings.EqualFold(close.Tag, "script"):
+		res, err := registry.InlineScript(content, mode)
+		if err != nil {
+			return err
+		}
+		src, ok := r.prepareResource(res, mode, name, "js")
+		if !ok {
+			return errors.New("door: can't prepare resource")
+		}
+		openHead.Attrs.Get("src").Set(src)
+		if err := r.send(openHead); err != nil {
+			return err
+		}
+		if err := r.send(close); err != nil {
+			return err
+		}
+	case strings.EqualFold(close.Tag, "style"):
+		res, err := registry.InlineScript(content, mode)
+		if err != nil {
+			return err
+		}
+		href, ok := r.prepareResource(res, mode, name, "css")
+		if !ok {
+			return errors.New("door: can't prepare resource")
+		}
+		openHead.Kind = gox.KindVoid
+		openHead.Tag = "link"
+		openHead.Attrs.Get("rel").Set("stylesheet")
+		openHead.Attrs.Get("href").Set(href)
+		gox.Release(close)
+		return r.send(openHead)
+	default:
+		panic("unexpected resource tag: " + close.Tag)
+	}
+	return nil
+}
 
 func (r *pipe) print(printer gox.Printer) {
 	stack := []*pipe{r}

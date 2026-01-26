@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/mr-tron/base58"
 	"github.com/zeebo/blake3"

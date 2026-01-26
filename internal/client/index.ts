@@ -30,7 +30,7 @@ class $D {
         door.onUnmount(this.anchor, handler)
     }
 
-    get G(): any {
+    get G() {
         return global
     }
 
@@ -66,7 +66,6 @@ class $D {
 function init(
     anchor: HTMLElement,
     f: (
-        $d: $D,
         $on: $D['on'],
         $data: $D['data'],
         $hook: $D['hook'],
@@ -86,6 +85,6 @@ function init(
     const $ready = $d.ready
     const $clean = $d.clean
     const HookErr = $d.HookErr
-    return f($d, $on, $data, $hook, $fetch, $G, $ready, $clean, HookErr)
+    return f($on, $data, $hook, $fetch, $G, $ready, $clean, HookErr)
 }
 export default init
