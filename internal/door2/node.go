@@ -44,7 +44,7 @@ func (n *node) takover(prev *node) {
 	case editorNode, proxyNode:
 		n.shread = &sh.Shread{}
 		renderGuard := n.shread.Guard()
-		prev.takoverFrame.Run(nil, func() {
+		prev.takoverFrame.Run(nil, nil, func(bool) {
 			defer renderGuard.Release()
 			switch n.kind {
 			case editorNode:
@@ -54,7 +54,7 @@ func (n *node) takover(prev *node) {
 			}
 		})
 	default:
-		prev.takoverFrame.Run(nil, func() {
+		prev.takoverFrame.Run(nil, nil, func(bool) {
 			defer n.takoverFrame.Activate()
 			switch n.kind {
 			case unmountedNode:
@@ -114,8 +114,11 @@ func (n *node) replaceTakeover(prev *node) {
 	defer pipe.frame.Release()
 	printer := common.NewBufferPrinter()
 	pipe.SendTo(printer)
-	pipe.frame.Run(parent.root.spawner, func() {
+	pipe.frame.Submit(parent.ctx, parent.root.runtime(), func(ok bool) {
 		defer pipe.close()
+		if !ok {
+			return
+		}
 		cur := gox.NewCursor(parent.ctx, pipe)
 		cur.Any(n.view.content)
 	})
@@ -123,8 +126,10 @@ func (n *node) replaceTakeover(prev *node) {
 	defer finalFrame.Release()
 	updateFrame := sh.Join(finalFrame, prev.communicationFrame)
 	defer updateFrame.Release()
-	updateFrame.Run(nil, func() {
-		// push replace
+	updateFrame.Run(parent.ctx, parent.root.runtime(), func(ok bool) {
+		if !ok {
+			return
+		}
 	})
 }
 
@@ -138,16 +143,16 @@ func (n *node) updatedTakeover(prev *node) {
 		return
 	}
 	prev.kill(unmount)
-	prev.tracker.parent.addChild(n)
 	trackerShread := &sh.Shread{}
 	trackerRenderFrame := trackerShread.Frame()
 	defer trackerRenderFrame.Release()
 	n.communicationFrame = prev.communicationFrame
 	n.tracker = newTrackerFrom(prev.tracker, trackerShread)
+	n.tracker.parent.addChild(n)
 	n.view.attrs = prev.view.attrs
 	n.view.tag = prev.view.tag
 	if n.view.content == nil {
-		n.communicationFrame.Run(nil, func() {
+		n.communicationFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(bool) {
 			// push empty
 		})
 		return
@@ -161,8 +166,11 @@ func (n *node) updatedTakeover(prev *node) {
 	defer pipe.frame.Release()
 	printer := common.NewBufferPrinter()
 	pipe.SendTo(printer)
-	pipe.frame.Run(n.tracker.root.spawner, func() {
+	pipe.frame.Submit(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
 		defer pipe.close()
+		if !ok {
+			return
+		}
 		cur := gox.NewCursor(n.tracker.ctx, pipe)
 		if comp, ok := n.view.content.(gox.Comp); ok {
 			comp.Main()(cur)
@@ -174,7 +182,7 @@ func (n *node) updatedTakeover(prev *node) {
 	defer finalFrame.Release()
 	updateFrame := sh.Join(finalFrame, n.communicationFrame)
 	defer updateFrame.Release()
-	updateFrame.Run(nil, func() {
+	updateFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
 		// push replace
 	})
 }
@@ -186,8 +194,9 @@ func (n *node) render(parentRenderer *pipe) {
 	pipe := parentRenderer.branch()
 	pipe.frame = sh.Join(parentRenderer.frame, renderFrame)
 	pipe.frame.Release()
-	pipe.frame.Run(parent.root.spawner, func() {
+	pipe.frame.Run(parent.ctx, parent.root.runtime(), func(ok bool) {
 		defer pipe.close()
+		;
 		if n.kind == replacedNode {
 			cur := gox.NewCursor(parent.ctx, pipe)
 			cur.Any(n.view.content)
@@ -198,10 +207,6 @@ func (n *node) render(parentRenderer *pipe) {
 		parent.addChild(n)
 		pipe.tracker = n.tracker
 		cur := gox.NewCursor(n.tracker.ctx, pipe)
-		cur.Func(func(io.Writer) error {
-			n.communicationFrame.Activate()
-			return nil
-		})
 		switch n.kind {
 		case editorNode:
 			n.takoverFrame.Activate()

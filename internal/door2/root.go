@@ -16,7 +16,6 @@ import (
 type Instance interface {
 	Conf() *common.SystemConf
 	Call(call action.Call)
-	sh.Panicer
 	core.Instance
 }
 
@@ -29,7 +28,6 @@ func NewRoot(ctx context.Context, inst Instance) Root {
 		tackers: make(map[uint64]*tracker),
 	}
 	r.tracker = newRootTracker(ctx, r)
-	r.spawner = sh.NewSpawner(r.tracker.ctx, r.inst.Conf().InstanceGoroutineLimit, inst)
 	return r
 }
 
@@ -37,10 +35,13 @@ type root struct {
 	mu      sync.Mutex
 	cancel  context.CancelFunc
 	prime   *common.Prime
-	spawner sh.Spawner
 	inst    Instance
 	tackers map[uint64]*tracker
 	tracker *tracker
+}
+
+func (r *root) runtime() sh.Runtime {
+	return r.inst.Runtime()
 }
 
 func (r *root) resourceRegistry() *resources.Registry {
@@ -68,8 +69,11 @@ func (r Root) Renderer(instanceFrame sh.AnyFrame, el gox.Elem) Pipe {
 	pipe.tracker = r.tracker
 	pipe.frame = sh.Join(instanceFrame, renderFrame)
 	defer pipe.frame.Release()
-	pipe.frame.Run(r.spawner, func() {
+	pipe.frame.Run(r.tracker.ctx, r.runtime(), func(ok bool) {
 		defer pipe.close()
+		if !ok {
+			return
+		}
 		err := el.Print(pipe.tracker.ctx, pipe)
 		if err != nil {
 			pipe.Send(gox.NewJobError(pipe.tracker.ctx, err))
@@ -98,10 +102,6 @@ func (i Root) TriggerHook(doorID uint64, hookId uint64, w http.ResponseWriter, r
 	return true
 }
 
-func (r *root) onPanic(err error) {
-	r.inst.OnPanic(err)
-}
-
 func (r *root) addTracker(t *tracker) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -109,6 +109,9 @@ func (r *root) addTracker(t *tracker) {
 }
 
 func (r *root) removeTracker(t *tracker) {
+	if r.tracker.isKilled() {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	existing, ok := r.tackers[t.id]

@@ -7,7 +7,7 @@ import (
 )
 
 type executable interface {
-	execute(callback func())
+	execute(callback func(error))
 }
 
 type Guard interface {
@@ -109,7 +109,7 @@ func (f *baseFrame) activate() {
 	f.buffer = f.buffer[:0]
 }
 
-func (f *baseFrame) callback() {
+func (f *baseFrame) callback(error) {
 	f.mu.Lock()
 	f.counter -= 1
 	completed := f.isCompleted()
@@ -130,7 +130,7 @@ type run struct {
 	ctx     context.Context
 }
 
-func (s run) execute(callback func()) {
+func (s run) execute(callback func(error)) {
 	s.runtime.Run(s.ctx, s.fun, callback)
 }
 
@@ -140,7 +140,7 @@ type spawn struct {
 	ctx     context.Context
 }
 
-func (s spawn) execute(callback func()) {
+func (s spawn) execute(callback func(error)) {
 	s.runtime.Submit(s.ctx, s.fun, callback)
 }
 
@@ -175,18 +175,18 @@ func (f *shreadFrame) onComplete() {
 
 type joinedFrame struct {
 	mu        sync.Mutex
-	callbacks []func()
+	callbacks []func(error)
 	joinCount int
 	baseFrame
 }
 
 func (f *joinedFrame) onComplete() {
 	for _, callback := range f.callbacks {
-		callback()
+		callback(nil)
 	}
 }
 
-func (f *joinedFrame) register(callback func()) {
+func (f *joinedFrame) register(callback func(error)) {
 	f.mu.Lock()
 	f.callbacks = append(f.callbacks, callback)
 	ready := len(f.callbacks) == f.joinCount
@@ -197,7 +197,7 @@ func (f *joinedFrame) register(callback func()) {
 	f.activate()
 }
 
-func (j *joinedFrame) execute(callback func()) {
+func (j *joinedFrame) execute(callback func(error)) {
 	j.register(callback)
 }
 
@@ -264,13 +264,13 @@ func (m *ValveFrame) Activate() {
 
 func (m *ValveFrame) schedule(e executable) {
 	if m.active.Load() {
-		e.execute(func() {})
+		e.execute(func(error) {})
 		return
 	}
 	m.mu.Lock()
 	if m.active.Load() {
 		m.mu.Unlock()
-		e.execute(func() {})
+		e.execute(func(error) {})
 		return
 	}
 	m.buffer = append(m.buffer, e)

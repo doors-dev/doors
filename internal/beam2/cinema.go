@@ -1,5 +1,3 @@
-// doors
-// Copyright (c) 2026 doors dev LLC
 //
 // Dual-licensed: AGPL-3.0-only (see LICENSE) OR a commercial license.
 // Commercial inquiries: sales@doors.dev
@@ -11,6 +9,7 @@ package beam2
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/sh"
@@ -18,6 +17,7 @@ import (
 
 type Door interface {
 	NewFrame() sh.Frame
+	Context() context.Context
 }
 
 type parentScreen interface {
@@ -46,7 +46,11 @@ func (s *screen) sync(ctx context.Context, cleanFrame sh.SimpleFrame, sourceFram
 	syncFrame := sh.Join(sourceFrame, doorFrame, screenFrame)
 	defer syncFrame.Release()
 
-	syncFrame.Run(nil, func() {
+	syncFrame.Run(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
+		if !ok {
+			return
+		}
+
 		syncShread := sh.Shread{}
 
 		watchers, subs := s.commit(seq)
@@ -64,12 +68,18 @@ func (s *screen) sync(ctx context.Context, cleanFrame sh.SimpleFrame, sourceFram
 		defer syncWatchersFrame.Release()
 
 		for _, watcher := range watchers {
-			syncWatchersFrame.Run(s.cinema.spawner, func() {
+			syncWatchersFrame.Submit(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
+				if !ok {
+					return
+				}
 				watcher.sync(ctx, seq, cleanFrame)
 			})
 		}
 
-		syncChildrenFrame.Run(nil, func() {
+		syncChildrenFrame.Run(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
+			if !ok {
+				return
+			}
 			if isStopped() {
 				return
 			}
@@ -95,6 +105,18 @@ func (s *screen) init(parent parentScreen, seq uint) {
 	s.seq = seq
 }
 
+func (s *screen) cancel() {
+	s.mu.Lock()
+	w := s.watchers.Slice()
+	s.watchers.Clear()
+	s.subs.Clear()
+	s.mu.Unlock()
+	for _, w := range w {
+		w.Cancel()
+	}
+	s.parent.removeSub(s)
+}
+
 func (s *screen) tryRemove() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -110,7 +132,14 @@ func (s *screen) isEmpty() bool {
 }
 
 func (s *screen) removeWatcher(w *watcher) {
+	if s.cinema.isKilled() {
+		return
+	}
 	s.mu.Lock()
+	if s.cinema.isKilled() {
+		s.mu.Unlock()
+		return
+	}
 	s.watchers.Remove(w)
 	if s.isEmpty() {
 		defer s.cinema.tryRemove(s.sourceId)
@@ -134,7 +163,14 @@ func (s *screen) addSub(sub *screen) {
 }
 
 func (s *screen) removeSub(sub *screen) {
+	if s.cinema.isKilled() {
+		return
+	}
 	s.mu.Lock()
+	if s.cinema.isKilled() {
+		s.mu.Unlock()
+		return
+	}
 	s.subs.Remove(sub)
 	if s.isEmpty() {
 		defer s.cinema.tryRemove(s.sourceId)
@@ -144,11 +180,11 @@ func (s *screen) removeSub(sub *screen) {
 
 type Cinema = *cinema
 
-func NewCinema(parent Cinema, door Door, spawner sh.Spawner) Cinema {
+func NewCinema(parent Cinema, door Door, runtime sh.Runtime) Cinema {
 	return &cinema{
 		parent:  parent,
 		door:    door,
-		spawner: spawner,
+		runtime: runtime,
 	}
 }
 
@@ -156,14 +192,35 @@ type cinema struct {
 	mu      sync.Mutex
 	parent  *cinema
 	door    Door
-	spawner sh.Spawner
+	runtime sh.Runtime
 	screens map[common.ID]*screen
+}
+
+func (c *cinema) isKilled() bool {
+	return c.door.Context().Err() != nil
+}
+
+func (c *cinema) Cancel() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, screen := range c.screens {
+		screen.cancel()
+	}
+	clear(c.screens)
+
+}
+
+func (c *cinema) ctx() context.Context {
+	return c.door.Context()
 }
 
 func (c *cinema) tryRemove(sourceId common.ID) {
 	frame := c.door.NewFrame()
 	defer frame.Release()
-	frame.Run(nil, func() {
+	frame.Run(c.ctx(), c.runtime, func(ok bool) {
+		if !ok {
+			return
+		}
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		scr, ok := c.screens[sourceId]
@@ -176,17 +233,26 @@ func (c *cinema) tryRemove(sourceId common.ID) {
 	})
 }
 
-func (c *cinema) addWatcher(src anySource, w *watcher) {
-	defer w.init()
+func (c *cinema) addWatcher(src anySource, w *watcher) bool {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.getScreen(src).addWatcher(w)
+	s, ok := c.getScreen(src)
+	if !ok {
+		c.mu.Unlock()
+		return true
+	}
+	s.addWatcher(w)
+	c.mu.Unlock()
+	w.init()
+	return true
 }
 
-func (c *cinema) getScreen(src anySource) *screen {
+func (c *cinema) getScreen(src anySource) (*screen, bool) {
+	if c.isKilled() {
+		return nil, false
+	}
 	scr, ok := c.screens[src.getID()]
 	if ok {
-		return scr
+		return scr, true
 	}
 	scr = &screen{
 		subs:     common.NewSet[*screen](),
@@ -197,13 +263,20 @@ func (c *cinema) getScreen(src anySource) *screen {
 	if c.parent == nil {
 		src.addSub(scr)
 	} else {
-		c.parent.addSub(src, scr)
+		if !c.parent.addSub(src, scr) {
+			return nil, false
+		}
 	}
-	return scr
+	return scr, true
 }
 
-func (c *cinema) addSub(src anySource, scr *screen) {
+func (c *cinema) addSub(src anySource, scr *screen) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.getScreen(src).addSub(scr)
+	s, ok := c.getScreen(src)
+	if !ok {
+		return false
+	}
+	s.addSub(scr)
+	return true
 }

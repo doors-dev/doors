@@ -74,17 +74,18 @@ const (
 )
 
 type Instance[M any] struct {
-	id        string
-	state     atomic.Int32
-	setup     *setup[M]
-	session   *Session
-	navigator *navigator[M]
-	solitaire solitaire.Solitaire
-	root      door2.Root
-	killTimer *killTimer
-	store     ctex.Store
-	csp       *common.CSPCollector
-	importMap *moduleImportMap
+	id         string
+	state      atomic.Int32
+	setup      *setup[M]
+	session    *Session
+	navigator  *navigator[M]
+	runtime    sh.Runtime
+	solitaire  solitaire.Solitaire
+	root       door2.Root
+	killTimer  *killTimer
+	store      ctex.Store
+	csp        *common.CSPCollector
+	importMap  *moduleImportMap
 	pageStatus atomic.Int32
 }
 
@@ -112,9 +113,8 @@ func (c *Instance[M]) RootID() uint64 {
 	return c.root.ID()
 }
 
-
 func (c *Instance[M]) ResourceRegistry() *resources.Registry {
-	return  c.session.router.ResourceRegistry()
+	return c.session.router.ResourceRegistry()
 }
 
 func (c *Instance[M]) AddModuleImport(specifier string, path string) {
@@ -137,13 +137,17 @@ func (inst *Instance[M]) Touch() {
 	inst.session.limiter.touch(inst.id)
 }
 
+func (inst *Instance[M]) Runtime() sh.Runtime {
+	return inst.runtime
+}
+
 func (inst *Instance[M]) init() error {
 	ok := inst.state.CompareAndSwap(initial, active)
 	if !ok {
 		return errors.New("Instance already started or killed")
 	}
-	ctx := context.Background()
-	ctx = inst.session.store.Inject(ctx, ctex.KeySessionStore)
+	inst.runtime = sh.NewRuntime(inst.Conf().InstanceGoroutineLimit, inst)
+	ctx := inst.session.store.Inject(inst.runtime.Context(), ctex.KeySessionStore)
 	ctx = inst.store.Inject(ctx, ctex.KeyInstanceStore)
 	inst.root = door2.NewRoot(ctx, inst)
 	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Conf()))
@@ -216,8 +220,7 @@ func (inst *Instance[M]) SyncError(err error) {
 	inst.end(common.EndCauseSyncError)
 }
 
-func (inst *Instance[M]) OnPanic(err error) {
-	slog.Error(err.Error(), slog.String("type", "panic"), slog.String("instance_id", inst.id))
+func (inst *Instance[M]) Shutdown() {
 	inst.end(common.EndCauseKilled)
 }
 

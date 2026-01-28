@@ -20,7 +20,7 @@ func newRootTracker(ctx context.Context, r *root) *tracker {
 		parent:   nil,
 		children: common.NewSet[*node](),
 	}
-	t.cinema = beam2.NewCinema(nil, t, r.spawner)
+	t.cinema = beam2.NewCinema(nil, t, r.runtime())
 	core := core.NewCore(r.inst, t)
 	ctx = context.WithValue(ctx, ctex.KeyCore, core)
 	t.ctx, t.cancel = context.WithCancel(ctx)
@@ -37,7 +37,7 @@ func newTrackerFrom(prev *tracker, shread *sh.Shread) *tracker {
 		children: common.NewSet[*node](),
 	}
 	t.initShread(shread)
-	t.cinema = beam2.NewCinema(t.parent.cinema, t, root.spawner)
+	t.cinema = beam2.NewCinema(t.parent.cinema, t, root.runtime())
 	t.core = core.NewCore(root.inst, t)
 	ctx := context.WithValue(prev.parent.ctx, ctex.KeyCore, t.core)
 	t.ctx, t.cancel = context.WithCancel(ctx)
@@ -53,7 +53,7 @@ func newTracker(parent *tracker, shread *sh.Shread) *tracker {
 		children: common.NewSet[*node](),
 	}
 	t.initShread(shread)
-	t.cinema = beam2.NewCinema(t.parent.cinema, t, t.root.spawner)
+	t.cinema = beam2.NewCinema(t.parent.cinema, t, t.root.runtime())
 	t.core = core.NewCore(t.root.inst, t)
 	ctx := context.WithValue(parent.ctx, ctex.KeyCore, t.core)
 	t.ctx, t.cancel = context.WithCancel(ctx)
@@ -79,6 +79,10 @@ type tracker struct {
 	core      core.Core
 }
 
+func (t *tracker) Context() context.Context {
+	return t.ctx
+}
+
 func (t *tracker) ID() uint64 {
 	return t.id
 }
@@ -95,6 +99,9 @@ func (t *tracker) Cinema() beam2.Cinema {
 func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.isKilled() {
+		return core.Hook{}, false
+	}
 	hook := newHook(t, onTrigger, onCancel)
 	id := t.root.NewID()
 	t.hooks[id] = hook
@@ -106,6 +113,10 @@ func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.Respon
 		},
 	}, true
 
+}
+
+func (t *tracker) isKilled() bool {
+	return t.ctx.Err() != nil
 }
 
 func (t *tracker) cancelHook(hookID uint64) {
@@ -139,19 +150,17 @@ func (t *tracker) trigger(id uint64, w http.ResponseWriter, r *http.Request) boo
 func (t *tracker) kill() {
 	t.cancel()
 	t.root.removeTracker(t)
+	t.cinema.Cancel()
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	for _, hook := range t.hooks {
+		hook.cancel()
+	}
+	clear(t.hooks)
 	for child := range t.children {
 		child.kill(cascade)
 	}
 	t.children.Clear()
-	t.root.spawner.Spawn(func() {
-		t.mu.Lock()
-		defer t.mu.Unlock()
-		for _, hook := range t.hooks {
-			hook.cancel()
-		}
-	})
 }
 
 func (t *tracker) removeChild(n *node) {
@@ -160,14 +169,16 @@ func (t *tracker) removeChild(n *node) {
 	t.children.Remove(n)
 }
 
-func (t *tracker) addChild(n *node) bool {
+func (t *tracker) addChild(n *node) {
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.ctx.Err() != nil {
-		return false
+	if t.isKilled() {
+		t.mu.Unlock()
+		n.kill(cascade)
+		return
 	}
 	t.children.Add(n)
-	return true
+	t.mu.Unlock()
+	return 
 }
 
 func (t *tracker) NewFrame() sh.Frame {

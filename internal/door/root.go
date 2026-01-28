@@ -21,12 +21,11 @@ import (
 func NewRoot(ctx context.Context, inst instance) *Root {
 	thread := inst.Thread()
 	id := inst.NewId()
-	ctx, cancel := context.WithCancel(ctx)
 	t := &tracker{
 		cinema:   newCinema(nil, inst, thread, id),
 		children: common.NewSet[*Door](),
 		thread:   thread,
-		cancel:   cancel,
+		cancel: func() {}
 	}
 	r := &Root{
 		id:      id,

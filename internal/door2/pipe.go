@@ -80,8 +80,11 @@ func (r *pipe) send(job gox.Job) error {
 		ctx := job.Ctx
 		gox.Release(job)
 		newRenderer := r.branch()
-		newRenderer.frame.Run(r.tracker.root.spawner, func() {
+		newRenderer.frame.Submit(r.tracker.ctx, r.tracker.root.runtime(), func(ok bool) {
 			defer newRenderer.close()
+			if !ok {
+				return
+			}
 			comp.Main().Print(ctx, newRenderer)
 		})
 	default:

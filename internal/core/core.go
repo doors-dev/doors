@@ -11,6 +11,7 @@ import (
 	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/doors/internal/sh"
 )
 
 type Hook struct {
@@ -51,6 +52,7 @@ type Instance interface {
 	Detached() bool
 	NewID() uint64
 	NewLink(any) (Link, error)
+	Runtime() sh.Runtime
 	License() license.License
 	SetStatus(int)
 }
@@ -75,6 +77,10 @@ var _ beam2.Core = &core{}
 type core struct {
 	door Door
 	inst Instance
+}
+
+func (c Core) Runtime() sh.Runtime {
+	return c.inst.Runtime()
 }
 
 func (c Core) Cinema() beam2.Cinema {

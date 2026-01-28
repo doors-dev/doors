@@ -23,6 +23,7 @@ const (
 	hookActive int32 = iota
 	hookDone
 	hookCanceled
+	hookErrored
 )
 
 type hook struct {
@@ -38,24 +39,25 @@ func newHook(t *tracker, triggerFunc func(ctx context.Context, w http.ResponseWr
 	return &hook{
 		triggerFunc: triggerFunc,
 		cancelFunc:  cancelFunc,
-		tracker: t,
+		tracker:     t,
 	}
 }
 
 func (h *hook) cancel() {
-	prev := h.state.Swap(hookCanceled)
-	if prev != hookActive {
+	state := h.state.Swap(hookCanceled)
+	if state != hookActive && state != hookErrored {
 		return
 	}
 	ch := h.wait()
 	defer close(ch)
-	if h.state.Load() != hookCanceled {
+	state = h.state.Load()
+	if state != hookCanceled && state != hookErrored {
 		return
 	}
 	if h.cancelFunc == nil {
 		return
 	}
-	h.cancelFunc(h.tracker.ctx)
+	h.tracker.root.runtime().SafeCtxFun(h.tracker.ctx, h.cancelFunc)
 }
 
 func (h *hook) wait() chan struct{} {
@@ -75,14 +77,11 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
 	}
 	ctx := ctex.WgInsert(h.tracker.ctx)
 	ctx = common.SetBlockingCtx(ctx)
-	done, err := common.CatchValue(func() bool {
-		return h.triggerFunc(ctx, w, r)
-	})
+	done, err := h.tracker.root.runtime().SafeHook(ctx, w, r, h.triggerFunc)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		defer h.tracker.root.onPanic(err)
-	}
-	if done {
+		h.state.Store(hookErrored)
+	} else if done {
 		h.state.Store(hookDone)
 	}
 	close(ch)
