@@ -22,6 +22,7 @@ import (
 	"github.com/doors-dev/doors/internal/door2"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/doors/internal/sh"
 	"github.com/doors-dev/gox"
 )
 
@@ -182,6 +183,10 @@ func If(beam Beam[bool]) templ.Component {
 //   - A non-visual templ.Component that starts the goroutine when rendered
 func Go(f func(context.Context)) gox.Editor {
 	return editorFunc(func(cur gox.Cursor) error {
+		ctx := common.SetBlockingCtx(cur.Context())
+		sh.Go(func() {
+
+		})
 		return nil
 	})
 }

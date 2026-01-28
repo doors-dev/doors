@@ -1,12 +1,13 @@
 package sh
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 )
 
 type executable interface {
-	Execute(callback func())
+	execute(callback func())
 }
 
 type Guard interface {
@@ -19,14 +20,14 @@ type Frame interface {
 }
 
 type SimpleFrame interface {
-	Run(Spawner, func())
+	Run(ctx context.Context, r Runtime, fun func(bool))
+	Submit(ctx context.Context, r Runtime, fun func(bool))
 	AnyFrame
 }
 
 type AnyFrame interface {
 	schedule(executable)
 }
-
 
 type baseFrame struct {
 	mu         sync.Mutex
@@ -37,10 +38,19 @@ type baseFrame struct {
 	buffer     []executable
 }
 
-func (f *baseFrame) Run(spawner Spawner, fun func()) {
-	f.schedule(&simpleExecutable{
-		spawner: spawner,
+func (f *baseFrame) Run(ctx context.Context, s Runtime, fun func(bool)) {
+	f.schedule(&run{
+		runtime: s,
 		fun:     fun,
+		ctx:     ctx,
+	})
+}
+
+func (f *baseFrame) Submit(ctx context.Context, s Runtime, fun func(bool)) {
+	f.schedule(&spawn{
+		runtime: s,
+		fun:     fun,
+		ctx:     ctx,
 	})
 }
 
@@ -72,7 +82,7 @@ func (f *baseFrame) schedule(e executable) {
 		return
 	}
 	f.mu.Unlock()
-	f.execute(e)
+	e.execute(f.callback)
 }
 
 func (f *baseFrame) activate() {
@@ -93,51 +103,52 @@ func (f *baseFrame) activate() {
 		return
 	}
 	for i, e := range f.buffer {
-		f.execute(e)
+		e.execute(f.callback)
 		f.buffer[i] = nil
 	}
 	f.buffer = f.buffer[:0]
 }
 
-func (f *baseFrame) execute(e executable) {
-	e.Execute(func() {
-		f.mu.Lock()
-		f.counter -= 1
-		completed := f.isCompleted()
-		f.mu.Unlock()
-		if !completed {
-			return
-		}
-		f.onComplete()
-	})
+func (f *baseFrame) callback() {
+	f.mu.Lock()
+	f.counter -= 1
+	completed := f.isCompleted()
+	f.mu.Unlock()
+	if !completed {
+		return
+	}
+	f.onComplete()
 }
 
 func (f *baseFrame) isCompleted() bool {
 	return f.released && f.counter == 0 && f.active
 }
 
-type simpleExecutable struct {
-	spawner Spawner
-	fun     func()
+type run struct {
+	runtime Runtime
+	fun     func(bool)
+	ctx     context.Context
 }
 
-func (s *simpleExecutable) Execute(callback func()) {
-	if s.spawner == nil {
-		defer callback()
-		s.fun()
-		return
-	}
-	s.spawner.Spawn(func() {
-		defer callback()
-		s.fun()
-	})
+func (s run) execute(callback func()) {
+	s.runtime.Run(s.ctx, s.fun, callback)
+}
+
+type spawn struct {
+	runtime Runtime
+	fun     func(bool)
+	ctx     context.Context
+}
+
+func (s spawn) execute(callback func()) {
+	s.runtime.Submit(s.ctx, s.fun, callback)
 }
 
 type shreadFrame struct {
 	mu        sync.Mutex
 	next      *shreadFrame
 	completed bool
-	*baseFrame
+	baseFrame
 }
 
 func (f *shreadFrame) setNext(next *shreadFrame) {
@@ -166,7 +177,7 @@ type joinedFrame struct {
 	mu        sync.Mutex
 	callbacks []func()
 	joinCount int
-	*baseFrame
+	baseFrame
 }
 
 func (f *joinedFrame) onComplete() {
@@ -186,10 +197,8 @@ func (f *joinedFrame) register(callback func()) {
 	f.activate()
 }
 
-type joinedExecution joinedFrame
-
-func (j *joinedExecution) Execute(callback func()) {
-	(*joinedFrame)(j).register(callback)
+func (j *joinedFrame) execute(callback func()) {
+	j.register(callback)
 }
 
 type Shread struct {
@@ -201,9 +210,11 @@ func (s *Shread) Guard() Guard {
 }
 
 func (s *Shread) Frame() Frame {
-	frame := &shreadFrame{}
-	frame.baseFrame = &baseFrame{
-		onComplete: frame.onComplete,
+	var frame *shreadFrame
+	frame = &shreadFrame{
+		baseFrame: baseFrame{
+			onComplete: frame.onComplete,
+		},
 	}
 	prev := s.frame.Swap(frame)
 	if prev == nil {
@@ -215,15 +226,16 @@ func (s *Shread) Frame() Frame {
 }
 
 func Join(first AnyFrame, others ...AnyFrame) Frame {
-	joined := &joinedFrame{
+	var joined *joinedFrame
+	joined = &joinedFrame{
 		joinCount: len(others) + 1,
+		baseFrame: baseFrame{
+			onComplete: joined.onComplete,
+		},
 	}
-	joined.baseFrame = &baseFrame{
-		onComplete: joined.onComplete,
-	}
-	first.schedule((*joinedExecution)(joined))
+	first.schedule(joined)
 	for _, frame := range others {
-		frame.schedule((*joinedExecution)(joined))
+		frame.schedule(joined)
 	}
 	return joined
 }
@@ -250,38 +262,27 @@ func (m *ValveFrame) Activate() {
 	}
 }
 
-func (m *ValveFrame) Run(s Spawner, fun func()) {
+func (m *ValveFrame) schedule(e executable) {
 	if m.active.Load() {
-		m.schedule(&simpleExecutable{spawner: s, fun: fun})
+		e.execute(func() {})
 		return
 	}
 	m.mu.Lock()
-	if !m.active.Load() {
-		m.buffer = append(m.buffer, &simpleExecutable{spawner: s, fun: fun})
+	if m.active.Load() {
 		m.mu.Unlock()
+		e.execute(func() {})
 		return
 	}
+	m.buffer = append(m.buffer, e)
 	m.mu.Unlock()
-	m.schedule(&simpleExecutable{spawner: s, fun: fun})
 }
 
-func (m *ValveFrame) schedule(e executable) {
-	e.Execute(func() {})
+func (m *ValveFrame) Run(ctx context.Context, s Runtime, fun func(bool)) {
+	m.schedule(run{runtime: s, ctx: ctx, fun: fun})
+}
+
+func (m *ValveFrame) Submit(ctx context.Context, s Runtime, fun func(bool)) {
+	m.schedule(spawn{runtime: s, ctx: ctx, fun: fun})
 }
 
 var _ SimpleFrame = &ValveFrame{}
-
-type FreeFrame struct{}
-
-func (f FreeFrame) Run(s Spawner, fun func()) {
-	f.schedule(&simpleExecutable{
-		spawner: s,
-		fun:     fun,
-	})
-}
-
-func (f FreeFrame) schedule(e executable) {
-	e.Execute(func() {})
-}
-
-var _ SimpleFrame = FreeFrame{}
