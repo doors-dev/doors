@@ -234,8 +234,14 @@ func Join(first AnyFrame, others ...AnyFrame) Frame {
 		},
 	}
 	first.schedule(joined)
+	if g, ok := first.(Guard); ok {
+		g.Release()
+	}
 	for _, frame := range others {
 		frame.schedule(joined)
+		if g, ok := frame.(Guard); ok {
+			g.Release()
+		}
 	}
 	return joined
 }

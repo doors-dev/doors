@@ -20,9 +20,10 @@ var bufferPool = sync.Pool{
 	},
 }
 
-func newPipe() *pipe {
+func newPipe(rootFrame *sh.ValveFrame) *pipe {
 	return &pipe{
-		buffer: bufferPool.Get().(*deque.Deque[any]),
+		buffer:    bufferPool.Get().(*deque.Deque[any]),
+		rootFrame: rootFrame,
 	}
 }
 
@@ -44,7 +45,8 @@ type pipe struct {
 	parent           *pipe
 	buffer           *deque.Deque[any]
 	tracker          *tracker
-	frame            sh.Frame
+	renderFrame      sh.Frame
+	rootFrame        *sh.ValveFrame
 	printer          gox.Printer
 	resourceState    resourceState
 	resourceOpenHead *gox.JobHeadOpen
@@ -71,6 +73,10 @@ func (r *pipe) Send(job gox.Job) error {
 	}
 }
 
+func (r *pipe) submit(fun func(ok bool)) {
+	r.renderFrame.Submit(r.tracker.ctx, r.tracker.root.runtime(), fun)
+}
+
 func (r *pipe) send(job gox.Job) error {
 	switch job := job.(type) {
 	case *node:
@@ -80,7 +86,7 @@ func (r *pipe) send(job gox.Job) error {
 		ctx := job.Ctx
 		gox.Release(job)
 		newRenderer := r.branch()
-		newRenderer.frame.Submit(r.tracker.ctx, r.tracker.root.runtime(), func(ok bool) {
+		newRenderer.submit(func(ok bool) {
 			defer newRenderer.close()
 			if !ok {
 				return
@@ -248,6 +254,7 @@ func (r *pipe) close() {
 		panic("renderer is already closed")
 	}
 	r.closed = true
+	r.renderFrame.Release()
 	done := r.printer != nil && r.buffer.Len() == 0
 	r.mu.Unlock()
 	if !done || r.parent == nil {
@@ -269,23 +276,23 @@ func (r *pipe) job(job gox.Job) {
 	r.buffer.PushBack(job)
 }
 
-func (r *pipe) branch() *pipe {
-	r.mu.Lock()
-	if r.closed {
+func (p *pipe) branch() *pipe {
+	p.mu.Lock()
+	if p.closed {
 		panic("render is closed")
 	}
-	newRenderer := newPipe()
-	newRenderer.tracker = r.tracker
-	newRenderer.frame = r.frame
-	newRenderer.parent = r
-	if r.printer != nil {
-		printer := r.printer
-		r.printer = nil
-		r.mu.Unlock()
-		newRenderer.print(printer)
-		return newRenderer
+	newPipe := newPipe(p.rootFrame)
+	newPipe.tracker = p.tracker
+	newPipe.renderFrame = p.renderFrame
+	newPipe.parent = p
+	if p.printer != nil {
+		printer := p.printer
+		p.printer = nil
+		p.mu.Unlock()
+		newPipe.print(printer)
+		return newPipe
 	}
-	r.buffer.PushBack(newRenderer)
-	r.mu.Unlock()
-	return newRenderer
+	p.buffer.PushBack(newPipe)
+	p.mu.Unlock()
+	return newPipe
 }

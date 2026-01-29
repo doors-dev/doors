@@ -27,16 +27,14 @@ func newRootTracker(ctx context.Context, r *root) *tracker {
 	return t
 }
 
-func newTrackerFrom(prev *tracker, shread *sh.Shread) *tracker {
+func newTrackerFrom(prev *tracker) *tracker {
 	root := prev.root
 	t := &tracker{
 		root:     root,
 		id:       prev.id,
 		parent:   prev.parent,
-		shread:   shread,
 		children: common.NewSet[*node](),
 	}
-	t.initShread(shread)
 	t.cinema = beam2.NewCinema(t.parent.cinema, t, root.runtime())
 	t.core = core.NewCore(root.inst, t)
 	ctx := context.WithValue(prev.parent.ctx, ctex.KeyCore, t.core)
@@ -45,14 +43,14 @@ func newTrackerFrom(prev *tracker, shread *sh.Shread) *tracker {
 	return t
 }
 
-func newTracker(parent *tracker, shread *sh.Shread) *tracker {
+func newTracker(parent *tracker) *tracker {
 	t := &tracker{
 		root:     parent.root,
 		id:       parent.root.NewID(),
 		parent:   parent,
 		children: common.NewSet[*node](),
 	}
-	t.initShread(shread)
+	//t.initShread(shread)
 	t.cinema = beam2.NewCinema(t.parent.cinema, t, t.root.runtime())
 	t.core = core.NewCore(t.root.inst, t)
 	ctx := context.WithValue(parent.ctx, ctex.KeyCore, t.core)
@@ -69,7 +67,7 @@ type tracker struct {
 	id        uint64
 	root      *root
 	parent    *tracker
-	shread    *sh.Shread
+	shread    sh.Shread
 	readFrame atomic.Value
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -87,10 +85,11 @@ func (t *tracker) ID() uint64 {
 	return t.id
 }
 
+/*
 func (t *tracker) initShread(shread *sh.Shread) {
 	t.readFrame.Store(shread.Frame())
 	t.shread = shread
-}
+} */
 
 func (t *tracker) Cinema() beam2.Cinema {
 	return t.cinema
@@ -178,7 +177,7 @@ func (t *tracker) addChild(n *node) {
 	}
 	t.children.Add(n)
 	t.mu.Unlock()
-	return 
+	return
 }
 
 func (t *tracker) NewFrame() sh.Frame {
@@ -188,7 +187,10 @@ func (t *tracker) NewFrame() sh.Frame {
 
 func (t *tracker) newRenderFrame() sh.Frame {
 	frame := t.shread.Frame()
-	prev := t.readFrame.Swap(t.shread.Frame()).(sh.Frame)
-	prev.Release()
+	prev := t.readFrame.Swap(t.shread.Frame())
+	if prev != nil {
+		prev := prev.(sh.Frame)
+		prev.Release()
+	}
 	return frame
 }

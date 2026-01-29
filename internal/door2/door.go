@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/gox"
 )
 
@@ -14,48 +15,60 @@ type Door struct {
 var _ gox.Proxy = &Door{}
 var _ gox.Editor = &Door{}
 
-func (d *Door) Remove(ctx context.Context) {
+func (d *Door) remove(ctx context.Context) <-chan error {
 	node := &node{
-		ctx:  ctx,
-		door: d,
-		kind: unmountedNode,
-		view: &view{},
+		ctx:    ctx,
+		reportCh: make(chan error, 1),
+		done:   ctex.WgAdd(ctx),
+		door:   d,
+		kind:   unmountedNode,
+		view:   &view{},
 	}
 	d.takeover(node)
+	return node.reportCh
 }
 
-func (d *Door) Clear(ctx context.Context) {
+func (d *Door) update(ctx context.Context, content any) <-chan error {
 	node := &node{
-		ctx:  ctx,
-		door: d,
-		kind: updatedNode,
-		view: &view{},
-	}
-	d.takeover(node)
-}
-
-func (d *Door) Update(ctx context.Context, content any) {
-	node := &node{
-		ctx:  ctx,
-		door: d,
-		kind: updatedNode,
+		ctx:    ctx,
+		reportCh: make(chan error, 1),
+		done:   ctex.WgAdd(ctx),
+		door:   d,
+		kind:   updatedNode,
 		view: &view{
 			content: content,
 		},
 	}
 	d.takeover(node)
+	return node.reportCh
 }
 
-func (d *Door) Replace(ctx context.Context, content any) {
+func (d *Door) reload(ctx context.Context) <-chan error {
 	node := &node{
-		ctx:  ctx,
-		door: d,
-		kind: replacedNode,
+		ctx:    ctx,
+		reportCh: make(chan error, 1),
+		done:   ctex.WgAdd(ctx),
+		door:   d,
+		kind:   updatedNode,
+		view:   nil,
+	}
+	d.takeover(node)
+	return node.reportCh
+}
+
+func (d *Door) replace(ctx context.Context, content any) <-chan error {
+	node := &node{
+		ctx:    ctx,
+		reportCh: make(chan error, 1),
+		done:   ctex.WgAdd(ctx),
+		door:   d,
+		kind:   replacedNode,
 		view: &view{
 			content: content,
 		},
 	}
 	d.takeover(node)
+	return node.reportCh
 }
 
 func (d *Door) Proxy(cur gox.Cursor, elem gox.Elem) error {

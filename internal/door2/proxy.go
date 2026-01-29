@@ -17,36 +17,35 @@ const (
 	closing
 )
 
-func newProxyRenderer(doorId uint64, cursor gox.Cursor, view *view, parentCtx context.Context) *proxyRenderer {
-	return &proxyRenderer{
-		doorId: doorId,
-		cursor: cursor,
-		view:   view,
-		parentCtx: parentCtx,
+func newProxyComponent(doorId uint64, view *view, parentCtx context.Context, takoverFrame *sh.ValveFrame) *proxyComponent {
+	return &proxyComponent{
+		doorId:       doorId,
+		view:         view,
+		parentCtx:    parentCtx,
+		takoverFrame: takoverFrame,
 	}
 }
 
-type proxyRenderer struct {
-	state     proxyRendererState
-	wrapOver  bool
-	cursor    gox.Cursor
-	doorId    uint64
-	view      *view
-	headId    uint64
-	close     *gox.JobHeadClose
-	initReady sh.ValveFrame
-	parentCtx context.Context
+type proxyComponent struct {
+	state        proxyRendererState
+	wrapOver     bool
+	cursor       gox.Cursor
+	doorId       uint64
+	view         *view
+	headId       uint64
+	close        *gox.JobHeadClose
+	parentCtx    context.Context
+	takoverFrame *sh.ValveFrame
 }
 
-func (r *proxyRenderer) render() error {
-	return r.view.elem.Print(r.cursor.Context(), r)
+func (r *proxyComponent) Main() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		r.cursor = cur
+		return r.view.elem.Print(cur.Context(), r)
+	})
 }
 
-func (r *proxyRenderer) InitFrame() sh.SimpleFrame {
-	return &r.initReady
-}
-
-func (r *proxyRenderer) Send(job gox.Job) error {
+func (r *proxyComponent) Send(job gox.Job) error {
 	switch r.state {
 	case initial:
 		err := r.init(job)
@@ -56,18 +55,18 @@ func (r *proxyRenderer) Send(job gox.Job) error {
 		if r.view.content != nil {
 			r.state = check
 		} else {
-			r.initReady.Activate()
+			r.takoverFrame.Activate()
 			r.state = closing
 		}
 		return nil
 	case check:
-		defer r.initReady.Activate()
+		defer r.takoverFrame.Activate()
 		close, ok := job.(*gox.JobHeadClose)
 		if ok {
 			if close.ID != r.headId {
 				return errors.New("door: invalid close")
 			}
-			err := r.cursor.Any(r.view.content)
+			err := r.view.renderContent(r.cursor)
 			if err != nil {
 				return err
 			}
@@ -95,7 +94,7 @@ func (r *proxyRenderer) Send(job gox.Job) error {
 	}
 }
 
-func (r *proxyRenderer) init(job gox.Job) error {
+func (r *proxyComponent) init(job gox.Job) error {
 	openJob, ok := job.(*gox.JobHeadOpen)
 	if !ok {
 		return errors.New("door: expected container")
