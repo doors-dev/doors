@@ -12,8 +12,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type Beam[T any] interface {
@@ -67,8 +66,8 @@ type Beam[T any] interface {
 	// Returns a Cancel function and a boolean indicating whether the watcher was added.
 	AddWatcher(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool)
 
-	addWatcher(ctx context.Context, w door.Watcher) bool
-	sync(uint, *common.FuncCollector) (*T, bool)
+	addWatcher(ctx context.Context, w *watcher) bool
+	sync(uint, shredder.SimpleFrame) (*T, bool)
 }
 
 func NewBeamEqual[T any, T2 any](source Beam[T], cast func(T) T2, equal func(new T2, old T2) bool) Beam[T2] {
@@ -114,17 +113,17 @@ type beam[T any, T2 any] struct {
 	null   T2
 }
 
-func (b *beam[T, T2]) addWatcher(ctx context.Context, w door.Watcher) bool {
+func (b *beam[T, T2]) addWatcher(ctx context.Context, w *watcher) bool {
 	return b.source.addWatcher(ctx, w)
 }
 
-func (b *beam[T, T2]) syncEntry(seq uint, c *common.FuncCollector) *entry[T2] {
+func (b *beam[T, T2]) syncEntry(seq uint, after shredder.SimpleFrame) *entry[T2] {
 	e, has := b.values[seq]
 	if has {
 		return e
 	}
-	if c != nil {
-		c.Add(func() {
+	if after != nil {
+		after.Run(nil, nil, func(bool) {
 			b.mu.Lock()
 			defer b.mu.Unlock()
 			for s := range b.values {
@@ -134,7 +133,7 @@ func (b *beam[T, T2]) syncEntry(seq uint, c *common.FuncCollector) *entry[T2] {
 			}
 		})
 	}
-	sourceVal, updated := b.source.sync(seq, c)
+	sourceVal, updated := b.source.sync(seq, after)
 	if sourceVal == nil {
 		return nil
 	}
@@ -187,10 +186,10 @@ func (b *beam[T, T2]) syncEntry(seq uint, c *common.FuncCollector) *entry[T2] {
 
 }
 
-func (b *beam[T, T2]) sync(seq uint, c *common.FuncCollector) (*T2, bool) {
+func (b *beam[T, T2]) sync(seq uint, after shredder.SimpleFrame) (*T2, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	entry := b.syncEntry(seq, c)
+	entry := b.syncEntry(seq, after)
 	if entry == nil {
 		return nil, false
 	}

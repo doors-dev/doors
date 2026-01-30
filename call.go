@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 )
@@ -39,7 +38,7 @@ func Call(ctx context.Context, action Action) context.CancelFunc {
 // The output value is unmarshaled into type T.
 // For all actions, except ActionEmit, use json.RawMessage as T.
 func XCall[T any](ctx context.Context, action Action) (<-chan CallResult[T], context.CancelFunc) {
-	common.LogBlockingWarning(ctx, "action", "XCall")
+	ctex.LogBlockingWarning(ctx, "action", "XCall")
 	return call[T](ctx, action)
 }
 

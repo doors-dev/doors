@@ -1,9 +1,16 @@
-package instance2
+// doors
+// Copyright (c) 2026 doors dev LLC
+//
+// Dual-licensed: AGPL-3.0-only (see LICENSE) OR a commercial license.
+// Commercial inquiries: sales@doors.dev
+//
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
+
+package instance
 
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"sync"
 	"time"
@@ -31,7 +38,7 @@ func (t *killTimer) keepAlive() {
 		return 
 	}
 	t.timer = time.AfterFunc(t.initial, func() {
-		slog.Debug("Inactive instance killed by timeout", slog.String("type", "message"), slog.String("instance_id", t.inst.Id()))
+		slog.Debug("Inactive instance killed by timeout", slog.String("type", "message"), slog.String("instance_id", t.inst.ID()))
 		t.inst.end(common.EndCauseKilled)
 	})
 }

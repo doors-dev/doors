@@ -18,17 +18,28 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/beam"
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/path"
 )
 
-func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyAdapter, model *M, detached bool, rerouted bool) *navigator[M] {
+func newNavigator[M any](
+	inst *Instance[M],
+	adapter *path.Adapter[M],
+	adapters map[string]path.AnyAdapter,
+	model *M,
+	ctx context.Context,
+	detached bool,
+	rerouted bool,
+) *navigator[M] {
 	return &navigator[M]{
+		inst:        inst,
 		adapter:     adapter,
 		adapters:    adapters,
 		detached:    detached,
 		rerouted:    rerouted,
 		historyHead: &historyHead[M]{},
+		ctx:         ctx,
 		model: beam.NewSourceBeamEqual(*model, func(new, old M) bool {
 			return reflect.DeepEqual(new, old)
 		}),
@@ -38,7 +49,7 @@ func newNavigator[M any](adapter *path.Adapter[M], adapters map[string]path.AnyA
 const historyLimit = 32
 
 type navigator[M any] struct {
-	inst        Core
+	inst        *Instance[M]
 	adapter     *path.Adapter[M]
 	adapters    map[string]path.AnyAdapter
 	detached    bool
@@ -64,7 +75,7 @@ type navigatorState[M any] struct {
 	err   error
 }
 
-func (n *navigator[M]) newLink(m any) (*Link, error) {
+func (n *navigator[M]) newLink(m any) (core.Link, error) {
 	thisModel, ok := m.(*M)
 	if !ok {
 		direct, ok := m.(M)
@@ -75,11 +86,11 @@ func (n *navigator[M]) newLink(m any) (*Link, error) {
 	if thisModel != nil {
 		location, err := n.adapter.Encode(thisModel)
 		if err != nil {
-			return nil, err
+			return core.Link{}, err
 		}
-		return &Link{
-			location: location,
-			on: func(ctx context.Context) {
+		return core.Link{
+			Location: location,
+			On: func(ctx context.Context) {
 				n.model.Update(ctx, *thisModel)
 			},
 		}, nil
@@ -87,21 +98,19 @@ func (n *navigator[M]) newLink(m any) (*Link, error) {
 	name := path.GetAdapterName(m)
 	adapter, found := n.adapters[name]
 	if !found {
-		return nil, errors.New(fmt.Sprint("Adapter for ", name, " is not registered"))
+		return core.Link{}, errors.New(fmt.Sprint("Adapter for ", name, " is not registered"))
 	}
 	location, err := adapter.EncodeAny(m)
 	if err != nil {
-		return nil, err
+		return core.Link{}, err
 	}
-	return &Link{
-		location: location,
-		on:       nil,
+	return core.Link{
+		Location: location,
+		On:       nil,
 	}, nil
 }
 
-func (n *navigator[M]) init(ctx context.Context, inst Core) {
-	n.inst = inst
-	n.ctx = ctx
+func (n *navigator[M]) init() {
 	state := beam.NewBeam(n.model, func(m M) navigatorState[M] {
 		l, err := n.adapter.Encode(&m)
 		if err != nil {
@@ -120,14 +129,14 @@ func (n *navigator[M]) init(ctx context.Context, inst Core) {
 			path:  l.String(),
 		}
 	})
-	ns, ok := state.ReadAndSub(ctx, func(ctx context.Context, ns navigatorState[M]) bool {
-		n.pushHistory(ctx, &ns, !n.detached, false)
+	ns, ok := state.ReadAndSub(n.ctx, func(ctx context.Context, ns navigatorState[M]) bool {
+		n.pushHistory(n.ctx, &ns, !n.detached, false)
 		return false
 	})
 	if !ok {
 		return
 	}
-	n.pushHistory(ctx, &ns, n.rerouted && !n.detached, true)
+	n.pushHistory(n.ctx, &ns, n.rerouted && !n.detached, true)
 }
 
 func (n *navigator[M]) restore(r *http.Request) bool {
@@ -217,21 +226,3 @@ func (e *historyEntry[M]) shake(prev *historyEntry[M], path string, count int) {
 	e.next.shake(e, path, count+1)
 }
 
-type Link struct {
-	location *path.Location
-	on       func(context.Context)
-}
-
-func (h *Link) Path() (string, bool) {
-	if h.location == nil {
-		return "", false
-	}
-	return h.location.String(), true
-}
-
-func (h *Link) ClickHandler() (func(context.Context), bool) {
-	if h.on == nil {
-		return nil, false
-	}
-	return h.on, true
-}

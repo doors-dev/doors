@@ -1,4 +1,4 @@
-package door2
+package door
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/resources"
-	"github.com/doors-dev/doors/internal/sh"
+	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 	"github.com/gammazero/deque"
 )
@@ -20,7 +20,7 @@ var bufferPool = sync.Pool{
 	},
 }
 
-func newPipe(rootFrame *sh.ValveFrame) *pipe {
+func newPipe(rootFrame shredder.SimpleFrame) *pipe {
 	return &pipe{
 		buffer:    bufferPool.Get().(*deque.Deque[any]),
 		rootFrame: rootFrame,
@@ -45,8 +45,8 @@ type pipe struct {
 	parent           *pipe
 	buffer           *deque.Deque[any]
 	tracker          *tracker
-	renderFrame      sh.Frame
-	rootFrame        *sh.ValveFrame
+	renderFrame      shredder.Frame
+	rootFrame        shredder.SimpleFrame
 	printer          gox.Printer
 	resourceState    resourceState
 	resourceOpenHead *gox.JobHeadOpen

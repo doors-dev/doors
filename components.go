@@ -19,10 +19,9 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
-	"github.com/doors-dev/doors/internal/door2"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/instance"
-	"github.com/doors-dev/doors/internal/sh"
+	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
 
@@ -55,7 +54,7 @@ import (
 //
 // During a single render cycle, Doors and their children are guaranteed to observe
 // consistent state (Beam), ensuring stable and predictable rendering.
-type Door = door2.Door
+type Door = door.Door
 
 type editorFunc func(cur gox.Cursor) error
 
@@ -134,7 +133,7 @@ func Inject[T any](key any, beam Beam[T], content gox.Comp) gox.Editor {
 		return cur.Editor(door)
 	})
 }
-
+/*
 // If shows children if the beam value is true
 func If(beam Beam[bool]) templ.Component {
 	return E(func(ctx context.Context) templ.Component {
@@ -154,7 +153,7 @@ func If(beam Beam[bool]) templ.Component {
 		}
 		return door
 	})
-}
+} */
 
 // Go starts a goroutine at render time using a blocking-safe context tied to the component's lifecycle.
 //
@@ -184,7 +183,7 @@ func If(beam Beam[bool]) templ.Component {
 func Go(f func(context.Context)) gox.Editor {
 	return editorFunc(func(cur gox.Cursor) error {
 		ctx := common.SetBlockingCtx(cur.Context())
-		sh.Go(func() {
+		shredder.Go(func() {
 
 		})
 		return nil
@@ -345,14 +344,3 @@ func Head[M any](b Beam[M], cast func(M) HeadData) templ.Component {
 	})
 }
 
-func inlineName(attr templ.Attributes, ext string) string {
-	name := "inline"
-	dataName, ok := attr["data-name"]
-	if ok {
-		dataNameStr, ok := dataName.(string)
-		if ok {
-			name = dataNameStr
-		}
-	}
-	return name + "." + ext
-}

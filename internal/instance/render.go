@@ -1,4 +1,12 @@
-package instance2
+// doors
+// Copyright (c) 2026 doors dev LLC
+//
+// Dual-licensed: AGPL-3.0-only (see LICENSE) OR a commercial license.
+// Commercial inquiries: sales@doors.dev
+//
+// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
+
+package instance
 
 import (
 	"compress/gzip"
@@ -7,12 +15,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/doors-dev/doors/internal/door2"
+	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/gox"
 )
 
-func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, pipe door2.Pipe) error {
+func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, pipe door.Pipe) error {
 	gz := !inst.Conf().ServerDisableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 	importMap, importHash := inst.importMap.generate()
 	inst.importMap = nil

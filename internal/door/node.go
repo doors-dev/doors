@@ -1,220 +1,357 @@
-// doors
-// Copyright (c) 2026 doors dev LLC
-//
-// Dual-licensed: AGPL-3.0-only (see LICENSE) OR a commercial license.
-// Commercial inquiries: sales@doors.dev
-//
-// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
-
 package door
 
 import (
 	"context"
+	"errors"
 	"io"
-	"sync"
+	"sync/atomic"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
 
-type instance interface {
-	Conf() *common.SystemConf
-	OnPanic(error)
-	Thread() *shredder.Thread
-	CancelHooks(uint64, error)
-	CancelHook(uint64, uint64, error)
-	RegisterHook(uint64, uint64, *DoorHook)
-	NewId() uint64
-	Call(action.Call)
-}
-
-type doorMode int
+type nodeKind int
 
 const (
-	dynamic doorMode = iota
-	static
-	removed
+	unmountedNode nodeKind = iota
+	replacedNode
+	updatedNode
+	editorNode
+	proxyNode
 )
 
-type Door struct {
-	Tag       string
-	A         templ.Attributes
-	mu        sync.Mutex
-	parent    *tracker
-	container *container
-	content   templ.Component
-	mode      doorMode
+type node struct {
+	ctx                context.Context
+	reportCh           chan error
+	done               func()
+	kind               nodeKind
+	door               *Door
+	takoverFrame       shredder.ValveFrame
+	renderThread       shredder.Thread
+	communicationFrame shredder.SimpleFrame
+	tracker            *tracker
+	view               *view
+	killed             atomic.Bool
 }
 
-func (n *Door) registerHook(container *container, tracker *tracker, ctx context.Context, h Hook) (*HookEntry, bool) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	if ctx.Err() != nil || n.container == nil {
-		return nil, false
-	}
-	if container.tracker != tracker {
-		return nil, false
-	}
-	if n.container != container {
-		return nil, false
-	}
-	ctx = ctx.Value(common.CtxKeyParent).(context.Context)
-	hookId := n.container.inst.NewId()
-	hook := newHook(ctx, h, n.container.inst)
-	n.container.inst.RegisterHook(n.container.id, hookId, hook)
-	return &HookEntry{
-		DoorId: n.container.id,
-		HookId: hookId,
-		inst:   n.container.inst,
-	}, true
+func (n *node) Context() context.Context {
+	return n.ctx
 }
 
-func (n *Door) suspend(parent *tracker) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	if n.parent != parent {
+func (n *node) Output(io.Writer) error {
+	return errors.New("door: used outside render pipeline")
+}
+
+func (n *node) takover(prev *node) {
+	switch n.kind {
+	case editorNode, proxyNode:
+		renderGuard := n.renderThread.Guard()
+		prev.takoverFrame.Run(nil, nil, func(bool) {
+			defer renderGuard.Release()
+			switch n.kind {
+			case editorNode:
+				n.jobTakover(prev)
+			case proxyNode:
+				n.proxyTakeover(prev)
+			}
+		})
+	default:
+		prev.takoverFrame.Run(nil, nil, func(bool) {
+			defer n.takoverFrame.Activate()
+			switch n.kind {
+			case updatedNode:
+				n.updatedTakeover(prev)
+			case unmountedNode:
+				n.unmountTakeover(prev)
+			case replacedNode:
+				n.replaceTakeover(prev)
+			}
+		})
+	}
+}
+
+func (n *node) updatedTakeover(prev *node) {
+	switch prev.kind {
+	case unmountedNode:
+		n.view.attrs = prev.view.attrs
+		n.view.tag = prev.view.tag
+		n.kind = unmountedNode
+		n.accept()
+		return
+	case replacedNode:
+		n.kind = unmountedNode
+		n.accept()
 		return
 	}
-	if n.container == nil {
+	prev.kill(unmount)
+	n.communicationFrame = prev.communicationFrame
+	n.tracker = newTrackerFrom(prev.tracker)
+	n.tracker.parent.addChild(n)
+	if n.view == nil {
+		n.view = prev.view
+	} else {
+		n.view.attrs = prev.view.attrs
+		n.view.tag = prev.view.tag
+	}
+	if n.view.content == nil {
+		n.communicationFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
+			if !ok {
+				n.cancel()
+				return
+			}
+			n.tracker.root.inst.Call(&call{
+				ctx:    n.tracker.ctx,
+				action: action.DoorUpdate{ID: n.tracker.id},
+				ch:     n.reportCh,
+			})
+			n.done()
+		})
 		return
 	}
-	n.container.inst.CancelHooks(n.container.id, nil)
-	n.container.suspend()
-	n.container = nil
-}
-
-func (n *Door) reload(ctx context.Context) <-chan error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	ch := make(chan error, 1)
-	common.LogCanceled(ctx, "Door reload")
-	if n.container == nil {
-		close(ch)
-		return ch
-	}
-	n.container.inst.CancelHooks(n.container.id, nil)
-	n.container.update(ctx, n.content, ch)
-	return ch
-}
-
-func (n *Door) clear(ctx context.Context) <-chan error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	ch := make(chan error, 1)
-	common.LogCanceled(ctx, "Door clear")
-	n.content = nil
-	if n.container == nil {
-		n.mode = dynamic
-		close(ch)
-		return ch
-	}
-	n.container.inst.CancelHooks(n.container.id, nil)
-	n.container.clear(ctx, ch)
-	return ch
-}
-func (n *Door) update(ctx context.Context, content templ.Component) <-chan error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	ch := make(chan error, 1)
-	common.LogCanceled(ctx, "Door update")
-	n.content = content
-	if n.container == nil {
-		n.mode = dynamic
-		close(ch)
-		return ch
-	}
-	n.container.inst.CancelHooks(n.container.id, nil)
-	n.container.update(ctx, content, ch)
-	return ch
-}
-
-func (n *Door) remove(ctx context.Context) <-chan error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	ch := make(chan error, 1)
-	common.LogCanceled(ctx, "Door remove")
-	n.mode = removed
-	if n.container == nil {
-		close(ch)
-		return nil
-	}
-	n.container.inst.CancelHooks(n.container.id, nil)
-	n.parent.removeChild(n)
-	container := n.container
-	n.container = nil
-	container.remove(ctx, ch)
-	return ch
-}
-
-func (n *Door) replace(ctx context.Context, content templ.Component) <-chan error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	ch := make(chan error, 1)
-	common.LogCanceled(ctx, "Door replace")
-	n.mode = static
-	n.content = content
-	if n.container == nil {
-		close(ch)
-		return ch
-	}
-	n.container.inst.CancelHooks(n.container.id, nil)
-	n.parent.removeChild(n)
-	container := n.container
-	n.container = nil
-	container.replace(ctx, content, ch)
-	return ch
-}
-
-func (n *Door) Render(ctx context.Context, w io.Writer) error {
-	n.mu.Lock()
-	if n.container != nil {
-		n.parent.removeChild(n)
-		ch := make(chan error, 1)
-		n.container.remove(ctx, ch)
-		n.container = nil
-	}
-	ctx, children, hasChildren := common.GetChildren(ctx)
-	if hasChildren {
-		n.content = children
-		n.mode = dynamic
-	}
-	if n.mode == removed {
-		n.mu.Unlock()
-		return nil
-	}
-	if n.mode == static {
-		n.mu.Unlock()
-		if n.content == nil {
-			return nil
+	rootFrame := shredder.ValveFrame{}
+	printer := common.NewBufferPrinter()
+	pipe := newPipe(&rootFrame)
+	pipe.printer = printer
+	pipe.tracker = n.tracker
+	pipe.renderFrame = shredder.Join(true, n.renderThread.Frame(), n.tracker.newRenderFrame())
+	pipe.submit(func(ok bool) {
+		defer pipe.close()
+		if !ok {
+			return
 		}
-		return n.content.Render(ctx, w)
-	}
-	defer n.mu.Unlock()
-	parentCtx := ctx.Value(common.CtxKeyParent).(context.Context)
-	n.parent = parentCtx.Value(common.CtxKeyDoor).(*tracker)
-	if n.parent != nil {
-		n.parent.addChild(n)
-	}
-	inst := parentCtx.Value(common.CtxKeyInstance).(instance)
-	thread := ctx.Value(common.CtxKeyThread).(*shredder.Thread)
-	rm := ctx.Value(common.CtxKeyRenderMap).(*common.RenderMap)
-	var parentCinema *Cinema
-	if n.parent != nil {
-		parentCinema = n.parent.cinema
-	}
-	n.container = &container{
-		id:           inst.NewId(),
-		inst:         inst,
-		parentCtx:    parentCtx,
-		parentCinema: parentCinema,
-		door:         n,
-	}
-	return n.container.render(thread, rm, w, n.Tag, n.A, n.content)
+		cur := gox.NewCursor(n.tracker.ctx, pipe)
+		n.view.renderContent(cur)
+	})
+	updateFrame := shredder.Join(true, n.renderThread.Frame(), n.communicationFrame)
+	updateFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
+		defer rootFrame.Activate()
+		if !ok {
+			printer.Release()
+			n.cancel()
+			return
+		}
+		n.tracker.root.inst.Call(&call{
+			ctx:     n.tracker.ctx,
+			action:  action.DoorUpdate{ID: n.tracker.id},
+			ch:      n.reportCh,
+			payload: printer,
+		})
+		n.done()
+	})
+	updateFrame.Release()
 }
 
-func (d *Door) Main() gox.Elem {
-	return nil
+func (n *node) unmountTakeover(prev *node) {
+	switch prev.kind {
+	case replacedNode:
+		n.accept()
+		return
+	case unmountedNode:
+		n.view = prev.view
+		n.accept()
+		return
+	}
+	prev.kill(unmount)
+	n.view = prev.view
+	id := prev.tracker.id
+	ctx := prev.tracker.parent.ctx
+	prev.communicationFrame.Run(ctx, prev.tracker.root.runtime(), func(ok bool) {
+		if !ok {
+			n.cancel()
+			return
+		}
+		n.tracker.root.inst.Call(&call{
+			ctx:    ctx,
+			action: action.DoorReplace{ID: id},
+			ch:     n.reportCh,
+		})
+		n.done()
+	})
+	return
+}
+
+func (n *node) replaceTakeover(prev *node) {
+	switch prev.kind {
+	case replacedNode, unmountedNode:
+		n.accept()
+		return
+	}
+	prev.kill(unmount)
+	parent := prev.tracker.parent
+	id := prev.tracker.id
+	ctx := parent.ctx
+	if n.view.content == nil {
+		prev.communicationFrame.Run(parent.ctx, parent.root.runtime(), func(ok bool) {
+			defer n.done()
+			if !ok {
+				n.cancel()
+				return
+			}
+			n.tracker.root.inst.Call(&call{
+				ctx:     ctx,
+				action:  action.DoorReplace{ID: id},
+				ch:      n.reportCh,
+				payload: nil,
+			})
+		})
+		return
+	}
+	rootFrame := shredder.ValveFrame{}
+	printer := common.NewBufferPrinter()
+	pipe := newPipe(&rootFrame)
+	pipe.printer = printer
+	pipe.tracker = parent
+	pipe.renderFrame = shredder.Join(true, parent.newRenderFrame(), n.renderThread.Frame())
+	pipe.submit(func(ok bool) {
+		defer pipe.close()
+		if !ok {
+			return
+		}
+		cur := gox.NewCursor(parent.ctx, pipe)
+		n.view.renderContent(cur)
+	})
+	replaceFrame := shredder.Join(true, n.renderThread.Frame(), n.communicationFrame)
+	replaceFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
+		defer rootFrame.Activate()
+		if !ok {
+			printer.Release()
+			n.cancel()
+			return
+		}
+		n.tracker.root.inst.Call(&call{
+			ctx:     parent.ctx,
+			action:  action.DoorReplace{ID: id},
+			ch:      n.reportCh,
+			payload: printer,
+		})
+		n.done()
+	})
+	replaceFrame.Release()
+}
+
+func (n *node) proxyTakeover(prev *node) {
+	switch prev.kind {
+	case updatedNode, editorNode, proxyNode:
+		n.view.content = prev.view.content
+		prev.kill(remove)
+	}
+}
+
+func (n *node) jobTakover(prev *node) {
+	n.view = prev.view
+	switch prev.kind {
+	case updatedNode, editorNode:
+		prev.kill(remove)
+	case replacedNode:
+		n.kind = replacedNode
+		n.takoverFrame.Activate()
+	case proxyNode:
+		prev.kill(remove)
+		n.kind = proxyNode
+	}
+}
+
+func (n *node) render(parentPipe *pipe) {
+	pipe := parentPipe.branch()
+	parent := parentPipe.tracker
+	frame := shredder.Join(true, parentPipe.renderFrame, n.renderThread.Frame())
+	defer frame.Release()
+	frame.Run(parent.ctx, parent.root.runtime(), func(ok bool) {
+		if !ok {
+			defer n.takoverFrame.Activate()
+			if n.kind == replacedNode {
+				return
+			}
+			n.kind = unmountedNode
+			return
+		}
+		if n.kind == replacedNode {
+			cur := gox.NewCursor(parent.ctx, pipe)
+			cur.Any(n.view.content)
+			return
+		}
+		n.communicationFrame = pipe.rootFrame
+		n.tracker = newTracker(parent)
+		n.tracker.parent.addChild(n)
+		pipe.tracker = n.tracker
+		pipe.renderFrame = shredder.Join(true, parentPipe.renderFrame, n.tracker.newRenderFrame())
+		pipe.submit(func(ok bool) {
+			defer pipe.close()
+			if !ok {
+				defer n.takoverFrame.Activate()
+				n.kind = unmountedNode
+				n.tracker.kill()
+				return
+			}
+			cur := gox.NewCursor(n.tracker.ctx, pipe)
+			switch n.kind {
+			case editorNode:
+				n.takoverFrame.Activate()
+				open, close := n.view.headFrame(parent.ctx, n.tracker.id, cur.NewID())
+				cur.Send(open)
+				n.view.renderContent(cur)
+				cur.Send(close)
+			case proxyNode:
+				proxy := newProxyComponent(n.tracker.id, n.view, parent.ctx, &n.takoverFrame)
+				proxy.Main()(cur)
+			}
+		})
+	})
+}
+
+func (n *node) accept() {
+	close(n.reportCh)
+	n.done()
+}
+
+func (n *node) cancel() {
+	n.reportCh <- context.Canceled
+	close(n.reportCh)
+	n.done()
+}
+
+type killKind int
+
+const (
+	cascade killKind = iota
+	unmount
+	remove
+)
+
+func (n *node) kill(kind killKind) {
+	if !n.killed.CompareAndSwap(false, true) {
+		return
+	}
+	if n.kind == unmountedNode || n.kind == replacedNode {
+		panic("door: unmounted/replaced node can't be killed")
+	}
+	switch kind {
+	case cascade:
+		if !n.door.node.CompareAndSwap(n, &node{
+			kind: unmountedNode,
+			view: n.view,
+		}) {
+			return
+		}
+		n.tracker.kill()
+	case unmount:
+		n.tracker.parent.removeChild(n)
+		n.tracker.kill()
+	case remove:
+		n.tracker.parent.removeChild(n)
+		id := n.tracker.id
+		ctx := n.tracker.parent.ctx
+		n.communicationFrame.Run(n.tracker.parent.ctx, n.tracker.root.runtime(), func(ok bool) {
+			if !ok {
+				return
+			}
+			n.tracker.root.inst.Call(&call{
+				ctx:    ctx,
+				action: action.DoorReplace{ID: id},
+			})
+		})
+		n.tracker.kill()
+	}
 }

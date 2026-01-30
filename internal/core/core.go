@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/doors-dev/doors/internal/beam2"
+	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
-	"github.com/doors-dev/doors/internal/sh"
+	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type Hook struct {
@@ -52,13 +52,13 @@ type Instance interface {
 	Detached() bool
 	NewID() uint64
 	NewLink(any) (Link, error)
-	Runtime() sh.Runtime
+	Runtime() shredder.Runtime
 	License() license.License
 	SetStatus(int)
 }
 
 type Door interface {
-	Cinema() beam2.Cinema
+	Cinema() beam.Cinema
 	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
 	ID() uint64
 }
@@ -72,18 +72,18 @@ func NewCore(inst Instance, door Door) Core {
 
 type Core = *core
 
-var _ beam2.Core = &core{}
+var _ beam.Core = &core{}
 
 type core struct {
 	door Door
 	inst Instance
 }
 
-func (c Core) Runtime() sh.Runtime {
+func (c Core) Runtime() shredder.Runtime {
 	return c.inst.Runtime()
 }
 
-func (c Core) Cinema() beam2.Cinema {
+func (c Core) Cinema() beam.Cinema {
 	return c.door.Cinema()
 }
 

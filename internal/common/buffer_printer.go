@@ -38,4 +38,3 @@ func (b *BufferPrinter) Write(p []byte) (n int, err error) {
 func (b *BufferPrinter) Send(job gox.Job) error {
 	return job.Output(b)
 }
-

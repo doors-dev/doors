@@ -1,11 +1,11 @@
-package door2
+package door
 
 import (
 	"context"
 	"errors"
 	"strings"
 
-	"github.com/doors-dev/doors/internal/sh"
+	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
 
@@ -17,7 +17,7 @@ const (
 	closing
 )
 
-func newProxyComponent(doorId uint64, view *view, parentCtx context.Context, takoverFrame *sh.ValveFrame) *proxyComponent {
+func newProxyComponent(doorId uint64, view *view, parentCtx context.Context, takoverFrame *shredder.ValveFrame) *proxyComponent {
 	return &proxyComponent{
 		doorId:       doorId,
 		view:         view,
@@ -35,7 +35,7 @@ type proxyComponent struct {
 	headId       uint64
 	close        *gox.JobHeadClose
 	parentCtx    context.Context
-	takoverFrame *sh.ValveFrame
+	takoverFrame *shredder.ValveFrame
 }
 
 func (r *proxyComponent) Main() gox.Elem {

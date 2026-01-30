@@ -1,22 +1,24 @@
+// doors
+// Copyright (c) 2026 doors dev LLC
 //
 // Dual-licensed: AGPL-3.0-only (see LICENSE) OR a commercial license.
 // Commercial inquiries: sales@doors.dev
 //
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
-package beam2
+
+package beam
 
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/sh"
+	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type Door interface {
-	NewFrame() sh.Frame
+	NewFrame() shredder.Frame
 	Context() context.Context
 }
 
@@ -28,55 +30,33 @@ type screen struct {
 	mu       sync.Mutex
 	cinema   *cinema
 	sourceId common.ID
-	shread   sh.Shread
+	thread   shredder.Thread
 	subs     common.Set[*screen]
 	watchers common.Set[*watcher]
 	parent   parentScreen
 	seq      uint
 }
 
-func (s *screen) sync(ctx context.Context, cleanFrame sh.SimpleFrame, sourceFrame sh.SimpleFrame, seq uint, isStopped func() bool) {
-
-	doorFrame := s.cinema.door.NewFrame()
-	defer doorFrame.Release()
-
-	screenFrame := s.shread.Frame()
-	defer screenFrame.Release()
-
-	syncFrame := sh.Join(sourceFrame, doorFrame, screenFrame)
-	defer syncFrame.Release()
-
+func (s *screen) sync(ctx context.Context, cleanFrame shredder.SimpleFrame, sourceFrame shredder.SimpleFrame, seq uint, isStopped func() bool) {
+	syncFrame := shredder.Join(true, sourceFrame, s.cinema.door.NewFrame(), s.thread.Frame())
 	syncFrame.Run(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
 		if !ok {
 			return
 		}
-
-		syncShread := sh.Shread{}
-
+		syncThread := shredder.Thread{}
+		watchersFrame := shredder.Join(true, syncFrame, syncThread.Frame())
 		watchers, subs := s.commit(seq)
-
-		watchersFrame := syncShread.Frame()
-		defer watchersFrame.Release()
-
-		syncWatchersFrame := sh.Join(syncFrame, watchersFrame)
-		defer syncWatchersFrame.Release()
-
-		childrenFrame := syncShread.Frame()
-		defer childrenFrame.Release()
-
-		syncChildrenFrame := sh.Join(syncFrame, childrenFrame)
-		defer syncWatchersFrame.Release()
-
 		for _, watcher := range watchers {
-			syncWatchersFrame.Submit(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
+			watchersFrame.Submit(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
 				if !ok {
 					return
 				}
 				watcher.sync(ctx, seq, cleanFrame)
 			})
 		}
-
-		syncChildrenFrame.Run(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
+		watchersFrame.Release()
+		childerenFrame := shredder.Join(true, syncFrame, syncThread.Frame())
+		childerenFrame.Run(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
 			if !ok {
 				return
 			}
@@ -87,8 +67,8 @@ func (s *screen) sync(ctx context.Context, cleanFrame sh.SimpleFrame, sourceFram
 				screen.sync(ctx, cleanFrame, sourceFrame, seq, isStopped)
 			}
 		})
+		childerenFrame.Release()
 	})
-
 }
 
 func (s *screen) commit(seq uint) ([]*watcher, []*screen) {
@@ -180,7 +160,7 @@ func (s *screen) removeSub(sub *screen) {
 
 type Cinema = *cinema
 
-func NewCinema(parent Cinema, door Door, runtime sh.Runtime) Cinema {
+func NewCinema(parent Cinema, door Door, runtime shredder.Runtime) Cinema {
 	return &cinema{
 		parent:  parent,
 		door:    door,
@@ -192,7 +172,7 @@ type cinema struct {
 	mu      sync.Mutex
 	parent  *cinema
 	door    Door
-	runtime sh.Runtime
+	runtime shredder.Runtime
 	screens map[common.ID]*screen
 }
 

@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/doors-dev/doors/internal/common"
 )
 
 type Actions []Action
@@ -50,10 +49,10 @@ type CallParams struct {
 }
 
 type Call interface {
-	Clean()
+	// Clean()
 	Params() CallParams
 	Action() (Action, bool)
-	Payload() common.Writable
+	Payload() []byte
 	Cancel()
 	Result(json.RawMessage, error)
 }

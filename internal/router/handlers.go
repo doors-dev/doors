@@ -17,7 +17,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/doors-dev/doors/internal/instance2"
+	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/mr-tron/base58"
@@ -80,7 +80,7 @@ func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page responseAnyApp, opt *instance2.Options) {
+func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page responseAnyApp, opt *instance.Options) {
 	new, session := rr.ensureSession(r, w)
 	inst, ok := page.intoInstance(session, opt)
 	if !ok {

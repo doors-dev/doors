@@ -84,7 +84,7 @@ func (a Emit) Invocation() Invocation {
 }
 
 type DynaSet struct {
-	Id    uint64
+	ID    uint64
 	Value string
 }
 
@@ -94,12 +94,12 @@ func (a DynaSet) Log() string {
 func (a DynaSet) Invocation() Invocation {
 	return Invocation{
 		name: "dyna_set",
-		arg:  []any{a.Id, a.Value},
+		arg:  []any{a.ID, a.Value},
 	}
 }
 
 type DynaRemove struct {
-	Id uint64
+	ID uint64
 }
 
 func (a DynaRemove) Log() string {
@@ -108,7 +108,7 @@ func (a DynaRemove) Log() string {
 func (a DynaRemove) Invocation() Invocation {
 	return Invocation{
 		name: "dyna_remove",
-		arg:  []any{a.Id},
+		arg:  []any{a.ID},
 	}
 }
 
@@ -128,7 +128,7 @@ func (a SetPath) Invocation() Invocation {
 }
 
 type DoorReplace struct {
-	Id uint64
+	ID uint64
 }
 
 func (a DoorReplace) Log() string {
@@ -137,12 +137,12 @@ func (a DoorReplace) Log() string {
 func (a DoorReplace) Invocation() Invocation {
 	return Invocation{
 		name: "door_replace",
-		arg:  []any{a.Id},
+		arg:  []any{a.ID},
 	}
 }
 
 type DoorUpdate struct {
-	Id uint64
+	ID uint64
 }
 
 func (a DoorUpdate) Log() string {
@@ -151,7 +151,7 @@ func (a DoorUpdate) Log() string {
 func (a DoorUpdate) Invocation() Invocation {
 	return Invocation{
 		name: "door_update",
-		arg:  []any{a.Id},
+		arg:  []any{a.ID},
 	}
 }
 

@@ -1,264 +1,298 @@
-// doors
-// Copyright (c) 2026 doors dev LLC
-//
-// Dual-licensed: AGPL-3.0-only (see LICENSE) OR a commercial license.
-// Commercial inquiries: sales@doors.dev
-//
-// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
-
 package shredder
 
 import (
-	"errors"
+	"context"
 	"sync"
-
-	"github.com/doors-dev/doors/internal/common"
+	"sync/atomic"
 )
 
-type threadHead interface {
-	threadDone(*Thread)
+type executable interface {
+	execute(callback func(error))
 }
 
-type Thread struct {
-	mu      sync.Mutex
-	main    func(*Thread)
-	counter int
-	heads   []threadHead
-	killed  bool
-	running bool
-	spawner *Spawner
-	tail    *frame
-	after   func()
+type Guard interface {
+	Release()
 }
 
-func (t *Thread) Spawner() *Spawner {
-	return t.spawner
+type Frame interface {
+	Guard
+	SimpleFrame
 }
 
-func (t *Thread) addHead(h threadHead) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.counter += 1
-	t.heads[len(t.heads)-t.counter] = h
+type SimpleFrame interface {
+	Run(ctx context.Context, r Runtime, fun func(bool))
+	Submit(ctx context.Context, r Runtime, fun func(bool))
+	AnyFrame
 }
 
-func (t *Thread) IsDone() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.spawner == nil
+type AnyFrame interface {
+	schedule(executable)
 }
 
-func (t *Thread) done() {
-	t.killed = true
-	for i, head := range t.heads {
-		if head == nil {
-			continue
-		}
-		head.threadDone(t)
-		t.heads[i] = nil
-	}
-	if t.after != nil {
-		t.after()
-		t.after = nil
-	}
+type baseFrame struct {
+	mu         sync.Mutex
+	active     bool
+	released   bool
+	counter    int
+	onComplete func()
+	buffer     []executable
 }
 
-func (t *Thread) Killed() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.killed
-}
-
-func (t *Thread) abort() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.main(nil)
-	t.done()
-}
-
-func (t *Thread) Kill(after func()) bool {
-	t.mu.Lock()
-	if t.killed {
-		t.mu.Unlock()
-		return false
-	}
-	t.killed = true
-	if t.tail == nil {
-		t.mu.Unlock()
-		if after != nil {
-			after()
-		}
-		return true
-	}
-	threads := t.tail.listThreads()
-	t.after = after
-	t.mu.Unlock()
-	for _, threads := range threads {
-		threads.Kill(nil)
-	}
-	return true
-}
-
-func (t *Thread) spawn() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.killed {
-		return false
-	}
-	t.running = true
-	return t.spawner.Spawn(func() {
-		t.main(t)
-		t.main = nil
-	}, func(error) {
-		t.mu.Lock()
-		t.running = false
-		defer t.mu.Unlock()
-		if t.tail == nil {
-			t.done()
-		}
+func (f *baseFrame) Run(ctx context.Context, s Runtime, fun func(bool)) {
+	f.schedule(&run{
+		runtime: s,
+		fun:     fun,
+		ctx:     ctx,
 	})
 }
 
-func (t *Thread) frameDone(frame *frame) {
-	t.mu.Lock()
-	if !frame.isDone() {
-		t.mu.Unlock()
+func (f *baseFrame) Submit(ctx context.Context, s Runtime, fun func(bool)) {
+	f.schedule(&spawn{
+		runtime: s,
+		fun:     fun,
+		ctx:     ctx,
+	})
+}
+
+func (f *baseFrame) Release() {
+	f.mu.Lock()
+	if f.released {
+		f.mu.Unlock()
 		return
 	}
-	if frame.next != nil {
-		if t.tail == frame {
-			t.tail = frame.next
-		}
-		f := frame.next.start(t.killed)
-		defer f()
-		t.mu.Unlock()
+	f.released = true
+	completed := f.isCompleted()
+	f.mu.Unlock()
+	if !completed {
 		return
 	}
-	t.tail = nil
-	defer t.mu.Unlock()
-	if len(t.heads) == 0 || t.running {
+	f.onComplete()
+}
+
+func (f *baseFrame) schedule(e executable) {
+	f.mu.Lock()
+	if f.isCompleted() {
+		f.mu.Unlock()
+		panic("can's schedule on completed frames")
+	}
+	f.counter += 1
+	if !f.active {
+		f.buffer = append(f.buffer, e)
+		f.mu.Unlock()
 		return
 	}
-	t.done()
+	f.mu.Unlock()
+	e.execute(f.callback)
 }
 
-func (th *Thread) readTask(t task) bool {
-	th.mu.Lock()
-	if th.killed {
-		th.mu.Unlock()
-		return false
+func (f *baseFrame) activate() {
+	f.mu.Lock()
+	if f.active {
+		f.mu.Unlock()
+		panic("can't activate an already active frame")
 	}
-	if th.tail != nil && !th.tail.writing {
-		f := th.tail.add(t, false)
-		defer f()
-		th.mu.Unlock()
-		return true
+	if f.isCompleted() {
+		f.mu.Unlock()
+		panic("can't activate a completed frame")
 	}
-	frame := &frame{
-		next:    nil,
-		parent:  th,
-		threads: common.NewSet[*Thread](),
-		tasks:   []task{t},
+	f.active = true
+	done := f.isCompleted()
+	f.mu.Unlock()
+	if done {
+		f.onComplete()
+		return
 	}
-	if th.tail == nil {
-		f := frame.start(false)
-		defer f()
-	} else {
-		th.tail.setNext(frame)
+	for i, e := range f.buffer {
+		e.execute(f.callback)
+		f.buffer[i] = nil
 	}
-	th.tail = frame
-	th.mu.Unlock()
-	return true
+	f.buffer = f.buffer[:0]
 }
 
-func (th *Thread) writeTask(t task, tryStarve bool) bool {
-	th.mu.Lock()
-	if th.killed {
-		th.mu.Unlock()
-		return false
+func (f *baseFrame) callback(error) {
+	f.mu.Lock()
+	f.counter -= 1
+	completed := f.isCompleted()
+	f.mu.Unlock()
+	if !completed {
+		return
 	}
-	frame := &frame{
-		mu:      sync.Mutex{},
-		next:    nil,
-		parent:  th,
-		threads: common.NewSet[*Thread](),
-		tasks:   []task{t},
-		writing: true,
-	}
-	if th.tail == nil {
-		f := frame.start(false)
-		th.tail = frame
-		defer f()
-		th.mu.Unlock()
-		return true
-	}
-	defer th.mu.Unlock()
-	th.tail.setNext(frame)
-	if !th.tail.writing && tryStarve {
-		return true
-	}
-	th.tail = frame
-	return true
+	f.onComplete()
 }
 
-func (t *Thread) R() *JoinedThread {
-	return &JoinedThread{
-		mode:   joinRead,
-		thread: t,
-	}
+func (f *baseFrame) isCompleted() bool {
+	return f.released && f.counter == 0 && f.active
 }
 
-func (t *Thread) W() *JoinedThread {
-	return &JoinedThread{
-		mode:   joinWrite,
-		thread: t,
-	}
+type run struct {
+	runtime Runtime
+	fun     func(bool)
+	ctx     context.Context
 }
 
-func (t *Thread) Ws() *JoinedThread {
-	return &JoinedThread{
-		mode:   joinWriteStarve,
-		thread: t,
-	}
+func (s run) execute(callback func(error)) {
+	s.runtime.Run(s.ctx, s.fun, callback)
 }
 
-func (t *Thread) Ri() *JoinedThread {
-	return &JoinedThread{
-		mode:    joinRead,
-		thread:  t,
-		instant: true,
-	}
+type spawn struct {
+	runtime Runtime
+	fun     func(bool)
+	ctx     context.Context
 }
 
-func (t *Thread) Wi() *JoinedThread {
-	return &JoinedThread{
-		mode:    joinWrite,
-		thread:  t,
-		instant: true,
-	}
+func (s spawn) execute(callback func(error)) {
+	s.runtime.Submit(s.ctx, s.fun, callback)
 }
 
-func (t *Thread) Wsi() *JoinedThread {
-	return &JoinedThread{
-		mode:    joinWriteStarve,
-		thread:  t,
-		instant: true,
+type threadFrame struct {
+	mu        sync.Mutex
+	next      *threadFrame
+	completed bool
+	baseFrame
+}
+
+func (f *threadFrame) setNext(next *threadFrame) {
+	f.mu.Lock()
+	completed := f.completed
+	f.next = next
+	f.mu.Unlock()
+	if !completed {
+		return
+	}
+	next.activate()
+}
+
+func (f *threadFrame) onComplete() {
+	f.mu.Lock()
+	f.completed = true
+	next := f.next
+	f.mu.Unlock()
+	if next == nil {
+		return
+	}
+	next.activate()
+}
+
+type joinedFrame struct {
+	mu        sync.Mutex
+	callbacks []func(error)
+	joinCount int
+	baseFrame
+}
+
+func (f *joinedFrame) onComplete() {
+	for _, callback := range f.callbacks {
+		callback(nil)
 	}
 }
 
-func Run(f func(*Thread), threads ...*JoinedThread) {
-	if len(threads) == 0 {
-		panic(errors.New("Threads to run on are not provided"))
+func (f *joinedFrame) register(callback func(error)) {
+	f.mu.Lock()
+	f.callbacks = append(f.callbacks, callback)
+	ready := len(f.callbacks) == f.joinCount
+	f.mu.Unlock()
+	if !ready {
+		return
 	}
-	task := &multitask{
-		queue: threads,
-		thread: &Thread{
-			mu:      sync.Mutex{},
-			main:    f,
-			heads:   make([]threadHead, len(threads)),
-			spawner: threads[0].thread.spawner,
-			tail:    nil,
+	f.activate()
+}
+
+func (j *joinedFrame) execute(callback func(error)) {
+	j.register(callback)
+}
+
+type Thread struct {
+	frame atomic.Pointer[threadFrame]
+}
+
+func (s *Thread) Guard() Guard {
+	return s.Frame()
+}
+
+func (s *Thread) Frame() Frame {
+	var frame *threadFrame
+	frame = &threadFrame{
+		baseFrame: baseFrame{
+			onComplete: frame.onComplete,
 		},
 	}
-	task.next()
+	prev := s.frame.Swap(frame)
+	if prev == nil {
+		frame.activate()
+	} else {
+		prev.setNext(frame)
+	}
+	return frame
 }
+
+func Join(release bool, first AnyFrame, others ...AnyFrame) Frame {
+	var joined *joinedFrame
+	joined = &joinedFrame{
+		joinCount: len(others) + 1,
+		baseFrame: baseFrame{
+			onComplete: joined.onComplete,
+		},
+	}
+	first.schedule(joined)
+	if release {
+		if g, ok := first.(Guard); ok {
+			g.Release()
+		}
+	}
+	for _, frame := range others {
+		frame.schedule(joined)
+		if release {
+			if g, ok := frame.(Guard); ok {
+				g.Release()
+			}
+		}
+	}
+	return joined
+}
+
+type ValveFrame struct {
+	mu     sync.Mutex
+	buffer []executable
+	active atomic.Bool
+}
+
+func (m *ValveFrame) Activate() {
+	m.mu.Lock()
+	if m.active.Load() {
+		m.mu.Unlock()
+		panic("frame: already active")
+	}
+	m.active.Store(true)
+	buf := m.buffer
+	m.buffer = nil
+	m.mu.Unlock()
+	for i, e := range buf {
+		m.schedule(e)
+		buf[i] = nil
+	}
+}
+
+func (m *ValveFrame) schedule(e executable) {
+	if m.active.Load() {
+		e.execute(func(error) {})
+		return
+	}
+	m.mu.Lock()
+	if m.active.Load() {
+		m.mu.Unlock()
+		e.execute(func(error) {})
+		return
+	}
+	m.buffer = append(m.buffer, e)
+	m.mu.Unlock()
+}
+
+func (m *ValveFrame) Run(ctx context.Context, s Runtime, fun func(bool)) {
+	m.schedule(run{runtime: s, ctx: ctx, fun: fun})
+}
+
+func (m *ValveFrame) Submit(ctx context.Context, s Runtime, fun func(bool)) {
+	m.schedule(spawn{runtime: s, ctx: ctx, fun: fun})
+}
+
+var _ SimpleFrame = &ValveFrame{}

@@ -11,127 +11,81 @@ package door
 import (
 	"context"
 	"net/http"
-	"sync"
+	"sync/atomic"
 
-	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxwg"
-	"github.com/doors-dev/doors/internal/shredder"
+	"github.com/doors-dev/doors/internal/ctex"
 )
 
 type Done = bool
 
-type HookEntry struct {
-	DoorId uint64
-	HookId uint64
-	inst   instance
+const (
+	hookActive int32 = iota
+	hookDone
+	hookCanceled
+	hookErrored
+)
+
+type hook struct {
+	triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done
+	cancelFunc  func(ctx context.Context)
+	state       atomic.Int32
+	ch          atomic.Pointer[chan struct{}]
+	done        atomic.Bool
+	tracker     *tracker
 }
 
-func (h HookEntry) Cancel() {
-	h.inst.CancelHook(h.DoorId, h.HookId, nil)
-}
-
-func (h HookEntry) cancel(err error) {
-	h.inst.CancelHook(h.DoorId, h.HookId, err)
-}
-
-
-type AttrHook struct {
-	Trigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done
-	Cancel  func(ctx context.Context, err error)
-}
-
-func (s *AttrHook) trigger(ctx context.Context, w http.ResponseWriter, r *http.Request) Done {
-	return s.Trigger(ctx, w, r)
-}
-
-func (s *AttrHook) cancel(ctx context.Context, err error) {
-	if s.Cancel != nil {
-		s.Cancel(ctx, err)
+func newHook(t *tracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, cancelFunc func(ctx context.Context)) *hook {
+	return &hook{
+		triggerFunc: triggerFunc,
+		cancelFunc:  cancelFunc,
+		tracker:     t,
 	}
 }
 
-type Hook interface {
-	trigger(ctx context.Context, w http.ResponseWriter, r *http.Request) Done
-	cancel(ctx context.Context, err error)
-}
-
-type DoorHook struct {
-	hook    Hook
-	mu      sync.Mutex
-	counter uint
-	done    bool
-	ch      chan struct{}
-	err     error
-	ctx     context.Context
-	op      shredder.OnPanic
-}
-
-func newHook(ctx context.Context, h Hook, op shredder.OnPanic) *DoorHook {
-	return &DoorHook{
-		hook: h,
-		ctx:  ctx,
-		op:   op,
-	}
-}
-
-func (h *DoorHook) Cancel(err error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.done {
+func (h *hook) cancel() {
+	state := h.state.Swap(hookCanceled)
+	if state != hookActive && state != hookErrored {
 		return
 	}
-	h.done = true
-	h.err = err
-	if h.counter == 0 {
-		h.hook.cancel(h.ctx, h.err)
+	ch := h.wait()
+	defer close(ch)
+	state = h.state.Load()
+	if state != hookCanceled && state != hookErrored {
+		return
 	}
+	if h.cancelFunc == nil {
+		return
+	}
+	h.tracker.root.runtime().SafeCtxFun(h.tracker.ctx, h.cancelFunc)
 }
 
-func (h *DoorHook) Trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
-	h.mu.Lock()
+func (h *hook) wait() chan struct{} {
 	ch := make(chan struct{})
-	prevCh := h.ch
-	h.ch = ch
-	h.mu.Unlock()
+	prevCh := h.ch.Swap(&ch)
 	if prevCh != nil {
-		<-prevCh
+		<-*prevCh
 	}
-	h.mu.Lock()
-	if r.Context().Err() != nil {
-		h.mu.Unlock()
-		close(ch)
-		return false, true
-	}
-	if h.done {
-		h.mu.Unlock()
+	return ch
+}
+
+func (h *hook) trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
+	ch := h.wait()
+	if h.state.Load() != hookActive {
 		close(ch)
 		return false, false
 	}
-	h.counter += 1
-	h.mu.Unlock()
-	ctx := ctxwg.Insert(h.ctx)
-	ctx = common.SetBlockingCtx(ctx)
-	done, err := common.CatchValue(func() bool {
-		return h.hook.trigger(ctx, w, r)
-	})
+	ctx := ctex.WgInsert(h.tracker.ctx)
+	ctx = ctex.SetBlockingCtx(ctx)
+	done, err := h.tracker.root.runtime().SafeHook(ctx, w, r, h.triggerFunc)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		defer h.op.OnPanic(err)
+		h.state.Store(hookErrored)
+	} else if done {
+		h.state.Store(hookDone)
 	}
-	if done || err != nil {
-		h.mu.Lock()
-		h.done = true
-		h.mu.Unlock()
-	}
-	done = done || err != nil
 	close(ch)
-	ctxwg.Wait(ctx)
-	h.mu.Lock()
-	h.counter -= 1
-	last := !done && h.counter == 0 && h.done
-	h.mu.Unlock()
-	if last {
-		h.hook.cancel(h.ctx, h.err)
+	if err != nil {
+		ctex.WgWait(ctx)
 	}
 	return done, true
 }

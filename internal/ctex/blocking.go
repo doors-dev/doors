@@ -6,35 +6,34 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
-package common
+package ctex
 
 import (
 	"context"
 	"log/slog"
 )
 
-
 func IsBlockingCtx(ctx context.Context) bool {
-    blocking, ok := ctx.Value(CtxKeyBlocking).(bool)
-    if !ok {
-        return false
-    }
-    return blocking
+	blocking, ok := ctx.Value(KeyBlocking).(bool)
+	if !ok {
+		return false
+	}
+	return blocking
 }
 
 func SetBlockingCtx(ctx context.Context) context.Context {
-    return context.WithValue(ctx, CtxKeyBlocking, true)
+	return context.WithValue(ctx, KeyBlocking, true)
 }
 
 func ClearBlockingCtx(ctx context.Context) context.Context {
-    if !IsBlockingCtx(ctx) {
-        return ctx
-    }
-    return context.WithValue(ctx, CtxKeyBlocking, false)
+	if !IsBlockingCtx(ctx) {
+		return ctx
+	}
+	return context.WithValue(ctx, KeyBlocking, false)
 }
 
 func LogBlockingWarning(ctx context.Context, entity string, operation string) {
 	if !IsBlockingCtx(ctx) {
-		slog.Warn("Extended "+entity+" operation "+operation+" is used in non blocking context. Receiving from channel could lead to DEADLOCK under extreme conditions, please refer to documentation")
+		slog.Warn("Extended " + entity + " operation " + operation + " is used in non blocking context. Receiving from channel could lead to DEADLOCK under extreme conditions, please refer to documentation")
 	}
 }

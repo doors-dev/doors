@@ -81,12 +81,12 @@ func (a ADyn) Enable(ctx context.Context, enable bool) {
 	var act action.Action
 	if a.enable {
 		act = &action.DynaSet{
-			Id:    a.id,
+			ID:    a.id,
 			Value: a.value,
 		}
 	} else {
 		act = &action.DynaRemove{
-			Id: a.id,
+			ID: a.id,
 		}
 	}
 	core.CallCheck(
@@ -134,7 +134,7 @@ func (a ADyn) Value(ctx context.Context, value string) {
 			return a.check(seq)
 		},
 		&action.DynaSet{
-			Id:    a.id,
+			ID:    a.id,
 			Value: a.value,
 		},
 		func(rm json.RawMessage, err error) {

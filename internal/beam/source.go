@@ -14,16 +14,9 @@ import (
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxwg"
-	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
 )
-
-type instance interface {
-	Thread() *shredder.Thread
-	Cinema() *door.Cinema
-	NewId() uint64
-}
 
 type SourceBeam[T any] interface {
 	Beam[T]
@@ -78,35 +71,56 @@ type SourceBeam[T any] interface {
 	DisableSkipping()
 }
 
+type anySource interface {
+	getID() common.ID
+	addSub(s *screen)
+	removeSub(s *screen)
+}
+
 type source[T any] struct {
-	null   T
+	id     common.ID
 	seq    uint
 	values map[uint]*T
-	inst   instance
-	id     uint64
-	init   sync.Once
 	equal  func(new T, old T) bool
 	mu     sync.RWMutex
 	noSkip bool
+	subs   common.Set[*screen]
+	null   T
+}
+
+func (s *source[T]) getID() common.ID {
+	return s.id
+}
+
+func (s *source[T]) addSub(sc *screen) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.subs.Add(sc)
+	sc.init(s, s.seq)
+}
+
+func (s *source[T]) removeSub(sc *screen) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.subs.Remove(sc)
 }
 
 func NewSourceBeamEqual[T any](init T, equal func(new T, old T) bool) SourceBeam[T] {
 	return &source[T]{
+		id:  common.NewID(),
 		seq: 1,
 		values: map[uint]*T{
 			1: &init,
 		},
-		inst:  nil,
-		id:    0,
-		init:  sync.Once{},
 		equal: equal,
 	}
 }
 
+func equal[T comparable](new T, old T) bool {
+	return new == old
+}
+
 func NewSourceBeam[T comparable](init T) SourceBeam[T] {
-	equal := func(new T, old T) bool {
-		return new == old
-	}
 	return NewSourceBeamEqual(init, equal)
 }
 
@@ -120,75 +134,57 @@ func (s *source[T]) Latest() T {
 	return *s.values[s.seq]
 }
 
-func (s *source[T]) sync(seq uint, _ *common.FuncCollector) (*T, bool) {
+func (s *source[T]) sync(seq uint, _ shredder.SimpleFrame) (*T, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	value, ok := s.values[seq]
 	return value, ok
 }
 
-func (s *source[T]) update(ctx context.Context, v *T) <-chan error {
-	return s.applyMutation(ctx, func(l *T) (*T, bool) {
-		if s.equal != nil && s.equal(*l, *v) {
-			return nil, false
-		}
-		return v, true
-	})
-}
-
 func (s *source[T]) XUpdate(ctx context.Context, v T) <-chan error {
-	common.LogBlockingWarning(ctx, "SourceBeam", "XUpdate")
-	return s.update(ctx, &v)
+	ctex.LogBlockingWarning(ctx, "SourceBeam", "XUpdate")
+	return s.mutateOrUpdate(ctx, nil, &v)
 }
 
 func (s *source[T]) Update(ctx context.Context, v T) {
-	s.update(ctx, &v)
-}
-
-func (s *source[T]) mutate(ctx context.Context, m func(T) T) <-chan error {
-	return s.applyMutation(ctx, func(l *T) (*T, bool) {
-		new := m(*l)
-		if s.equal != nil && s.equal(*l, new) {
-			return nil, false
-		}
-		return &new, true
-	})
+	s.mutateOrUpdate(ctx, nil, &v)
 }
 
 func (s *source[T]) XMutate(ctx context.Context, m func(T) T) <-chan error {
-	common.LogBlockingWarning(ctx, "SourceBeam", "XMutate")
-	return s.mutate(ctx, m)
-}
-func (s *source[T]) Mutate(ctx context.Context, m func(T) T) {
-	s.mutate(ctx, m)
+	ctex.LogBlockingWarning(ctx, "SourceBeam", "XMutate")
+	return s.mutateOrUpdate(ctx, m, nil)
 }
 
-func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-chan error {
+func (s *source[T]) Mutate(ctx context.Context, m func(T) T) {
+	s.mutateOrUpdate(ctx, m, nil)
+}
+
+func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T) <-chan error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	ch := make(chan error, 1)
-	common.LogCanceled(ctx, "SourceBeam mutation")
-	ctx = common.ClearBlockingCtx(ctx)
-	new, update := m(s.values[s.seq])
-	if !update {
+	ctex.LogCanceled(ctx, "SourceBeam mutation")
+	ctx = ctex.ClearBlockingCtx(ctx)
+
+	seq, commited := s.commit(mut, value)
+	if !commited {
+		s.mu.Unlock()
 		close(ch)
 		return ch
 	}
-	s.seq += 1
-	seq := s.seq
-	s.values[seq] = new
-	if s.inst == nil {
-		delete(s.values, seq-1)
+
+	if len(s.subs) == 0 {
+		s.cleanBefore(seq)
+		s.mu.Unlock()
 		ch <- nil
 		close(ch)
 		return ch
 	}
-	cinema := s.inst.Cinema()
-	done := ctxwg.Add(ctx)
-	syncThread := s.inst.Thread()
-	c := common.NewFuncCollector()
+
+	done := ctex.WgAdd(ctx)
+
 	stopped := atomic.Bool{}
-	stop := func() bool {
+
+	isStopped := func() bool {
 		if s.noSkip {
 			return false
 		}
@@ -203,38 +199,75 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 		stopped.Store(true)
 		return true
 	}
-	cinema.InitSync(syncThread, ctx, s.id, seq, c, stop)
-	shredder.Run(func(t *shredder.Thread) {
+
+	sh := shredder.Thread{}
+	syncFrame := sh.Frame()
+	checkFrame := sh.Frame()
+	cleanFrame := sh.Frame()
+
+	for _, sub := range s.subs.Slice() {
+		sub.sync(ctx, cleanFrame, syncFrame, seq, isStopped)
+	}
+
+	syncFrame.Release()
+
+	s.mu.Unlock()
+
+	checkFrame.Run(nil, nil, func(bool) {
 		defer done()
-		if t == nil {
-			ch <- context.Canceled
-			close(ch)
-			return
-		}
 		ch <- nil
 		close(ch)
 		if stopped.Load() {
 			return
 		}
-		c.Apply()
+	})
+	checkFrame.Release()
+
+	cleanFrame.Run(nil, nil, func(bool) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		for oldSeq := range s.values {
-			if oldSeq < seq {
-				delete(s.values, oldSeq)
-			}
-		}
-	}, shredder.Ws(syncThread))
+		s.cleanBefore(seq)
+	})
+
 	return ch
+}
+
+func (s *source[T]) commit(mut func(T) T, value *T) (uint, bool) {
+	prev := s.values[s.seq]
+	var next *T
+	switch true {
+	case mut != nil:
+		updated := mut(*prev)
+		next = &updated
+	case value != nil:
+		next = value
+	default:
+		panic("SourceBeam: no value or mutation provided")
+	}
+	if s.equal != nil && s.equal(*prev, *next) {
+		return 0, false
+	}
+	s.seq += 1
+	seq := s.seq
+	s.values[seq] = next
+	return seq, true
+}
+
+func (s *source[T]) cleanBefore(seq uint) {
+	for oldSeq := range s.values {
+		if oldSeq < seq {
+			delete(s.values, oldSeq)
+		}
+	}
 
 }
 
-func (s *source[T]) addWatcher(ctx context.Context, w door.Watcher) bool {
-	cinema := ctx.Value(common.CtxKeyDoor).(door.Core).Cinema()
-	inst := ctx.Value(common.CtxKeyInstance).(instance)
-	s.init.Do(func() {
-		s.inst = inst
-		s.id = inst.NewId()
-	})
-	return cinema.AddWatcher(ctx, s.id, w, s.seq)
+type Core interface {
+	Cinema() Cinema
+}
+
+func (s *source[T]) addWatcher(ctx context.Context, w *watcher) bool {
+	core := ctx.Value(ctex.KeyCore).(Core)
+	core.Cinema().addWatcher(s, w)
+	return true
 }

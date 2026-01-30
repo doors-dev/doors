@@ -1,4 +1,4 @@
-package sh
+package shredder
 
 import (
 	"context"
@@ -16,8 +16,8 @@ type Shutdown interface {
 
 type Runtime = *runtime
 
-func NewRuntime(workerLimit int, shutdown Shutdown) Runtime {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewRuntime(ctx context.Context, workerLimit int, shutdown Shutdown) Runtime {
+	ctx, cancel := context.WithCancel(ctx)
 	s := &runtime{
 		ctx:         ctx,
 		cancel:      cancel,

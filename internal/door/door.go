@@ -1,4 +1,4 @@
-package door2
+package door
 
 import (
 	"context"
@@ -17,12 +17,12 @@ var _ gox.Editor = &Door{}
 
 func (d *Door) remove(ctx context.Context) <-chan error {
 	node := &node{
-		ctx:    ctx,
+		ctx:      ctx,
 		reportCh: make(chan error, 1),
-		done:   ctex.WgAdd(ctx),
-		door:   d,
-		kind:   unmountedNode,
-		view:   &view{},
+		done:     ctex.WgAdd(ctx),
+		door:     d,
+		kind:     unmountedNode,
+		view:     &view{},
 	}
 	d.takeover(node)
 	return node.reportCh
@@ -30,11 +30,11 @@ func (d *Door) remove(ctx context.Context) <-chan error {
 
 func (d *Door) update(ctx context.Context, content any) <-chan error {
 	node := &node{
-		ctx:    ctx,
+		ctx:      ctx,
 		reportCh: make(chan error, 1),
-		done:   ctex.WgAdd(ctx),
-		door:   d,
-		kind:   updatedNode,
+		done:     ctex.WgAdd(ctx),
+		door:     d,
+		kind:     updatedNode,
 		view: &view{
 			content: content,
 		},
@@ -45,12 +45,12 @@ func (d *Door) update(ctx context.Context, content any) <-chan error {
 
 func (d *Door) reload(ctx context.Context) <-chan error {
 	node := &node{
-		ctx:    ctx,
+		ctx:      ctx,
 		reportCh: make(chan error, 1),
-		done:   ctex.WgAdd(ctx),
-		door:   d,
-		kind:   updatedNode,
-		view:   nil,
+		done:     ctex.WgAdd(ctx),
+		door:     d,
+		kind:     updatedNode,
+		view:     nil,
 	}
 	d.takeover(node)
 	return node.reportCh
@@ -58,11 +58,11 @@ func (d *Door) reload(ctx context.Context) <-chan error {
 
 func (d *Door) replace(ctx context.Context, content any) <-chan error {
 	node := &node{
-		ctx:    ctx,
+		ctx:      ctx,
 		reportCh: make(chan error, 1),
-		done:   ctex.WgAdd(ctx),
-		door:   d,
-		kind:   replacedNode,
+		done:     ctex.WgAdd(ctx),
+		door:     d,
+		kind:     replacedNode,
 		view: &view{
 			content: content,
 		},

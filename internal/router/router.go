@@ -16,7 +16,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/instance2"
+	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
@@ -102,12 +102,12 @@ func (rr *Router) Conf() *common.SystemConf {
 	return rr.conf
 }
 
-func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *instance2.Session) {
+func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *instance.Session) {
 	s := rr.getSession(r)
 	if s != nil {
 		return false, s
 	}
-	s = instance2.NewSession(rr)
+	s = instance.NewSession(rr)
 	var expires time.Time
 	if rr.conf.SessionTTL != 0 {
 		expires = time.Now().Add(rr.conf.SessionTTL)
@@ -126,7 +126,7 @@ func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *
 	return true, s
 }
 
-func (rr *Router) getSession(r *http.Request) *instance2.Session {
+func (rr *Router) getSession(r *http.Request) *instance.Session {
 	c, err := r.Cookie("d00r")
 	if err != nil {
 		return nil
@@ -135,7 +135,7 @@ func (rr *Router) getSession(r *http.Request) *instance2.Session {
 	if !ok {
 		return nil
 	}
-	return v.(*instance2.Session)
+	return v.(*instance.Session)
 }
 
 func (rr *Router) addModelRoute(modelRoute anyModelRoute) {

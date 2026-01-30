@@ -13,11 +13,10 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/store"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
-	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type ScriptOptions struct {
@@ -26,18 +25,17 @@ type ScriptOptions struct {
 }
 
 type router interface {
-	ImportRegistry() *resources.Registry
+	ResourceRegistry() *resources.Registry
 	CSP() *common.CSP
 	Adapters() map[string]path.AnyAdapter
 	RemoveSession(string)
 	Conf() *common.SystemConf
 	License() license.License
-	Spawner(shredder.OnPanic) *shredder.Spawner
 }
 
 func NewSession(r router) *Session {
 	sess := &Session{
-		store:     store.NewStore(common.CtxKeySessionStore),
+		store:     ctex.NewStore(),
 		id:        common.RandId(),
 		instances: make(map[string]AnyInstance),
 		mu:        sync.Mutex{},
@@ -60,8 +58,8 @@ func (sess *Session) setTTL() {
 }
 
 type Session struct {
-	store     *store.Store
 	mu        sync.Mutex
+	store     ctex.Store
 	killed    bool
 	id        string
 	instances map[string]AnyInstance
@@ -71,24 +69,17 @@ type Session struct {
 	ttl       *time.Timer
 }
 
-func (sess *Session) getRouter() router {
-	return sess.router
-}
-func (sess *Session) getStorage() *store.Store {
-	return sess.store
-}
-
 func (sess *Session) AddInstance(inst AnyInstance) bool {
 	sess.mu.Lock()
 	if sess.killed {
 		sess.mu.Unlock()
 		return false
 	}
-	sess.instances[inst.Id()] = inst
-	toSuspend := sess.limiter.add(inst.Id())
+	sess.instances[inst.ID()] = inst
+	toSuspend := sess.limiter.add(inst.ID())
 	sess.mu.Unlock()
 	if toSuspend != "" {
-		sess.instances[toSuspend].end(causeSuspend)
+		sess.instances[toSuspend].end(common.EndCauseSuspend)
 	}
 	return true
 }
@@ -107,7 +98,7 @@ func (sess *Session) removeInstance(id string) {
 	}
 }
 
-func (sess *Session) Id() string {
+func (sess *Session) ID() string {
 	return sess.id
 }
 
@@ -170,6 +161,6 @@ func (sess *Session) cleanup() {
 		sess.ttl.Stop()
 	}
 	for id := range sess.instances {
-		sess.instances[id].end(causeKilled)
+		sess.instances[id].end(common.EndCauseKilled)
 	}
 }

@@ -13,82 +13,100 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/ctxwg"
-	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/shredder"
 )
 
-type watcher[T any] struct {
+type anyInnerWatcher interface {
+	setContext(context.Context)
+	init(uint) bool
+	sync(context.Context, uint, shredder.SimpleFrame) bool
+	cancel()
+}
+
+type innerWatcher[T any] struct {
+	ctx  context.Context
 	beam Beam[T]
 	w    Watcher[T]
-	init chan struct{}
-	done atomic.Bool
-	s    *door.Screen
-	id   uint
-	seq  uint
-	ctx  context.Context
 }
 
-func newWatcher[T any](beam Beam[T], w Watcher[T]) *watcher[T] {
-	return &watcher[T]{
-		beam: beam,
-		w:    w,
-		init: make(chan struct{}),
-		done: atomic.Bool{},
-		s:    nil,
-		id:   0,
-		seq:  0,
+func (s *innerWatcher[T]) setContext(ctx context.Context) {
+	s.ctx = ctx
+}
+
+func (s *innerWatcher[T]) cancel() {
+	s.w.Cancel()
+}
+
+func (s *innerWatcher[T]) init(seq uint) bool {
+	v, _ := s.beam.sync(seq, nil)
+	if v == nil {
+		panic("init sync logic error:" + fmt.Sprint(seq))
 	}
+	return s.w.Init(s.ctx, v, seq)
 }
 
-func (w *watcher[T]) GetId() uint {
-	return w.id
-}
-
-func (w *watcher[T]) Cancel() {
-	if !w.done.CompareAndSwap(false, true) {
-		return
-	}
-	w.w.Cancel()
-	w.s.UnregWatcher(w.id)
-}
-
-func (w *watcher[T]) Sync(ctx context.Context, seq uint, c *common.FuncCollector) {
-	<-w.init
-	if w.done.Load() {
-		return
-	}
-	v, updated := w.beam.sync(seq, c)
+func (s *innerWatcher[T]) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool {
+	v, updated := s.beam.sync(seq, cleanFrame)
 	if v == nil {
 		panic("update sync logic error:" + fmt.Sprint(seq))
 	}
 	if !updated {
-		return
+		return false
 	}
-	ctx = ctxwg.Infect(ctx, w.ctx)
-	done := w.w.Update(ctx, v, seq)
-	if done {
-		w.done.Store(true)
-		w.s.UnregWatcher(w.id)
-		return
+	ctx = ctex.WgInfect(ctx, s.ctx)
+	return s.w.Update(ctx, v, seq)
+}
+
+type watcher struct {
+	inner     anyInnerWatcher
+	initGuard chan struct{}
+	initSeq   uint
+	done      atomic.Bool
+	screen    *screen
+	ctx       context.Context
+}
+
+func newWatcher[T any](ctx context.Context, beam Beam[T], w Watcher[T]) *watcher {
+	return &watcher{
+		inner: &innerWatcher[T]{
+			beam: beam,
+			w:    w,
+			ctx:  ctx,
+		},
+		initGuard: make(chan struct{}),
 	}
 }
 
-func (w *watcher[T]) Init(ctx context.Context, s *door.Screen, id uint, seq uint) func() {
-	w.seq = seq
-	w.id = id
-	w.s = s
-	w.ctx = ctx
-	v, _ := w.beam.sync(seq, nil)
-	if v == nil {
-		panic("init sync logic error:" + fmt.Sprint(seq))
+func (w *watcher) Cancel() {
+	if !w.done.CompareAndSwap(false, true) {
+		return
 	}
-	return func() {
-		defer close(w.init)
-		done := w.w.Init(ctx, v, seq)
-		if done {
-			w.done.Store(true)
-			w.s.UnregWatcher(w.id)
+	w.inner.cancel()
+	w.screen.removeWatcher(w)
+}
+
+func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) {
+	<-w.initGuard
+	if w.done.Load() {
+		return
+	}
+	if w.inner.sync(ctx, seq, cleanFrame) {
+		if !w.done.CompareAndSwap(false, true) {
+			return
 		}
+		w.screen.removeWatcher(w)
+	}
+}
+
+func (w *watcher) init() {
+	if w.initSeq == 0 {
+		panic("watcher init seq is not set")
+	}
+	done := w.inner.init(w.initSeq)
+	remove := done && w.done.CompareAndSwap(false, done)
+	close(w.initGuard)
+	if remove {
+		w.screen.removeWatcher(w)
 	}
 }
