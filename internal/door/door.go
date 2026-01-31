@@ -84,7 +84,7 @@ func (d *Door) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return cur.Send(node)
 }
 
-func (d *Door) Use(cur gox.Cursor) error {
+func (d *Door) Edit(cur gox.Cursor) error {
 	node := &node{
 		ctx:  cur.Context(),
 		door: d,

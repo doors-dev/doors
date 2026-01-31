@@ -102,7 +102,7 @@ func (k AKeyDown) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(k, cur, elem)
 }
 
-func (k AKeyDown) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (k AKeyDown) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*keyEventHook)(&k).apply("keydown", ctx, attrs)
 }
 
@@ -144,6 +144,6 @@ func (k AKeyUp) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(k, cur, elem)
 }
 
-func (k AKeyUp) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (k AKeyUp) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*keyEventHook)(&k).apply("keyup", ctx, attrs)
 }

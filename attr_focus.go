@@ -119,7 +119,7 @@ func (f AFocus) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(f, cur, elem)
 }
 
-func (f AFocus) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (f AFocus) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusEventHook)(&f).apply("focus", ctx, attrs)
 }
 
@@ -150,7 +150,7 @@ func (b ABlur) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(b, cur, elem)
 }
 
-func (b ABlur) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (b ABlur) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusEventHook)(&b).apply("blur", ctx, attrs)
 }
 
@@ -187,7 +187,7 @@ func (f AFocusIn) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(f, cur, elem)
 }
 
-func (f AFocusIn) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (f AFocusIn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusIOEventHook)(&f).apply("focusin", ctx, attrs)
 }
 
@@ -224,7 +224,7 @@ func (f AFocusOut) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(f, cur, elem)
 }
 
-func (f AFocusOut) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (f AFocusOut) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusIOEventHook)(&f).apply("focusout", ctx, attrs)
 }
 

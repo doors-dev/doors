@@ -14,20 +14,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
-	"github.com/doors-dev/doors/internal/shredder"
+	"github.com/doors-dev/gox"
 )
 
 func NewRouter() (router *Router) {
 	conf := &common.SystemConf{}
 	common.InitDefaults(conf)
 	router = &Router{
-		pool:            shredder.NewPool(conf.InstanceGoroutineLimit),
 		sessions:        sync.Map{},
 		modelAdapters:   make(map[string]path.AnyAdapter),
 		modelRoutes:     make(map[string]anyModelRoute),
@@ -45,7 +43,7 @@ type Route interface {
 	Serve(w http.ResponseWriter, r *http.Request)
 }
 
-type ErrorPageComponent = func(message string) templ.Component
+type ErrorPageComponent = func(message string) gox.Elem
 
 type sessionHooks struct{}
 
@@ -61,7 +59,6 @@ type Router struct {
 	modelRouteList  []anyModelRoute
 	routes          []Route
 	fallback        http.Handler
-	pool            *shredder.Pool
 	errPage         ErrorPageComponent
 	sessionCallback SessionCallback
 	registry        *resources.Registry
@@ -82,9 +79,6 @@ func (rr *Router) ResourceRegistry() *resources.Registry {
 	return rr.registry
 }
 
-func (rr *Router) Spawner(op shredder.OnPanic) *shredder.Spawner {
-	return rr.pool.Spawner(op)
-}
 
 func (rr *Router) RemoveSession(id string) {
 	rr.sessions.Delete(id)

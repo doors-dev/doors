@@ -51,7 +51,7 @@ func (h AHook[T]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(h, cur, elem)
 }
 
-func (h AHook[T]) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	hook, ok := core.RegisterHook(h.handle, nil)
 	if !ok {
@@ -122,7 +122,7 @@ func (h ARawHook) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(h, cur, elem)
 }
 
-func (h ARawHook) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	hook, ok := core.RegisterHook(h.handle, nil)
 	if !ok {
@@ -162,7 +162,7 @@ func (a AData) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(a, cur, elem)
 }
 
-func (a AData) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (a AData) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	front.AttrsSetData(attrs, a.Name, a.Value)
 	return nil
 }
@@ -173,7 +173,7 @@ func (dm ADataMap) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(dm, cur, elem)
 }
 
-func (dm ADataMap) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (dm ADataMap) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	for name, value := range dm {
 		front.AttrsSetData(attrs, name, value)
 	}

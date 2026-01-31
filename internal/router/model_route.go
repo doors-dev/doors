@@ -12,9 +12,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
+	"github.com/doors-dev/gox"
 )
 
 type responseMarker struct{}
@@ -32,7 +32,7 @@ type Request[M any] struct {
 
 type StaticPage struct {
 	Status  int
-	Content templ.Component
+	Content gox.Comp
 }
 
 func (pr *StaticPage) marker() responseMarker {
@@ -46,7 +46,7 @@ type ResponseApp[M any] struct {
 }
 
 type responseAnyApp interface {
-	intoInstance(*instance.Session, *instance.Options) (instance.AnyInstance, bool)
+	intoInstance(*instance.Session, instance.Options) (instance.AnyInstance, bool)
 	getModel() any
 	getAdapter() path.AnyAdapter
 }
@@ -59,7 +59,7 @@ func (pr *ResponseApp[M]) getModel() any {
 	return pr.Model
 }
 
-func (pr *ResponseApp[M]) intoInstance(sess *instance.Session, opt *instance.Options) (instance.AnyInstance, bool) {
+func (pr *ResponseApp[M]) intoInstance(sess *instance.Session, opt instance.Options) (instance.AnyInstance, bool) {
 	return instance.NewInstance(sess, pr.App, pr.Adapter, pr.Model, opt)
 }
 

@@ -149,7 +149,7 @@ func (a ADyn) Value(ctx context.Context, value string) {
 	)
 }
 
-func (a ADyn) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (a ADyn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	core := ctx.Value(ctex.KeyCore).(core.Core)

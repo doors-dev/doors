@@ -80,14 +80,14 @@ func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page responseAnyApp, opt *instance.Options) {
+func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page responseAnyApp, opt instance.Options) {
 	new, session := rr.ensureSession(r, w)
 	inst, ok := page.intoInstance(session, opt)
 	if !ok {
 		if new {
 			panic("New session can't end")
 		}
-		rr.sessions.Delete(session.Id())
+		rr.sessions.Delete(session.ID())
 		rr.servePage(w, r, page, opt)
 		return
 	}
@@ -129,7 +129,7 @@ func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
 	var response Response = nil
 	var page responseAnyApp = nil
 	var counter = 0
-	opt := &instance.Options{
+	opt := instance.Options{
 		Detached: false,
 		Rerouted: false,
 	}

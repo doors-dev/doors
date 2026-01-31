@@ -96,7 +96,7 @@ func (p AClick) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p AClick) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p AClick) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("click", ctx, attrs)
 }
 
@@ -135,7 +135,7 @@ func (p APointerDown) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p APointerDown) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p APointerDown) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("pointerdown", ctx, attrs)
 }
 
@@ -174,7 +174,7 @@ func (p APointerUp) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p APointerUp) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p APointerUp) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("pointerup", ctx, attrs)
 }
 
@@ -213,7 +213,7 @@ func (p APointerMove) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p APointerMove) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p APointerMove) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("pointermove", ctx, attrs)
 }
 
@@ -252,7 +252,7 @@ func (p APointerOver) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p APointerOver) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p APointerOver) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("pointerover", ctx, attrs)
 }
 
@@ -291,7 +291,7 @@ func (p APointerOut) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p APointerOut) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p APointerOut) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("pointerout", ctx, attrs)
 }
 
@@ -330,7 +330,7 @@ func (p APointerEnter) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p APointerEnter) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p APointerEnter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("pointerenter", ctx, attrs)
 }
 
@@ -369,7 +369,7 @@ func (p APointerLeave) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p APointerLeave) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p APointerLeave) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("pointerleave", ctx, attrs)
 }
 
@@ -408,7 +408,7 @@ func (p APointerCancel) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p APointerCancel) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p APointerCancel) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("pointercancel", ctx, attrs)
 }
 
@@ -447,7 +447,7 @@ func (p AGotPointerCapture) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p AGotPointerCapture) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p AGotPointerCapture) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("gotpointercapture", ctx, attrs)
 }
 
@@ -486,6 +486,6 @@ func (p ALostPointerCapture) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p ALostPointerCapture) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p ALostPointerCapture) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("lostpointercapture", ctx, attrs)
 }

@@ -45,7 +45,7 @@ func (s ARawSubmit) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(s, cur, elem)
 }
 
-func (s ARawSubmit) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	hook, ok := core.RegisterHook(s.handle, nil)
 	if !ok {
@@ -106,7 +106,7 @@ func (s ASubmit[V]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(s, cur, elem)
 }
 
-func (s ASubmit[V]) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	hook, ok := core.RegisterHook(s.handle, nil)
 	if !ok {
@@ -196,7 +196,7 @@ func (p AChange) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p AChange) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p AChange) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return eventAttr[ChangeEvent]{
 		capture:   front.ChangeCapture{},
 		scope:     p.Scope,
@@ -236,7 +236,7 @@ func (p AInput) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(p, cur, elem)
 }
 
-func (p AInput) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (p AInput) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return eventAttr[InputEvent]{
 		capture: front.InputCapture{
 			ExcludeValue: p.ExcludeValue,

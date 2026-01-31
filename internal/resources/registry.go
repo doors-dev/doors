@@ -9,12 +9,10 @@
 package resources
 
 import (
-	"bytes"
 	"errors"
-	"io/fs"
 	"net/http"
-	"os"
 	"sync"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal"
 	"github.com/doors-dev/doors/internal/common"
@@ -38,12 +36,12 @@ func NewRegistry(s settings) *Registry {
 }
 
 type Registry struct {
-	settings   settings
-	cache      sync.Map
-	lookup     sync.Map
-	mainScript *Resource
-	mainStyle  *Resource
-	init       sync.Once
+	initGuard atomic.Bool
+	settings    settings
+	cache       sync.Map
+	lookup      sync.Map
+	mainScript  *Resource
+	mainStyle   *Resource
 }
 
 func (rg *Registry) key32(b []byte) [32]byte {
@@ -54,31 +52,38 @@ func (rg *Registry) key16(b []byte) [16]byte {
 	return *(*[16]byte)(b)
 }
 
-func (rg *Registry) initMain() {
-	rg.init.Do(func() {
-		profile := rg.settings.BuildProfiles().Options("")
-		profile.Format = api.FormatIIFE
-		profile.Footer = map[string]string{
-			"js": "_d00r = _d00r.default;",
-		}
-		profile.Bundle = true
-		profile.GlobalName = "_d00r"
-		mainScriptContent, err := BuildFS(internal.ClientSrc, "index.ts", profile)
-		if err != nil {
-			panic(errors.Join(errors.New("Client js build error"), err))
-		}
-		rg.mainScript = NewResource(mainScriptContent, "application/javascript", rg.settings)
-		rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.settings)
-	})
+func (rg *Registry) init() {
+	if !rg.initGuard.CompareAndSwap(false, true) {
+		return
+	}
+	opt := rg.settings.BuildProfiles().Options("")
+	ScriptFS{
+		FS:   internal.ClientSrc,
+		Path: "index.ts",
+		Name: "d00rs",
+	}.Apply(&opt)
+	FormatIIFE{
+		GlobalName: "_d00r",
+		Bundle:     true,
+	}.Apply(&opt)
+	opt.Footer = map[string]string{
+		"js": "_d00r = _d00r.default;",
+	}
+	content, err := buildES(&opt)
+	if err != nil {
+		panic(errors.Join(errors.New("Client js build error"), err))
+	}
+	rg.mainScript = NewResource(content, "application/javascript", rg.settings)
+	rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.settings)
 }
 
 func (rg *Registry) MainStyle() *Resource {
-	rg.initMain()
+	rg.init()
 	return rg.mainStyle
 }
 
 func (rg *Registry) MainScript() *Resource {
-	rg.initMain()
+	rg.init()
 	return rg.mainScript
 }
 
@@ -114,211 +119,106 @@ func (r *Registry) get(key []byte) *Resource {
 	}
 	return entry.(*Resource)
 }
+/*
+func (r *Registry) InlineScript(data string, mode ResourceMode) (*Resource, error) {
+	var res *Resource
+	var key []byte
+	if mode != ModeNoCache {
+		h := blake3.New()
+		h.WriteString("inline")
+		h.WriteString(data)
+		key = h.Sum(nil)
+		res = r.get(key)
+	}
+	if res != nil {
+		return res, nil
+	}
+	opt := r.settings.BuildProfiles().Options("")
+	ScriptEntryString{
+		Content: "_d00r(document.currentScript, async ($on, $data, $hook, $fetch, $G, $ready, $clean, HookErr) => {\n" + data + "\n})",
+		Kind:    KindJS,
+	}.Apply(&opt)
+	FormatDefault{}.Apply(&opt)
+	content, err := buildES(&opt)
+	if err != nil {
+		return nil, err
+	}
+	if key != nil {
+		res = r.create(key, content, mode == ModeHost, "application/javascript")
+	} else {
+		res = NewResource(content, "application/javascript", r.settings)
+	}
+	return res, nil
+} */
 
-func (r *Registry) StyleBytes(content []byte) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("style_bytes")
-	h.Write(content)
-	key := h.Sum(nil)
-	s := r.get(key)
-	if s != nil {
-		return s, nil
+func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string, mode ResourceMode) (*Resource, error) {
+	var res *Resource
+	var key []byte
+	if mode != ModeNoCache {
+		h := blake3.New()
+		h.WriteString("script")
+		h.WriteString(profile)
+		entry.entryID(h)
+		format.formatID(h)
+		key = h.Sum(nil)
+		res = r.get(key)
 	}
-	min, err := common.MinifyCSS(content)
+	if res != nil {
+		return res, nil
+	}
+	var content []byte
+	var err error
+	if _, ok := format.(FormatRaw); ok {
+		content, err = entry.Read()
+	} else {
+		opt := r.settings.BuildProfiles().Options(profile)
+		entry.Apply(&opt)
+		format.Apply(&opt)
+		content, err = buildES(&opt)
+	}
 	if err != nil {
 		return nil, err
 	}
-	return r.create(key, min, true, "text/css"), nil
-}
-func (r *Registry) Style(path string) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("style")
-	h.WriteString(path)
-	key := h.Sum(nil)
-	s := r.get(key)
-	if s != nil {
-		return s, nil
+	if key != nil {
+		res = r.create(key, content, mode == ModeHost, "application/javascript")
+	} else {
+		res = NewResource(content, "application/javascript", r.settings)
 	}
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	min, err := common.MinifyCSS(content)
-	if err != nil {
-		return nil, err
-	}
-	return r.create(key, min, true, "text/css"), nil
+	return res, nil
 }
 
-type InlineMode int
+func (r *Registry) Style(entry StyleEntry, minify bool, mode ResourceMode) (*Resource, error) {
+	var res *Resource
+	var key []byte
+	if mode != ModeNoCache {
+		h := blake3.New()
+		h.WriteString("style")
+		entry.entryID(h)
+		key = h.Sum(nil)
+		res = r.get(key)
+	}
+	if res != nil {
+		return res, nil
+	}
+	var content, err = entry.Read()
+	if err == nil && minify {
+		content, err = common.MinifyCSS(content)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if key != nil {
+		res = r.create(key, content, mode == ModeHost, "text/css")
+	} else {
+		res = NewResource(content, "text/css", r.settings)
+	}
+	return res, nil
+}
+
+type ResourceMode int
 
 const (
-	InlineModeHost InlineMode = iota
-	InlineModeLocal
-	InlineModeNoCache
+	ModeHost ResourceMode = iota
+	ModeCache
+	ModeNoCache
 )
-
-func (r *Registry) InlineStyle(text string, mode InlineMode) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("inline_style")
-	h.WriteString(text)
-	key := h.Sum(nil)
-	var s *Resource
-	if mode != InlineModeNoCache {
-		s = r.get(key)
-	}
-	if s == nil {
-		min, err := common.MinifyCSS(common.AsBytes(text))
-		if err != nil {
-			return nil, err
-		}
-		if mode == InlineModeNoCache {
-			s = NewResource(min, "text/css", r.settings)
-		} else {
-			s = r.create(key, min, mode == InlineModeHost, "text/css")
-		}
-	}
-	return s, nil
-}
-
-func (r *Registry) InlineScript(data string, mode InlineMode) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("inline_js")
-	h.WriteString(data)
-	key := h.Sum(nil)
-	var s *Resource
-	if mode != InlineModeNoCache {
-		s = r.get(key)
-	}
-	if s == nil {
-		buf := &bytes.Buffer{}
-		buf.WriteString("_d00r(document.currentScript, async ($on, $data, $hook, $fetch, $G, $ready, $clean, HookErr) => {\n")
-		buf.WriteString(data)
-		buf.WriteString("\n})")
-		content, err := TransformBytes(buf.Bytes(), r.settings.BuildProfiles().Options(""))
-		if err != nil {
-			return nil, err
-		}
-		if mode == InlineModeNoCache {
-			s = NewResource(content, "application/javascript", r.settings)
-		} else {
-			s = r.create(key, content, mode == InlineModeHost, "application/javascript")
-		}
-	}
-	return  s, nil
-
-}
-
-func (r *Registry) ModuleBundle(entry string, profile string) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("bundle")
-	h.WriteString(entry)
-	h.WriteString(profile)
-	key := h.Sum(nil)
-	s := r.get(key)
-	if s != nil {
-		return s, nil
-	}
-	countent, err := Bundle(entry, r.settings.BuildProfiles().Options(profile))
-	if err != nil {
-		return nil, err
-	}
-	return r.create(key, countent, true, "application/javascript"), nil
-
-}
-
-func (r *Registry) ModuleBundleFS(cacheKey string, fs fs.FS, entry string, profile string) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("bundle_fs")
-	h.WriteString(cacheKey)
-	h.WriteString(entry)
-	h.WriteString(profile)
-	key := h.Sum(nil)
-	s := r.get(key)
-	if s != nil {
-		return s, nil
-	}
-	countent, err := BundleFS(fs, entry, r.settings.BuildProfiles().Options(profile))
-	if err != nil {
-		return nil, err
-	}
-	return r.create(key, countent, true, "application/javascript"), nil
-}
-
-func (r *Registry) Module(path string, profile string) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("module")
-	h.WriteString(path)
-	h.WriteString(profile)
-	key := h.Sum(nil)
-	s := r.get(key)
-	if s != nil {
-		return s, nil
-	}
-	countent, err := Transform(path, r.settings.BuildProfiles().Options(profile))
-	if err != nil {
-		return nil, err
-	}
-	return r.create(key, countent, true, "application/javascript"), nil
-
-}
-
-func (r *Registry) ModuleBytes(content []byte, profile string) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("bytes")
-	h.Write(content)
-	key := h.Sum(nil)
-	s := r.get(key)
-	if s != nil {
-		return s, nil
-	}
-	countent, err := TransformBytes(content, r.settings.BuildProfiles().Options(profile))
-	if err != nil {
-		return nil, err
-	}
-	return r.create(key, countent, true, "application/javascript"), nil
-}
-
-func (r *Registry) ModuleBytesTS(content []byte, profile string) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("bytes_ts")
-	h.Write(content)
-	key := h.Sum(nil)
-	s := r.get(key)
-	if s != nil {
-		return s, nil
-	}
-	countent, err := TransformBytesTS(content, r.settings.BuildProfiles().Options(profile))
-	if err != nil {
-		return nil, err
-	}
-	return r.create(key, countent, true, "application/javascript"), nil
-}
-
-func (r *Registry) JSRaw(path string) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("raw")
-	h.WriteString(path)
-	key := h.Sum(nil)
-	s := r.get(key)
-	if s != nil {
-		return s, nil
-	}
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return r.create(key, content, true, "application/javascript"), nil
-}
-
-func (r *Registry) JSRawBytes(content []byte) (*Resource, error) {
-	h := blake3.New()
-	h.WriteString("raw_bytes")
-	h.Write(content)
-	key := h.Sum(nil)
-	s := r.get(key)
-	if s != nil {
-		return s, nil
-	}
-	return r.create(key, content, true, "application/javascript"), nil
-}

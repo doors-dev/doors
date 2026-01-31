@@ -14,9 +14,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/router"
+	"github.com/doors-dev/gox"
 )
 
 // Router represents the main HTTP router that handles all requests.
@@ -34,13 +34,6 @@ func NewRouter() Router {
 
 // Use represents a router modification that can be used to configure routing behavior.
 type Use = router.Use
-
-// Deprecated: Use UseModel
-func UsePage[M any](handler func(p PageRouter[M], r RPage[M]) PageRoute) Use {
-	return UseModel(func(m ModelRouter[M], r RModel[M]) ModelRoute {
-		return handler(m.(PageRouter[M]), r)
-	})
-}
 
 // UseModel registers a model handler for a path model type M.
 // The model defines path/query patterns via struct tags.
@@ -246,7 +239,7 @@ func UseSystemConf(conf SystemConf) Use {
 
 // UseErrorPage sets a custom error page component for handling internal errors.
 // The component receives the error message as a parameter.
-func UseErrorPage(page func(message string) templ.Component) Use {
+func UseErrorPage(page func(message string) gox.Elem) Use {
 	return router.UseErrorPage(page)
 }
 
@@ -260,7 +253,7 @@ func UseCSP(csp CSP) Use {
 }
 
 // UseLicense verifies and adds license certificate.
-// License is required for commercial production use.
+// License is required for non AGPL3 complient use.
 // You can purchase suitable license at https://doors.dev
 // or via email sales@doors.dev
 func UseLicense(cert string) Use {

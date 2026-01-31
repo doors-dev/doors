@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/common/store"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/mr-tron/base58"
@@ -73,8 +73,8 @@ func SessionRemove(ctx context.Context, key any) any {
 	return store.Remove(ctx, common.CtxKeySessionStore, key)
 }
 
-// InstanceSave stores a key/value in instance-scoped storage,
-// isolated to the current instance. Returns the previous value.
+// InstanceSave stores a key/value in instance-scoped storage.
+// Returns the previous value.
 func InstanceSave(ctx context.Context, key any, value any) any {
 	return store.Swap(ctx, common.CtxKeyInstanceStore, key, value)
 }
@@ -132,5 +132,5 @@ func HashId(string string) string {
 // AllowBlocking returns a context that suppresses warnings when used
 // with blocking X* operations. Use with caution.
 func AllowBlocking(ctx context.Context) context.Context {
-	return common.SetBlockingCtx(ctx)
+	return ctex.SetBlockingCtx(ctx)
 }

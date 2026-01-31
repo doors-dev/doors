@@ -50,15 +50,21 @@ type setup[M any] struct {
 	rerouted bool
 }
 
-func NewInstance[M any](sess *Session, app App[M], adapter *path.Adapter[M], m *M, detached bool, rerouted bool) (AnyInstance, bool) {
+
+type Options struct {
+	Detached bool
+	Rerouted bool
+}
+
+func NewInstance[M any](sess *Session, app App[M], adapter *path.Adapter[M], m *M, opt Options) (AnyInstance, bool) {
 	inst := &Instance[M]{
 		id: common.RandId(),
 		setup: &setup[M]{
 			adapter:  adapter,
 			model:    m,
 			app:      app,
-			detached: detached,
-			rerouted: rerouted,
+			detached: opt.Detached,
+			rerouted: opt.Rerouted,
 		},
 		session: sess,
 		store:   ctex.NewStore(),
@@ -85,7 +91,7 @@ type Instance[M any] struct {
 	killTimer  *killTimer
 	store      ctex.Store
 	csp        *common.CSPCollector
-	importMap  *moduleImportMap
+	importMap  *importMap
 	pageStatus atomic.Int32
 }
 
@@ -117,8 +123,8 @@ func (c *Instance[M]) ResourceRegistry() *resources.Registry {
 	return c.session.router.ResourceRegistry()
 }
 
-func (c *Instance[M]) AddModuleImport(specifier string, path string) {
-	c.importMap.add(specifier, path)
+func (c *Instance[M]) ModuleRegistry() core.ModuleRegistry {
+	return c.importMap
 }
 
 func (c *Instance[M]) CSPCollector() *common.CSPCollector {

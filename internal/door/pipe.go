@@ -79,6 +79,9 @@ func (r *pipe) submit(fun func(ok bool)) {
 
 func (r *pipe) send(job gox.Job) error {
 	switch job := job.(type) {
+	case *gox.JobHeadOpen:
+		job.Attrs.ApplyMods()
+		r.job(job)
 	case *node:
 		job.render(r)
 	case *gox.JobComp:
@@ -102,10 +105,26 @@ func (r *pipe) send(job gox.Job) error {
 func (r *pipe) lookForResource(job gox.Job) error {
 	head, ok := job.(*gox.JobHeadOpen)
 	switch true {
-	case ok && strings.EqualFold(head.Tag, "script") || strings.EqualFold(head.Tag, "style"):
+	case !ok:
+		return r.send(job)
+	case strings.EqualFold(head.Tag, "script"):
 		if src := head.Attrs.Get("src"); src.IsSet() {
 			return r.send(job)
 		}
+		if escape := head.Attrs.Get("escape"); escape.IsSet() {
+			escape.SetBool(false)
+			return r.send(job)
+		}
+		if typ := head.Attrs.Get("type"); typ.IsSet() {
+			typ, _ := typ.ReadString()
+			if !strings.EqualFold(typ, "text/javascript") && !strings.EqualFold(typ, "application/javascript") {
+				return r.send(job)
+			}
+		}
+		r.resourceState = resourceContent
+		r.resourceOpenHead = head
+		return nil
+	case strings.EqualFold(head.Tag, "style"):
 		if escape := head.Attrs.Get("escape"); escape.IsSet() {
 			escape.SetBool(false)
 			return r.send(job)
@@ -129,11 +148,11 @@ func (r *pipe) resourceContent(job gox.Job) error {
 	return nil
 }
 
-func (r *pipe) prepareResource(res *resources.Resource, mode resources.InlineMode, name string, ext string) (string, bool) {
+func (r *pipe) prepareResource(res *resources.Resource, mode resources.ResourceMode, name string, ext string) (string, bool) {
 	if name == "" {
 		name = "inline"
 	}
-	if mode == resources.InlineModeHost {
+	if mode == resources.ModeHost {
 		return fmt.Sprintf("/d00r/r/%s.%s.%s", res.HashString(), name, ext), true
 	} else {
 		hook, ok := r.tracker.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
@@ -160,22 +179,24 @@ func (r *pipe) closeResource(job gox.Job) error {
 	}
 	nocacheAttr := openHead.Attrs.Get("nocache")
 	local := openHead.Attrs.Get("local")
-	var mode resources.InlineMode
+	var mode resources.ResourceMode
 	switch true {
 	case nocacheAttr.IsSet():
 		nocacheAttr.SetBool(false)
-		mode = resources.InlineModeNoCache
+		mode = resources.ModeNoCache
 	case local.IsSet():
 		local.SetBool(false)
-		mode = resources.InlineModeLocal
+		mode = resources.ModeCache
 	default:
-		mode = resources.InlineModeHost
+		mode = resources.ModeHost
 	}
 	name, _ := openHead.Attrs.Get("data-name").ReadString()
 	registry := r.tracker.root.resourceRegistry()
 	switch true {
 	case strings.EqualFold(close.Tag, "script"):
-		res, err := registry.InlineScript(content, mode)
+		res, err := registry.Script(resources.ScriptInline{
+			Content: content,
+		}, resources.FormatDefault{}, "", mode)
 		if err != nil {
 			return err
 		}
@@ -191,7 +212,9 @@ func (r *pipe) closeResource(job gox.Job) error {
 			return err
 		}
 	case strings.EqualFold(close.Tag, "style"):
-		res, err := registry.InlineScript(content, mode)
+		res, err := registry.Style(resources.StyleString{
+			Content: content,
+		}, true, mode)
 		if err != nil {
 			return err
 		}

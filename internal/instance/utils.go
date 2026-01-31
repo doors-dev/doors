@@ -44,26 +44,26 @@ func (t *killTimer) keepAlive() {
 }
 
 
-func newImportMap() *moduleImportMap {
-	return &moduleImportMap{
+func newImportMap() *importMap {
+	return &importMap{
 		storage: make(map[string]string),
 	}
 }
 
-type moduleImportMap struct{
+type importMap struct{
 	mu sync.Mutex
 	storage map[string]string
 }
 
 
-func (i *moduleImportMap) add(specifier string, path string) {
+func (i *importMap) Add(specifier string, path string) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	i.storage[specifier] = path
 }
 
 
-func (i *moduleImportMap) generate() (content []byte, hash []byte) {
+func (i *importMap) generate() (content []byte, hash []byte) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if len(i.storage) == 0 {

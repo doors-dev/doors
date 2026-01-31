@@ -9,15 +9,16 @@
 package doors
 
 import (
-	"github.com/a-h/templ"
-	"github.com/doors-dev/doors/internal/router"
 	"net/http"
+
+	"github.com/doors-dev/doors/internal/router"
+	"github.com/doors-dev/gox"
 )
 
-// App defines a renderable app component, where Render() must output page HTML
+// App defines a renderable app component, where Main() must output page HTML
 // M - the path model type.
 type App[M any] interface {
-	Render(SourceBeam[M]) templ.Component
+	Main(SourceBeam[M]) gox.Elem
 }
 
 // ModelRoute provides the response type for page handlers
@@ -40,9 +41,9 @@ type ModelRouter[M any] interface {
 	// Page renders a Page.
 	App(app App[M]) ModelRoute
 	// PageFunc renders a Page from a function.
-	AppFunc(AppFunc func(SourceBeam[M]) templ.Component) ModelRoute
+	AppFunc(AppFunc func(SourceBeam[M]) gox.Elem) ModelRoute
 	// StaticPage returns a static page with status.
-	StaticPage(content templ.Component, status int) ModelRoute
+	StaticPage(content gox.Comp, status int) ModelRoute
 	// Reroute performs an internal reroute to model (detached=true disables path sync).
 	Reroute(model any, detached bool) ModelRoute
 	// Redirect issues an HTTP redirect to model with status.
@@ -108,32 +109,24 @@ func (r *modelRequest[M]) App(app App[M]) ModelRoute {
 	}
 }
 
-func (r *modelRequest[M]) StaticPage(content templ.Component, status int) ModelRoute {
+func (r *modelRequest[M]) StaticPage(content gox.Comp, status int) ModelRoute {
 	return &router.StaticPage{
 		Content: content,
 		Status:  status,
 	}
 }
 
-type appFunc[M any] func(SourceBeam[M]) templ.Component
+type appFunc[M any] func(SourceBeam[M]) gox.Elem
 
-
-func (af appFunc[M]) Render(model SourceBeam[M]) templ.Component {
+func (af appFunc[M]) Main(model SourceBeam[M]) gox.Elem {
 	return af(model)
 }
 
-func (r *modelRequest[M]) AppFunc(f func(SourceBeam[M]) templ.Component) ModelRoute {
+func (r *modelRequest[M]) AppFunc(f func(SourceBeam[M]) gox.Elem) ModelRoute {
 	return &router.ResponseApp[M]{
-		App: appFunc[M](f),
+		App:     appFunc[M](f),
 		Model:   r.r.Model,
 		Adapter: r.r.Adapter,
 	}
 }
 
-func (r *modelRequest[M]) PageFunc(f func(SourceBeam[M]) templ.Component) PageRoute {
-	return r.AppFunc(f)
-}
-
-func (r *modelRequest[M]) Page(page Page[M]) PageRoute {
-	return r.App(page)
-}

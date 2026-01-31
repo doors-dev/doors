@@ -152,7 +152,7 @@ func (h AHref) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(h, cur, elem)
 }
 
-func (h AHref) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	link, err := core.NewLink(h.Model)
 	if err != nil {
@@ -228,7 +228,7 @@ func (s ARawSrc) init(ctx context.Context) (string, bool) {
 	return src, true
 }
 
-func (s ARawSrc) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (s ARawSrc) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	src, ok := s.init(ctx)
 	if !ok {
 		return nil
@@ -270,7 +270,7 @@ func (s ASrc) init(ctx context.Context) (string, bool) {
 	return  fmt.Sprintf("/d00r/%s/%d/%d/%s", core.InstanceID(), hook.DoorID, hook.HookID, s.Name), true
 }
 
-func (s ASrc) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (s ASrc) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	src, ok := s.init(ctx)
 	if !ok {
 		return nil
@@ -299,7 +299,7 @@ func (s AFileHref) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(s, cur, elem)
 }
 
-func (s AFileHref) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (s AFileHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	link, ok := (*ASrc)(&s).init(ctx)
 	if !ok {
 		return nil
@@ -324,7 +324,7 @@ func (s ARawFileHref) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(s, cur, elem)
 }
 
-func (s ARawFileHref) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (s ARawFileHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	link, ok := (*ARawSrc)(&s).init(ctx)
 	if !ok {
 		return nil

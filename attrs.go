@@ -29,7 +29,7 @@ func (j joinedAttrs) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(j, cur, elem)
 }
 
-func (j joinedAttrs) Apply(ctx context.Context, attrs gox.Attrs) error {
+func (j joinedAttrs) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	attrs.Inherit(j.attrs)
 	return nil
 }
@@ -40,12 +40,12 @@ type Attr interface {
 	gox.Proxy
 }
 
-func AJoin(ctx context.Context, a ...Attr) Attr {
-	 attrs := gox.NewAttrs(ctx)
+func A(ctx context.Context, a ...Attr) Attr {
+	 attrs := gox.NewAttrs()
 	 for _, mod := range a {
 	 	attrs.AddMod(mod)
 	 }
-	 attrs.ApplyMods()
+	 attrs.ApplyMods(ctx, "")
 	 return joinedAttrs{attrs: attrs}
 }
 
@@ -101,7 +101,7 @@ type proxyAttrModPrinter struct {
 
 func (m *proxyAttrModPrinter) Send(job gox.Job) error {
 	if m.mod == nil {
-		return m.cur.Job(job)
+		return m.cur.Send(job)
 	}
 	mod := m.mod
 	m.mod = nil

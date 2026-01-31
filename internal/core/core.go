@@ -40,11 +40,15 @@ func (h *Link) ClickHandler() (func(context.Context), bool) {
 	return h.On, true
 }
 
+type ModuleRegistry interface {
+	Add(specifier string, path string)
+}
+
 type Instance interface {
 	CallCtx(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc
 	CallCheck(check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
 	CSPCollector() *common.CSPCollector
-	AddModuleImport(specifier string, path string)
+	ModuleRegistry() ModuleRegistry
 	ResourceRegistry() *resources.Registry
 	ID() string
 	RootID() uint64
@@ -129,8 +133,8 @@ func (c Core) ResourceRegistry() *resources.Registry {
 	return c.inst.ResourceRegistry()
 }
 
-func (c Core) AddModuleImport(specifier string, path string) {
-	c.inst.AddModuleImport(specifier, path)
+func (c Core) ModuleRegistry() ModuleRegistry {
+	return c.inst.ModuleRegistry()
 }
 
 func (c Core) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, onCancel func(ctx context.Context)) (Hook, bool) {

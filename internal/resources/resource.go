@@ -31,23 +31,6 @@ func NewResource(content []byte, contentType string, s settings) *Resource {
 	}
 }
 
-type InlineResource struct {
-	Attrs    templ.Attributes
-	resource *Resource
-}
-
-func (i *InlineResource) Resource() *Resource {
-	return i.resource
-}
-
-func (i *InlineResource) Content() []byte {
-	return i.resource.content
-}
-
-func (i *InlineResource) Serve(w http.ResponseWriter, r *http.Request) {
-	i.resource.ServeCache(w, r, false)
-}
-
 type Resource struct {
 	hashString  string
 	settings    settings
