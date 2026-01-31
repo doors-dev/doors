@@ -210,12 +210,8 @@ func (s *Thread) Guard() Guard {
 }
 
 func (s *Thread) Frame() Frame {
-	var frame *threadFrame
-	frame = &threadFrame{
-		baseFrame: baseFrame{
-			onComplete: frame.onComplete,
-		},
-	}
+	frame := &threadFrame{}
+	frame.baseFrame.onComplete = frame.onComplete
 	prev := s.frame.Swap(frame)
 	if prev == nil {
 		frame.activate()
@@ -226,13 +222,10 @@ func (s *Thread) Frame() Frame {
 }
 
 func Join(release bool, first AnyFrame, others ...AnyFrame) Frame {
-	var joined *joinedFrame
-	joined = &joinedFrame{
+	joined := &joinedFrame{
 		joinCount: len(others) + 1,
-		baseFrame: baseFrame{
-			onComplete: joined.onComplete,
-		},
 	}
+	joined.baseFrame.onComplete = joined.onComplete
 	first.schedule(joined)
 	if release {
 		if g, ok := first.(Guard); ok {

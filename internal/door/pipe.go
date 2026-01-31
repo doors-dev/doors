@@ -80,7 +80,7 @@ func (r *pipe) submit(fun func(ok bool)) {
 func (r *pipe) send(job gox.Job) error {
 	switch job := job.(type) {
 	case *gox.JobHeadOpen:
-		job.Attrs.ApplyMods()
+		job.Attrs.ApplyMods(job.Ctx, job.Tag)
 		r.job(job)
 	case *node:
 		job.render(r)

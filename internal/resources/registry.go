@@ -69,7 +69,7 @@ func (rg *Registry) init() {
 	opt.Footer = map[string]string{
 		"js": "_d00r = _d00r.default;",
 	}
-	content, err := buildES(&opt)
+	content, err := build(&opt)
 	if err != nil {
 		panic(errors.Join(errors.New("Client js build error"), err))
 	}
@@ -119,37 +119,6 @@ func (r *Registry) get(key []byte) *Resource {
 	}
 	return entry.(*Resource)
 }
-/*
-func (r *Registry) InlineScript(data string, mode ResourceMode) (*Resource, error) {
-	var res *Resource
-	var key []byte
-	if mode != ModeNoCache {
-		h := blake3.New()
-		h.WriteString("inline")
-		h.WriteString(data)
-		key = h.Sum(nil)
-		res = r.get(key)
-	}
-	if res != nil {
-		return res, nil
-	}
-	opt := r.settings.BuildProfiles().Options("")
-	ScriptEntryString{
-		Content: "_d00r(document.currentScript, async ($on, $data, $hook, $fetch, $G, $ready, $clean, HookErr) => {\n" + data + "\n})",
-		Kind:    KindJS,
-	}.Apply(&opt)
-	FormatDefault{}.Apply(&opt)
-	content, err := buildES(&opt)
-	if err != nil {
-		return nil, err
-	}
-	if key != nil {
-		res = r.create(key, content, mode == ModeHost, "application/javascript")
-	} else {
-		res = NewResource(content, "application/javascript", r.settings)
-	}
-	return res, nil
-} */
 
 func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string, mode ResourceMode) (*Resource, error) {
 	var res *Resource
@@ -174,7 +143,7 @@ func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 		opt := r.settings.BuildProfiles().Options(profile)
 		entry.Apply(&opt)
 		format.Apply(&opt)
-		content, err = buildES(&opt)
+		content, err = build(&opt)
 	}
 	if err != nil {
 		return nil, err

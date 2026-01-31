@@ -10,17 +10,13 @@ package doors
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"sync/atomic"
 
 	"github.com/a-h/templ"
-	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front/action"
-	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/gox"
 )
 
@@ -32,11 +28,12 @@ import (
 //
 // A Door is itself a templ.Component and can be used directly in templates:
 //
-//	@door
+//	~(door)
 //	// or
-//	@door {
-//	    // initial HTML content
-//	}
+//	~>(door)
+//	<div>
+//      Initial Content
+//  </div>
 //
 // Doors start inactive and become active when rendered. Operations on inactive doors
 // are stored virtually and applied when the door becomes active. If a door is removed
@@ -134,6 +131,7 @@ func Inject[T any](key any, beam Beam[T], content gox.Comp) gox.Editor {
 		return cur.Editor(door)
 	})
 }
+
 /*
 // If shows children if the beam value is true
 func If(beam Beam[bool]) templ.Component {
@@ -243,7 +241,7 @@ $on("d00r_head", (data) => {
 //
 // Example:
 //
-//	@doors.Head(beam, func(p Path) HeadData {
+//	~(doors.Head(beam, func(p Path) HeadData {
 //	    return HeadData{
 //	        Title: "Product: " + p.Name,
 //	        Meta: map[string]string{
@@ -253,7 +251,7 @@ $on("d00r_head", (data) => {
 //	            "og:description": "Check out this amazing product",
 //	        },
 //	    }
-//	})
+//	}))
 //
 // Parameters:
 //   - b: a Beam providing the input value (usually page path Beam)
@@ -263,27 +261,25 @@ $on("d00r_head", (data) => {
 //   - A templ.Component that renders title and meta elements with remote call scripts.
 func Head[M any](b Beam[M], cast func(M) HeadData) gox.Editor {
 	return editorFunc(func(cur gox.Cursor) error {
-
-		return nil
-	})
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, ok := InstanceSave(ctx, headUsed{}, headUsed{}).(headUsed)
+		_, ok := InstanceSave(cur.Context(), headUsed{}, headUsed{}).(headUsed)
 		if ok {
 			return nil
 		}
-		inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-		door := ctx.Value(common.CtxKeyDoor).(door.Core)
+		core := cur.Context().Value(ctex.KeyCore).(core.Core)
 		currentSeq := &atomic.Uint32{}
-		m, ok := b.ReadAndSub(ctx, func(ctx context.Context, m M) bool {
+		m, ok := b.ReadAndSub(cur.Context(), func(ctx context.Context, m M) bool {
 			seq := currentSeq.Add(1)
-			report := ctxwg.Add(ctx)
-			ok := inst.Spawn(func() {
+			report := ctex.WgAdd(ctx)
+			core.Runtime().Submit(ctx, func(ok bool) {
 				defer report()
+				if !ok {
+					return
+				}
 				newData := cast(m)
 				if seq != currentSeq.Load() {
 					return
 				}
-				inst.CallCheck(
+				core.CallCheck(
 					func() bool {
 						return seq == currentSeq.Load()
 					},
@@ -299,16 +295,13 @@ func Head[M any](b Beam[M], cast func(M) HeadData) gox.Editor {
 								return escapedTags
 							}(),
 						},
-						DoorID: door.Id(),
+						DoorID: core.DoorID(),
 					},
 					nil,
 					nil,
 					action.CallParams{},
 				)
-			})
-			if !ok {
-				report()
-			}
+			}, nil)
 			return false
 		})
 		if !ok {
@@ -321,30 +314,50 @@ func Head[M any](b Beam[M], cast func(M) HeadData) gox.Editor {
 			tags[i] = k
 			i++
 		}
-		_, err := fmt.Fprintf(w, "<title>%s</title>", templ.EscapeString(headData.Title))
-		if err != nil {
+		if err := cur.Init("title"); err != nil {
+			return err
+		}
+		if err := cur.Text(headData.Title); err != nil {
+			return err
+		}
+		if err := cur.Submit(); err != nil {
+			return err
+		}
+		if err := cur.Close(); err != nil {
 			return err
 		}
 		for name, content := range headData.Meta {
-			_, err := fmt.Fprintf(w, "<meta name=\"%s\" content=\"%s\"/>", templ.EscapeString(name), templ.EscapeString(content))
-			if err != nil {
+			if err := cur.InitVoid("meta"); err != nil {
+				return err
+			}
+			if err := cur.AttrSet("name", name); err != nil {
+				return err
+			}
+			if err := cur.AttrSet("content", content); err != nil {
+				return err
+			}
+			if err := cur.Submit(); err != nil {
 				return err
 			}
 		}
-		content := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-			err := AData{
-				Name:  "tags",
-				Value: tags,
-			}.Render(ctx, w)
-			if err != nil {
-				return err
-			}
-			_, err = fmt.Fprintf(w, "<script>%s</script>", headScript)
+		if err := cur.Init("script"); err != nil {
 			return err
-
-		})
-		childenCtx := templ.WithChildren(ctx, content)
-		return Script().Render(childenCtx, w)
+		}
+		if err := cur.AttrMod(AData{
+			Name:  "tags",
+			Value: tags,
+		}); err != nil {
+			return err
+		}
+		if err := cur.Submit(); err != nil {
+			return err
+		}
+		if err := cur.Raw(headScript); err != nil {
+			return err
+		}
+		if err := cur.Close(); err != nil {
+			return err
+		}
+		return nil
 	})
 }
-

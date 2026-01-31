@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
@@ -59,6 +60,10 @@ type Instance interface {
 	Runtime() shredder.Runtime
 	License() license.License
 	SetStatus(int)
+	SessionExpire(time.Duration)
+	SessionEnd()
+	InstanceEnd()
+	SessionID() string
 }
 
 type Door interface {
@@ -81,6 +86,22 @@ var _ beam.Core = &core{}
 type core struct {
 	door Door
 	inst Instance
+}
+
+func (c Core) SessionExpire(d time.Duration) {
+	c.inst.SessionExpire(d)
+}
+
+func (c Core) SessionEnd() {
+	c.inst.SessionEnd()
+}
+
+func (c Core) InstanceEnd() {
+	c.inst.InstanceEnd()
+}
+
+func (c Core) SessionID() string {
+	return c.inst.SessionID()
 }
 
 func (c Core) Runtime() shredder.Runtime {

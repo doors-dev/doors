@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
@@ -49,7 +50,6 @@ type setup[M any] struct {
 	detached bool
 	rerouted bool
 }
-
 
 type Options struct {
 	Detached bool
@@ -95,6 +95,21 @@ type Instance[M any] struct {
 	pageStatus atomic.Int32
 }
 
+func (i *Instance[M]) SessionExpire(d time.Duration) {
+	i.session.SetExpiration(d)
+}
+
+func (i *Instance[M]) SessionEnd() {
+	i.session.Kill()
+}
+
+func (i *Instance[M]) InstanceEnd() {
+	i.end(common.EndCauseKilled)
+}
+
+func (i *Instance[M]) SessionID() string {
+	return i.session.ID()
+}
 func (d *Instance[M]) SetStatus(status int) {
 	d.pageStatus.Store(int32(status))
 }
@@ -154,6 +169,7 @@ func (inst *Instance[M]) init() error {
 	}
 	ctx := inst.session.store.Inject(context.Background(), ctex.KeySessionStore)
 	ctx = inst.store.Inject(ctx, ctex.KeyInstanceStore)
+	ctx = context.WithValue(ctx, ctex.KeyAdapters, inst.session.router.Adapters())
 	inst.runtime = shredder.NewRuntime(ctx, inst.Conf().InstanceGoroutineLimit, inst)
 	inst.root = door.NewRoot(inst)
 	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Conf()))

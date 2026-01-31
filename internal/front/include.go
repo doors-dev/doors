@@ -19,7 +19,7 @@ import (
 var Include = gox.Elem(func(cur gox.Cursor) error {
 	core := cur.Context().Value(ctex.KeyCore).(core.Core)
 	conf := core.Conf()
-	registry := core.ImportRegistry()
+	registry := core.ResourceRegistry()
 	style := registry.MainStyle()
 	script := registry.MainScript()
 	if err := cur.InitVoid("link"); err != nil {

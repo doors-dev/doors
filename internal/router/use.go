@@ -43,7 +43,6 @@ func UseSystemConf(conf common.SystemConf) Use {
 	return useFunc(func(rr *Router) {
 		common.InitDefaults(&conf)
 		rr.conf = &conf
-		rr.pool.Tune(conf.InstanceGoroutineLimit)
 	})
 }
 

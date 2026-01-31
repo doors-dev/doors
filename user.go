@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/mr-tron/base58"
 	"github.com/zeebo/blake3"
@@ -23,72 +23,72 @@ import (
 
 // SessionExpire sets the maximum lifetime of the current session.
 func SessionExpire(ctx context.Context, d time.Duration) {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	inst.SessionExpire(d)
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core.SessionExpire(d)
 }
 
 // SessionEnd immediately ends the current session and all instances.
 // Use during logout to close authorized pages and free server resources.
 func SessionEnd(ctx context.Context) {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	inst.SessionEnd()
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core.SessionEnd()
 }
 
 // InstanceEnd ends the current instance (tab/window) but keeps the session
 // and other instances active.
 func InstanceEnd(ctx context.Context) {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	inst.End()
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core.InstanceEnd()
 }
 
 // InstanceId returns the unique ID of the current instance.
 // Useful for logging, debugging, and tracking connections.
 func InstanceId(ctx context.Context) string {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	return inst.Id()
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	return core.InstanceID()
 }
 
 // SessionId returns the unique ID of the current session.
 // All instances in the same browser share this ID via a session cookie.
 func SessionId(ctx context.Context) string {
-	inst := ctx.Value(common.CtxKeyInstance).(instance.Core)
-	return inst.SessionId()
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	return core.SessionID()
 }
 
 // SessionSave stores a key/value in session-scoped storage shared by all
 // instances in the session. Returns the previous value under the key.
 func SessionSave(ctx context.Context, key any, value any) any {
-	return store.Swap(ctx, common.CtxKeySessionStore, key, value)
+	return ctex.StoreSwap(ctx, ctex.KeySessionStore, key, value)
 }
 
 // SessionLoad gets a value from session-scoped storage by key.
 // Returns nil if absent. Callers must type-assert the result.
 func SessionLoad(ctx context.Context, key any) any {
-	return store.Load(ctx, common.CtxKeySessionStore, key)
+	return ctex.StoreLoad(ctx, ctex.KeySessionStore, key)
 }
 
 // SessionRemove deletes a key/value from session-scoped storage.
 // Returns the removed value or nil if absent.
 func SessionRemove(ctx context.Context, key any) any {
-	return store.Remove(ctx, common.CtxKeySessionStore, key)
+	return ctex.StoreRemove(ctx, ctex.KeySessionStore, key)
 }
 
 // InstanceSave stores a key/value in instance-scoped storage.
 // Returns the previous value.
 func InstanceSave(ctx context.Context, key any, value any) any {
-	return store.Swap(ctx, common.CtxKeyInstanceStore, key, value)
+	return ctex.StoreSwap(ctx, ctex.KeyInstanceStore, key, value)
 }
 
 // InstanceLoad gets a value from instance-scoped storage by key.
 // Returns nil if absent. Callers must type-assert the result.
 func InstanceLoad(ctx context.Context, key any) any {
-	return store.Load(ctx, common.CtxKeyInstanceStore, key)
+	return ctex.StoreLoad(ctx, ctex.KeyInstanceStore, key)
 }
 
 // InstanceRemove deletes a key/value from instance-scoped storage.
 // Returns the removed value or nil if absent.
 func InstanceRemove(ctx context.Context, key any) any {
-	return store.Remove(ctx, common.CtxKeyInstanceStore, key)
+	return ctex.StoreRemove(ctx, ctex.KeyInstanceStore, key)
 }
 
 // Location represents a URL built from a path model: path plus query.
@@ -99,7 +99,7 @@ type Location = path.Location
 // for the model's type.
 // Returns an error if no adapter is registered or encoding fails.
 func NewLocation(ctx context.Context, model any) (Location, error) {
-	adapters := ctx.Value(common.CtxKeyAdapters).(map[string]path.AnyAdapter)
+	adapters := ctx.Value(ctex.KeyAdapters).(map[string]path.AnyAdapter)
 	name := path.GetAdapterName(model)
 	adapter, ok := adapters[name]
 	if !ok {

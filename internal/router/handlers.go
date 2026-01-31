@@ -9,6 +9,7 @@
 package router
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
@@ -166,8 +168,8 @@ main:
 					res.Status = http.StatusOK
 				}
 				w.WriteHeader(res.Status)
-				// ctx := context.WithValue(r.Context(), common.CtxKeyAdapters, rr.Adapters())
-				// res.Content.Render(ctx, w)
+				ctx := context.WithValue(r.Context(), ctex.KeyAdapters, rr.Adapters())
+				res.Content.Main().Render(ctx, w)
 				return true
 			case *ResponseReroute:
 				if res.Detached {
