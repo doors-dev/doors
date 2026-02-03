@@ -406,7 +406,7 @@ type Results = Map<number, [any, undefined] | [undefined, string]>
 class Tracker {
 	private buffered: Results = new Map()
 	process(p: Package) {
-		const [ok, err] = action(p.action, p.arg, { payload: p.payload })
+		const [ok, err] = action(p.action, p.arg, { payload: p.getPayload() })
 		this.buffered.set(p.end, [ok, err?.message])
 	}
 	return(collected: Results) {
