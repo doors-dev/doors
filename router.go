@@ -23,7 +23,7 @@ import (
 // It implements http.Handler and provides configuration through Use().
 type Router interface {
 	http.Handler
-	Use(...Use)
+	Use(r Use)
 }
 
 // NewRouter creates a new router instance with default configuration.
@@ -47,13 +47,13 @@ type Use = router.Use
 //	    ID   int                                  // Captured from :ID parameter
 //	    Tag  *string `query:"tag"`               // Query parameter ?tag=golang
 //	}
-func UseModel[M any](handler func(m ModelRouter[M], r RModel[M]) ModelRoute) Use {
-	return router.UseModel(func(r *router.Request[M]) router.Response {
+func UseModel[M any](r Router, handler func(m ModelRouter[M], r RModel[M]) ModelRoute) {
+	r.Use(router.UseModel(func(r *router.Request[M]) router.Response {
 		mr := &modelRequest[M]{
 			r: r,
 		}
 		return handler(mr, mr)
-	})
+	}))
 }
 
 type Route = router.Route
@@ -203,14 +203,14 @@ func (rt RouteFile) Serve(w http.ResponseWriter, r *http.Request) {
 // A Route must implement:
 //   - Match(*http.Request) bool: whether the route handles the request
 //   - Serve(http.ResponseWriter, *http.Request): serve the matched request
-func UseRoute(r Route) Use {
-	return router.UseRoute(r)
+func UseRoute(r Router, rt Route) {
+	r.Use(router.UseRoute(rt))
 }
 
 // UseFallback sets a fallback handler for requests that don't match any routes.
 // This is useful for integrating with other HTTP handlers or serving custom 404 pages.
-func UseFallback(handler http.Handler) Use {
-	return router.UseFallback(handler)
+func UseFallback(r Router, handler http.Handler) {
+   r.Use(router.UseFallback(handler))
 }
 
 type SessionCallback = router.SessionCallback
@@ -218,14 +218,14 @@ type SessionCallback = router.SessionCallback
 // UseSessionCallback registers callbacks for session lifecycle events.
 // The Create callback is called when a new session is created.
 // The Delete callback is called when a session is removed.
-func UseSessionCallback(callback SessionCallback) Use {
-	return router.UseSessionCallback(callback)
+func UseSessionCallback(r Router, callback SessionCallback) {
+	r.Use(router.UseSessionCallback(callback))
 }
 
 // UseESConf configures esbuild profiles for JavaScript/TypeScript processing.
 // Different profiles can be used for development vs production builds.
-func UseESConf(conf ESConf) Use {
-	return router.UseESConf(conf)
+func UseESConf(r Router, conf ESConf) {
+	r.Use(router.UseESConf(conf))
 }
 
 // SystemConf contains system-wide configuration options for the framework.
@@ -233,14 +233,14 @@ type SystemConf = common.SystemConf
 
 // UseSystemConf applies system-wide configuration including timeouts,
 // limits, and other framework behavior settings.
-func UseSystemConf(conf SystemConf) Use {
-	return router.UseSystemConf(conf)
+func UseSystemConf(r Router, conf SystemConf) {
+	r.Use(router.UseSystemConf(conf))
 }
 
 // UseErrorPage sets a custom error page component for handling internal errors.
 // The component receives the error message as a parameter.
-func UseErrorPage(page func(message string) gox.Elem) Use {
-	return router.UseErrorPage(page)
+func UseErrorPage(r Router, page func(message string) gox.Elem) {
+	r.Use(router.UseErrorPage(page))
 }
 
 // CSP represents Content Security Policy configuration.
@@ -248,14 +248,14 @@ type CSP = common.CSP
 
 // UseCSP configures Content Security Policy headers for enhanced security.
 // This helps prevent XSS attacks and other security vulnerabilities.
-func UseCSP(csp CSP) Use {
-	return router.UseCSP(&csp)
+func UseCSP(r Router, csp CSP) {
+	r.Use(router.UseCSP(&csp))
 }
 
 // UseLicense verifies and adds license certificate.
 // License is required for non AGPL3 complient use.
 // You can purchase suitable license at https://doors.dev
 // or via email sales@doors.dev
-func UseLicense(cert string) Use {
-	return router.UseLicense(cert)
+func UseLicense(r Router, cert string) {
+	r.Use(router.UseLicense(cert))
 }

@@ -157,7 +157,7 @@ func (r *pipe) prepareResource(res *resources.Resource, mode resources.ResourceM
 		name = "inline"
 	}
 	if mode == resources.ModeHost {
-		return fmt.Sprintf("/d00r/r/%s.%s.%s", res.HashString(), name, ext), true
+		return fmt.Sprintf("/~0/r/%s.%s.%s", res.HashString(), name, ext), true
 	} else {
 		hook, ok := r.tracker.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			res.Serve(w, r)
@@ -166,7 +166,7 @@ func (r *pipe) prepareResource(res *resources.Resource, mode resources.ResourceM
 		if !ok {
 			return "", false
 		}
-		return fmt.Sprintf("/d00r/%s/%d/%d/%s.%s", r.tracker.root.inst.ID(), hook.DoorID, hook.HookID, name, ext), true
+		return fmt.Sprintf("/~0/%s/%d/%d/%s.%s", r.tracker.root.inst.ID(), hook.DoorID, hook.HookID, name, ext), true
 	}
 
 }

@@ -193,7 +193,7 @@ func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}
 	active := h.active()
 	if active != nil {
-		attrs.Get("data-d00r-active").SetObject(active)
+		front.AttrsSetActive(attrs, active)
 	}
 	return nil
 }
@@ -221,7 +221,7 @@ func (s ARawSrc) init(ctx context.Context) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	src := fmt.Sprintf("/d00r/%s/%d/%d", core.InstanceID(), hook.DoorID, hook.HookID)
+	src := fmt.Sprintf("/~0/%s/%d/%d", core.InstanceID(), hook.DoorID, hook.HookID)
 	if s.Name != "" {
 		src = src + "/" + s.Name
 	}
@@ -267,7 +267,7 @@ func (s ASrc) init(ctx context.Context) (string, bool) {
 	if s.Name == "" {
 		s.Name = filepath.Base(s.Path)
 	}
-	return  fmt.Sprintf("/d00r/%s/%d/%d/%s", core.InstanceID(), hook.DoorID, hook.HookID, s.Name), true
+	return  fmt.Sprintf("/~0/%s/%d/%d/%s", core.InstanceID(), hook.DoorID, hook.HookID, s.Name), true
 }
 
 func (s ASrc) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

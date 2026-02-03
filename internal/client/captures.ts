@@ -10,29 +10,34 @@ import { fetchOpt, fetchOptJson, fetchOptForm, date } from "./lib";
 import navigator from "./navigator";
 
 interface EventOpt {
-    preventDefault?: boolean;
-    stopPropagation?: boolean;
-    exactTarget?: boolean;
-    filter?: Array<string> | null;
+	// preventDefault
+    pd?: boolean;
+	// stopPropagation
+    sp?: boolean;
+	// exactTarget
+    et?: boolean;
+	// filter
+    fr?: Array<string> | null;
 }
 interface InputOpt {
-    excludeValue: boolean;
+	// exclude value
+    ev: boolean;
 }
 
 function applyEventOpt(event: Event, opt: EventOpt): boolean {
-    if (opt.exactTarget) {
+    if (opt.et) {
         if (event.target !== event.currentTarget) {
             return false
         }
     }
-    if (opt.preventDefault) {
+    if (opt.pd) {
         event.preventDefault();
     }
-    if (opt.stopPropagation) {
+    if (opt.sp) {
         event.stopPropagation();
     }
-    if (opt.filter && opt.filter.length > 0) {
-        if (!opt.filter.includes(event['key'])) {
+    if (opt.fr && opt.fr.length > 0) {
+        if (!opt.fr.includes(event['key'])) {
             return false
         }
     }
@@ -81,7 +86,7 @@ export default {
     },
 
     link(event: MouseEvent, opt: EventOpt) {
-        opt.preventDefault = true;
+        opt.pd = true;
         if (!applyEventOpt(event, opt)) {
             return undefined
         }
@@ -160,7 +165,7 @@ export default {
         return fetchOptJson({
             type: event.type,
             data: event.data,
-            ...opt.excludeValue === true ? {} : getInputValues(event.target as HTMLInputElement | HTMLSelectElement),
+            ...opt.ev === true ? {} : getInputValues(event.target as HTMLInputElement | HTMLSelectElement),
             timestamp: date(new Date()),
         });
     },
@@ -173,7 +178,7 @@ export default {
     },
 
     submit(event: SubmitEvent) {
-        applyEventOpt(event, { preventDefault: true });
+        applyEventOpt(event, { pd: true });
         const form = event.target as HTMLFormElement;
         const formData = new FormData(form);
         return fetchOptForm(formData);

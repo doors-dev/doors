@@ -14,27 +14,27 @@ const agplMsg = "AGPL-3.0-only mode (see LICENSE).";
 if (license == null) {
 	console.info("[doors] " + agplMsg);
 } else {
-    const [id, tier, domain] = license
-    const isLocalHost = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)
-    const correctDomain = domain === "*" || location.hostname === domain || location.hostname.endsWith("." + domain);
-    if (!isLocalHost && !correctDomain) {
-        console.warn(
-            [
-                "[doors] Invalid license provided.",
-                "Id: " + id,
-                "Licensed domain: " + domain,
+	const [id, tier, domain] = license
+	const isLocalHost = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)
+	const correctDomain = domain === "*" || location.hostname === domain || location.hostname.endsWith("." + domain);
+	if (!isLocalHost && !correctDomain) {
+		console.warn(
+			[
+				"[doors] Invalid license provided.",
+				"Id: " + id,
+				"Licensed domain: " + domain,
 				"AGPL-3.0-only mode (see LICENSE).",
-            ].join("\n")
-        );
-    } else {
-        console.info(
-            [
-                "[doors] " + tier + " license provided.",
-                ...isLocalHost ? ["Running in localhost mode.", "Licensed domain: " + domain] : [],
-                "Id: " + id,
-            ].join("\n")
-        );
-    }
+			].join("\n")
+		);
+	} else {
+		console.info(
+			[
+				"[doors] " + tier + " license provided.",
+				...isLocalHost ? ["Running in localhost mode.", "Licensed domain: " + domain] : [],
+				"Id: " + id,
+			].join("\n")
+		);
+	}
 }
 
 export const id: string = document.currentScript!.id
@@ -44,3 +44,4 @@ export const disconnectAfter: number = Number(document.currentScript!.dataset.di
 export const requestTimeout: number = Number(document.currentScript!.dataset.request)
 export const solitairePing: number = Number(document.currentScript!.dataset.ping)
 export const detached: boolean = document.currentScript!.dataset.detached !== undefined
+export const noGzip: boolean = document.currentScript!.dataset.nogzip !== undefined

@@ -29,7 +29,7 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.AttrSet("rel", "stylesheet"); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("href", fmt.Sprintf("/%s.d00r.css", style.HashString())); err != nil {
+		if err := cur.AttrSet("href", fmt.Sprintf("/~0/%s.css", style.HashString())); err != nil {
 			return err
 		}
 	}
@@ -40,7 +40,7 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		return err
 	}
 	{
-		if err := cur.AttrSet("src", fmt.Sprintf("/%s.d00r.js", script.HashString())); err != nil {
+		if err := cur.AttrSet("src", fmt.Sprintf("/~0/%s.js", script.HashString())); err != nil {
 			return err
 		}
 		if err := cur.AttrSet("id", core.InstanceID()); err != nil {
@@ -62,6 +62,9 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 			return err
 		}
 		if err := cur.AttrSetBool("data-detached", core.Detached()); err != nil {
+			return err
+		}
+		if err := cur.AttrSetBool("data-nogzip", conf.ServerDisableGzip); err != nil {
 			return err
 		}
 		lic := core.License()

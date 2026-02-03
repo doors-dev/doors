@@ -17,8 +17,8 @@ type Handler = ((arg: any) => any) | ((arg: any, err: HookErr) => any)
 type Closure = () => void | Promise<void>
 
 
-const attr = "data-d00r"
-const tag = "d0-0r"
+const attr = "data-d0r"
+const tag = "d0-r"
 
 type DoorElement = Element & {
 	_d00r: {

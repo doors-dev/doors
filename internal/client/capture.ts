@@ -90,7 +90,7 @@ export function capture(name: string, opt: any, arg: any, event: Event | undefin
     return h.capture(name, opt, arg)
 }
 
-const attr = "data-d00r-capture"
+const attr = "data-d0c"
 export function attach(parent: Element | DocumentFragment | Document) {
     for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attr}="applied"])`)) {
         const capturesList = JSON.parse(element.getAttribute(attr)!)

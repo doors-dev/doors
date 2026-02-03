@@ -106,7 +106,7 @@ func (m *proxyAttrModPrinter) Send(job gox.Job) error {
 	mod := m.mod
 	m.mod = nil
 	open, ok := job.(*gox.JobHeadOpen)
-	if !ok || open.Kind == gox.KindContainer || open.Tag == "d0-0r" || open.Attrs.Get("data-d00r").IsSet() {
+	if !ok || open.Kind == gox.KindContainer || open.Tag == "d0-r" || open.Attrs.Get("data-d0r").IsSet() {
 		slog.Error("Can't attach attribute modifer on non-tag or door")
 	} else {
 		open.Attrs.AddMod(mod)

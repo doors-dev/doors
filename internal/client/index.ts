@@ -12,7 +12,7 @@ import { HookErr, hookErrKinds } from './capture'
 import controller from './controller'
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
-    const attrName = `data-d00r-hook:${name}`
+    const attrName = `data-d0h:${name}`
     const value = element.getAttribute(attrName)
     if (value == null) return undefined
     return JSON.parse(value)
@@ -54,7 +54,7 @@ class $D {
     }
 
     data = (name: string): any => {
-        const attrName = `data-d00r-data:${name}`
+        const attrName = `data-d0d-${name}`
         const value = this.anchor.getAttribute(attrName)
         if (value == null) return undefined
         return JSON.parse(value)

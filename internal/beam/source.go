@@ -95,6 +95,9 @@ func (s *source[T]) getID() common.ID {
 func (s *source[T]) addSub(sc *screen) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.subs == nil {
+		s.subs = common.NewSet[*screen]()
+	}
 	s.subs.Add(sc)
 	sc.init(s, s.seq)
 }
@@ -112,6 +115,7 @@ func NewSourceBeamEqual[T any](init T, equal func(new T, old T) bool) SourceBeam
 		values: map[uint]*T{
 			1: &init,
 		},
+		subs:  common.NewSet[*screen](),
 		equal: equal,
 	}
 }

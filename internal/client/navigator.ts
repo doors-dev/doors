@@ -29,7 +29,7 @@ type Cache = {
     url: URL,
     settings: any
 }
-const attrName = "data-d00r-active"
+const attrName = "data-d0a"
 
 export class Navigator {
     private cache = new WeakMap<Element, Cache>()
@@ -164,7 +164,7 @@ export class Navigator {
         try {
             const r = await fetch(this.urlToStr(url), {
                 method: "GET",
-                headers: { "D00r": this.id },
+                headers: { "D0-r": this.id },
             });
             if (!r.ok) {
                 throw new Error("code " + r.status);

@@ -112,7 +112,7 @@ func (n *node) updatedTakeover(prev *node) {
 		return
 	}
 	rootFrame := shredder.ValveFrame{}
-	printer := common.NewBufferPrinter()
+	printer := common.NewBufferPrinter(n.tracker.root.inst.Conf().ServerDisableGzip)
 	pipe := newPipe(&rootFrame)
 	pipe.printer = printer
 	pipe.tracker = n.tracker
@@ -133,6 +133,7 @@ func (n *node) updatedTakeover(prev *node) {
 			n.cancel()
 			return
 		}
+		printer.Finalize()
 		n.tracker.root.inst.Call(&call{
 			ctx:     n.tracker.ctx,
 			action:  action.DoorUpdate{ID: n.tracker.id},
@@ -201,7 +202,7 @@ func (n *node) replaceTakeover(prev *node) {
 		return
 	}
 	rootFrame := shredder.ValveFrame{}
-	printer := common.NewBufferPrinter()
+	printer := common.NewBufferPrinter(n.tracker.root.inst.Conf().ServerDisableGzip)
 	pipe := newPipe(&rootFrame)
 	pipe.printer = printer
 	pipe.tracker = parent
@@ -222,6 +223,7 @@ func (n *node) replaceTakeover(prev *node) {
 			n.cancel()
 			return
 		}
+		printer.Finalize()
 		n.tracker.root.inst.Call(&call{
 			ctx:     parent.ctx,
 			action:  action.DoorReplace{ID: id},

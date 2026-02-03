@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/instance"
@@ -25,12 +26,12 @@ import (
 	"github.com/mr-tron/base58"
 )
 
-var instanceRegexp = regexp.MustCompile(`^/d00r/([0-9a-zA-Z]+)$`)
-var hookRegexp = regexp.MustCompile(`/d00r/([0-9a-zA-Z]+)/(\d+)/(\d+)(/[^/]+)?`)
-var importRegexp = regexp.MustCompile(`/d00r/r/([0-9a-zA-Z]+)\.([^/]+)`)
+var instanceRegexp = regexp.MustCompile(`^([0-9a-zA-Z]+)$`)
+var hookRegexp = regexp.MustCompile(`^([0-9a-zA-Z]+)/(\d+)/(\d+)(/[^/]+)?`)
+var importRegexp = regexp.MustCompile(`^r/([0-9a-zA-Z]+)\.([^/]+)`)
 
 func ResourcePath(r *resources.Resource, ext string) string {
-	return fmt.Sprint("/d00r/r/" + r.HashString() + "." + ext)
+	return fmt.Sprint("/~0/r/" + r.HashString() + "." + ext)
 }
 
 func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceID string, doorID uint64, hookID uint64, track uint64) {
@@ -121,7 +122,7 @@ func (rr *Router) restorePath(w http.ResponseWriter, r *http.Request, instId str
 }
 
 func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
-	instId := r.Header.Get("D00r")
+	instId := r.Header.Get("D0-r")
 	if instId != "" {
 		rr.restorePath(w, r, instId)
 		return true
@@ -257,22 +258,19 @@ func (rr *Router) tryServePut(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (rr *Router) tryServeJs(w http.ResponseWriter, r *http.Request) bool {
-	main := rr.registry.MainScript()
-	if r.URL.Path != "/"+main.HashString()+".d00r.js" {
-		return false
-	}
-	main.Serve(w, r)
-	return true
-}
 
-func (rr *Router) tryServeCss(w http.ResponseWriter, r *http.Request) bool {
-	main := rr.registry.MainStyle()
-	if r.URL.Path != "/"+main.HashString()+".d00r.css" {
-		return false
+func (rr *Router) tryServeAssets(w http.ResponseWriter, r *http.Request) bool {
+	script := rr.registry.MainScript()
+	if r.URL.Path == script.HashString()+".js" {
+		script.Serve(w, r)
+		return true
 	}
-	main.Serve(w, r)
-	return true
+	style := rr.registry.MainStyle()
+	if r.URL.Path == style.HashString()+".css" {
+		style.Serve(w, r)
+		return true
+	}
+	return false
 }
 
 func (rr *Router) tryServeRoute(w http.ResponseWriter, r *http.Request) bool {
@@ -286,7 +284,7 @@ func (rr *Router) tryServeRoute(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 
-func (rr *Router) tryServeImport(w http.ResponseWriter, r *http.Request) bool {
+func (rr *Router) tryServeResource(w http.ResponseWriter, r *http.Request) bool {
 	matches := importRegexp.FindStringSubmatch(r.URL.Path)
 	if len(matches) == 0 {
 		return false
@@ -302,18 +300,9 @@ func (rr *Router) tryServeImport(w http.ResponseWriter, r *http.Request) bool {
 
 }
 
-func (rr *Router) tryServeGet(w http.ResponseWriter, r *http.Request) bool {
+func (rr *Router) tryServePages(w http.ResponseWriter, r *http.Request) bool {
 	if r.Method != "GET" {
 		return false
-	}
-	if rr.tryServeJs(w, r) {
-		return true
-	}
-	if rr.tryServeCss(w, r) {
-		return true
-	}
-	if rr.tryServeImport(w, r) {
-		return true
 	}
 	if rr.tryServeRoute(w, r) {
 		return true
@@ -324,14 +313,33 @@ func (rr *Router) tryServeGet(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 
-func (rr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (rr *Router) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
+	url := r.URL.Path
+	if !strings.HasPrefix(url, "/~0/") {
+		return false
+	}
+	r.URL.Path = strings.TrimPrefix(url, "/~0/")
+	if rr.tryServeAssets(w, r) {
+		return true
+	}
+	if rr.tryServeResource(w, r) {
+		return true
+	}
 	if rr.tryServeHook(w, r) {
-		return
+		return true
 	}
 	if rr.tryServePut(w, r) {
+		return true
+	}
+	r.URL.Path = url
+	return false
+}
+
+func (rr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if rr.tryServeUtility(w, r) {
 		return
 	}
-	if rr.tryServeGet(w, r) {
+	if rr.tryServePage(w, r) {
 		return
 	}
 	if rr.fallback != nil {

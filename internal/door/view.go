@@ -20,18 +20,18 @@ func (v *view) headFrame(parentCtx context.Context, doorID uint64, headID uint64
 		return gox.NewJobHeadOpen(
 				headID,
 				gox.KindRegular,
-				"d0-0r",
+				"d0-r",
 				parentCtx,
 				attrs,
 			), gox.NewJobHeadClose(
 				headID,
 				gox.KindRegular,
-				"d0-0r",
+				"d0-r",
 				parentCtx,
 			)
 	}
 	attrs := v.attrs.Clone()
-	attrs.Get("data-d00r").Set(fmt.Sprintf("%d", doorID))
+	attrs.Get("data-d0r").Set(fmt.Sprintf("%d", doorID))
 	return gox.NewJobHeadOpen(
 			headID,
 			gox.KindRegular,

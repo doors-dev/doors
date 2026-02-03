@@ -15,9 +15,9 @@ type Capture interface {
 
 type PointerCapture struct {
 	Event           string `json:"-"`
-	PreventDefault  bool   `json:"preventDefault"`
-	StopPropagation bool   `json:"stopPropagation"`
-	ExactTarget     bool   `json:"exactTarget"`
+	PreventDefault  bool   `json:"pd"`
+	StopPropagation bool   `json:"sp"`
+	ExactTarget     bool   `json:"et"`
 }
 
 func (pc PointerCapture) Name() string {
@@ -31,9 +31,9 @@ func (pc PointerCapture) Listen() string {
 type KeyboardEventCapture struct {
 	Event           string   `json:"-"`
 	Filter          []string `json:"filter"`
-	PreventDefault  bool     `json:"preventDefault"`
-	StopPropagation bool     `json:"stopPropagation"`
-	ExactTarget     bool     `json:"exactTarget"`
+	PreventDefault  bool     `json:"pd"`
+	StopPropagation bool     `json:"sp"`
+	ExactTarget     bool     `json:"et"`
 }
 
 func (c KeyboardEventCapture) Name() string {
@@ -56,7 +56,7 @@ func (c FormCapture) Listen() string {
 }
 
 type LinkCapture struct {
-	StopPropagation bool `json:"stopPropagation"`
+	StopPropagation bool `json:"sp"`
 }
 
 func (c LinkCapture) Name() string {
@@ -81,8 +81,8 @@ func (c FocusCapture) Listen() string {
 
 type FocusIOCapture struct {
 	Event           string `json:"-"`
-	StopPropagation bool   `json:"stopPropagation"`
-	ExactTarget     bool   `json:"exactTarget"`
+	StopPropagation bool   `json:"sp"`
+	ExactTarget     bool   `json:"et"`
 }
 
 func (c FocusIOCapture) Name() string {
@@ -105,7 +105,7 @@ func (c ChangeCapture) Listen() string {
 }
 
 type InputCapture struct {
-	ExcludeValue bool `json:"excludeValue"`
+	ExcludeValue bool `json:"ev"`
 }
 
 func (c InputCapture) Name() string {

@@ -87,7 +87,7 @@ export class Hook {
         const abortTimer = new AbortTimer(requestTimeout)
         const track = runtime.hookRegister(this)
         this.launched = true
-        fetch(`/d00r/${id}/${this.params.doorId}/${this.params.hookId}?t=${track}`, {
+        fetch(`/~0/${id}/${this.params.doorId}/${this.params.hookId}?t=${track}`, {
             method: "POST",
             signal: abortTimer.signal,
             ...this.fetch,
@@ -141,7 +141,7 @@ export class Hook {
             this.response = r
             return false
         }
-        const after = r.headers.get("D00r-After")
+        const after = r.headers.get("D0-After")
         if (after) {
             this.actions(JSON.parse(after))
         }

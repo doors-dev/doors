@@ -86,7 +86,7 @@ export function setAttr(id: number, value: string): number {
     return r.setAttr(id, value)
 }
 
-const attr = "data-d00r-dyna"
+const attr = "data-d0y"
 export function attach(parent: Element | DocumentFragment | Document) {
     for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attr}="applied"])`)) {
         const dynaList = JSON.parse(element.getAttribute(attr)!)

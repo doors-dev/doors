@@ -130,6 +130,9 @@ func (s *screen) removeWatcher(w *watcher) {
 func (s *screen) addWatcher(w *watcher) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.watchers == nil {
+		s.watchers = common.NewSet[*watcher]()
+	}
 	s.watchers.Add(w)
 	w.initSeq = s.seq
 	w.screen = s
@@ -230,12 +233,14 @@ func (c *cinema) getScreen(src anySource) (*screen, bool) {
 	if c.isKilled() {
 		return nil, false
 	}
+	if c.screens == nil {
+		c.screens = make(map[common.ID]*screen)
+	}
 	scr, ok := c.screens[src.getID()]
 	if ok {
 		return scr, true
 	}
 	scr = &screen{
-		subs:     common.NewSet[*screen](),
 		sourceId: src.getID(),
 		cinema:   c,
 	}

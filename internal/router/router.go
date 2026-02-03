@@ -79,7 +79,6 @@ func (rr *Router) ResourceRegistry() *resources.Registry {
 	return rr.registry
 }
 
-
 func (rr *Router) RemoveSession(id string) {
 	rr.sessions.Delete(id)
 	rr.sessionCallback.Delete(id)
@@ -107,7 +106,7 @@ func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *
 		expires = time.Now().Add(rr.conf.SessionTTL)
 	}
 	cookie := &http.Cookie{
-		Name:     "d00r",
+		Name:     "d0-r",
 		Value:    s.ID(),
 		HttpOnly: true,
 		Path:     "/",
@@ -121,7 +120,7 @@ func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *
 }
 
 func (rr *Router) getSession(r *http.Request) *instance.Session {
-	c, err := r.Cookie("d00r")
+	c, err := r.Cookie("d0-r")
 	if err != nil {
 		return nil
 	}
@@ -147,8 +146,6 @@ func (rr *Router) addRoute(r Route) {
 	rr.routes = append(rr.routes, r)
 }
 
-func (rr *Router) Use(use ...Use) {
-	for _, r := range use {
-		r.apply(rr)
-	}
+func (rr *Router) Use(use Use) {
+	use.apply(rr)
 }

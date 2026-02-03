@@ -34,7 +34,7 @@ func (a Actions) Set(h http.Header) error {
 	if err != nil {
 		return err
 	}
-	h.Set("D00r-After", string(b))
+	h.Set("D0-After", string(b))
 	return nil
 }
 

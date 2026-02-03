@@ -278,7 +278,7 @@ class Connection {
 		try {
 			let response: Response
 			try {
-				response = await fetch("/d00r/" + id, {
+				response = await fetch("/~0/" + id, {
 					signal: this.abortTimer.signal,
 					method: "PUT",
 					headers: {
@@ -362,19 +362,21 @@ class Connection {
 		if (this.status == connectorStatus.header) {
 			for (let i = 0; i < data.length; i++) {
 				const byte = data[i]
-				if (byte != controlBytes.terminator && byte != controlBytes.discard) {
-					continue
-				}
 				if (byte == controlBytes.terminator) {
 					this.header!.append(data.subarray(0, i))
 					this.package = await this.header!.package()
 					this.header = undefined
 					this.status = connectorStatus.payload
-					if (this.package!.remaining() == 0) {
+					if (await this.package!.finalize()) {
 						this.ctrl.onPackage(this.package)
 						this.package = undefined
 						this.status = connectorStatus.signal
 					}
+				} else if (byte == controlBytes.discard) {
+					this.header = undefined
+					this.status = connectorStatus.signal
+				} else {
+					continue
 				}
 				if (i + 1 == data.length) {
 					return false
@@ -387,7 +389,7 @@ class Connection {
 		const remaining = this.package!.remaining();
 		const chunk = remaining >= data.length ? data : data.subarray(0, remaining)
 		this.package!.append(chunk)
-		if (this.package!.remaining() == 0) {
+		if (await this.package!.finalize()) {
 			this.ctrl.onPackage(this.package!)
 			this.package = undefined
 			this.status = connectorStatus.signal

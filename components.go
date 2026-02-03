@@ -210,7 +210,7 @@ type headUsed struct{}
 
 const headScript = `
 let tags = new Set($data("tags"))
-$on("d00r_head", (data) => {
+$on("~0head", (data) => {
     document.title = data.title;
     const removeTags = tags
     tags = new Set()
@@ -284,7 +284,7 @@ func Head[M any](b Beam[M], cast func(M) HeadData) gox.Editor {
 						return seq == currentSeq.Load()
 					},
 					&action.Emit{
-						Name: "d00r_head",
+						Name: "~0head",
 						Arg: map[string]any{
 							"title": newData.Title,
 							"meta": func() map[string]string {

@@ -125,7 +125,7 @@ func (r *proxyComponent) init(job gox.Job) (proxyRendererState, error) {
 		r.view.attrs = nil
 		r.view.tag = ""
 	case gox.KindRegular:
-		if openJob.Tag == "d0-0r" || strings.EqualFold(openJob.Tag, "script") || strings.EqualFold(openJob.Tag, "style") || openJob.Attrs.Get("data-d00r").IsSet() {
+		if openJob.Tag == "d0-r" || strings.EqualFold(openJob.Tag, "script") || strings.EqualFold(openJob.Tag, "style") || openJob.Attrs.Get("data-d0r").IsSet() {
 			r.wrapOver = true
 			r.view.attrs = nil
 			r.view.tag = ""
