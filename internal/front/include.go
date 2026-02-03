@@ -43,7 +43,7 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.AttrSet("src", fmt.Sprintf("/%s.d00r.js", script.HashString())); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("data-id", core.InstanceID()); err != nil {
+		if err := cur.AttrSet("id", core.InstanceID()); err != nil {
 			return err
 		}
 		if err := cur.AttrSetAny("data-root", core.RootID()); err != nil {

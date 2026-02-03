@@ -89,6 +89,7 @@ func (d *Door) Edit(cur gox.Cursor) error {
 		ctx:  cur.Context(),
 		door: d,
 		kind: editorNode,
+		view: &view{},
 	}
 	d.takeover(node)
 	return cur.Send(node)
@@ -100,6 +101,7 @@ func (d *Door) takeover(next *node) {
 		prev = &node{
 			door: d,
 			kind: unmountedNode,
+			view: &view{},
 		}
 		prev.takoverFrame.Activate()
 	}

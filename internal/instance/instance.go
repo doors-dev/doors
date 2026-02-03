@@ -147,7 +147,7 @@ func (c *Instance[M]) CSPCollector() *common.CSPCollector {
 }
 
 func (c *Instance[M]) Call(call action.Call) {
-	panic("unimplemented")
+	c.solitaire.Call(call)
 }
 
 func (inst *Instance[M]) Conf() *common.SystemConf {

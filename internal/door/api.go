@@ -11,7 +11,6 @@ package door
 import (
 	"context"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/ctex"
 )
 
@@ -27,7 +26,7 @@ func (n *Door) Reload(ctx context.Context) {
 // The door's children are replaced with the new content while preserving
 // the door's DOM element. If the door is not currently mounted, the content
 // change is stored and will be applied when the door is rendered.
-func (n *Door) Update(ctx context.Context, content templ.Component) {
+func (n *Door) Update(ctx context.Context, content any) {
 	n.update(ctx, content)
 }
 
@@ -35,7 +34,7 @@ func (n *Door) Update(ctx context.Context, content templ.Component) {
 // Unlike Update, this removes the door's DOM element entirely and replaces
 // it with the rendered content. If the door is not currently mounted, the
 // content change is stored and will be applied when the door is rendered.
-func (n *Door) Replace(ctx context.Context, content templ.Component) {
+func (n *Door) Replace(ctx context.Context, content any) {
 	ctx = ctex.ClearBlockingCtx(ctx)
 	n.replace(ctx, content)
 }
@@ -70,7 +69,7 @@ func (n *Door) XReload(ctx context.Context) <-chan error {
 // The channel is closed after sending the result. If the door is not mounted,
 // the channel is closed immediately without sending any value.
 // Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
-func (n *Door) XUpdate(ctx context.Context, content templ.Component) <-chan error {
+func (n *Door) XUpdate(ctx context.Context, content any) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XUpdate")
 	return n.update(ctx, content)
 }
@@ -80,7 +79,7 @@ func (n *Door) XUpdate(ctx context.Context, content templ.Component) <-chan erro
 // The channel is closed after sending the result. If the door is not mounted,
 // the channel is closed immediately without sending any value.
 // Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
-func (n *Door) XReplace(ctx context.Context, content templ.Component) <-chan error {
+func (n *Door) XReplace(ctx context.Context, content any) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XReplace")
 	return n.replace(ctx, content)
 }

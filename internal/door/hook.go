@@ -10,6 +10,7 @@ package door
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"sync/atomic"
 
@@ -69,6 +70,7 @@ func (h *hook) wait() chan struct{} {
 }
 
 func (h *hook) trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
+	slog.Info("HOOK_DOOR")
 	ch := h.wait()
 	if h.state.Load() != hookActive {
 		close(ch)

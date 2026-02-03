@@ -21,11 +21,17 @@ func NewBufferPrinter() *BufferPrinter {
 }
 
 func (b *BufferPrinter) Bytes() []byte {
+	if b == nil {
+		return nil
+	}
 	return *b
 }
 
 func (b *BufferPrinter) Release() {
-	bytes := (*b)[:0]
+	if b == nil {
+		return
+	}
+	bytes := ([]byte)(*b)[:0]
 	bufferPrinterPool.Put(bytes)
 	*b = nil
 }

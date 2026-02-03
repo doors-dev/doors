@@ -108,15 +108,19 @@ func (r *pipe) lookForResource(job gox.Job) error {
 	case !ok:
 		return r.send(job)
 	case strings.EqualFold(head.Tag, "script"):
-		if src := head.Attrs.Get("src"); src.IsSet() {
+		/*
+			for _, attr := range head.Attrs.List() {
+
+			} */
+		if head.Attrs.Has("src") {
 			return r.send(job)
 		}
-		if escape := head.Attrs.Get("escape"); escape.IsSet() {
-			escape.SetBool(false)
+		if head.Attrs.Has("escape") {
+			head.Attrs.Get("escape").SetBool(false)
 			return r.send(job)
 		}
-		if typ := head.Attrs.Get("type"); typ.IsSet() {
-			typ, _ := typ.ReadString()
+		if head.Attrs.Has("type") {
+			typ, _ := head.Attrs.Get("type").ReadString()
 			if !strings.EqualFold(typ, "text/javascript") && !strings.EqualFold(typ, "application/javascript") {
 				return r.send(job)
 			}

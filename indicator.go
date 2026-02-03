@@ -19,33 +19,33 @@ type indicate = front.Indicate
 // Selector targets DOM elements for indicators.
 // Select by event source, CSS query, or closest matching parent.
 type Selector interface {
-	selector() *front.Selector
+	selector() front.Selector
 }
 
 type selector front.Selector
 
-func (s *selector) selector() *front.Selector {
-	return (*front.Selector)(s)
+func (s selector) selector() front.Selector {
+	return (front.Selector)(s)
 }
 
 // SelectorTarget selects the element that triggered the event.
 func SelectorTarget() Selector {
-	return (*selector)(front.SelectTarget())
+	return (selector)(front.SelectTarget())
 }
 
 // SelectorQuery selects the first element matching a CSS query (e.g. "#id", ".class").
 func SelectorQuery(query string) Selector {
-	return (*selector)(front.SelectQuery(query))
+	return (selector)(front.SelectQuery(query))
 }
 
 // SelectorQuery selects all elements matching a CSS query (e.g. "#id", ".class").
 func SelectorQueryAll(query string) Selector {
-	return (*selector)(front.SelectQueryAll(query))
+	return (selector)(front.SelectQueryAll(query))
 }
 
 // SelectorParentQuery selects the closest ancestor matching a CSS query.
 func SelectorParentQuery(query string) Selector {
-	return (*selector)(front.SelectParentQuery(query))
+	return (selector)(front.SelectParentQuery(query))
 }
 
 // IndicatorContent temporarily replaces innerHTML on the selected element.
@@ -54,7 +54,7 @@ type IndicatorContent struct {
 	Content  string   // Replacement content
 }
 
-func (c IndicatorContent) Indicate() *indicate {
+func (c IndicatorContent) Indicate() indicate {
 	return front.IndicateContent(c.Selector.selector(), c.Content)
 }
 
@@ -65,7 +65,7 @@ type IndicatorAttr struct {
 	Value    string   // Attribute value
 }
 
-func (c IndicatorAttr) Indicate() *indicate {
+func (c IndicatorAttr) Indicate() indicate {
 	return front.IndicateAttr(c.Selector.selector(), c.Name, c.Value)
 }
 
@@ -75,7 +75,7 @@ type IndicatorClass struct {
 	Class    string   // Space-separated classes
 }
 
-func (c IndicatorClass) Indicate() *indicate {
+func (c IndicatorClass) Indicate() indicate {
 	return front.IndicateClass(c.Selector.selector(), c.Class)
 }
 
@@ -85,7 +85,7 @@ type IndicatorClassRemove struct {
 	Class    string   // Space-separated classes
 }
 
-func (c IndicatorClassRemove) Indicate() *indicate {
+func (c IndicatorClassRemove) Indicate() indicate {
 	return front.IndicateClassRemove(c.Selector.selector(), c.Class)
 }
 

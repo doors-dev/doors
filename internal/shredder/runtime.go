@@ -25,6 +25,7 @@ func NewRuntime(ctx context.Context, workerLimit int, shutdown Shutdown) Runtime
 		pool:        make([]chan task, workerLimit),
 		cold:        make(chan task),
 		hot:         make(chan int, workerLimit),
+		shutdown:    shutdown,
 	}
 	go s.loop()
 	return s
@@ -64,7 +65,6 @@ func (t task) runUnsafe() {
 	t.fun(true)
 }
 
-
 func (t task) run(r *runtime) {
 	canceled := t.ctx.Err() != nil || r.ctx.Err() != nil
 	if canceled {
@@ -93,7 +93,6 @@ func (r *runtime) onPanic(err error) {
 	slog.Error(err.Error())
 	r.Cancel()
 }
-
 
 func (r Runtime) SafeCtxFun(ctx context.Context, fun func(context.Context)) {
 	err := catch(fun, ctx)

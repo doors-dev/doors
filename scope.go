@@ -22,9 +22,9 @@ type Scope = front.Scope
 // ScopeSet holds the configuration of a scope instance.
 type ScopeSet = front.ScopeSet
 
-type scopeFunc func(core core.Core) *ScopeSet
+type scopeFunc func(core core.Core) ScopeSet
 
-func (s scopeFunc) Scope(core core.Core) *ScopeSet {
+func (s scopeFunc) Scope(core core.Core) ScopeSet {
 	return s(core)
 }
 
@@ -34,7 +34,7 @@ type ScopeBlocking struct {
 	id front.ScopeAutoId
 }
 
-func (b *ScopeBlocking) Scope(core core.Core) *ScopeSet {
+func (b *ScopeBlocking) Scope(core core.Core) ScopeSet {
 	return front.BlockingScope(b.id.Id(core))
 }
 
@@ -48,7 +48,7 @@ type ScopeSerial struct {
 	id front.ScopeAutoId
 }
 
-func (b *ScopeSerial) Scope(core core.Core) *ScopeSet {
+func (b *ScopeSerial) Scope(core core.Core) ScopeSet {
 	return front.SerialScope(b.id.Id(core))
 }
 
@@ -56,7 +56,6 @@ func (b *ScopeSerial) Scope(core core.Core) *ScopeSet {
 func ScopeOnlySerial() []Scope {
 	return []Scope{&ScopeSerial{}}
 }
-
 
 // ScopeDebounce delays events by duration but guarantees execution
 // within the specified limit. New events reset the delay.
@@ -68,7 +67,7 @@ type ScopeDebounce struct {
 //   - duration: debounce delay, reset by new events
 //   - limit: maximum wait before execution regardless of new events
 func (d *ScopeDebounce) Scope(duration, limit time.Duration) Scope {
-	return scopeFunc(func(core core.Core) *ScopeSet {
+	return scopeFunc(func(core core.Core) ScopeSet {
 		return front.DebounceScope(d.id.Id(core), duration, limit)
 	})
 }
@@ -89,7 +88,7 @@ type ScopeFrame struct {
 //   - frame=false: execute immediately
 //   - frame=true: wait for completion of all events, then execute exclusively
 func (d *ScopeFrame) Scope(frame bool) Scope {
-	return scopeFunc(func(core core.Core) *ScopeSet {
+	return scopeFunc(func(core core.Core) ScopeSet {
 		return front.FrameScope(d.id.Id(core), frame)
 	})
 }
@@ -101,8 +100,7 @@ type ScopeConcurrent struct {
 }
 
 func (d *ScopeConcurrent) Scope(groupId int) Scope {
-	return scopeFunc(func(core core.Core) *ScopeSet {
+	return scopeFunc(func(core core.Core) ScopeSet {
 		return front.ConcurrentScope(d.id.Id(core), groupId)
 	})
 }
-

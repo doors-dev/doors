@@ -64,7 +64,7 @@ func (r Root) Render(el gox.Elem) (Pipe, shredder.SimpleFrame) {
 	thread := shredder.Thread{}
 	renderFrame := thread.Frame()
 	readyFrame := thread.Frame()
-	pipe := newPipe(readyFrame)
+	pipe := newPipe(shredder.FreeFrame{})
 	pipe.tracker = r.tracker
 	pipe.renderFrame = shredder.Join(true, renderFrame, r.tracker.newRenderFrame())
 	pipe.renderFrame.Run(r.tracker.ctx, r.runtime(), func(ok bool) {
@@ -90,6 +90,7 @@ func (i Root) TriggerHook(doorID uint64, hookId uint64, w http.ResponseWriter, r
 	if !ok {
 		return false
 	}
+
 	ok = tracker.trigger(hookId, w, r)
 	if !ok {
 		return false

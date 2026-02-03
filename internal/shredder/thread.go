@@ -289,3 +289,19 @@ func (m *ValveFrame) Submit(ctx context.Context, s Runtime, fun func(bool)) {
 }
 
 var _ SimpleFrame = &ValveFrame{}
+
+type FreeFrame struct{}
+
+func (f FreeFrame) Run(ctx context.Context, r Runtime, fun func(bool)) {
+	f.schedule(run{runtime: r, ctx: ctx, fun: fun})
+}
+
+func (f FreeFrame) Submit(ctx context.Context, r Runtime, fun func(bool)) {
+	f.schedule(spawn{runtime: r, ctx: ctx, fun: fun})
+}
+
+func (f FreeFrame) schedule(e executable) {
+	e.execute(func(error) {})
+}
+
+var _ SimpleFrame = FreeFrame{}

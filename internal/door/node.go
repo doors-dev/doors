@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -52,7 +53,7 @@ func (n *node) takover(prev *node) {
 			defer renderGuard.Release()
 			switch n.kind {
 			case editorNode:
-				n.jobTakover(prev)
+				n.editorTakover(prev)
 			case proxyNode:
 				n.proxyTakeover(prev)
 			}
@@ -88,7 +89,7 @@ func (n *node) updatedTakeover(prev *node) {
 	prev.kill(unmount)
 	n.communicationFrame = prev.communicationFrame
 	n.tracker = newTrackerFrom(prev.tracker)
-	n.tracker.parent.addChild(n)
+	n.tracker.parent.replaceChild(prev, n)
 	if n.view == nil {
 		n.view = prev.view
 	} else {
@@ -154,6 +155,7 @@ func (n *node) unmountTakeover(prev *node) {
 		return
 	}
 	prev.kill(unmount)
+	prev.tracker.removeChild(prev)
 	n.view = prev.view
 	id := prev.tracker.id
 	ctx := prev.tracker.parent.ctx
@@ -162,14 +164,13 @@ func (n *node) unmountTakeover(prev *node) {
 			n.cancel()
 			return
 		}
-		n.tracker.root.inst.Call(&call{
+		prev.tracker.root.inst.Call(&call{
 			ctx:    ctx,
 			action: action.DoorReplace{ID: id},
 			ch:     n.reportCh,
 		})
 		n.done()
 	})
-	return
 }
 
 func (n *node) replaceTakeover(prev *node) {
@@ -179,6 +180,7 @@ func (n *node) replaceTakeover(prev *node) {
 		return
 	}
 	prev.kill(unmount)
+	prev.tracker.parent.removeChild(prev)
 	parent := prev.tracker.parent
 	id := prev.tracker.id
 	ctx := parent.ctx
@@ -232,23 +234,26 @@ func (n *node) replaceTakeover(prev *node) {
 }
 
 func (n *node) proxyTakeover(prev *node) {
+	n.view.content = prev.view.content
 	switch prev.kind {
 	case updatedNode, editorNode, proxyNode:
-		n.view.content = prev.view.content
 		prev.kill(remove)
+		prev.tracker.parent.removeChild(prev)
 	}
 }
 
-func (n *node) jobTakover(prev *node) {
+func (n *node) editorTakover(prev *node) {
 	n.view = prev.view
 	switch prev.kind {
 	case updatedNode, editorNode:
 		prev.kill(remove)
+		prev.tracker.parent.removeChild(prev)
 	case replacedNode:
 		n.kind = replacedNode
 		n.takoverFrame.Activate()
 	case proxyNode:
 		prev.kill(remove)
+		prev.tracker.parent.removeChild(prev)
 		n.kind = proxyNode
 	}
 }
@@ -286,10 +291,14 @@ func (n *node) render(parentPipe *pipe) {
 				return
 			}
 			cur := gox.NewCursor(n.tracker.ctx, pipe)
+			ctx := context.WithValue(parent.ctx, ctex.KeyCore, childDoorCore{
+				tracker: parent,
+				id:      n.tracker.id,
+			})
 			switch n.kind {
 			case editorNode:
 				n.takoverFrame.Activate()
-				open, close := n.view.headFrame(parent.ctx, n.tracker.id, cur.NewID())
+				open, close := n.view.headFrame(ctx, n.tracker.id, cur.NewID())
 				cur.Send(open)
 				n.view.renderContent(cur)
 				cur.Send(close)
@@ -316,6 +325,7 @@ type killKind int
 
 const (
 	cascade killKind = iota
+	replace
 	unmount
 	remove
 )
@@ -329,18 +339,18 @@ func (n *node) kill(kind killKind) {
 	}
 	switch kind {
 	case cascade:
-		if !n.door.node.CompareAndSwap(n, &node{
+		unmounted := &node{
 			kind: unmountedNode,
 			view: n.view,
-		}) {
+		}
+		unmounted.takoverFrame.Activate()
+		if !n.door.node.CompareAndSwap(n, unmounted) {
 			return
 		}
 		n.tracker.kill()
 	case unmount:
-		n.tracker.parent.removeChild(n)
 		n.tracker.kill()
 	case remove:
-		n.tracker.parent.removeChild(n)
 		id := n.tracker.id
 		ctx := n.tracker.parent.ctx
 		n.communicationFrame.Run(n.tracker.parent.ctx, n.tracker.root.runtime(), func(ok bool) {

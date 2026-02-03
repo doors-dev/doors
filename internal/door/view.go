@@ -3,7 +3,6 @@ package door
 import (
 	"context"
 	"fmt"
-
 	"github.com/doors-dev/gox"
 )
 
@@ -14,7 +13,7 @@ type view struct {
 	elem    gox.Elem
 }
 
-func (v *view) headFrame(ctx context.Context, doorID uint64, headID uint64) (*gox.JobHeadOpen, *gox.JobHeadClose) {
+func (v *view) headFrame(parentCtx context.Context, doorID uint64, headID uint64) (*gox.JobHeadOpen, *gox.JobHeadClose) {
 	if v.tag == "" {
 		attrs := gox.NewAttrs()
 		attrs.Get("id").Set(fmt.Sprintf("d00r/%d", doorID))
@@ -22,13 +21,13 @@ func (v *view) headFrame(ctx context.Context, doorID uint64, headID uint64) (*go
 				headID,
 				gox.KindRegular,
 				"d0-0r",
-				ctx,
+				parentCtx,
 				attrs,
 			), gox.NewJobHeadClose(
 				headID,
 				gox.KindRegular,
 				"d0-0r",
-				ctx,
+				parentCtx,
 			)
 	}
 	attrs := v.attrs.Clone()
@@ -37,13 +36,13 @@ func (v *view) headFrame(ctx context.Context, doorID uint64, headID uint64) (*go
 			headID,
 			gox.KindRegular,
 			v.tag,
-			ctx,
+			parentCtx,
 			attrs,
 		), gox.NewJobHeadClose(
 			headID,
 			gox.KindRegular,
 			v.tag,
-			ctx,
+			parentCtx,
 		)
 }
 
@@ -52,9 +51,4 @@ func (v *view) renderContent(cur gox.Cursor) error {
 		return comp.Main()(cur)
 	}
 	return cur.Any(v.content)
-}
-
-func (v *view) inherit(prev *view) {
-	v.tag = prev.tag
-	v.attrs = prev.attrs
 }

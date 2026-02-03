@@ -17,8 +17,8 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 )
 
-func IntoScopeSet(inst core.Core, scope []Scope) []*ScopeSet {
-	a := make([]*ScopeSet, len(scope))
+func IntoScopeSet(inst core.Core, scope []Scope) []ScopeSet {
+	a := make([]ScopeSet, len(scope))
 	for i, s := range scope {
 		a[i] = s.Scope(inst)
 	}
@@ -31,13 +31,13 @@ type ScopeSet struct {
 	Opt  any
 }
 
-func (s *ScopeSet) MarshalJSON() ([]byte, error) {
+func (s ScopeSet) MarshalJSON() ([]byte, error) {
 	a := []any{s.Type, s.Id, s.Opt}
 	return json.Marshal(a)
 }
 
 type Scope interface {
-	Scope(core core.Core) *ScopeSet
+	Scope(core core.Core) ScopeSet
 }
 
 type ScopeAutoId struct {
@@ -53,44 +53,44 @@ func (s *ScopeAutoId) Id(inst core.Core) string {
 	return s.id
 }
 
-func DebounceScope(id string, duration time.Duration, limit time.Duration) *ScopeSet {
-	return &ScopeSet{
+func DebounceScope(id string, duration time.Duration, limit time.Duration) ScopeSet {
+	return ScopeSet{
 		Id:   id,
 		Type: "debounce",
 		Opt:  []any{duration.Milliseconds(), limit.Milliseconds()},
 	}
 }
 
-func BlockingScope(id string) *ScopeSet {
-	return &ScopeSet{
+func BlockingScope(id string) ScopeSet {
+	return ScopeSet{
 		Id:   id,
 		Type: "blocking",
 	}
 }
-func SerialScope(id string) *ScopeSet {
-	return &ScopeSet{
+func SerialScope(id string) ScopeSet {
+	return ScopeSet{
 		Id:   id,
 		Type: "serial",
 	}
 }
-func FrameScope(id string, frame bool) *ScopeSet {
-	return &ScopeSet{
+func FrameScope(id string, frame bool) ScopeSet {
+	return ScopeSet{
 		Id:   id,
 		Type: "frame",
 		Opt:  frame,
 	}
 }
 
-func ConcurrentScope(id string, groupId int) *ScopeSet {
-	return &ScopeSet{
+func ConcurrentScope(id string, groupId int) ScopeSet {
+	return ScopeSet{
 		Id:   id,
 		Type: "concurrent",
 		Opt:  groupId,
 	}
 }
 
-func FreeScope(id string) *ScopeSet {
-	return &ScopeSet{
+func FreeScope(id string) ScopeSet {
+	return ScopeSet{
 		Id:   id,
 		Type: "free",
 	}

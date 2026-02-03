@@ -22,8 +22,6 @@ function getHookParams(element: HTMLElement, name: string): any | undefined {
 const global: { [key: string]: any } = {}
 
 class $D {
-    HookErr = HookErr
-
     constructor(private anchor: HTMLElement) { }
 
     clean = (handler: () => void | Promise<void>): void => {

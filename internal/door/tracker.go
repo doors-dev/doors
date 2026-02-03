@@ -15,11 +15,10 @@ import (
 
 func newRootTracker(r *root) *tracker {
 	t := &tracker{
-		id:       r.NewID(),
-		root:     r,
-		parent:   nil,
-		children: common.NewSet[*node](),
-		cancel:   r.runtime().Cancel,
+		id:     r.NewID(),
+		root:   r,
+		parent: nil,
+		cancel: r.runtime().Cancel,
 	}
 	t.cinema = beam.NewCinema(nil, t, r.runtime())
 	core := core.NewCore(r.inst, t)
@@ -31,10 +30,9 @@ func newRootTracker(r *root) *tracker {
 func newTrackerFrom(prev *tracker) *tracker {
 	root := prev.root
 	t := &tracker{
-		root:     root,
-		id:       prev.id,
-		parent:   prev.parent,
-		children: common.NewSet[*node](),
+		root:   root,
+		id:     prev.id,
+		parent: prev.parent,
 	}
 	t.cinema = beam.NewCinema(t.parent.cinema, t, root.runtime())
 	t.core = core.NewCore(root.inst, t)
@@ -46,10 +44,9 @@ func newTrackerFrom(prev *tracker) *tracker {
 
 func newTracker(parent *tracker) *tracker {
 	t := &tracker{
-		root:     parent.root,
-		id:       parent.root.NewID(),
-		parent:   parent,
-		children: common.NewSet[*node](),
+		root:   parent.root,
+		id:     parent.root.NewID(),
+		parent: parent,
 	}
 	t.cinema = beam.NewCinema(t.parent.cinema, t, t.root.runtime())
 	t.core = core.NewCore(t.root.inst, t)
@@ -63,18 +60,19 @@ var _ core.Door = &tracker{}
 var _ beam.Door = &tracker{}
 
 type tracker struct {
-	mu        sync.Mutex
-	id        uint64
-	root      *root
-	parent    *tracker
-	thread    shredder.Thread
-	readFrame atomic.Value
-	ctx       context.Context
-	cancel    context.CancelFunc
-	children  common.Set[*node]
-	cinema    beam.Cinema
-	hooks     map[uint64]*hook
-	core      core.Core
+	mu                   sync.Mutex
+	id                   uint64
+	root                 *root
+	parent               *tracker
+	thread               shredder.Thread
+	readFrame            atomic.Value
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	children             common.Set[*node]
+	cinema               beam.Cinema
+	hooks                map[uint64]*hook
+	core                 core.Core
+	childDoorHooksCancel map[uint64][]context.CancelFunc
 }
 
 func (t *tracker) Context() context.Context {
@@ -85,20 +83,41 @@ func (t *tracker) ID() uint64 {
 	return t.id
 }
 
-
 func (t *tracker) Cinema() beam.Cinema {
 	return t.cinema
+}
+
+func (t *tracker) registerChildDoorHook(childId uint64, onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	hook, ok := t.registerHook(onTrigger, onCancel)
+	if !ok {
+		return hook, false
+	}
+	if t.childDoorHooksCancel == nil {
+		t.childDoorHooksCancel = make(map[uint64][]context.CancelFunc)
+	}
+	t.childDoorHooksCancel[childId] = append(t.childDoorHooksCancel[childId], hook.Cancel)
+	return hook, true
 }
 
 func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	return t.registerHook(onTrigger, onCancel)
+
+}
+
+func (t *tracker) registerHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
 	if t.isKilled() {
 		return core.Hook{}, false
 	}
-	hook := newHook(t, onTrigger, onCancel)
+	h := newHook(t, onTrigger, onCancel)
 	id := t.root.NewID()
-	t.hooks[id] = hook
+	if t.hooks == nil {
+		t.hooks = make(map[uint64]*hook)
+	}
+	t.hooks[id] = h
 	return core.Hook{
 		DoorID: t.id,
 		HookID: id,
@@ -161,6 +180,32 @@ func (t *tracker) removeChild(n *node) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.children.Remove(n)
+	if t.childDoorHooksCancel == nil {
+		return
+	}
+	cancels, ok := t.childDoorHooksCancel[n.tracker.id]
+	if !ok {
+		return
+	}
+	for _, cancel := range cancels {
+		cancel()
+	}
+	delete(t.childDoorHooksCancel, n.tracker.id)
+}
+
+func (t *tracker) replaceChild(prev *node, next *node) {
+	if prev.tracker.id != next.tracker.id {
+		panic("wrong replace child operation")
+	}
+	t.mu.Lock()
+	if t.isKilled() {
+		t.mu.Unlock()
+		next.kill(cascade)
+		return
+	}
+	t.children.Remove(prev)
+	t.children.Add(next)
+	t.mu.Unlock()
 }
 
 func (t *tracker) addChild(n *node) {
@@ -170,9 +215,11 @@ func (t *tracker) addChild(n *node) {
 		n.kill(cascade)
 		return
 	}
+	if t.children == nil {
+		t.children = common.NewSet[*node]()
+	}
 	t.children.Add(n)
 	t.mu.Unlock()
-	return
 }
 
 func (t *tracker) NewFrame() shredder.Frame {
@@ -189,3 +236,22 @@ func (t *tracker) newRenderFrame() shredder.Frame {
 	}
 	return frame
 }
+
+type childDoorCore struct {
+	tracker *tracker
+	id      uint64
+}
+
+func (h childDoorCore) Cinema() beam.Cinema {
+	return h.tracker.Cinema()
+}
+
+func (h childDoorCore) ID() uint64 {
+	return h.tracker.id
+}
+
+func (h childDoorCore) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
+	return h.tracker.registerChildDoorHook(h.id, onTrigger, onCancel)
+}
+
+var _ core.Door = &childDoorCore{}

@@ -52,13 +52,13 @@ import (
 // consistent state (Beam), ensuring stable and predictable rendering.
 type Door = door.Door
 
-type editorFunc func(cur gox.Cursor) error
+type EditorFunc func(cur gox.Cursor) error
 
-func (e editorFunc) Edit(cur gox.Cursor) error {
+func (e EditorFunc) Edit(cur gox.Cursor) error {
 	return e(cur)
 }
 
-var _ gox.Editor = editorFunc(nil)
+var _ gox.Editor = EditorFunc(nil)
 
 // Sub creates a reactive component that automatically updates when a Beam value changes.
 //
@@ -87,7 +87,7 @@ var _ gox.Editor = editorFunc(nil)
 //   - A templ.Component that updates reactively as the Beam value changes
 
 func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
-	return editorFunc(func(cur gox.Cursor) error {
+	return EditorFunc(func(cur gox.Cursor) error {
 		door := &Door{}
 		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
 			door.Update(ctx, gox.Elem(func(cur gox.Cursor) error {
@@ -115,7 +115,7 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
 //	    @UserProfile() // Can use ctx.Value("user").(User) to get current user
 //	}
 func Inject[T any](key any, beam Beam[T], content gox.Comp) gox.Editor {
-	return editorFunc(func(cur gox.Cursor) error {
+	return EditorFunc(func(cur gox.Cursor) error {
 		door := &Door{}
 		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
 			door.Update(ctx, gox.Elem(func(cur gox.Cursor) error {
@@ -180,7 +180,7 @@ func If(beam Beam[bool]) templ.Component {
 // Returns:
 //   - A non-visual templ.Component that starts the goroutine when rendered
 func Go(f func(context.Context)) gox.Editor {
-	return editorFunc(func(cur gox.Cursor) error {
+	return EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(ctex.KeyCore).(core.Core)
 		ctx := ctex.SetBlockingCtx(cur.Context())
 		core.Runtime().Go(ctx, f)
@@ -193,7 +193,7 @@ func Go(f func(context.Context)) gox.Editor {
 // Makes effect only at initial page render.
 // Example: ~(doors.Status(404))
 func Status(statusCode int) gox.Editor {
-	return editorFunc(func(cur gox.Cursor) error {
+	return EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(ctex.KeyCore).(core.Core)
 		core.SetStatus(statusCode)
 		return nil
@@ -260,7 +260,7 @@ $on("d00r_head", (data) => {
 // Returns:
 //   - A templ.Component that renders title and meta elements with remote call scripts.
 func Head[M any](b Beam[M], cast func(M) HeadData) gox.Editor {
-	return editorFunc(func(cur gox.Cursor) error {
+	return EditorFunc(func(cur gox.Cursor) error {
 		_, ok := InstanceSave(cur.Context(), headUsed{}, headUsed{}).(headUsed)
 		if ok {
 			return nil

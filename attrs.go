@@ -59,15 +59,15 @@ type eventAttr[E any] struct {
 }
 
 func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	hook, ok := core.RegisterHook(p.handle, nil)
+	c := ctx.Value(ctex.KeyCore).(core.Core)
+	hook, ok := c.RegisterHook(p.handle, nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}
 	front.AttrsAppendCapture(attrs, p.capture, front.Hook{
 		OnError:  intoActions(ctx, p.onError),
 		Before:   intoActions(ctx, p.before),
-		Scope:    front.IntoScopeSet(core, p.scope),
+		Scope:    front.IntoScopeSet(c, p.scope),
 		Indicate: front.IntoIndicate(p.indicator),
 		Hook:     hook,
 	})

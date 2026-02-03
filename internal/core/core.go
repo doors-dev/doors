@@ -26,7 +26,6 @@ type Link struct {
 	On       func(context.Context)
 }
 
-
 func (h *Link) Path() (string, bool) {
 	if h.Location == nil {
 		return "", false

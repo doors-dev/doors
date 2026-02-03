@@ -18,12 +18,12 @@ import (
 type Hook struct {
 	Before   action.Actions
 	OnError  action.Actions
-	Scope    []*ScopeSet
-	Indicate []*Indicate
+	Scope    []ScopeSet
+	Indicate []Indicate
 	core.Hook
 }
 
-func (h *Hook) MarshalJSON() ([]byte, error) {
+func (h Hook) MarshalJSON() ([]byte, error) {
 	a := []any{h.DoorID, h.HookID, h.Scope, h.Indicate, h.Before, h.OnError}
 	return json.Marshal(a)
 }
