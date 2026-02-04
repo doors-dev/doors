@@ -9,7 +9,11 @@
 package doors
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/json"
+	"io"
 	"log/slog"
 	"time"
 
@@ -17,7 +21,6 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
-
 )
 
 // Action performs a client-side operation
@@ -52,11 +55,49 @@ func ActionOnlyEmit(name string, arg any) []Action {
 }
 
 func (a ActionEmit) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
-	return action.Emit{
+	act := action.Emit{
 		Name:   a.Name,
-		Arg:    a.Arg,
 		DoorID: core.DoorID(),
-	}, action.CallParams{}, nil
+	}
+	if bytes, ok := a.Arg.([]byte); ok {
+		act.Payload = bytes
+		act.PayloadType = action.PayloadBinary
+		return act, action.CallParams{}, nil
+	}
+	buf := &bytes.Buffer{}
+	var w io.Writer = buf
+	var wgz *gzip.Writer
+	gz := !core.Conf().ServerDisableGzip
+	if gz {
+		wgz = gzip.NewWriter(buf)
+		w = wgz
+	}
+	if str, ok := a.Arg.(string); ok {
+		io.WriteString(w, str)
+		if gz {
+			act.PayloadType = action.PayloadTextGZ
+		} else {
+			act.PayloadType = action.PayloadText
+		}
+	} else {
+		encoder := json.NewEncoder(w)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(a.Arg); err != nil {
+			return nil, action.CallParams{}, err
+		}
+		if gz {
+			act.PayloadType = action.PayloadJSONGZ
+		} else {
+			act.PayloadType = action.PayloadJSON
+		}
+	}
+	if gz {
+		if err := wgz.Close(); err != nil {
+			return nil, action.CallParams{}, err
+		}
+	}
+	act.Payload = buf.Bytes()
+	return act, action.CallParams{}, nil
 }
 
 // ActionLocationReload reloads the current page.

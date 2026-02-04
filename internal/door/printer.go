@@ -1,9 +1,10 @@
-package common
+package door
 
 import (
 	"compress/gzip"
 	"sync"
 
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/gox"
 )
 
@@ -20,13 +21,13 @@ func (s *sliceWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-type BufferPrinter struct {
+type printer struct {
 	buf  sliceWriter
 	gzip *gzip.Writer
 }
 
-func NewBufferPrinter(disableGzip bool) *BufferPrinter {
-	b := &BufferPrinter{
+func newPrinter(disableGzip bool) *printer {
+	b := &printer{
 		buf: bufferPrinterPool.Get().(sliceWriter),
 	}
 	if !disableGzip {
@@ -35,14 +36,17 @@ func NewBufferPrinter(disableGzip bool) *BufferPrinter {
 	return b
 }
 
-func (b *BufferPrinter) Bytes() []byte {
+func (b *printer) payload() ([]byte, action.PayloadType) {
 	if b == nil {
-		return nil
+		return nil, action.PayloadText
 	}
-	return b.buf
+	if b.gzip != nil {
+		return b.buf, action.PayloadTextGZ
+	}
+	return b.buf, action.PayloadText
 }
 
-func (b *BufferPrinter) Release() {
+func (b *printer) release() {
 	if b == nil {
 		return
 	}
@@ -54,14 +58,14 @@ func (b *BufferPrinter) Release() {
 	b.buf = nil
 }
 
-func (b *BufferPrinter) Finalize() {
+func (b *printer) finalize() {
 	if b.gzip == nil {
 		return
 	}
 	b.gzip.Close()
 }
 
-func (b *BufferPrinter) Send(job gox.Job) error {
+func (b *printer) Send(job gox.Job) error {
 	if b.gzip != nil {
 		return job.Output(b.gzip)
 	}

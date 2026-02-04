@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
@@ -19,29 +18,32 @@ func (c reportHook) Action() (action.Action, bool) {
 	return action.ReportHook{HookId: uint64(c)}, true
 }
 
-func (C reportHook) Payload() []byte {
-	return nil
-}
+func (c reportHook) Cancel() {}
 
-func (c reportHook) Cancel()                             {}
 func (c reportHook) Result(r json.RawMessage, err error) {}
 
+type callKind int
+
+const (
+	callReplace callKind = iota
+	callUpdate
+)
 
 type call struct {
 	ctx     context.Context
 	ch      chan error
-	action  action.Action
-	payload *common.BufferPrinter
+	kind    callKind
+	id      uint64
+	payload *printer
 }
 
-
 func (n *call) Cancel() {
-	n.payload.Release()
+	n.payload.release()
 	n.send(context.Canceled)
 }
 
 func (n *call) Result(_ json.RawMessage, err error) {
-	n.payload.Release()
+	n.payload.release()
 	if err != nil {
 		slog.Error("door rendering error", slog.String("error", err.Error()))
 	}
@@ -60,14 +62,25 @@ func (c *call) Action() (action.Action, bool) {
 	if c.ctx.Err() != nil {
 		return nil, false
 	}
-	return c.action, true
-}
-
-func (c *call) Payload() []byte {
-	return c.payload.Bytes()
+	payload, payloadType := c.payload.payload()
+	switch c.kind {
+	case callReplace:
+		return action.DoorReplace{
+			ID:          c.id,
+			Payload:     payload,
+			PayloadType: payloadType,
+		}, true
+	case callUpdate:
+		return action.DoorUpdate{
+			ID:          c.id,
+			Payload:     payload,
+			PayloadType: payloadType,
+		}, true
+	default:
+		panic("unsupporte door call type")
+	}
 }
 
 func (c *call) Params() action.CallParams {
 	return action.CallParams{}
 }
-

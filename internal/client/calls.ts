@@ -13,15 +13,14 @@ import { removeAttr, setAttr } from "./dyna"
 import { HookErr } from "./capture"
 import { doAfter } from "./lib"
 import { report } from "./scope.ts"
+import { Payload, PayloadType } from "./package.ts"
 
 
 type Extras = {
 	error?: HookErr,
-	payload?: ArrayBuffer,
+	payload?: Payload,
 	element?: Element,
 }
-
-const decoder = new TextDecoder()
 
 const actions = {
 	location_reload: (_: Extras) => {
@@ -66,12 +65,12 @@ const actions = {
 			location.assign(url.toString())
 		})
 	},
-	emit: (ext: Extras, name: string, arg: any, doorId: number): any => {
+	emit: (ext: Extras, name: string, doorId: number): any => {
 		const handler = doors.getHandler(doorId, name)
 		if (!handler) {
 			throw new Error(`Handler ${name} not found`)
 		}
-		return handler(arg, ext.error as any)
+		return handler(ext.payload!.any, ext.error as any)
 	},
 	dyna_set: (_: Extras, id: number, value: string) => {
 		setAttr(id, value)
@@ -87,10 +86,10 @@ const actions = {
 		navigator.push(path)
 	},
 	door_replace: (ext: Extras, doorId: number) => {
-		doors.replace(doorId, decoder.decode(ext.payload!))
+		doors.replace(doorId, ext.payload!.text!)
 	},
 	door_update: (ext: Extras, doorId: number) => {
-		doors.update(doorId, decoder.decode(ext.payload!))
+		doors.update(doorId, ext.payload!.text!)
 	},
 }
 
@@ -102,7 +101,7 @@ type Err = {
 
 export type CallResult = ([Output, undefined] | [undefined, Err])
 
-export type Action = [string, Array<any>]
+export type Action = [string, Array<any>, [PayloadType, string]] | [string, Array<any>]
 
 export default function action(name: string, args: Array<any>, extras: Extras = {}): CallResult {
 	try {

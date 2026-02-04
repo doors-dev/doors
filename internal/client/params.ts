@@ -44,4 +44,3 @@ export const disconnectAfter: number = Number(document.currentScript!.dataset.di
 export const requestTimeout: number = Number(document.currentScript!.dataset.request)
 export const solitairePing: number = Number(document.currentScript!.dataset.ping)
 export const detached: boolean = document.currentScript!.dataset.detached !== undefined
-export const noGzip: boolean = document.currentScript!.dataset.nogzip !== undefined

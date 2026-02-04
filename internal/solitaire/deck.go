@@ -511,20 +511,24 @@ var terminator = []byte{0xFF}
 var errorTerminator = []byte{0xFD}
 
 func (h header) writeFiller(w io.Writer) error {
-	err := h.write(w, 0)
+	err := h.write(w, action.PayloadNone, 0)
 	if err != nil {
 		return err
 	}
 	return err
 }
 
-func (h header) write(w io.Writer, payloadLength int) error {
+func (h header) write(w io.Writer, payloadType action.PayloadType, payloadLength int) error {
 	if _, err := w.Write(actionSignal); err != nil {
 		return err
 	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
-	if err := enc.Encode(append(h, payloadLength)); err != nil {
+	var payloadInfo []any = nil
+	if payloadType != action.PayloadNone {
+		payloadInfo = []any{payloadType, payloadLength}
+	}
+	if err := enc.Encode(append(h, payloadInfo)); err != nil {
 		return err
 	}
 	if _, err := w.Write(terminator); err != nil {
@@ -539,9 +543,9 @@ type issuedCall struct {
 }
 
 func (i *issuedCall) write(h header, w io.Writer) error {
-	h = append(h, i.invocation)
-	payload := i.call.payload()
-	if err := h.write(w, len(payload)); err != nil {
+	h = append(h, i.invocation.Func())
+	payload, payloadType := i.invocation.Payload()
+	if err := h.write(w, payloadType, len(payload)); err != nil {
 		return err
 	}
 	if _, err := w.Write(payload); err != nil {
@@ -622,9 +626,6 @@ func (p *deckCall) written() {
 	p.result([]byte("null"), nil)
 }
 
-func (c *deckCall) payload() []byte {
-	return c.call.Payload()
-}
 
 func (c *deckCall) action() (action.Action, bool) {
 	return c.call.Action()

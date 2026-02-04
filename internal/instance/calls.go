@@ -18,7 +18,6 @@ import (
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
-
 func (c *Instance[M]) CallCtx(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc {
 	if ctx.Err() != nil {
 		if onCancel != nil {
@@ -49,7 +48,7 @@ func (c *Instance[M]) CallCheck(check func() bool, action action.Action, onResul
 		params:   params,
 	}
 	c.solitaire.Call(call)
-	return 
+	return
 }
 
 type checkCall struct {
@@ -71,8 +70,8 @@ func (c *checkCall) Action() (action.Action, bool) {
 	return c.action, true
 }
 
-func (C *checkCall) Payload() []byte {
-	return nil
+func (C *checkCall) Payload() ([]byte, action.PayloadType) {
+	return nil, action.PayloadNone
 }
 
 func (c checkCall) Cancel() {
@@ -95,8 +94,6 @@ func (c *checkCall) Result(r json.RawMessage, err error) {
 	c.onResult(r, err)
 }
 
-// func (c *checkCall) Clean() {}
-
 type ctxCall struct {
 	ctx      context.Context
 	action   action.Action
@@ -117,10 +114,6 @@ func (c *ctxCall) Action() (action.Action, bool) {
 	return c.action, true
 }
 
-func (C *ctxCall) Payload() []byte {
-	return nil
-}
-
 func (c ctxCall) Cancel() {
 	defer c.done()
 	if c.onCancel == nil {
@@ -128,6 +121,7 @@ func (c ctxCall) Cancel() {
 	}
 	c.onCancel()
 }
+
 func (c *ctxCall) Result(r json.RawMessage, err error) {
 	if err != nil {
 		slog.Error("Call failed", slog.String("action", c.action.Log()), slog.String("error", err.Error()))
@@ -143,22 +137,3 @@ func (c *ctxCall) Result(r json.RawMessage, err error) {
 	c.onResult(r, err)
 }
 
-// func (c *ctxCall) Clean() {}
-
-type reportHook uint64
-
-func (c reportHook) Params() action.CallParams {
-	return action.CallParams{}
-}
-
-func (c reportHook) Action() (action.Action, bool) {
-	return &action.ReportHook{HookId: uint64(c)}, true
-}
-
-func (C reportHook) Payload() []byte {
-	return nil
-}
-
-func (c reportHook) Cancel()                             {}
-func (c reportHook) Result(r json.RawMessage, err error) {}
-// func (c reportHook) Clean()                              {}

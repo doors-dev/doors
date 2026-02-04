@@ -81,17 +81,19 @@ func (r Root) Render(el gox.Elem) (Pipe, shredder.SimpleFrame) {
 }
 
 func (i Root) TriggerHook(doorID uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
+	var tracker *tracker
 	if i.tracker.id == doorID {
-		return i.tracker.trigger(hookId, w, r)
+		tracker = i.tracker
+	} else {
+		i.mu.Lock()
+		var ok bool
+		tracker, ok = i.tackers[doorID]
+		i.mu.Unlock()
+		if !ok {
+			return false
+		}
 	}
-	i.mu.Lock()
-	tracker, ok := i.tackers[doorID]
-	i.mu.Unlock()
-	if !ok {
-		return false
-	}
-
-	ok = tracker.trigger(hookId, w, r)
+	ok := tracker.trigger(hookId, w, r)
 	if !ok {
 		return false
 	}

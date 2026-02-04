@@ -10,13 +10,13 @@ package doors
 
 import (
 	"context"
+	"log/slog"
 	"sync/atomic"
 
 	"github.com/a-h/templ"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
-	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/gox"
 )
 
@@ -28,12 +28,12 @@ import (
 //
 // A Door is itself a templ.Component and can be used directly in templates:
 //
-//	~(door)
-//	// or
-//	~>(door)
-//	<div>
-//      Initial Content
-//  </div>
+//		~(door)
+//		// or
+//		~>(door)
+//		<div>
+//	     Initial Content
+//	 </div>
 //
 // Doors start inactive and become active when rendered. Operations on inactive doors
 // are stored virtually and applied when the door becomes active. If a door is removed
@@ -279,27 +279,31 @@ func Head[M any](b Beam[M], cast func(M) HeadData) gox.Editor {
 				if seq != currentSeq.Load() {
 					return
 				}
+				builder := ActionEmit{
+					Name: "~0head",
+					Arg: map[string]any{
+						"title": newData.Title,
+						"meta": func() map[string]string {
+							escapedTags := make(map[string]string, len(newData.Meta))
+							for k, v := range newData.Meta {
+								escapedTags[k] = templ.EscapeString(v)
+							}
+							return escapedTags
+						}(),
+					},
+				}
+				action, params, err := builder.action(ctx, core)
+				if err != nil {
+					slog.Error("head data update action building error", "error", err.Error())
+				}
 				core.CallCheck(
 					func() bool {
 						return seq == currentSeq.Load()
 					},
-					&action.Emit{
-						Name: "~0head",
-						Arg: map[string]any{
-							"title": newData.Title,
-							"meta": func() map[string]string {
-								escapedTags := make(map[string]string, len(newData.Meta))
-								for k, v := range newData.Meta {
-									escapedTags[k] = templ.EscapeString(v)
-								}
-								return escapedTags
-							}(),
-						},
-						DoorID: core.DoorID(),
-					},
+					action,
 					nil,
 					nil,
-					action.CallParams{},
+					params,
 				)
 			}, nil)
 			return false

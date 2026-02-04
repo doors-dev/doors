@@ -9,10 +9,10 @@
 package action
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"time"
-
 )
 
 type Actions []Action
@@ -48,20 +48,45 @@ type CallParams struct {
 	Timeout    time.Duration
 }
 
+type PayloadType int
+
+const (
+	PayloadNone     PayloadType = 0x00
+	PayloadBinary   PayloadType = 0x01
+	PayloadJSON     PayloadType = 0x02
+	PayloadText     PayloadType = 0x03
+	PayloadBinaryGZ PayloadType = 0x11
+	PayloadJSONGZ   PayloadType = 0x12
+	PayloadTextGZ   PayloadType = 0x13
+)
+
 type Call interface {
 	// Clean()
 	Params() CallParams
 	Action() (Action, bool)
-	Payload() []byte
 	Cancel()
 	Result(json.RawMessage, error)
 }
 
 type Invocation struct {
-	name string
-	arg  []any
+	name        string
+	arg         []any
+	payload     []byte
+	payloadType PayloadType
+}
+
+func (a Invocation) Payload() ([]byte, PayloadType) {
+	return a.payload, a.payloadType
+}
+
+func (a Invocation) Func() []any {
+	return []any{a.name, a.arg}
 }
 
 func (a Invocation) MarshalJSON() ([]byte, error) {
-	return json.Marshal([]any{a.name, a.arg})
+	if a.payloadType == PayloadNone {
+		return json.Marshal([]any{a.name, a.arg})
+	}
+	encoded := base64.StdEncoding.EncodeToString(a.payload)
+	return json.Marshal([]any{a.name, a.arg, []any{a.payloadType, encoded}})
 }

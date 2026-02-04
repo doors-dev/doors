@@ -8,7 +8,10 @@
 
 package action
 
-import "time"
+import (
+	"time"
+
+)
 
 type LocationReload struct{}
 
@@ -68,9 +71,10 @@ func (a LocationAssign) Invocation() Invocation {
 }
 
 type Emit struct {
-	Name   string
-	Arg    any
-	DoorID uint64
+	Name        string
+	DoorID      uint64
+	Payload     []byte
+	PayloadType PayloadType
 }
 
 func (a Emit) Log() string {
@@ -79,7 +83,9 @@ func (a Emit) Log() string {
 func (a Emit) Invocation() Invocation {
 	return Invocation{
 		name: "emit",
-		arg:  []any{a.Name, a.Arg, a.DoorID},
+		arg:  []any{a.Name, a.DoorID},
+		payload: a.Payload,
+		payloadType: a.PayloadType,
 	}
 }
 
@@ -128,7 +134,9 @@ func (a SetPath) Invocation() Invocation {
 }
 
 type DoorReplace struct {
-	ID uint64
+	ID          uint64
+	Payload     []byte
+	PayloadType PayloadType
 }
 
 func (a DoorReplace) Log() string {
@@ -136,13 +144,17 @@ func (a DoorReplace) Log() string {
 }
 func (a DoorReplace) Invocation() Invocation {
 	return Invocation{
-		name: "door_replace",
-		arg:  []any{a.ID},
+		name:        "door_replace",
+		arg:         []any{a.ID},
+		payload:     a.Payload,
+		payloadType: a.PayloadType,
 	}
 }
 
 type DoorUpdate struct {
-	ID uint64
+	ID          uint64
+	Payload     []byte
+	PayloadType PayloadType
 }
 
 func (a DoorUpdate) Log() string {
@@ -150,8 +162,10 @@ func (a DoorUpdate) Log() string {
 }
 func (a DoorUpdate) Invocation() Invocation {
 	return Invocation{
-		name: "door_update",
-		arg:  []any{a.ID},
+		name:        "door_update",
+		arg:         []any{a.ID},
+		payload:     a.Payload,
+		payloadType: a.PayloadType,
 	}
 }
 
