@@ -53,11 +53,56 @@ type pipe struct {
 	resourceText     string
 }
 
+func (r *pipe) renderProxy(parentCtx context.Context, view *view, takoverFrame *shredder.ValveFrame) {
+	proxy := newProxyComponent(r.tracker.id, view, parentCtx, takoverFrame)
+	r.renderAny(r.tracker.ctx, proxy)
+}
+
+func (r *pipe) renderView(parentCtx context.Context, view *view) {
+	r.submit(func(ok bool) {
+		defer r.close()
+		if !ok {
+			return
+		}
+		cur := gox.NewCursor(r.tracker.ctx, r)
+		open, close := view.headFrame(parentCtx, r.tracker.id, cur.NewID())
+		cur.Send(open)
+		if comp, ok := view.content.(gox.Comp); ok {
+			comp.Main()(cur)
+		} else {
+			cur.Any(view.content)
+		}
+		cur.Send(close)
+	})
+}
+
+func (r *pipe) renderAny(ctx context.Context, any any) {
+	r.submit(func(ok bool) {
+		defer r.close()
+		if !ok {
+			return
+		}
+		cur := gox.NewCursor(ctx, r)
+		if comp, ok := any.(gox.Comp); ok {
+			comp.Main()(cur)
+		} else {
+			cur.Any(any)
+		}
+	})
+}
+
 func (r *pipe) SendTo(printer gox.Printer) {
 	if r.parent != nil {
 		panic("Can't initiate printing with owned renderer")
 	}
-	r.print(printer)
+	r.mu.Lock()
+	readyToPrint := r.closed
+	r.printer = printer
+	r.mu.Unlock()
+	if !readyToPrint {
+		return
+	}
+	r.print()
 }
 
 func (r *pipe) Send(job gox.Job) error {
@@ -79,23 +124,19 @@ func (r *pipe) submit(fun func(ok bool)) {
 
 func (r *pipe) send(job gox.Job) error {
 	switch job := job.(type) {
-	case *gox.JobHeadOpen:
-		job.Attrs.ApplyMods(job.Ctx, job.Tag)
-		r.job(job)
 	case *node:
 		job.render(r)
+	case *gox.JobHeadOpen:
+		if err := job.Attrs.ApplyMods(job.Ctx, job.Tag); err != nil {
+			return err
+		}
+		r.job(job)
 	case *gox.JobComp:
 		comp := job.Comp
 		ctx := job.Ctx
 		gox.Release(job)
 		newRenderer := r.branch()
-		newRenderer.submit(func(ok bool) {
-			defer newRenderer.close()
-			if !ok {
-				return
-			}
-			comp.Main().Print(ctx, newRenderer)
-		})
+		newRenderer.renderAny(ctx, comp)
 	default:
 		r.job(job)
 	}
@@ -108,10 +149,6 @@ func (r *pipe) lookForResource(job gox.Job) error {
 	case !ok:
 		return r.send(job)
 	case strings.EqualFold(head.Tag, "script"):
-		/*
-			for _, attr := range head.Attrs.List() {
-
-			} */
 		if head.Attrs.Has("src") {
 			return r.send(job)
 		}
@@ -238,41 +275,38 @@ func (r *pipe) closeResource(job gox.Job) error {
 	return nil
 }
 
-func (r *pipe) print(printer gox.Printer) {
+func (r *pipe) print() {
 	stack := []*pipe{r}
-	closed := false
 main:
 	for len(stack) != 0 {
 		rr := stack[len(stack)-1]
 		rr.mu.Lock()
+		rr.printer = r.printer
+		if !rr.closed {
+			rr.mu.Unlock()
+			return
+		}
 		for rr.buffer.Len() != 0 {
 			next := rr.buffer.PopFront()
 			switch next := next.(type) {
 			case gox.Job:
-				printer.Send(next)
+				rr.printer.Send(next)
 			case *pipe:
 				rr.mu.Unlock()
 				stack = append(stack, next)
 				continue main
 			}
 		}
-		closed = rr.closed
-		if closed {
-			bufferPool.Put(rr.buffer)
-			rr.buffer = nil
-			rr.mu.Unlock()
-			stack[len(stack)-1] = nil
-			stack = stack[:len(stack)-1]
-			continue
-		}
-		rr.printer = printer
+		bufferPool.Put(rr.buffer)
+		rr.buffer = nil
 		rr.mu.Unlock()
+		stack[len(stack)-1] = nil
+		stack = stack[:len(stack)-1]
+	}
+	if r.parent == nil {
 		return
 	}
-	if !closed || r.parent == nil {
-		return
-	}
-	r.parent.print(printer)
+	r.parent.print()
 }
 
 func (r *pipe) close() {
@@ -282,12 +316,12 @@ func (r *pipe) close() {
 	}
 	r.closed = true
 	r.renderFrame.Release()
-	done := r.printer != nil && r.buffer.Len() == 0
+	readyToPrint := r.printer != nil
 	r.mu.Unlock()
-	if !done || r.parent == nil {
+	if !readyToPrint {
 		return
 	}
-	r.parent.print(r.printer)
+	r.print()
 }
 
 func (r *pipe) job(job gox.Job) {
@@ -296,15 +330,12 @@ func (r *pipe) job(job gox.Job) {
 	if r.closed {
 		panic("render is closed")
 	}
-	if r.printer != nil {
-		r.printer.Send(job)
-		return
-	}
 	r.buffer.PushBack(job)
 }
 
 func (p *pipe) branch() *pipe {
 	p.mu.Lock()
+	defer p.mu.Unlock()
 	if p.closed {
 		panic("render is closed")
 	}
@@ -312,14 +343,6 @@ func (p *pipe) branch() *pipe {
 	newPipe.tracker = p.tracker
 	newPipe.renderFrame = p.renderFrame
 	newPipe.parent = p
-	if p.printer != nil {
-		printer := p.printer
-		p.printer = nil
-		p.mu.Unlock()
-		newPipe.print(printer)
-		return newPipe
-	}
 	p.buffer.PushBack(newPipe)
-	p.mu.Unlock()
 	return newPipe
 }

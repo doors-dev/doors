@@ -6,6 +6,7 @@ import (
 	"io"
 	"sync/atomic"
 
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -116,14 +117,7 @@ func (n *node) updatedTakeover(prev *node) {
 	pipe.printer = printer
 	pipe.tracker = n.tracker
 	pipe.renderFrame = shredder.Join(true, n.renderThread.Frame(), n.tracker.newRenderFrame())
-	pipe.submit(func(ok bool) {
-		defer pipe.close()
-		if !ok {
-			return
-		}
-		cur := gox.NewCursor(n.tracker.ctx, pipe)
-		n.view.renderContent(cur)
-	})
+	pipe.renderAny(n.tracker.ctx, n.view.content)
 	updateFrame := shredder.Join(true, n.renderThread.Frame(), n.communicationFrame)
 	updateFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
 		defer rootFrame.Activate()
@@ -210,14 +204,7 @@ func (n *node) replaceTakeover(prev *node) {
 	pipe.printer = printer
 	pipe.tracker = parent
 	pipe.renderFrame = shredder.Join(true, parent.newRenderFrame(), n.renderThread.Frame())
-	pipe.submit(func(ok bool) {
-		defer pipe.close()
-		if !ok {
-			return
-		}
-		cur := gox.NewCursor(parent.ctx, pipe)
-		n.view.renderContent(cur)
-	})
+	pipe.renderAny(parent.ctx, n.view.content)
 	replaceFrame := shredder.Join(true, n.renderThread.Frame(), n.communicationFrame)
 	replaceFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
 		defer rootFrame.Activate()
@@ -288,31 +275,18 @@ func (n *node) render(parentPipe *pipe) {
 		n.tracker.parent.addChild(n)
 		pipe.tracker = n.tracker
 		pipe.renderFrame = shredder.Join(true, parentPipe.renderFrame, n.tracker.newRenderFrame())
-		pipe.submit(func(ok bool) {
-			defer pipe.close()
-			if !ok {
-				defer n.takoverFrame.Activate()
-				n.kind = unmountedNode
-				n.tracker.kill()
-				return
-			}
-			cur := gox.NewCursor(n.tracker.ctx, pipe)
-			ctx := context.WithValue(parent.ctx, ctex.KeyCore, childDoorCore{
-				tracker: parent,
-				id:      n.tracker.id,
-			})
-			switch n.kind {
-			case editorNode:
-				n.takoverFrame.Activate()
-				open, close := n.view.headFrame(ctx, n.tracker.id, cur.NewID())
-				cur.Send(open)
-				n.view.renderContent(cur)
-				cur.Send(close)
-			case proxyNode:
-				proxy := newProxyComponent(n.tracker.id, n.view, parent.ctx, &n.takoverFrame)
-				proxy.Main()(cur)
-			}
+		parentCore := core.NewCore(n.tracker.root.inst, childDoorCore{
+			tracker: parent,
+			id:      n.tracker.id,
 		})
+		parentCtx := context.WithValue(parent.ctx, ctex.KeyCore, parentCore)
+		switch n.kind {
+		case editorNode:
+			n.takoverFrame.Activate()
+			pipe.renderView(parentCtx, n.view)
+		case proxyNode:
+			pipe.renderProxy(parentCtx, n.view, &n.takoverFrame)
+		}
 	})
 }
 

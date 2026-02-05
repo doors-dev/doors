@@ -45,10 +45,3 @@ func (v *view) headFrame(parentCtx context.Context, doorID uint64, headID uint64
 			parentCtx,
 		)
 }
-
-func (v *view) renderContent(cur gox.Cursor) error {
-	if comp, ok := v.content.(gox.Comp); ok {
-		return comp.Main()(cur)
-	}
-	return cur.Any(v.content)
-}

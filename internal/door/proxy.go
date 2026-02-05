@@ -62,7 +62,12 @@ func (r *proxyComponent) Send(job gox.Job) error {
 			if close.ID != r.headId {
 				return errors.New("door: invalid close")
 			}
-			err := r.view.renderContent(r.cursor)
+			var err error
+			if comp, ok := r.view.content.(gox.Comp); ok {
+				err = comp.Main()(r.cursor)
+			} else {
+				err = r.cursor.Any(r.view.content)
+			}
 			if err != nil {
 				return err
 			}
