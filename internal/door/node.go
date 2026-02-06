@@ -9,7 +9,6 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
-	"github.com/doors-dev/gox"
 )
 
 type nodeKind int
@@ -103,6 +102,7 @@ func (n *node) updatedTakeover(prev *node) {
 			}
 			n.tracker.root.inst.Call(&call{
 				ctx:  n.tracker.ctx,
+				id:   n.tracker.id,
 				kind: callUpdate,
 				ch:   n.reportCh,
 			})
@@ -199,7 +199,7 @@ func (n *node) replaceTakeover(prev *node) {
 				n.cancel()
 				return
 			}
-			n.tracker.root.inst.Call(&call{
+			prev.tracker.root.inst.Call(&call{
 				ctx:     ctx,
 				kind:    callReplace,
 				id:      id,
@@ -210,15 +210,15 @@ func (n *node) replaceTakeover(prev *node) {
 		return
 	}
 	rootFrame := shredder.ValveFrame{}
-	disableGzip := n.tracker.root.inst.Conf().ServerDisableGzip
+	disableGzip := prev.tracker.root.inst.Conf().ServerDisableGzip
 	printer := newPrinter(disableGzip)
 	pipe := newPipe(&rootFrame)
 	pipe.printer = printer
 	pipe.tracker = parent
 	pipe.renderFrame = shredder.Join(true, parent.newRenderFrame(), n.renderThread.Frame())
 	pipe.renderAny(parent.ctx, n.view.content)
-	replaceFrame := shredder.Join(true, n.renderThread.Frame(), n.communicationFrame)
-	replaceFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
+	replaceFrame := shredder.Join(true, n.renderThread.Frame(), prev.communicationFrame)
+	replaceFrame.Run(prev.tracker.parentContext(), prev.tracker.root.runtime(), func(ok bool) {
 		defer rootFrame.Activate()
 		if !ok {
 			printer.release()
@@ -227,7 +227,7 @@ func (n *node) replaceTakeover(prev *node) {
 		}
 		printer.finalize()
 		if err := pipe.Error(); err != nil {
-			n.tracker.root.inst.Call(&call{
+			prev.tracker.root.inst.Call(&call{
 				ctx:     parent.ctx,
 				kind:    callReplace,
 				id:      id,
@@ -236,7 +236,7 @@ func (n *node) replaceTakeover(prev *node) {
 			n.error(err)
 			return
 		}
-		n.tracker.root.inst.Call(&call{
+		prev.tracker.root.inst.Call(&call{
 			ctx:     parent.ctx,
 			kind:    callReplace,
 			id:      id,
@@ -251,6 +251,7 @@ func (n *node) replaceTakeover(prev *node) {
 func (n *node) proxyTakeover(prev *node) {
 	n.view.content = prev.view.content
 	switch prev.kind {
+	case replacedNode:
 	case updatedNode, editorNode, proxyNode:
 		prev.kill(removeKill)
 		prev.tracker.parent.removeChild(prev)
@@ -288,8 +289,7 @@ func (n *node) render(parentPipe *pipe) {
 			return
 		}
 		if n.kind == replacedNode {
-			cur := gox.NewCursor(parent.ctx, pipe)
-			cur.Any(n.view.content)
+			pipe.renderAny(parent.ctx, n.view.content)
 			return
 		}
 		n.communicationFrame = pipe.rootFrame

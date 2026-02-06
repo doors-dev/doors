@@ -1,0 +1,232 @@
+package door
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type FragmentMany struct {
+	n doors.Door
+	test.NoBeam
+}
+
+elem (f *FragmentMany) sample() {
+	<div class="sample">sample</div>
+}
+
+elem (f *FragmentMany) manyDoors() {
+	~(for i := range 20 {
+		<span style="display:none">~(fmt.Sprint(i))</span>
+		~(&f.n)
+	})
+}
+
+elem (f *FragmentMany) replaced() {
+	~{
+		f.n.Replace(ctx, f.sample())
+	}
+	~(for i := range 100 {
+		<span style="display:none">~(fmt.Sprint(i))</span>
+		~(&f.n)
+	})
+}
+
+elem (f *FragmentMany) Main() {
+	~{
+		f.n.Update(ctx, f.sample())
+		n := doors.Door{}
+	}
+	~>(n)
+	<>
+		~(f.manyDoors())
+	</>
+	~(test.Button("replace", func(ctx context.Context) bool {
+		n.Update(ctx, f.replaced())
+		return true
+	}))
+}
+
+type FragmentX struct {
+	report doors.Door
+	n doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentX) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, test.Report(s))
+}
+
+elem (f *FragmentX) Main() {
+	~>(f.n)
+	<>
+		~(test.Marker("init"))
+	</>
+	~(&f.report)
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+			ch := f.n.XUpdate(ctx, test.Marker("updated"))
+			err, ok := <-ch
+			if !ok {
+				f.rep(ctx, "channel closed")
+				return true
+			}
+			if err != nil {
+				f.rep(ctx, "channel err: " + err.Error())
+				return true
+			}
+			f.rep(ctx, "ok")
+			return false
+		},
+	}
+	<button id="updatex">C</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+			ch := f.n.XRemove(ctx)
+			err, ok := <-ch
+			if !ok {
+				f.rep(ctx, "channel closed")
+				return true
+			}
+			if err != nil {
+				f.rep(ctx, "channel err: " + err.Error())
+				return true
+			}
+			f.rep(ctx, "ok")
+			return true
+		},
+	}
+	<button id="removex">R</button>
+}
+
+type EmbeddedFragment struct {
+	n1 doors.Door
+	n2 doors.Door
+	n3 doors.Door
+	test.NoBeam
+}
+
+elem (f *EmbeddedFragment) Main() {
+	~>(f.n1)
+	<>
+		~>(f.n2)
+		<div>
+			~(test.Marker("init"))
+		</div>
+		~(test.Marker("static"))
+	</>
+	~(&f.n3)
+	<button
+		id="remove"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+				f.n2.Remove(ctx)
+				return true
+			},
+		})>
+		C
+	</button>
+	<button
+		id="clear"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+				f.n1.Clear(ctx)
+				return true
+			},
+		})>
+		C
+	</button>
+	<button
+		id="replace"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+				f.n2.Update(ctx, test.Marker("replaced"))
+				f.n3.Update(ctx, test.Marker("temp"))
+				f.n3.Replace(ctx, &f.n2)
+				return true
+			},
+		})>
+		C
+	</button>
+}
+
+type DynamicFragment struct {
+	n1 doors.Door
+	n2 doors.Door
+	test.NoBeam
+}
+
+elem (f *DynamicFragment) Main() {
+	~{
+		f.n1.Update(ctx, test.Marker("init"))
+	}
+	~>(f.n1)<div>
+	</div>
+	<button
+		id="update"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+				f.n1.Update(ctx, test.Marker("updated"))
+				return true
+			},
+		})>
+		U
+	</button>
+	<button
+		id="replace"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+				f.n2.Update(ctx, test.Marker("replaced"))
+				f.n1.Replace(ctx, &f.n2)
+				return true
+			},
+		})>
+		Rp
+	</button>
+	<button
+		id="remove"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+				f.n2.Remove(ctx)
+				return true
+			},
+		})>
+		Remove
+	</button>
+}
+
+type BeforeFragment struct {
+	doorInit doors.Door
+	doorUpdate doors.Door
+	doorRemoved doors.Door
+	doorReplaced doors.Door
+	test.NoBeam
+}
+
+elem (f *BeforeFragment) Main() {
+	~>(f.doorInit)<div>
+		~(test.Marker("init"))
+	</div>
+	~{
+		f.doorUpdate.Update(ctx, test.Marker("updated"))
+	}
+	~>(f.doorUpdate)<div>
+	</div>
+	~{
+		f.doorRemoved.Update(ctx, test.Marker("removed"))
+	}
+	~{
+		f.doorRemoved.Remove(ctx)
+	}
+	~(&f.doorRemoved)
+	~{
+		f.doorReplaced.Replace(ctx, test.Marker("replaced"))
+	}
+	~>(f.doorReplaced)
+	<div>
+		~(test.Marker("initReplaced"))
+	</div>
+}

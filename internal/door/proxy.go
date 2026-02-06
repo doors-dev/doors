@@ -3,6 +3,7 @@ package door
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/doors-dev/doors/internal/shredder"
@@ -51,7 +52,7 @@ func (r *proxyComponent) Main() gox.Elem {
 			return nil
 		}
 		if r.state != initial {
-			return errors.New("door: invalid proxy state")
+			return fmt.Errorf("door [%d]: invalid state %d", r.doorId, r.state)
 		}
 		id := r.cursor.NewID()
 		if err := r.Send(gox.NewJobHeadOpen(id, gox.KindContainer, "", cur.Context(), gox.NewAttrs())); err != nil {
@@ -118,7 +119,9 @@ func (r *proxyComponent) Send(job gox.Job) error {
 
 func (r *proxyComponent) init(job gox.Job) (proxyRendererState, error) {
 	node, isNode := job.(*node)
-	if isNode {
+	openJob, isOpen := job.(*gox.JobHeadOpen)
+	switch true {
+	case isNode:
 		r.view.attrs = nil
 		r.view.tag = ""
 		r.view.content = r.view.elem
@@ -133,50 +136,43 @@ func (r *proxyComponent) init(job gox.Job) (proxyRendererState, error) {
 			return done, err
 		}
 		return done, nil
-	}
-	openJob, ok := job.(*gox.JobHeadOpen)
-	if !ok {
+	case !isOpen:
 		return done, errors.New("door: expected container")
-	}
-	var state proxyRendererState
-	if r.view.content == nil {
-		r.view.content = headLess{el: r.view.elem}
-		state = closing
-	} else {
-		state = check
-	}
-	var buffered *gox.JobHeadOpen
-	switch openJob.Kind {
-	case gox.KindVoid:
+	case openJob.Kind == gox.KindVoid:
 		return done, errors.New("door: void tag can't be a door")
-	case gox.KindContainer:
-		gox.Release(openJob)
+	case openJob.Kind == gox.KindRegular && (openJob.Tag == "d0-r" || strings.EqualFold(openJob.Tag, "script") || strings.EqualFold(openJob.Tag, "style") || openJob.Attrs.Get("data-d0r").IsSet()):
+		r.wrapOver = true
 		r.view.attrs = nil
 		r.view.tag = ""
-	case gox.KindRegular:
-		if openJob.Tag == "d0-r" || strings.EqualFold(openJob.Tag, "script") || strings.EqualFold(openJob.Tag, "style") || openJob.Attrs.Get("data-d0r").IsSet() {
-			r.wrapOver = true
-			r.view.attrs = nil
-			r.view.tag = ""
-			r.view.content = r.view.elem
-			state = closing
-			buffered = openJob
-		} else {
-			defer gox.Release(openJob)
-			r.view.attrs = openJob.Attrs.Clone()
-			r.view.tag = openJob.Tag
+		r.view.content = r.view.elem
+		r.headId = openJob.ID
+		open, close := r.view.headFrame(r.parentCtx, r.doorId, r.cursor.NewID())
+		r.close = close
+		if err := r.cursor.Send(open); err != nil {
+			return done, err
 		}
+		if err := r.cursor.Send(openJob); err != nil {
+			return done, err
+		}
+		return closing, nil
+	case openJob.Kind == gox.KindContainer:
+		r.view.attrs = nil
+		r.view.tag = ""
+	case openJob.Kind == gox.KindRegular:
+		r.view.attrs = openJob.Attrs.Clone()
+		r.view.tag = openJob.Tag
 	}
+	defer gox.Release(openJob)
 	r.headId = openJob.ID
+	state := check
+	if r.view.content == nil {
+		state = closing
+		r.view.content = headLess{el: r.view.elem}
+	}
 	open, close := r.view.headFrame(r.parentCtx, r.doorId, r.cursor.NewID())
 	r.close = close
 	if err := r.cursor.Send(open); err != nil {
 		return done, err
-	}
-	if buffered != nil {
-		if err := r.cursor.Send(buffered); err != nil {
-			return done, nil
-		}
 	}
 	return state, nil
 }

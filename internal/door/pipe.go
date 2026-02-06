@@ -81,13 +81,16 @@ func (p *pipe) renderView(parentCtx context.Context, view *view) {
 		if p.renderingError != nil {
 			return
 		}
-		if comp, ok := view.content.(gox.Comp); ok {
-			p.renderingError = comp.Main()(cur)
-		} else {
-			p.renderingError = cur.Any(view.content)
-		}
-		if p.renderingError != nil {
-			return
+		if view.content != nil {
+			if comp, ok := view.content.(gox.Comp); ok {
+				p.renderingError = comp.Main()(cur)
+			} else {
+				p.renderingError = cur.Any(view.content)
+			}
+
+			if p.renderingError != nil {
+				return
+			}
 		}
 		p.renderingError = p.send(close)
 	})
@@ -97,6 +100,9 @@ func (p *pipe) renderAny(ctx context.Context, any any) {
 	p.submit(func(ok bool) {
 		defer p.close()
 		if !ok {
+			return
+		}
+		if any == nil {
 			return
 		}
 		cur := gox.NewCursor(ctx, p)

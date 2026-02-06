@@ -40,7 +40,7 @@ type AnyInstance interface {
 }
 
 type App[M any] interface {
-	Main(path beam.SourceBeam[M]) gox.Elem
+	Main(path beam.Source[M]) gox.Elem
 }
 
 type setup[M any] struct {

@@ -15,7 +15,7 @@ import (
 	"net/http"
 )
 
-func staticFiles(_b doors.SourceBeam[test.Path]) templ.Component {
+func staticFiles(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -200,7 +200,7 @@ func fileRawSrc() templ.Component {
 	})
 }
 
-func styleBytesHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func styleBytesHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -231,7 +231,7 @@ func styleBytesHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func styleExternalHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func styleExternalHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -262,7 +262,7 @@ func styleExternalHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func styleHostedHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func styleHostedHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -293,7 +293,7 @@ func styleHostedHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func styleHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func styleHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -324,7 +324,7 @@ func styleHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func moduleExternalHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func moduleExternalHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -356,7 +356,7 @@ func moduleExternalHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func moduleBundleHostHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func moduleBundleHostHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -388,7 +388,7 @@ func moduleBundleHostHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func moduleBundleFSHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func moduleBundleFSHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -422,7 +422,7 @@ func moduleBundleFSHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func moduleRawBytesHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func moduleRawBytesHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -454,7 +454,7 @@ func moduleRawBytesHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func moduleRawHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func moduleRawHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -486,7 +486,7 @@ func moduleRawHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func moduleBytesHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func moduleBytesHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -518,7 +518,7 @@ func moduleBytesHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func moduleHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func moduleHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -551,7 +551,7 @@ func moduleHead(_b doors.SourceBeam[test.Path]) templ.Component {
 	})
 }
 
-func reactHead(_b doors.SourceBeam[test.Path]) templ.Component {
+func reactHead(_b doors.Source[test.Path]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

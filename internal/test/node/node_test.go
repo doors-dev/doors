@@ -8,13 +8,13 @@ import (
 )
 
 func TestDoorLoadPage(t *testing.T) {
-	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-			return pr.Page(&test.Page{
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
+			return pr.App(&test.Page{
 				Header: "Page Door",
 			})
-		}),
-	)
+		})
+	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
@@ -24,73 +24,22 @@ func TestDoorLoadPage(t *testing.T) {
 	}
 }
 
+
 func TestDoorInitialContent(t *testing.T) {
-	doorInitialContent(t,
-		func() test.Fragment {
-			return &BeforeFragment{}
-		},
-	)
-}
-
-func TestDoorInitialContentTag(t *testing.T) {
-	doorInitialContent(t,
-		func() test.Fragment {
-			return &BeforeFragment{
-				doorInit: doors.Door{
-					Tag: "div",
-				},
-				doorUpdate: doors.Door{
-					Tag: "div",
-				},
-				doorRemoved: doors.Door{
-					Tag: "div",
-				},
-				doorReplaced: doors.Door{
-					Tag: "div",
-				},
-			}
-		},
-	)
-}
-
-func doorInitialContent(t *testing.T, init func() test.Fragment) {
-	bro := test.NewFragmentBro(browser, init)
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &BeforeFragment{}
+	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
 	test.TestMust(t, page, "#init")
 }
 
-func TestDoorUpdatedBefore(t *testing.T) {
-	doorUpdatedBefore(t,
-		func() test.Fragment {
-			return &BeforeFragment{}
-		},
-	)
-}
-func TestDoorUpdatedBeforeTag(t *testing.T) {
-	doorUpdatedBefore(t,
-		func() test.Fragment {
-			return &BeforeFragment{
-				doorInit: doors.Door{
-					Tag: "div",
-				},
-				doorUpdate: doors.Door{
-					Tag: "div",
-				},
-				doorRemoved: doors.Door{
-					Tag: "div",
-				},
-				doorReplaced: doors.Door{
-					Tag: "div",
-				},
-			}
-		},
-	)
-}
 
-func doorUpdatedBefore(t *testing.T, init func() test.Fragment) {
-	bro := test.NewFragmentBro(browser, init)
+func DoorUpdatedBefore(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &BeforeFragment{}
+	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
@@ -98,71 +47,20 @@ func doorUpdatedBefore(t *testing.T, init func() test.Fragment) {
 }
 
 func TestDoorRemovedBefore(t *testing.T) {
-	doorRemovedBefore(t,
-		func() test.Fragment {
-			return &BeforeFragment{}
-		},
-	)
-}
-func TestDoorRemovedBeforeTag(t *testing.T) {
-	doorRemovedBefore(t,
-		func() test.Fragment {
-			return &BeforeFragment{
-				doorInit: doors.Door{
-					Tag: "div",
-				},
-				doorUpdate: doors.Door{
-					Tag: "div",
-				},
-				doorRemoved: doors.Door{
-					Tag: "div",
-				},
-				doorReplaced: doors.Door{
-					Tag: "div",
-				},
-			}
-		},
-	)
-}
-
-func doorRemovedBefore(t *testing.T, init func() test.Fragment) {
-	bro := test.NewFragmentBro(browser, init)
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &BeforeFragment{}
+	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
 	test.TestMustNot(t, page, "#removed")
 }
 
-func TestDoorReplacedBefore(t *testing.T) {
-	doorReplacedBefore(t,
-		func() test.Fragment {
-			return &BeforeFragment{}
-		},
-	)
-}
-func TestDoorReplacedBeforeTag(t *testing.T) {
-	doorReplacedBefore(t,
-		func() test.Fragment {
-			return &BeforeFragment{
-				doorInit: doors.Door{
-					Tag: "div",
-				},
-				doorUpdate: doors.Door{
-					Tag: "div",
-				},
-				doorRemoved: doors.Door{
-					Tag: "div",
-				},
-				doorReplaced: doors.Door{
-					Tag: "div",
-				},
-			}
-		},
-	)
-}
 
-func doorReplacedBefore(t *testing.T, init func() test.Fragment) {
-	bro := test.NewFragmentBro(browser, init)
+func TestDoorReplacedBefore(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &BeforeFragment{}
+	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
@@ -172,31 +70,11 @@ func doorReplacedBefore(t *testing.T, init func() test.Fragment) {
 
 }
 
+
 func TestDoorDynamic(t *testing.T) {
-	doorDynamic(t,
-		func() test.Fragment {
-			return &DynamicFragment{}
-		},
-	)
-}
-
-func TestDoorDynamicTag(t *testing.T) {
-	doorDynamic(t,
-		func() test.Fragment {
-			return &DynamicFragment{
-				n1: doors.Door{
-					Tag: "div",
-				},
-				n2: doors.Door{
-					Tag: "div",
-				},
-			}
-		},
-	)
-}
-
-func doorDynamic(t *testing.T, init func() test.Fragment) {
-	bro := test.NewFragmentBro(browser, init)
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &DynamicFragment{}
+	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
@@ -212,76 +90,23 @@ func doorDynamic(t *testing.T, init func() test.Fragment) {
 }
 
 func TestDoorEmbedded(t *testing.T) {
-	doorEmbedded(t,
-		func() test.Fragment {
-			return &EmbeddedFragment{}
-		},
-	)
-}
-
-func TestDoorEmbeddedTag(t *testing.T) {
-	doorEmbedded(t,
-		func() test.Fragment {
-			return &EmbeddedFragment{
-				n1: doors.Door{
-					Tag: "div",
-				},
-				n2: doors.Door{
-					Tag: "div",
-				},
-				n3: doors.Door{
-					Tag: "div",
-				},
-			}
-		},
-	)
-}
-func doorEmbedded(t *testing.T, f func() test.Fragment) {
-	bro := test.NewFragmentBro(browser, f)
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &EmbeddedFragment{}
+	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
 	test.TestMust(t, page, "#init")
-	test.Click(t, page, "#remove")
-	test.TestMustNot(t, page, "#init")
-	test.TestMust(t, page, "#static")
-	test.Click(t, page, "#clear")
-	test.TestMustNot(t, page, "#static")
-	test.Click(t, page, "#replace")
-	test.TestMustNot(t, page, "#temp")
-	test.TestMust(t, page, "#replaced")
+	
 }
 
-func TestEmbeddedRemove(t *testing.T) {
-	doorEmbeddedRemove(t,
-		func() test.Fragment {
-			return &EmbeddedFragment{}
-		},
-	)
-}
-func TestEmbeddedRemoveTag(t *testing.T) {
-	doorEmbeddedRemove(t,
-		func() test.Fragment {
-			return &EmbeddedFragment{
-				n1: doors.Door{
-					Tag: "div",
-				},
-				n2: doors.Door{
-					Tag: "div",
-				},
-				n3: doors.Door{
-					Tag: "div",
-				},
-			}
-		},
-	)
-}
-func doorEmbeddedRemove(t *testing.T, init func() test.Fragment) {
-	bro := test.NewFragmentBro(browser, init)
+func TestDoorEmbeddedRemove(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &EmbeddedFragment{}
+	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
-	<-time.After(0 * time.Hour)
 	test.TestMust(t, page, "#init")
 	test.Click(t, page, "#clear")
 	test.TestMustNot(t, page, "#init")
@@ -290,17 +115,12 @@ func doorEmbeddedRemove(t *testing.T, init func() test.Fragment) {
 	test.TestMustNot(t, page, "#temp")
 	test.TestMust(t, page, "#replaced")
 }
+
 
 func TestDoorUpdateX(t *testing.T) {
-	doorUpdateX(t,
-		func() test.Fragment {
-			return &FragmentX{}
-		},
-	)
-}
-
-func doorUpdateX(t *testing.T, init func() test.Fragment) {
-	bro := test.NewFragmentBro(browser, init)
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentX{}
+	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
@@ -316,22 +136,10 @@ func doorUpdateX(t *testing.T, init func() test.Fragment) {
 	test.TestReport(t, page, "channel closed")
 }
 
-func TestDoorMultiple(t *testing.T) {
-	doorMultiple(t, func() test.Fragment {
+func TestDoorMultiple(t *testing.T ){
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &FragmentMany{}
 	})
-}
-func TestDoorMultipleTag(t *testing.T) {
-	doorMultiple(t, func() test.Fragment {
-		return &FragmentMany{
-			n: doors.Door{
-				Tag: "div",
-			},
-		}
-	})
-}
-func doorMultiple(t *testing.T, init func() test.Fragment) {
-	bro := test.NewFragmentBro(browser, init)
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()

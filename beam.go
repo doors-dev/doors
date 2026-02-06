@@ -17,7 +17,7 @@ import "github.com/doors-dev/doors/internal/beam"
 // rendering behavior, even when multiple components depend on the same reactive source.
 type Beam[T any] = beam.Beam[T]
 
-// SourceBeam is the initial Beam (others are derived from it), which, in addition to its core
+// Source is the initial Beam (others are derived from it), which, in addition to its core
 // functionality, includes the ability to update values and propagate changes to all
 // subscribers and derived beams. It serves as the root of a reactive value chain.
 // Updates and mutations are synchronized across all subscribers, ensuring consistent
@@ -29,9 +29,9 @@ type Beam[T any] = beam.Beam[T]
 // the data directly. Instead, create or provide a different instance.
 // Direct modification can break the consistency guarantees since subscribers may
 // observe partial changes or inconsistent state.
-type SourceBeam[T any] = beam.SourceBeam[T]
+type Source[T any] = beam.Source[T]
 
-// NewSourceBeam creates a new SourceBeam with the given initial value.
+// NewSource creates a new SourceBeam with the given initial value.
 // Updates are only propagated when the new value passes the default distinct
 // function with != comparison to the old value
 //
@@ -39,12 +39,12 @@ type SourceBeam[T any] = beam.SourceBeam[T]
 //   - init: the initial value for the SourceBeam
 //
 // Returns:
-//   - A new SourceBeam[T] instance
-func NewSourceBeam[T comparable](init T) SourceBeam[T] {
-	return beam.NewSourceBeam(init)
+//   - A new Source[T] instance
+func NewSource[T comparable](init T) Source[T] {
+	return beam.NewSource(init)
 }
 
-// NewSourceBeamEqual creates a new SourceBeam with a custom equality function.
+// NewSourceEqual creates a new SourceBeam with a custom equality function.
 //
 // The equality function receives new and old values and should return true
 // if the new value is considered different and should be propagated to subscribers.
@@ -56,9 +56,9 @@ func NewSourceBeam[T comparable](init T) SourceBeam[T] {
 //     or nil to always propagate
 //
 // Returns:
-//   - A new SourceBeam[T] instance that uses the equality function for update filtering
-func NewSourceBeamEqual[T any](init T, equal func(new T, old T) bool) SourceBeam[T] {
-	return beam.NewSourceBeamEqual(init, equal)
+//   - A new Source[T] instance that uses the equality function for update filtering
+func NewSourceEqual[T any](init T, equal func(new T, old T) bool) Source[T] {
+	return beam.NewSourceEqual(init, equal)
 }
 
 // NewBeam derives a new Beam[T2] from an existing Beam[T] by applying a transformation function.

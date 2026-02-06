@@ -40,7 +40,7 @@ func newNavigator[M any](
 		rerouted:    rerouted,
 		historyHead: &historyHead[M]{},
 		ctx:         ctx,
-		model: beam.NewSourceBeamEqual(*model, func(new, old M) bool {
+		model: beam.NewSourceEqual(*model, func(new, old M) bool {
 			return reflect.DeepEqual(new, old)
 		}),
 	}
@@ -54,7 +54,7 @@ type navigator[M any] struct {
 	adapters    map[string]path.AnyAdapter
 	detached    bool
 	rerouted    bool
-	model       beam.SourceBeam[M]
+	model       beam.Source[M]
 	mu          sync.Mutex
 	historyHead *historyHead[M]
 	ctx         context.Context
@@ -65,7 +65,7 @@ func (n *navigator[M]) isDetached() bool {
 	return n.detached
 }
 
-func (n *navigator[M]) getBeam() beam.SourceBeam[M] {
+func (n *navigator[M]) getBeam() beam.Source[M] {
 	return n.model
 }
 

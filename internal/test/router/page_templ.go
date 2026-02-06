@@ -17,7 +17,7 @@ type PathA struct {
 	Path bool `path:"/a"`
 }
 
-func pageA(b doors.SourceBeam[PathA]) templ.Component {
+func pageA(b doors.Source[PathA]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -118,7 +118,7 @@ type PathC struct {
 	PathC2 bool `path:"/c2"`
 }
 
-func pageC(b doors.SourceBeam[PathC]) templ.Component {
+func pageC(b doors.Source[PathC]) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

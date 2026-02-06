@@ -109,25 +109,28 @@ func (s *Bro) url(path string) string {
 }
 
 func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
-	return NewBro(b,
-		doors.UsePage(func(pr doors.PageRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
-			return pr.Page(&Page{
-				F: f(),
+	return NewBro(
+		b,
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
+				return pr.App(&Page{
+					F: f(),
+				})
 			})
-		}),
+		},
 	)
 }
 
 
-func NewBro(browser *rod.Browser, mods ...doors.Use) *Bro {
+func NewBro(browser *rod.Browser, mod func(r doors.Router)) *Bro {
 	r := doors.NewRouter()
-	r.Use(mods...)
+	mod(r)
 	limit := os.Getenv("LIMIT") != ""
 	if limit {
-		r.Use(doors.UseSystemConf(common.SystemConf{
+		doors.UseSystemConf(r, common.SystemConf{
 			SessionInstanceLimit:   1,
 			InstanceGoroutineLimit: 1,
-		}))
+		})
 	}
 
 	listener, err := net.Listen("tcp", ":0")

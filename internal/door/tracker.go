@@ -185,21 +185,24 @@ func (t *tracker) kill() {
 
 func (t *tracker) removeChild(n *node) {
 	t.mu.Lock()
-	defer t.mu.Unlock()
 	if !t.children.Remove(n) {
+		defer t.mu.Unlock()
 		return
 	}
 	if t.childDoorHooksCancel == nil {
+		defer t.mu.Unlock()
 		return
 	}
 	cancels, ok := t.childDoorHooksCancel[n.tracker.id]
 	if !ok {
+		defer t.mu.Unlock()
 		return
 	}
+	delete(t.childDoorHooksCancel, n.tracker.id)
+	t.mu.Unlock()
 	for _, cancel := range cancels {
 		cancel()
 	}
-	delete(t.childDoorHooksCancel, n.tracker.id)
 }
 
 func (t *tracker) replaceChild(prev *node, next *node) {

@@ -260,6 +260,9 @@ func (rr *Router) tryServePut(w http.ResponseWriter, r *http.Request) bool {
 
 
 func (rr *Router) tryServeAssets(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method != "GET" {
+		return false
+	}
 	script := rr.registry.MainScript()
 	if r.URL.Path == script.HashString()+".js" {
 		script.Serve(w, r)
@@ -285,6 +288,9 @@ func (rr *Router) tryServeRoute(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (rr *Router) tryServeResource(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method != "GET" {
+		return false
+	}
 	matches := importRegexp.FindStringSubmatch(r.URL.Path)
 	if len(matches) == 0 {
 		return false
@@ -300,7 +306,7 @@ func (rr *Router) tryServeResource(w http.ResponseWriter, r *http.Request) bool 
 
 }
 
-func (rr *Router) tryServePages(w http.ResponseWriter, r *http.Request) bool {
+func (rr *Router) tryServeContent(w http.ResponseWriter, r *http.Request) bool {
 	if r.Method != "GET" {
 		return false
 	}
@@ -339,7 +345,7 @@ func (rr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if rr.tryServeUtility(w, r) {
 		return
 	}
-	if rr.tryServePage(w, r) {
+	if rr.tryServeContent(w, r) {
 		return
 	}
 	if rr.fallback != nil {

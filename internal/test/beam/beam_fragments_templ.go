@@ -23,7 +23,7 @@ type state struct {
 
 type BeamSkipFragment struct {
 	r    *test.Reporter
-	b    doors.SourceBeam[state]
+	b    doors.Source[state]
 	node doors.Door
 	test.NoBeam
 }
@@ -112,7 +112,7 @@ func (f *BeamSkipFragment) Render() templ.Component {
 
 type BeamDeriveFragment struct {
 	r *test.Reporter
-	b doors.SourceBeam[state]
+	b doors.Source[state]
 	n doors.Door
 	test.NoBeam
 }
@@ -287,7 +287,7 @@ func (f *BeamDeriveFragment) Render() templ.Component {
 
 type BeamConsistentFragment struct {
 	r *test.Reporter
-	b doors.SourceBeam[state]
+	b doors.Source[state]
 	n doors.Door
 	test.NoBeam
 }
@@ -459,7 +459,7 @@ func (f *BeamConsistentFragment) Render() templ.Component {
 
 type BeamUpdateFragment struct {
 	r *test.Reporter
-	b doors.SourceBeam[state]
+	b doors.Source[state]
 	test.NoBeam
 }
 

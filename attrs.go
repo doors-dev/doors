@@ -12,7 +12,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/doors-dev/doors/internal/core"
@@ -41,12 +40,12 @@ type Attr interface {
 }
 
 func A(ctx context.Context, a ...Attr) Attr {
-	 attrs := gox.NewAttrs()
-	 for _, mod := range a {
-	 	attrs.AddMod(mod)
-	 }
-	 attrs.ApplyMods(ctx, "")
-	 return joinedAttrs{attrs: attrs}
+	attrs := gox.NewAttrs()
+	for _, mod := range a {
+		attrs.AddMod(mod)
+	}
+	attrs.ApplyMods(ctx, "")
+	return joinedAttrs{attrs: attrs}
 }
 
 type eventAttr[E any] struct {
@@ -106,8 +105,8 @@ func (m *proxyAttrModPrinter) Send(job gox.Job) error {
 	mod := m.mod
 	m.mod = nil
 	open, ok := job.(*gox.JobHeadOpen)
-	if !ok || open.Kind == gox.KindContainer || open.Tag == "d0-r" || open.Attrs.Get("data-d0r").IsSet() {
-		slog.Error("Can't attach attribute modifer on non-tag or door")
+	if !ok || open.Kind == gox.KindContainer || open.Tag == "d0-r" {
+		return errors.New("Can't attach attribute modifer on non-tag or door")
 	} else {
 		open.Attrs.AddMod(mod)
 	}

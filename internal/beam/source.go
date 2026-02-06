@@ -18,7 +18,7 @@ import (
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-type SourceBeam[T any] interface {
+type Source[T any] interface {
 	Beam[T]
 
 	// Update sets a new value and propagates it to all subscribers and derived beams.
@@ -108,7 +108,7 @@ func (s *source[T]) removeSub(sc *screen) {
 	s.subs.Remove(sc)
 }
 
-func NewSourceBeamEqual[T any](init T, equal func(new T, old T) bool) SourceBeam[T] {
+func NewSourceEqual[T any](init T, equal func(new T, old T) bool) Source[T] {
 	return &source[T]{
 		id:  common.NewID(),
 		seq: 1,
@@ -124,8 +124,8 @@ func equal[T comparable](new T, old T) bool {
 	return new == old
 }
 
-func NewSourceBeam[T comparable](init T) SourceBeam[T] {
-	return NewSourceBeamEqual(init, equal)
+func NewSource[T comparable](init T) Source[T] {
+	return NewSourceEqual(init, equal)
 }
 
 func (s *source[T]) DisableSkipping() {

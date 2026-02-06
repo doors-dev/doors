@@ -21,7 +21,7 @@ func checkColor(t *testing.T, page *rod.Page) {
 	}
 }
 
-func testStyle(t *testing.T, h func(doors.SourceBeam[test.Path]) templ.Component) {
+func testStyle(t *testing.T, h func(doors.Source[test.Path]) templ.Component) {
 	bro := test.NewBro(browser,
 		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
 			return pr.Page(&test.Page{
@@ -38,7 +38,7 @@ func testStyle(t *testing.T, h func(doors.SourceBeam[test.Path]) templ.Component
 	<-time.After(100 * time.Millisecond)
 	checkColor(t, page)
 }
-func testModule(t *testing.T, h func(doors.SourceBeam[test.Path]) templ.Component) {
+func testModule(t *testing.T, h func(doors.Source[test.Path]) templ.Component) {
 	bro := test.NewBro(browser,
 		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
 			return pr.Page(&test.Page{

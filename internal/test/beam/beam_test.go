@@ -13,7 +13,7 @@ func TestBeamBasics(t *testing.T) {
 		func() test.Fragment {
 			return &BeamUpdateFragment{
 				r: test.NewReporter(1),
-				b: doors.NewSourceBeam(state{}),
+				b: doors.NewSource(state{}),
 			}
 		})
 	page := bro.Page(t, "/")
@@ -55,7 +55,7 @@ func TestConsistent(t *testing.T) {
 	testConsistency(t, func() test.Fragment {
 		return &BeamConsistentFragment{
 			r: test.NewReporter(1),
-			b: doors.NewSourceBeam(state{}),
+			b: doors.NewSource(state{}),
 		}
 	})
 }
@@ -63,7 +63,7 @@ func TestDerive(t *testing.T) {
 	testConsistency(t, func() test.Fragment {
 		return &BeamDeriveFragment{
 			r: test.NewReporter(1),
-			b: doors.NewSourceBeam(state{}),
+			b: doors.NewSource(state{}),
 		}
 	})
 }
@@ -73,7 +73,7 @@ func TestSkip(t *testing.T) {
 		func() test.Fragment {
 			return &BeamSkipFragment{
 				r: test.NewReporter(1),
-				b: doors.NewSourceBeam(state{}),
+				b: doors.NewSource(state{}),
 			}
 		})
 	defer bro.Close()
@@ -86,7 +86,7 @@ func TestSkip(t *testing.T) {
 }
 
 func TestNoSkip(t *testing.T) {
-	b := doors.NewSourceBeam(state{})
+	b := doors.NewSource(state{})
 	b.DisableSkipping()
 	bro := test.NewFragmentBro(browser,
 		func() test.Fragment {
