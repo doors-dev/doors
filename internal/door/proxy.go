@@ -42,7 +42,25 @@ type proxyComponent struct {
 func (r *proxyComponent) Main() gox.Elem {
 	return gox.Elem(func(cur gox.Cursor) error {
 		r.cursor = cur
-		return r.view.elem.Print(cur.Context(), r)
+		err := r.view.elem.Print(cur.Context(), r)
+		if err != nil {
+			r.takoverFrame.Activate()
+			return err
+		}
+		if r.state == done {
+			return nil
+		}
+		if r.state != initial {
+			return errors.New("door: invalid proxy state")
+		}
+		id := r.cursor.NewID()
+		if err := r.Send(gox.NewJobHeadOpen(id, gox.KindContainer, "", cur.Context(), gox.NewAttrs())); err != nil {
+			return err
+		}
+		if err := r.Send(gox.NewJobHeadClose(id, gox.KindContainer, "", cur.Context())); err != nil {
+			return err
+		}
+		return nil
 	})
 }
 
@@ -121,6 +139,12 @@ func (r *proxyComponent) init(job gox.Job) (proxyRendererState, error) {
 		return done, errors.New("door: expected container")
 	}
 	var state proxyRendererState
+	if r.view.content == nil {
+		r.view.content = headLess{el: r.view.elem}
+		state = closing
+	} else {
+		state = check
+	}
 	var buffered *gox.JobHeadOpen
 	switch openJob.Kind {
 	case gox.KindVoid:
@@ -141,12 +165,6 @@ func (r *proxyComponent) init(job gox.Job) (proxyRendererState, error) {
 			defer gox.Release(openJob)
 			r.view.attrs = openJob.Attrs.Clone()
 			r.view.tag = openJob.Tag
-			if r.view.content == nil {
-				r.view.content = headLess{el: r.view.elem}
-				state = closing
-			} else {
-				state = check
-			}
 		}
 	}
 	r.headId = openJob.ID

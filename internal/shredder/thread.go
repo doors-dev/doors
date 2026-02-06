@@ -253,7 +253,7 @@ func (m *ValveFrame) Activate() {
 	m.mu.Lock()
 	if m.active.Load() {
 		m.mu.Unlock()
-		panic("frame: already active")
+		return
 	}
 	m.active.Store(true)
 	buf := m.buffer

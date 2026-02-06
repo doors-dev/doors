@@ -8,6 +8,7 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+
 var bufferPrinterPool = sync.Pool{
 	New: func() any {
 		return sliceWriter(make([]byte, 0, 1024))

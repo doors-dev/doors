@@ -15,7 +15,7 @@ type Door struct {
 var _ gox.Proxy = &Door{}
 var _ gox.Editor = &Door{}
 
-func (d *Door) remove(ctx context.Context) <-chan error {
+func (d *Door) unmount(ctx context.Context) <-chan error {
 	node := &node{
 		ctx:      ctx,
 		reportCh: make(chan error, 1),

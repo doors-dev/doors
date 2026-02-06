@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -29,6 +30,7 @@ func newPipe(rootFrame shredder.SimpleFrame) *pipe {
 
 type Pipe interface {
 	SendTo(gox.Printer)
+	Error() error
 }
 
 type resourceState int
@@ -51,169 +53,184 @@ type pipe struct {
 	resourceState    resourceState
 	resourceOpenHead *gox.JobHeadOpen
 	resourceText     string
+	renderingError   error
+	printingError    error
 }
 
-func (r *pipe) renderProxy(parentCtx context.Context, view *view, takoverFrame *shredder.ValveFrame) {
-	proxy := newProxyComponent(r.tracker.id, view, parentCtx, takoverFrame)
-	r.renderAny(r.tracker.ctx, proxy)
+func (p *pipe) renderProxy(parentCtx context.Context, view *view, takoverFrame *shredder.ValveFrame) {
+	proxy := newProxyComponent(p.tracker.id, view, parentCtx, takoverFrame)
+	p.renderAny(p.tracker.ctx, proxy)
 }
 
-func (r *pipe) renderView(parentCtx context.Context, view *view) {
-	r.submit(func(ok bool) {
-		defer r.close()
+func (p *pipe) Error() error {
+	if p.renderingError != nil {
+		return p.renderingError
+	}
+	return p.printingError
+}
+
+func (p *pipe) renderView(parentCtx context.Context, view *view) {
+	p.submit(func(ok bool) {
+		defer p.close()
 		if !ok {
 			return
 		}
-		cur := gox.NewCursor(r.tracker.ctx, r)
-		open, close := view.headFrame(parentCtx, r.tracker.id, cur.NewID())
-		cur.Send(open)
+		cur := gox.NewCursor(p.tracker.ctx, p)
+		open, close := view.headFrame(parentCtx, p.tracker.id, cur.NewID())
+		p.renderingError = p.send(open)
+		if p.renderingError != nil {
+			return
+		}
 		if comp, ok := view.content.(gox.Comp); ok {
-			comp.Main()(cur)
+			p.renderingError = comp.Main()(cur)
 		} else {
-			cur.Any(view.content)
+			p.renderingError = cur.Any(view.content)
 		}
-		cur.Send(close)
+		if p.renderingError != nil {
+			return
+		}
+		p.renderingError = p.send(close)
 	})
 }
 
-func (r *pipe) renderAny(ctx context.Context, any any) {
-	r.submit(func(ok bool) {
-		defer r.close()
+func (p *pipe) renderAny(ctx context.Context, any any) {
+	p.submit(func(ok bool) {
+		defer p.close()
 		if !ok {
 			return
 		}
-		cur := gox.NewCursor(ctx, r)
+		cur := gox.NewCursor(ctx, p)
 		if comp, ok := any.(gox.Comp); ok {
-			comp.Main()(cur)
+			p.renderingError = comp.Main()(cur)
 		} else {
-			cur.Any(any)
+			p.renderingError = cur.Any(any)
 		}
 	})
 }
 
-func (r *pipe) SendTo(printer gox.Printer) {
-	if r.parent != nil {
+func (p *pipe) SendTo(printer gox.Printer) {
+	if p.parent != nil {
 		panic("Can't initiate printing with owned renderer")
 	}
-	r.mu.Lock()
-	readyToPrint := r.closed
-	r.printer = printer
-	r.mu.Unlock()
+	p.mu.Lock()
+	readyToPrint := p.closed
+	p.printer = printer
+	p.mu.Unlock()
 	if !readyToPrint {
 		return
 	}
-	r.print()
+	p.print()
 }
 
-func (r *pipe) Send(job gox.Job) error {
-	switch r.resourceState {
+func (p *pipe) Send(job gox.Job) error {
+	switch p.resourceState {
 	case lookForResource:
-		return r.lookForResource(job)
+		return p.lookForResource(job)
 	case resourceContent:
-		return r.resourceContent(job)
+		return p.resourceContent(job)
 	case closeResource:
-		return r.closeResource(job)
+		return p.closeResource(job)
 	default:
 		panic("invalid pipe resource state")
 	}
 }
 
-func (r *pipe) submit(fun func(ok bool)) {
-	r.renderFrame.Submit(r.tracker.ctx, r.tracker.root.runtime(), fun)
+func (p *pipe) submit(fun func(ok bool)) {
+	p.renderFrame.Submit(p.tracker.ctx, p.tracker.root.runtime(), fun)
 }
 
-func (r *pipe) send(job gox.Job) error {
+func (p *pipe) send(job gox.Job) error {
 	switch job := job.(type) {
 	case *node:
-		job.render(r)
+		job.render(p)
 	case *gox.JobHeadOpen:
 		if err := job.Attrs.ApplyMods(job.Ctx, job.Tag); err != nil {
 			return err
 		}
-		r.job(job)
+		p.job(job)
 	case *gox.JobComp:
 		comp := job.Comp
 		ctx := job.Ctx
 		gox.Release(job)
-		newRenderer := r.branch()
+		newRenderer := p.branch()
 		newRenderer.renderAny(ctx, comp)
 	default:
-		r.job(job)
+		p.job(job)
 	}
 	return nil
 }
 
-func (r *pipe) lookForResource(job gox.Job) error {
+func (p *pipe) lookForResource(job gox.Job) error {
 	head, ok := job.(*gox.JobHeadOpen)
 	switch true {
 	case !ok:
-		return r.send(job)
+		return p.send(job)
 	case strings.EqualFold(head.Tag, "script"):
 		if head.Attrs.Has("src") {
-			return r.send(job)
+			return p.send(job)
 		}
 		if head.Attrs.Has("escape") {
 			head.Attrs.Get("escape").SetBool(false)
-			return r.send(job)
+			return p.send(job)
 		}
 		if head.Attrs.Has("type") {
 			typ, _ := head.Attrs.Get("type").ReadString()
 			if !strings.EqualFold(typ, "text/javascript") && !strings.EqualFold(typ, "application/javascript") {
-				return r.send(job)
+				return p.send(job)
 			}
 		}
-		r.resourceState = resourceContent
-		r.resourceOpenHead = head
+		p.resourceState = resourceContent
+		p.resourceOpenHead = head
 		return nil
 	case strings.EqualFold(head.Tag, "style"):
 		if escape := head.Attrs.Get("escape"); escape.IsSet() {
 			escape.SetBool(false)
-			return r.send(job)
+			return p.send(job)
 		}
-		r.resourceState = resourceContent
-		r.resourceOpenHead = head
+		p.resourceState = resourceContent
+		p.resourceOpenHead = head
 		return nil
 	default:
-		return r.send(job)
+		return p.send(job)
 	}
 }
 
-func (r *pipe) resourceContent(job gox.Job) error {
+func (p *pipe) resourceContent(job gox.Job) error {
 	raw, ok := job.(*gox.JobRaw)
 	if !ok {
 		return errors.New("door: invalid resource content")
 	}
-	r.resourceText = raw.Text
-	r.resourceState = closeResource
+	p.resourceText = raw.Text
+	p.resourceState = closeResource
 	gox.Release(raw)
 	return nil
 }
 
-func (r *pipe) prepareResource(res *resources.Resource, mode resources.ResourceMode, name string, ext string) (string, bool) {
+func (p *pipe) prepareResource(res *resources.Resource, mode resources.ResourceMode, name string, ext string) (string, bool) {
 	if name == "" {
 		name = "inline"
 	}
 	if mode == resources.ModeHost {
 		return fmt.Sprintf("/~0/r/%s.%s.%s", res.HashString(), name, ext), true
 	} else {
-		hook, ok := r.tracker.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := p.tracker.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			res.Serve(w, r)
 			return false
 		}, nil)
 		if !ok {
 			return "", false
 		}
-		return fmt.Sprintf("/~0/%s/%d/%d/%s.%s", r.tracker.root.inst.ID(), hook.DoorID, hook.HookID, name, ext), true
+		return fmt.Sprintf("/~0/%s/%d/%d/%s.%s", p.tracker.root.inst.ID(), hook.DoorID, hook.HookID, name, ext), true
 	}
 
 }
 
-func (r *pipe) closeResource(job gox.Job) error {
-	openHead := r.resourceOpenHead
-	content := r.resourceText
-	r.resourceState = lookForResource
-	r.resourceText = ""
-	r.resourceOpenHead = nil
+func (p *pipe) closeResource(job gox.Job) error {
+	openHead := p.resourceOpenHead
+	content := p.resourceText
+	p.resourceState = lookForResource
+	p.resourceText = ""
+	p.resourceOpenHead = nil
 	close, ok := job.(*gox.JobHeadClose)
 	if !ok || close.ID != openHead.ID {
 		return errors.New("door: invalid resource close job")
@@ -232,7 +249,7 @@ func (r *pipe) closeResource(job gox.Job) error {
 		mode = resources.ModeHost
 	}
 	name, _ := openHead.Attrs.Get("data-name").ReadString()
-	registry := r.tracker.root.resourceRegistry()
+	registry := p.tracker.root.resourceRegistry()
 	switch true {
 	case strings.EqualFold(close.Tag, "script"):
 		res, err := registry.Script(resources.ScriptInline{
@@ -241,15 +258,15 @@ func (r *pipe) closeResource(job gox.Job) error {
 		if err != nil {
 			return err
 		}
-		src, ok := r.prepareResource(res, mode, name, "js")
+		src, ok := p.prepareResource(res, mode, name, "js")
 		if !ok {
 			return errors.New("door: can't prepare resource")
 		}
 		openHead.Attrs.Get("src").Set(src)
-		if err := r.send(openHead); err != nil {
+		if err := p.send(openHead); err != nil {
 			return err
 		}
-		if err := r.send(close); err != nil {
+		if err := p.send(close); err != nil {
 			return err
 		}
 	case strings.EqualFold(close.Tag, "style"):
@@ -259,7 +276,7 @@ func (r *pipe) closeResource(job gox.Job) error {
 		if err != nil {
 			return err
 		}
-		href, ok := r.prepareResource(res, mode, name, "css")
+		href, ok := p.prepareResource(res, mode, name, "css")
 		if !ok {
 			return errors.New("door: can't prepare resource")
 		}
@@ -268,69 +285,77 @@ func (r *pipe) closeResource(job gox.Job) error {
 		openHead.Attrs.Get("rel").Set("stylesheet")
 		openHead.Attrs.Get("href").Set(href)
 		gox.Release(close)
-		return r.send(openHead)
+		return p.send(openHead)
 	default:
 		panic("unexpected resource tag: " + close.Tag)
 	}
 	return nil
 }
 
-func (r *pipe) print() {
-	stack := []*pipe{r}
+func (p *pipe) print() {
+	stack := []*pipe{p}
 main:
 	for len(stack) != 0 {
 		rr := stack[len(stack)-1]
 		rr.mu.Lock()
-		rr.printer = r.printer
+		rr.printer = p.printer
 		if !rr.closed {
 			rr.mu.Unlock()
 			return
 		}
-		for rr.buffer.Len() != 0 {
-			next := rr.buffer.PopFront()
-			switch next := next.(type) {
-			case gox.Job:
-				rr.printer.Send(next)
-			case *pipe:
-				rr.mu.Unlock()
-				stack = append(stack, next)
-				continue main
+		if rr.renderingError == nil {
+			for rr.buffer.Len() != 0 && rr.printingError == nil {
+				next := rr.buffer.PopFront()
+				switch next := next.(type) {
+				case gox.Job:
+					rr.printingError = rr.printer.Send(next)
+				case *pipe:
+					rr.mu.Unlock()
+					stack = append(stack, next)
+					continue main
+				}
 			}
 		}
+		if err := rr.Error(); err != nil {
+			id := rr.tracker.root.NewID()
+			slog.Error("door rendering error", "error", err, "error_id", id)
+			rr.printer.Send(gox.NewJobComp(p.tracker.parentContext(), renderError{err: err, id: id}))
+		}
+		rr.buffer.Clear()
 		bufferPool.Put(rr.buffer)
 		rr.buffer = nil
 		rr.mu.Unlock()
 		stack[len(stack)-1] = nil
 		stack = stack[:len(stack)-1]
 	}
-	if r.parent == nil {
+	if p.parent == nil {
 		return
 	}
-	r.parent.print()
+	p.parent.print()
 }
 
-func (r *pipe) close() {
-	r.mu.Lock()
-	if r.closed {
+func (p *pipe) close() {
+	p.mu.Lock()
+	if p.closed {
 		panic("renderer is already closed")
 	}
-	r.closed = true
-	r.renderFrame.Release()
-	readyToPrint := r.printer != nil
-	r.mu.Unlock()
+	p.closed = true
+	p.renderFrame.Release()
+	readyToPrint := p.printer != nil
+	p.mu.Unlock()
 	if !readyToPrint {
 		return
 	}
-	r.print()
+	p.print()
 }
 
-func (r *pipe) job(job gox.Job) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.closed {
+func (p *pipe) job(job gox.Job) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.closed {
 		panic("render is closed")
 	}
-	r.buffer.PushBack(job)
+	p.buffer.PushBack(job)
 }
 
 func (p *pipe) branch() *pipe {

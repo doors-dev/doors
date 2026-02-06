@@ -205,6 +205,10 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 		close(ch)
 	})
 	<-ch
+	if err := pipe.Error(); err != nil {
+		inst.end(common.EndCauseKilled)
+		return err
+	}
 	if err := inst.render(w, r, pipe); err != nil {
 		defer inst.end(common.EndCauseKilled)
 		return err

@@ -75,6 +75,13 @@ type tracker struct {
 	childDoorHooksCancel map[uint64][]context.CancelFunc
 }
 
+func (t *tracker) parentContext() context.Context {
+	if t.parent == nil {
+		return t.root.runtime().Context()
+	}
+	return t.parent.ctx
+}
+
 func (t *tracker) Context() context.Context {
 	return t.ctx
 }
@@ -171,7 +178,7 @@ func (t *tracker) kill() {
 	}
 	clear(t.hooks)
 	for child := range t.children {
-		child.kill(cascade)
+		child.kill(cascadeKill)
 	}
 	t.children.Clear()
 }
@@ -179,7 +186,9 @@ func (t *tracker) kill() {
 func (t *tracker) removeChild(n *node) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.children.Remove(n)
+	if !t.children.Remove(n) {
+		return
+	}
 	if t.childDoorHooksCancel == nil {
 		return
 	}
@@ -200,7 +209,7 @@ func (t *tracker) replaceChild(prev *node, next *node) {
 	t.mu.Lock()
 	if t.isKilled() {
 		t.mu.Unlock()
-		next.kill(cascade)
+		next.kill(cascadeKill)
 		return
 	}
 	t.children.Remove(prev)
@@ -212,7 +221,7 @@ func (t *tracker) addChild(n *node) {
 	t.mu.Lock()
 	if t.isKilled() {
 		t.mu.Unlock()
-		n.kill(cascade)
+		n.kill(cascadeKill)
 		return
 	}
 	if t.children == nil {

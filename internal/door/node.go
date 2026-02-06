@@ -85,7 +85,7 @@ func (n *node) updatedTakeover(prev *node) {
 		n.accept()
 		return
 	}
-	prev.kill(unmount)
+	prev.kill(unmountKill)
 	n.communicationFrame = prev.communicationFrame
 	n.tracker = newTrackerFrom(prev.tracker)
 	n.tracker.parent.replaceChild(prev, n)
@@ -127,6 +127,18 @@ func (n *node) updatedTakeover(prev *node) {
 			return
 		}
 		printer.finalize()
+		if err := pipe.Error(); err != nil {
+			n.tracker.root.inst.Call(&call{
+				ctx:     n.tracker.ctx,
+				kind:    callUpdate,
+				id:      n.tracker.id,
+				payload: printer,
+			})
+			n.tracker.parent.removeChild(n)
+			n.kill(errorKill)
+			n.error(err)
+			return
+		}
 		n.tracker.root.inst.Call(&call{
 			ctx:     n.tracker.ctx,
 			kind:    callUpdate,
@@ -149,11 +161,11 @@ func (n *node) unmountTakeover(prev *node) {
 		n.accept()
 		return
 	}
-	prev.kill(unmount)
+	prev.kill(unmountKill)
 	prev.tracker.removeChild(prev)
 	n.view = prev.view
 	id := prev.tracker.id
-	ctx := prev.tracker.parent.ctx
+	ctx := prev.tracker.parentContext()
 	prev.communicationFrame.Run(ctx, prev.tracker.root.runtime(), func(ok bool) {
 		if !ok {
 			n.cancel()
@@ -175,7 +187,7 @@ func (n *node) replaceTakeover(prev *node) {
 		n.accept()
 		return
 	}
-	prev.kill(unmount)
+	prev.kill(unmountKill)
 	prev.tracker.parent.removeChild(prev)
 	parent := prev.tracker.parent
 	id := prev.tracker.id
@@ -214,6 +226,16 @@ func (n *node) replaceTakeover(prev *node) {
 			return
 		}
 		printer.finalize()
+		if err := pipe.Error(); err != nil {
+			n.tracker.root.inst.Call(&call{
+				ctx:     parent.ctx,
+				kind:    callReplace,
+				id:      id,
+				payload: printer,
+			})
+			n.error(err)
+			return
+		}
 		n.tracker.root.inst.Call(&call{
 			ctx:     parent.ctx,
 			kind:    callReplace,
@@ -230,7 +252,7 @@ func (n *node) proxyTakeover(prev *node) {
 	n.view.content = prev.view.content
 	switch prev.kind {
 	case updatedNode, editorNode, proxyNode:
-		prev.kill(remove)
+		prev.kill(removeKill)
 		prev.tracker.parent.removeChild(prev)
 	}
 }
@@ -239,13 +261,13 @@ func (n *node) editorTakover(prev *node) {
 	n.view = prev.view
 	switch prev.kind {
 	case updatedNode, editorNode:
-		prev.kill(remove)
+		prev.kill(removeKill)
 		prev.tracker.parent.removeChild(prev)
 	case replacedNode:
 		n.kind = replacedNode
 		n.takoverFrame.Activate()
 	case proxyNode:
-		prev.kill(remove)
+		prev.kill(removeKill)
 		prev.tracker.parent.removeChild(prev)
 		n.kind = proxyNode
 	}
@@ -274,7 +296,8 @@ func (n *node) render(parentPipe *pipe) {
 		n.tracker = newTracker(parent)
 		n.tracker.parent.addChild(n)
 		pipe.tracker = n.tracker
-		pipe.renderFrame = shredder.Join(true, parentPipe.renderFrame, n.tracker.newRenderFrame())
+		renderThread := &shredder.Thread{}
+		pipe.renderFrame = shredder.Join(true, parentPipe.renderFrame, n.tracker.newRenderFrame(), renderThread.Frame())
 		parentCore := core.NewCore(n.tracker.root.inst, childDoorCore{
 			tracker: parent,
 			id:      n.tracker.id,
@@ -287,7 +310,23 @@ func (n *node) render(parentPipe *pipe) {
 		case proxyNode:
 			pipe.renderProxy(parentCtx, n.view, &n.takoverFrame)
 		}
+		renderThread.Frame().Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
+			if !ok {
+				return
+			}
+			if err := pipe.Error(); err != nil {
+				n.tracker.parent.removeChild(n)
+				n.kill(errorKill)
+				n.error(err)
+			}
+		})
 	})
+}
+
+func (n *node) error(err error) {
+	n.reportCh <- err
+	close(n.reportCh)
+	n.done()
 }
 
 func (n *node) accept() {
@@ -296,44 +335,42 @@ func (n *node) accept() {
 }
 
 func (n *node) cancel() {
-	n.reportCh <- context.Canceled
-	close(n.reportCh)
-	n.done()
+	n.error(context.Canceled)
 }
 
 type killKind int
 
 const (
-	cascade killKind = iota
-	replace
-	unmount
-	remove
+	cascadeKill killKind = iota
+	unmountKill
+	removeKill
+	errorKill
 )
 
-func (n *node) kill(kind killKind) {
+func (n *node) kill(kind killKind) bool {
 	if !n.killed.CompareAndSwap(false, true) {
-		return
+		return false
 	}
 	if n.kind == unmountedNode || n.kind == replacedNode {
 		panic("door: unmounted/replaced node can't be killed")
 	}
 	switch kind {
-	case cascade:
+	case errorKill:
+		n.tracker.kill()
+	case cascadeKill:
 		unmounted := &node{
 			kind: unmountedNode,
 			view: n.view,
 		}
 		unmounted.takoverFrame.Activate()
-		if !n.door.node.CompareAndSwap(n, unmounted) {
-			return
-		}
+		n.door.node.CompareAndSwap(n, unmounted)
 		n.tracker.kill()
-	case unmount:
+	case unmountKill:
 		n.tracker.kill()
-	case remove:
+	case removeKill:
 		id := n.tracker.id
-		ctx := n.tracker.parent.ctx
-		n.communicationFrame.Run(n.tracker.parent.ctx, n.tracker.root.runtime(), func(ok bool) {
+		ctx := n.tracker.parentContext()
+		n.communicationFrame.Run(n.tracker.parentContext(), n.tracker.root.runtime(), func(ok bool) {
 			if !ok {
 				return
 			}
@@ -344,5 +381,8 @@ func (n *node) kill(kind killKind) {
 			})
 		})
 		n.tracker.kill()
+	default:
+		panic("door: invalid kill kind")
 	}
+	return true
 }

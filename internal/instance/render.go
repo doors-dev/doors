@@ -39,7 +39,7 @@ func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, pipe doo
 		w:         w,
 		importMap: importMap,
 	})
-	return nil
+	return pipe.Error()
 }
 
 func (inst *Instance[M]) renderHeaders(w http.ResponseWriter, gz bool, importHash []byte) {
@@ -132,7 +132,7 @@ func (p *pagePrinter[M]) Send(job gox.Job) error {
 		openJob, openOk := job.(*gox.JobHeadOpen)
 		closeJob, closeOk := job.(*gox.JobHeadClose)
 		if (openOk && strings.EqualFold(openJob.Tag, "script")) || (closeOk && closeJob.ID == p.headID) {
-			if err := p.inst.renderResources(job.Context(), p.w, p.importMap, true); err != nil {
+			if err := p.inst.renderResources(job.Context(), p.w, p.importMap, false); err != nil {
 				return err
 			}
 			p.insertState = printerInserted
