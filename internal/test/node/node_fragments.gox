@@ -65,7 +65,7 @@ elem (f *FragmentX) Main() {
 	<>
 		~(test.Marker("init"))
 	</>
-	~(&f.report)
+	~>(f.report)
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			ch := f.n.XUpdate(ctx, test.Marker("updated"))

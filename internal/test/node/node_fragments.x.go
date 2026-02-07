@@ -105,8 +105,9 @@ func (f *FragmentX) Main() gox.Elem {
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-		__e = __c.Any(&f.report); if __e != nil { return }
-		__e = doors.AClick{
+		__e = f.report.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); __c.Noop(ctx)
+			__e = doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			ch := f.n.XUpdate(ctx, test.Marker("updated"))
 			err, ok := <-ch
@@ -122,14 +123,15 @@ func (f *FragmentX) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
-			__e = __c.Init("button"); if __e != nil { return }
-			{
-				__e = __c.AttrSet("id", "updatex"); if __e != nil { return }
-				__e = __c.Submit(); if __e != nil { return }
-				__e = __c.Text("C"); if __e != nil { return }
-			}
-			__e = __c.Close(); if __e != nil { return }
+				ctx := __c.Context(); __c.Noop(ctx)
+				__e = __c.Init("button"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "updatex"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Text("C"); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {

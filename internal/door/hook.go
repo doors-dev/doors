@@ -84,7 +84,7 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
 		h.state.Store(hookDone)
 	}
 	close(ch)
-	if err != nil {
+	if err == nil {
 		ctex.WgWait(ctx)
 	}
 	return done, true

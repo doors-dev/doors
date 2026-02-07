@@ -207,10 +207,10 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 	sh := shredder.Thread{}
 	syncFrame := sh.Frame()
 	checkFrame := sh.Frame()
-	cleanFrame := sh.Frame()
+	cleanFrame := &shredder.ValveFrame{}
 
 	for _, sub := range s.subs.Slice() {
-		sub.sync(ctx, cleanFrame, syncFrame, seq, isStopped)
+		sub.sync(true, ctx, cleanFrame, syncFrame, seq, isStopped)
 	}
 
 	syncFrame.Release()
@@ -224,8 +224,8 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 		if stopped.Load() {
 			return
 		}
+		checkFrame.Release()
 	})
-	checkFrame.Release()
 
 	cleanFrame.Run(nil, nil, func(bool) {
 		s.mu.Lock()

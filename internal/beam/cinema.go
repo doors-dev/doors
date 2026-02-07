@@ -6,7 +6,6 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
-
 package beam
 
 import (
@@ -37,9 +36,13 @@ type screen struct {
 	seq      uint
 }
 
-func (s *screen) sync(ctx context.Context, cleanFrame shredder.SimpleFrame, sourceFrame shredder.SimpleFrame, seq uint, isStopped func() bool) {
+func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.SimpleFrame, sourceFrame shredder.SimpleFrame, seq uint, isStopped func() bool) {
 	syncFrame := shredder.Join(true, sourceFrame, s.cinema.door.NewFrame(), s.thread.Frame())
-	syncFrame.Run(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
+	fun := syncFrame.Run
+	if init {
+		fun = syncFrame.Submit
+	}
+	fun(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
 		if !ok {
 			return
 		}
@@ -64,7 +67,7 @@ func (s *screen) sync(ctx context.Context, cleanFrame shredder.SimpleFrame, sour
 				return
 			}
 			for _, screen := range subs {
-				screen.sync(ctx, cleanFrame, sourceFrame, seq, isStopped)
+				screen.sync(false, ctx, cleanFrame, sourceFrame, seq, isStopped)
 			}
 		})
 		childerenFrame.Release()
@@ -79,8 +82,6 @@ func (s *screen) commit(seq uint) ([]*watcher, []*screen) {
 }
 
 func (s *screen) init(parent parentScreen, seq uint) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.parent = parent
 	s.seq = seq
 }
@@ -141,6 +142,9 @@ func (s *screen) addWatcher(w *watcher) {
 func (s *screen) addSub(sub *screen) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.subs == nil {
+		s.subs = common.NewSet[*screen]()
+	}
 	s.subs.Add(sub)
 	sub.init(s, s.seq)
 }
