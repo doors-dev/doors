@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	github.com/a-h/templ v0.3.943
-	github.com/doors-dev/gox v0.0.33
+	github.com/doors-dev/gox v0.0.36
 	github.com/evanw/esbuild v0.25.9
 	github.com/gammazero/deque v1.2.0
 	github.com/go-playground/form/v4 v4.2.1

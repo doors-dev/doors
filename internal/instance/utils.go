@@ -46,27 +46,27 @@ func (t *killTimer) keepAlive() {
 
 func newImportMap() *importMap {
 	return &importMap{
-		storage: make(map[string]string),
+		Imports: make(map[string]string),
 	}
 }
 
 type importMap struct{
-	mu sync.Mutex
-	storage map[string]string
+	mu sync.Mutex `json:"-"`
+	Imports map[string]string `json:"imports"`
 }
 
 
 func (i *importMap) Add(specifier string, path string) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	i.storage[specifier] = path
+	i.Imports[specifier] = path
 }
 
 
 func (i *importMap) generate() (content []byte, hash []byte) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	if len(i.storage) == 0 {
+	if len(i.Imports) == 0 {
 		return
 	}
 	content, _ = json.Marshal(i)

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
 )
 
@@ -21,16 +21,18 @@ func checkColor(t *testing.T, page *rod.Page) {
 	}
 }
 
-func testStyle(t *testing.T, h func(doors.Source[test.Path]) templ.Component) {
+func testStyle(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-			return pr.Page(&test.Page{
-				Header: "Testing Imports",
-				H:      h,
-				F:      &ModuleFragment{},
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
+				return pr.App(&test.Page{
+					Header: "Testing Imports",
+					H:      h,
+					F:      &ModuleFragment{},
+				})
 			})
-		}),
-		doors.UseRoute(doors.RouteDir{Prefix: "module", DirPath: modulePath}),
+			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
+		},
 	)
 	defer bro.Close()
 	page := bro.Page(t, "/")
@@ -38,16 +40,18 @@ func testStyle(t *testing.T, h func(doors.Source[test.Path]) templ.Component) {
 	<-time.After(100 * time.Millisecond)
 	checkColor(t, page)
 }
-func testModule(t *testing.T, h func(doors.Source[test.Path]) templ.Component) {
+func testModule(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-			return pr.Page(&test.Page{
-				Header: "Testing Imports",
-				H:      h,
-				F:      &ModuleFragment{},
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
+				return pr.App(&test.Page{
+					Header: "Testing Imports",
+					H:      h,
+					F:      &ModuleFragment{},
+				})
 			})
-		}),
-		doors.UseRoute(doors.RouteDir{Prefix: "module", DirPath: modulePath}),
+			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
+		},
 	)
 	defer bro.Close()
 	page := bro.Page(t, "/")
@@ -96,12 +100,15 @@ func TestStyle(t *testing.T) {
 
 func TestReact(t *testing.T) {
 	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-			return pr.Page(&test.Page{
-				H: reactHead,
-				F: &ReactFragment{},
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
+				return pr.App(&test.Page{
+					Header: "Testing Imports",
+					H:      reactHead,
+					F:      &ReactFragment{},
+				})
 			})
-		}),
+		},
 	)
 	defer bro.Close()
 	page := bro.Page(t, "/")
@@ -122,12 +129,15 @@ func TestReact(t *testing.T) {
 
 func TestFiles(t *testing.T) {
 	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-			return pr.Page(&test.Page{
-				H: staticFiles,
-				F: &Empty{},
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
+				return pr.App(&test.Page{
+					Header: "Testing Imports",
+					H:      staticFiles,
+					F:      &Empty{},
+				})
 			})
-		}),
+		},
 	)
 	defer bro.Close()
 	page := bro.Page(t, "/")

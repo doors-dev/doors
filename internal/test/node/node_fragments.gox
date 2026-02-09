@@ -3,7 +3,7 @@ package door
 import (
 	"context"
 	"fmt"
-
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
@@ -40,12 +40,11 @@ elem (f *FragmentMany) Main() {
 		f.n.Update(ctx, f.sample())
 		n := doors.Door{}
 	}
-	~>(n)
-	<>
+	~>(n) <>
 		~(f.manyDoors())
 	</>
-	~(test.Button("replace", func(ctx context.Context) bool {
-		n.Update(ctx, f.replaced())
+	~(test.Button("replace", func(ctx context.Context) bool { 
+		n.Update(ctx, f.replaced()) 
 		return true
 	}))
 }
@@ -61,12 +60,10 @@ func (f *FragmentX) rep(ctx context.Context, s string) {
 }
 
 elem (f *FragmentX) Main() {
-	~>(f.n)
-	<>
+	~>(f.n) <>
 		~(test.Marker("init"))
 	</>
-	~>(f.report)
-	~>doors.AClick{
+	~>(f.report) ~>doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			ch := f.n.XUpdate(ctx, test.Marker("updated"))
 			err, ok := <-ch
@@ -81,8 +78,10 @@ elem (f *FragmentX) Main() {
 			f.rep(ctx, "ok")
 			return false
 		},
-	}
-	<button id="updatex">C</button>
+	} <button id="updatex">C</button>
+	<script data:dd="dd">
+		alert(1)
+	</script>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			ch := f.n.XRemove(ctx)
@@ -98,8 +97,7 @@ elem (f *FragmentX) Main() {
 			f.rep(ctx, "ok")
 			return true
 		},
-	}
-	<button id="removex">R</button>
+	} <button id="removex">R</button>
 }
 
 type EmbeddedFragment struct {
@@ -110,10 +108,8 @@ type EmbeddedFragment struct {
 }
 
 elem (f *EmbeddedFragment) Main() {
-	~>(f.n1)
-	<>
-		~>(f.n2)
-		<div>
+	~>(f.n1) <>
+		~>(f.n2) <div>
 			~(test.Marker("init"))
 		</div>
 		~(test.Marker("static"))
@@ -163,8 +159,9 @@ elem (f *DynamicFragment) Main() {
 	~{
 		f.n1.Update(ctx, test.Marker("init"))
 	}
-	~>(f.n1)<div>
-	</div>
+	
+	~>(f.n1) <div/>
+	
 	<button
 		id="update"
 		(doors.AClick{
@@ -207,14 +204,16 @@ type BeforeFragment struct {
 }
 
 elem (f *BeforeFragment) Main() {
-	~>(f.doorInit)<div>
+	~>(f.doorInit) <div>
 		~(test.Marker("init"))
 	</div>
+	
 	~{
 		f.doorUpdate.Update(ctx, test.Marker("updated"))
 	}
-	~>(f.doorUpdate)<div>
+	~>(f.doorUpdate) <div>
 	</div>
+	
 	~{
 		f.doorRemoved.Update(ctx, test.Marker("removed"))
 	}
@@ -222,11 +221,12 @@ elem (f *BeforeFragment) Main() {
 		f.doorRemoved.Remove(ctx)
 	}
 	~(&f.doorRemoved)
+	
 	~{
 		f.doorReplaced.Replace(ctx, test.Marker("replaced"))
 	}
-	~>(f.doorReplaced)
-	<div>
+	
+	~>(f.doorReplaced) <div>
 		~(test.Marker("initReplaced"))
 	</div>
 }

@@ -40,6 +40,7 @@ func TestInputInput(t *testing.T) {
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
+	<-time.After(200 * time.Millisecond)
 	test.TestType(t, page, "#input", []input.Key{input.KeyA})
 	test.TestReportId(t, page, 0, "a")
 	test.TestReportId(t, page, 1, "a")
@@ -55,7 +56,6 @@ func TestInputInput(t *testing.T) {
 
 }
 func TestInputChange(t *testing.T) {
-
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &inputFragment{
 			r: test.NewReporter(10),
@@ -64,7 +64,6 @@ func TestInputChange(t *testing.T) {
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
-
 	_ = proto.EmulationSetTimezoneOverride{TimezoneID: "UTC"}.Call(page)
 	text := map[string]string{
 		"password": doors.RandId(),
@@ -79,7 +78,7 @@ func TestInputChange(t *testing.T) {
 	for kind := range text {
 		str := text[kind]
 		test.TestInput(t, page, "#"+kind, str)
-		<-time.After(100 * time.Millisecond)
+		test.Click(t, page, "#unfocus")
 		test.TestReportId(t, page, 0, kind)
 		test.TestReportId(t, page, 1, str)
 		test.TestReportId(t, page, 2, "")
@@ -87,12 +86,11 @@ func TestInputChange(t *testing.T) {
 		test.TestReportId(t, page, 4, "")
 		test.TestReportId(t, page, 5, "false")
 	}
-
 	num := time.Now().Nanosecond()
 	str := fmt.Sprint(num)
 
 	test.TestInput(t, page, "#number", str)
-	<-time.After(100 * time.Millisecond)
+	test.Click(t, page, "#unfocus")
 	test.TestReportId(t, page, 0, "number")
 	test.TestReportId(t, page, 1, str)
 	test.TestReportId(t, page, 2, str)
@@ -130,6 +128,7 @@ func TestInputChange(t *testing.T) {
 				Number: "1755475200000",
 				Date:   "2025-08-18 00:00:00 +0000 UTC",
 			}, */
+
 		"time": {
 			Value:  "22:20",
 			Number: "80400000",
@@ -146,7 +145,7 @@ func TestInputChange(t *testing.T) {
 			now, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", date.Date)
 		}
 		test.TestInputTime(t, page, "#"+kind, now)
-		<-time.After(200 * time.Millisecond)
+		test.Click(t, page, "#unfocus")
 		test.TestReportId(t, page, 0, kind)
 		test.TestReportId(t, page, 1, date.Value)
 		test.TestReportId(t, page, 2, date.Number)
@@ -157,7 +156,6 @@ func TestInputChange(t *testing.T) {
 
 	str = "#344323"
 	test.TestInputColor(t, page, "#color", str)
-	<-time.After(100 * time.Millisecond)
 	test.TestReportId(t, page, 0, "color")
 	test.TestReportId(t, page, 1, str)
 	test.TestReportId(t, page, 2, "")
@@ -193,9 +191,10 @@ func TestInputChange(t *testing.T) {
 		Value:   "option2",
 		Checked: "true",
 	}}
+
 	for _, c := range clickables {
-		test.ClickNow(t, page, c.Target)
-		<-time.After(100 * time.Millisecond)
+		test.Click(t, page, c.Target)
+		test.Click(t, page, "#unfocus")
 		test.TestReportId(t, page, 0, c.Kind)
 		test.TestReportId(t, page, 1, c.Value)
 		test.TestReportId(t, page, 2, "")
@@ -205,7 +204,7 @@ func TestInputChange(t *testing.T) {
 	}
 
 	test.TestSelect(t, page, "#select", []string{"Option 1"})
-	<-time.After(100 * time.Millisecond)
+	test.Click(t, page, "#unfocus")
 	test.TestReportId(t, page, 0, "select")
 	test.TestReportId(t, page, 1, "option1")
 	test.TestReportId(t, page, 2, "")
@@ -214,7 +213,7 @@ func TestInputChange(t *testing.T) {
 	test.TestReportId(t, page, 5, "false")
 
 	test.TestSelect(t, page, "#multiselect", []string{"Option 1", "Option 2"})
-	<-time.After(100 * time.Millisecond)
+	test.Click(t, page, "#unfocus")
 	test.TestReportId(t, page, 0, "multiselect")
 	test.TestReportId(t, page, 1, "option1")
 	test.TestReportId(t, page, 2, "")
@@ -223,12 +222,11 @@ func TestInputChange(t *testing.T) {
 	test.TestReportId(t, page, 5, "false")
 
 	test.TestDeselect(t, page, "#multiselect", []string{"Option 1"})
-	<-time.After(100 * time.Millisecond)
+	test.Click(t, page, "#unfocus")
 	test.TestReportId(t, page, 0, "multiselect")
 	test.TestReportId(t, page, 1, "option2")
 	test.TestReportId(t, page, 2, "")
 	test.TestReportId(t, page, 3, "")
 	test.TestReportId(t, page, 4, "option2")
 	test.TestReportId(t, page, 5, "false")
-
 }

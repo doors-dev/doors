@@ -149,11 +149,6 @@ func (p *pipe) send(job gox.Job) error {
 	switch job := job.(type) {
 	case *node:
 		job.render(p)
-	case *gox.JobHeadOpen:
-		if err := job.Attrs.ApplyMods(job.Ctx, job.Tag); err != nil {
-			return err
-		}
-		p.job(job)
 	case *gox.JobComp:
 		comp := job.Comp
 		ctx := job.Ctx
@@ -168,9 +163,13 @@ func (p *pipe) send(job gox.Job) error {
 
 func (p *pipe) lookForResource(job gox.Job) error {
 	head, ok := job.(*gox.JobHeadOpen)
-	switch true {
-	case !ok:
+	if !ok {
 		return p.send(job)
+	}
+	if err := head.Attrs.ApplyMods(head.Ctx, head.Tag); err != nil {
+		return err
+	}
+	switch true {
 	case strings.EqualFold(head.Tag, "script"):
 		if head.Attrs.Has("src") {
 			return p.send(job)
@@ -189,6 +188,7 @@ func (p *pipe) lookForResource(job gox.Job) error {
 		p.resourceOpenHead = head
 		return nil
 	case strings.EqualFold(head.Tag, "style"):
+		head.Attrs.ApplyMods(head.Ctx, head.Tag)
 		if escape := head.Attrs.Get("escape"); escape.IsSet() {
 			escape.SetBool(false)
 			return p.send(job)
@@ -204,7 +204,8 @@ func (p *pipe) lookForResource(job gox.Job) error {
 func (p *pipe) resourceContent(job gox.Job) error {
 	raw, ok := job.(*gox.JobRaw)
 	if !ok {
-		return errors.New("door: invalid resource content")
+		p.resourceState = closeResource
+		return p.Send(job)
 	}
 	p.resourceText = raw.Text
 	p.resourceState = closeResource

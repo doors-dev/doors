@@ -24,6 +24,8 @@ import (
 // ADyn is a dynamic attribute that can be updated at runtime.
 type ADyn = *aDyn
 
+var _ Attr = &aDyn{}
+
 // NewADyn returns a new dynamic attribute with the given name, value, and state.
 func NewADyn(name string, value string, enable bool) ADyn {
 	return &aDyn{
@@ -147,6 +149,11 @@ func (a ADyn) Value(ctx context.Context, value string) {
 		nil,
 		action.CallParams{},
 	)
+}
+
+
+func (a ADyn) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyAddAttrMod(a, cur, elem)
 }
 
 func (a ADyn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
-	"io"
+	"github.com/doors-dev/gox"
 )
 
 type pointerFragment struct {
@@ -14,21 +16,23 @@ type pointerFragment struct {
 	r *test.Reporter
 }
 
-templ (f *pointerFragment) Render() {
-	{{ f.r.Update(ctx, 0, "") }}
-	@doors.F(f.r)
-	@doors.APointerDown{
+elem (f *pointerFragment) Main() {
+	~{
+		f.r.Update(ctx, 0, "")
+	}
+	~(f.r)
+	~>doors.APointerDown{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "DOWN")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 			return false
 		},
-	}
-	<div
-		id="down"
-	>PointerDown</div>
-	@doors.APointerUp{
+	} <div
+		id="down">
+		PointerDown
+	</div>
+	~>doors.APointerUp{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "UP")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
@@ -37,65 +41,66 @@ templ (f *pointerFragment) Render() {
 		},
 	}
 	<div
-		id="up"
-	>PointerUp</div>
-	@doors.APointerEnter{
+		id="up">
+		PointerUp
+	</div>
+	~>doors.APointerEnter{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "ENTER")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 			return false
 		},
-	}
-	<div
-		id="enter"
-	>PointerEnter</div>
+	} <div
+		id="enter">
+		PointerEnter
+	</div>
 	<div id="beforeLeave">beforeLeave</div>
-	@doors.APointerLeave{
+	~>doors.APointerLeave{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "LEAVE")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 			return false
 		},
-	}
-	<div
-		id="leave"
-	>PointerLeave</div>
-	@doors.APointerMove{
+	} <div
+		id="leave">
+		PointerLeave
+	</div>
+	~>doors.APointerMove{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "MOVE")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 			return false
 		},
-	}
-	<div
-		id="move"
-	>PointerMove</div>
-	@doors.APointerOver{
+	} <div
+		id="move">
+		PointerMove
+	</div>
+	~>doors.APointerOver{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OVER")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 			return false
 		},
-	}
-	<div
-		id="over"
-	>Over</div>
+	} <div
+		id="over">
+		Over
+	</div>
 	<div id="beforeOut">beforeOut</div>
-	@doors.APointerOut{
+	~>doors.APointerOut{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OUT")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 			return false
 		},
-	}
-	<div
-		id="out"
-	>Out</div>
+	} <div
+		id="out">
+		Out
+	</div>
 }
 
 type callFragment struct {
@@ -104,10 +109,10 @@ type callFragment struct {
 	r *test.Reporter
 }
 
-templ (f *callFragment) Render() {
-	@doors.F(f.r)
+elem (f *callFragment) Main() {
+	~(f.r)
 	<div id="target"></div>
-	@doors.AHook[string]{
+	~>doors.AHook[string]{
 		Name: "myHook",
 		On: func(ctx context.Context, r doors.RHook[string]) (any, bool) {
 			f.r.Update(ctx, 0, r.Data())
@@ -116,20 +121,16 @@ templ (f *callFragment) Render() {
 			f.r.Update(ctx, 1, res.Ok)
 			return len(r.Data()), true
 		},
-	}
-	@doors.Script() {
-		@doors.AData{
-			Name:  "myData",
-			Value: f.data,
-		}
-		<script>
-        $d.on("myCall", (data) => {
-            document.getElementById("target").innerHTML = `${data}`
-            return "response"
-        })
-        await $d.hook("myHook", $d.data("myData"))
-        </script>
-	}
+	} ~>doors.AData{
+		Name: "myData",
+		Value: f.data,
+	} <script>
+		$on("myCall", (data) => {
+			document.getElementById("target").innerHTML = `${data}`
+			return "response"
+		})
+		await $hook("myHook", $data("myData"))
+	</script>
 }
 
 type hookFragment struct {
@@ -139,44 +140,45 @@ type hookFragment struct {
 }
 
 func (d *hookFragment) attr() []doors.Attr {
-	return []doors.Attr{doors.AHook[string]{
-		Name: "myHook",
-		On: func(ctx context.Context, r doors.RHook[string]) (any, bool) {
-			d.r.Update(ctx, 0, r.Data())
-			return len(r.Data()), true
+	return []doors.Attr{
+		doors.AHook[string]{
+			Name: "myHook",
+			On: func(ctx context.Context, r doors.RHook[string]) (any, bool) {
+				d.r.Update(ctx, 0, r.Data())
+				return len(r.Data()), true
+			},
 		},
-	}, doors.ARawHook{
-		Name: "rawHook",
-		On: func(ctx context.Context, r doors.RRawHook) bool {
-			body, err := io.ReadAll(r.Body())
-			if err != nil {
+		doors.ARawHook{
+			Name: "rawHook",
+			On: func(ctx context.Context, r doors.RRawHook) bool {
+				body, err := io.ReadAll(r.Body())
+				if err != nil {
+					return true
+				}
+				var str string
+				json.Unmarshal(body, &str)
+				d.r.Update(ctx, 1, str)
+				fmt.Fprint(r.W(), len(str))
 				return true
-			}
-			var str string
-			json.Unmarshal(body, &str)
-			d.r.Update(ctx, 1, str)
-			fmt.Fprint(r.W(), len(str))
-			return true
+			},
 		},
-	}, doors.AData{
-		Name:  "myData",
-		Value: d.data,
-	}}
+		doors.AData{
+			Name: "myData",
+			Value: d.data,
+		},
+	}
 }
 
-templ (f *hookFragment) Render() {
-	@doors.F(f.r)
+elem (f *hookFragment) Main() {
+	~(f.r)
 	<div id="target"></div>
 	<div id="target2"></div>
-	@doors.Script() {
-		@doors.Any(f.attr())
-		<script>
-            const a = await $d.hook("myHook", $d.data("myData"))
-            document.getElementById("target").innerHTML = `${a}`
-            const b = await $d.hook("rawHook", $d.data("myData"))
-            document.getElementById("target2").innerHTML = `${b}`
-        </script>
-	}
+	~>(doors.A(ctx, f.attr()...)) <script>
+		const a = await $hook("myHook", $data("myData"))
+		document.getElementById("target").innerHTML = `${a}`
+		const b = await $hook("rawHook", $data("myData"))
+		document.getElementById("target2").innerHTML = `${b}`
+	</script>
 }
 
 type dataFragment struct {
@@ -184,15 +186,12 @@ type dataFragment struct {
 	test.NoBeam
 }
 
-templ (f *dataFragment) Render() {
+elem (f *dataFragment) Main() {
 	<div id="target"></div>
-	@doors.Script() {
-		@doors.AData{
-			Name:  "myData",
-			Value: f.data,
-		}
-		<script>
-        document.getElementById("target").innerHTML = $d.data("myData")
-        </script>
-	}
+	~>doors.AData{
+		Name: "myData",
+		Value: f.data,
+	} <script>
+		document.getElementById("target").innerHTML = $data("myData")
+	</script>
 }

@@ -1,0 +1,101 @@
+package attr
+
+import (
+	"context"
+	"net/http"
+	"time"
+	
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type errorFragment struct {
+	test.NoBeam
+	n1 doors.Door
+	n2 doors.Door
+}
+
+elem (f *errorFragment) Main() {
+	<div id="report">initial</div>
+	<script>
+		const r = document.getElementById("report")
+		$on("root", (arg, e) => {
+			console.log(e)
+			r.innerHTML = "root/" + arg
+		})
+		$on("error", (arg, e) => {
+			console.log(e)
+			r.innerHTML = "root_error/" + arg
+		})
+	</script>
+	~(f.button("err_1", doors.ActionOnlyEmit("error", "err_1")))
+	~(f.button("err_2", doors.ActionOnlyEmit("root", "err_2")))
+	~>(f.n1) <>
+		<script>
+			const r = document.getElementById("report")
+			$on("n1", (arg, e) => {
+				console.log(e)
+				r.innerHTML = "n1/" + arg
+			})
+			$on("error", (arg, e) => {
+				console.log(e)
+				r.innerHTML = "n1_error/" + arg
+			})
+		</script>
+		~>(f.n2) <>
+			<script>
+				const r = document.getElementById("report")
+				$on("n2", (arg, e) => {
+					console.log(e)
+					r.innerHTML = "n2/" + arg
+				})
+			</script>
+			<div id="indicator">init</div>
+			~(f.button("err_5", []doors.Action{
+				doors.ActionEmit{
+					Name: "n2",
+					Arg: "err_5",
+				},
+				doors.ActionIndicate{
+					Duration: 500 * time.Millisecond,
+					Indicator: []doors.Indicator{
+						doors.IndicatorAttr{
+							Selector: doors.SelectorQuery("#indicator"),
+							Name: "data-indicator",
+							Value: "true",
+						},
+						doors.IndicatorContent{
+							Selector: doors.SelectorQuery("#indicator"),
+							Content: "indicator",
+						},
+					},
+				},
+			}))
+			~(f.button("err_6", doors.ActionOnlyEmit("error", "err_6")))
+		</>
+		~(f.button("err_3", doors.ActionOnlyEmit("error", "err_3")))
+		~(f.button("err_4", doors.ActionOnlyEmit("n1", "err_4")))
+	</>
+}
+
+elem (f *errorFragment) button(id string, on []doors.Action) {
+	<button id=(id) (doors.A(ctx, f.handler(on)))>
+		~(id)
+	</button>
+}
+
+func (f *errorFragment) handler(on []doors.Action) doors.Attr {
+	return doors.AClick{
+		OnError: on,
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			w := r.(R)
+			w.W().WriteHeader(http.StatusBadGateway)
+			return false
+		},
+	}
+}
+
+type R interface {
+	W() http.ResponseWriter
+}

@@ -22,28 +22,28 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-type ScriptSource interface {
+type ScriptProvider interface {
 	name(ext string) string
 	scriptEntry() resources.ScriptEntry
 }
 
-type StyleSource interface {
+type StyleProvider interface {
 	name(ext string) string
 	styleEntry() resources.StyleEntry
 }
 
-type SourceFS struct {
+type ProviderFS struct {
 	FS   fs.FS
 	Path string
 	Name string
 }
 
-func (s SourceFS) name(ext string) string {
+func (s ProviderFS) name(ext string) string {
 
 	return s.Name + "." + ext
 }
 
-func (s SourceFS) styleEntry() resources.StyleEntry {
+func (s ProviderFS) styleEntry() resources.StyleEntry {
 	return resources.StyleFS{
 		FS:   s.FS,
 		Name: s.Name,
@@ -51,7 +51,7 @@ func (s SourceFS) styleEntry() resources.StyleEntry {
 	}
 }
 
-func (s SourceFS) scriptEntry() resources.ScriptEntry {
+func (s ProviderFS) scriptEntry() resources.ScriptEntry {
 	return resources.ScriptFS{
 		FS:   s.FS,
 		Name: s.Name,
@@ -59,115 +59,129 @@ func (s SourceFS) scriptEntry() resources.ScriptEntry {
 	}
 }
 
-type SourcePath string
+type ProviderPath string
 
-func (s SourcePath) name(ext string) string {
+func (s ProviderPath) name(ext string) string {
 	base := filepath.Base(string(s))
 	fileExt := filepath.Ext(base)
 	name := strings.TrimSuffix(base, fileExt)
 	return name + "." + ext
 }
 
-func (s SourcePath) scriptEntry() resources.ScriptEntry {
+func (s ProviderPath) scriptEntry() resources.ScriptEntry {
 	return resources.ScriptPath{
 		Path: string(s),
 	}
 }
 
-func (s SourcePath) styleEntry() resources.StyleEntry {
+func (s ProviderPath) styleEntry() resources.StyleEntry {
 	return resources.StylePath{
 		Path: string(s),
 	}
 }
 
-type SourceStyleString string
+type ProviderStyleString string
 
-func (s SourceStyleString) name(ext string) string {
+func (s ProviderStyleString) name(ext string) string {
 	return ext
 }
 
-func (s SourceStyleString) styleEntry() resources.StyleEntry {
+func (s ProviderStyleString) styleEntry() resources.StyleEntry {
 	return resources.StyleString{
 		Content: string(s),
 	}
 }
 
-type SourceStyleBytes []byte
+type ProviderStyleBytes []byte
 
-func (s SourceStyleBytes) name(ext string) string {
+func (s ProviderStyleBytes) name(ext string) string {
 	return ext
 }
 
-func (s SourceStyleBytes) styleEntry() resources.StyleEntry {
+func (s ProviderStyleBytes) styleEntry() resources.StyleEntry {
 	return resources.StyleBytes{
 		Content: s,
 	}
 }
 
-type SourceTsString string
+type ProviderTsString string
 
-func (s SourceTsString) name(ext string) string {
+func (s ProviderTsString) name(ext string) string {
 	return ext
 }
 
-func (s SourceTsString) scriptEntry() resources.ScriptEntry {
+func (s ProviderTsString) scriptEntry() resources.ScriptEntry {
 	return resources.ScriptString{
 		Content: string(s),
 		Kind:    resources.KindTS,
 	}
 }
 
-type SourceTsBytes []byte
+type ProviderTsBytes []byte
 
-func (s SourceTsBytes) name(ext string) string {
+func (s ProviderTsBytes) name(ext string) string {
 	return ext
 }
 
-func (s SourceTsBytes) scriptEntry() resources.ScriptEntry {
+func (s ProviderTsBytes) scriptEntry() resources.ScriptEntry {
 	return resources.ScriptBytes{
 		Content: s,
 		Kind:    resources.KindTS,
 	}
 }
 
-type SourceJsString string
+type ProviderJsString string
 
-func (s SourceJsString) name(ext string) string {
+func (s ProviderJsString) name(ext string) string {
 	return ext
 }
 
-func (s SourceJsString) scriptEntry() resources.ScriptEntry {
+func (s ProviderJsString) scriptEntry() resources.ScriptEntry {
 	return resources.ScriptString{
 		Content: string(s),
 		Kind:    resources.KindJS,
 	}
 }
 
-type SourceJsBytes []byte
+type ProviderJsBytes []byte
 
-func (s SourceJsBytes) name(ext string) string {
+func (s ProviderJsBytes) name(ext string) string {
 	return ext
 }
 
-func (s SourceJsBytes) scriptEntry() resources.ScriptEntry {
+func (s ProviderJsBytes) scriptEntry() resources.ScriptEntry {
 	return resources.ScriptBytes{
 		Content: s,
 		Kind:    resources.KindJS,
 	}
 }
 
-type SourceExternal string
+type ProviderExternal string
 
-func (s SourceExternal) name(ext string) string {
+func (s ProviderExternal) name(ext string) string {
 	return ""
 }
 
-func (s SourceExternal) scriptEntry() resources.ScriptEntry {
+func (s ProviderExternal) scriptEntry() resources.ScriptEntry {
 	panic("exteral source can't provide script entry")
 }
 
-func (s SourceExternal) styleEntry() resources.StyleEntry {
+func (s ProviderExternal) styleEntry() resources.StyleEntry {
 	panic("exteral source can't provide style entry")
+}
+
+type ProviderLocal string
+
+func (s ProviderLocal) name(ext string) string {
+	return ""
+}
+
+func (s ProviderLocal) scriptEntry() resources.ScriptEntry {
+	panic("local source can't provide script entry")
+}
+
+func (s ProviderLocal) styleEntry() resources.StyleEntry {
+	panic("local source can't provide style entry")
 }
 
 type ScriptFormat int
@@ -195,33 +209,23 @@ func (f ScriptFormat) scriptFormat(module bool) resources.ScriptFormat {
 	}
 }
 
-func importPath(r *resources.Resource, path string, name string, ext string) string {
-	fileName := ext
-	if name != "" {
-		fileName = name + "." + fileName
-	} else if path != "" {
-		base := filepath.Base(path)
-		ext := filepath.Ext(base)
-		name := strings.TrimSuffix(base, ext)
-		fileName = name + "." + fileName
-	}
-	return router.ResourcePath(r, fileName)
-}
-
 type ImportModule struct {
-	Source    ScriptSource
+	Provider  ScriptProvider
 	Format    ScriptFormat
 	Specifier string
 	Profile   string
 }
 
 func (m ImportModule) build(core core.Core) (string, error) {
-	if ext, ok := m.Source.(SourceExternal); ok {
+	if loc, ok := m.Provider.(ProviderLocal); ok {
+		return string(loc), nil
+	}
+	if ext, ok := m.Provider.(ProviderExternal); ok {
 		core.CSPCollector().ScriptSource(string(ext))
 		return string(ext), nil
 	}
 	res, err := core.ResourceRegistry().Script(
-		m.Source.scriptEntry(),
+		m.Provider.scriptEntry(),
 		m.Format.scriptFormat(true),
 		m.Profile,
 		resources.ModeHost,
@@ -229,7 +233,7 @@ func (m ImportModule) build(core core.Core) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	path := router.ResourcePath(res, m.Source.name("js"))
+	path := router.ResourcePath(res, m.Provider.name("js"))
 	return path, nil
 }
 
@@ -277,22 +281,28 @@ func (m ImportModule) Modify(ctx context.Context, tag string, attrs gox.Attrs) e
 	default:
 		return fmt.Errorf("unsupported tag %s", tag)
 	}
+	if m.Specifier != "" {
+		core.ModuleRegistry().Add(m.Specifier, path)
+	}
 	return nil
 }
 
 type ImportCommonJS struct {
-	Source  ScriptSource
-	Format  ScriptFormat
-	Profile string
+	Provider ScriptProvider
+	Format   ScriptFormat
+	Profile  string
 }
 
 func (m ImportCommonJS) build(core core.Core) (string, error) {
-	if ext, ok := m.Source.(SourceExternal); ok {
+	if loc, ok := m.Provider.(ProviderLocal); ok {
+		return string(loc), nil
+	}
+	if ext, ok := m.Provider.(ProviderExternal); ok {
 		core.CSPCollector().ScriptSource(string(ext))
 		return string(ext), nil
 	}
 	res, err := core.ResourceRegistry().Script(
-		m.Source.scriptEntry(),
+		m.Provider.scriptEntry(),
 		m.Format.scriptFormat(false),
 		m.Profile,
 		resources.ModeHost,
@@ -300,7 +310,7 @@ func (m ImportCommonJS) build(core core.Core) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	path := router.ResourcePath(res, m.Source.name("js"))
+	path := router.ResourcePath(res, m.Provider.name("js"))
 	return path, nil
 }
 
@@ -342,24 +352,27 @@ func (m ImportCommonJS) Modify(ctx context.Context, tag string, attrs gox.Attrs)
 }
 
 type ImportStyle struct {
-	Source StyleSource
-	Minify bool
+	Provider StyleProvider
+	Minify   bool
 }
 
 func (m ImportStyle) build(core core.Core) (string, error) {
-	if ext, ok := m.Source.(SourceExternal); ok {
+	if loc, ok := m.Provider.(ProviderLocal); ok {
+		return string(loc), nil
+	}
+	if ext, ok := m.Provider.(ProviderExternal); ok {
 		core.CSPCollector().StyleSource(string(ext))
 		return string(ext), nil
 	}
 	res, err := core.ResourceRegistry().Style(
-		m.Source.styleEntry(),
+		m.Provider.styleEntry(),
 		m.Minify,
 		resources.ModeHost,
 	)
 	if err != nil {
 		return "", err
 	}
-	path := router.ResourcePath(res, m.Source.name("css"))
+	path := router.ResourcePath(res, m.Provider.name("css"))
 	return path, nil
 }
 

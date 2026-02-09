@@ -8,7 +8,6 @@ import "fmt"
 
 func TestAttrData(t *testing.T) {
 	data := common.RandId()
-
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &dataFragment{
 			data: data,

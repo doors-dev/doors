@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/gox"
 )
@@ -35,11 +35,10 @@ elem Document[P any](p page[P], b doors.Source[P]) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			~>doors.ARawFileHref{
 				Handler: func(w http.ResponseWriter, r *http.Request) {},
-			}
-			<link
+			} <link
 				rel="icon"
 				type="image/png"/>
-	~//		~(p.head(b))
+			~(p.head(b))
 		</head>
 		<body>
 			<h1>~(p.h1())</h1>
@@ -77,6 +76,5 @@ elem Button(id string, handler func(context.Context) bool) {
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			return handler(ctx)
 		},
-	}
-	<button id=(id)>~(id)</button>
+	} <button id=(id)>~(id)</button>
 }

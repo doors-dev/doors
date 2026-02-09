@@ -168,6 +168,7 @@ func TestType(t *testing.T, page *rod.Page, selector string, keys []input.Key) {
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
+	<-time.After(200 * time.Millisecond)
 }
 
 func TestInput(t *testing.T, page *rod.Page, selector string, value string) {
@@ -179,6 +180,7 @@ func TestInput(t *testing.T, page *rod.Page, selector string, value string) {
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
+	<-time.After(200 * time.Millisecond)
 }
 func TestInputTime(t *testing.T, page *rod.Page, selector string, now time.Time) {
 	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
@@ -189,6 +191,7 @@ func TestInputTime(t *testing.T, page *rod.Page, selector string, now time.Time)
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
+	<-time.After(200 * time.Millisecond)
 }
 func TestInputColor(t *testing.T, page *rod.Page, selector string, color string) {
 	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
@@ -199,6 +202,7 @@ func TestInputColor(t *testing.T, page *rod.Page, selector string, color string)
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
+	<-time.After(200 * time.Millisecond)
 }
 
 func TestSelect(t *testing.T, page *rod.Page, selector string, options []string) {
@@ -210,6 +214,7 @@ func TestSelect(t *testing.T, page *rod.Page, selector string, options []string)
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
+	<-time.After(200 * time.Millisecond)
 }
 func TestDeselect(t *testing.T, page *rod.Page, selector string, options []string) {
 	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
@@ -220,6 +225,7 @@ func TestDeselect(t *testing.T, page *rod.Page, selector string, options []strin
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
+	<-time.After(200 * time.Millisecond)
 }
 
 func TestMust(t *testing.T, page *rod.Page, selector string) {
@@ -241,7 +247,7 @@ func Click(t *testing.T, page *rod.Page, selector string) {
 		t.Fatal("click: element ", selector, " not found")
 	}
 	el.MustClick()
-	<-time.After(100 * time.Millisecond)
+	<-time.After(200 * time.Millisecond)
 }
 
 func ClickNow(t *testing.T, page *rod.Page, selector string) {

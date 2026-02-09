@@ -2,131 +2,131 @@ package attr
 
 import (
 	"context"
+	"time"
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
-	"time"
+	"github.com/doors-dev/gox"
 )
 
 type indicatorFragment struct {
 	test.NoBeam
 }
 
-templ (f *indicatorFragment) Render() {
-	@f.selectors()
-	@f.restore()
-	@f.queue()
+elem (f *indicatorFragment) Main() {
+	~(f.selectors())
+	~(f.restore())
+	~(f.queue())
 }
 
-// templ: extend to cover attributes and partial updates
-templ (f *indicatorFragment) queue() {
+// elem: extend to cover attributes and partial updates
+elem (f *indicatorFragment) queue() {
 	<div id="q-target" class="base-class" data-a="A0">base</div>
-	@f.button("queue-1", []doors.Indicator{
+	~(f.button("queue-1", []doors.Indicator{
 		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#q-target"),
-			Name:     "data-a",
-			Value:    "A1",
+			Name: "data-a",
+			Value: "A1",
 		},
 		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#q-target"),
-			Class:    "class-1",
+			Class: "class-1",
 		},
 		doors.IndicatorContent{
 			Selector: doors.SelectorQuery("#q-target"),
-			Content:  "first",
+			Content: "first",
 		},
-	})
-	@f.button("queue-2", []doors.Indicator{
+	}), f.button("queue-2", []doors.Indicator{
 		// Partial update: does NOT touch data-a, so when this applies
 		// data-a should restore to original (A0).
 		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#q-target"),
-			Name:     "data-b",
-			Value:    "B2",
+			Name: "data-b",
+			Value: "B2",
 		},
 		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#q-target"),
-			Class:    "class-2",
+			Class: "class-2",
 		},
 		doors.IndicatorContent{
 			Selector: doors.SelectorQuery("#q-target"),
-			Content:  "second",
+			Content: "second",
 		},
-	})
-	@f.button("queue-3", []doors.Indicator{
+	}), f.button("queue-3", []doors.Indicator{
 		// Partial update: does NOT touch data-a, so when this applies
 		// data-a should restore to original (A0).
 		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#q-target"),
-			Name:     "data-b",
-			Value:    "B2",
+			Name: "data-b",
+			Value: "B2",
 		},
 		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#q-target"),
-			Name:     "data-a",
-			Value:    "A3",
+			Name: "data-a",
+			Value: "A3",
 		},
 		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#q-target"),
-			Class:    "class-2",
+			Class: "class-2",
 		},
 		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#q-target"),
-			Class:    "class-3",
+			Class: "class-3",
 		},
 		doors.IndicatorContent{
 			Selector: doors.SelectorQuery("#q-target"),
-			Content:  "second",
+			Content: "second",
 		},
-	})
+	}))
 }
 
-templ (f *indicatorFragment) restore() {
+elem (f *indicatorFragment) restore() {
 	<div id="indicator-1" class="class-1 class-3" data-attr1="val-1">content-1</div>
-	@f.button("action-1", []doors.Indicator{
+	~(f.button("action-1", []doors.Indicator{
 		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#indicator-1"),
-			Name:     "data-attr1",
-			Value:    "val-other",
+			Name: "data-attr1",
+			Value: "val-other",
 		},
 		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#indicator-1"),
-			Name:     "data-attr2",
-			Value:    "val-2",
+			Name: "data-attr2",
+			Value: "val-2",
 		},
 		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#indicator-1"),
-			Class:    "class-1",
+			Class: "class-1",
 		},
 		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#indicator-1"),
-			Class:    "class-1",
+			Class: "class-1",
 		},
 		doors.IndicatorClassRemove{
 			Selector: doors.SelectorQuery("#indicator-1"),
-			Class:    "class-3",
+			Class: "class-3",
 		},
 		doors.IndicatorClass{
 			Selector: doors.SelectorQuery("#indicator-1"),
-			Class:    "class-2",
+			Class: "class-2",
 		},
 		doors.IndicatorContent{
 			Selector: doors.SelectorQuery("#indicator-1"),
-			Content:  "indication",
+			Content: "indication",
 		},
-	})
+	}))
 }
 
-templ (f *indicatorFragment) selectors() {
+elem (f *indicatorFragment) selectors() {
 	<div id="next" class="block"></div>
 	<div id="parent" class="block">
-		@f.button("indicate-parent", doors.IndicatorOnlyAttrQueryParent(".block", "data-check", "true"))
-		@f.button("indicate-self", doors.IndicatorOnlyContent("indication"))
-		@f.button("indicate-selector", doors.IndicatorOnlyAttrQuery("#next", "data-check", "true"))
+		~(f.button("indicate-parent", doors.IndicatorOnlyAttrQueryParent(".block", "data-check", "true")))
+		~(f.button("indicate-self", doors.IndicatorOnlyContent("indication")))
+		~(f.button("indicate-selector", doors.IndicatorOnlyAttrQuery("#next", "data-check", "true")))
 	</div>
 }
 
-templ (f *indicatorFragment) button(id string, indicator []doors.Indicator) {
-	<button id={ id } { doors.A(ctx, f.handler(indicator))... }>{ id }</button>
+elem (f *indicatorFragment) button(id string, indicator []doors.Indicator) {
+	<button id=(id) (doors.A(ctx, f.handler(indicator)))>~(id)</button>
 }
 
 func (f *indicatorFragment) handler(indicator []doors.Indicator) doors.Attr {

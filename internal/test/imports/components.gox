@@ -1,0 +1,177 @@
+package imports
+
+import (
+	"io/fs"
+	"net/http"
+	
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+elem staticFiles(_b doors.Source[test.Path]) {
+	~(fileHref())
+	~(fileRawHref())
+	~(fileSrc())
+	~(fileRawSrc())
+}
+
+elem fileHref() {
+	~>doors.AFileHref{
+		Path: modulePath + "/style.css",
+	} <link rel="stylesheet"/>
+}
+
+elem fileRawHref() {
+	~>doors.ARawFileHref{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			w.Write(styleRawBytes)
+		},
+	} <link rel="stylesheet"/>
+}
+
+elem fileSrc() {
+	~>doors.ASrc{
+		Path: modulePath + "/index.js",
+	} <script></script>
+}
+
+elem fileRawSrc() {
+	~>doors.ARawSrc{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			w.Write(moduleBytes)
+		},
+	} <script></script>
+}
+
+elem styleBytesHead(_b doors.Source[test.Path]) {
+	~doors.ImportStyle{
+		Provider: doors.ProviderStyleBytes(styleRawBytes),
+	}
+}
+
+elem styleExternalHead(_b doors.Source[test.Path]) {
+	~doors.ImportStyle{
+		Provider: doors.ProviderExternal(test.Host + "/module/style.css",),
+	}
+}
+
+elem styleHostedHead(_b doors.Source[test.Path]) {
+	~doors.ImportStyle{
+		Provider: doors.ProviderLocal("/module/style.css"),
+	}
+}
+
+elem styleHead(_b doors.Source[test.Path]) {
+	~doors.ImportStyle{
+		Provider: doors.ProviderPath(modulePath + "/style.css"),
+	}
+}
+
+elem moduleExternalHead(_b doors.Source[test.Path]) {
+	~doors.ImportModule{
+		Provider: doors.ProviderExternal(test.Host + "/module/index.js"),
+		Specifier: "module",
+	}
+}
+
+elem moduleBundleHostHead(_b doors.Source[test.Path]) {
+	~doors.ImportModule{
+		Specifier: "module",
+		Provider: doors.ProviderLocal("/module/index.js"),
+	}
+}
+
+elem moduleBundleFSHead(_b doors.Source[test.Path]) {
+	~{
+		moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src")
+	}
+	~doors.ImportModule{
+		Specifier: "module",
+		Format: doors.FormatBundle,
+		Provider: doors.ProviderFS{
+			FS: moduleBundleDir,
+			Path: "index.ts",
+			Name: "dd",
+		},
+	}
+}
+
+elem moduleRawBytesHead(_b doors.Source[test.Path]) {
+	~doors.ImportModule{
+		Specifier: "module",
+		Provider: doors.ProviderJsBytes(moduleRawBytes),
+		Format: doors.FormatRaw,
+	}
+}
+
+elem moduleRawHead(_b doors.Source[test.Path]) {
+	~doors.ImportModule{
+		Specifier: "module",
+		Provider: doors.ProviderPath(modulePath + "/index.js"),
+		Format: doors.FormatRaw,
+	}
+}
+
+elem moduleBytesHead(_b doors.Source[test.Path]) {
+	~doors.ImportModule{
+		Specifier: "module",
+		Provider: doors.ProviderJsBytes(moduleBytes),
+	}
+}
+
+elem moduleHead(_b doors.Source[test.Path]) {
+	<script
+		(doors.ImportModule{
+			Specifier: "module",
+			Provider: doors.ProviderPath(modulePath + "/index.ts"),
+		})></script>
+}
+
+elem reactHead(_b doors.Source[test.Path]) {
+	~doors.ImportModule{
+		Specifier: "preact",
+		Provider: doors.ProviderPath(preactPath + "/index.tsx"),
+		Format: doors.FormatBundle,
+	}
+	~doors.ImportModule{
+		Specifier: "react",
+		Provider: doors.ProviderPath(reactPath + "/index.tsx"),
+		Format: doors.FormatBundle,
+	}
+}
+
+type ModuleFragment struct {
+	test.NoBeam
+}
+
+elem (f *ModuleFragment) Main() {
+	<div id="report-0"></div>
+	<script>
+		const module = await import("module")
+		document.getElementById("report-0").innerHTML = module.test()
+	</script>
+}
+
+type ReactFragment struct {
+	test.NoBeam
+}
+
+elem (f *ReactFragment) Main() {
+	<div id="preact"></div>
+	<script>
+		const app = await import("preact")
+		app.init(document.getElementById("preact"))
+	</script>
+	<div id="react"></div>
+	<script>
+		const app = await import("react")
+		app.init(document.getElementById("react"))
+	</script>
+}
+
+type Empty struct {
+	test.NoBeam
+}
+
+elem (f *Empty) Main() {}

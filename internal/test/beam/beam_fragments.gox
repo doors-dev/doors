@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
-
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
@@ -30,8 +30,7 @@ elem (f *BeamSkipFragment) Main() {
 			return false
 		})
 	}
-	~>(f.node)
-	<>
+	~>(f.node) <>
 		~{
 			f.b.Sub(ctx, func(ctx context.Context, s state) bool {
 				if s.Str == "1" {
@@ -77,8 +76,7 @@ elem (f *BeamDeriveFragment) content() {
 		r, _ := d.Read(ctx)
 	}
 	~(test.ReportId(1, fmt.Sprint(r)))
-	~>(n1)
-	<>
+	~>(n1) <>
 		~{
 			f.b.Mutate(ctx, func(s state) state {
 				s.Int = s.Int + 1
@@ -96,7 +94,7 @@ elem (f *BeamDeriveFragment) content() {
 		}
 		~(&n3)
 	</>
-	~>(n2)<>
+	~>(n2) <>
 		~{
 			f.b.Mutate(ctx, func(s state) state {
 				s.Int = s.Int + 1
@@ -110,8 +108,7 @@ elem (f *BeamDeriveFragment) content() {
 }
 
 elem (f *BeamDeriveFragment) Main() {
-	~>(f.n)
-	<>
+	~>(f.n) <>
 		~(f.content())
 	</>
 	~(test.Button("reload", func(ctx context.Context) bool {
@@ -142,7 +139,7 @@ elem (f *BeamConsistentFragment) content() {
 		r, _ := f.b.Read(ctx)
 	}
 	~(test.ReportId(1, fmt.Sprint(r.Int)))
-	~>(n1)<>
+	~>(n1) <>
 		~{
 			f.b.Mutate(ctx, func(s state) state {
 				s.Int = s.Int + 1
@@ -160,7 +157,7 @@ elem (f *BeamConsistentFragment) content() {
 		}
 		~(&n3)
 	</>
-	~>(n2)<>
+	~>(n2) <>
 		~{
 			f.b.Mutate(ctx, func(s state) state {
 				s.Int = s.Int + 1
@@ -174,7 +171,7 @@ elem (f *BeamConsistentFragment) content() {
 }
 
 elem (f *BeamConsistentFragment) Main() {
-	~>(f.n)<>
+	~>(f.n) <>
 		~(f.content())
 	</>
 	~(test.Button("reload", func(ctx context.Context) bool {

@@ -12,7 +12,7 @@ import { HookErr, hookErrKinds } from './capture'
 import controller from './controller'
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
-    const attrName = `data-d0h:${name}`
+    const attrName = `data-d0h-${name}`
     const value = element.getAttribute(attrName)
     if (value == null) return undefined
     return JSON.parse(value)
@@ -82,7 +82,6 @@ function init(
     const $G = $d.G
     const $ready = $d.ready
     const $clean = $d.clean
-    const HookErr = $d.HookErr
     return f($on, $data, $hook, $fetch, $G, $ready, $clean, HookErr)
 }
 export default init

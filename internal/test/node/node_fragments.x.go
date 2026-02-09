@@ -5,7 +5,7 @@ package door
 import (
 	"context"
 	"fmt"
-
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
@@ -77,8 +77,8 @@ func (f *FragmentMany) Main() gox.Elem {
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-		__e = __c.Any(test.Button("replace", func(ctx context.Context) bool {
-		n.Update(ctx, f.replaced())
+		__e = __c.Any(test.Button("replace", func(ctx context.Context) bool { 
+		n.Update(ctx, f.replaced()) 
 		return true
 	})); if __e != nil { return }
 	return })
@@ -133,6 +133,13 @@ func (f *FragmentX) Main() gox.Elem {
 				__e = __c.Close(); if __e != nil { return }
 			return })); if __e != nil { return }
 		return })); if __e != nil { return }
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("data:dd", "dd"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw("alert(1)"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
 		__e = doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			ch := f.n.XRemove(ctx)

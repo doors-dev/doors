@@ -5,25 +5,29 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
-	"io"
+	"github.com/doors-dev/gox"
 )
 
 type formFragment struct {
 	test.NoBeam
-	r   *test.Reporter
+	r *test.Reporter
 	raw bool
 }
 
-templ (f *formFragment) Render() {
-	{{ f.r.Update(ctx, 0, "init") }}
-	@f.r.Render()
-	if f.raw {
-		@f.form(f.submitRaw())
-	} else {
-		@f.form(f.submitSimple())
+elem (f *formFragment) Main() {
+	~{
+		f.r.Update(ctx, 0, "init")
 	}
+	~(f.r)
+	~(if f.raw {
+		~(f.form(f.submitRaw()))
+	} else {
+		~(f.form(f.submitSimple()))
+	})
 }
 
 func (f *formFragment) submitSimple() doors.Attr {
@@ -59,15 +63,14 @@ func (f *formFragment) submitRaw() doors.Attr {
 }
 
 type formData struct {
-	Name      string `form:"name"`
-	Email     string `form:"email"`
-	Age       int    `form:"age"`
+	Name string `form:"name"`
+	Email string `form:"email"`
+	Age int `form:"age"`
 	Subscribe string `form:"subscribe"`
 }
 
-templ (f *formFragment) form(a doors.Attr) {
-    @a
-	<form>
+elem (f *formFragment) form(a doors.Attr) {
+	~>(a) <form>
 		<input type="text" id="name" name="name"/>
 		<input type="email" id="email" name="email"/>
 		<input type="number" id="age" name="age" min="0"/>

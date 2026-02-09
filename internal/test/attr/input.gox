@@ -2,9 +2,11 @@ package attr
 
 import (
 	"context"
+	"strings"
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
-	"strings"
+	"github.com/doors-dev/gox"
 )
 
 type inputFragment struct {
@@ -12,12 +14,13 @@ type inputFragment struct {
 	r *test.Reporter
 }
 
-templ (f *inputFragment) Render() {
-	@f.r.Render()
-	@f.focusFields()
-	@f.inputFields()
+elem (f *inputFragment) Main() {
+	<button id="unfocus">dd</button>
+	~(f.r)
+	~(f.focusFields())
+	~(f.inputFields())
 	<hr/>
-	@f.changeFields()
+	~(f.changeFields())
 }
 
 func (f *inputFragment) focusioouter() []doors.Attr {
@@ -70,11 +73,11 @@ func (f *inputFragment) focus() []doors.Attr {
 	}
 }
 
-templ (f *inputFragment) focusFields() {
+elem (f *inputFragment) focusFields() {
 	<h3>focus</h3>
-	<div { doors.A(ctx, f.focusioouter()...)... }>
-		<div { doors.A(ctx, f.focusio()...)... }>
-			<input id="focus" { doors.A(ctx, f.focus()...)... } type="text" name="text"/>
+	<div (doors.A(ctx, f.focusioouter()...))>
+		<div (doors.A(ctx, f.focusio()...))>
+			<input id="focus" (doors.A(ctx, f.focus()...)) type="text" name="text"/>
 		</div>
 	</div>
 	<button id="blur"></button>
@@ -92,11 +95,11 @@ func (f *inputFragment) inputAttr(excudeValue bool) doors.Attr {
 	}
 }
 
-templ (f *inputFragment) inputFields() {
+elem (f *inputFragment) inputFields() {
 	<h3>input</h3>
-	<input id="input" { doors.A(ctx, f.inputAttr(false))... } type="text" name="text"/>
+	<input id="input" (doors.A(ctx, f.inputAttr(false))) type="text" name="text"/>
 	<h3>input ex</h3>
-	<input id="input_ex" { doors.A(ctx, f.inputAttr(true))... } type="text" name="text"/>
+	<input id="input_ex" (doors.A(ctx, f.inputAttr(true))) type="text" name="text"/>
 }
 
 func (f *inputFragment) attr(index string) doors.Attr {
@@ -130,58 +133,58 @@ func (f *inputFragment) attr(index string) doors.Attr {
 	}
 }
 
-templ (f *inputFragment) changeFields() {
+elem (f *inputFragment) changeFields() {
 	<h3>text</h3>
-	<input id="text" { doors.A(ctx, f.attr("text" ))... } type="text" name="text"/>
+	<input id="text" (doors.A(ctx, f.attr("text"))) type="text" name="text"/>
 	<h3>password</h3>
-	<input id="password" { doors.A(ctx, f.attr("password" ))... } type="password" name="password"/>
+	<input id="password" (doors.A(ctx, f.attr("password"))) type="password" name="password"/>
 	<h3>email</h3>
-	<input id="email" { doors.A(ctx, f.attr("email" ))... } type="email" name="email"/>
+	<input id="email" (doors.A(ctx, f.attr("email"))) type="email" name="email"/>
 	<h3>tel</h3>
-	<input id="tel" { doors.A(ctx, f.attr("tel" ))... } type="tel" name="tel"/>
+	<input id="tel" (doors.A(ctx, f.attr("tel"))) type="tel" name="tel"/>
 	<h3>url</h3>
-	<input id="url" { doors.A(ctx, f.attr("url" ))... } type="url" name="url"/>
+	<input id="url" (doors.A(ctx, f.attr("url"))) type="url" name="url"/>
 	<h3>search</h3>
-	<input id="search" { doors.A(ctx, f.attr("search" ))... } type="search" name="search"/>
+	<input id="search" (doors.A(ctx, f.attr("search"))) type="search" name="search"/>
 	<h3>number</h3>
-	<input id="number" { doors.A(ctx, f.attr("number" ))... } type="number" name="number"/>
+	<input id="number" (doors.A(ctx, f.attr("number"))) type="number" name="number"/>
 	<h3>date</h3>
-	<input id="date" { doors.A(ctx, f.attr("date" ))... } type="date" name="date"/>
+	<input id="date" (doors.A(ctx, f.attr("date"))) type="date" name="date"/>
 	<h3>datetime-local</h3>
-	<input id="datetime-local" { doors.A(ctx, f.attr("datetime-local" ))... } type="datetime-local" name="datetime-local"/>
+	<input id="datetime-local" (doors.A(ctx, f.attr("datetime-local"))) type="datetime-local" name="datetime-local"/>
 	<h3>month</h3>
-	<input id="month" { doors.A(ctx, f.attr("month" ))... } type="month" name="month"/>
-	/*
+	<input id="month" (doors.A(ctx, f.attr("month"))) type="month" name="month"/> ~/* sfsd */
+	~/*
     // not supported by rod
 	<h3>week</h3>
-	<input id="week" { doors.A(ctx, f.attr("week" ))... } type="week" name="week"/>
+	<input id="week" (doors.A(ctx, f.attr("week" ))) type="week" name="week"/>
     */
 	<h3>time</h3>
-	<input id="time" { doors.A(ctx, f.attr("time" ))... } type="time" name="time"/>
+	<input id="time" (doors.A(ctx, f.attr("time"))) type="time" name="time"/>
 	<h3>color</h3>
-	<input id="color" { doors.A(ctx, f.attr("color" ))... } type="color" name="color"/>
+	<input id="color" (doors.A(ctx, f.attr("color"))) type="color" name="color"/>
 	<h3>checkbox</h3>
-	<input id="checkbox" { doors.A(ctx, f.attr("checkbox" ))... } type="checkbox" name="checkbox" value="on"/>
+	<input id="checkbox" (doors.A(ctx, f.attr("checkbox"))) type="checkbox" name="checkbox" value="on"/>
 	<h3>radio</h3>
-	{{ radio := doors.A(ctx, f.attr("radio")) }}
-    @radio
-	<input id="radio-1"  type="radio" name="radio" value="option1"/>
-    @radio
-	<input id="radio-2"  type="radio" name="radio" value="option2"/>
-	/*
+	~{
+		radio := doors.A(ctx, f.attr("radio"))
+	}
+	~>(radio) <input id="radio-1" type="radio" name="radio" value="option1"/>
+	~>(radio) <input id="radio-2" type="radio" name="radio" value="option2"/> ~// sdas
+	~/*
     // not supported by rod
 	<h3>range</h3>
 	<input id="range" { doors.A(ctx, f.attr("range" ))... } type="range" name="range"/>
     */
 	<h3>textarea</h3>
-	<textarea id="textarea" { doors.A(ctx, f.attr("textarea"))... } name="textarea"></textarea>
+	<textarea id="textarea" (doors.A(ctx, f.attr("textarea"))) name="textarea"></textarea>
 	<h3>select</h3>
-	<select id="select" { doors.A(ctx, f.attr("select"))... } name="select">
+	<select id="select" (doors.A(ctx, f.attr("select"))) name="select">
 		<option value="option1">Option 1</option>
 		<option value="option2">Option 2</option>
 	</select>
 	<h3>multiselect</h3>
-	<select id="multiselect" { doors.A(ctx, f.attr("multiselect"))... } name="multiselect" multiple>
+	<select id="multiselect" (doors.A(ctx, f.attr("multiselect"))) name="multiselect" multiple>
 		<option value="option1">Option 1</option>
 		<option value="option2">Option 2</option>
 	</select>
