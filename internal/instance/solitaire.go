@@ -184,9 +184,10 @@ func (c *conn) Run() {
 					c.trigger.Store(&ch)
 					wait = true
 				}
+			} else if wait {
+				wait = false
 			}
 			if writeResult == pendingLimit {
-				zombie = true
 				c.writer.flush()
 				<-c.ctx.Done()
 			}

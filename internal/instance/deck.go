@@ -318,8 +318,17 @@ func (d *deck) skipSeq(seq uint64) {
 }
 
 func (d *deck) setTail(n *card) {
+	if n == nil {
+		if d.top != d.bottom {
+			panic("cannot set top to nil if it is not bottom")
+		}
+		d.top = nil
+		d.bottom = nil
+		return
+	}
 	d.top = n
 }
+
 
 func (d *deck) cutTop() *card {
 	card := d.top
