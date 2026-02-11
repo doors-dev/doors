@@ -13,17 +13,17 @@ import (
 
 func Report(value string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(ReportId(0, value)); if __e != nil { return }
 	return })
 }
 
 func ReportId(id int, value string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-			__e = __c.AttrSetAny("id", fmt.Sprintf("report-%d", id)); if __e != nil { return }
+			__e = __c.AttrSet("id", fmt.Sprintf("report-%d", id)); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Any(value); if __e != nil { return }
 		}
@@ -33,10 +33,10 @@ func ReportId(id int, value string) gox.Elem {
 
 func Marker(id string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-			__e = __c.AttrSetAny("id", id); if __e != nil { return }
+			__e = __c.AttrSet("id", id); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
@@ -51,7 +51,7 @@ type page[P any]interface {
 
 func Document[P any](p page[P], b doors.Source[P]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Raw("<!DOCTYPE html>"); if __e != nil { return }
 		__e = __c.Init("html"); if __e != nil { return }
 		{
@@ -74,7 +74,7 @@ func Document[P any](p page[P], b doors.Source[P]) gox.Elem {
 				__e = doors.ARawFileHref{
 				Handler: func(w http.ResponseWriter, r *http.Request) {},
 			}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-					ctx := __c.Context(); __c.Noop(ctx)
+					ctx := __c.Context(); gox.Noop(ctx)
 					__e = __c.InitVoid("link"); if __e != nil { return }
 					{
 						__e = __c.AttrSet("rel", "icon"); if __e != nil { return }
@@ -122,7 +122,7 @@ func (r *Reporter) Update(ctx context.Context, i int, content string) {
 
 func (r *Reporter) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		for _, report := range r.reports {
 			__e = __c.Any(report); if __e != nil { return }
 		}
@@ -131,16 +131,16 @@ func (r *Reporter) Main() gox.Elem {
 
 func Button(id string, handler func(context.Context) bool) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			return handler(ctx)
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-				__e = __c.AttrSetAny("id", id); if __e != nil { return }
+				__e = __c.AttrSet("id", id); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Any(id); if __e != nil { return }
 			}

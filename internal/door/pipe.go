@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -83,11 +84,12 @@ func (p *pipe) renderView(parentCtx context.Context, view *view) {
 		}
 		if view.content != nil {
 			if comp, ok := view.content.(gox.Comp); ok {
-				p.renderingError = comp.Main()(cur)
+				if el := comp.Main(); el != nil {
+					p.renderingError = el(cur)
+				}
 			} else {
 				p.renderingError = cur.Any(view.content)
 			}
-
 			if p.renderingError != nil {
 				return
 			}
@@ -107,7 +109,9 @@ func (p *pipe) renderAny(ctx context.Context, any any) {
 		}
 		cur := gox.NewCursor(ctx, p)
 		if comp, ok := any.(gox.Comp); ok {
-			p.renderingError = comp.Main()(cur)
+			if el := comp.Main(); el != nil {
+				p.renderingError = el(cur)
+			}
 		} else {
 			p.renderingError = cur.Any(any)
 		}
@@ -171,26 +175,37 @@ func (p *pipe) lookForResource(job gox.Job) error {
 	}
 	switch true {
 	case strings.EqualFold(head.Tag, "script"):
-		if head.Attrs.Has("src") {
-			return p.send(job)
-		}
-		if head.Attrs.Has("escape") {
-			head.Attrs.Get("escape").SetBool(false)
-			return p.send(job)
-		}
-		if head.Attrs.Has("type") {
-			typ, _ := head.Attrs.Get("type").ReadString()
-			if !strings.EqualFold(typ, "text/javascript") && !strings.EqualFold(typ, "application/javascript") {
-				return p.send(job)
+		send := false
+		for _, attr := range head.Attrs.List() {
+			if strings.EqualFold(attr.Name(), "escape") && attr.IsSet() {
+				send = true
+				attr.Unset()
 			}
+			if !send && strings.EqualFold(attr.Name(), "src") && attr.IsSet() {
+				send = true
+			}
+			if !send && strings.EqualFold(attr.Name(), "type") && attr.IsSet() {
+				typ, _ := attr.Value().(string)
+				if !strings.EqualFold(typ, "text/javascript") && !strings.EqualFold(typ, "application/javascript") {
+					send = true
+				}
+			}
+			if name, ok := strings.CutPrefix(attr.Name(), "data:"); ok {
+				value := attr.Value()
+				attr.Unset()
+				front.AttrsSetData(head.Attrs, name, value)
+			}
+		}
+		if send {
+			return p.send(job)
 		}
 		p.resourceState = resourceContent
 		p.resourceOpenHead = head
 		return nil
 	case strings.EqualFold(head.Tag, "style"):
 		head.Attrs.ApplyMods(head.Ctx, head.Tag)
-		if escape := head.Attrs.Get("escape"); escape.IsSet() {
-			escape.SetBool(false)
+		if escape, ok := head.Attrs.Find("escape"); ok && escape.IsSet() {
+			escape.Unset()
 			return p.send(job)
 		}
 		p.resourceState = resourceContent
@@ -242,20 +257,16 @@ func (p *pipe) closeResource(job gox.Job) error {
 	if !ok || close.ID != openHead.ID {
 		return errors.New("door: invalid resource close job")
 	}
-	nocacheAttr := openHead.Attrs.Get("nocache")
-	local := openHead.Attrs.Get("local")
 	var mode resources.ResourceMode
-	switch true {
-	case nocacheAttr.IsSet():
-		nocacheAttr.SetBool(false)
+	if attr, ok := openHead.Attrs.Find("nocache"); ok && attr.IsSet() {
+		attr.Unset()
 		mode = resources.ModeNoCache
-	case local.IsSet():
-		local.SetBool(false)
+	} else if attr, ok := openHead.Attrs.Find("local"); ok && attr.IsSet() {
+		attr.Unset()
 		mode = resources.ModeCache
-	default:
+	} else {
 		mode = resources.ModeHost
 	}
-	name, _ := openHead.Attrs.Get("data-name").ReadString()
 	registry := p.tracker.root.resourceRegistry()
 	switch true {
 	case strings.EqualFold(close.Tag, "script"):
@@ -265,7 +276,7 @@ func (p *pipe) closeResource(job gox.Job) error {
 		if err != nil {
 			return err
 		}
-		src, ok := p.prepareResource(res, mode, name, "js")
+		src, ok := p.prepareResource(res, mode, "", "js")
 		if !ok {
 			return errors.New("door: can't prepare resource")
 		}
@@ -283,7 +294,7 @@ func (p *pipe) closeResource(job gox.Job) error {
 		if err != nil {
 			return err
 		}
-		href, ok := p.prepareResource(res, mode, name, "css")
+		href, ok := p.prepareResource(res, mode, "", "css")
 		if !ok {
 			return errors.New("door: can't prepare resource")
 		}

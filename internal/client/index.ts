@@ -40,7 +40,7 @@ class $D {
         door.on(this.anchor, name, handler)
     }
 
-    fetchHook = async (name: string, arg: any): Promise<Response> => {
+    fetch = async (name: string, arg: any): Promise<Response> => {
         const hook = getHookParams(this.anchor, name)
         if (hook === undefined) {
             throw new HookErr(hookErrKinds.capture, new Error("hook " + name + " not found"))
@@ -49,7 +49,7 @@ class $D {
     }
 
     hook = async (name: string, arg: any): Promise<any> => {
-        const res = await this.fetchHook(name, arg)
+        const res = await this.fetch(name, arg)
         return await res.json()
     }
 
@@ -67,7 +67,7 @@ function init(
         $on: $D['on'],
         $data: $D['data'],
         $hook: $D['hook'],
-        $fetch: $D['fetchHook'],
+        $fetch: $D['fetch'],
         $G: $D['G'],
         $ready: $D['ready'],
         $clean: $D['clean'],
@@ -78,7 +78,7 @@ function init(
     const $on = $d.on
     const $data = $d.data
     const $hook = $d.hook
-    const $fetch = $d.fetchHook
+    const $fetch = $d.fetch
     const $G = $d.G
     const $ready = $d.ready
     const $clean = $d.clean

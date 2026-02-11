@@ -22,7 +22,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/a-h/templ"
 	"github.com/mr-tron/base58"
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
@@ -135,12 +134,3 @@ func CatchValue[V any](f func() V) (value V, err error) {
 	return
 }
 
-var nopPointer = uintptr(reflect.ValueOf(templ.NopComponent).UnsafePointer())
-
-func GetChildren(ctx context.Context) (context.Context, templ.Component, bool) {
-	c := templ.GetChildren(ctx)
-	if uintptr(reflect.ValueOf(c).UnsafePointer()) == nopPointer {
-		return ctx, nil, false
-	}
-	return templ.ClearChildren(ctx), c, true
-}

@@ -18,7 +18,7 @@ type inputFragment struct {
 
 func (f *inputFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("button"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("id", "unfocus"); if __e != nil { return }
@@ -89,7 +89,7 @@ func (f *inputFragment) focus() []doors.Attr {
 
 func (f *inputFragment) focusFields() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("h3"); if __e != nil { return }
 		{
 			__e = __c.Submit(); if __e != nil { return }
@@ -139,7 +139,7 @@ func (f *inputFragment) inputAttr(excudeValue bool) doors.Attr {
 
 func (f *inputFragment) inputFields() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("h3"); if __e != nil { return }
 		{
 			__e = __c.Submit(); if __e != nil { return }
@@ -204,7 +204,7 @@ func (f *inputFragment) attr(index string) doors.Attr {
 
 func (f *inputFragment) changeFields() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("h3"); if __e != nil { return }
 		{
 			__e = __c.Submit(); if __e != nil { return }
@@ -397,7 +397,7 @@ func (f *inputFragment) changeFields() gox.Elem {
 		radio := doors.A(ctx, f.attr("radio"))
 
 		__e = radio.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitVoid("input"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "radio-1"); if __e != nil { return }
@@ -408,7 +408,7 @@ func (f *inputFragment) changeFields() gox.Elem {
 			__e = __c.Submit(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = radio.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitVoid("input"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "radio-2"); if __e != nil { return }
@@ -471,7 +471,7 @@ func (f *inputFragment) changeFields() gox.Elem {
 			__e = __c.AttrSet("id", "multiselect"); if __e != nil { return }
 			__e = __c.AttrMod(doors.A(ctx, f.attr("multiselect"))); if __e != nil { return }
 			__e = __c.AttrSet("name", "multiselect"); if __e != nil { return }
-			__e = __c.AttrSetBool("multiple", true);if __e != nil { return }
+			__e = __c.AttrSet("multiple", true);if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Init("option"); if __e != nil { return }
 			{

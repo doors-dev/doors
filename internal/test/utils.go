@@ -1,7 +1,6 @@
 package test
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -17,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/a-h/templ"
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
@@ -389,10 +388,10 @@ func GetReportContent(t *testing.T, page *rod.Page, id int) string {
 func TestReportId(t *testing.T, page *rod.Page, id int, content string) {
 	TestContent(t, page, fmt.Sprintf("#report-%d", id), content)
 }
-func Text(s string) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, err := w.Write([]byte(s))
-		return err
+
+func Text(s string) gox.Editor{
+	return gox.EditorFunc(func(cur gox.Cursor) error {
+		return cur.Text(s)
 	})
 }
 

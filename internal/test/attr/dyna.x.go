@@ -19,11 +19,11 @@ type dynaFragment struct {
 
 func (f *dynaFragment) content(da1 doors.ADyn, da2 doors.ADyn) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = da1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = da2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-				ctx := __c.Context(); __c.Noop(ctx)
+				ctx := __c.Context(); gox.Noop(ctx)
 				__e = __c.Init("div"); if __e != nil { return }
 				{
 					__e = __c.AttrSet("id", "t1"); if __e != nil { return }
@@ -33,17 +33,17 @@ func (f *dynaFragment) content(da1 doors.ADyn, da2 doors.ADyn) gox.Elem {
 			return })); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = da1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = da2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-				ctx := __c.Context(); __c.Noop(ctx)
+				ctx := __c.Context(); gox.Noop(ctx)
 				__e = __c.Init("div"); if __e != nil { return }
 				{
 					__e = __c.AttrSet("id", "t2"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 					__e = da1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-						ctx := __c.Context(); __c.Noop(ctx)
+						ctx := __c.Context(); gox.Noop(ctx)
 						__e = da2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-							ctx := __c.Context(); __c.Noop(ctx)
+							ctx := __c.Context(); gox.Noop(ctx)
 							__e = __c.Init("div"); if __e != nil { return }
 							{
 								__e = __c.AttrSet("id", "t3"); if __e != nil { return }
@@ -61,17 +61,17 @@ func (f *dynaFragment) content(da1 doors.ADyn, da2 doors.ADyn) gox.Elem {
 
 func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.AClick{
 		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 			da.Enable(ctx, true)
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-				__e = __c.AttrSetAny("id", "enable-" + index); if __e != nil { return }
+				__e = __c.AttrSet("id", "enable-" + index); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("enable-"); if __e != nil { return }
 				__e = __c.Any(index); if __e != nil { return }
@@ -84,10 +84,10 @@ func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.El
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-				__e = __c.AttrSetAny("id", "disable-" + index); if __e != nil { return }
+				__e = __c.AttrSet("id", "disable-" + index); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("disable-"); if __e != nil { return }
 				__e = __c.Any(index); if __e != nil { return }
@@ -100,10 +100,10 @@ func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.El
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-				__e = __c.AttrSetAny("id", "update-" + index); if __e != nil { return }
+				__e = __c.AttrSet("id", "update-" + index); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("update-"); if __e != nil { return }
 				__e = __c.Any(index); if __e != nil { return }
@@ -115,13 +115,13 @@ func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.El
 
 func (f *dynaFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		da1 := doors.NewADyn("data-test1", f.v1, true)
 
 		da2 := doors.NewADyn("data-test2", f.v2, false)
 
 		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				__e = __c.Any(f.content(da1, da2)); if __e != nil { return }
@@ -137,7 +137,7 @@ func (f *dynaFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("button"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "reset"); if __e != nil { return }
@@ -152,7 +152,7 @@ func (f *dynaFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("button"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "clear"); if __e != nil { return }
@@ -167,7 +167,7 @@ func (f *dynaFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("button"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "show"); if __e != nil { return }
@@ -182,7 +182,7 @@ func (f *dynaFragment) Main() gox.Elem {
 			return true
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("button"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "replace"); if __e != nil { return }

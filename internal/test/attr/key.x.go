@@ -18,7 +18,7 @@ type keyFragment struct {
 
 func (f *keyFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.AKeyDown{
 		On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
 			f.r.Update(ctx, 0, r.Event().Key)
@@ -26,7 +26,7 @@ func (f *keyFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = doors.AKeyUp{
 		On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
 			f.r.Update(ctx, 2, r.Event().Key)
@@ -43,7 +43,7 @@ func (f *keyFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-				ctx := __c.Context(); __c.Noop(ctx)
+				ctx := __c.Context(); gox.Noop(ctx)
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
 					__e = __c.AttrSet("type", "text"); if __e != nil { return }

@@ -213,6 +213,7 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 		defer inst.end(common.EndCauseKilled)
 		return err
 	}
+	inst.navigator.init()
 	return nil
 
 }

@@ -42,7 +42,7 @@ func (p *Page) head(b doors.Source[Path]) gox.Elem{
 
 func (p *Page) content(b doors.Source[Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		if p.F != nil {
 			p.F.setBeam(b)
 
@@ -53,7 +53,7 @@ func (p *Page) content(b doors.Source[Path]) gox.Elem {
 
 func (p *Page) Main(b doors.Source[Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(Document(p, b)); if __e != nil { return }
 	return })
 }

@@ -16,7 +16,7 @@ type view struct {
 func (v *view) headFrame(parentCtx context.Context, doorID uint64, headID uint64) (*gox.JobHeadOpen, *gox.JobHeadClose) {
 	if v.tag == "" {
 		attrs := gox.NewAttrs()
-		attrs.Get("id").Set(fmt.Sprintf("d00r/%d", doorID))
+		attrs.Get("id").Set(fmt.Sprintf("d0r%d", doorID))
 		return gox.NewJobHeadOpen(
 				headID,
 				gox.KindRegular,

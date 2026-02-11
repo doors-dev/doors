@@ -22,7 +22,7 @@ type formFragment struct {
 
 func (f *formFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		f.r.Update(ctx, 0, "init")
 
 		__e = __c.Any(f.r); if __e != nil { return }
@@ -75,9 +75,9 @@ type formData struct {
 
 func (f *formFragment) form(a doors.Attr) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = a.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("form"); if __e != nil { return }
 			{
 				__e = __c.Submit(); if __e != nil { return }

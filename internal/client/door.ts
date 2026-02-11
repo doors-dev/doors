@@ -18,10 +18,11 @@ type Closure = () => void | Promise<void>
 
 
 const attr = "data-d0r"
+const attrIndexed = "data-d0"
 const tag = "d0-r"
 
 type DoorElement = Element & {
-	_d00r: {
+	_d0r: {
 		id: number
 		parent: number
 		impostor: boolean
@@ -43,17 +44,22 @@ function execute(c: Closure) {
 	}
 }
 function getSelfId(el: Element): (number | undefined) {
-	if (!el.matches(`${tag}, [${attr}]`)) {
-		return undefined
+	if (el.matches(`${tag}`)) {
+		return doorId(el.id)
 	}
-	return doorId(el.id)
+	if (el.matches(`[${attr}]`)) {
+		const id = el.getAttribute(attr)
+		return Number(id)
+	}
+	return undefined
 }
+
 function getParentId(el: Element): number {
 	const parent = el.parentElement!.closest(`${tag}, [${attr}]`)
 	if (!parent) {
 		return rootId
 	}
-	return doorId(parent.id)
+	return getSelfId(parent)!
 }
 
 class Doors {
@@ -64,9 +70,9 @@ class Doors {
 	private impostors = new Map<number, Set<number>>()
 
 	private scanImpostors(parent: Element | Document) {
-		for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attr}="indexed"])`)) {
+		for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attrIndexed}="indexed"])`)) {
 			const id = element.getAttribute(attr)
-			element.setAttribute(attr, "indexed")
+			element.setAttribute(attrIndexed, "indexed")
 			this.register(element, id!)
 		}
 	}
@@ -93,7 +99,7 @@ class Doors {
 		const impostor = impostorId !== undefined;
 		const door = element as DoorElement
 		const id = impostor ? Number(impostorId) : doorId(element.id);
-		door._d00r = {
+		door._d0r = {
 			id: id,
 			parent: getParentId(element),
 			impostor: impostor,
@@ -102,30 +108,30 @@ class Doors {
 		if (!impostor) {
 			return
 		}
-		let siblings = this.impostors.get(door._d00r.parent)
+		let siblings = this.impostors.get(door._d0r.parent)
 		if (!siblings) {
 			siblings = new Set()
-			this.impostors.set(door._d00r.parent, siblings)
+			this.impostors.set(door._d0r.parent, siblings)
 		}
 		siblings.add(id)
 	}
 
 	unregister(element: Element): void {
 		const door = element as DoorElement
-		this.elements.delete(door._d00r.id)
-		this.clear(door._d00r.id)
-		const onRemove = this.onRemove.get(door._d00r.id)
+		this.elements.delete(door._d0r.id)
+		this.clear(door._d0r.id)
+		const onRemove = this.onRemove.get(door._d0r.id)
 		if (onRemove !== undefined) {
-			this.onRemove.delete(door._d00r.id)
+			this.onRemove.delete(door._d0r.id)
 			onRemove.forEach(c => execute(c))
 		}
-		if (!door._d00r.impostor) {
+		if (!door._d0r.impostor) {
 			return
 		}
-		const siblings = this.impostors.get(door._d00r.parent)!
-		siblings.delete(door._d00r.id)
+		const siblings = this.impostors.get(door._d0r.parent)!
+		siblings.delete(door._d0r.id)
 		if (siblings.size == 0) {
-			this.impostors.delete(door._d00r.parent)
+			this.impostors.delete(door._d0r.parent)
 		}
 	}
 
@@ -141,7 +147,7 @@ class Doors {
 		if (!door) {
 			throw new Error(`door ${id} not found`)
 		}
-		this.clear(door._d00r.id)
+		this.clear(door._d0r.id)
 
 		const range = document.createRange()
 		range.selectNodeContents(door)
@@ -161,7 +167,7 @@ class Doors {
 		if (!door) {
 			throw new Error(`door ${id} not found`)
 		}
-		if (door._d00r.impostor) {
+		if (door._d0r.impostor) {
 			this.unregister(door)
 		}
 		const parent = door.parentElement!
@@ -227,7 +233,7 @@ class Doors {
 			console.error("Unexpected behavior door [", id, "] not found for the call [" + name + "]")
 			return undefined
 		}
-		return this.getHandler(element._d00r.parent, name)
+		return this.getHandler(element._d0r.parent, name)
 	}
 
 }

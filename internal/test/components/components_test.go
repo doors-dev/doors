@@ -11,16 +11,16 @@ import (
 
 func TestTitle(t *testing.T) {
 	p := common.RandId()
-	bro := test.NewBro(browser,
-		doors.UsePage(func(pr doors.PageRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-			return pr.Page(&test.Page{
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
+			return pr.App(&test.Page{
 				H: head,
 				F: &LinksFragment{
 					Param: p,
 				},
 			})
-		}),
-	)
+		})
+	})
 	page := bro.Page(t, "/")
 
 	// Test initial state (home) - has description, keywords, og:title

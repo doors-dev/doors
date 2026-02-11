@@ -52,11 +52,11 @@ export const date = (date: Date) => {
 }
 
 export const elementId = (doorId: number) => {
-    return `d00r/${doorId}`
+    return `d0r${doorId}`
 }
 
 export const doorId = (doorId: string) => {
-    return Number(doorId.slice(5))
+    return Number(doorId.slice(3))
 }
 
 export const fetchOptForm = (data: FormData) => {

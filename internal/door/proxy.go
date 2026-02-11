@@ -83,7 +83,9 @@ func (r *proxyComponent) Send(job gox.Job) error {
 			}
 			var err error
 			if comp, ok := r.view.content.(gox.Comp); ok {
-				err = comp.Main()(r.cursor)
+				if el := comp.Main(); el != nil {
+					err = el(r.cursor)
+				}
 			} else {
 				err = r.cursor.Any(r.view.content)
 			}

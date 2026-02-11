@@ -27,7 +27,7 @@ func (f *scopeFragment) update(ctx context.Context, marker string) {
 
 func (f *scopeFragment) scopePipeline() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		ds := &doors.ScopeDebounce{}
 		ds2 := &doors.ScopeDebounce{}
 		ss := &doors.ScopeSerial{}
@@ -43,7 +43,7 @@ func (f *scopeFragment) scopePipeline() gox.Elem {
 
 func (f *scopeFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		f.update(ctx, "0")
 
 		__e = __c.Any(f.r); if __e != nil { return }
@@ -79,10 +79,10 @@ func (f *scopeFragment) Main() gox.Elem {
 
 func (f *scopeFragment) button(id string, scope []doors.Scope, marker string, delay bool) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-			__e = __c.AttrSetAny("id", id); if __e != nil { return }
+			__e = __c.AttrSet("id", id); if __e != nil { return }
 			__e = __c.AttrMod(doors.A(ctx, f.handler(scope, marker, delay))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Any(id); if __e != nil { return }

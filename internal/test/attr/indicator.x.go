@@ -17,7 +17,7 @@ type indicatorFragment struct {
 
 func (f *indicatorFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(f.selectors()); if __e != nil { return }
 		__e = __c.Any(f.restore()); if __e != nil { return }
 		__e = __c.Any(f.queue()); if __e != nil { return }
@@ -27,7 +27,7 @@ func (f *indicatorFragment) Main() gox.Elem {
 // elem: extend to cover attributes and partial updates
 func (f *indicatorFragment) queue() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("id", "q-target"); if __e != nil { return }
@@ -98,7 +98,7 @@ func (f *indicatorFragment) queue() gox.Elem {
 
 func (f *indicatorFragment) restore() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("id", "indicator-1"); if __e != nil { return }
@@ -145,7 +145,7 @@ func (f *indicatorFragment) restore() gox.Elem {
 
 func (f *indicatorFragment) selectors() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("id", "next"); if __e != nil { return }
@@ -168,10 +168,10 @@ func (f *indicatorFragment) selectors() gox.Elem {
 
 func (f *indicatorFragment) button(id string, indicator []doors.Indicator) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-			__e = __c.AttrSetAny("id", id); if __e != nil { return }
+			__e = __c.AttrSet("id", id); if __e != nil { return }
 			__e = __c.AttrMod(doors.A(ctx, f.handler(indicator))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Any(id); if __e != nil { return }

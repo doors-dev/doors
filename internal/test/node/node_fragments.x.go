@@ -18,7 +18,7 @@ type FragmentMany struct {
 
 func (f *FragmentMany) sample() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("class", "sample"); if __e != nil { return }
@@ -31,7 +31,7 @@ func (f *FragmentMany) sample() gox.Elem {
 
 func (f *FragmentMany) manyDoors() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		for i := range 20 {
 			__e = __c.Init("span"); if __e != nil { return }
 			{
@@ -47,7 +47,7 @@ func (f *FragmentMany) manyDoors() gox.Elem {
 
 func (f *FragmentMany) replaced() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		f.n.Replace(ctx, f.sample())
 
 		for i := range 100 {
@@ -65,20 +65,20 @@ func (f *FragmentMany) replaced() gox.Elem {
 
 func (f *FragmentMany) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		f.n.Update(ctx, f.sample())
 		n := doors.Door{}
 
 		__e = n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				__e = __c.Any(f.manyDoors()); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-		__e = __c.Any(test.Button("replace", func(ctx context.Context) bool { 
-		n.Update(ctx, f.replaced()) 
+		__e = __c.Any(test.Button("replace", func(ctx context.Context) bool {
+		n.Update(ctx, f.replaced())
 		return true
 	})); if __e != nil { return }
 	return })
@@ -96,9 +96,9 @@ func (f *FragmentX) rep(ctx context.Context, s string) {
 
 func (f *FragmentX) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				__e = __c.Any(test.Marker("init")); if __e != nil { return }
@@ -106,7 +106,7 @@ func (f *FragmentX) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = f.report.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			ch := f.n.XUpdate(ctx, test.Marker("updated"))
@@ -123,7 +123,7 @@ func (f *FragmentX) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-				ctx := __c.Context(); __c.Noop(ctx)
+				ctx := __c.Context(); gox.Noop(ctx)
 				__e = __c.Init("button"); if __e != nil { return }
 				{
 					__e = __c.AttrSet("id", "updatex"); if __e != nil { return }
@@ -133,13 +133,6 @@ func (f *FragmentX) Main() gox.Elem {
 				__e = __c.Close(); if __e != nil { return }
 			return })); if __e != nil { return }
 		return })); if __e != nil { return }
-		__e = __c.Init("script"); if __e != nil { return }
-		{
-			__e = __c.AttrSet("data:dd", "dd"); if __e != nil { return }
-			__e = __c.Submit(); if __e != nil { return }
-			__e = __c.Raw("alert(1)"); if __e != nil { return }
-		}
-		__e = __c.Close(); if __e != nil { return }
 		__e = doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			ch := f.n.XRemove(ctx)
@@ -156,7 +149,7 @@ func (f *FragmentX) Main() gox.Elem {
 			return true
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("button"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "removex"); if __e != nil { return }
@@ -177,13 +170,13 @@ type EmbeddedFragment struct {
 
 func (f *EmbeddedFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = f.n1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				__e = f.n2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-					ctx := __c.Context(); __c.Noop(ctx)
+					ctx := __c.Context(); gox.Noop(ctx)
 					__e = __c.Init("div"); if __e != nil { return }
 					{
 						__e = __c.Submit(); if __e != nil { return }
@@ -248,11 +241,11 @@ type DynamicFragment struct {
 
 func (f *DynamicFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		f.n1.Update(ctx, test.Marker("init"))
 
 		__e = f.n1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.Submit(); if __e != nil { return }
@@ -312,9 +305,9 @@ type BeforeFragment struct {
 
 func (f *BeforeFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = f.doorInit.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.Submit(); if __e != nil { return }
@@ -325,7 +318,7 @@ func (f *BeforeFragment) Main() gox.Elem {
 		f.doorUpdate.Update(ctx, test.Marker("updated"))
 
 		__e = f.doorUpdate.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.Submit(); if __e != nil { return }
@@ -340,7 +333,7 @@ func (f *BeforeFragment) Main() gox.Elem {
 		f.doorReplaced.Replace(ctx, test.Marker("replaced"))
 
 		__e = f.doorReplaced.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.Submit(); if __e != nil { return }

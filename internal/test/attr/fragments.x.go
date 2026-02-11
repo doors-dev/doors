@@ -20,7 +20,7 @@ type pointerFragment struct {
 
 func (f *pointerFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		f.r.Update(ctx, 0, "")
 
 		__e = __c.Any(f.r); if __e != nil { return }
@@ -32,7 +32,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "down"); if __e != nil { return }
@@ -49,7 +49,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "up"); if __e != nil { return }
@@ -66,7 +66,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "enter"); if __e != nil { return }
@@ -90,7 +90,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "leave"); if __e != nil { return }
@@ -107,7 +107,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "move"); if __e != nil { return }
@@ -124,7 +124,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "over"); if __e != nil { return }
@@ -148,7 +148,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("id", "out"); if __e != nil { return }
@@ -168,7 +168,7 @@ type callFragment struct {
 
 func (f *callFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(f.r); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -186,12 +186,12 @@ func (f *callFragment) Main() gox.Elem {
 			return len(r.Data()), true
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = doors.AData{
 		Name: "myData",
 		Value: f.data,
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-				ctx := __c.Context(); __c.Noop(ctx)
+				ctx := __c.Context(); gox.Noop(ctx)
 				__e = __c.Init("script"); if __e != nil { return }
 				{
 					__e = __c.Submit(); if __e != nil { return }
@@ -209,8 +209,8 @@ type hookFragment struct {
 	r *test.Reporter
 }
 
-func (d *hookFragment) attr() []doors.Attr {
-	return []doors.Attr{
+func (d *hookFragment) attr() []gox.AttrMod {
+	return []gox.AttrMod{
 		doors.AHook[string]{
 			Name: "myHook",
 			On: func(ctx context.Context, r doors.RHook[string]) (any, bool) {
@@ -241,7 +241,7 @@ func (d *hookFragment) attr() []doors.Attr {
 
 func (f *hookFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(f.r); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -255,15 +255,13 @@ func (f *hookFragment) Main() gox.Elem {
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-		__e = doors.A(ctx, f.attr()...).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
-			__e = __c.Init("script"); if __e != nil { return }
-			{
-				__e = __c.Submit(); if __e != nil { return }
-				__e = __c.Raw("const a = await $hook(\"myHook\", $data(\"myData\"))\n\t\tdocument.getElementById(\"target\").innerHTML = `${a}`\n\t\tconst b = await $hook(\"rawHook\", $data(\"myData\"))\n\t\tdocument.getElementById(\"target2\").innerHTML = `${b}`"); if __e != nil { return }
-			}
-			__e = __c.Close(); if __e != nil { return }
-		return })); if __e != nil { return }
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+			__e = __c.AttrMod(f.attr()...); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw("const a = await $hook(\"myHook\", $data(\"myData\"))\n\t\tdocument.getElementById(\"target\").innerHTML = `${a}`\n\t\tconst b = await $hook(\"rawHook\", $data(\"myData\"))\n\t\tdocument.getElementById(\"target2\").innerHTML = `${b}`"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
 	return })
 }
 
@@ -274,24 +272,19 @@ type dataFragment struct {
 
 func (f *dataFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("id", "target"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-		__e = doors.AData{
-		Name: "myData",
-		Value: f.data,
-	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
-			__e = __c.Init("script"); if __e != nil { return }
-			{
-				__e = __c.Submit(); if __e != nil { return }
-				__e = __c.Raw("document.getElementById(\"target\").innerHTML = $data(\"myData\")"); if __e != nil { return }
-			}
-			__e = __c.Close(); if __e != nil { return }
-		return })); if __e != nil { return }
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("data:myData", f.data); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw("document.getElementById(\"target\").innerHTML = $data(\"myData\")"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
 	return })
 }

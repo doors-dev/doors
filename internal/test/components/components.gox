@@ -1,0 +1,102 @@
+package components
+
+import (
+	"context"
+	
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+elem head(b doors.Source[test.Path]) {
+	~(doors.TitleMeta(b, elem(p test.Path) {
+		~(if p.Vh {
+			<title>home</title>
+			<meta name="description" content="Welcome to the home page">
+			<meta name="keywords" content="home, main, index">
+			<meta name="og:title" content="Home Page">
+		} else if p.Vs {
+			<title>s</title>
+			<meta name="description" content="String page description">
+			<meta name="category" content="text-content">
+		} else {
+			<title>~(p.P)</title>
+			<meta name="description" content=("Page for parameter: " + p.P)>
+			<meta name="keywords" content=("param, " + p.P)>
+			<meta name="og:title" content=("Param: " + p.P)>
+			<meta name="author" content="Parameter Author">
+		})
+	}))
+	~/* ~(doors.Head(b, func(p test.Path) doors.HeadData {
+ 		if p.Vh {
+ 			return doors.HeadData{
+ 				Title: "home",
+ 				Meta: map[string]string{
+ 					"description": "Welcome to the home page",
+ 					"keywords": "home, main, index",
+ 					"og:title": "Home Page",
+ 				},
+ 			}
+ 		}
+ 		if p.Vs {
+ 			return doors.HeadData{
+ 				Title: "s",
+ 				Meta: map[string]string{
+ 					"description": "String page description",
+ 					"category": "text-content",
+ 				},
+ 			}
+ 		}
+ 		return doors.HeadData{
+ 			Title: p.P,
+ 			Meta: map[string]string{
+ 				"description": "Page for parameter: " + p.P,
+ 				"keywords": "param, " + p.P,
+ 				"og:title": "Param: " + p.P,
+ 				"author": "Parameter Author",
+ 			},
+ 		}
+ 	})) */
+}
+
+type LinksFragment struct {
+	test.NoBeam
+	Param string
+}
+
+elem (f *LinksFragment) Main() {
+	~>doors.AHref{
+		Model: test.Path{
+			Vh: true,
+		},
+	} <a id="home">home</a>
+	
+	~>doors.AHref{
+		Model: test.Path{
+			Vp: true,
+			P: f.Param,
+		},
+	} <a id="param">param</a>
+	
+	~>doors.AHref{
+		Model: test.Path{
+			Vs: true,
+			P: f.Param,
+		},
+	} <a id="string">string</a>
+	<br>
+	<br>
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+			r.After(doors.ActionOnlyEmit("alert", "Hello!"))
+			return false
+		},
+	} <button>
+		alert
+	</button>
+	<script>
+		$on("alert", (message) => {
+			alert(message)
+		})
+	</script>
+}

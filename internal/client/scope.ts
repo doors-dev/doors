@@ -25,6 +25,7 @@ export class Hook {
 	private fetch: any = {}
 	private scopeQueue: Array<ScopeSet>
 	private indiciatorId: number | undefined = undefined
+	private track: number | undefined = undefined
 	constructor(private params: {
 		doorId: number,
 		hookId: number,
@@ -85,7 +86,8 @@ export class Hook {
 		}
 		this.indiciatorId = indicator.start(target, this.params.indicator)
 		const abortTimer = new AbortTimer(requestTimeout)
-		const track = runtime.hookRegister(this)
+		this.track = runtime.hookRegister(this)
+		const track = this.track
 		this.launched = true
 		this.actions(this.params.before).then(() => {
 			fetch(`/~0/${id}/${this.params.doorId}/${this.params.hookId}?t=${track}`, {

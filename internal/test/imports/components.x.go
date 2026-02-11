@@ -13,7 +13,7 @@ import (
 
 func staticFiles(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(fileHref()); if __e != nil { return }
 		__e = __c.Any(fileRawHref()); if __e != nil { return }
 		__e = __c.Any(fileSrc()); if __e != nil { return }
@@ -23,11 +23,11 @@ func staticFiles(_b doors.Source[test.Path]) gox.Elem {
 
 func fileHref() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.AFileHref{
 		Path: modulePath + "/style.css",
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitVoid("link"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
@@ -39,13 +39,13 @@ func fileHref() gox.Elem {
 
 func fileRawHref() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.ARawFileHref{
 		Handler: func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitVoid("link"); if __e != nil { return }
 			{
 				__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
@@ -57,11 +57,11 @@ func fileRawHref() gox.Elem {
 
 func fileSrc() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.ASrc{
 		Path: modulePath + "/index.js",
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("script"); if __e != nil { return }
 			{
 				__e = __c.Submit(); if __e != nil { return }
@@ -74,13 +74,13 @@ func fileSrc() gox.Elem {
 
 func fileRawSrc() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.ARawSrc{
 		Handler: func(w http.ResponseWriter, r *http.Request) {
 			w.Write(moduleBytes)
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.Init("script"); if __e != nil { return }
 			{
 				__e = __c.Submit(); if __e != nil { return }
@@ -93,7 +93,7 @@ func fileRawSrc() gox.Elem {
 
 func styleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportStyle{
 		Provider: doors.ProviderStyleBytes(styleRawBytes),
 	}); if __e != nil { return }
@@ -102,7 +102,7 @@ func styleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 
 func styleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportStyle{
 		Provider: doors.ProviderExternal(test.Host + "/module/style.css",),
 	}); if __e != nil { return }
@@ -111,7 +111,7 @@ func styleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 
 func styleHostedHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportStyle{
 		Provider: doors.ProviderLocal("/module/style.css"),
 	}); if __e != nil { return }
@@ -120,7 +120,7 @@ func styleHostedHead(_b doors.Source[test.Path]) gox.Elem {
 
 func styleHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportStyle{
 		Provider: doors.ProviderPath(modulePath + "/style.css"),
 	}); if __e != nil { return }
@@ -129,7 +129,7 @@ func styleHead(_b doors.Source[test.Path]) gox.Elem {
 
 func moduleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportModule{
 		Provider: doors.ProviderExternal(test.Host + "/module/index.js"),
 		Specifier: "module",
@@ -139,7 +139,7 @@ func moduleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 
 func moduleBundleHostHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportModule{
 		Specifier: "module",
 		Provider: doors.ProviderLocal("/module/index.js"),
@@ -149,7 +149,7 @@ func moduleBundleHostHead(_b doors.Source[test.Path]) gox.Elem {
 
 func moduleBundleFSHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src")
 
 		__e = __c.Any(doors.ImportModule{
@@ -166,7 +166,7 @@ func moduleBundleFSHead(_b doors.Source[test.Path]) gox.Elem {
 
 func moduleRawBytesHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportModule{
 		Specifier: "module",
 		Provider: doors.ProviderJsBytes(moduleRawBytes),
@@ -177,7 +177,7 @@ func moduleRawBytesHead(_b doors.Source[test.Path]) gox.Elem {
 
 func moduleRawHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportModule{
 		Specifier: "module",
 		Provider: doors.ProviderPath(modulePath + "/index.js"),
@@ -188,7 +188,7 @@ func moduleRawHead(_b doors.Source[test.Path]) gox.Elem {
 
 func moduleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportModule{
 		Specifier: "module",
 		Provider: doors.ProviderJsBytes(moduleBytes),
@@ -198,7 +198,7 @@ func moduleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 
 func moduleHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 			__e = __c.AttrMod(doors.ImportModule{
@@ -214,7 +214,7 @@ func moduleHead(_b doors.Source[test.Path]) gox.Elem {
 
 func reactHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Any(doors.ImportModule{
 		Specifier: "preact",
 		Provider: doors.ProviderPath(preactPath + "/index.tsx"),
@@ -234,7 +234,7 @@ type ModuleFragment struct {
 
 func (f *ModuleFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("id", "report-0"); if __e != nil { return }
@@ -256,7 +256,7 @@ type ReactFragment struct {
 
 func (f *ReactFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("id", "preact"); if __e != nil { return }
@@ -290,6 +290,6 @@ type Empty struct {
 
 func (f *Empty) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 	return })
 }

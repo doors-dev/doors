@@ -26,7 +26,7 @@ type BeamSkipFragment struct {
 
 func (f *BeamSkipFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		f.r.Update(ctx, 0, "init")
 		f.b.ReadAndSub(ctx, func(ctx context.Context, s state) bool {
 			<-time.After(300 * time.Millisecond)
@@ -34,7 +34,7 @@ func (f *BeamSkipFragment) Main() gox.Elem {
 		})
 
 		__e = f.node.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				f.b.Sub(ctx, func(ctx context.Context, s state) bool {
@@ -68,7 +68,7 @@ type BeamDeriveFragment struct {
 
 func (f *BeamDeriveFragment) content() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		d := doors.NewBeam(f.b, func(s state) int {
 			return s.Int
 		})
@@ -86,7 +86,7 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 
 		__e = __c.Any(test.ReportId(1, fmt.Sprint(r))); if __e != nil { return }
 		__e = n1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				f.b.Mutate(ctx, func(s state) state {
@@ -107,7 +107,7 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = n2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				f.b.Mutate(ctx, func(s state) state {
@@ -126,9 +126,9 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 
 func (f *BeamDeriveFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				__e = __c.Any(f.content()); if __e != nil { return }
@@ -151,7 +151,7 @@ type BeamConsistentFragment struct {
 
 func (f *BeamConsistentFragment) content() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
 			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
 			return false
@@ -166,7 +166,7 @@ func (f *BeamConsistentFragment) content() gox.Elem {
 
 		__e = __c.Any(test.ReportId(1, fmt.Sprint(r.Int))); if __e != nil { return }
 		__e = n1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				f.b.Mutate(ctx, func(s state) state {
@@ -187,7 +187,7 @@ func (f *BeamConsistentFragment) content() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = n2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				f.b.Mutate(ctx, func(s state) state {
@@ -206,9 +206,9 @@ func (f *BeamConsistentFragment) content() gox.Elem {
 
 func (f *BeamConsistentFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				__e = __c.Any(f.content()); if __e != nil { return }
@@ -230,7 +230,7 @@ type BeamUpdateFragment struct {
 
 func (f *BeamUpdateFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
 			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
 			return false

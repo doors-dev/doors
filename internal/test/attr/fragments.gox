@@ -39,8 +39,7 @@ elem (f *pointerFragment) Main() {
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
 			return false
 		},
-	}
-	<div
+	} <div
 		id="up">
 		PointerUp
 	</div>
@@ -139,8 +138,8 @@ type hookFragment struct {
 	r *test.Reporter
 }
 
-func (d *hookFragment) attr() []doors.Attr {
-	return []doors.Attr{
+func (d *hookFragment) attr() []gox.AttrMod {
+	return []gox.AttrMod{
 		doors.AHook[string]{
 			Name: "myHook",
 			On: func(ctx context.Context, r doors.RHook[string]) (any, bool) {
@@ -173,7 +172,7 @@ elem (f *hookFragment) Main() {
 	~(f.r)
 	<div id="target"></div>
 	<div id="target2"></div>
-	~>(doors.A(ctx, f.attr()...)) <script>
+	 <script (f.attr()...)>
 		const a = await $hook("myHook", $data("myData"))
 		document.getElementById("target").innerHTML = `${a}`
 		const b = await $hook("rawHook", $data("myData"))
@@ -188,10 +187,7 @@ type dataFragment struct {
 
 elem (f *dataFragment) Main() {
 	<div id="target"></div>
-	~>doors.AData{
-		Name: "myData",
-		Value: f.data,
-	} <script>
+	<script data:myData=(f.data)>
 		document.getElementById("target").innerHTML = $data("myData")
 	</script>
 }

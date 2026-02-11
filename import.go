@@ -343,7 +343,7 @@ func (m ImportCommonJS) Modify(ctx context.Context, tag string, attrs gox.Attrs)
 	}
 	switch true {
 	case strings.EqualFold(tag, "script"):
-		attrs.Get("type").SetBool(false)
+		attrs.Get("type").Set(nil)
 		attrs.Get("src").Set(path)
 	default:
 		return fmt.Errorf("unsupported tag %s", tag)

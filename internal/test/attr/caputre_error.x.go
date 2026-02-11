@@ -20,7 +20,7 @@ type errorFragment struct {
 
 func (f *errorFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("id", "report"); if __e != nil { return }
@@ -37,7 +37,7 @@ func (f *errorFragment) Main() gox.Elem {
 		__e = __c.Any(f.button("err_1", doors.ActionOnlyEmit("error", "err_1"))); if __e != nil { return }
 		__e = __c.Any(f.button("err_2", doors.ActionOnlyEmit("root", "err_2"))); if __e != nil { return }
 		__e = f.n1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); __c.Noop(ctx)
+			ctx := __c.Context(); gox.Noop(ctx)
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
 				__e = __c.Init("script"); if __e != nil { return }
@@ -47,7 +47,7 @@ func (f *errorFragment) Main() gox.Elem {
 				}
 				__e = __c.Close(); if __e != nil { return }
 				__e = f.n2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-					ctx := __c.Context(); __c.Noop(ctx)
+					ctx := __c.Context(); gox.Noop(ctx)
 					__e = __c.InitContainer(); if __e != nil { return }
 					{
 						__e = __c.Init("script"); if __e != nil { return }
@@ -97,10 +97,10 @@ func (f *errorFragment) Main() gox.Elem {
 
 func (f *errorFragment) button(id string, on []doors.Action) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); __c.Noop(ctx)
+		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-			__e = __c.AttrSetAny("id", id); if __e != nil { return }
+			__e = __c.AttrSet("id", id); if __e != nil { return }
 			__e = __c.AttrMod(doors.A(ctx, f.handler(on))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Any(id); if __e != nil { return }

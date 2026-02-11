@@ -2,27 +2,25 @@ package router
 
 import (
 	"context"
+	
 	"github.com/doors-dev/doors"
+	"github.com/doors-dev/gox"
 )
 
 type PathA struct {
 	Path bool `path:"/a"`
 }
 
-templ pageA(b doors.SourceBeam[PathA]) {
+elem pageA(b doors.Source[PathA]) {
 	<html>
-		<head>
-			@doors.Include()
-		</head>
 		<body>
 			<div id="path">A</div>
-			@doors.AClick{
+			~>doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 					doors.Call(ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
 					return false
 				},
-			}
-			<button id="assign">assign</button>
+			} <button id="assign">assign</button>
 		</body>
 	</html>
 }
@@ -31,11 +29,11 @@ type PathB struct {
 	Path bool `path:"/b"`
 }
 
-templ static(path string) {
+elem static(path string) {
 	<html>
 		<head></head>
 		<body>
-			<div id="path">{ path }</div>
+			<div id="path">~(path)</div>
 		</body>
 	</html>
 }
@@ -45,67 +43,62 @@ type PathC struct {
 	PathC2 bool `path:"/c2"`
 }
 
-templ pageC(b doors.SourceBeam[PathC]) {
+elem pageC(b doors.Source[PathC]) {
 	<html>
-		<head>
-			@doors.Include()
-		</head>
 		<body>
-			@doors.Inject(0, b) {
-				if ctx.Value(0).(PathC).PathC1 {
-					<div id="path">c1</div>
-				} else {
-					<div id="path">c2</div>
-				}
-			}
-			@doors.AHref{
+			~>(doors.Inject(0, b)) ~(if ctx.Value(0).(PathC).PathC1 {
+				<div id="path">c1</div>
+			} else {
+				<div id="path">c2</div>
+			})
+			
+			~>doors.AHref{
 				Model: PathC{
 					PathC1: true,
 				},
-			}
-			<a>c1</a>
-			@doors.AHref{
+			} <a>c1</a>
+			
+			~>doors.AHref{
 				Model: PathC{
 					PathC2: true,
 				},
-			}
-			<a id="c2">c2</a>
-			@doors.AClick{
+			} <a id="c2">c2</a>
+			
+			~>doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 					doors.Call(ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
 					return true
 				},
-			}
-			<button id="replace">replace</button>
-			<div id="marker">{ doors.RandId() }</div>
-			@doors.AClick{
+			} <button id="replace">replace</button>
+			<div id="marker">~(doors.RandId())</div>
+			
+			~>doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 					doors.Call(ctx, doors.ActionLocationReload{})
 					return false
 				},
-			}
-			<button id="reload">reload</button>
-			@doors.AClick{
+			} <button id="reload">reload</button>
+			
+			~>doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 					r.After(doors.ActionOnlyLocationAssign(PathB{}))
 					return false
 				},
-			}
-			<button id="assign_after">assign_after</button>
-			@doors.AClick{
+			} <button id="assign_after">assign_after</button>
+			
+			~>doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 					r.After(doors.ActionOnlyLocationReplace(PathB{}))
 					return false
 				},
-			}
-			<button id="replace_after">replace_after</button>
-			@doors.AClick{
+			} <button id="replace_after">replace_after</button>
+			
+			~>doors.AClick{
 				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
 					r.After(doors.ActionOnlyLocationReload())
 					return false
 				},
-			}
-			<button id="reload_after">reload_after</button>
+			} <button id="reload_after">reload_after</button>
 		</body>
 	</html>
 }

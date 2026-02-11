@@ -280,6 +280,9 @@ func (d *deck) insertTail(n *card) {
 		d.top = n
 		return
 	}
+	if d.top == nil {
+		panic("HAS BOTTOM BUT NO TOP")
+	}
 	d.bottom.insertTail(n)
 	d.bottom = n
 }
@@ -320,6 +323,14 @@ func (d *deck) skipSeq(seq uint64) {
 }
 
 func (d *deck) setTail(n *card) {
+	if n == nil {
+		if d.top != d.bottom {
+			panic("cannot set top to nil if it is not bottom")
+		}
+		d.top = nil
+		d.bottom = nil
+		return
+	}
 	d.top = n
 }
 
@@ -395,69 +406,69 @@ type card struct {
 	restored bool
 }
 
-func (s *card) cancel() {
-	if !s.isFiller() {
-		s.call.cancel()
+func (c *card) cancel() {
+	if !c.isFiller() {
+		c.call.cancel()
 		// s.call.clean()
 	}
-	if s.tail == nil {
+	if c.tail == nil {
 		return
 	}
-	s.tail.cancel()
+	c.tail.cancel()
 }
 
-func (s *card) extractRestored(seq uint64, h head) (*card, error) {
-	if s.seq() == seq {
-		if s.isFiller() {
+func (c *card) extractRestored(seq uint64, h head) (*card, error) {
+	if c.seq() == seq {
+		if c.isFiller() {
 			return nil, nil
 		}
-		if !s.restored {
+		if !c.restored {
 			return nil, errors.New("Attempt to respond to non issued card")
 		}
-		h.setTail(s.tail)
-		return s, nil
+		h.setTail(c.tail)
+		return c, nil
 	}
-	if seq < s.seq() || s.tail == nil {
+	if seq < c.seq() || c.tail == nil {
 		return nil, nil
 	}
-	return s.tail.extractRestored(seq, s)
+	return c.tail.extractRestored(seq, c)
 }
 
-func (s *card) seq() uint64 {
-	return s.endSeq
+func (c *card) seq() uint64 {
+	return c.endSeq
 }
 
-func (sn *card) isFiller() bool {
-	return sn.call == nil
+func (c *card) isFiller() bool {
+	return c.call == nil
 }
 
-func (sn *card) insert(n *card, h head) error {
+func (c *card) insert(n *card, h head) error {
 	if n.isFiller() {
 		panic("Cannot insert filler")
 	}
-	if sn.startSeq >= n.seq() && sn.endSeq <= n.seq() {
+	if c.startSeq >= n.seq() && c.endSeq <= n.seq() {
 		return errors.New("overlapping range")
 	}
-	if n.seq() > sn.seq() {
-		if sn.tail == nil {
-			sn.setTail(n)
+	if n.seq() > c.seq() {
+		if c.tail == nil {
+			c.setTail(n)
 			return nil
 		}
-		return sn.tail.insert(n, sn)
+		return c.tail.insert(n, c)
 	}
-	n.setTail(sn)
+	n.setTail(c)
 	h.setTail(n)
 	return nil
 }
 
-func (sn *card) insertTail(n *card) {
+func (c *card) insertTail(n *card) {
 	if n.isFiller() {
 		panic("Cannot insert filler tail")
 	}
-	if n.seq() <= sn.seq() {
+	if n.seq() <= c.seq() {
 		panic("Cannot insert older tail")
 	}
-	sn.setTail(n)
+	c.setTail(n)
 }
 
 func (c *card) setTail(n *card) {
@@ -625,7 +636,6 @@ func (p *deckCall) written() {
 	}
 	p.result([]byte("null"), nil)
 }
-
 
 func (c *deckCall) action() (action.Action, bool) {
 	return c.call.Action()

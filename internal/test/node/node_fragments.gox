@@ -43,8 +43,8 @@ elem (f *FragmentMany) Main() {
 	~>(n) <>
 		~(f.manyDoors())
 	</>
-	~(test.Button("replace", func(ctx context.Context) bool { 
-		n.Update(ctx, f.replaced()) 
+	~(test.Button("replace", func(ctx context.Context) bool {
+		n.Update(ctx, f.replaced())
 		return true
 	}))
 }
@@ -79,9 +79,7 @@ elem (f *FragmentX) Main() {
 			return false
 		},
 	} <button id="updatex">C</button>
-	<script data:dd="dd">
-		alert(1)
-	</script>
+	
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
 			ch := f.n.XRemove(ctx)
