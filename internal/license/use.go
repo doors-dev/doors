@@ -6,7 +6,6 @@ import (
 	"github.com/mr-tron/base58"
 )
 
-
 func ReadCert(str string) (License, error) {
 	bytes, err := base58.Decode(str)
 	if err != nil {

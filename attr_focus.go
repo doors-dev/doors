@@ -58,7 +58,6 @@ func (p *focusIOEventHook) apply(event string, ctx context.Context, attrs gox.At
 	}.apply(ctx, attrs)
 }
 
-
 type focusEventHook struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
@@ -92,7 +91,6 @@ func (p *focusEventHook) apply(event string, ctx context.Context, attrs gox.Attr
 	}.apply(ctx, attrs)
 }
 
-
 // AFocus prepares a focus event hook for DOM elements,
 // with configurable propagation, scheduling, indicators, and handlers.
 type AFocus struct {
@@ -123,7 +121,6 @@ func (f AFocus) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusEventHook)(&f).apply("focus", ctx, attrs)
 }
 
-
 // ABlur prepares a blur event hook for DOM elements,
 // with configurable propagation, scheduling, indicators, and handlers.
 type ABlur struct {
@@ -153,7 +150,6 @@ func (b ABlur) Proxy(cur gox.Cursor, elem gox.Elem) error {
 func (b ABlur) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusEventHook)(&b).apply("blur", ctx, attrs)
 }
-
 
 // AFocusIn prepares a focusin event hook for DOM elements,
 // with configurable propagation, scheduling, indicators, and handlers.
@@ -191,7 +187,6 @@ func (f AFocusIn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusIOEventHook)(&f).apply("focusin", ctx, attrs)
 }
 
-
 // AFocusOut prepares a focusout event hook for DOM elements,
 // with configurable propagation, scheduling, indicators, and handlers.
 type AFocusOut struct {
@@ -227,4 +222,3 @@ func (f AFocusOut) Proxy(cur gox.Cursor, elem gox.Elem) error {
 func (f AFocusOut) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusIOEventHook)(&f).apply("focusout", ctx, attrs)
 }
-

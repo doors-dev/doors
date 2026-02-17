@@ -33,15 +33,14 @@ func TestCaptureError(t *testing.T) {
 
 	// n2 scope: normal event
 	test.TestContent(t, page, "#indicator", "init")
-	test.TestAttrNo(t, page, "#indicator","data-indicator")
+	test.TestAttrNo(t, page, "#indicator", "data-indicator")
 	test.Click(t, page, "#err_5")
 	test.TestContent(t, page, "#report", "n2/err_5")
 	test.TestContent(t, page, "#indicator", "indicator")
-	test.TestAttr(t, page, "#indicator","data-indicator", "true")
+	test.TestAttr(t, page, "#indicator", "data-indicator", "true")
 	<-time.After(500 * time.Millisecond)
 	test.TestContent(t, page, "#indicator", "init")
-	test.TestAttrNo(t, page, "#indicator","data-indicator")
-
+	test.TestAttrNo(t, page, "#indicator", "data-indicator")
 
 	// n2 scope: error routed to n1 expectation
 	test.Click(t, page, "#err_6")

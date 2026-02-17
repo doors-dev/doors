@@ -10,7 +10,6 @@ package action
 
 import (
 	"time"
-
 )
 
 type LocationReload struct{}
@@ -82,9 +81,9 @@ func (a Emit) Log() string {
 }
 func (a Emit) Invocation() Invocation {
 	return Invocation{
-		name: "emit",
-		arg:  []any{a.Name, a.DoorID},
-		payload: a.Payload,
+		name:        "emit",
+		arg:         []any{a.Name, a.DoorID},
+		payload:     a.Payload,
 		payloadType: a.PayloadType,
 	}
 }

@@ -62,7 +62,6 @@ func (a *aDyn) restore(seq int, value string, enable bool) {
 	a.value = value
 }
 
-
 // Enable adds or removes the attribute.
 func (a ADyn) Enable(ctx context.Context, enable bool) {
 	a.mu.Lock()
@@ -79,7 +78,7 @@ func (a ADyn) Enable(ctx context.Context, enable bool) {
 	if !a.initialized {
 		return
 	}
-    core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(ctex.KeyCore).(core.Core)
 	var act action.Action
 	if a.enable {
 		act = &action.DynaSet{
@@ -130,7 +129,7 @@ func (a ADyn) Value(ctx context.Context, value string) {
 	if !a.initialized {
 		return
 	}
-    core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.CallCheck(
 		func() bool {
 			return a.check(seq)
@@ -151,7 +150,6 @@ func (a ADyn) Value(ctx context.Context, value string) {
 	)
 }
 
-
 func (a ADyn) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(a, cur, elem)
 }
@@ -170,5 +168,3 @@ func (a ADyn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}
 	return nil
 }
-
-

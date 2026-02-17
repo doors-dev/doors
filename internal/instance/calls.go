@@ -136,4 +136,3 @@ func (c *ctxCall) Result(r json.RawMessage, err error) {
 	}
 	c.onResult(r, err)
 }
-

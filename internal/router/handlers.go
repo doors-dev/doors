@@ -258,7 +258,6 @@ func (rr *Router) tryServePut(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-
 func (rr *Router) tryServeAssets(w http.ResponseWriter, r *http.Request) bool {
 	if r.Method != "GET" {
 		return false

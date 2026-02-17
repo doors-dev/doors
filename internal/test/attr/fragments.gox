@@ -172,7 +172,7 @@ elem (f *hookFragment) Main() {
 	~(f.r)
 	<div id="target"></div>
 	<div id="target2"></div>
-	 <script (f.attr()...)>
+	<script (f.attr()...)>
 		const a = await $hook("myHook", $data("myData"))
 		document.getElementById("target").innerHTML = `${a}`
 		const b = await $hook("rawHook", $data("myData"))

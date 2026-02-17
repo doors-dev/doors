@@ -15,7 +15,6 @@ func TestIndicatorSelectors(t *testing.T) {
 	page := bro.Page(t, "/")
 	defer page.Close()
 
-
 	test.TestAttrNot(t, page, "#parent", "data-check", "true")
 	test.ClickNow(t, page, "#indicate-parent")
 	<-time.After(20 * time.Millisecond)

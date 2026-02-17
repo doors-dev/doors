@@ -180,11 +180,11 @@ func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		front.AttrsAppendCapture(attrs, front.LinkCapture{
 			StopPropagation: h.StopPropagation,
 		}, front.Hook{
-			Indicate:  front.IntoIndicate(h.Indicator),
-			Scope:     front.IntoScopeSet(core, h.Scope),
-			Before:    intoActions(ctx, h.Before),
-			OnError:   intoActions(ctx, h.OnError),
-			Hook: hook,
+			Indicate: front.IntoIndicate(h.Indicator),
+			Scope:    front.IntoScopeSet(core, h.Scope),
+			Before:   intoActions(ctx, h.Before),
+			OnError:  intoActions(ctx, h.OnError),
+			Hook:     hook,
 		})
 	}
 	path, ok := link.Path()
@@ -197,8 +197,6 @@ func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}
 	return nil
 }
-
-
 
 // ARawSrc prepares the src attribute for a downloadable resource
 // served directly and privately through a custom handler.
@@ -237,7 +235,6 @@ func (s ARawSrc) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return nil
 }
 
-
 func (s *ARawSrc) handle(_ context.Context, w http.ResponseWriter, r *http.Request) bool {
 	s.Handler(w, r)
 	return s.Once
@@ -267,7 +264,7 @@ func (s ASrc) init(ctx context.Context) (string, bool) {
 	if s.Name == "" {
 		s.Name = filepath.Base(s.Path)
 	}
-	return  fmt.Sprintf("/~0/%s/%d/%d/%s", core.InstanceID(), hook.DoorID, hook.HookID, s.Name), true
+	return fmt.Sprintf("/~0/%s/%d/%d/%s", core.InstanceID(), hook.DoorID, hook.HookID, s.Name), true
 }
 
 func (s ASrc) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -307,7 +304,6 @@ func (s AFileHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error 
 	attrs.Get("href").Set(link)
 	return nil
 }
-
 
 // ARawFileHref prepares the href attribute for a downloadable resource
 // served privately and directly through a custom handler.

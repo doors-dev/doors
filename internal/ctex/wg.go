@@ -15,7 +15,6 @@ import (
 	"sync/atomic"
 )
 
-
 type atomicWg = *atomic.Pointer[sync.WaitGroup]
 
 func WgInsert(ctx context.Context) context.Context {

@@ -225,4 +225,3 @@ func (e *historyEntry[M]) shake(prev *historyEntry[M], path string, count int) {
 	}
 	e.next.shake(e, path, count+1)
 }
-

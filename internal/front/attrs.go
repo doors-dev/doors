@@ -36,7 +36,7 @@ type jsonWriter struct {
 }
 
 func (j jsonWriter) Write(b []byte) (n int, err error) {
-	adj := 0 
+	adj := 0
 	if len(b) > 0 && b[len(b)-1] == '\n' {
 		b = b[:len(b)-1]
 		adj = 1
@@ -46,7 +46,7 @@ func (j jsonWriter) Write(b []byte) (n int, err error) {
 		return
 	}
 	n += adj
-	return 
+	return
 }
 
 type jsonAttrs []any

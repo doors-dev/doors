@@ -18,4 +18,3 @@ const (
 	KeyAdapters
 	keyWg
 )
-

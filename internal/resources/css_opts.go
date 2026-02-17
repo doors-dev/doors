@@ -66,5 +66,3 @@ func (e StyleString) entryID(w idWriter) {
 	w.WriteString("content")
 	w.WriteString(e.Content)
 }
-
-

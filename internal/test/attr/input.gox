@@ -153,12 +153,7 @@ elem (f *inputFragment) changeFields() {
 	<h3>datetime-local</h3>
 	<input id="datetime-local" (doors.A(ctx, f.attr("datetime-local"))) type="datetime-local" name="datetime-local"/>
 	<h3>month</h3>
-	<input id="month" (doors.A(ctx, f.attr("month"))) type="month" name="month"/> ~/* sfsd */
-	~/*
-    // not supported by rod
-	<h3>week</h3>
-	<input id="week" (doors.A(ctx, f.attr("week" ))) type="week" name="week"/>
-    */
+	<input id="month" (doors.A(ctx, f.attr("month"))) type="month" name="month"/>
 	<h3>time</h3>
 	<input id="time" (doors.A(ctx, f.attr("time"))) type="time" name="time"/>
 	<h3>color</h3>
@@ -170,12 +165,7 @@ elem (f *inputFragment) changeFields() {
 		radio := doors.A(ctx, f.attr("radio"))
 	}
 	~>(radio) <input id="radio-1" type="radio" name="radio" value="option1"/>
-	~>(radio) <input id="radio-2" type="radio" name="radio" value="option2"/> ~// sdas
-	~/*
-    // not supported by rod
-	<h3>range</h3>
-	<input id="range" { doors.A(ctx, f.attr("range" ))... } type="range" name="range"/>
-    */
+	~>(radio) <input id="radio-2" type="radio" name="radio" value="option2"/> ~// sdas~/*
 	<h3>textarea</h3>
 	<textarea id="textarea" (doors.A(ctx, f.attr("textarea"))) name="textarea"></textarea>
 	<h3>select</h3>

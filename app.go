@@ -129,4 +129,3 @@ func (r *modelRequest[M]) AppFunc(f func(Source[M]) gox.Elem) ModelRoute {
 		Adapter: r.r.Adapter,
 	}
 }
-

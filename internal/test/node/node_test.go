@@ -24,7 +24,6 @@ func TestDoorLoadPage(t *testing.T) {
 	}
 }
 
-
 func TestDoorInitialContent(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &BeforeFragment{}
@@ -34,7 +33,6 @@ func TestDoorInitialContent(t *testing.T) {
 	defer page.Close()
 	test.TestMust(t, page, "#init")
 }
-
 
 func DoorUpdatedBefore(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
@@ -56,7 +54,6 @@ func TestDoorRemovedBefore(t *testing.T) {
 	test.TestMustNot(t, page, "#removed")
 }
 
-
 func TestDoorReplacedBefore(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &BeforeFragment{}
@@ -69,7 +66,6 @@ func TestDoorReplacedBefore(t *testing.T) {
 	// test.TestMust(t, page, "body > #replaced")
 
 }
-
 
 func TestDoorDynamic(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
@@ -97,7 +93,7 @@ func TestDoorEmbedded(t *testing.T) {
 	defer bro.Close()
 	defer page.Close()
 	test.TestMust(t, page, "#init")
-	
+
 }
 
 func TestDoorEmbeddedRemove(t *testing.T) {
@@ -115,7 +111,6 @@ func TestDoorEmbeddedRemove(t *testing.T) {
 	test.TestMustNot(t, page, "#temp")
 	test.TestMust(t, page, "#replaced")
 }
-
 
 func TestDoorUpdateX(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
@@ -136,7 +131,7 @@ func TestDoorUpdateX(t *testing.T) {
 	test.TestReport(t, page, "channel closed")
 }
 
-func TestDoorMultiple(t *testing.T ){
+func TestDoorMultiple(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &FragmentMany{}
 	})

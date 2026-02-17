@@ -120,7 +120,6 @@ func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
 	)
 }
 
-
 func NewBro(browser *rod.Browser, mod func(r doors.Router)) *Bro {
 	r := doors.NewRouter()
 	mod(r)
@@ -389,7 +388,7 @@ func TestReportId(t *testing.T, page *rod.Page, id int, content string) {
 	TestContent(t, page, fmt.Sprintf("#report-%d", id), content)
 }
 
-func Text(s string) gox.Editor{
+func Text(s string) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		return cur.Text(s)
 	})

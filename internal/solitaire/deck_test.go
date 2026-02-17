@@ -7,6 +7,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
 package solitaire
+
 /*
 import (
 	"encoding/json"
@@ -449,9 +450,9 @@ func TestReport(t *testing.T) {
 	if err == nil {
 		t.Fatal("must error - reported gap after result")
 	}
-	*/ 
+*/
 
-	/*
+/*
 	rep = &report{
 		Gaps: []gap{{
 			start: 4,

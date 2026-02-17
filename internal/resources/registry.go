@@ -36,12 +36,12 @@ func NewRegistry(s settings) *Registry {
 }
 
 type Registry struct {
-	initGuard atomic.Bool
-	settings    settings
-	cache       sync.Map
-	lookup      sync.Map
-	mainScript  *Resource
-	mainStyle   *Resource
+	initGuard  atomic.Bool
+	settings   settings
+	cache      sync.Map
+	lookup     sync.Map
+	mainScript *Resource
+	mainStyle  *Resource
 }
 
 func (rg *Registry) key32(b []byte) [32]byte {

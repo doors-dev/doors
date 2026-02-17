@@ -16,15 +16,9 @@ type dynaFragment struct {
 }
 
 elem (f *dynaFragment) content(da1 doors.ADyn, da2 doors.ADyn) {
-	~>(da1)
-	~>(da2)
-	<div id="t1"></div>
-	~>(da1)
-	~>(da2)
-	<div id="t2">
-		~>(da1)
-		~>(da2)
-		<div id="t3"></div>
+	~>(da1) ~>(da2) <div id="t1"></div>
+	~>(da1) ~>(da2) <div id="t2">
+		~>(da1) ~>(da2) <div id="t3"></div>
 	</div>
 }
 

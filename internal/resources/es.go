@@ -16,7 +16,6 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-
 type BuildErrors []api.Message
 
 func (b BuildErrors) Error() string {

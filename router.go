@@ -210,7 +210,7 @@ func UseRoute(r Router, rt Route) {
 // UseFallback sets a fallback handler for requests that don't match any routes.
 // This is useful for integrating with other HTTP handlers or serving custom 404 pages.
 func UseFallback(r Router, handler http.Handler) {
-   r.Use(router.UseFallback(handler))
+	r.Use(router.UseFallback(handler))
 }
 
 type SessionCallback = router.SessionCallback

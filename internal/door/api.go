@@ -48,7 +48,7 @@ func (d *Door) Remove(ctx context.Context) {
 }
 
 // Unmount removes the door and its DOM element from the page, while
-// preserving the door's content. 
+// preserving the door's content.
 func (d *Door) Unmount(ctx context.Context) {
 	ctx = ctex.ClearBlockingCtx(ctx)
 	d.unmount(ctx)

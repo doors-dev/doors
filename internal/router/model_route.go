@@ -154,6 +154,3 @@ type ResponseRawRedirect struct {
 func (pr *ResponseRawRedirect) marker() responseMarker {
 	return responseMarker{}
 }
-
-
-

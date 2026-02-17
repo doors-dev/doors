@@ -52,15 +52,14 @@ func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 		return errors.New("door: hook registration failed")
 	}
 	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
-		OnError:   intoActions(ctx, s.OnError),
-		Before:    intoActions(ctx, s.Before),
-		Scope:     front.IntoScopeSet(core, s.Scope),
-		Indicate:  front.IntoIndicate(s.Indicator),
-		Hook:      hook,
+		OnError:  intoActions(ctx, s.OnError),
+		Before:   intoActions(ctx, s.Before),
+		Scope:    front.IntoScopeSet(core, s.Scope),
+		Indicate: front.IntoIndicate(s.Indicator),
+		Hook:     hook,
 	})
 	return nil
 }
-
 
 func (s *ARawSubmit) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 	done := s.On(ctx, &request{
@@ -113,11 +112,11 @@ func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 		return errors.New("door: hook registration failed")
 	}
 	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
-		OnError:   intoActions(ctx, s.OnError),
-		Before:    intoActions(ctx, s.Before),
-		Scope:     front.IntoScopeSet(core, s.Scope),
-		Indicate:  front.IntoIndicate(s.Indicator),
-		Hook:      hook,
+		OnError:  intoActions(ctx, s.OnError),
+		Before:   intoActions(ctx, s.Before),
+		Scope:    front.IntoScopeSet(core, s.Scope),
+		Indicate: front.IntoIndicate(s.Indicator),
+		Hook:     hook,
 	})
 	return nil
 }
@@ -223,8 +222,8 @@ type AInput struct {
 	// Receives a typed REvent[InputEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On           func(context.Context, REvent[InputEvent]) bool
-	// If true, does not include value in event 
+	On func(context.Context, REvent[InputEvent]) bool
+	// If true, does not include value in event
 	// Optional.
 	ExcludeValue bool
 	// Actions to run on error.
@@ -248,4 +247,3 @@ func (p AInput) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		on:        p.On,
 	}.apply(ctx, attrs)
 }
-

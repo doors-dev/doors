@@ -25,7 +25,7 @@ type Fragment interface {
 
 type Page struct {
 	F Fragment
-	H func(doors.Source[Path]) gox.Elem 
+	H func(doors.Source[Path]) gox.Elem
 	Header string
 }
 
@@ -33,7 +33,7 @@ func (p *Page) h1() string {
 	return p.Header
 }
 
-func (p *Page) head(b doors.Source[Path]) gox.Elem{
+func (p *Page) head(b doors.Source[Path]) gox.Elem {
 	if p.H == nil {
 		return nil
 	}

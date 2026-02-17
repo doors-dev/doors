@@ -133,4 +133,3 @@ func CatchValue[V any](f func() V) (value V, err error) {
 	value = f()
 	return
 }
-

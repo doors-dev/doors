@@ -13,4 +13,3 @@ const (
 func (c EndCause) Error() string {
 	return fmt.Sprint("cause: ", int(c))
 }
-

@@ -24,7 +24,6 @@ type Location struct {
 	Query url.Values
 }
 
-
 func NewRequestLocation(r *http.Request) *Location {
 	return &Location{
 		Path:  r.URL.Path,
@@ -135,11 +134,11 @@ func (a *Adapter[M]) Encode(m *M) (*Location, error) {
 	}
 	query, err := queryEncoder.Encode(m)
 	/*
-	for key := range query {
-		if len(query[key]) == 0 || (len(query[key]) == 1 && query[key][0] == "") {
-			delete(query, key)
+		for key := range query {
+			if len(query[key]) == 0 || (len(query[key]) == 1 && query[key][0] == "") {
+				delete(query, key)
+			}
 		}
-	}
 	*/
 	if err != nil {
 		return nil, err

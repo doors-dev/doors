@@ -19,36 +19,36 @@ import (
 type field struct {
 	i int
 	f reflect.StructField
-} 
+}
 
 type adapterBuilder[M any] struct {
-	g       *group
-	fields  map[string]field
-	name    string
+	g      *group
+	fields map[string]field
+	name   string
 }
 
 func newAdapterBuilder[M any]() *adapterBuilder[M] {
 	return &adapterBuilder[M]{
-		g:       newGroup(),
-		fields:  make(map[string]field),
-		name:    "",
+		g:      newGroup(),
+		fields: make(map[string]field),
+		name:   "",
 	}
 }
 
 func (a *adapterBuilder[M]) processPath(f field, p string) error {
-    if f.f.Type.Kind() != reflect.Bool {
-        return errors.New("Path field must be of boolean type")
-    }
+	if f.f.Type.Kind() != reflect.Bool {
+		return errors.New("Path field must be of boolean type")
+	}
 	if !f.f.IsExported() {
 		return errors.New("Path field must be exported")
 	}
 	re := regexp.MustCompile(`\s+`)
 	p = re.ReplaceAllString(strings.Trim(p, "/"), "")
-    b, err := newBranch(p, f)
+	b, err := newBranch(p, f)
 	if err != nil {
 		return err
 	}
-    a.g.append(b)
+	a.g.append(b)
 	return nil
 }
 
@@ -69,10 +69,10 @@ func (a *adapterBuilder[M]) readStruct() error {
 	for i := range t.NumField() {
 		f := t.Field(i)
 		t := f.Tag
-        val, ok := t.Lookup("p")
-        if !ok {
-            val, ok = t.Lookup("path")
-        }
+		val, ok := t.Lookup("p")
+		if !ok {
+			val, ok = t.Lookup("path")
+		}
 		if ok {
 			if !ok {
 				val = string(t)
@@ -105,7 +105,6 @@ func (a *adapterBuilder[M]) readStruct() error {
 	return nil
 }
 
-
 func (a *adapterBuilder[M]) processParams() error {
 	params := make(map[string][]*atom)
 	a.g.collectParams(params)
@@ -135,7 +134,7 @@ func (a *adapterBuilder[M]) build() (*Adapter[M], error) {
 		return nil, err
 	}
 	return &Adapter[M]{
-		g:       a.g,
-		name:    a.name,
+		g:    a.g,
+		name: a.name,
 	}, nil
 }

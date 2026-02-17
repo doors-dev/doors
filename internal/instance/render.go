@@ -112,7 +112,6 @@ type pagePrinter[M any] struct {
 	w           io.Writer
 }
 
-
 func (p *pagePrinter[M]) Send(job gox.Job) error {
 	switch p.insertState {
 	case printerLooking:
@@ -188,4 +187,3 @@ func (inst *Instance[M]) renderBody(w io.Writer, js door2.JobStream, importMap [
 	}
 	return nil
 } */
-

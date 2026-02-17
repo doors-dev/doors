@@ -32,10 +32,10 @@ func (t *killTimer) keepAlive() {
 	if t.timer != nil {
 		stopped := t.timer.Stop()
 		if !stopped {
-			return 
+			return
 		}
 		t.timer.Reset(t.regular)
-		return 
+		return
 	}
 	t.timer = time.AfterFunc(t.initial, func() {
 		slog.Debug("Inactive instance killed by timeout", slog.String("type", "message"), slog.String("instance_id", t.inst.ID()))
@@ -43,25 +43,22 @@ func (t *killTimer) keepAlive() {
 	})
 }
 
-
 func newImportMap() *importMap {
 	return &importMap{
 		Imports: make(map[string]string),
 	}
 }
 
-type importMap struct{
-	mu sync.Mutex `json:"-"`
+type importMap struct {
+	mu      sync.Mutex        `json:"-"`
 	Imports map[string]string `json:"imports"`
 }
-
 
 func (i *importMap) Add(specifier string, path string) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	i.Imports[specifier] = path
 }
-
 
 func (i *importMap) generate() (content []byte, hash []byte) {
 	i.mu.Lock()
@@ -73,4 +70,3 @@ func (i *importMap) generate() (content []byte, hash []byte) {
 	sum := sha256.Sum256(content)
 	return content, sum[:]
 }
-

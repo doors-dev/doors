@@ -50,7 +50,6 @@ type FocusEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-
 type ChangeEvent struct {
 	Type      string     `json:"type"`
 	Name      string     `json:"name"`
@@ -62,12 +61,12 @@ type ChangeEvent struct {
 	Timestamp time.Time  `json:"timestamp"`
 }
 type InputEvent struct {
-	Type      string   `json:"type"`
-	Name      string   `json:"name"`
+	Type      string `json:"type"`
+	Name      string `json:"name"`
 	Data      string
 	Date      *time.Time `json:"date"`
-	Value     string   `json:"value"`
-	Number    *float64 `json:"number"`
+	Value     string     `json:"value"`
+	Number    *float64   `json:"number"`
 	Selected  []string   `json:"selected"`
 	Checked   bool       `json:"checked"`
 	Timestamp time.Time  `json:"timestamp"`

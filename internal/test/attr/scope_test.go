@@ -16,7 +16,6 @@ func TestScopeBlocking(t *testing.T) {
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
-	
 
 	test.TestReportId(t, page, 0, "0")
 	test.TestReportId(t, page, 1, "0")
