@@ -11,7 +11,6 @@ package common
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"crypto"
 	"crypto/rand"
 	"encoding/json"
