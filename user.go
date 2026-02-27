@@ -21,22 +21,22 @@ import (
 	"github.com/zeebo/blake3"
 )
 
-// SessionExpire sets the maximum lifetime of the current session.
-func SessionExpire(ctx context.Context, d time.Duration) {
+// ExpireSession sets the maximum lifetime of the current session.
+func ExpireSession(ctx context.Context, d time.Duration) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.SessionExpire(d)
 }
 
-// SessionEnd immediately ends the current session and all instances.
+// EndSession immediately ends the current session and all instances.
 // Use during logout to close authorized pages and free server resources.
-func SessionEnd(ctx context.Context) {
+func EndSession(ctx context.Context) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.SessionEnd()
 }
 
-// InstanceEnd ends the current instance (tab/window) but keeps the session
+// EndInstance ends the current instance (tab/window) but keeps the session
 // and other instances active.
-func InstanceEnd(ctx context.Context) {
+func EndInstance(ctx context.Context) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.InstanceEnd()
 }
