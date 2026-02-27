@@ -67,6 +67,12 @@ func SessionLoad(ctx context.Context, key any) any {
 	return ctex.StoreLoad(ctx, ctex.KeySessionStore, key)
 }
 
+// SessionInit returns the value stored under key in session-scoped storage,
+// initializing it with new() if the key is not already present.
+func SessionInit(ctx context.Context, key any, new func() any) any {
+	return ctex.StoreInit(ctx, ctex.KeySessionStore, key, new)
+}
+
 // SessionRemove deletes a key/value from session-scoped storage.
 // Returns the removed value or nil if absent.
 func SessionRemove(ctx context.Context, key any) any {
@@ -83,6 +89,12 @@ func InstanceSave(ctx context.Context, key any, value any) any {
 // Returns nil if absent. Callers must type-assert the result.
 func InstanceLoad(ctx context.Context, key any) any {
 	return ctex.StoreLoad(ctx, ctex.KeyInstanceStore, key)
+}
+
+// InstanceInit returns the value stored under key in instance-scoped storage,
+// initializing it with new() if the key is not already present.
+func InstanceInit(ctx context.Context, key any, new func() any) any {
+	return ctex.StoreInit(ctx, ctex.KeyInstanceStore, key, new)
 }
 
 // InstanceRemove deletes a key/value from instance-scoped storage.
