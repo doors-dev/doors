@@ -162,7 +162,7 @@ func (a ADyn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		a.initialized = true
 		a.id = core.NewID()
 	}
-	front.AttrsAppendDyna(attrs, a.id, a.name)
+	front.AttrsAppendDyn(attrs, a.id, a.name)
 	if a.enable {
 		attrs.Get(a.name).Set(a.value)
 	}

@@ -35,7 +35,7 @@ func (j joinedAttrs) Modify(ctx context.Context, _ string, attrs gox.Attrs) erro
 
 // Attr is a doors attribute modifier.
 type Attr interface {
-	gox.AttrMod
+	gox.Modify
 	gox.Proxy
 }
 
@@ -93,7 +93,7 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 }
 
 type proxyAttrModPrinter struct {
-	mod  gox.AttrMod
+	mod  gox.Modify
 	cur  gox.Cursor
 	elem gox.Elem
 }
@@ -113,7 +113,7 @@ func (m *proxyAttrModPrinter) Send(job gox.Job) error {
 	return m.Send(job)
 }
 
-func proxyAddAttrMod(mod gox.AttrMod, cur gox.Cursor, elem gox.Elem) error {
+func proxyAddAttrMod(mod gox.Modify, cur gox.Cursor, elem gox.Elem) error {
 	printer := &proxyAttrModPrinter{
 		mod:  mod,
 		cur:  cur,

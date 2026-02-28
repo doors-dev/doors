@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
+	"strings"
 
 	"github.com/doors-dev/gox"
 )
@@ -21,7 +23,7 @@ func AttrsSetData(attrs gox.Attrs, name string, data any) {
 	attrs.Get(fmt.Sprintf("data-d0d-%s", name)).Set(jsonAttr{data})
 }
 
-func AttrsAppendDyna(attrs gox.Attrs, id uint64, name string) {
+func AttrsAppendDyn(attrs gox.Attrs, id uint64, name string) {
 	val := jsonAttrs([]any{[]any{id, name}})
 	attrs.Get("data-d0y").Set(val)
 }
@@ -60,7 +62,11 @@ func (j jsonAttrs) Output(w io.Writer) error {
 var _ gox.Output = (jsonAttrs)(nil)
 var _ gox.Mutate = (jsonAttrs)(nil)
 
-func (j jsonAttrs) Mutate(prev any) any {
+func (j jsonAttrs) Mutate(name string, prev any) any {
+	if !strings.HasPrefix(name, "data-d0") {
+		slog.Error("Unexpected attribute name for system attribute", "name", name)
+		return prev
+	}
 	var arr jsonAttrs
 	if prev, ok := prev.(jsonAttrs); ok {
 		arr = prev

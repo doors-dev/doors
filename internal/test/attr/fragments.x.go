@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.5+dirty
 
 package attr
 
@@ -209,8 +209,8 @@ type hookFragment struct {
 	r *test.Reporter
 }
 
-func (d *hookFragment) attr() []gox.AttrMod {
-	return []gox.AttrMod{
+func (d *hookFragment) attr() []gox.Modify {
+	return []gox.Modify{
 		doors.AHook[string]{
 			Name: "myHook",
 			On: func(ctx context.Context, r doors.RHook[string]) (any, bool) {
