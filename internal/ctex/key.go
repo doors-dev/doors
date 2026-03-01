@@ -16,5 +16,6 @@ const (
 	KeyInstanceStore
 	KeyBlocking
 	KeyAdapters
+	KeyRouter
 	keyWg
 )

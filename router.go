@@ -15,6 +15,8 @@ import (
 	"strings"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
 	"github.com/doors-dev/gox"
 )
@@ -107,6 +109,87 @@ func serveFS(prefix string, fs http.FileSystem, cacheControl string, w http.Resp
 		},
 	}
 	http.StripPrefix(normalizePrefix(prefix), http.FileServer(fs)).ServeHTTP(rw, r)
+}
+
+type ResourceFS struct {
+	// Filesystem to serve files from.
+	// Required.
+	FS fs.FS
+	// URL path at which the file is served.
+	// Required.
+	Path string
+	// Filesystem path to the file to serve.
+	// Reuired.
+	FilePath string
+	// ContentType header
+	ContentType string
+	// Disable resource cache-control headers
+	NoCache bool
+}
+
+func (rt ResourceFS) Match(r *http.Request) bool {
+	if rt.Path == "/" || rt.Path == "" {
+		slog.Error("ResourceFile cannot serve root path")
+		return false
+	}
+	if !strings.HasPrefix(rt.Path, "/") {
+		rt.Path = "/" + rt.Path
+	}
+	return r.URL.Path == rt.Path
+}
+
+func (rt ResourceFS) Serve(w http.ResponseWriter, r *http.Request) {
+	entry := resources.StaticFS{
+		FS:   rt.FS,
+		Path: rt.FilePath,
+		Name: rt.Path,
+	}
+	rr := r.Context().Value(ctex.KeyRouter).(*router.Router)
+	res, err := rr.ResourceRegistry().Static(entry, rt.ContentType)
+	if err != nil {
+		slog.Error("Resource preparing error", "path", rt.Path, "error", err.Error())
+		w.WriteHeader(500)
+		return
+	}
+	res.ServeCache(w, r, !rt.NoCache)
+}
+
+type Resource struct {
+	// URL path at which the file is served.
+	// Required.
+	Path string
+	// Filesystem path to the file to serve.
+	// Reuired.
+	FilePath string
+	// ContentType header
+	ContentType string
+	// Disable resource cache-control headers
+	NoCache bool
+}
+
+func (rt Resource) Match(r *http.Request) bool {
+	if rt.Path == "/" || rt.Path == "" {
+		slog.Error("ResourceFile cannot serve root path")
+		return false
+	}
+	if !strings.HasPrefix(rt.Path, "/") {
+		rt.Path = "/" + rt.Path
+	}
+	return r.URL.Path == rt.Path
+}
+
+func (rt Resource) Serve(w http.ResponseWriter, r *http.Request) {
+	entry := resources.StaticPath{
+		Path: rt.FilePath,
+	}
+	rr := r.Context().Value(ctex.KeyRouter).(*router.Router)
+	res, err := rr.ResourceRegistry().Static(entry, rt.ContentType)
+	if err != nil {
+		slog.Error("Resource preparing error", "error", err.Error())
+		w.WriteHeader(500)
+		return
+	}
+	res.ServeCache(w, r, !rt.NoCache)
 }
 
 // RouteFS serves files from an fs.FS under a URL prefix.

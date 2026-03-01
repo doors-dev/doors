@@ -280,7 +280,8 @@ func (rr *Router) tryServeRoute(w http.ResponseWriter, r *http.Request) bool {
 		if !route.Match(r) {
 			continue
 		}
-		route.Serve(w, r)
+		ctx := context.WithValue(r.Context(), ctex.KeyRouter, rr)
+		route.Serve(w, r.WithContext(ctx))
 		return true
 	}
 	return false

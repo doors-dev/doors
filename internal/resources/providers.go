@@ -22,6 +22,41 @@ type idWriter interface {
 	io.StringWriter
 }
 
+type StaticEntry interface {
+	Read() ([]byte, error)
+	entryID(h idWriter)
+}
+
+
+type StaticFS struct {
+	FS   fs.FS
+	Path string
+	Name string
+}
+
+func (e StaticFS) Read() ([]byte, error) {
+	return fs.ReadFile(e.FS, e.Path)
+}
+
+func (e StaticFS) entryID(w idWriter) {
+	w.WriteString("fs")
+	w.WriteString(e.Path)
+	w.WriteString(e.Name)
+}
+
+type StaticPath struct {
+	Path string
+}
+
+func (e StaticPath) Read() ([]byte, error) {
+	return os.ReadFile(e.Path)
+}
+
+func (e StaticPath) entryID(w idWriter) {
+	w.WriteString("path")
+	w.WriteString(e.Path)
+}
+
 type ScriptEntry interface {
 	Read() ([]byte, error)
 	Apply(*api.BuildOptions)

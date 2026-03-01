@@ -19,7 +19,12 @@ import (
 	"github.com/zeebo/blake3"
 )
 
-func NewResource(content []byte, contentType string, s settings) *Resource {
+type resourceSettings struct {
+	cacheControl string
+	disableGzip  bool
+}
+
+func NewResource(content []byte, contentType string, s resourceSettings) *Resource {
 	hash := blake3.Sum256(content)
 	shortHash := hash[:16]
 	return &Resource{
@@ -33,7 +38,7 @@ func NewResource(content []byte, contentType string, s settings) *Resource {
 
 type Resource struct {
 	hashString  string
-	settings    settings
+	settings    resourceSettings
 	hash        [16]byte
 	once        sync.Once
 	content     []byte
@@ -50,13 +55,15 @@ func (s *Resource) Content() []byte {
 }
 
 func (s *Resource) ServeCache(w http.ResponseWriter, r *http.Request, cache bool) {
-	w.Header().Set("Content-Type", s.contentType)
+	if s.contentType != "" {
+		w.Header().Set("Content-Type", s.contentType)
+	}
 	if cache {
-		w.Header().Set("Cache-Control", s.settings.Conf().ServerCacheControl)
+		w.Header().Set("Cache-Control", s.settings.cacheControl)
 	} else {
 		w.Header().Set("Cache-Control", "no-cache")
 	}
-	if !s.settings.Conf().ServerDisableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+	if !s.settings.disableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		s.once.Do(func() {
 			zipped, err := common.Zip(s.content)
 			if err != nil {

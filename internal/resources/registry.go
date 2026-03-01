@@ -73,8 +73,15 @@ func (rg *Registry) init() {
 	if err != nil {
 		panic(errors.Join(errors.New("Client js build error"), err))
 	}
-	rg.mainScript = NewResource(content, "application/javascript", rg.settings)
-	rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.settings)
+	rg.mainScript = NewResource(content, "application/javascript", rg.defaultSettings())
+	rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.defaultSettings())
+}
+
+func (rg *Registry) defaultSettings() resourceSettings {
+	return resourceSettings{
+		cacheControl: rg.settings.Conf().ServerCacheControl,
+		disableGzip:  rg.settings.Conf().ServerDisableGzip,
+	}
 }
 
 func (rg *Registry) MainStyle() *Resource {
@@ -101,7 +108,7 @@ func (rg *Registry) Serve(hash []byte, w http.ResponseWriter, r *http.Request) {
 }
 
 func (r *Registry) create(key []byte, content []byte, lookup bool, contentType string) *Resource {
-	s := NewResource(content, contentType, r.settings)
+	s := NewResource(content, contentType, r.defaultSettings())
 	existing, existed := r.cache.LoadOrStore(r.key32(key), s)
 	if existed {
 		s = existing.(*Resource)
@@ -118,6 +125,23 @@ func (r *Registry) get(key []byte) *Resource {
 		return nil
 	}
 	return entry.(*Resource)
+}
+
+func (r *Registry) Static(entry StaticEntry, contentType string) (*Resource, error) {
+	h := blake3.New()
+	h.WriteString("resource")
+	entry.entryID(h)
+	key := h.Sum(nil)
+	res := r.get(key)
+	if res != nil {
+		return res, nil
+	}
+	content, err := entry.Read()
+	if err != nil {
+		return nil, err
+	}
+	res = r.create(key, content, false, contentType)
+	return res, nil
 }
 
 func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string, mode ResourceMode) (*Resource, error) {
@@ -151,7 +175,7 @@ func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 	if key != nil {
 		res = r.create(key, content, mode == ModeHost, "application/javascript")
 	} else {
-		res = NewResource(content, "application/javascript", r.settings)
+		res = NewResource(content, "application/javascript", r.defaultSettings())
 	}
 	return res, nil
 }
@@ -179,7 +203,7 @@ func (r *Registry) Style(entry StyleEntry, minify bool, mode ResourceMode) (*Res
 	if key != nil {
 		res = r.create(key, content, mode == ModeHost, "text/css")
 	} else {
-		res = NewResource(content, "text/css", r.settings)
+		res = NewResource(content, "text/css", r.defaultSettings())
 	}
 	return res, nil
 }
