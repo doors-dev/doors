@@ -111,7 +111,7 @@ func serveFS(prefix string, fs http.FileSystem, cacheControl string, w http.Resp
 	http.StripPrefix(normalizePrefix(prefix), http.FileServer(fs)).ServeHTTP(rw, r)
 }
 
-type ResourceFS struct {
+type RouteResourceFS struct {
 	// Filesystem to serve files from.
 	// Required.
 	FS fs.FS
@@ -127,7 +127,7 @@ type ResourceFS struct {
 	NoCache bool
 }
 
-func (rt ResourceFS) Match(r *http.Request) bool {
+func (rt RouteResourceFS) Match(r *http.Request) bool {
 	if rt.Path == "/" || rt.Path == "" {
 		slog.Error("ResourceFile cannot serve root path")
 		return false
@@ -138,7 +138,7 @@ func (rt ResourceFS) Match(r *http.Request) bool {
 	return r.URL.Path == rt.Path
 }
 
-func (rt ResourceFS) Serve(w http.ResponseWriter, r *http.Request) {
+func (rt RouteResourceFS) Serve(w http.ResponseWriter, r *http.Request) {
 	entry := resources.StaticFS{
 		FS:   rt.FS,
 		Path: rt.FilePath,
@@ -154,7 +154,7 @@ func (rt ResourceFS) Serve(w http.ResponseWriter, r *http.Request) {
 	res.ServeCache(w, r, !rt.NoCache)
 }
 
-type Resource struct {
+type RouteResource struct {
 	// URL path at which the file is served.
 	// Required.
 	Path string
@@ -167,7 +167,7 @@ type Resource struct {
 	NoCache bool
 }
 
-func (rt Resource) Match(r *http.Request) bool {
+func (rt RouteResource) Match(r *http.Request) bool {
 	if rt.Path == "/" || rt.Path == "" {
 		slog.Error("ResourceFile cannot serve root path")
 		return false
@@ -178,7 +178,7 @@ func (rt Resource) Match(r *http.Request) bool {
 	return r.URL.Path == rt.Path
 }
 
-func (rt Resource) Serve(w http.ResponseWriter, r *http.Request) {
+func (rt RouteResource) Serve(w http.ResponseWriter, r *http.Request) {
 	entry := resources.StaticPath{
 		Path: rt.FilePath,
 	}
