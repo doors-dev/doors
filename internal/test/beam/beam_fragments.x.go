@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package beam
 
@@ -65,6 +65,23 @@ type BeamDeriveFragment struct {
 	n doors.Door
 	test.NoBeam
 }
+func (f *BeamDeriveFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.InitContainer(); if __e != nil { return }
+			{
+				__e = __c.Any(f.content()); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Any(test.Button("reload", func(ctx context.Context) bool {
+		f.n.Update(ctx, f.content())
+		return true
+	})); if __e != nil { return }
+	return })
+}
 
 func (f *BeamDeriveFragment) content() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -124,23 +141,6 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 	return })
 }
 
-func (f *BeamDeriveFragment) Main() gox.Elem {
-	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
-		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
-			__e = __c.InitContainer(); if __e != nil { return }
-			{
-				__e = __c.Any(f.content()); if __e != nil { return }
-			}
-			__e = __c.Close(); if __e != nil { return }
-		return })); if __e != nil { return }
-		__e = __c.Any(test.Button("reload", func(ctx context.Context) bool {
-		f.n.Update(ctx, f.content())
-		return true
-	})); if __e != nil { return }
-	return })
-}
 
 type BeamConsistentFragment struct {
 	r *test.Reporter

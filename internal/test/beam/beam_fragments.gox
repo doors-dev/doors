@@ -57,6 +57,15 @@ type BeamDeriveFragment struct {
 	n doors.Door
 	test.NoBeam
 }
+elem (f *BeamDeriveFragment) Main() {
+	~>(f.n) <>
+		~(f.content())
+	</>
+	~(test.Button("reload", func(ctx context.Context) bool {
+		f.n.Update(ctx, f.content())
+		return true
+	}))
+}
 
 elem (f *BeamDeriveFragment) content() {
 	~{
@@ -107,15 +116,6 @@ elem (f *BeamDeriveFragment) content() {
 	~(f.r)
 }
 
-elem (f *BeamDeriveFragment) Main() {
-	~>(f.n) <>
-		~(f.content())
-	</>
-	~(test.Button("reload", func(ctx context.Context) bool {
-		f.n.Update(ctx, f.content())
-		return true
-	}))
-}
 
 type BeamConsistentFragment struct {
 	r *test.Reporter
