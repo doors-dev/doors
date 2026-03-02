@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package attr
 
@@ -63,7 +63,7 @@ func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.El
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.AClick{
-		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 			da.Enable(ctx, true)
 			return false
 		},
@@ -79,7 +79,7 @@ func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.El
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.AClick{
-		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 			da.Enable(ctx, false)
 			return false
 		},
@@ -95,7 +95,7 @@ func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.El
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.AClick{
-		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 			da.Value(ctx, value)
 			return false
 		},
@@ -131,7 +131,7 @@ func (f *dynaFragment) Main() gox.Elem {
 		__e = __c.Any(f.buttons("1", da1, f.v2)); if __e != nil { return }
 		__e = __c.Any(f.buttons("2", da2, f.v1)); if __e != nil { return }
 		__e = doors.AClick{
-		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 			da1.Value(ctx, f.v1)
 			da2.Value(ctx, f.v2)
 			return false
@@ -147,7 +147,7 @@ func (f *dynaFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.AClick{
-		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 			f.n.Clear(ctx)
 			return false
 		},
@@ -162,7 +162,7 @@ func (f *dynaFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.AClick{
-		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 			f.n.Update(ctx, f.content(da1, da2))
 			return false
 		},
@@ -177,7 +177,7 @@ func (f *dynaFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.AClick{
-		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 			f.n.Replace(ctx, f.content(da1, da2))
 			return true
 		},

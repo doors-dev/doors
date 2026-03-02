@@ -22,8 +22,8 @@ type Source[T any] interface {
 	Beam[T]
 
 	// Update sets a new value and propagates it to all subscribers and derived beams.
-	// The update is applied only if it passes the source's distinct function and provided
-	// context is valid
+	// The update is applied only if it passes the source's distinct function.
+	// Any context is allowed.
 	//
 	Update(context.Context, T)
 
@@ -36,13 +36,14 @@ type Source[T any] interface {
 	//
 	// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
 	//
-	// Returns the completion channel
+	// Returns the completion channel.
 	XUpdate(context.Context, T) <-chan error
 
 	// Mutate allows modifying the current value using the provided function.
 	// The function receives a copy of the current value and returns a new one.
 	// The mutation is applied only if the result passes the source's distinct function.
 	// Return of copy without modification will do nothing (if distinct function != nil)
+	// Any context is allowed.
 
 	Mutate(context.Context, func(T) T)
 
@@ -57,13 +58,13 @@ type Source[T any] interface {
 	// Returns the completion channel
 	XMutate(context.Context, func(T) T) <-chan error
 
-	// Latest returns the most recently set or mutated value without requiring a context.
+	// Get returns the most recently set or mutated value without requiring a context.
 	// This provides direct access to the current state and is not affected by
 	// context cancellation and doors tree state, unlike Read.
 	//
-	// WARNING: Latest() does not participate in render cycle consistency guarantees.
+	// WARNING: Get() does not participate in render cycle consistency guarantees.
 	// Use Read() to ensure consistent values across the component tree.
-	Latest() T
+	Get() T
 
 	// DisableSkipping makes data propagation continue even if a new value
 	// is issued. Useful, if you use beam as a communication channel
@@ -132,7 +133,7 @@ func (s *source[T]) DisableSkipping() {
 	s.noSkip = true
 }
 
-func (s *source[T]) Latest() T {
+func (s *source[T]) Get() T {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return *s.values[s.seq]
@@ -271,7 +272,10 @@ type Core interface {
 }
 
 func (s *source[T]) addWatcher(ctx context.Context, w *watcher) bool {
-	core := ctx.Value(ctex.KeyCore).(Core)
+	core, ok := ctx.Value(ctex.KeyCore).(Core)
+	if !ok {
+		return false
+	}
 	core.Cinema().addWatcher(s, w)
 	return true
 }

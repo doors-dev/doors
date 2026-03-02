@@ -14,10 +14,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router"
+	"github.com/doors-dev/doors/internal/router/model"
 	"github.com/doors-dev/gox"
 )
 
@@ -37,6 +39,20 @@ func NewRouter() Router {
 // Use represents a router modification that can be used to configure routing behavior.
 type Use = router.Use
 
+type Res = model.Res
+
+func ResPage(comp gox.Comp) Res {
+	return model.ResApp(comp)
+}
+
+func ResRedirect(m any, status int) Res {
+	return model.ResRedirect(m, status)
+}
+
+func ResReroute(m any, detached bool) Res {
+	return model.ResReroute(m, detached)
+}
+
 // UseModel registers a model handler for a path model type M.
 // The model defines path/query patterns via struct tags.
 //
@@ -49,12 +65,16 @@ type Use = router.Use
 //	    ID   int                                  // Captured from :ID parameter
 //	    Tag  *string `query:"tag"`               // Query parameter ?tag=golang
 //	}
-func UseModel[M any](r Router, handler func(m ModelRouter[M], r RModel[M]) ModelRoute) {
-	r.Use(router.UseModel(func(r *router.Request[M]) router.Response {
-		mr := &modelRequest[M]{
-			r: r,
+func UseModel[M any](r Router, handler func(r ReqModel, s Source[M]) Res) {
+	r.Use(router.UseModel(func(w http.ResponseWriter, r *http.Request, source beam.Source[M], store ctex.Store) model.Res {
+		req := modelRequest{
+			req: req{
+				r: r,
+				w: w,
+			},
+			store: store,
 		}
-		return handler(mr, mr)
+		return handler(&req, source)
 	}))
 }
 
@@ -322,7 +342,7 @@ func UseSystemConf(r Router, conf SystemConf) {
 
 // UseErrorPage sets a custom error page component for handling internal errors.
 // The component receives the error message as a parameter.
-func UseErrorPage(r Router, page func(message string) gox.Elem) {
+func UseErrorPage(r Router, page func(l Location, err error) gox.Comp) {
 	r.Use(router.UseErrorPage(page))
 }
 

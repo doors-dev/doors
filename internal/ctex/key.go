@@ -15,7 +15,6 @@ const (
 	KeySessionStore
 	KeyInstanceStore
 	KeyBlocking
-	KeyAdapters
 	KeyRouter
 	keyWg
 )

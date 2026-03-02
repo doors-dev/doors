@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package attr
 
@@ -47,7 +47,7 @@ func (f *formFragment) submitSimple() doors.Attr {
 }
 func (f *formFragment) submitRaw() doors.Attr {
 	return doors.ARawSubmit{
-		On: func(ctx context.Context, rf doors.RRawForm) bool {
+		On: func(ctx context.Context, rf doors.ReqRawForm) bool {
 			form, _ := rf.ParseForm(10_000_000)
 			fileHeader := form.Form().File["attachment"][0]
 			file, err := fileHeader.Open()

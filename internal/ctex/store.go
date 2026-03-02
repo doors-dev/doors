@@ -9,7 +9,6 @@
 package ctex
 
 import (
-	"context"
 	"sync"
 )
 
@@ -26,17 +25,16 @@ type store struct {
 	mu      sync.RWMutex
 }
 
-func (c *store) Inject(ctx context.Context, key any) context.Context {
-	return context.WithValue(ctx, key, c)
-}
-
+// Load gets a value from storage by key.
+// Returns nil if absent. Callers must type-assert the result.
 func (c *store) Load(key any) any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.storage[key]
 }
 
-func (c *store) Swap(key any, value any) any {
+// Save stores the value under key. Returns the previous value under the key.
+func (c *store) Save(key any, value any) any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	v := c.storage[key]
@@ -44,12 +42,7 @@ func (c *store) Swap(key any, value any) any {
 	return v
 }
 
-func (c *store) Save(key any, value any) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.storage[key] = value
-}
-
+// Remove removes the value.
 func (c *store) Remove(key any) any {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -58,6 +51,8 @@ func (c *store) Remove(key any) any {
 	return v
 }
 
+// Iniy returns the value stored under key,
+// initializing it with new() if the key is not already present.
 func (c *store) Init(key any, new func() any) any {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -68,15 +63,18 @@ func (c *store) Init(key any, new func() any) any {
 	c.storage[key] = v
 	return v
 }
+/*
 
 func StoreInit(ctx context.Context, storeKey any, key any, new func() any) any {
 	c := ctx.Value(storeKey).(*store)
 	return c.Init(key, new)
 }
 
-func StoreSwap(ctx context.Context, storeKey any, key any, value any) any {
+// SessionSave stores a key/value in session-scoped storage shared by all
+// instances in the session. Returns the previous value under the key.
+func StoreSave(ctx context.Context, storeKey any, key any, value any) any {
 	c := ctx.Value(storeKey).(*store)
-	return c.Swap(key, value)
+	return c.Save(key, value)
 }
 
 func StoreLoad(ctx context.Context, storeKey any, key any) any {
@@ -87,4 +85,4 @@ func StoreLoad(ctx context.Context, storeKey any, key any) any {
 func StoreRemove(ctx context.Context, storeKey any, key any) any {
 	c := ctx.Value(storeKey).(*store)
 	return c.Remove(key)
-}
+} */

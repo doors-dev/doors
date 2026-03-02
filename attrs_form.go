@@ -35,7 +35,7 @@ type ARawSubmit struct {
 	// Backend form handler.
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, RRawForm) bool
+	On func(context.Context, ReqRawForm) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -62,7 +62,7 @@ func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 }
 
 func (s *ARawSubmit) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	done := s.On(ctx, &request{
+	done := s.On(ctx, &req{
 		w:   w,
 		r:   r,
 		ctx: ctx,
@@ -143,7 +143,7 @@ func (s *ASubmit[V]) handle(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 	return s.On(ctx, &formHookRequest[V]{
 		data: &v,
-		request: request{
+		req: req{
 			w:   w,
 			r:   r,
 			ctx: ctx,
@@ -185,7 +185,7 @@ type AChange struct {
 	// Receives a typed REvent[ChangeEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[ChangeEvent]) bool
+	On func(context.Context, ReqEvent[ChangeEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -222,7 +222,7 @@ type AInput struct {
 	// Receives a typed REvent[InputEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[InputEvent]) bool
+	On func(context.Context, ReqEvent[InputEvent]) bool
 	// If true, does not include value in event
 	// Optional.
 	ExcludeValue bool

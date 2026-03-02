@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package door
 
@@ -108,7 +108,7 @@ func (f *FragmentX) Main() gox.Elem {
 		__e = f.report.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); gox.Noop(ctx)
 			__e = doors.AClick{
-		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
 			ch := f.n.XUpdate(ctx, test.Marker("updated"))
 			err, ok := <-ch
 			if !ok {
@@ -134,8 +134,8 @@ func (f *FragmentX) Main() gox.Elem {
 			return })); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.AClick{
-		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-			ch := f.n.XRemove(ctx)
+		On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			ch := f.n.XDelete(ctx)
 			err, ok := <-ch
 			if !ok {
 				f.rep(ctx, "channel closed")
@@ -193,8 +193,8 @@ func (f *EmbeddedFragment) Main() gox.Elem {
 		{
 			__e = __c.AttrSet("id", "remove"); if __e != nil { return }
 			__e = __c.AttrMod(doors.AClick{
-			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-				f.n2.Remove(ctx)
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+				f.n2.Delete(ctx)
 				return true
 			},
 		}); if __e != nil { return }
@@ -206,7 +206,7 @@ func (f *EmbeddedFragment) Main() gox.Elem {
 		{
 			__e = __c.AttrSet("id", "clear"); if __e != nil { return }
 			__e = __c.AttrMod(doors.AClick{
-			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
 				f.n1.Clear(ctx)
 				return true
 			},
@@ -219,7 +219,7 @@ func (f *EmbeddedFragment) Main() gox.Elem {
 		{
 			__e = __c.AttrSet("id", "replace"); if __e != nil { return }
 			__e = __c.AttrMod(doors.AClick{
-			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
 				f.n2.Update(ctx, test.Marker("replaced"))
 				f.n3.Update(ctx, test.Marker("temp"))
 				f.n3.Replace(ctx, &f.n2)
@@ -256,7 +256,7 @@ func (f *DynamicFragment) Main() gox.Elem {
 		{
 			__e = __c.AttrSet("id", "update"); if __e != nil { return }
 			__e = __c.AttrMod(doors.AClick{
-			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
 				f.n1.Update(ctx, test.Marker("updated"))
 				return true
 			},
@@ -269,7 +269,7 @@ func (f *DynamicFragment) Main() gox.Elem {
 		{
 			__e = __c.AttrSet("id", "replace"); if __e != nil { return }
 			__e = __c.AttrMod(doors.AClick{
-			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
 				f.n2.Update(ctx, test.Marker("replaced"))
 				f.n1.Replace(ctx, &f.n2)
 				return true
@@ -283,8 +283,8 @@ func (f *DynamicFragment) Main() gox.Elem {
 		{
 			__e = __c.AttrSet("id", "remove"); if __e != nil { return }
 			__e = __c.AttrMod(doors.AClick{
-			On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
-				f.n2.Remove(ctx)
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+				f.n2.Delete(ctx)
 				return true
 			},
 		}); if __e != nil { return }
@@ -327,7 +327,7 @@ func (f *BeforeFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 		f.doorRemoved.Update(ctx, test.Marker("removed"))
 
-		f.doorRemoved.Remove(ctx)
+		f.doorRemoved.Delete(ctx)
 
 		__e = __c.Any(&f.doorRemoved); if __e != nil { return }
 		f.doorReplaced.Replace(ctx, test.Marker("replaced"))
@@ -341,5 +341,175 @@ func (f *BeforeFragment) Main() gox.Elem {
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
+	return })
+}
+
+type LifeCycleFragment struct {
+	frame doors.Door
+	node doors.Door
+	test.NoBeam
+}
+
+func (f *LifeCycleFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = f.frame.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.InitContainer(); if __e != nil { return }
+			{
+				__e = __c.Any(f.initial()); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "updateEmpty"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+				f.frame.Update(ctx, f.newEmpty())
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("Update1"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "updateContent"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+				f.frame.Update(ctx, f.newContent())
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("Update2"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "updateEditor"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+				f.frame.Update(ctx, f.newEditor())
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("Update2"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "clear"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+				f.node.Clear(ctx)
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("Clear"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "unmount"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+				f.node.Unmount(ctx)
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("Unmount"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "remove"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+				f.node.Delete(ctx)
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("Remove"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *LifeCycleFragment) initial() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = f.node.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+				ctx := __c.Context(); gox.Noop(ctx)
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Any(test.Marker("presist")); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+func (f *LifeCycleFragment) newEmpty() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = f.node.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+				ctx := __c.Context(); gox.Noop(ctx)
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "new"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *LifeCycleFragment) newContent() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = f.node.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+				ctx := __c.Context(); gox.Noop(ctx)
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "new2"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Any(test.Marker("presist2")); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *LifeCycleFragment) newEditor() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(&f.node); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
 	return })
 }

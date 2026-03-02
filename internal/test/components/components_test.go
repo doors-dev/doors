@@ -12,8 +12,9 @@ import (
 func TestTitle(t *testing.T) {
 	p := common.RandId()
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-			return pr.App(&test.Page{
+		doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
+			return doors.ResPage(&test.Page{
+				Source: r,
 				H: head,
 				F: &LinksFragment{
 					Param: p,

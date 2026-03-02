@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"reflect"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/beam"
@@ -25,9 +24,9 @@ import (
 
 func newNavigator[M any](
 	inst *Instance[M],
-	adapter *path.Adapter[M],
+	adapter path.Adapter[M],
 	adapters map[string]path.AnyAdapter,
-	model *M,
+	beam beam.Source[M],
 	ctx context.Context,
 	detached bool,
 	rerouted bool,
@@ -40,9 +39,7 @@ func newNavigator[M any](
 		rerouted:    rerouted,
 		historyHead: &historyHead[M]{},
 		ctx:         ctx,
-		model: beam.NewSourceEqual(*model, func(new, old M) bool {
-			return reflect.DeepEqual(new, old)
-		}),
+		model:       beam,
 	}
 }
 
@@ -50,7 +47,7 @@ const historyLimit = 32
 
 type navigator[M any] struct {
 	inst        *Instance[M]
-	adapter     *path.Adapter[M]
+	adapter     path.Adapter[M]
 	adapters    map[string]path.AnyAdapter
 	detached    bool
 	rerouted    bool
@@ -65,54 +62,51 @@ func (n *navigator[M]) isDetached() bool {
 	return n.detached
 }
 
-func (n *navigator[M]) getBeam() beam.Source[M] {
-	return n.model
-}
-
 type navigatorState[M any] struct {
 	model *M
 	path  string
 	err   error
 }
 
-func (n *navigator[M]) newLink(m any) (core.Link, error) {
-	thisModel, ok := m.(*M)
+func (n *navigator[M]) newLink(a any) (core.Link, error) {
+	m, ok := a.(M)
 	if !ok {
-		direct, ok := m.(M)
+		var ref *M
+		ref, ok = a.(*M)
 		if ok {
-			thisModel = &direct
+			m = *ref
 		}
 	}
-	if thisModel != nil {
-		location, err := n.adapter.Encode(thisModel)
+	if ok {
+		location, err := n.adapter.Encode(m)
 		if err != nil {
 			return core.Link{}, err
 		}
 		return core.Link{
-			Location: location,
+			Location: &location,
 			On: func(ctx context.Context) {
-				n.model.Update(ctx, *thisModel)
+				n.model.Update(ctx, m)
 			},
 		}, nil
 	}
-	name := path.GetAdapterName(m)
+	name := path.GetAdapterName(a)
 	adapter, found := n.adapters[name]
 	if !found {
 		return core.Link{}, errors.New(fmt.Sprint("Adapter for ", name, " is not registered"))
 	}
-	location, err := adapter.EncodeAny(m)
+	location, err := adapter.EncodeAny(a)
 	if err != nil {
 		return core.Link{}, err
 	}
 	return core.Link{
-		Location: location,
+		Location: &location,
 		On:       nil,
 	}, nil
 }
 
 func (n *navigator[M]) init() {
 	state := beam.NewBeam(n.model, func(m M) navigatorState[M] {
-		l, err := n.adapter.Encode(&m)
+		l, err := n.adapter.Encode(m)
 		if err != nil {
 			slog.Error(
 				"Path model encoding error on beam update",
@@ -130,13 +124,13 @@ func (n *navigator[M]) init() {
 		}
 	})
 	ns, ok := state.ReadAndSub(n.ctx, func(ctx context.Context, ns navigatorState[M]) bool {
-		n.pushHistory(n.ctx, &ns, !n.detached, false)
+		n.pushHistory(&ns, !n.detached, false)
 		return false
 	})
 	if !ok {
 		return
 	}
-	n.pushHistory(n.ctx, &ns, n.rerouted && !n.detached, true)
+	n.pushHistory(&ns, n.rerouted && !n.detached, true)
 }
 
 func (n *navigator[M]) restore(r *http.Request) bool {
@@ -150,7 +144,7 @@ func (n *navigator[M]) restore(r *http.Request) bool {
 	return false
 }
 
-func (n *navigator[M]) pushHistory(ctx context.Context, ns *navigatorState[M], sync bool, replace bool) {
+func (n *navigator[M]) pushHistory(ns *navigatorState[M], sync bool, replace bool) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if sync {

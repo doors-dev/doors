@@ -22,6 +22,7 @@ type Fragment interface {
 }
 
 type Page struct {
+	Source doors.Source[Path]
 	F Fragment
 	H elem(doors.Source[Path])
 	Header string
@@ -31,22 +32,22 @@ func (p *Page) h1() string {
 	return p.Header
 }
 
-func (p *Page) head(b doors.Source[Path]) gox.Elem {
+func (p *Page) head() gox.Elem {
 	if p.H == nil {
 		return nil
 	}
-	return p.H(b)
+	return p.H(p.Source)
 }
 
-elem (p *Page) content(b doors.Source[Path]) {
+elem (p *Page) content() {
 	~(if p.F != nil {
 		~{
-			p.F.setBeam(b)
+			p.F.setBeam(p.Source)
 		}
 		~(p.F)
 	})
 }
 
-elem (p *Page) Main(b doors.Source[Path]) {
-	~(Document(p, b))
+elem (p *Page) Main() {
+	~(Document(p))
 }

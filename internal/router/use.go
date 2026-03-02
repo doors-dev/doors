@@ -14,7 +14,9 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/license"
+	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/doors/internal/router/model"
 )
 
 type Use interface {
@@ -25,6 +27,17 @@ type useFunc func(*Router)
 
 func (a useFunc) apply(rr *Router) {
 	a(rr)
+}
+
+func UseModel[M any](handler model.Handler[M]) Use {
+	adapter, err := path.NewAdapter[M]()
+	if err != nil {
+		panic(err)
+	}
+	return useFunc(func(r *Router) {
+		route := model.NewModelRoute(adapter, handler)
+		r.addModelRoute(route)
+	})
 }
 
 func UseRoute(r Route) Use {

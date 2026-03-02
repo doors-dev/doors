@@ -19,9 +19,8 @@ type SystemConf struct {
 	// When exceeded, the oldest inactive ones are suspended.
 	// Default: 12.
 	SessionInstanceLimit int
-	// SessionTTL controls how long session lives.
-	// Default behavior (value 0): session ends, when no more
-	// instances left, cookie expires when browser closes.
+	// SessionTTL controls how long session lives after last activity.
+	// Default behavior (value 0): InstanceTTL
 	SessionTTL time.Duration
 	// InstanceConnectTimeout controls how long new instance waits
 	// before shutdown for the first client connection.
@@ -142,6 +141,9 @@ func InitDefaults(s *SystemConf) {
 	}
 	if s.ServerCacheControl == "" {
 		s.ServerCacheControl = DefaultCacheControl
+	}
+	if s.SessionTTL <= s.InstanceTTL {
+		s.SessionTTL = s.InstanceTTL
 	}
 	s.solitaireDefaults()
 }

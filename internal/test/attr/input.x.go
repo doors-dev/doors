@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package attr
 
@@ -40,13 +40,13 @@ func (f *inputFragment) Main() gox.Elem {
 func (f *inputFragment) focusioouter() []doors.Attr {
 	return []doors.Attr{
 		doors.AFocusIn{
-			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+			On: func(ctx context.Context, r doors.ReqEvent[doors.FocusEvent]) bool {
 				f.r.Update(ctx, 2, "in")
 				return false
 			},
 		},
 		doors.AFocusOut{
-			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+			On: func(ctx context.Context, r doors.ReqEvent[doors.FocusEvent]) bool {
 				f.r.Update(ctx, 2, "out")
 				return false
 			},
@@ -56,14 +56,14 @@ func (f *inputFragment) focusioouter() []doors.Attr {
 func (f *inputFragment) focusio() []doors.Attr {
 	return []doors.Attr{
 		doors.AFocusIn{
-			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+			On: func(ctx context.Context, r doors.ReqEvent[doors.FocusEvent]) bool {
 				f.r.Update(ctx, 1, "in")
 				return false
 			},
 		},
 		doors.AFocusOut{
 			StopPropagation: true,
-			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+			On: func(ctx context.Context, r doors.ReqEvent[doors.FocusEvent]) bool {
 				f.r.Update(ctx, 1, "out")
 				return false
 			},
@@ -73,13 +73,13 @@ func (f *inputFragment) focusio() []doors.Attr {
 func (f *inputFragment) focus() []doors.Attr {
 	return []doors.Attr{
 		doors.AFocus{
-			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+			On: func(ctx context.Context, r doors.ReqEvent[doors.FocusEvent]) bool {
 				f.r.Update(ctx, 0, "focus")
 				return false
 			},
 		},
 		doors.ABlur{
-			On: func(ctx context.Context, r doors.REvent[doors.FocusEvent]) bool {
+			On: func(ctx context.Context, r doors.ReqEvent[doors.FocusEvent]) bool {
 				f.r.Update(ctx, 0, "blur")
 				return false
 			},
@@ -128,7 +128,7 @@ func (f *inputFragment) focusFields() gox.Elem {
 func (f *inputFragment) inputAttr(excudeValue bool) doors.Attr {
 	return doors.AInput{
 		ExcludeValue: excudeValue,
-		On: func(ctx context.Context, r doors.REvent[doors.InputEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.InputEvent]) bool {
 			f.r.Update(ctx, 0, r.Event().Data)
 			f.r.Update(ctx, 1, r.Event().Value)
 			//		fmt.Printf("%+v\n", r.Event())
@@ -173,7 +173,7 @@ func (f *inputFragment) inputFields() gox.Elem {
 
 func (f *inputFragment) attr(index string) doors.Attr {
 	return doors.AChange{
-		On: func(ctx context.Context, r doors.REvent[doors.ChangeEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.ChangeEvent]) bool {
 			//		fmt.Printf("%+v\n", r.Event())
 			if r.Event().Name != index {
 				return false

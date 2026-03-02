@@ -12,17 +12,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/doors/internal/router/model"
 	"github.com/mr-tron/base58"
 )
 
@@ -35,12 +37,12 @@ func ResourcePath(r *resources.Resource, ext string) string {
 }
 
 func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceID string, doorID uint64, hookID uint64, track uint64) {
-	sess := rr.getSession(r)
-	if sess == nil {
+	ses := rr.getSession(w, r)
+	if ses == nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	inst, found := sess.GetInstance(instanceID)
+	inst, found := ses.GetInstance(instanceID)
 	if !found {
 		w.WriteHeader(http.StatusGone)
 		return
@@ -83,32 +85,14 @@ func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (rr *Router) servePage(w http.ResponseWriter, r *http.Request, page responseAnyApp, opt instance.Options) {
-	new, session := rr.ensureSession(r, w)
-	inst, ok := page.intoInstance(session, opt)
-	if !ok {
-		if new {
-			panic("New session can't end")
-		}
-		rr.sessions.Delete(session.ID())
-		rr.servePage(w, r, page, opt)
-		return
-	}
-	err := inst.Serve(w, r)
-	if err != nil {
-		slog.Error("instance serve error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
-		rr.serveError(w, r, err.Error())
-	}
-}
-
 func (rr *Router) restorePath(w http.ResponseWriter, r *http.Request, instId string) {
 	w.Header().Set("Cache-Control", "no-cache")
-	sess := rr.getSession(r)
-	if sess == nil {
+	ses := rr.getSession(w, r)
+	if ses == nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	inst, ok := sess.GetInstance(instId)
+	inst, ok := ses.GetInstance(instId)
 	if !ok {
 		w.WriteHeader(http.StatusGone)
 		return
@@ -121,123 +105,97 @@ func (rr *Router) restorePath(w http.ResponseWriter, r *http.Request, instId str
 	w.WriteHeader(http.StatusOK)
 }
 
+func (rr *Router) serveModelRedirect(w http.ResponseWriter, r *http.Request, s *instance.Session, l path.Location, model any, status int) {
+	name := path.GetAdapterName(model)
+	adapter, ok := rr.modelAdapters[name]
+	if !ok {
+		err := errors.New("Adapter " + name + " not found")
+		slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
+		rr.serveError(w, r, s, l, err)
+		return
+	}
+	location, err := adapter.EncodeAny(model)
+	if err != nil {
+		err := errors.New("Adapter " + name + " encoding error: " + err.Error())
+		slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
+		rr.serveError(w, r, s, l, err)
+		return
+	}
+	if status == 0 {
+		status = http.StatusFound
+	}
+	http.Redirect(w, r, location.String(), status)
+}
+
+func (rr *Router) serveInstance(w http.ResponseWriter, r *http.Request, s *instance.Session, l path.Location, inst instance.AnyInstance) {
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Content-Type", "text/html")
+	err := inst.Serve(w, r)
+	if err != nil {
+		slog.Error("instance serve error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
+		rr.serveError(w, r, s, l, err)
+	}
+}
+
 func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
 	instId := r.Header.Get("D0-r")
 	if instId != "" {
 		rr.restorePath(w, r, instId)
 		return true
 	}
-	l := path.NewRequestLocation(r)
-	var model any = nil
-	var response Response = nil
-	var page responseAnyApp = nil
+	loc := path.NewRequestLocation(r)
+	var a any = loc
+	ses := rr.ensureSession(w, r)
 	var counter = 0
 	opt := instance.Options{
 		Detached: false,
 		Rerouted: false,
 	}
 main:
-	for {
-		counter += 1
-		if counter > 64 {
-			slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", "reroute loop"))
-			rr.serveError(w, r, "reroute loop")
-			return true
-		}
-		if page != nil {
-			break
-		}
-		if model != nil {
-			m := model
-			model = nil
-			name := path.GetAdapterName(m)
-			pageRoute, ok := rr.modelRoutes[name]
-			if !ok {
-				break
-			}
-			response, ok = pageRoute.handleModel(w, r, m)
-			if !ok {
-				panic(errors.New("model name confilct " + name))
-			}
-		}
-		if response != nil {
-			res := response
-			response = nil
-			switch res := res.(type) {
-			case *StaticPage:
-				if res.Status == 0 {
-					res.Status = http.StatusOK
-				}
-				w.WriteHeader(res.Status)
-				ctx := context.WithValue(r.Context(), ctex.KeyAdapters, rr.Adapters())
-				res.Content.Main().Render(ctx, w)
-				return true
-			case *ResponseReroute:
-				if res.Detached {
-					opt.Detached = true
-				}
-				opt.Rerouted = true
-				model = res.Model
-			case *ResponseRawRedirect:
-				http.Redirect(w, r, res.URL, res.Status)
-				return true
-			case *ResponseRedirect:
-				name := path.GetAdapterName(res.Model)
-				adapter, ok := rr.modelAdapters[name]
-				if !ok {
-					msg := "Adapter " + name + " not found"
-					slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", msg))
-					rr.serveError(w, r, msg)
-					return true
-				}
-				location, err := adapter.EncodeAny(res.Model)
-				if err != nil {
-					msg := "Adapter " + name + " encoding error: " + err.Error()
-					slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", msg))
-					rr.serveError(w, r, msg)
-					return true
-				}
-				if res.Status == 0 {
-					res.Status = http.StatusFound
-				}
-				http.Redirect(w, r, location.String(), res.Status)
-				return true
-			case responseAnyApp:
-				page = res
-			default:
-				log.Fatalf("Unsupported response type")
-			}
+	counter += 1
+	if counter > 64 {
+		slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", "reroute loop"))
+		rr.serveError(w, r, ses, loc, errors.New("rerouting loop"))
+		return true
+	}
+	for _, route := range rr.modelRoutes {
+		res, handeled := route.Handle(w, r, a, ses, opt)
+		if !handeled {
 			continue
 		}
-		for _, route := range rr.modelRouteList {
-			resp, ok := route.handleLocation(w, r, l)
-			if ok {
-				response = resp
-				continue main
-			}
-		}
-		break
-	}
-	if page == nil {
-		if instId != "" {
-			w.WriteHeader(http.StatusNotFound)
+		if res.Err() != nil {
+			rr.serveError(w, r, ses, loc, res.Err())
 			return true
 		}
-		return false
+		if model, status, ok := res.Redirect(); ok {
+			rr.serveModelRedirect(w, r, ses, loc, model, status)
+			return true
+		}
+		if model, detached, ok := res.Reroute(); ok {
+			if detached {
+				opt.Detached = detached
+			}
+			opt.Rerouted = true
+			a = model
+			goto main
+		}
+		inst, ok := res.Instance()
+		if !ok {
+			panic("unexpected response state")
+		}
+		rr.serveInstance(w, r, ses, loc, inst)
+		return true
 	}
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Content-Type", "text/html")
-	rr.servePage(w, r, page, opt)
-	return true
+	return false
 }
 
 func (rr *Router) servePut(w http.ResponseWriter, r *http.Request, instanceId string) {
-	sess := rr.getSession(r)
-	if sess == nil {
+	ses := rr.getSession(w, r)
+	if ses == nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	inst, found := sess.GetInstance(instanceId)
+	inst, found := ses.GetInstance(instanceId)
 	if !found {
 		w.WriteHeader(http.StatusGone)
 		return
@@ -355,14 +313,35 @@ func (rr *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-func (rr *Router) serveError(w http.ResponseWriter, r *http.Request, m string) {
-	w.WriteHeader(http.StatusInternalServerError)
+func (rr *Router) serveError(w http.ResponseWriter, r *http.Request, ses *instance.Session, loc path.Location, err error) {
+	if errors.Is(err, model.InstanceCreationError{}) {
+		http.Redirect(w, r, r.URL.RequestURI(), http.StatusSeeOther)
+		return
+	}
 	if rr.errPage == nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	err := rr.errPage(m).Render(r.Context(), w)
-	if err == nil {
+	comp := rr.errPage(loc, err)
+	if comp == nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	slog.Error("error page rendering error", slog.String("error", err.Error()))
+	inst, ok := instance.NewInstance(ses,
+		path.NewLocationAdapter(),
+		beam.NewSourceEqual(loc, func(a, b path.Location) bool {
+			return reflect.DeepEqual(a, b)
+		}),
+		comp,
+		instance.Options{
+			Detached: false,
+			Rerouted: false,
+		},
+	)
+	if ok == false {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	inst.SetStatus(http.StatusInternalServerError)
+	rr.serveInstance(w, r, ses, loc, inst)
 }

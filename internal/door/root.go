@@ -40,6 +40,19 @@ type root struct {
 	tracker *tracker
 }
 
+func (r Root) IsStatic() bool {
+	if len(r.tracker.children) != 0 {
+		return false
+	}
+	if len(r.tracker.hooks) != 0 {
+		return false
+	}
+	if !r.tracker.cinema.IsEmpty() {
+		return false
+	}
+	return true
+}
+
 func (r *root) runtime() shredder.Runtime {
 	return r.inst.Runtime()
 }
@@ -60,7 +73,7 @@ func (r Root) Kill() {
 	r.tracker.kill()
 }
 
-func (r Root) Render(el gox.Elem) (Pipe, shredder.SimpleFrame) {
+func (r Root) Render(comp gox.Comp) (Pipe, shredder.SimpleFrame) {
 	thread := shredder.Thread{}
 	renderFrame := thread.Frame()
 	readyFrame := thread.Frame()
@@ -70,6 +83,10 @@ func (r Root) Render(el gox.Elem) (Pipe, shredder.SimpleFrame) {
 	pipe.renderFrame.Run(r.tracker.ctx, r.runtime(), func(ok bool) {
 		defer pipe.close()
 		if !ok {
+			return
+		}
+		el := comp.Main()
+		if el == nil {
 			return
 		}
 		err := el.Print(pipe.tracker.ctx, pipe)

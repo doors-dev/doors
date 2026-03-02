@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package router
 
@@ -30,7 +30,7 @@ func pageA(b doors.Source[PathA]) gox.Elem {
 				}
 				__e = __c.Close(); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 					doors.Call(ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
 					return false
 				},
@@ -55,7 +55,7 @@ type PathB struct {
 	Path bool `path:"/b"`
 }
 
-func static(path string) gox.Elem {
+func static(path string, code int) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("html"); if __e != nil { return }
@@ -66,6 +66,9 @@ func static(path string) gox.Elem {
 				__e = __c.Submit(); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
+			if code >= 0 {
+				__e = __c.Any(doors.Status(code)); if __e != nil { return }
+			}
 			__e = __c.Init("body"); if __e != nil { return }
 			{
 				__e = __c.Submit(); if __e != nil { return }
@@ -149,7 +152,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 					doors.Call(ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
 					return true
 				},
@@ -171,7 +174,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 				}
 				__e = __c.Close(); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 					doors.Call(ctx, doors.ActionLocationReload{})
 					return false
 				},
@@ -186,7 +189,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 					r.After(doors.ActionOnlyLocationAssign(PathB{}))
 					return false
 				},
@@ -201,7 +204,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 					r.After(doors.ActionOnlyLocationReplace(PathB{}))
 					return false
 				},
@@ -216,7 +219,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 					r.After(doors.ActionOnlyLocationReload())
 					return false
 				},

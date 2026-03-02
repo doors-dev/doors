@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package test
 
@@ -43,13 +43,13 @@ func Marker(id string) gox.Elem {
 	return })
 }
 
-type page[P any]interface {
+type page interface {
 	h1() string
-	content(doors.Source[P]) gox.Elem
-	head(doors.Source[P]) gox.Elem
+	content() gox.Elem
+	head() gox.Elem
 }
 
-func Document[P any](p page[P], b doors.Source[P]) gox.Elem {
+func Document(p page) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Raw("<!DOCTYPE html>"); if __e != nil { return }
@@ -82,7 +82,7 @@ func Document[P any](p page[P], b doors.Source[P]) gox.Elem {
 					}
 					__e = __c.Submit(); if __e != nil { return }
 				return })); if __e != nil { return }
-				__e = __c.Any(p.head(b)); if __e != nil { return }
+				__e = __c.Any(p.head()); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 			__e = __c.Init("body"); if __e != nil { return }
@@ -94,7 +94,7 @@ func Document[P any](p page[P], b doors.Source[P]) gox.Elem {
 					__e = __c.Any(p.h1()); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
-				__e = __c.Any(p.content(b)); if __e != nil { return }
+				__e = __c.Any(p.content()); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		}
@@ -133,7 +133,7 @@ func Button(id string, handler func(context.Context) bool) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.AClick{
-		On: func(ctx context.Context, _ doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
 			return handler(ctx)
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {

@@ -36,7 +36,9 @@ type AnyInstance interface {
 	RestorePath(*http.Request) bool
 	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request, uint64) bool
 	Connect(w http.ResponseWriter, r *http.Request)
+	SetStatus(int)
 	end(common.EndCause)
+
 }
 
 type App[M any] interface {
@@ -44,9 +46,9 @@ type App[M any] interface {
 }
 
 type setup[M any] struct {
-	adapter  *path.Adapter[M]
-	model    *M
-	app      App[M]
+	adapter  path.Adapter[M]
+	beam     beam.Source[M]
+	comp     gox.Comp
 	detached bool
 	rerouted bool
 }
@@ -56,20 +58,19 @@ type Options struct {
 	Rerouted bool
 }
 
-func NewInstance[M any](sess *Session, app App[M], adapter *path.Adapter[M], m *M, opt Options) (AnyInstance, bool) {
+func NewInstance[M any](sess *Session, adapter path.Adapter[M], beam beam.Source[M], comp gox.Comp, opt Options) (AnyInstance, bool) {
 	inst := &Instance[M]{
 		id: common.RandId(),
 		setup: &setup[M]{
 			adapter:  adapter,
-			model:    m,
-			app:      app,
+			beam:     beam,
+			comp:     comp,
 			detached: opt.Detached,
 			rerouted: opt.Rerouted,
 		},
 		session: sess,
 		store:   ctex.NewStore(),
 	}
-	inst.SetStatus(http.StatusOK)
 	return inst, sess.AddInstance(inst)
 }
 
@@ -93,6 +94,11 @@ type Instance[M any] struct {
 	csp        *common.CSPCollector
 	importMap  *importMap
 	pageStatus atomic.Int32
+}
+
+func (i *Instance[M]) Adapter(name string) (path.AnyAdapter, bool) {
+	a, found := i.session.router.Adapters()[name]
+	return a, found
 }
 
 func (i *Instance[M]) SessionExpire(d time.Duration) {
@@ -167,9 +173,8 @@ func (inst *Instance[M]) init() error {
 	if !ok {
 		return errors.New("Instance already started or killed")
 	}
-	ctx := inst.session.store.Inject(context.Background(), ctex.KeySessionStore)
-	ctx = inst.store.Inject(ctx, ctex.KeyInstanceStore)
-	ctx = context.WithValue(ctx, ctex.KeyAdapters, inst.session.router.Adapters())
+	ctx := context.WithValue(context.Background(), ctex.KeySessionStore, inst.session.store)
+	ctx = context.WithValue(ctx, ctex.KeyInstanceStore, inst.store)
 	inst.runtime = shredder.NewRuntime(ctx, inst.Conf().InstanceGoroutineLimit, inst)
 	inst.root = door.NewRoot(inst)
 	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Conf()))
@@ -177,7 +182,7 @@ func (inst *Instance[M]) init() error {
 		inst,
 		inst.setup.adapter,
 		inst.session.router.Adapters(),
-		inst.setup.model,
+		inst.setup.beam,
 		inst.root.Context(),
 		inst.setup.detached,
 		inst.setup.rerouted,
@@ -197,9 +202,8 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 	if err := inst.init(); err != nil {
 		return err
 	}
-	el := inst.setup.app.Main(inst.navigator.getBeam())
+	pipe, frame := inst.root.Render(inst.setup.comp)
 	inst.setup = nil
-	pipe, frame := inst.root.Render(el)
 	ch := make(chan struct{})
 	frame.Run(nil, nil, func(b bool) {
 		close(ch)
@@ -209,9 +213,14 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 		inst.end(common.EndCauseKilled)
 		return err
 	}
-	if err := inst.render(w, r, pipe); err != nil {
-		defer inst.end(common.EndCauseKilled)
+	static := inst.root.IsStatic()
+	if err := inst.render(w, r, pipe, static); err != nil {
+		inst.end(common.EndCauseKilled)
 		return err
+	}
+	if static {
+		inst.end(common.EndCauseKilled)
+		return nil
 	}
 	inst.navigator.init()
 	return nil

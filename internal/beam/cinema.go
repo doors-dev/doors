@@ -183,6 +183,10 @@ type cinema struct {
 	screens map[common.ID]*screen
 }
 
+func (c Cinema) IsEmpty() bool {
+	return len(c.screens) == 0
+}
+
 func (c *cinema) isKilled() bool {
 	return c.door.Context().Err() != nil
 }

@@ -24,8 +24,9 @@ func checkColor(t *testing.T, page *rod.Page) {
 func testStyle(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	bro := test.NewBro(browser,
 		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-				return pr.App(&test.Page{
+			doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
+				return doors.ResPage(&test.Page{
+					Source: r,
 					Header: "Testing Imports",
 					H:      h,
 					F:      &ModuleFragment{},
@@ -43,8 +44,9 @@ func testStyle(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 func testModule(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	bro := test.NewBro(browser,
 		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-				return pr.App(&test.Page{
+			doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
+				return doors.ResPage(&test.Page{
+					Source: r,
 					Header: "Testing Imports",
 					H:      h,
 					F:      &ModuleFragment{},
@@ -101,8 +103,9 @@ func TestStyle(t *testing.T) {
 func TestReact(t *testing.T) {
 	bro := test.NewBro(browser,
 		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-				return pr.App(&test.Page{
+			doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
+				return doors.ResPage(&test.Page{
+					Source: r,
 					Header: "Testing Imports",
 					H:      reactHead,
 					F:      &ReactFragment{},
@@ -130,8 +133,9 @@ func TestReact(t *testing.T) {
 func TestFiles(t *testing.T) {
 	bro := test.NewBro(browser,
 		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-				return pr.App(&test.Page{
+			doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
+				return doors.ResPage(&test.Page{
+					Source: r,
 					Header: "Testing Imports",
 					H:      staticFiles,
 					F:      &Empty{},

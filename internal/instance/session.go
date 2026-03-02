@@ -9,6 +9,7 @@
 package instance
 
 import (
+	"net/http"
 	"sync"
 	"time"
 
@@ -42,31 +43,82 @@ func NewSession(r router) *Session {
 		router:    r,
 		limiter:   newLimiter(r.Conf().SessionInstanceLimit),
 	}
-	sess.setTTL()
 	return sess
-
-}
-
-func (sess *Session) setTTL() {
-	ttl := sess.router.Conf().SessionTTL
-	if ttl == 0 {
-		return
-	}
-	sess.ttl = time.AfterFunc(ttl, func() {
-		sess.Kill()
-	})
 }
 
 type Session struct {
-	mu        sync.Mutex
-	store     ctex.Store
-	killed    bool
-	id        string
-	instances map[string]AnyInstance
-	router    router
-	limiter   *limiter
-	expire    *time.Timer
-	ttl       *time.Timer
+	mu         sync.Mutex
+	store      ctex.Store
+	killed     bool
+	id         string
+	instances  map[string]AnyInstance
+	router     router
+	limiter    *limiter
+	expireTime time.Time
+	ttlTime    time.Time
+	killTimer  *time.Timer
+}
+
+func (sess *Session) Store() ctex.Store {
+	return sess.store
+}
+
+func (sess *Session) Renew(w http.ResponseWriter) bool {
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	ttl := sess.router.Conf().SessionTTL
+	sess.ttlTime = time.Now().Add(ttl)
+	if !sess.resetKillTimer() {
+		return false
+	}
+	maxAge := sess.untillKill()
+	if maxAge < sess.router.Conf().RequestTimeout {
+		return false
+	}
+	cookie := &http.Cookie{
+		Name:     "d0-r",
+		Value:    sess.id,
+		HttpOnly: true,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(maxAge.Seconds()),
+	}
+	http.SetCookie(w, cookie)
+	return true
+}
+
+func (sess *Session) resetKillTimer() bool {
+	if sess.killTimer != nil {
+		if !sess.killTimer.Stop() {
+			return false
+		}
+	}
+	ttl := sess.untillKill()
+	if ttl <= 0 {
+		return false
+	}
+	if sess.killTimer != nil {
+		sess.killTimer.Reset(ttl)
+		return true
+	}
+	sess.killTimer = time.AfterFunc(ttl, func() {
+		sess.Kill()
+	})
+	return true
+}
+
+func (sess *Session) killTime() time.Time {
+	if sess.expireTime.IsZero() {
+		return sess.ttlTime
+	}
+	if sess.ttlTime.Before(sess.expireTime) {
+		return sess.ttlTime
+	}
+	return sess.expireTime
+}
+
+func (sess *Session) untillKill() time.Duration {
+	return time.Until(sess.killTime())
 }
 
 func (sess *Session) AddInstance(inst AnyInstance) bool {
@@ -92,10 +144,6 @@ func (sess *Session) removeInstance(id string) {
 	}
 	sess.limiter.delete(id)
 	delete(sess.instances, id)
-	if len(sess.instances) == 0 && sess.ttl == nil {
-		sess.killed = true
-		sess.cleanup()
-	}
 }
 
 func (sess *Session) ID() string {
@@ -129,36 +177,14 @@ func (sess *Session) SetExpiration(d time.Duration) {
 	if sess.killed {
 		return
 	}
-	if sess.expire == nil {
-		if d == 0 {
-			return
-		}
-		sess.expire = time.AfterFunc(d, func() {
-			sess.Kill()
-		})
-		return
-	}
-	if !sess.expire.Stop() {
-		return
-	}
-	if d == 0 {
-		sess.expire = nil
-		if len(sess.instances) == 0 {
-			sess.killed = true
-			sess.cleanup()
-		}
-		return
-	}
-	sess.expire.Reset(d)
+	sess.expireTime = time.Now().Add(d)
+	sess.resetKillTimer()
 }
 
 func (sess *Session) cleanup() {
 	sess.router.RemoveSession(sess.id)
-	if sess.expire != nil {
-		sess.expire.Stop()
-	}
-	if sess.ttl != nil {
-		sess.ttl.Stop()
+	if sess.killTimer != nil {
+		sess.killTimer.Stop()
 	}
 	for id := range sess.instances {
 		sess.instances[id].end(common.EndCauseKilled)

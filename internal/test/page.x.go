@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package test
 
@@ -24,6 +24,7 @@ type Fragment interface {
 }
 
 type Page struct {
+	Source doors.Source[Path]
 	F Fragment
 	H func(doors.Source[Path]) gox.Elem
 	Header string
@@ -33,27 +34,27 @@ func (p *Page) h1() string {
 	return p.Header
 }
 
-func (p *Page) head(b doors.Source[Path]) gox.Elem {
+func (p *Page) head() gox.Elem {
 	if p.H == nil {
 		return nil
 	}
-	return p.H(b)
+	return p.H(p.Source)
 }
 
-func (p *Page) content(b doors.Source[Path]) gox.Elem {
+func (p *Page) content() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
 		if p.F != nil {
-			p.F.setBeam(b)
+			p.F.setBeam(p.Source)
 
 			__e = __c.Any(p.F); if __e != nil { return }
 		}
 	return })
 }
 
-func (p *Page) Main(b doors.Source[Path]) gox.Elem {
+func (p *Page) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(Document(p, b)); if __e != nil { return }
+		__e = __c.Any(Document(p)); if __e != nil { return }
 	return })
 }

@@ -18,10 +18,11 @@ import (
 type Beam[T any] interface {
 	// Sub subscribes to the value stream. The onValue callback is called immediately
 	// with the current value (in the same goroutine), and again on every update.
+	// Only instance runtime context is allowed.
 	//
 	// The subscription continues until:
-	//   - The context is canceled
 	//   - The onValue function returns true (indicating done)
+	//   - Unmount of any dynamic parent element
 	//
 	// Returns true if the subscription was successfully established;
 	// false means the context was already canceled.
@@ -37,10 +38,11 @@ type Beam[T any] interface {
 
 	// ReadAndSub returns the current value and then subscribes to future updates.
 	// The onValue function is invoked on every subsequent update.
+	// Only instance runtime context is allowed.
 	//
 	// Returns the initial value and a boolean:
 	//   - If true, the value is valid and subscription was established
-	//   - If false, the context was canceled and the returned value is undefined
+	//   - if false, the context was canceled or does not belong instance runtime.
 	ReadAndSub(ctx context.Context, onValue func(context.Context, T) bool) (T, bool)
 
 	// ReadAndSubExt behaves like ReadAndSub with extended control options.
@@ -53,15 +55,17 @@ type Beam[T any] interface {
 	XReadAndSub(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, context.CancelFunc, bool)
 
 	// Read returns the current value of the Beam without establishing a subscription.
+	// Only instance runtime context is allowed.
 	//
 	// Returns the current value and a boolean:
 	//   - If true, the value is valid
-	//   - If false, the context was canceled and the value is undefined
+	//   - if false, the context was canceled or does not belong instance runtime.
 	Read(ctx context.Context) (T, bool)
 
 	// AddWatcher attaches a Watcher for full lifecycle control over subscription events.
 	// Watchers receive separate callbacks for initialization, updates, and cancellation,
 	// allowing for more sophisticated subscription management.
+	// Only instance runtime context is allowed.
 	//
 	// Returns a Cancel function and a boolean indicating whether the watcher was added.
 	AddWatcher(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool)

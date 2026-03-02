@@ -44,7 +44,7 @@ type AHook[T any] struct {
 	// and returns any output which will be marshaled to JSON.
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(ctx context.Context, r RHook[T]) (any, bool)
+	On func(ctx context.Context, r ReqHook[T]) (any, bool)
 }
 
 func (h AHook[T]) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -77,7 +77,7 @@ func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 	output, done := h.On(ctx, &formHookRequest[T]{
 		data: &input,
-		request: request{
+		req: req{
 			w:   w,
 			r:   r,
 			ctx: ctx,
@@ -115,7 +115,7 @@ type ARawHook struct {
 	// Provides raw access via RRawHook (body reader, multipart parser).
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(ctx context.Context, r RRawHook) bool
+	On func(ctx context.Context, r ReqRawHook) bool
 }
 
 func (h ARawHook) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -137,7 +137,7 @@ func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 }
 
 func (h *ARawHook) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	return h.On(ctx, &request{
+	return h.On(ctx, &req{
 		r:   r,
 		w:   w,
 		ctx: ctx,

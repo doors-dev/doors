@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package attr
 
@@ -20,7 +20,7 @@ func (f *keyFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.AKeyDown{
-		On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.KeyboardEvent]) bool {
 			f.r.Update(ctx, 0, r.Event().Key)
 			f.r.Update(ctx, 1, "down")
 			return false
@@ -28,7 +28,7 @@ func (f *keyFragment) Main() gox.Elem {
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); gox.Noop(ctx)
 			__e = doors.AKeyUp{
-		On: func(ctx context.Context, r doors.REvent[doors.KeyboardEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.KeyboardEvent]) bool {
 			f.r.Update(ctx, 2, r.Event().Key)
 			f.r.Update(ctx, 3, "up")
 			if r.Event().ShiftKey {

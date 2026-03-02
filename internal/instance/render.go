@@ -20,7 +20,7 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, pipe door.Pipe) error {
+func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, pipe door.Pipe, static bool) error {
 	gz := !inst.Conf().ServerDisableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 	importMap, importHash := inst.importMap.generate()
 	inst.importMap = nil
@@ -28,6 +28,7 @@ func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, pipe doo
 	if gz {
 		wgz := gzip.NewWriter(w)
 		pipe.SendTo(&pagePrinter[M]{
+			static:    static,
 			inst:      inst,
 			w:         wgz,
 			importMap: importMap,
@@ -35,11 +36,19 @@ func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, pipe doo
 		return wgz.Close()
 	}
 	pipe.SendTo(&pagePrinter[M]{
+		static:    static,
 		inst:      inst,
 		w:         w,
 		importMap: importMap,
 	})
 	return pipe.Error()
+}
+
+func (inst *Instance[M]) getStatus() int {
+	if s := inst.pageStatus.Load(); s > 0 {
+		return int(s)
+	}
+	return http.StatusOK
 }
 
 func (inst *Instance[M]) renderHeaders(w http.ResponseWriter, gz bool, importHash []byte) {
@@ -54,10 +63,10 @@ func (inst *Instance[M]) renderHeaders(w http.ResponseWriter, gz bool, importHas
 	if gz {
 		w.Header().Set("Content-Encoding", "gzip")
 	}
-	w.WriteHeader(int(inst.pageStatus.Load()))
+	w.WriteHeader(inst.getStatus())
 }
 
-func (inst *Instance[M]) renderResources(ctx context.Context, w io.Writer, importMap []byte, wrap bool) error {
+func (inst *Instance[M]) renderResources(ctx context.Context, w io.Writer, importMap []byte, wrap bool, static bool) error {
 	cur := gox.NewCursor(ctx, gox.NewPrinter(w))
 	if wrap {
 		if err := cur.Init("head"); err != nil {
@@ -67,9 +76,10 @@ func (inst *Instance[M]) renderResources(ctx context.Context, w io.Writer, impor
 			return err
 		}
 	}
-
-	if err := front.Include(cur); err != nil {
-		return err
+	if !static {
+		if err := front.Include(cur); err != nil {
+			return err
+		}
 	}
 	if importMap != nil {
 		if err := cur.Init("script"); err != nil {
@@ -105,6 +115,7 @@ const (
 )
 
 type pagePrinter[M any] struct {
+	static      bool
 	inst        *Instance[M]
 	insertState printerResourceState
 	importMap   []byte
@@ -122,7 +133,7 @@ func (p *pagePrinter[M]) Send(job gox.Job) error {
 			p.headID = job.ID
 			p.insertState = printerInside
 		case strings.EqualFold(job.Tag, "body"):
-			if err := p.inst.renderResources(job.Context(), p.w, p.importMap, true); err != nil {
+			if err := p.inst.renderResources(job.Context(), p.w, p.importMap, true, p.static); err != nil {
 				return err
 			}
 			p.insertState = printerInserted
@@ -131,7 +142,7 @@ func (p *pagePrinter[M]) Send(job gox.Job) error {
 		openJob, openOk := job.(*gox.JobHeadOpen)
 		closeJob, closeOk := job.(*gox.JobHeadClose)
 		if (openOk && strings.EqualFold(openJob.Tag, "script")) || (closeOk && closeJob.ID == p.headID) {
-			if err := p.inst.renderResources(job.Context(), p.w, p.importMap, false); err != nil {
+			if err := p.inst.renderResources(job.Context(), p.w, p.importMap, false, p.static); err != nil {
 				return err
 			}
 			p.insertState = printerInserted

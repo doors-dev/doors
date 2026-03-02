@@ -12,13 +12,13 @@ import (
 	"errors"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/doors/internal/router/model"
 	"github.com/doors-dev/gox"
 )
 
@@ -28,7 +28,6 @@ func NewRouter() (router *Router) {
 	router = &Router{
 		sessions:        sync.Map{},
 		modelAdapters:   make(map[string]path.AnyAdapter),
-		modelRoutes:     make(map[string]anyModelRoute),
 		fallback:        nil,
 		conf:            conf,
 		buildProfiles:   resources.BaseProfile{},
@@ -43,7 +42,7 @@ type Route interface {
 	Serve(w http.ResponseWriter, r *http.Request)
 }
 
-type ErrorPageComponent = func(message string) gox.Elem
+type ErrorPageComponent = func(location path.Location, err error) gox.Comp
 
 type sessionHooks struct{}
 
@@ -55,8 +54,7 @@ type Router struct {
 	lisence         license.License
 	sessions        sync.Map
 	modelAdapters   map[string]path.AnyAdapter
-	modelRoutes     map[string]anyModelRoute
-	modelRouteList  []anyModelRoute
+	modelRoutes     []model.AnyModelRoute
 	routes          []Route
 	fallback        http.Handler
 	errPage         ErrorPageComponent
@@ -95,31 +93,19 @@ func (rr *Router) Conf() *common.SystemConf {
 	return rr.conf
 }
 
-func (rr *Router) ensureSession(r *http.Request, w http.ResponseWriter) (bool, *instance.Session) {
-	s := rr.getSession(r)
+func (rr *Router) ensureSession(w http.ResponseWriter, r *http.Request) *instance.Session {
+	s := rr.getSession(w, r)
 	if s != nil {
-		return false, s
+		return s
 	}
 	s = instance.NewSession(rr)
-	var expires time.Time
-	if rr.conf.SessionTTL != 0 {
-		expires = time.Now().Add(rr.conf.SessionTTL)
-	}
-	cookie := &http.Cookie{
-		Name:     "d0-r",
-		Value:    s.ID(),
-		HttpOnly: true,
-		Path:     "/",
-		SameSite: http.SameSiteLaxMode,
-		Expires:  expires,
-	}
 	rr.sessions.Store(s.ID(), s)
 	rr.sessionCallback.Create(s.ID(), r.Header)
-	http.SetCookie(w, cookie)
-	return true, s
+	s.Renew(w)
+	return s
 }
 
-func (rr *Router) getSession(r *http.Request) *instance.Session {
+func (rr *Router) getSession(w http.ResponseWriter, r *http.Request) *instance.Session {
 	c, err := r.Cookie("d0-r")
 	if err != nil {
 		return nil
@@ -128,18 +114,21 @@ func (rr *Router) getSession(r *http.Request) *instance.Session {
 	if !ok {
 		return nil
 	}
-	return v.(*instance.Session)
+	sess := v.(*instance.Session)
+	if !sess.Renew(w) {
+		return nil
+	}
+	return sess
 }
 
-func (rr *Router) addModelRoute(modelRoute anyModelRoute) {
-	name := modelRoute.getName()
-	_, has := rr.modelRoutes[name]
+func (rr *Router) addModelRoute(modelRoute model.AnyModelRoute) {
+	adapter := modelRoute.Adapter()
+	_, has := rr.modelAdapters[adapter.Name()]
 	if has {
-		panic(errors.New("Can't register same model twice " + name))
+		panic(errors.New("Can't register same model twice " + adapter.Name()))
 	}
-	rr.modelRoutes[name] = modelRoute
-	rr.modelAdapters[name] = modelRoute.getAdapter()
-	rr.modelRouteList = append(rr.modelRouteList, modelRoute)
+	rr.modelRoutes = append(rr.modelRoutes, modelRoute)
+	rr.modelAdapters[adapter.Name()] = adapter
 }
 
 func (rr *Router) addRoute(r Route) {

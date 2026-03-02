@@ -164,7 +164,7 @@ func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	if ok {
 		handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			if len(h.After) != 0 {
-				req := &request{w: w, r: r, ctx: ctx}
+				req := &req{w: w, r: r, ctx: ctx}
 				req.After(h.After)
 			}
 			on(ctx)

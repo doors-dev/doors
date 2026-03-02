@@ -39,7 +39,7 @@ type keyEventHook struct {
 	// Receives a typed REvent[KeyboardEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[KeyboardEvent]) bool
+	On func(context.Context, ReqEvent[KeyboardEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -89,7 +89,7 @@ type AKeyDown struct {
 	// Receives a typed REvent[KeyboardEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[KeyboardEvent]) bool
+	On func(context.Context, ReqEvent[KeyboardEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -131,7 +131,7 @@ type AKeyUp struct {
 	// Receives a typed REvent[KeyboardEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[KeyboardEvent]) bool
+	On func(context.Context, ReqEvent[KeyboardEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action

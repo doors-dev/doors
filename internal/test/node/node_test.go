@@ -9,8 +9,9 @@ import (
 
 func TestDoorLoadPage(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(pr doors.ModelRouter[test.Path], r doors.RModel[test.Path]) doors.ModelRoute {
-			return pr.App(&test.Page{
+		doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
+			return doors.ResPage(&test.Page{
+				Source: r,
 				Header: "Page Door",
 			})
 		})
@@ -149,4 +150,67 @@ func TestDoorMultiple(t *testing.T) {
 	if c != 100 {
 		t.Fatal("Counted after reaplce, need 100, got", c)
 	}
+}
+
+func TestDoorLifeCycle(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &LifeCycleFragment{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+	
+	test.TestMust(t, page, "#presist")
+	test.TestMustNot(t, page, "#new")
+	test.Click(t, page, "#updateEmpty")
+	test.TestMust(t, page, "#presist")
+	test.TestMust(t, page, "#new")
+	test.Click(t, page, "#updateContent")
+	test.TestMustNot(t, page, "#new")
+	test.TestMustNot(t, page, "#presist")
+	test.TestMust(t, page, "#presist2")
+	test.TestMust(t, page, "#new2")
+
+	test.Click(t, page, "#updateEditor")
+	test.TestMust(t, page, "#presist2")
+	test.TestMust(t, page, "#new2")
+
+
+	test.Click(t, page, "#clear")
+	test.TestMustNot(t, page, "#presist2")
+	test.TestMust(t, page, "#new2")
+	test.Click(t, page, "#updateEditor")
+	test.TestMustNot(t, page, "#presist2")
+	test.TestMust(t, page, "#new2")
+	test.Click(t, page, "#updateEditor")
+	test.TestMustNot(t, page, "#presist2")
+	test.TestMust(t, page, "#new2")
+
+
+	test.Click(t, page, "#updateContent")
+	test.TestMust(t, page, "#new2")
+	test.TestMust(t, page, "#presist2")
+
+	test.Click(t, page, "#remove")
+	test.TestMustNot(t, page, "#new2")
+	test.TestMustNot(t, page, "#presist2")
+
+
+	test.Click(t, page, "#updateEditor")
+	test.TestMustNot(t, page, "#new2")
+	test.TestMustNot(t, page, "#presist2")
+
+
+	test.Click(t, page, "#updateContent")
+	test.TestMust(t, page, "#new2")
+	test.TestMust(t, page, "#presist2")
+
+	test.Click(t, page, "#unmount")
+	test.TestMustNot(t, page, "#new2")
+	test.TestMustNot(t, page, "#presist2")
+
+
+	test.Click(t, page, "#updateEditor")
+	test.TestMust(t, page, "#new2")
+	test.TestMust(t, page, "#presist2")
 }

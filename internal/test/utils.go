@@ -111,8 +111,9 @@ func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
 	return NewBro(
 		b,
 		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.ModelRouter[Path], r doors.RModel[Path]) doors.ModelRoute {
-				return pr.App(&Page{
+			doors.UseModel(r, func(req doors.ReqModel, s doors.Source[Path]) doors.Res {
+				return doors.ResPage(&Page{
+					Source: s,
 					F: f(),
 				})
 			})

@@ -132,7 +132,7 @@ elem (f *indicatorFragment) button(id string, indicator []doors.Indicator) {
 func (f *indicatorFragment) handler(indicator []doors.Indicator) doors.Attr {
 	return doors.AClick{
 		Indicator: indicator,
-		On: func(ctx context.Context, r doors.REvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
 			<-time.After(500 * time.Millisecond)
 			return false
 		},

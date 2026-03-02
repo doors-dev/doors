@@ -63,6 +63,7 @@ type Instance interface {
 	SessionEnd()
 	InstanceEnd()
 	SessionID() string
+	Adapter(name string) (path.AnyAdapter, bool)
 }
 
 type Door interface {
@@ -85,6 +86,10 @@ var _ beam.Core = &core{}
 type core struct {
 	door Door
 	inst Instance
+}
+
+func (c Core) Adapter(name string) (path.AnyAdapter, bool) {
+	return c.inst.Adapter(name)
 }
 
 func (c Core) SessionExpire(d time.Duration) {

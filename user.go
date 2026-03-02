@@ -21,22 +21,22 @@ import (
 	"github.com/zeebo/blake3"
 )
 
-// ExpireSession sets the maximum lifetime of the current session.
-func ExpireSession(ctx context.Context, d time.Duration) {
+// SessionExpire sets the maximum lifetime of the current session.
+func SessionExpire(ctx context.Context, d time.Duration) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.SessionExpire(d)
 }
 
-// EndSession immediately ends the current session and all instances.
+// SessionEnd immediately ends the current session and all instances.
 // Use during logout to close authorized pages and free server resources.
-func EndSession(ctx context.Context) {
+func SessionEnd(ctx context.Context) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.SessionEnd()
 }
 
-// EndInstance ends the current instance (tab/window) but keeps the session
+// InstanceEnd ends the current instance (tab/window) but keeps the session
 // and other instances active.
-func EndInstance(ctx context.Context) {
+func InstanceEnd(ctx context.Context) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.InstanceEnd()
 }
@@ -55,52 +55,18 @@ func SessionId(ctx context.Context) string {
 	return core.SessionID()
 }
 
-// SessionSave stores a key/value in session-scoped storage shared by all
-// instances in the session. Returns the previous value under the key.
-func SessionSave(ctx context.Context, key any, value any) any {
-	return ctex.StoreSwap(ctx, ctex.KeySessionStore, key, value)
+type Store = ctex.Store
+
+// SessionStore returns session-scoped goroutine-safe
+// storage
+func SessionStore(ctx context.Context) Store {
+	return ctx.Value(ctex.KeySessionStore).(Store)
 }
 
-// SessionLoad gets a value from session-scoped storage by key.
-// Returns nil if absent. Callers must type-assert the result.
-func SessionLoad(ctx context.Context, key any) any {
-	return ctex.StoreLoad(ctx, ctex.KeySessionStore, key)
-}
-
-// SessionInit returns the value stored under key in session-scoped storage,
-// initializing it with new() if the key is not already present.
-func SessionInit(ctx context.Context, key any, new func() any) any {
-	return ctex.StoreInit(ctx, ctex.KeySessionStore, key, new)
-}
-
-// SessionRemove deletes a key/value from session-scoped storage.
-// Returns the removed value or nil if absent.
-func SessionRemove(ctx context.Context, key any) any {
-	return ctex.StoreRemove(ctx, ctex.KeySessionStore, key)
-}
-
-// InstanceSave stores a key/value in instance-scoped storage.
-// Returns the previous value.
-func InstanceSave(ctx context.Context, key any, value any) any {
-	return ctex.StoreSwap(ctx, ctex.KeyInstanceStore, key, value)
-}
-
-// InstanceLoad gets a value from instance-scoped storage by key.
-// Returns nil if absent. Callers must type-assert the result.
-func InstanceLoad(ctx context.Context, key any) any {
-	return ctex.StoreLoad(ctx, ctex.KeyInstanceStore, key)
-}
-
-// InstanceInit returns the value stored under key in instance-scoped storage,
-// initializing it with new() if the key is not already present.
-func InstanceInit(ctx context.Context, key any, new func() any) any {
-	return ctex.StoreInit(ctx, ctex.KeyInstanceStore, key, new)
-}
-
-// InstanceRemove deletes a key/value from instance-scoped storage.
-// Returns the removed value or nil if absent.
-func InstanceRemove(ctx context.Context, key any) any {
-	return ctex.StoreRemove(ctx, ctex.KeyInstanceStore, key)
+// InstanceStore returns instance-scoped goroutine-safe
+// storage
+func InstanceStore(ctx context.Context) Store {
+	return ctx.Value(ctex.KeySessionStore).(Store)
 }
 
 // Location represents a URL built from a path model: path plus query.
@@ -111,9 +77,9 @@ type Location = path.Location
 // for the model's type.
 // Returns an error if no adapter is registered or encoding fails.
 func NewLocation(ctx context.Context, model any) (Location, error) {
-	adapters := ctx.Value(ctex.KeyAdapters).(map[string]path.AnyAdapter)
+	core := ctx.Value(ctex.KeyCore).(core.Core)
 	name := path.GetAdapterName(model)
-	adapter, ok := adapters[name]
+	adapter, ok := core.Adapter(name)
 	if !ok {
 		var l Location
 		return l, errors.New("adapter for " + name + " is not registered")
@@ -123,7 +89,7 @@ func NewLocation(ctx context.Context, model any) (Location, error) {
 		var l Location
 		return l, err
 	}
-	return *location, nil
+	return location, nil
 }
 
 // RandId returns a cryptographically secure, URL-safe random ID.

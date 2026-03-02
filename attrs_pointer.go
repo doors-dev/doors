@@ -39,7 +39,7 @@ type pointerEventHook struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -86,7 +86,7 @@ type AClick struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -125,7 +125,7 @@ type APointerDown struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -164,7 +164,7 @@ type APointerUp struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -203,7 +203,7 @@ type APointerMove struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -242,7 +242,7 @@ type APointerOver struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -281,7 +281,7 @@ type APointerOut struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -320,7 +320,7 @@ type APointerEnter struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -359,7 +359,7 @@ type APointerLeave struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -398,7 +398,7 @@ type APointerCancel struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -437,7 +437,7 @@ type AGotPointerCapture struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -476,7 +476,7 @@ type ALostPointerCapture struct {
 	// Receives a typed REvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, REvent[PointerEvent]) bool
+	On func(context.Context, ReqEvent[PointerEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action

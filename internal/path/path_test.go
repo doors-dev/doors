@@ -45,7 +45,7 @@ func testPath[V any](t *testing.T, path string, expected bool) (*V, *Adapter[V])
 		t.Error("Can't create adapter", err)
 	}
 	parsedURL, err := url.Parse(path)
-	li := &Location{
+	li := Location{
 		Path:  parsedURL.Path,
 		Query: parsedURL.Query(),
 	}
@@ -66,7 +66,7 @@ func testPath[V any](t *testing.T, path string, expected bool) (*V, *Adapter[V])
 	if !reflect.DeepEqual(lo.Path, li.Path) {
 		t.Error("encoding output did not match path input", lo.Path, li.Path)
 	}
-	return p, a
+	return &p, a
 }
 
 func TestRootPath(t *testing.T) {

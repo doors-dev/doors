@@ -124,7 +124,7 @@ func (a *adapterBuilder[M]) processParams() error {
 	return nil
 }
 
-func (a *adapterBuilder[M]) build() (*Adapter[M], error) {
+func (a *adapterBuilder[M]) build() (Adapter[M], error) {
 	err := a.readStruct()
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func (a *adapterBuilder[M]) build() (*Adapter[M], error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Adapter[M]{
+	return &adapter[M]{
 		g:    a.g,
 		name: a.name,
 	}, nil

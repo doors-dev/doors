@@ -17,7 +17,6 @@ func TestKey(t *testing.T) {
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
-	<-time.After(200 * time.Hour)
 	test.Click(t, page, "#input")
 	page.Keyboard.Press(input.KeyC)
 	<-time.After(300 * time.Millisecond)

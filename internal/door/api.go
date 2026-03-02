@@ -39,10 +39,11 @@ func (d *Door) Replace(ctx context.Context, content any) {
 	d.replace(ctx, content)
 }
 
-// Remove removes the door and its DOM element from the page.
+// Delete removes the door and its DOM element from the page, while
+// resetting it's content.
 // If the door is not currently mounted, it is marked as removed and will
 // not render if attempted to be rendered.
-func (d *Door) Remove(ctx context.Context) {
+func (d *Door) Delete(ctx context.Context) {
 	ctx = ctex.ClearBlockingCtx(ctx)
 	d.replace(ctx, nil)
 }
@@ -91,13 +92,13 @@ func (d *Door) XReplace(ctx context.Context, content any) <-chan error {
 	return d.replace(ctx, content)
 }
 
-// XRemove returns a channel that can be used to track when the remove operation completes.
+// XDelete returns a channel that can be used to track when the remove operation completes.
 // The channel will receive nil on success or an error if the operation fails.
 // The channel is closed after sending the result. If the door is not mounted,
 // the channel is closed immediately without sending any value.
 // Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
-func (d *Door) XRemove(ctx context.Context) <-chan error {
-	ctex.LogBlockingWarning(ctx, "Door", "XRemove")
+func (d *Door) XDelete(ctx context.Context) <-chan error {
+	ctex.LogBlockingWarning(ctx, "Door", "XDelete")
 	return d.replace(ctx, nil)
 }
 
