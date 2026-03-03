@@ -27,8 +27,8 @@ const (
 )
 
 type innerWatcher interface {
-	init(id common.ID, ctx context.Context, seq uint) initResult
-	sync(id common.ID, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool
+	init(id int, ctx context.Context, seq uint) initResult
+	sync(id int, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool
 	cancel()
 }
 
@@ -46,6 +46,7 @@ type watcher struct {
 	inner     innerWatcher
 	initGuard chan struct{}
 	screens   common.Set[*screen]
+	id        int
 }
 
 func (w *watcher) register(screen *screen) {
@@ -75,13 +76,13 @@ func (w *watcher) Cancel() {
 	w.inner.cancel()
 }
 
-func (w *watcher) init(id common.ID, ctx context.Context, seq uint) {
+func (w *watcher) init(ctx context.Context, seq uint) {
 	w.mu.Lock()
 	if w.done {
 		w.mu.Unlock()
 		panic("Can't be done before all screens are initialized")
 	}
-	res := w.inner.init(id, ctx, seq)
+	res := w.inner.init(w.id, ctx, seq)
 	switch res {
 	case initContinue:
 		close(w.initGuard)
@@ -97,15 +98,14 @@ func (w *watcher) init(id common.ID, ctx context.Context, seq uint) {
 	}
 }
 
-func (w *watcher) sync(id common.ID, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) {
-
+func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) {
 	<-w.initGuard
 	w.mu.Lock()
 	if w.done {
 		w.mu.Unlock()
 		return
 	}
-	done := w.inner.sync(id, ctx, seq, cleanFrame)
+	done := w.inner.sync(w.id, ctx, seq, cleanFrame)
 	w.done = done
 	w.mu.Unlock()
 	if done {
@@ -131,7 +131,7 @@ func (s *singleWatcher[T]) cancel() {
 	s.w.Cancel()
 }
 
-func (s *singleWatcher[T]) init(id common.ID, ctx context.Context, seq uint) initResult {
+func (s *singleWatcher[T]) init(_id int, ctx context.Context, seq uint) initResult {
 	s.ctx = ctx
 	s.seq = seq
 	v, _ := s.beam.sync(0, seq, nil)
@@ -144,8 +144,9 @@ func (s *singleWatcher[T]) init(id common.ID, ctx context.Context, seq uint) ini
 	return initWatch
 }
 
-func (s *singleWatcher[T]) sync(id common.ID, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool {
+func (s *singleWatcher[T]) sync(_id int, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool {
 	v, updated := s.beam.sync(s.seq, seq, cleanFrame)
+	s.seq = seq
 	if v == nil {
 		panic("update sync logic error:" + fmt.Sprint(seq))
 	}
@@ -157,4 +158,3 @@ func (s *singleWatcher[T]) sync(id common.ID, ctx context.Context, seq uint, cle
 }
 
 var _ innerWatcher = &singleWatcher[any]{}
-

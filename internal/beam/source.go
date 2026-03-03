@@ -161,9 +161,6 @@ func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool)
 	if !ok {
 		return value, true
 	}
-	if prevValue == value {
-		return value, false
-	}
 	return value, !s.equal(*value, *prevValue)
 }
 

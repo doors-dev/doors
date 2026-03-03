@@ -268,7 +268,6 @@ func TitleMeta[M any](b Beam[M], el func(M) gox.Elem) gox.Editor {
 		eventName := fmt.Sprintf("head~%d", core.NewID())
 		currentSeq := &atomic.Uint32{}
 		m, ok := b.ReadAndSub(cur.Context(), func(ctx context.Context, m M) bool {
-			slog.Info("TitleMeta", "m", m)
 			seq := currentSeq.Add(1)
 			report := ctex.WgAdd(ctx)
 			core.Runtime().Submit(ctx, func(ok bool) {

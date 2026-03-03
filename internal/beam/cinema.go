@@ -54,7 +54,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 				if !ok {
 					return
 				}
-				watcher.sync(s.sourceId, ctx, seq, cleanFrame)
+				watcher.sync(ctx, seq, cleanFrame)
 			})
 		}
 		watchersFrame.Release()
@@ -233,7 +233,7 @@ func (c *cinema) addWatcher(src anySource, w *watcher) bool {
 	}
 	seq := s.addWatcher(w)
 	c.mu.Unlock()
-	w.init(s.sourceId, c.ctx(), seq)
+	w.init(c.ctx(), seq)
 	return true
 }
 

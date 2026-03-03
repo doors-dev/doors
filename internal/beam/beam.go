@@ -121,7 +121,7 @@ func (b *beam[T1, T2]) addWatcher(ctx context.Context, w *watcher) bool {
 	return b.source.addWatcher(ctx, w)
 }
 
-func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (*T2, bool) {
+func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (v *T2, u bool) {
 	e, has := b.values[seq]
 	if has {
 		if prev == 0 {
