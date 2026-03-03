@@ -12,7 +12,6 @@ package beam
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/common/ctxwg"
@@ -76,6 +75,7 @@ type SourceBeam[T any] interface {
 	// DisableSkipping makes data propagation continue even if a new value
 	// is issued. Useful, if you use beam as a communication channel
 	// and want all data to be delivered to subscribers.
+	// Deprecated: skipping is always disabled due to logic bug
 	DisableSkipping()
 }
 
@@ -88,7 +88,6 @@ type source[T any] struct {
 	init   sync.Once
 	equal  func(new T, old T) bool
 	mu     sync.RWMutex
-	noSkip bool
 }
 
 func NewSourceBeamEqual[T any](init T, equal func(new T, old T) bool) SourceBeam[T] {
@@ -112,7 +111,6 @@ func NewSourceBeam[T comparable](init T) SourceBeam[T] {
 }
 
 func (s *source[T]) DisableSkipping() {
-	s.noSkip = true
 }
 
 func (s *source[T]) Latest() T {
@@ -188,23 +186,9 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 	done := ctxwg.Add(ctx)
 	syncThread := s.inst.Thread()
 	c := common.NewFuncCollector()
-	stopped := atomic.Bool{}
-	stop := func() bool {
-		if s.noSkip {
-			return false
-		}
-		if stopped.Load() {
-			return true
-		}
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		if seq == s.seq {
-			return false
-		}
-		stopped.Store(true)
-		return true
-	}
-	cinema.InitSync(syncThread, ctx, s.id, seq, c, stop)
+	cinema.InitSync(syncThread, ctx, s.id, seq, c, func() bool {
+		return false
+	})
 	shredder.Run(func(t *shredder.Thread) {
 		defer done()
 		if t == nil {
@@ -214,9 +198,6 @@ func (s *source[T]) applyMutation(ctx context.Context, m func(*T) (*T, bool)) <-
 		}
 		ch <- nil
 		close(ch)
-		if stopped.Load() {
-			return
-		}
 		c.Apply()
 		s.mu.Lock()
 		defer s.mu.Unlock()
