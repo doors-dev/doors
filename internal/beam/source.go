@@ -110,6 +110,11 @@ func (s *source[T]) removeSub(sc *screen) {
 }
 
 func NewSourceEqual[T any](init T, equal func(new T, old T) bool) Source[T] {
+	if equal == nil {
+		equal = func(T, T) bool {
+			return false
+		}
+	}
 	return &source[T]{
 		id:  common.NewID(),
 		seq: 1,
@@ -139,11 +144,27 @@ func (s *source[T]) Get() T {
 	return *s.values[s.seq]
 }
 
-func (s *source[T]) sync(seq uint, _ shredder.SimpleFrame) (*T, bool) {
+func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	value, ok := s.values[seq]
-	return value, ok
+	if !ok {
+		return nil, false
+	}
+	if prev == 0 {
+		return value, true
+	}
+	if prev == seq-1 {
+		return value, true
+	}
+	prevValue, ok := s.values[prev]
+	if !ok {
+		return value, true
+	}
+	if prevValue == value {
+		return value, false
+	}
+	return value, !s.equal(*value, *prevValue)
 }
 
 func (s *source[T]) XUpdate(ctx context.Context, v T) <-chan error {

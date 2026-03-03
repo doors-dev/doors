@@ -13,28 +13,20 @@ import (
 )
 
 // Watcher defines hooks for observing and reacting to the lifecycle of a Beam value stream.
-// Implementers can perform custom logic during initialization, on each update, and when canceled.
 type Watcher[T any] interface {
 	// Cancel is called when the watcher is terminated due to context cancellation.
+	// or cancel function call.
 	Cancel()
-
-	// Init is called with the initial value. The seq parameter represents the sequence number
-	// of the update. Called in the same goroutine where the watcher was added.
-	//
-	// Return true (done) to stop receiving updates after this call.
-	Init(ctx context.Context, value *T, seq uint) bool
-
-	// Update is called for each subsequent update to the value.
-	// The seq parameter increments with each update.
-	//
+	// Called with initial value syncronously and then
+	// with each update in it's own goroutine
 	// Return true (done) to stop receiving further updates.
-	Update(ctx context.Context, value *T, seq uint) bool
+	Watch(ctx context.Context, value T) bool
 }
 
 func none() {}
 
 func (b *beam[T, T2]) AddWatcher(ctx context.Context, w Watcher[T2]) (context.CancelFunc, bool) {
-	watcher := newWatcher(ctx, b, w)
+	watcher := newWatcher(newSingleWatcher(b, w))
 	ok := b.addWatcher(ctx, watcher)
 	if !ok {
 		return none, false
@@ -42,7 +34,7 @@ func (b *beam[T, T2]) AddWatcher(ctx context.Context, w Watcher[T2]) (context.Ca
 	return watcher.Cancel, true
 }
 func (s *source[T]) AddWatcher(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool) {
-	watcher := newWatcher(ctx, s, w)
+	watcher := newWatcher(newSingleWatcher(s, w))
 	ok := s.addWatcher(ctx, watcher)
 	if !ok {
 		return none, false
@@ -51,32 +43,25 @@ func (s *source[T]) AddWatcher(ctx context.Context, w Watcher[T]) (context.Cance
 }
 
 type genericWatcher[T any] struct {
-	init   func(context.Context, *T, uint) bool
-	update func(context.Context, *T, uint) bool
+	watch  func(context.Context, T) bool
 	cancel func()
 }
 
-func (l *genericWatcher[T]) Init(ctx context.Context, value *T, seq uint) bool {
-	return l.init(ctx, value, seq)
-}
-
-func (l *genericWatcher[T]) Update(ctx context.Context, v *T, seq uint) bool {
-	return l.update(ctx, v, seq)
+func (l *genericWatcher[T]) Watch(ctx context.Context, value T) bool {
+	return l.watch(ctx, value)
 }
 
 func (l *genericWatcher[T]) Cancel() {
-	if l.cancel != nil {
-		l.cancel()
+	if l.cancel == nil {
+		return
 	}
+	l.cancel()
 }
 
 func sub[T any](b Beam[T], ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (context.CancelFunc, bool) {
 	cancel, ok := b.AddWatcher(ctx, &genericWatcher[T]{
-		init: func(ctx context.Context, v *T, _ uint) bool {
-			return onValue(ctx, *v)
-		},
-		update: func(ctx context.Context, v *T, _ uint) bool {
-			return onValue(ctx, *v)
+		watch: func(ctx context.Context, v T) bool {
+			return onValue(ctx, v)
 		},
 		cancel: onCancel,
 	})
@@ -86,12 +71,12 @@ func sub[T any](b Beam[T], ctx context.Context, onValue func(context.Context, T)
 func readAndSub[T any](b Beam[T], ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (*T, context.CancelFunc, bool) {
 	var initVal *T
 	cancel, ok := b.AddWatcher(ctx, &genericWatcher[T]{
-		init: func(_ context.Context, v *T, _ uint) bool {
-			initVal = v
-			return onValue == nil
-		},
-		update: func(ctx context.Context, v *T, _ uint) bool {
-			return onValue(ctx, *v)
+		watch: func(ctx context.Context, v T) bool {
+			if initVal == nil {
+				initVal = &v
+				return onValue == nil
+			}
+			return onValue(ctx, v)
 		},
 		cancel: onCancel,
 	})

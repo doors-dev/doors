@@ -71,60 +71,73 @@ type Beam[T any] interface {
 	AddWatcher(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool)
 
 	addWatcher(ctx context.Context, w *watcher) bool
-	sync(uint, shredder.SimpleFrame) (*T, bool)
-}
-
-func NewBeamEqual[T any, T2 any](source Beam[T], cast func(T) T2, equal func(new T2, old T2) bool) Beam[T2] {
-	return &beam[T, T2]{
-		source: source,
-		values: make(map[uint]*entry[T2]),
-		mu:     sync.Mutex{},
-		cast: func(v *T) *T2 {
-			v2 := cast(*v)
-			return &v2
-		},
-		equal: equal,
-	}
-}
-
-func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
-	equal := func(new T2, old T2) bool {
-		return new == old
-	}
-	return &beam[T, T2]{
-		source: source,
-		values: make(map[uint]*entry[T2]),
-		mu:     sync.Mutex{},
-		cast: func(v *T) *T2 {
-			v2 := cast(*v)
-			return &v2
-		},
-		equal: equal,
-	}
+	sync(uint, uint, shredder.SimpleFrame) (*T, bool)
 }
 
 type entry[T any] struct {
-	val     *T
+	value   *T
+	prev    uint
 	updated bool
 }
 
-type beam[T any, T2 any] struct {
-	source Beam[T]
-	values map[uint]*entry[T2]
+func NewBeamEqual[T1 any, T2 any](source Beam[T1], cast func(T1) T2, equal func(new T2, old T2) bool) Beam[T2] {
+	if equal == nil {
+		equal = func(T2, T2) bool {
+			return false
+		}
+	}
+	return &beam[T1, T2]{
+		source: source,
+		values: make(map[uint]entry[T2]),
+		mu:     sync.Mutex{},
+		cast:   cast,
+		equal:  equal,
+	}
+}
+
+func NewBeam[T1 any, T2 comparable](source Beam[T1], cast func(T1) T2) Beam[T2] {
+	equal := func(new T2, old T2) bool {
+		return new == old
+	}
+	return &beam[T1, T2]{
+		source: source,
+		values: make(map[uint]entry[T2]),
+		mu:     sync.Mutex{},
+		cast:   cast,
+		equal:  equal,
+	}
+}
+
+type beam[T1 any, T2 any] struct {
+	source Beam[T1]
+	values map[uint]entry[T2]
 	mu     sync.Mutex
-	cast   func(*T) *T2
+	cast   func(T1) T2
 	equal  func(new T2, old T2) bool
 	null   T2
 }
 
-func (b *beam[T, T2]) addWatcher(ctx context.Context, w *watcher) bool {
+func (b *beam[T1, T2]) addWatcher(ctx context.Context, w *watcher) bool {
 	return b.source.addWatcher(ctx, w)
 }
 
-func (b *beam[T, T2]) syncEntry(seq uint, after shredder.SimpleFrame) *entry[T2] {
+func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (*T2, bool) {
 	e, has := b.values[seq]
 	if has {
-		return e
+		if prev == 0 {
+			return e.value, true
+		}
+		if e.prev == prev {
+			return e.value, e.updated
+		}
+		prevValue, has := b.values[prev]
+		if !has {
+			return e.value, true
+		}
+		e.updated = b.equal(*e.value, *prevValue.value)
+		e.prev = prev
+		b.values[seq] = e
+		return e.value, e.updated
 	}
 	if after != nil {
 		after.Run(nil, nil, func(bool) {
@@ -137,67 +150,52 @@ func (b *beam[T, T2]) syncEntry(seq uint, after shredder.SimpleFrame) *entry[T2]
 			}
 		})
 	}
-	sourceVal, updated := b.source.sync(seq, after)
+	sourceVal, updated := b.source.sync(prev, seq, after)
 	if sourceVal == nil {
-		return nil
-	}
-	if !updated {
-		prevEntry, has := b.values[seq-1]
-		if has {
-			return &entry[T2]{
-				val:     prevEntry.val,
-				updated: false,
-			}
-		}
-		return &entry[T2]{
-			val:     b.cast(sourceVal),
-			updated: false,
-		}
-	}
-	newVal := b.cast(sourceVal)
-	if b.equal == nil {
-		return &entry[T2]{
-			val:     newVal,
-			updated: true,
-		}
-	}
-	var prevVal *T2 = nil
-	prevEntry, has := b.values[seq-1]
-	if has {
-		prevVal = prevEntry.val
-	} else {
-		sourcePrevVal, _ := b.source.sync(seq-1, nil)
-		if sourcePrevVal != nil {
-			prevVal = b.cast(sourcePrevVal)
-		}
-	}
-	if prevVal == nil {
-		return &entry[T2]{
-			val:     newVal,
-			updated: true,
-		}
-	}
-	if b.equal(*newVal, *prevVal) {
-		return &entry[T2]{
-			val:     prevVal,
-			updated: false,
-		}
-	}
-	return &entry[T2]{
-		val:     newVal,
-		updated: true,
-	}
-
-}
-
-func (b *beam[T, T2]) sync(seq uint, after shredder.SimpleFrame) (*T2, bool) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	entry := b.syncEntry(seq, after)
-	if entry == nil {
 		return nil, false
 	}
-	b.values[seq] = entry
+	if !updated {
+		prevValue, has := b.values[prev]
+		if has {
+			return prevValue.value, false
+		}
+		value := b.cast(*sourceVal)
+		b.values[seq] = entry[T2]{
+			value:   &value,
+			prev:    prev,
+			updated: false,
+		}
+		return &value, false
+	}
+	newValue := b.cast(*sourceVal)
+	prevValue, has := b.values[prev]
+	if !has {
+		b.values[seq] = entry[T2]{
+			value:   &newValue,
+			prev:    prev,
+			updated: true,
+		}
+		return &newValue, true
+	}
+	updated = !b.equal(newValue, *prevValue.value)
+	if !updated {
+		b.values[seq] = entry[T2]{
+			value:   prevValue.value,
+			prev:    prev,
+			updated: false,
+		}
+		return prevValue.value, false
+	}
+	b.values[seq] = entry[T2]{
+		value:   &newValue,
+		prev:    prev,
+		updated: true,
+	}
+	return &newValue, true
+}
 
-	return entry.val, entry.updated
+func (b *beam[T1, T2]) sync(prev uint, seq uint, after shredder.SimpleFrame) (*T2, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.syncEntry(prev, seq, after)
 }

@@ -11,43 +11,141 @@ package beam
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
+	"sync"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-type anyInnerWatcher interface {
-	setContext(context.Context)
-	init(uint) bool
-	sync(context.Context, uint, shredder.SimpleFrame) bool
+type initResult int
+
+const (
+	initContinue initResult = iota
+	initWatch
+	initDone
+)
+
+type innerWatcher interface {
+	init(id common.ID, ctx context.Context, seq uint) initResult
+	sync(id common.ID, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool
 	cancel()
 }
 
-type innerWatcher[T any] struct {
-	ctx  context.Context
+func newWatcher(inner innerWatcher) *watcher {
+	return &watcher{
+		screens:   common.NewSet[*screen](),
+		inner:     inner,
+		initGuard: make(chan struct{}),
+	}
+}
+
+type watcher struct {
+	mu        sync.Mutex
+	done      bool
+	inner     innerWatcher
+	initGuard chan struct{}
+	screens   common.Set[*screen]
+}
+
+func (w *watcher) register(screen *screen) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.done {
+		panic("Can't be done before all screens are registered")
+	}
+	w.screens.Add(screen)
+}
+
+func (w *watcher) unregister() {
+	for s := range w.screens {
+		s.removeWatcher(w)
+	}
+}
+
+func (w *watcher) Cancel() {
+	w.mu.Lock()
+	if w.done {
+		w.mu.Unlock()
+		return
+	}
+	w.done = true
+	w.mu.Unlock()
+	w.unregister()
+	w.inner.cancel()
+}
+
+func (w *watcher) init(id common.ID, ctx context.Context, seq uint) {
+	w.mu.Lock()
+	if w.done {
+		w.mu.Unlock()
+		panic("Can't be done before all screens are initialized")
+	}
+	res := w.inner.init(id, ctx, seq)
+	switch res {
+	case initContinue:
+		close(w.initGuard)
+		w.mu.Unlock()
+	case initWatch:
+		close(w.initGuard)
+		w.mu.Unlock()
+	case initDone:
+		close(w.initGuard)
+		w.done = true
+		w.mu.Unlock()
+		w.unregister()
+	}
+}
+
+func (w *watcher) sync(id common.ID, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) {
+
+	<-w.initGuard
+	w.mu.Lock()
+	if w.done {
+		w.mu.Unlock()
+		return
+	}
+	done := w.inner.sync(id, ctx, seq, cleanFrame)
+	w.done = done
+	w.mu.Unlock()
+	if done {
+		w.unregister()
+	}
+}
+
+func newSingleWatcher[T any](beam Beam[T], w Watcher[T]) innerWatcher {
+	return &singleWatcher[T]{
+		beam: beam,
+		w:    w,
+	}
+}
+
+type singleWatcher[T any] struct {
 	beam Beam[T]
 	w    Watcher[T]
+	ctx  context.Context
+	seq  uint
 }
 
-func (s *innerWatcher[T]) setContext(ctx context.Context) {
-	s.ctx = ctx
-}
-
-func (s *innerWatcher[T]) cancel() {
+func (s *singleWatcher[T]) cancel() {
 	s.w.Cancel()
 }
 
-func (s *innerWatcher[T]) init(seq uint) bool {
-	v, _ := s.beam.sync(seq, nil)
+func (s *singleWatcher[T]) init(id common.ID, ctx context.Context, seq uint) initResult {
+	s.ctx = ctx
+	s.seq = seq
+	v, _ := s.beam.sync(0, seq, nil)
 	if v == nil {
 		panic("init sync logic error:" + fmt.Sprint(seq))
 	}
-	return s.w.Init(s.ctx, v, seq)
+	if s.w.Watch(ctx, *v) {
+		return initDone
+	}
+	return initWatch
 }
 
-func (s *innerWatcher[T]) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool {
-	v, updated := s.beam.sync(seq, cleanFrame)
+func (s *singleWatcher[T]) sync(id common.ID, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool {
+	v, updated := s.beam.sync(s.seq, seq, cleanFrame)
 	if v == nil {
 		panic("update sync logic error:" + fmt.Sprint(seq))
 	}
@@ -55,58 +153,8 @@ func (s *innerWatcher[T]) sync(ctx context.Context, seq uint, cleanFrame shredde
 		return false
 	}
 	ctx = ctex.WgInfect(ctx, s.ctx)
-	return s.w.Update(ctx, v, seq)
+	return s.w.Watch(ctx, *v)
 }
 
-type watcher struct {
-	inner     anyInnerWatcher
-	initGuard chan struct{}
-	initSeq   uint
-	done      atomic.Bool
-	screen    *screen
-	ctx       context.Context
-}
+var _ innerWatcher = &singleWatcher[any]{}
 
-func newWatcher[T any](ctx context.Context, beam Beam[T], w Watcher[T]) *watcher {
-	return &watcher{
-		inner: &innerWatcher[T]{
-			beam: beam,
-			w:    w,
-			ctx:  ctx,
-		},
-		initGuard: make(chan struct{}),
-	}
-}
-
-func (w *watcher) Cancel() {
-	if !w.done.CompareAndSwap(false, true) {
-		return
-	}
-	w.inner.cancel()
-	w.screen.removeWatcher(w)
-}
-
-func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) {
-	<-w.initGuard
-	if w.done.Load() {
-		return
-	}
-	if w.inner.sync(ctx, seq, cleanFrame) {
-		if !w.done.CompareAndSwap(false, true) {
-			return
-		}
-		w.screen.removeWatcher(w)
-	}
-}
-
-func (w *watcher) init() {
-	if w.initSeq == 0 {
-		panic("watcher init seq is not set")
-	}
-	done := w.inner.init(w.initSeq)
-	remove := done && w.done.CompareAndSwap(false, done)
-	close(w.initGuard)
-	if remove {
-		w.screen.removeWatcher(w)
-	}
-}

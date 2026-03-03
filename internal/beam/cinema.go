@@ -54,7 +54,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 				if !ok {
 					return
 				}
-				watcher.sync(ctx, seq, cleanFrame)
+				watcher.sync(s.sourceId, ctx, seq, cleanFrame)
 			})
 		}
 		watchersFrame.Release()
@@ -128,15 +128,15 @@ func (s *screen) removeWatcher(w *watcher) {
 	s.mu.Unlock()
 }
 
-func (s *screen) addWatcher(w *watcher) {
+func (s *screen) addWatcher(w *watcher) uint {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.watchers == nil {
 		s.watchers = common.NewSet[*watcher]()
 	}
 	s.watchers.Add(w)
-	w.initSeq = s.seq
-	w.screen = s
+	w.register(s)
+	return s.seq
 }
 
 func (s *screen) addSub(sub *screen) {
@@ -229,11 +229,11 @@ func (c *cinema) addWatcher(src anySource, w *watcher) bool {
 	s, ok := c.getScreen(src)
 	if !ok {
 		c.mu.Unlock()
-		return true
+		return false
 	}
-	s.addWatcher(w)
+	seq := s.addWatcher(w)
 	c.mu.Unlock()
-	w.init()
+	w.init(s.sourceId, c.ctx(), seq)
 	return true
 }
 
