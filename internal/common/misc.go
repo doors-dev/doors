@@ -83,8 +83,35 @@ func RandId() string {
 	if err != nil {
 		log.Fatalf("failed to generate random bytes: %v", err)
 	}
-	randomBytes[0] |= 0x80
-	return base58.Encode(randomBytes)
+	return EnsureNoFirstDigit(base58.Encode(randomBytes))
+}
+
+func EnsureNoFirstDigit(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	c := s[0]
+	if c < '1' || c > '9' {
+		return s
+	}
+	repl := digitToLetter[c-'0']
+	out := make([]byte, len(s))
+	copy(out, s)
+	out[0] = repl
+	return string(out)
+}
+
+var digitToLetter = [10]byte{
+	'z', // '0'
+	'o', // '1'
+	't', // '2'
+	'r', // '3'
+	'f', // '4'
+	'i', // '5'
+	's', // '6'
+	'v', // '7'
+	'e', // '8'
+	'n', // '9'
 }
 
 func Zip(input []byte) ([]byte, error) {

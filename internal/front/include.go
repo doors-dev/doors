@@ -61,9 +61,6 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.AttrSet("data-ping", conf.SolitairePing.Milliseconds()); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("data-detached", core.Detached()); err != nil {
-			return err
-		}
 		lic := core.License()
 		if lic != nil {
 			licInfo := fmt.Sprintf("%s:%s:%s", lic.GetId(), lic.GetTier().String(), lic.GetDomain())

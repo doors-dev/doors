@@ -28,14 +28,12 @@ func newNavigator[M any](
 	adapters map[string]path.AnyAdapter,
 	beam beam.Source[M],
 	ctx context.Context,
-	detached bool,
 	rerouted bool,
 ) *navigator[M] {
 	return &navigator[M]{
 		inst:        inst,
 		adapter:     adapter,
 		adapters:    adapters,
-		detached:    detached,
 		rerouted:    rerouted,
 		historyHead: &historyHead[M]{},
 		ctx:         ctx,
@@ -49,17 +47,12 @@ type navigator[M any] struct {
 	inst        *Instance[M]
 	adapter     path.Adapter[M]
 	adapters    map[string]path.AnyAdapter
-	detached    bool
 	rerouted    bool
 	model       beam.Source[M]
 	mu          sync.Mutex
 	historyHead *historyHead[M]
 	ctx         context.Context
 	seq         int
-}
-
-func (n *navigator[M]) isDetached() bool {
-	return n.detached
 }
 
 type navigatorState[M any] struct {
@@ -124,13 +117,13 @@ func (n *navigator[M]) init() {
 		}
 	})
 	ns, ok := state.ReadAndSub(n.ctx, func(ctx context.Context, ns navigatorState[M]) bool {
-		n.pushHistory(&ns, !n.detached, false)
+		n.pushHistory(&ns, true, false)
 		return false
 	})
 	if !ok {
 		return
 	}
-	n.pushHistory(&ns, n.rerouted && !n.detached, true)
+	n.pushHistory(&ns, n.rerouted, true)
 }
 
 func (n *navigator[M]) restore(r *http.Request) bool {

@@ -53,7 +53,6 @@ type Instance interface {
 	ID() string
 	RootID() uint64
 	Conf() *common.SystemConf
-	Detached() bool
 	NewID() uint64
 	NewLink(any) (Link, error)
 	Runtime() shredder.Runtime
@@ -132,10 +131,6 @@ func (c Core) DoorID() uint64 {
 
 func (c Core) NewLink(m any) (Link, error) {
 	return c.inst.NewLink(m)
-}
-
-func (c Core) Detached() bool {
-	return c.inst.Detached()
 }
 
 func (c Core) InstanceID() string {

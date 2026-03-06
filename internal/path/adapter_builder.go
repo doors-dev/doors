@@ -69,14 +69,8 @@ func (a *adapterBuilder[M]) readStruct() error {
 	for i := range t.NumField() {
 		f := t.Field(i)
 		t := f.Tag
-		val, ok := t.Lookup("p")
-		if !ok {
-			val, ok = t.Lookup("path")
-		}
+		val, ok := t.Lookup("path")
 		if ok {
-			if !ok {
-				val = string(t)
-			}
 			err := a.processPath(field{f: f, i: i}, val)
 			if err != nil {
 				return err

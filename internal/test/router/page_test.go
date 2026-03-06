@@ -61,7 +61,7 @@ func TestPageRedirect(t *testing.T) {
 func TestPageReroute(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResReroute(PathC{PathC1: true}, false)
+			return doors.ResReroute(PathC{PathC1: true})
 		})
 		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
 			return doors.ResPage(pageC(r))
@@ -74,6 +74,7 @@ func TestPageReroute(t *testing.T) {
 	testPath(t, page, "c1")
 }
 
+/*ac // removed
 func TestPageRerouteDetached(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
@@ -91,7 +92,7 @@ func TestPageRerouteDetached(t *testing.T) {
 	test.Click(t, page, "#c2")
 	test.TestContent(t, page, "#path", "c2")
 	testPath(t, page, "a")
-}
+} */
 
 func TestPageError(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
@@ -114,10 +115,10 @@ func TestPageError(t *testing.T) {
 func TestPageInfiniteReroute(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResReroute(PathC{}, true)
+			return doors.ResReroute(PathC{})
 		})
 		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
-			return doors.ResReroute(PathA{}, true)
+			return doors.ResReroute(PathA{})
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)

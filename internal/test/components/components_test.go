@@ -15,7 +15,7 @@ func TestTitle(t *testing.T) {
 		doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
 			return doors.ResPage(&test.Page{
 				Source: r,
-				H: head,
+				H:      head,
 				F: &LinksFragment{
 					Param: p,
 				},

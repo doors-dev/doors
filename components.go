@@ -83,7 +83,12 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
 		door := &Door{}
 		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
 			door.Update(ctx, gox.Elem(func(cur gox.Cursor) error {
-				return el(v)(cur)
+				el := el(v)
+				if el == nil {
+					door.Clear(ctx)
+					return nil
+				}
+				return el(cur)
 			}))
 			return false
 		})
@@ -104,9 +109,28 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
 // Example:
 //
 //	~>Inject("user", userBeam) ~(UserProfile()) // Can use ctx.Value("user").(User) to get current user
-//
-
 func Inject[T any](key any, beam Beam[T]) gox.Proxy {
+	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
+		door := &Door{}
+		var store atomic.Pointer[T]
+		v, ok := beam.ReadAndSub(cur.Context(), func(ctx context.Context, v T) bool {
+			store.Store(&v)
+			door.Reload(cur.Context())
+			return false
+		})
+		store.Store(&v)
+		if !ok {
+			return nil
+		}
+		return door.Proxy(cur, func(cur gox.Cursor) error {
+			ctx := context.WithValue(cur.Context(), key, *store.Load())
+			cur = gox.NewCursor(ctx, cur)
+			return el(cur)
+		})
+	})
+}
+
+/*func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
 		door := &Door{}
 		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
@@ -122,7 +146,7 @@ func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 		}
 		return cur.Editor(door)
 	})
-}
+}*/
 
 /*
 // If shows children if the beam value is true

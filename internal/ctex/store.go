@@ -63,6 +63,7 @@ func (c *store) Init(key any, new func() any) any {
 	c.storage[key] = v
 	return v
 }
+
 /*
 
 func StoreInit(ctx context.Context, storeKey any, key any, new func() any) any {

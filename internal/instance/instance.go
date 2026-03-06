@@ -38,7 +38,6 @@ type AnyInstance interface {
 	Connect(w http.ResponseWriter, r *http.Request)
 	SetStatus(int)
 	end(common.EndCause)
-
 }
 
 type App[M any] interface {
@@ -49,12 +48,10 @@ type setup[M any] struct {
 	adapter  path.Adapter[M]
 	beam     beam.Source[M]
 	comp     gox.Comp
-	detached bool
 	rerouted bool
 }
 
 type Options struct {
-	Detached bool
 	Rerouted bool
 }
 
@@ -65,7 +62,6 @@ func NewInstance[M any](sess *Session, adapter path.Adapter[M], beam beam.Source
 			adapter:  adapter,
 			beam:     beam,
 			comp:     comp,
-			detached: opt.Detached,
 			rerouted: opt.Rerouted,
 		},
 		session: sess,
@@ -132,10 +128,6 @@ func (c *Instance[M]) NewID() uint64 {
 	return c.root.NewID()
 }
 
-func (c *Instance[M]) Detached() bool {
-	return c.navigator.isDetached()
-}
-
 func (c *Instance[M]) RootID() uint64 {
 	return c.root.ID()
 }
@@ -184,7 +176,6 @@ func (inst *Instance[M]) init() error {
 		inst.session.router.Adapters(),
 		inst.setup.beam,
 		inst.root.Context(),
-		inst.setup.detached,
 		inst.setup.rerouted,
 	)
 	inst.killTimer = &killTimer{

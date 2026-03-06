@@ -170,7 +170,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 				{
 					__e = __c.AttrSet("id", "marker"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
-					__e = __c.Any(doors.RandId()); if __e != nil { return }
+					__e = __c.Any(doors.IdRand()); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 				__e = doors.AClick{

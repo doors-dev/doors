@@ -294,6 +294,5 @@ func (s *source[T]) addWatcher(ctx context.Context, w *watcher) bool {
 	if !ok {
 		return false
 	}
-	core.Cinema().addWatcher(s, w)
-	return true
+	return core.Cinema().addWatcher(s, w)
 }

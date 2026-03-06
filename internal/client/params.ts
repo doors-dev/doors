@@ -43,4 +43,3 @@ export const ttl: number = Number(document.currentScript!.dataset.ttl)
 export const disconnectAfter: number = Number(document.currentScript!.dataset.disconnect)
 export const requestTimeout: number = Number(document.currentScript!.dataset.request)
 export const solitairePing: number = Number(document.currentScript!.dataset.ping)
-export const detached: boolean = document.currentScript!.dataset.detached !== undefined

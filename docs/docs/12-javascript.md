@@ -16,7 +16,7 @@ Magic variables available inside scripts rendered by `doors.Script()`:
 | `HookErr`                                                    | Error class thrown by hooks on failure.                      |
 | `$on(name: string, handler: (arg: any, err?: HookErr) => any): void` | Register a handler for `ActionEmit` invoked from Go.         |
 | `$G: { [key: string]: any }`                                 | Persistent global object for sharing state between scripts.  |
-| `$clean(handler: () => void | Promise<void>): void`          | Register a cleanup function to run when the script is removed from the DOM. |
+| `$sys.clean(handler: () => void | Promise<void>): void`          | Register a cleanup function to run when the script is removed from the DOM. |
 
 ---
 

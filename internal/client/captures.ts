@@ -6,182 +6,187 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
+import { Action } from "./calls";
 import { fetchOpt, fetchOptJson, fetchOptForm, date } from "./lib";
 import navigator from "./navigator";
 
 interface EventOpt {
 	// preventDefault
-    pd?: boolean;
+	pd?: boolean;
 	// stopPropagation
-    sp?: boolean;
+	sp?: boolean;
 	// exactTarget
-    et?: boolean;
+	et?: boolean;
 	// filter
-    fr?: Array<string> | null;
+	fr?: Array<string> | null;
 }
 interface InputOpt {
 	// exclude value
-    ev: boolean;
+	ev: boolean;
 }
 
 function applyEventOpt(event: Event, opt: EventOpt): boolean {
-    if (opt.et) {
-        if (event.target !== event.currentTarget) {
-            return false
-        }
-    }
-    if (opt.pd) {
-        event.preventDefault();
-    }
-    if (opt.sp) {
-        event.stopPropagation();
-    }
-    if (opt.fr && opt.fr.length > 0) {
-        if (!opt.fr.includes(event['key'])) {
-            return false
-        }
-    }
-    return true
+	if (opt.et) {
+		if (event.target !== event.currentTarget) {
+			return false
+		}
+	}
+	if (opt.pd) {
+		event.preventDefault();
+	}
+	if (opt.sp) {
+		event.stopPropagation();
+	}
+	if (opt.fr && opt.fr.length > 0) {
+		if (!opt.fr.includes(event['key'])) {
+			return false
+		}
+	}
+	return true
 }
 
 interface InputValues {
-    name: string | null;
-    value: string;
-    number: number | null;
-    date: string | null;
-    selected: string[];
-    checked: boolean;
+	name: string | null;
+	value: string;
+	number: number | null;
+	date: string | null;
+	selected: string[];
+	checked: boolean;
 }
 
 function getInputValues(input: HTMLInputElement | HTMLSelectElement): InputValues {
-    const value = input.value;
-    let number: number | null = (input as HTMLInputElement).valueAsNumber;
-    if (isNaN(number)) {
-        number = null;
-    }
+	const value = input.value;
+	let number: number | null = (input as HTMLInputElement).valueAsNumber;
+	if (isNaN(number)) {
+		number = null;
+	}
 
-    let dateValue: string | null = null;
-    const valueAsDate = (input as HTMLInputElement).valueAsDate;
-    if (valueAsDate) {
-        dateValue = valueAsDate.toISOString();
-    }
+	let dateValue: string | null = null;
+	const valueAsDate = (input as HTMLInputElement).valueAsDate;
+	if (valueAsDate) {
+		dateValue = valueAsDate.toISOString();
+	}
 
-    let selected: string[] = [];
-    if ('selectedOptions' in input && input.selectedOptions) {
-        selected = Array.from(input.selectedOptions).map(option => option.value);
-    }
-    const checked = 'checked' in input ? input.checked === true : false;
-    const name = input.name || null;
+	let selected: string[] = [];
+	if ('selectedOptions' in input && input.selectedOptions) {
+		selected = Array.from(input.selectedOptions).map(option => option.value);
+	}
+	const checked = 'checked' in input ? input.checked === true : false;
+	const name = input.name || null;
 
-    return { name, value, number, date: dateValue, selected, checked };
+	return { name, value, number, date: dateValue, selected, checked };
 }
 
 export default {
-    default(data: any) {
-        return fetchOpt(data);
-    },
+	default(data: any) {
+		return fetchOpt(data);
+	},
 
-    json(data: any) {
-        return fetchOptJson(data);
-    },
+	json(data: any) {
+		return fetchOptJson(data);
+	},
 
-    link(event: MouseEvent, opt: EventOpt) {
-        opt.pd = true;
-        if (!applyEventOpt(event, opt)) {
-            return undefined
-        }
-        const href = (event.currentTarget as HTMLAnchorElement).href;
-        if (href) {
-            navigator.push(href, false)
-        }
-        return {};
-    },
+	link(event: MouseEvent, opt: EventOpt) {
+		opt.pd = true;
+		if (!applyEventOpt(event, opt)) {
+			return undefined
+		}
+		const href = (event.currentTarget as HTMLAnchorElement).href;
+		if (href) {
+			const hash = navigator.push(href, false)
+			if (hash) {
+				const action: Action = ["scroll", [hash, false]]
+				return [{}, [action]]
+			}
+		}
+		return {};
+	},
 
-    focus(event: FocusEvent) {
-        const obj = {
-            type: event.type,
-            timestamp: date(new Date()),
-        };
-        return fetchOptJson(obj);
-    },
-    focus_io(event: FocusEvent, opt: EventOpt) {
-        if (!applyEventOpt(event, opt)) {
-            return undefined
-        }
-        const obj = {
-            type: event.type,
-            timestamp: date(new Date()),
-        };
-        return fetchOptJson(obj);
-    },
+	focus(event: FocusEvent) {
+		const obj = {
+			type: event.type,
+			timestamp: date(new Date()),
+		};
+		return fetchOptJson(obj);
+	},
+	focus_io(event: FocusEvent, opt: EventOpt) {
+		if (!applyEventOpt(event, opt)) {
+			return undefined
+		}
+		const obj = {
+			type: event.type,
+			timestamp: date(new Date()),
+		};
+		return fetchOptJson(obj);
+	},
 
-    keyboard(event: KeyboardEvent, opt: EventOpt) {
-        if (!applyEventOpt(event, opt)) {
-            return undefined
-        }
-        const obj = {
-            type: event.type,
-            key: event.key,
-            code: event.code,
-            repeat: event.repeat,
-            altKey: event.altKey,
-            ctrlKey: event.ctrlKey,
-            shiftKey: event.shiftKey,
-            metaKey: event.metaKey,
-            timestamp: date(new Date()),
-        };
-        return fetchOptJson(obj);
-    },
+	keyboard(event: KeyboardEvent, opt: EventOpt) {
+		if (!applyEventOpt(event, opt)) {
+			return undefined
+		}
+		const obj = {
+			type: event.type,
+			key: event.key,
+			code: event.code,
+			repeat: event.repeat,
+			altKey: event.altKey,
+			ctrlKey: event.ctrlKey,
+			shiftKey: event.shiftKey,
+			metaKey: event.metaKey,
+			timestamp: date(new Date()),
+		};
+		return fetchOptJson(obj);
+	},
 
-    pointer(event: PointerEvent, opt: EventOpt) {
-        if (!applyEventOpt(event, opt)) {
-            return undefined
-        }
-        const obj = {
-            type: event.type,
-            pointerId: event.pointerId,
-            width: event.width,
-            height: event.height,
-            pressure: event.pressure,
-            tangentialPressure: event.tangentialPressure,
-            tiltX: event.tiltX,
-            tiltY: event.tiltY,
-            twist: event.twist,
-            buttons: event.buttons,
-            button: event.button,
-            pointerType: event.pointerType,
-            isPrimary: event.isPrimary,
-            clientX: event.clientX,
-            clientY: event.clientY,
-            screenX: event.screenX,
-            screenY: event.screenY,
-            pageX: event.pageX,
-            pageY: event.pageY,
-            timestamp: date(new Date()),
-        };
-        return fetchOptJson(obj);
-    },
-    input(event: InputEvent, opt: InputOpt) {
-        return fetchOptJson({
-            type: event.type,
-            data: event.data,
-            ...opt.ev === true ? {} : getInputValues(event.target as HTMLInputElement | HTMLSelectElement),
-            timestamp: date(new Date()),
-        });
-    },
-    change(event: Event) {
-        return fetchOptJson({
-            type: event.type,
-            ...getInputValues(event.target as HTMLInputElement | HTMLSelectElement),
-            timestamp: date(new Date()),
-        });
-    },
+	pointer(event: PointerEvent, opt: EventOpt) {
+		if (!applyEventOpt(event, opt)) {
+			return undefined
+		}
+		const obj = {
+			type: event.type,
+			pointerId: event.pointerId,
+			width: event.width,
+			height: event.height,
+			pressure: event.pressure,
+			tangentialPressure: event.tangentialPressure,
+			tiltX: event.tiltX,
+			tiltY: event.tiltY,
+			twist: event.twist,
+			buttons: event.buttons,
+			button: event.button,
+			pointerType: event.pointerType,
+			isPrimary: event.isPrimary,
+			clientX: event.clientX,
+			clientY: event.clientY,
+			screenX: event.screenX,
+			screenY: event.screenY,
+			pageX: event.pageX,
+			pageY: event.pageY,
+			timestamp: date(new Date()),
+		};
+		return fetchOptJson(obj);
+	},
+	input(event: InputEvent, opt: InputOpt) {
+		return fetchOptJson({
+			type: event.type,
+			data: event.data,
+			...opt.ev === true ? {} : getInputValues(event.target as HTMLInputElement | HTMLSelectElement),
+			timestamp: date(new Date()),
+		});
+	},
+	change(event: Event) {
+		return fetchOptJson({
+			type: event.type,
+			...getInputValues(event.target as HTMLInputElement | HTMLSelectElement),
+			timestamp: date(new Date()),
+		});
+	},
 
-    submit(event: SubmitEvent) {
-        applyEventOpt(event, { pd: true });
-        const form = event.target as HTMLFormElement;
-        const formData = new FormData(form);
-        return fetchOptForm(formData);
-    }
+	submit(event: SubmitEvent) {
+		applyEventOpt(event, { pd: true });
+		const form = event.target as HTMLFormElement;
+		const formData = new FormData(form);
+		return fetchOptForm(formData);
+	}
 };
 

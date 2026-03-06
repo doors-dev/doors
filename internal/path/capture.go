@@ -11,7 +11,7 @@ package path
 import (
 	"errors"
 	"fmt"
-	"net/url"
+	//	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -102,11 +102,12 @@ func newStringCapture(f field) (*capture, error) {
 	return &capture{
 		set: func(m any, value string) error {
 			v := reflect.ValueOf(m).Elem()
-			var err error
-			value, err = url.QueryUnescape(value)
-			if err != nil {
-				return err
-			}
+			/*
+				var err error
+				value, err = url.QueryUnescape(value)
+				if err != nil {
+					return err
+				} */
 			v.Field(f.i).SetString(value)
 			return nil
 		},

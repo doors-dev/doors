@@ -49,8 +49,8 @@ func ResRedirect(m any, status int) Res {
 	return model.ResRedirect(m, status)
 }
 
-func ResReroute(m any, detached bool) Res {
-	return model.ResReroute(m, detached)
+func ResReroute(m any) Res {
+	return model.ResReroute(m)
 }
 
 // UseModel registers a model handler for a path model type M.

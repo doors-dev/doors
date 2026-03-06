@@ -20,8 +20,9 @@ import (
 )
 
 type Location struct {
-	Path  string
-	Query url.Values
+	Path     string
+	Query    url.Values
+	Fragment string
 }
 
 func NewRequestLocation(r *http.Request) Location {
@@ -32,10 +33,14 @@ func NewRequestLocation(r *http.Request) Location {
 }
 
 func (l Location) String() string {
-	if len(l.Query) != 0 {
-		return fmt.Sprintf("%s?%s", l.Path, l.Query.Encode())
+	fragment := ""
+	if l.Fragment != "" {
+		fragment = "#" + l.Fragment
 	}
-	return l.Path
+	if len(l.Query) != 0 {
+		return fmt.Sprintf("%s?%s%s", l.Path, l.Query.Encode(), fragment)
+	}
+	return fmt.Sprintf("%s%s", l.Path, fragment)
 }
 
 func NewLocationAdapter() Adapter[Location] {
@@ -183,8 +188,13 @@ func (a *adapter[M]) Encode(m M) (Location, error) {
 	if err != nil {
 		return Location{}, err
 	}
+	builder := strings.Builder{}
+	builder.WriteByte('/')
+	for _, part := range parts {
+		builder.WriteString(part)
+	}
 	return Location{
-		Path:  strings.Join(append([]string{"/"}, parts...), ""),
+		Path:  builder.String(),
 		Query: query,
 	}, nil
 }

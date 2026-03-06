@@ -116,7 +116,6 @@ elem (f *BeamDeriveFragment) content() {
 	~(f.r)
 }
 
-
 type BeamConsistentFragment struct {
 	r *test.Reporter
 	b doors.Source[state]

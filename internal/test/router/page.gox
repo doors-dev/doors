@@ -73,7 +73,7 @@ elem pageC(b doors.Source[PathC]) {
 					return true
 				},
 			} <button id="replace">replace</button>
-			<div id="marker">~(doors.RandId())</div>
+			<div id="marker">~(doors.IdRand())</div>
 			
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {

@@ -29,7 +29,7 @@ func AttrsAppendDyn(attrs gox.Attrs, id uint64, name string) {
 }
 
 func AttrsSetActive(attrs gox.Attrs, active []any) {
-	val := jsonAttrs([]any{active})
+	val := jsonAttr{active}
 	attrs.Get("data-d0a").Set(val)
 }
 

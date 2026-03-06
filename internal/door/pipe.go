@@ -261,7 +261,7 @@ func (p *pipe) closeResource(job gox.Job) error {
 	if attr, ok := openHead.Attrs.Find("nocache"); ok && attr.IsSet() {
 		attr.Unset()
 		mode = resources.ModeNoCache
-	} else if attr, ok := openHead.Attrs.Find("local"); ok && attr.IsSet() {
+	} else if attr, ok := openHead.Attrs.Find("private"); ok && attr.IsSet() {
 		attr.Unset()
 		mode = resources.ModeCache
 	} else {
@@ -270,8 +270,9 @@ func (p *pipe) closeResource(job gox.Job) error {
 	registry := p.tracker.root.resourceRegistry()
 	switch true {
 	case strings.EqualFold(close.Tag, "script"):
-		res, err := registry.Script(resources.ScriptInline{
+		res, err := registry.Script(resources.ScriptInlineString{
 			Content: content,
+			Kind:    resources.KindJS,
 		}, resources.FormatDefault{}, "", mode)
 		if err != nil {
 			return err
@@ -359,6 +360,7 @@ func (p *pipe) close() {
 	}
 	p.closed = true
 	p.renderFrame.Release()
+	p.buffer.SetBaseCap(p.buffer.Cap())
 	readyToPrint := p.printer != nil
 	p.mu.Unlock()
 	if !readyToPrint {

@@ -92,19 +92,25 @@ func NewLocation(ctx context.Context, model any) (Location, error) {
 	return location, nil
 }
 
-// RandId returns a cryptographically secure, URL-safe random ID.
+// IdRand returns a cryptographically secure, URL-safe random ID.
 // Suitable for sessions, instances, tokens, attributes. Case-sensitive.
-func RandId() string {
+func IdRand() string {
 	return common.RandId()
 }
 
-// HashId creates ID using provided string, hashbased.
+// IdString creates Id using provided string, hashbased.
 // For the same string outputs the same result.
 // Suitable for HTML attributes.
-func HashId(string string) string {
-	hash := blake3.Sum256(common.AsBytes(string))
-	hash[0] |= 0x80
-	return base58.Encode(hash[:16])
+func IdString(string string) string {
+	return IdBytes(common.AsBytes(string))
+}
+
+// IdBytes creates Id using provided bytes, hashbased.
+// For the same bytes outputs the same result.
+// Suitable for HTML attributes.
+func IdBytes(b []byte) string {
+	hash := blake3.Sum256(b)
+	return common.EnsureNoFirstDigit(base58.Encode(hash[:16]))
 }
 
 // AllowBlocking returns a context that suppresses warnings when used

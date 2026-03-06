@@ -60,14 +60,14 @@ func (rg *Registry) init() {
 	ScriptFS{
 		FS:   internal.ClientSrc,
 		Path: "index.ts",
-		Name: "d00rs",
+		Name: "doors",
 	}.Apply(&opt)
 	FormatIIFE{
-		GlobalName: "_d00r",
+		GlobalName: "_d0r",
 		Bundle:     true,
 	}.Apply(&opt)
 	opt.Footer = map[string]string{
-		"js": "_d00r = _d00r.default;",
+		"js": "_d0r = _d0r.default;",
 	}
 	content, err := build(&opt)
 	if err != nil {
@@ -165,7 +165,10 @@ func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 		content, err = entry.Read()
 	} else {
 		opt := r.settings.BuildProfiles().Options(profile)
-		entry.Apply(&opt)
+		err := entry.Apply(&opt)
+		if err != nil {
+			return nil, err
+		}
 		format.Apply(&opt)
 		content, err = build(&opt)
 	}

@@ -148,7 +148,6 @@ func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
 	ses := rr.ensureSession(w, r)
 	var counter = 0
 	opt := instance.Options{
-		Detached: false,
 		Rerouted: false,
 	}
 main:
@@ -171,10 +170,7 @@ main:
 			rr.serveModelRedirect(w, r, ses, loc, model, status)
 			return true
 		}
-		if model, detached, ok := res.Reroute(); ok {
-			if detached {
-				opt.Detached = detached
-			}
+		if model, ok := res.Reroute(); ok {
 			opt.Rerouted = true
 			a = model
 			goto main
@@ -334,7 +330,6 @@ func (rr *Router) serveError(w http.ResponseWriter, r *http.Request, ses *instan
 		}),
 		comp,
 		instance.Options{
-			Detached: false,
 			Rerouted: false,
 		},
 	)

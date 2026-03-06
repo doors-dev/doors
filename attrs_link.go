@@ -109,6 +109,8 @@ type Active struct {
 	PathMatcher PathMatcher
 	// Query param match strategy, applied sequientially
 	QueryMatcher []QueryMatcher
+	// Match fragment, false by default
+	FragmentMatch bool
 	// Indicators to apply when active
 	Indicator []Indicator
 }
@@ -118,6 +120,9 @@ type Active struct {
 type AHref struct {
 	// Target path model value. Required.
 	Model any
+	// Fragment identifier
+	// Optional
+	Fragment string
 	// Active link indicator configuration. Optional.
 	Active Active
 	// Stop event propagation (for dynamic links). Optional.
@@ -145,7 +150,7 @@ func (h *AHref) active() []any {
 	if common.IsNill(h.Active.PathMatcher) {
 		h.Active.PathMatcher = PathMatcherFull()
 	}
-	return []any{h.Active.PathMatcher, h.Active.QueryMatcher, front.IntoIndicate(h.Active.Indicator)}
+	return []any{h.Active.PathMatcher, h.Active.QueryMatcher, h.Active.FragmentMatch, front.IntoIndicate(h.Active.Indicator)}
 }
 
 func (h AHref) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -189,7 +194,11 @@ func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}
 	path, ok := link.Path()
 	if ok {
-		attrs.Get("href").Set(path)
+		fragment := ""
+		if h.Fragment != "" {
+			fragment = "#" + h.Fragment
+		}
+		attrs.Get("href").Set(path + fragment)
 	}
 	active := h.active()
 	if active != nil {

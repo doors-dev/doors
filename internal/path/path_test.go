@@ -39,7 +39,7 @@ func TestNoPath(t *testing.T) {
 	}
 }
 
-func testPath[V any](t *testing.T, path string, expected bool) (*V, *Adapter[V]) {
+func testPath[V any](t *testing.T, path string, expected bool) (*V, Adapter[V]) {
 	a, err := NewAdapter[V]()
 	if err != nil {
 		t.Error("Can't create adapter", err)

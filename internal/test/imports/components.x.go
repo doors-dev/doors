@@ -1,4 +1,4 @@
-// Managed by GoX v0.0.48+dirty
+// Managed by GoX v0.1.6
 
 package imports
 
@@ -94,8 +94,8 @@ func fileRawSrc() gox.Elem {
 func styleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportStyle{
-		Provider: doors.ProviderStyleBytes(styleRawBytes),
+		__e = __c.Any(doors.StyleBytes{
+		Content: styleRawBytes,
 	}); if __e != nil { return }
 	return })
 }
@@ -103,8 +103,8 @@ func styleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 func styleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportStyle{
-		Provider: doors.ProviderExternal(test.Host + "/module/style.css",),
+		__e = __c.Any(doors.StyleExternal{
+		Src: (test.Host + "/module/style.css"),
 	}); if __e != nil { return }
 	return })
 }
@@ -112,8 +112,8 @@ func styleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 func styleHostedHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportStyle{
-		Provider: doors.ProviderLocal("/module/style.css"),
+		__e = __c.Any(doors.StyleLocal{
+		Src: ("/module/style.css"),
 	}); if __e != nil { return }
 	return })
 }
@@ -121,8 +121,8 @@ func styleHostedHead(_b doors.Source[test.Path]) gox.Elem {
 func styleHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportStyle{
-		Provider: doors.ProviderPath(modulePath + "/style.css"),
+		__e = __c.Any(doors.StylePath{
+		Path: (modulePath + "/style.css"),
 	}); if __e != nil { return }
 	return })
 }
@@ -130,9 +130,9 @@ func styleHead(_b doors.Source[test.Path]) gox.Elem {
 func moduleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportModule{
-		Provider: doors.ProviderExternal(test.Host + "/module/index.js"),
-		Specifier: "module",
+		__e = __c.Any(doors.ScriptExternal{
+		Kind: doors.ScriptKindImportModule("module"),
+		Src: (test.Host + "/module/index.js"),
 	}); if __e != nil { return }
 	return })
 }
@@ -140,9 +140,9 @@ func moduleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 func moduleBundleHostHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportModule{
-		Specifier: "module",
-		Provider: doors.ProviderLocal("/module/index.js"),
+		__e = __c.Any(doors.ScriptLocal{
+		Kind: doors.ScriptKindImportModule("module"),
+		Src: (test.Host + "/module/index.js"),
 	}); if __e != nil { return }
 	return })
 }
@@ -152,14 +152,12 @@ func moduleBundleFSHead(_b doors.Source[test.Path]) gox.Elem {
 		ctx := __c.Context(); gox.Noop(ctx)
 		moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src")
 
-		__e = __c.Any(doors.ImportModule{
-		Specifier: "module",
-		Format: doors.FormatBundle,
-		Provider: doors.ProviderFS{
-			FS: moduleBundleDir,
-			Path: "index.ts",
-			Name: "dd",
-		},
+		__e = __c.Any(doors.ScriptFS{
+		Kind: doors.ScriptKindImportModule("module"),
+		Output: doors.ScriptOutputBundle,
+		FS: moduleBundleDir,
+		Path: "index.ts",
+		Name: "dd",
 	}); if __e != nil { return }
 	return })
 }
@@ -167,10 +165,10 @@ func moduleBundleFSHead(_b doors.Source[test.Path]) gox.Elem {
 func moduleRawBytesHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportModule{
-		Specifier: "module",
-		Provider: doors.ProviderJsBytes(moduleRawBytes),
-		Format: doors.FormatRaw,
+		__e = __c.Any(doors.ScriptBytes{
+		Kind: doors.ScriptKindImportModule("module"),
+		Output: doors.ScriptOutputRaw,
+		Content: (moduleRawBytes),
 	}); if __e != nil { return }
 	return })
 }
@@ -178,10 +176,10 @@ func moduleRawBytesHead(_b doors.Source[test.Path]) gox.Elem {
 func moduleRawHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportModule{
-		Specifier: "module",
-		Provider: doors.ProviderPath(modulePath + "/index.js"),
-		Format: doors.FormatRaw,
+		__e = __c.Any(doors.ScriptPath{
+		Kind: doors.ScriptKindImportModule("module"),
+		Path: (modulePath + "/index.js"),
+		Output: doors.ScriptOutputRaw,
 	}); if __e != nil { return }
 	return })
 }
@@ -189,9 +187,9 @@ func moduleRawHead(_b doors.Source[test.Path]) gox.Elem {
 func moduleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportModule{
-		Specifier: "module",
-		Provider: doors.ProviderJsBytes(moduleBytes),
+		__e = __c.Any(doors.ScriptBytes{
+		Kind: doors.ScriptKindImportModule("module"),
+		Content: (moduleBytes),
 	}); if __e != nil { return }
 	return })
 }
@@ -201,9 +199,9 @@ func moduleHead(_b doors.Source[test.Path]) gox.Elem {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = __c.Init("script"); if __e != nil { return }
 		{
-			__e = __c.AttrMod(doors.ImportModule{
-			Specifier: "module",
-			Provider: doors.ProviderPath(modulePath + "/index.ts"),
+			__e = __c.AttrMod(doors.ScriptPath{
+			Kind: doors.ScriptKindImportModule("module"),
+			Path: (modulePath + "/index.ts"),
 		}); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
@@ -215,15 +213,15 @@ func moduleHead(_b doors.Source[test.Path]) gox.Elem {
 func reactHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		__e = __c.Any(doors.ImportModule{
-		Specifier: "preact",
-		Provider: doors.ProviderPath(preactPath + "/index.tsx"),
-		Format: doors.FormatBundle,
+		__e = __c.Any(doors.ScriptPath{
+		Kind: doors.ScriptKindImportModule("preact"),
+		Path: (preactPath + "/index.tsx"),
+		Output: doors.ScriptOutputBundle,
 	}); if __e != nil { return }
-		__e = __c.Any(doors.ImportModule{
-		Specifier: "react",
-		Provider: doors.ProviderPath(reactPath + "/index.tsx"),
-		Format: doors.FormatBundle,
+		__e = __c.Any(doors.ScriptPath{
+		Kind: doors.ScriptKindImportModule("react"),
+		Path: (reactPath + "/index.tsx"),
+		Output: doors.ScriptOutputBundle,
 	}); if __e != nil { return }
 	return })
 }

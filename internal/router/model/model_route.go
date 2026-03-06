@@ -84,8 +84,7 @@ type instValue struct {
 }
 
 type rerouteValue struct {
-	model    any
-	detached bool
+	model any
 }
 
 type redirectValue struct {
@@ -108,11 +107,10 @@ func ResRedirect(model any, status int) Res {
 	}
 }
 
-func ResReroute(model any, detached bool) Res {
+func ResReroute(model any) Res {
 	return Res{
 		value: rerouteValue{
-			model:    model,
-			detached: detached,
+			model: model,
 		},
 	}
 }
@@ -146,11 +144,11 @@ func (r Res) Instance() (instance.AnyInstance, bool) {
 	return nil, false
 }
 
-func (r Res) Reroute() (any, bool, bool) {
+func (r Res) Reroute() (any, bool) {
 	if r, ok := r.value.(rerouteValue); ok {
-		return r.model, r.detached, true
+		return r.model, true
 	}
-	return nil, false, false
+	return nil, false
 }
 
 func (r Res) Redirect() (any, int, bool) {
@@ -159,4 +157,3 @@ func (r Res) Redirect() (any, int, bool) {
 	}
 	return nil, 0, false
 }
-

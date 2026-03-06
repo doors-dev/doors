@@ -159,7 +159,7 @@ func TestDoorLifeCycle(t *testing.T) {
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
-	
+
 	test.TestMust(t, page, "#presist")
 	test.TestMustNot(t, page, "#new")
 	test.Click(t, page, "#updateEmpty")
@@ -175,7 +175,6 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.TestMust(t, page, "#presist2")
 	test.TestMust(t, page, "#new2")
 
-
 	test.Click(t, page, "#clear")
 	test.TestMustNot(t, page, "#presist2")
 	test.TestMust(t, page, "#new2")
@@ -186,7 +185,6 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.TestMustNot(t, page, "#presist2")
 	test.TestMust(t, page, "#new2")
 
-
 	test.Click(t, page, "#updateContent")
 	test.TestMust(t, page, "#new2")
 	test.TestMust(t, page, "#presist2")
@@ -195,11 +193,9 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.TestMustNot(t, page, "#new2")
 	test.TestMustNot(t, page, "#presist2")
 
-
 	test.Click(t, page, "#updateEditor")
 	test.TestMustNot(t, page, "#new2")
 	test.TestMustNot(t, page, "#presist2")
-
 
 	test.Click(t, page, "#updateContent")
 	test.TestMust(t, page, "#new2")
@@ -208,7 +204,6 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.Click(t, page, "#unmount")
 	test.TestMustNot(t, page, "#new2")
 	test.TestMustNot(t, page, "#presist2")
-
 
 	test.Click(t, page, "#updateEditor")
 	test.TestMust(t, page, "#new2")
