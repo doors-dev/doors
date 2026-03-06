@@ -141,7 +141,6 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 	return })
 }
 
-
 type BeamConsistentFragment struct {
 	r *test.Reporter
 	b doors.Source[state]

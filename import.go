@@ -24,6 +24,16 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+type ScriptSource interface {
+	name(ext string) string
+	scriptEntry(inline bool) resources.ScriptEntry
+}
+
+type StyleSource interface {
+	name(ext string) string
+	styleEntry() resources.StyleEntry
+}
+
 type HostMode int
 
 const (
@@ -63,6 +73,169 @@ func (h HostMode) resourceMode() resources.ResourceMode {
 	}
 }
 
+type SourceFS struct {
+	FS   fs.FS
+	Path string
+	Name string
+}
+
+func (s SourceFS) name(ext string) string {
+	return s.Name + "." + ext
+}
+
+func (s SourceFS) styleEntry() resources.StyleEntry {
+	return resources.StyleFS{
+		FS:   s.FS,
+		Name: s.Name,
+		Path: s.Path,
+	}
+}
+
+func (s SourceFS) scriptEntry(inline bool) resources.ScriptEntry {
+	if inline {
+		return resources.ScriptInlineFS{
+			FS:   s.FS,
+			Name: s.Name,
+			Path: s.Path,
+		}
+	}
+	return resources.ScriptFS{
+		FS:   s.FS,
+		Name: s.Name,
+		Path: s.Path,
+	}
+}
+
+type SourcePath string
+
+func (s SourcePath) name(ext string) string {
+	base := filepath.Base(string(s))
+	fileExt := filepath.Ext(base)
+	name := strings.TrimSuffix(base, fileExt)
+	return name + "." + ext
+}
+
+func (s SourcePath) scriptEntry(inline bool) resources.ScriptEntry {
+	if inline {
+		return resources.ScriptInlinePath{
+			Path: string(s),
+		}
+	}
+	return resources.ScriptPath{
+		Path: string(s),
+	}
+}
+
+func (s SourcePath) styleEntry() resources.StyleEntry {
+	return resources.StylePath{
+		Path: string(s),
+	}
+}
+
+type SourceStyleString string
+
+func (s SourceStyleString) name(ext string) string {
+	return "style." + ext
+}
+
+func (s SourceStyleString) styleEntry() resources.StyleEntry {
+	return resources.StyleString{
+		Content: string(s),
+	}
+}
+
+type SourceStyleBytes []byte
+
+func (s SourceStyleBytes) name(ext string) string {
+	return "style." + ext
+}
+
+func (s SourceStyleBytes) styleEntry() resources.StyleEntry {
+	return resources.StyleBytes{
+		Content: s,
+	}
+}
+
+type SourceScriptBytes struct {
+	Content    []byte
+	TypeScript bool
+}
+
+func (s SourceScriptBytes) name(ext string) string {
+	return "script." + ext
+}
+
+func (s SourceScriptBytes) scriptEntry(inline bool) resources.ScriptEntry {
+	kind := resources.KindJS
+	if s.TypeScript {
+		kind = resources.KindTS
+	}
+	if inline {
+		return resources.ScriptInlineBytes{
+			Content: s.Content,
+			Kind:    kind,
+		}
+	}
+	return resources.ScriptBytes{
+		Content: s.Content,
+		Kind:    kind,
+	}
+}
+
+type SourceScriptString struct {
+	Content    string
+	TypeScript bool
+}
+
+func (s SourceScriptString) name(ext string) string {
+	return "script." + ext
+}
+
+func (s SourceScriptString) scriptEntry(inline bool) resources.ScriptEntry {
+	kind := resources.KindJS
+	if s.TypeScript {
+		kind = resources.KindTS
+	}
+	if inline {
+		return resources.ScriptInlineString{
+			Content: s.Content,
+			Kind:    kind,
+		}
+	}
+	return resources.ScriptString{
+		Content: s.Content,
+		Kind:    kind,
+	}
+}
+
+type SourceExternal string
+
+func (s SourceExternal) name(ext string) string {
+	return ""
+}
+
+func (s SourceExternal) scriptEntry(inline bool) resources.ScriptEntry {
+	panic("external source can't provide script entry")
+}
+
+func (s SourceExternal) styleEntry() resources.StyleEntry {
+	panic("external source can't provide style entry")
+}
+
+type SourceLocal string
+
+func (s SourceLocal) name(ext string) string {
+	return ""
+}
+
+func (s SourceLocal) scriptEntry(inline bool) resources.ScriptEntry {
+	panic("local source can't provide script entry")
+}
+
+func (s SourceLocal) styleEntry() resources.StyleEntry {
+	panic("local source can't provide style entry")
+}
+
 type ScriptOutput int
 
 const (
@@ -78,8 +251,9 @@ func (f ScriptOutput) scriptFormat(module bool) resources.ScriptFormat {
 	case ScriptOutputBundle:
 		if module {
 			return resources.FormatModule{Bundle: true}
+		} else {
+			return resources.FormatCommon{Bundle: true}
 		}
-		return resources.FormatCommon{Bundle: true}
 	case ScriptOutputRaw:
 		return resources.FormatRaw{}
 	default:
@@ -87,50 +261,42 @@ func (f ScriptOutput) scriptFormat(module bool) resources.ScriptFormat {
 	}
 }
 
-type scriptKind int
-
-const (
-	scriptModule scriptKind = iota
-	scriptImportModule
-	scriptCommonJS
-	scriptInline
-)
-
-type ScriptKind struct {
-	kind      scriptKind
-	specifier string
+type ScriptModule struct {
+	Source    ScriptSource
+	Output    ScriptOutput
+	HostMode  HostMode
+	Specifier string
+	Profile   string
 }
 
-func ScriptKindModule() ScriptKind {
-	return ScriptKind{kind: scriptModule}
-}
-
-func ScriptKindImportModule(specifier string) ScriptKind {
-	return ScriptKind{kind: scriptImportModule, specifier: specifier}
-}
-
-func ScriptKindInline() ScriptKind {
-	return ScriptKind{kind: scriptInline}
-}
-
-func ScriptKindCommon() ScriptKind {
-	return ScriptKind{kind: scriptCommonJS}
-}
-
-func (k ScriptKind) module() bool {
-	switch k.kind {
-	case scriptModule, scriptImportModule:
-		return true
-	case scriptCommonJS, scriptInline:
-		return false
-	default:
-		panic("unknown script kind")
+func (m ScriptModule) build(core core.Core) (string, error) {
+	if loc, ok := m.Source.(SourceLocal); ok {
+		return string(loc), nil
 	}
+	if ext, ok := m.Source.(SourceExternal); ok {
+		core.CSPCollector().ScriptSource(string(ext))
+		return string(ext), nil
+	}
+	entry := m.Source.scriptEntry(false)
+	res, err := core.ResourceRegistry().Script(
+		entry,
+		m.Output.scriptFormat(true),
+		m.Profile,
+		m.HostMode.resourceMode(),
+	)
+	if err != nil {
+		return "", err
+	}
+	return m.HostMode.src(core, res, m.Source.name("js"))
 }
 
-func (k ScriptKind) Edit(cur gox.Cursor, core core.Core, path string) error {
-	switch k.kind {
-	case scriptModule:
+func (m ScriptModule) Edit(cur gox.Cursor) error {
+	core := cur.Context().Value(ctex.KeyCore).(core.Core)
+	path, err := m.build(core)
+	if err != nil {
+		return err
+	}
+	if m.Specifier == "" {
 		if err := cur.Init("script"); err != nil {
 			return err
 		}
@@ -143,416 +309,193 @@ func (k ScriptKind) Edit(cur gox.Cursor, core core.Core, path string) error {
 		if err := cur.Submit(); err != nil {
 			return err
 		}
-		return cur.Close()
-
-	case scriptImportModule:
-		core.ModuleRegistry().Add(k.specifier, path)
-		return nil
-
-	case scriptCommonJS, scriptInline:
-		if err := cur.Init("script"); err != nil {
+		if err := cur.Close(); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("src", path); err != nil {
-			return err
-		}
-		if err := cur.Submit(); err != nil {
-			return err
-		}
-		return cur.Close()
-
-	default:
-		panic("unknown script kind")
-	}
-}
-
-func (k ScriptKind) Modify(core core.Core, tag, path string, attrs gox.Attrs) error {
-	switch k.kind {
-	case scriptModule, scriptImportModule:
-		switch {
-		case strings.EqualFold(tag, "script"):
-			attrs.Get("type").Set("module")
-			attrs.Get("src").Set(path)
-		case strings.EqualFold(tag, "link"):
-			attrs.Get("rel").Set("modulepreload")
-			attrs.Get("href").Set(path)
-		default:
-			return fmt.Errorf("unsupported tag %s", tag)
-		}
-		if k.kind == scriptImportModule {
-			core.ModuleRegistry().Add(k.specifier, path)
-		}
 		return nil
+	}
+	core.ModuleRegistry().Add(m.Specifier, path)
+	return nil
+}
 
-	case scriptCommonJS, scriptInline:
-		switch {
-		case strings.EqualFold(tag, "script"):
-			attrs.Get("type").Set(nil)
-			attrs.Get("src").Set(path)
-			return nil
-		default:
-			return fmt.Errorf("unsupported tag %s", tag)
-		}
-
+func (m ScriptModule) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	path, err := m.build(core)
+	if err != nil {
+		return err
+	}
+	switch true {
+	case strings.EqualFold(tag, "script"):
+		attrs.Get("type").Set("module")
+		attrs.Get("src").Set(path)
+	case strings.EqualFold(tag, "link"):
+		attrs.Get("rel").Set("modulepreload")
+		attrs.Get("href").Set(path)
 	default:
-		panic("unknown script kind")
+		return fmt.Errorf("unsupported tag %s", tag)
 	}
+	if m.Specifier != "" {
+		core.ModuleRegistry().Add(m.Specifier, path)
+	}
+	return nil
 }
 
-type ScriptString struct {
-	Kind    ScriptKind
-	Output  ScriptOutput
-	Content string
-	Profile string
-	Host    HostMode
+type ScriptInline struct {
+	Source   ScriptSource
+	HostMode HostMode
+	Profile  string
 }
 
-func (s ScriptString) entry() resources.ScriptEntry {
-	switch s.Kind.kind {
-	case scriptModule, scriptImportModule, scriptCommonJS:
-		return resources.ScriptString{
-			Content: s.Content,
-			Kind:    resources.KindJS,
-		}
-	case scriptInline:
-		return resources.ScriptInlineString{
-			Content: s.Content,
-			Kind:    resources.KindJS,
-		}
-	default:
-		panic("unknown script kind")
+func (m ScriptInline) build(core core.Core) (string, error) {
+	if _, ok := m.Source.(SourceLocal); ok {
+		return "", errors.New("Local source is not supported for \"inline\" scripts")
 	}
-}
-
-func (s ScriptString) build(core core.Core) (string, error) {
-	if s.Kind.kind == scriptInline && s.Output != ScriptOutputDefault {
-		return "", errors.New("inline scripts support only ScriptOutputDefault")
+	if _, ok := m.Source.(SourceExternal); ok {
+		return "", errors.New("External source is not supported for \"inline\" scripts")
 	}
-	var format resources.ScriptFormat = resources.FormatDefault{}
-	if s.Kind.kind != scriptInline {
-		format = s.Output.scriptFormat(s.Kind.module())
-	}
+	entry := m.Source.scriptEntry(true)
 	res, err := core.ResourceRegistry().Script(
-		s.entry(),
-		format,
-		s.Profile,
-		s.Host.resourceMode(),
+		entry,
+		resources.FormatDefault{},
+		m.Profile,
+		m.HostMode.resourceMode(),
 	)
 	if err != nil {
 		return "", err
 	}
-	return s.Host.src(core, res, "script.js")
+	return m.HostMode.src(core, res, m.Source.name("js"))
 }
 
-func (s ScriptString) Edit(cur gox.Cursor) error {
+func (m ScriptInline) Edit(cur gox.Cursor) error {
 	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
+	path, err := m.build(core)
 	if err != nil {
 		return err
 	}
-	return s.Kind.Edit(cur, core, path)
+	if err := cur.Init("script"); err != nil {
+		return err
+	}
+	if err := cur.AttrSet("src", path); err != nil {
+		return err
+	}
+	if err := cur.Submit(); err != nil {
+		return err
+	}
+	if err := cur.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s ScriptString) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
+func (m ScriptInline) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
+	path, err := m.build(core)
 	if err != nil {
 		return err
 	}
-	return s.Kind.Modify(core, tag, path, attrs)
-}
-
-type ScriptBytes struct {
-	Kind    ScriptKind
-	Content []byte
-	Output  ScriptOutput
-	Profile string
-	Host    HostMode
-}
-
-func (s ScriptBytes) entry() resources.ScriptEntry {
-	switch s.Kind.kind {
-	case scriptModule, scriptImportModule, scriptCommonJS:
-		return resources.ScriptBytes{
-			Content: s.Content,
-			Kind:    resources.KindJS,
-		}
-	case scriptInline:
-		return resources.ScriptInlineBytes{
-			Content: s.Content,
-			Kind:    resources.KindJS,
-		}
+	switch true {
+	case strings.EqualFold(tag, "script"):
+		attrs.Get("type").Set(nil)
+		attrs.Get("src").Set(path)
 	default:
-		panic("unknown script kind")
+		return fmt.Errorf("unsupported tag %s", tag)
 	}
+	return nil
 }
 
-func (s ScriptBytes) build(core core.Core) (string, error) {
-	if s.Kind.kind == scriptInline && s.Output != ScriptOutputDefault {
-		return "", errors.New("inline scripts support only ScriptOutputDefault")
+type ScriptCommon struct {
+	Source   ScriptSource
+	HostMode HostMode
+	Output   ScriptOutput
+	Profile  string
+}
+
+func (m ScriptCommon) build(core core.Core) (string, error) {
+	if loc, ok := m.Source.(SourceLocal); ok {
+		return string(loc), nil
 	}
-	var format resources.ScriptFormat = resources.FormatDefault{}
-	if s.Kind.kind != scriptInline {
-		format = s.Output.scriptFormat(s.Kind.module())
+	if ext, ok := m.Source.(SourceExternal); ok {
+		core.CSPCollector().ScriptSource(string(ext))
+		return string(ext), nil
 	}
+	entry := m.Source.scriptEntry(false)
 	res, err := core.ResourceRegistry().Script(
-		s.entry(),
-		format,
-		s.Profile,
-		s.Host.resourceMode(),
+		entry,
+		m.Output.scriptFormat(false),
+		m.Profile,
+		m.HostMode.resourceMode(),
 	)
 	if err != nil {
 		return "", err
 	}
-	return s.Host.src(core, res, "script.js")
+	return m.HostMode.src(core, res, m.Source.name("js"))
 }
 
-func (s ScriptBytes) Edit(cur gox.Cursor) error {
+func (m ScriptCommon) Edit(cur gox.Cursor) error {
 	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
+	path, err := m.build(core)
 	if err != nil {
 		return err
 	}
-	return s.Kind.Edit(cur, core, path)
+	if err := cur.Init("script"); err != nil {
+		return err
+	}
+	if err := cur.AttrSet("src", path); err != nil {
+		return err
+	}
+	if err := cur.Submit(); err != nil {
+		return err
+	}
+	if err := cur.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s ScriptBytes) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
+func (m ScriptCommon) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
+	path, err := m.build(core)
 	if err != nil {
 		return err
 	}
-	return s.Kind.Modify(core, tag, path, attrs)
-}
-
-type ScriptPath struct {
-	Kind    ScriptKind
-	Path    string
-	Output  ScriptOutput
-	Profile string
-	Host    HostMode
-}
-
-func (s ScriptPath) entry() resources.ScriptEntry {
-	switch s.Kind.kind {
-	case scriptModule, scriptImportModule, scriptCommonJS:
-		return resources.ScriptPath{
-			Path: s.Path,
-		}
-	case scriptInline:
-		return resources.ScriptInlinePath{
-			Path: s.Path,
-		}
+	switch true {
+	case strings.EqualFold(tag, "script"):
+		attrs.Get("type").Set(nil)
+		attrs.Get("src").Set(path)
 	default:
-		panic("unknown script kind")
+		return fmt.Errorf("unsupported tag %s", tag)
 	}
+	return nil
 }
 
-func (s ScriptPath) build(core core.Core) (string, error) {
-	if s.Kind.kind == scriptInline && s.Output != ScriptOutputDefault {
-		return "", errors.New("inline scripts support only ScriptOutputDefault")
-	}
-	var format resources.ScriptFormat = resources.FormatDefault{}
-	if s.Kind.kind != scriptInline {
-		format = s.Output.scriptFormat(s.Kind.module())
-	}
-	res, err := core.ResourceRegistry().Script(
-		s.entry(),
-		format,
-		s.Profile,
-		s.Host.resourceMode(),
-	)
-	if err != nil {
-		return "", err
-	}
-	base := filepath.Base(s.Path)
-	fileExt := filepath.Ext(base)
-	name := strings.TrimSuffix(base, fileExt) + ".js"
-	return s.Host.src(core, res, name)
+type Style struct {
+	Source   StyleSource
+	HostMode HostMode
+	Minify   bool
 }
 
-func (s ScriptPath) Edit(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
+func (m Style) build(core core.Core) (string, error) {
+	if loc, ok := m.Source.(SourceLocal); ok {
+		return string(loc), nil
 	}
-	return s.Kind.Edit(cur, core, path)
-}
-
-func (s ScriptPath) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
+	if ext, ok := m.Source.(SourceExternal); ok {
+		core.CSPCollector().StyleSource(string(ext))
+		return string(ext), nil
 	}
-	return s.Kind.Modify(core, tag, path, attrs)
-}
-
-type ScriptFS struct {
-	Kind    ScriptKind
-	Output  ScriptOutput
-	FS      fs.FS
-	Path    string
-	Name    string
-	Profile string
-	Host    HostMode
-}
-
-func (s ScriptFS) fileName() string {
-	if s.Name != "" {
-		return s.Name + ".js"
-	}
-	base := filepath.Base(s.Path)
-	ext := filepath.Ext(base)
-	return strings.TrimSuffix(base, ext) + ".js"
-}
-
-func (s ScriptFS) entry() resources.ScriptEntry {
-	switch s.Kind.kind {
-	case scriptModule, scriptImportModule, scriptCommonJS:
-		return resources.ScriptFS{
-			FS:   s.FS,
-			Path: s.Path,
-			Name: s.Name,
-		}
-	case scriptInline:
-		return resources.ScriptInlineFS{
-			FS:   s.FS,
-			Path: s.Path,
-			Name: s.Name,
-		}
-	default:
-		panic("unknown script kind")
-	}
-}
-
-func (s ScriptFS) build(core core.Core) (string, error) {
-	if s.Kind.kind == scriptInline && s.Output != ScriptOutputDefault {
-		return "", errors.New("inline scripts support only ScriptOutputDefault")
-	}
-	var format resources.ScriptFormat = resources.FormatDefault{}
-	if s.Kind.kind != scriptInline {
-		format = s.Output.scriptFormat(s.Kind.module())
-	}
-	res, err := core.ResourceRegistry().Script(
-		s.entry(),
-		format,
-		s.Profile,
-		s.Host.resourceMode(),
-	)
-	if err != nil {
-		return "", err
-	}
-	return s.Host.src(core, res, s.fileName())
-}
-
-func (s ScriptFS) Edit(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	return s.Kind.Edit(cur, core, path)
-}
-
-func (s ScriptFS) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	return s.Kind.Modify(core, tag, path, attrs)
-}
-
-type ScriptExternal struct {
-	Kind ScriptKind
-	Src  string
-}
-
-func (s ScriptExternal) build(core core.Core) (string, error) {
-	if s.Kind.kind == scriptInline {
-		return "", errors.New("inline script kind is not supported for external scripts")
-	}
-	core.CSPCollector().ScriptSource(s.Src)
-	return s.Src, nil
-}
-
-func (s ScriptExternal) Edit(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	return s.Kind.Edit(cur, core, path)
-}
-
-func (s ScriptExternal) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	return s.Kind.Modify(core, tag, path, attrs)
-}
-
-type ScriptLocal struct {
-	Kind ScriptKind
-	Src  string
-}
-
-func (s ScriptLocal) build(core.Core) (string, error) {
-	if s.Kind.kind == scriptInline {
-		return "", errors.New("inline script kind is not supported for local scripts")
-	}
-	return s.Src, nil
-}
-
-func (s ScriptLocal) Edit(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	return s.Kind.Edit(cur, core, path)
-}
-
-func (s ScriptLocal) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	return s.Kind.Modify(core, tag, path, attrs)
-}
-
-type StyleString struct {
-	Content string
-	Minify  bool
-	Host    HostMode
-}
-
-func (s StyleString) entry() resources.StyleEntry {
-	return resources.StyleString{
-		Content: s.Content,
-	}
-}
-
-func (s StyleString) build(core core.Core) (string, error) {
 	res, err := core.ResourceRegistry().Style(
-		s.entry(),
-		s.Minify,
-		s.Host.resourceMode(),
+		m.Source.styleEntry(),
+		m.Minify,
+		m.HostMode.resourceMode(),
 	)
 	if err != nil {
 		return "", err
 	}
-	return s.Host.src(core, res, "style.css")
+	return m.HostMode.src(core, res, m.Source.name("css"))
 }
 
-func (s StyleString) Edit(cur gox.Cursor) error {
+func (m Style) Edit(cur gox.Cursor) error {
 	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
+	path, err := m.build(core)
 	if err != nil {
 		return err
 	}
@@ -568,293 +511,18 @@ func (s StyleString) Edit(cur gox.Cursor) error {
 	return cur.Submit()
 }
 
-func (s StyleString) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
+func (m Style) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
+	path, err := m.build(core)
 	if err != nil {
 		return err
 	}
-	switch {
+	switch true {
 	case strings.EqualFold(tag, "link"):
 		attrs.Get("rel").Set("stylesheet")
 		attrs.Get("href").Set(path)
-		return nil
 	default:
 		return fmt.Errorf("unsupported tag %s", tag)
 	}
-}
-
-type StyleBytes struct {
-	Content []byte
-	Minify  bool
-	Host    HostMode
-}
-
-func (s StyleBytes) entry() resources.StyleEntry {
-	return resources.StyleBytes{
-		Content: s.Content,
-	}
-}
-
-func (s StyleBytes) build(core core.Core) (string, error) {
-	res, err := core.ResourceRegistry().Style(
-		s.entry(),
-		s.Minify,
-		s.Host.resourceMode(),
-	)
-	if err != nil {
-		return "", err
-	}
-	return s.Host.src(core, res, "style.css")
-}
-
-func (s StyleBytes) Edit(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	if err := cur.InitVoid("link"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("rel", "stylesheet"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("href", path); err != nil {
-		return err
-	}
-	return cur.Submit()
-}
-
-func (s StyleBytes) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	switch {
-	case strings.EqualFold(tag, "link"):
-		attrs.Get("rel").Set("stylesheet")
-		attrs.Get("href").Set(path)
-		return nil
-	default:
-		return fmt.Errorf("unsupported tag %s", tag)
-	}
-}
-
-type StylePath struct {
-	Path   string
-	Minify bool
-	Host   HostMode
-}
-
-func (s StylePath) entry() resources.StyleEntry {
-	return resources.StylePath{
-		Path: s.Path,
-	}
-}
-
-func (s StylePath) build(core core.Core) (string, error) {
-	res, err := core.ResourceRegistry().Style(
-		s.entry(),
-		s.Minify,
-		s.Host.resourceMode(),
-	)
-	if err != nil {
-		return "", err
-	}
-	base := filepath.Base(s.Path)
-	fileExt := filepath.Ext(base)
-	name := strings.TrimSuffix(base, fileExt) + ".css"
-	return s.Host.src(core, res, name)
-}
-
-func (s StylePath) Edit(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	if err := cur.InitVoid("link"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("rel", "stylesheet"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("href", path); err != nil {
-		return err
-	}
-	return cur.Submit()
-}
-
-func (s StylePath) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	switch {
-	case strings.EqualFold(tag, "link"):
-		attrs.Get("rel").Set("stylesheet")
-		attrs.Get("href").Set(path)
-		return nil
-	default:
-		return fmt.Errorf("unsupported tag %s", tag)
-	}
-}
-
-type StyleFS struct {
-	FS     fs.FS
-	Path   string
-	Name   string
-	Minify bool
-	Host   HostMode
-}
-
-func (s StyleFS) fileName() string {
-	if s.Name != "" {
-		return s.Name + ".css"
-	}
-	base := filepath.Base(s.Path)
-	ext := filepath.Ext(base)
-	return strings.TrimSuffix(base, ext) + ".css"
-}
-
-func (s StyleFS) entry() resources.StyleEntry {
-	return resources.StyleFS{
-		FS:   s.FS,
-		Path: s.Path,
-		Name: s.Name,
-	}
-}
-
-func (s StyleFS) build(core core.Core) (string, error) {
-	res, err := core.ResourceRegistry().Style(
-		s.entry(),
-		s.Minify,
-		s.Host.resourceMode(),
-	)
-	if err != nil {
-		return "", err
-	}
-	return s.Host.src(core, res, s.fileName())
-}
-
-func (s StyleFS) Edit(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	if err := cur.InitVoid("link"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("rel", "stylesheet"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("href", path); err != nil {
-		return err
-	}
-	return cur.Submit()
-}
-
-func (s StyleFS) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	switch {
-	case strings.EqualFold(tag, "link"):
-		attrs.Get("rel").Set("stylesheet")
-		attrs.Get("href").Set(path)
-		return nil
-	default:
-		return fmt.Errorf("unsupported tag %s", tag)
-	}
-}
-
-type StyleExternal struct {
-	Src string
-}
-
-func (s StyleExternal) build(core core.Core) (string, error) {
-	core.CSPCollector().StyleSource(s.Src)
-	return s.Src, nil
-}
-
-func (s StyleExternal) Edit(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	if err := cur.InitVoid("link"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("rel", "stylesheet"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("href", path); err != nil {
-		return err
-	}
-	return cur.Submit()
-}
-
-func (s StyleExternal) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	switch {
-	case strings.EqualFold(tag, "link"):
-		attrs.Get("rel").Set("stylesheet")
-		attrs.Get("href").Set(path)
-		return nil
-	default:
-		return fmt.Errorf("unsupported tag %s", tag)
-	}
-}
-
-type StyleLocal struct {
-	Src string
-}
-
-func (s StyleLocal) build(core.Core) (string, error) {
-	return s.Src, nil
-}
-
-func (s StyleLocal) Edit(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	if err := cur.InitVoid("link"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("rel", "stylesheet"); err != nil {
-		return err
-	}
-	if err := cur.AttrSet("href", path); err != nil {
-		return err
-	}
-	return cur.Submit()
-}
-
-func (s StyleLocal) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	path, err := s.build(core)
-	if err != nil {
-		return err
-	}
-	switch {
-	case strings.EqualFold(tag, "link"):
-		attrs.Get("rel").Set("stylesheet")
-		attrs.Get("href").Set(path)
-		return nil
-	default:
-		return fmt.Errorf("unsupported tag %s", tag)
-	}
+	return nil
 }

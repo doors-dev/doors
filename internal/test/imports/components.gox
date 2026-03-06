@@ -45,40 +45,40 @@ elem fileRawSrc() {
 }
 
 elem styleBytesHead(_b doors.Source[test.Path]) {
-	~doors.StyleBytes{
-		Content: styleRawBytes,
+	~doors.Style{
+		Source: doors.SourceStyleBytes(styleRawBytes),
 	}
 }
 
 elem styleExternalHead(_b doors.Source[test.Path]) {
-	~doors.StyleExternal{
-		Src: (test.Host + "/module/style.css"),
+	~doors.Style{
+		Source: doors.SourceExternal(test.Host + "/module/style.css",),
 	}
 }
 
 elem styleHostedHead(_b doors.Source[test.Path]) {
-	~doors.StyleLocal{
-		Src: ("/module/style.css"),
+	~doors.Style{
+		Source: doors.SourceLocal("/module/style.css"),
 	}
 }
 
 elem styleHead(_b doors.Source[test.Path]) {
-	~doors.StylePath{
-		Path: (modulePath + "/style.css"),
+	~doors.Style{
+		Source: doors.SourcePath(modulePath + "/style.css"),
 	}
 }
 
 elem moduleExternalHead(_b doors.Source[test.Path]) {
-	~doors.ScriptExternal{
-		Kind: doors.ScriptKindImportModule("module"),
-		Src: (test.Host + "/module/index.js"),
+	~doors.ScriptModule{
+		Source: doors.SourceExternal(test.Host + "/module/index.js"),
+		Specifier: "module",
 	}
 }
 
 elem moduleBundleHostHead(_b doors.Source[test.Path]) {
-	~doors.ScriptLocal{
-		Kind: doors.ScriptKindImportModule("module"),
-		Src: (test.Host + "/module/index.js"),
+	~doors.ScriptModule{
+		Specifier: "module",
+		Source: doors.SourceLocal("/module/index.js"),
 	}
 }
 
@@ -86,55 +86,61 @@ elem moduleBundleFSHead(_b doors.Source[test.Path]) {
 	~{
 		moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src")
 	}
-	~doors.ScriptFS{
-		Kind: doors.ScriptKindImportModule("module"),
+	~doors.ScriptModule{
+		Specifier: "module",
 		Output: doors.ScriptOutputBundle,
-		FS: moduleBundleDir,
-		Path: "index.ts",
-		Name: "dd",
+		Source: doors.SourceFS{
+			FS: moduleBundleDir,
+			Path: "index.ts",
+			Name: "dd",
+		},
 	}
 }
 
 elem moduleRawBytesHead(_b doors.Source[test.Path]) {
-	~doors.ScriptBytes{
-		Kind: doors.ScriptKindImportModule("module"),
+	~doors.ScriptModule{
+		Specifier: "module",
+		Source: doors.SourceScriptBytes{
+			Content: moduleRawBytes,
+		},
 		Output: doors.ScriptOutputRaw,
-		Content: (moduleRawBytes),
 	}
 }
 
 elem moduleRawHead(_b doors.Source[test.Path]) {
-	~doors.ScriptPath{
-		Kind: doors.ScriptKindImportModule("module"),
-		Path: (modulePath + "/index.js"),
+	~doors.ScriptModule{
+		Specifier: "module",
+		Source: doors.SourcePath(modulePath + "/index.js"),
 		Output: doors.ScriptOutputRaw,
 	}
 }
 
 elem moduleBytesHead(_b doors.Source[test.Path]) {
-	~doors.ScriptBytes{
-		Kind: doors.ScriptKindImportModule("module"),
-		Content: (moduleBytes),
+	~doors.ScriptModule{
+		Specifier: "module",
+		Source: doors.SourceScriptBytes{
+			Content: moduleRawBytes,
+		},
 	}
 }
 
 elem moduleHead(_b doors.Source[test.Path]) {
 	<script
-		(doors.ScriptPath{
-			Kind: doors.ScriptKindImportModule("module"),
-			Path: (modulePath + "/index.ts"),
+		(doors.ScriptModule{
+			Specifier: "module",
+			Source: doors.SourcePath(modulePath + "/index.ts"),
 		})></script>
 }
 
 elem reactHead(_b doors.Source[test.Path]) {
-	~doors.ScriptPath{
-		Kind: doors.ScriptKindImportModule("preact"),
-		Path: (preactPath + "/index.tsx"),
+	~doors.ScriptModule{
+		Specifier: "preact",
+		Source: doors.SourcePath(preactPath + "/index.tsx"),
 		Output: doors.ScriptOutputBundle,
 	}
-	~doors.ScriptPath{
-		Kind: doors.ScriptKindImportModule("react"),
-		Path: (reactPath + "/index.tsx"),
+	~doors.ScriptModule{
+		Specifier: "react",
+		Source: doors.SourcePath(reactPath + "/index.tsx"),
 		Output: doors.ScriptOutputBundle,
 	}
 }
