@@ -89,6 +89,13 @@ func ConcurrentScope(id string, groupId int) ScopeSet {
 	}
 }
 
+func LatestScope(id string) ScopeSet {
+	return ScopeSet{
+		Id:   id,
+		Type: "latest",
+	}
+}
+
 func FreeScope(id string) ScopeSet {
 	return ScopeSet{
 		Id:   id,

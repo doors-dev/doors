@@ -38,6 +38,7 @@ type screen struct {
 
 func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.SimpleFrame, sourceFrame shredder.SimpleFrame, seq uint, isStopped func() bool) {
 	syncFrame := shredder.Join(true, sourceFrame, s.cinema.door.NewFrame(), s.thread.Frame())
+	defer syncFrame.Release()
 	fun := syncFrame.Run
 	if init {
 		fun = syncFrame.Submit

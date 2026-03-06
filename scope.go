@@ -104,3 +104,30 @@ func (d *ScopeConcurrent) Scope(groupId int) Scope {
 		return front.ConcurrentScope(d.id.Id(core), groupId)
 	})
 }
+
+
+
+// LatestScope cancels previous events and only processes the most recent one.
+// When a new event arrives, any currently processing event is cancelled
+// and the new event takes priority. This is useful if you need to 
+// cancel pending indication of other events. 
+type LatestScope struct {
+	id front.ScopeAutoId
+}
+
+func (b *LatestScope) Scope(core core.Core) ScopeSet {
+	return front.LatestScope(b.id.Id(core))
+}
+
+// ScopeLatest creates a scope that only processes the most recent event,
+// cancelling any previous events that are still processing. This ensures
+// only the latest user action is processed.
+func ScopeOnlyLatest() []Scope {
+	return []Scope{&LatestScope{}}
+}
+
+type linkScope struct{}
+func (b linkScope) Scope(core core.Core) ScopeSet {
+	return front.LatestScope("link")
+}
+

@@ -243,7 +243,7 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 		if stopped.Load() {
 			return
 		}
-		checkFrame.Release()
+		cleanFrame.Activate()
 	})
 
 	cleanFrame.Run(nil, nil, func(bool) {

@@ -84,24 +84,23 @@ export class Hook {
 			}
 		}
 	}
-	private launched = false
+	private abortTimer: AbortTimer | undefined
 	execute() {
 		let target: Element | null = null
 		if (this.params.event?.currentTarget) {
 			target = this.params.event.currentTarget as Element
 		}
 		this.indiciatorId = indicator.start(target, this.params.indicator)
-		const abortTimer = new AbortTimer(requestTimeout)
+		this.abortTimer = new AbortTimer(requestTimeout)
 		this.track = runtime.hookRegister(this)
 		const track = this.track
-		this.launched = true
 		this.actions(this.params.before).then(() => {
 			fetch(`/~0/${id}/${this.params.doorId}/${this.params.hookId}?t=${track}`, {
 				method: "POST",
-				signal: abortTimer.signal,
+				signal: this.abortTimer!.signal,
 				...this.fetch,
 			}).then(r => {
-				abortTimer!.cancel()
+				this.abortTimer!.cancel()
 				if (r.ok) {
 					runtime.hookOk(track, r)
 					return
@@ -118,7 +117,13 @@ export class Hook {
 					runtime.hookErr(track, new HookErr(hookErrKinds.other, r))
 				}
 			}).catch(e => {
-				abortTimer!.cancel()
+				if (this.abortTimer!.status == "aborted") {
+					runtime.hookErr(track, new HookErr(hookErrKinds.canceled))
+					return
+				}
+				if (this.abortTimer!.status == "running") {
+					this.abortTimer!.cancel()
+				}
 				runtime.hookErr(track, new HookErr(hookErrKinds.network, e))
 			})
 		})
@@ -127,7 +132,8 @@ export class Hook {
 		this.scopeStack.forEach(s => s.done(this))
 	}
 	cancel() {
-		if (this.launched) {
+		if (this.abortTimer) {
+			this.abortTimer.abort()
 			return
 		}
 		if (this.params.event) {
@@ -266,6 +272,7 @@ const newScope = {
 	"serial": (runtime: Runtime, id: string) => new SerialScope(runtime, id),
 	"frame": (runtime: Runtime, id: string) => new FrameScope(runtime, id),
 	"free": (runtime: Runtime, id: string) => new FreeScope(runtime, id),
+	"latest": (runtime: Runtime, id: string) => new LatestScope(runtime, id),
 } as const;
 
 class DebounceScope extends Scope {
@@ -403,6 +410,23 @@ class FrameScope extends Scope {
 		if (this.size != 1) {
 			return
 		}
+		this.promote(hook)
+	}
+}
+
+class LatestScope extends Scope {
+	private last: Hook | null = null
+	protected complete(hook: Hook): void {
+		if (this.last !== hook) {
+			return
+		}
+		this.last = null
+	}
+	protected process(hook: Hook, _opt: any): void {
+		if (this.last) {
+			this.last.cancel()
+		}
+		this.last = hook
 		this.promote(hook)
 	}
 }
