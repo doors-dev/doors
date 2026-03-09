@@ -555,11 +555,11 @@ type issuedCall struct {
 
 func (i *issuedCall) write(h header, w io.Writer) error {
 	h = append(h, i.invocation.Func())
-	payload, payloadType := i.invocation.Payload()
-	if err := h.write(w, payloadType, len(payload)); err != nil {
+	payload := i.invocation.Payload()
+	if err := h.write(w, payload.Type(), payload.Len()); err != nil {
 		return err
 	}
-	if _, err := w.Write(payload); err != nil {
+	if err := payload.Output(w); err != nil {
 		return err
 	}
 	return nil
@@ -640,11 +640,6 @@ func (p *deckCall) written() {
 func (c *deckCall) action() (action.Action, bool) {
 	return c.call.Action()
 }
-
-/*
-func (c *deckCall) clean() {
-	c.call.Clean()
-} */
 
 func (c *deckCall) cancel() {
 	if c.reported.Swap(true) {

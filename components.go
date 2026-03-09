@@ -112,21 +112,18 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
 func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
 		door := &Door{}
-		var store atomic.Pointer[T]
-		v, ok := beam.ReadAndSub(cur.Context(), func(ctx context.Context, v T) bool {
-			store.Store(&v)
-			door.Reload(cur.Context())
+		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
+			door.Rebase(ctx, func(cur gox.Cursor) error {
+				ctx := context.WithValue(cur.Context(), key, v)
+				cur = gox.NewCursor(ctx, cur)
+				return el(cur)
+			})
 			return false
 		})
-		store.Store(&v)
 		if !ok {
 			return nil
 		}
-		return door.Proxy(cur, func(cur gox.Cursor) error {
-			ctx := context.WithValue(cur.Context(), key, *store.Load())
-			cur = gox.NewCursor(ctx, cur)
-			return el(cur)
-		})
+		return cur.Editor(door)
 	})
 }
 
@@ -217,8 +214,8 @@ func Status(statusCode int) gox.Editor {
 }
 
 const headScript = `
-let tags = new Set($data("tags"))
-$on($data("event"), (data) => {
+let tags = new Set(await $data("tags"))
+$on(await $data("event"), (data) => {
     document.title = data.title;
     const removeTags = tags;
     tags = new Set();
@@ -291,6 +288,7 @@ func TitleMeta[M any](b Beam[M], el func(M) gox.Elem) gox.Editor {
 		core := ctx.Value(ctex.KeyCore).(core.Core)
 		eventName := fmt.Sprintf("head~%d", core.NewID())
 		currentSeq := &atomic.Uint32{}
+		gz := !core.Conf().ServerDisableGzip
 		m, ok := b.ReadAndSub(cur.Context(), func(ctx context.Context, m M) bool {
 			seq := currentSeq.Add(1)
 			report := ctex.WgAdd(ctx)
@@ -315,7 +313,7 @@ func TitleMeta[M any](b Beam[M], el func(M) gox.Elem) gox.Editor {
 					Name: eventName,
 					Arg:  p.headData,
 				}
-				action, params, err := builder.action(ctx, core)
+				action, params, err := builder.action(ctx, core, gz)
 				if err != nil {
 					slog.Error("head data update action building error", "error", err.Error())
 					return

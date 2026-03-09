@@ -56,6 +56,7 @@ func testModule(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 		},
 	)
 	defer bro.Close()
+
 	<-time.After(100 * time.Millisecond)
 	page := bro.Page(t, "/")
 	defer page.Close()

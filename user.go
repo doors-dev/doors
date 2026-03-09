@@ -10,7 +10,6 @@ package doors
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -78,13 +77,7 @@ type Location = path.Location
 // Returns an error if no adapter is registered or encoding fails.
 func NewLocation(ctx context.Context, model any) (Location, error) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	name := path.GetAdapterName(model)
-	adapter, ok := core.Adapter(name)
-	if !ok {
-		var l Location
-		return l, errors.New("adapter for " + name + " is not registered")
-	}
-	location, err := adapter.EncodeAny(model)
+	location, err := core.Adapters().Encode(model)
 	if err != nil {
 		var l Location
 		return l, err
@@ -102,7 +95,10 @@ func IdRand() string {
 // For the same string outputs the same result.
 // Suitable for HTML attributes.
 func IdString(string string) string {
-	return IdBytes(common.AsBytes(string))
+	hasher := blake3.New()
+	hasher.WriteString(string)
+	hash := hasher.Sum(nil)
+	return common.Cut(base58.Encode(hash[:]))
 }
 
 // IdBytes creates Id using provided bytes, hashbased.
@@ -110,7 +106,7 @@ func IdString(string string) string {
 // Suitable for HTML attributes.
 func IdBytes(b []byte) string {
 	hash := blake3.Sum256(b)
-	return common.EnsureNoFirstDigit(base58.Encode(hash[:16]))
+	return common.Cut(base58.Encode(hash[:]))
 }
 
 // AllowBlocking returns a context that suppresses warnings when used

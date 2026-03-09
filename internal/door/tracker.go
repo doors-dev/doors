@@ -2,6 +2,7 @@ package door
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -72,7 +73,25 @@ type tracker struct {
 	cinema               beam.Cinema
 	hooks                map[uint64]*hook
 	core                 core.Core
-	childDoorHooksCancel map[uint64][]context.CancelFunc
+	containerHooksCancel map[uint64][]context.CancelFunc
+}
+
+func (t *tracker) debug(tab string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	fmt.Printf("%s%d\n", tab, t.id)
+	for node := range t.children {
+		mu := node.entity.(nodeMount)
+		mu.Tracker().debug(tab + "-")
+	}
+}
+
+func (t *tracker) inst() Instance {
+	return t.root.inst
+}
+
+func (t *tracker) runtime() shredder.Runtime {
+	return t.root.runtime()
 }
 
 func (t *tracker) parentContext() context.Context {
@@ -80,6 +99,14 @@ func (t *tracker) parentContext() context.Context {
 		return t.root.runtime().Context()
 	}
 	return t.parent.ctx
+}
+
+func (t *tracker) containerContext() context.Context {
+	parentCore := core.NewCore(t.inst(), containerCore{
+		tracker: t.parent,
+		id:      t.id,
+	})
+	return context.WithValue(t.parent.parentContext(), ctex.KeyCore, parentCore)
 }
 
 func (t *tracker) Context() context.Context {
@@ -94,17 +121,17 @@ func (t *tracker) Cinema() beam.Cinema {
 	return t.cinema
 }
 
-func (t *tracker) registerChildDoorHook(childId uint64, onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
+func (t *tracker) registerContainerHook(childId uint64, onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	hook, ok := t.registerHook(onTrigger, onCancel)
 	if !ok {
 		return hook, false
 	}
-	if t.childDoorHooksCancel == nil {
-		t.childDoorHooksCancel = make(map[uint64][]context.CancelFunc)
+	if t.containerHooksCancel == nil {
+		t.containerHooksCancel = make(map[uint64][]context.CancelFunc)
 	}
-	t.childDoorHooksCancel[childId] = append(t.childDoorHooksCancel[childId], hook.Cancel)
+	t.containerHooksCancel[childId] = append(t.containerHooksCancel[childId], hook.Cancel)
 	return hook, true
 }
 
@@ -178,27 +205,27 @@ func (t *tracker) kill() {
 	}
 	clear(t.hooks)
 	for child := range t.children {
-		child.kill(cascadeKill)
+		child.killCascade()
 	}
 	t.children.Clear()
 }
 
-func (t *tracker) removeChild(n *node) {
+func (t *tracker) removeChild(n *node, id uint64) {
 	t.mu.Lock()
 	if !t.children.Remove(n) {
 		defer t.mu.Unlock()
 		return
 	}
-	if t.childDoorHooksCancel == nil {
+	if t.containerHooksCancel == nil {
 		defer t.mu.Unlock()
 		return
 	}
-	cancels, ok := t.childDoorHooksCancel[n.tracker.id]
+	cancels, ok := t.containerHooksCancel[id]
 	if !ok {
 		defer t.mu.Unlock()
 		return
 	}
-	delete(t.childDoorHooksCancel, n.tracker.id)
+	delete(t.containerHooksCancel, id)
 	t.mu.Unlock()
 	for _, cancel := range cancels {
 		cancel()
@@ -206,13 +233,10 @@ func (t *tracker) removeChild(n *node) {
 }
 
 func (t *tracker) replaceChild(prev *node, next *node) {
-	if prev.tracker.id != next.tracker.id {
-		panic("wrong replace child operation")
-	}
 	t.mu.Lock()
 	if t.isKilled() {
 		t.mu.Unlock()
-		next.kill(cascadeKill)
+		next.killCascade()
 		return
 	}
 	t.children.Remove(prev)
@@ -224,7 +248,7 @@ func (t *tracker) addChild(n *node) {
 	t.mu.Lock()
 	if t.isKilled() {
 		t.mu.Unlock()
-		n.kill(cascadeKill)
+		n.killCascade()
 		return
 	}
 	if t.children == nil {
@@ -249,21 +273,21 @@ func (t *tracker) newRenderFrame() shredder.Frame {
 	return frame
 }
 
-type childDoorCore struct {
+type containerCore struct {
 	tracker *tracker
 	id      uint64
 }
 
-func (h childDoorCore) Cinema() beam.Cinema {
+func (h containerCore) Cinema() beam.Cinema {
 	return h.tracker.Cinema()
 }
 
-func (h childDoorCore) ID() uint64 {
+func (h containerCore) ID() uint64 {
 	return h.tracker.id
 }
 
-func (h childDoorCore) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
-	return h.tracker.registerChildDoorHook(h.id, onTrigger, onCancel)
+func (h containerCore) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
+	return h.tracker.registerContainerHook(h.id, onTrigger, onCancel)
 }
 
-var _ core.Door = &childDoorCore{}
+var _ core.Door = &containerCore{}

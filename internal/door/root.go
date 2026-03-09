@@ -2,13 +2,14 @@ package door
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/door/pipe"
 	"github.com/doors-dev/doors/internal/front/action"
-	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
@@ -40,7 +41,18 @@ type root struct {
 	tracker *tracker
 }
 
+func (r Root) debug(messages ...any) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	str := fmt.Sprint(messages...)
+	println()
+	println(str)
+	r.tracker.debug("*")
+}
+
 func (r Root) IsStatic() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if len(r.tracker.children) != 0 {
 		return false
 	}
@@ -57,10 +69,6 @@ func (r *root) runtime() shredder.Runtime {
 	return r.inst.Runtime()
 }
 
-func (r *root) resourceRegistry() *resources.Registry {
-	return r.inst.ResourceRegistry()
-}
-
 func (r Root) ID() uint64 {
 	return r.tracker.id
 }
@@ -73,28 +81,29 @@ func (r Root) Kill() {
 	r.tracker.kill()
 }
 
-func (r Root) Render(comp gox.Comp) (Pipe, shredder.SimpleFrame) {
+type Stack = pipe.Stack
+
+func (r Root) Render(comp gox.Comp) (Stack, error) {
 	thread := shredder.Thread{}
-	renderFrame := thread.Frame()
-	readyFrame := thread.Frame()
-	pipe := newPipe(shredder.FreeFrame{})
-	pipe.tracker = r.tracker
-	pipe.renderFrame = shredder.Join(true, renderFrame, r.tracker.newRenderFrame())
-	pipe.renderFrame.Run(r.tracker.ctx, r.runtime(), func(ok bool) {
-		defer pipe.close()
-		if !ok {
-			return
-		}
-		el := comp.Main()
-		if el == nil {
-			return
-		}
-		err := el.Print(pipe.tracker.ctx, pipe)
-		if err != nil {
-			pipe.Send(gox.NewJobError(pipe.tracker.ctx, err))
-		}
+	mountFrame := &shredder.ValveFrame{}
+	renderFrame := shredder.Join(true, thread.Frame(), r.tracker.newRenderFrame())
+	pipe := pipe.NewPipe(
+		r.tracker.ctx,
+		r.tracker.runtime(),
+		renderFrame,
+		mountFrame,
+	)
+	ch := make(chan struct{})
+	renderFrame.Run(r.tracker.ctx, r.runtime(), func(b bool) {
+		pipe.RenderContent(comp)
 	})
-	return pipe, readyFrame
+	renderFrame.Release()
+	thread.Frame().Run(r.tracker.ctx, r.runtime(), func(b bool) {
+		mountFrame.Activate()
+		close(ch)
+	})
+	<-ch
+	return pipe.Collect()
 }
 
 func (i Root) TriggerHook(doorID uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {

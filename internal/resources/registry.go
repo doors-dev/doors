@@ -10,14 +10,12 @@ package resources
 
 import (
 	"errors"
-	"net/http"
-	"sync"
-	"sync/atomic"
-
 	"github.com/doors-dev/doors/internal"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/zeebo/blake3"
+	"net/http"
+	"sync"
 )
 
 type BuildProfiles interface {
@@ -36,7 +34,7 @@ func NewRegistry(s settings) *Registry {
 }
 
 type Registry struct {
-	initGuard  atomic.Bool
+	initGuard  sync.Once
 	settings   settings
 	cache      sync.Map
 	lookup     sync.Map
@@ -48,14 +46,7 @@ func (rg *Registry) key32(b []byte) [32]byte {
 	return *(*[32]byte)(b)
 }
 
-func (rg *Registry) key16(b []byte) [16]byte {
-	return *(*[16]byte)(b)
-}
-
 func (rg *Registry) init() {
-	if !rg.initGuard.CompareAndSwap(false, true) {
-		return
-	}
 	opt := rg.settings.BuildProfiles().Options("")
 	ScriptFS{
 		FS:   internal.ClientSrc,
@@ -74,7 +65,9 @@ func (rg *Registry) init() {
 		panic(errors.Join(errors.New("Client js build error"), err))
 	}
 	rg.mainScript = NewResource(content, "application/javascript", rg.defaultSettings())
+	rg.lookup.Store(rg.mainScript.hash, rg.mainScript)
 	rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.defaultSettings())
+	rg.lookup.Store(rg.mainStyle.hash, rg.mainStyle)
 }
 
 func (rg *Registry) defaultSettings() resourceSettings {
@@ -85,21 +78,17 @@ func (rg *Registry) defaultSettings() resourceSettings {
 }
 
 func (rg *Registry) MainStyle() *Resource {
-	rg.init()
+	rg.initGuard.Do(rg.init)
 	return rg.mainStyle
 }
 
 func (rg *Registry) MainScript() *Resource {
-	rg.init()
+	rg.initGuard.Do(rg.init)
 	return rg.mainScript
 }
 
-func (rg *Registry) Serve(hash []byte, w http.ResponseWriter, r *http.Request) {
-	if len(hash) != 16 {
-		w.WriteHeader(400)
-		return
-	}
-	s, ok := rg.lookup.Load(rg.key16(hash))
+func (rg *Registry) Serve(hash [16]byte, w http.ResponseWriter, r *http.Request) {
+	s, ok := rg.lookup.Load(hash)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return

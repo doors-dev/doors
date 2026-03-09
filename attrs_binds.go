@@ -71,7 +71,7 @@ func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	err := dec.Decode(&input)
 	r.Body.Close()
 	if err != nil {
-		println(err.Error())
+		slog.Error("Hook decoding error", slog.String("json_error", err.Error()))
 		w.WriteHeader(400)
 		return false
 	}
@@ -88,7 +88,6 @@ func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	err = enc.Encode(&output)
 	if err != nil {
 		slog.Error("Hook output encoding error", slog.String("json_error", err.Error()))
-		println(err.Error())
 		w.WriteHeader(500)
 	}
 	return done
@@ -146,11 +145,11 @@ func (h *ARawHook) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 // AData exposes server-provided data to JavaScript via $data(name).
 //
-// The Value is marshaled to JSON and made available for client-side access.
+// The Value ([]byte, string or any) is encoded and made available for client-side access.
 // This is useful for passing initial state, configuration, or constants
 // directly into the client runtime.
 type AData struct {
-	// Name of the data entry to read via JavaScript with $data(name).
+	// Name of the data entry to read via JavaScript with await $data(name).
 	// Required.
 	Name string
 	// Value to expose to the client. Marshaled to JSON.

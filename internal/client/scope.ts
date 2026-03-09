@@ -9,7 +9,7 @@
 import { HookErr, hookErrKinds } from './capture'
 import captures from './captures'
 import indicator, { IndicatorEntry } from './indicator'
-import { requestTimeout, id } from './params'
+import { requestTimeout, id, prefix } from './params'
 import { AbortTimer } from './lib'
 import action, { Action } from './calls'
 import { decodePayload } from './package'
@@ -95,7 +95,7 @@ export class Hook {
 		this.track = runtime.hookRegister(this)
 		const track = this.track
 		this.actions(this.params.before).then(() => {
-			fetch(`/~0/${id}/${this.params.doorId}/${this.params.hookId}?t=${track}`, {
+			fetch(`${prefix}/h/${id}/${this.params.doorId}/${this.params.hookId}?t=${track}`, {
 				method: "POST",
 				signal: this.abortTimer!.signal,
 				...this.fetch,
@@ -160,7 +160,7 @@ export class Hook {
 		const afterActions = this.defaultAfter
 		const after = r.headers.get("D0-After")
 		if (after) {
-			afterActions.push(JSON.parse(after))
+			afterActions.push(...JSON.parse(after))
 		}
 		this.actions(afterActions).then(() => {
 			indicator.end(this.indiciatorId)

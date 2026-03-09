@@ -20,8 +20,7 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 	core := cur.Context().Value(ctex.KeyCore).(core.Core)
 	conf := core.Conf()
 	registry := core.ResourceRegistry()
-	style := registry.MainStyle()
-	script := registry.MainScript()
+	pathMaker := core.PathMaker()
 	if err := cur.InitVoid("link"); err != nil {
 		return err
 	}
@@ -29,7 +28,7 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.AttrSet("rel", "stylesheet"); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("href", fmt.Sprintf("/~0/%s.css", style.HashString())); err != nil {
+		if err := cur.AttrSet("href", pathMaker.Resource(registry.MainStyle(), "d0r.css")); err != nil {
 			return err
 		}
 	}
@@ -40,10 +39,13 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		return err
 	}
 	{
-		if err := cur.AttrSet("src", fmt.Sprintf("/~0/%s.js", script.HashString())); err != nil {
+		if err := cur.AttrSet("src", pathMaker.Resource(registry.MainScript(), "d0r.js")); err != nil {
 			return err
 		}
 		if err := cur.AttrSet("id", core.InstanceID()); err != nil {
+			return err
+		}
+		if err := cur.AttrSet("data-prefix", pathMaker.Prefix()); err != nil {
 			return err
 		}
 		if err := cur.AttrSet("data-root", core.RootID()); err != nil {

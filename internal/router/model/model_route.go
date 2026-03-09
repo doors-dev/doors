@@ -46,15 +46,8 @@ func (n *modelRoute[M]) Adapter() path.AnyAdapter {
 }
 
 func (n *modelRoute[M]) Handle(w http.ResponseWriter, r *http.Request, a any, sess *instance.Session, opt instance.Options) (Res, bool) {
-	var model *M
-	if l, ok := a.(path.Location); ok {
-		if m, ok := n.a.Decode(l); ok {
-			model = &m
-		}
-	} else if m, ok := a.(M); ok {
-		model = &m
-	}
-	if model == nil {
+	model, ok := n.a.Decode(a)
+	if !ok {
 		return Res{}, false
 	}
 	source := beam.NewSourceEqual(*model, func(a, b M) bool {
@@ -65,42 +58,42 @@ func (n *modelRoute[M]) Handle(w http.ResponseWriter, r *http.Request, a any, se
 		inst, ok := instance.NewInstance(sess, n.a, source, comp, opt)
 		if !ok {
 			return Res{
-				value: InstanceCreationError{},
+				entity: InstanceCreationError{},
 			}, true
 		}
 		return Res{
-			value: instValue{inst},
+			entity: newInstance{inst},
 		}, true
 	}
 	return res, true
 }
 
-type compValue struct {
+type component struct {
 	comp gox.Comp
 }
 
-type instValue struct {
+type newInstance struct {
 	inst instance.AnyInstance
 }
 
-type rerouteValue struct {
+type reroute struct {
 	model any
 }
 
-type redirectValue struct {
+type redirect struct {
 	model  any
 	status int
 }
 
 func ResApp(comp gox.Comp) Res {
 	return Res{
-		value: compValue{comp},
+		entity: component{comp},
 	}
 }
 
 func ResRedirect(model any, status int) Res {
 	return Res{
-		value: redirectValue{
+		entity: redirect{
 			model:  model,
 			status: status,
 		},
@@ -109,50 +102,50 @@ func ResRedirect(model any, status int) Res {
 
 func ResReroute(model any) Res {
 	return Res{
-		value: rerouteValue{
+		entity: reroute{
 			model: model,
 		},
 	}
 }
 
 type Res struct {
-	value any
+	entity any
 }
 
-func (r Res) Value() any {
-	return r.value
+func (r Res) Entity() any {
+	return r.entity
 }
 
 func (r Res) comp() (gox.Comp, bool) {
-	if c, ok := r.value.(compValue); ok {
+	if c, ok := r.entity.(component); ok {
 		return c.comp, true
 	}
 	return nil, false
 }
 
 func (r Res) Err() error {
-	if c, ok := r.value.(error); ok {
+	if c, ok := r.entity.(error); ok {
 		return c
 	}
 	return nil
 }
 
 func (r Res) Instance() (instance.AnyInstance, bool) {
-	if c, ok := r.value.(instValue); ok {
+	if c, ok := r.entity.(newInstance); ok {
 		return c.inst, true
 	}
 	return nil, false
 }
 
 func (r Res) Reroute() (any, bool) {
-	if r, ok := r.value.(rerouteValue); ok {
+	if r, ok := r.entity.(reroute); ok {
 		return r.model, true
 	}
 	return nil, false
 }
 
 func (r Res) Redirect() (any, int, bool) {
-	if r, ok := r.value.(redirectValue); ok {
+	if r, ok := r.entity.(redirect); ok {
 		return r.model, r.status, true
 	}
 	return nil, 0, false

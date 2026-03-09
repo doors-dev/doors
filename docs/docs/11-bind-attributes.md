@@ -27,7 +27,7 @@ Example:
     Value: user, // Go struct or map
   }
   <script>
-    const user = $data("user_profile")
+    const user = await $data("user_profile")
     console.log(user.name)
   </script>
 }

@@ -4,35 +4,18 @@ import (
 	"context"
 	"errors"
 	"io"
-	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/door/pipe"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-type nodeKind int
-
-const (
-	unmountedNode nodeKind = iota
-	replacedNode
-	updatedNode
-	editorNode
-	proxyNode
-)
-
 type node struct {
-	ctx                context.Context
-	reportCh           chan error
-	done               func()
-	kind               nodeKind
-	door               *Door
-	takoverFrame       shredder.ValveFrame
-	renderThread       shredder.Thread
-	communicationFrame shredder.SimpleFrame
-	tracker            *tracker
-	view               *view
-	killed             atomic.Bool
+	ctx       context.Context
+	initFrame shredder.ValveFrame
+	door      *Door
+	entity    any
 }
 
 func (n *node) Context() context.Context {
@@ -43,346 +26,559 @@ func (n *node) Output(io.Writer) error {
 	return errors.New("door: used outside render pipeline")
 }
 
-func (n *node) takover(prev *node) {
-	switch n.kind {
-	case editorNode, proxyNode:
-		renderGuard := n.renderThread.Guard()
-		prev.takoverFrame.Run(nil, nil, func(bool) {
-			defer renderGuard.Release()
-			switch n.kind {
-			case editorNode:
-				n.editorTakover(prev)
-			case proxyNode:
-				n.proxyTakeover(prev)
-			}
-		})
+func (n *node) contextParent() *tracker {
+	return n.ctx.Value(ctex.KeyCore).(core.Core).Door().(*tracker)
+}
+
+func (n *node) init(prev *node) {
+	switch ent := n.entity.(type) {
+	case *replaceNode:
+		n.initReplace(ent, prev)
+	case *proxyNode:
+		n.initProxy(ent, prev)
+	case *editorNode:
+		n.initEditor(prev)
+	case *unmountNode:
+		n.initUnmount(ent, prev)
+	case *updateNode:
+		n.initUpdate(ent, prev)
+	case *redrawNode:
+		n.initRedraw(ent, prev)
+	case *rebaseNode:
+		n.initRebase(ent, prev)
+	}
+}
+
+func (n *node) initReplace(nr *replaceNode, prev *node) {
+	prevEnt, ok := prev.entity.(nodeMount)
+	if !ok {
+		nr.Accept()
+		return
+	}
+
+	nr.replaceId = prevEnt.ReplaceId()
+
+	prev.killUnmount()
+
+	n.writeReplace(
+		nr,
+		prevEnt.Tracker().parent,
+		prevEnt.WriteFrame(),
+	)
+}
+
+func (n *node) initProxy(np *proxyNode, prev *node) {
+
+	prev.killRemove()
+
+	np.tracker = newTracker(n.contextParent())
+	np.contents = &contents{
+		initializeFrame: &shredder.ValveFrame{},
+	}
+	np.initMountFrame()
+	np.setReplaceId()
+	switch ent := prev.entity.(type) {
+	case *replaceNode:
+		np.prevContents = nil
+	case contentsNode:
+		np.prevContents = ent.Contents()
 	default:
-		prev.takoverFrame.Run(nil, nil, func(bool) {
-			defer n.takoverFrame.Activate()
-			switch n.kind {
-			case updatedNode:
-				n.updatedTakeover(prev)
-			case unmountedNode:
-				n.unmountTakeover(prev)
-			case replacedNode:
-				n.replaceTakeover(prev)
-			}
-		})
+		panic("unexpected node entity")
 	}
+
+	np.tracker.parent.addChild(n)
 }
 
-func (n *node) updatedTakeover(prev *node) {
-	switch prev.kind {
-	case unmountedNode:
-		n.view.attrs = prev.view.attrs
-		n.view.tag = prev.view.tag
-		n.kind = unmountedNode
-		n.accept()
-		return
-	case replacedNode:
-		n.kind = unmountedNode
-		n.accept()
-		return
-	}
-	prev.kill(unmountKill)
-	n.communicationFrame = prev.communicationFrame
-	n.tracker = newTrackerFrom(prev.tracker)
-	n.tracker.parent.replaceChild(prev, n)
-	if n.view == nil {
-		n.view = prev.view
-	} else {
-		n.view.attrs = prev.view.attrs
-		n.view.tag = prev.view.tag
-	}
-	if n.view.content == nil {
-		n.communicationFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
-			if !ok {
-				n.cancel()
-				return
-			}
-			n.tracker.root.inst.Call(&call{
-				ctx:  n.tracker.ctx,
-				id:   n.tracker.id,
-				kind: callUpdate,
-				ch:   n.reportCh,
-			})
-			n.done()
-		})
-		return
-	}
-	rootFrame := shredder.ValveFrame{}
-	disableGzip := n.tracker.root.inst.Conf().ServerDisableGzip
-	printer := newPrinter(disableGzip)
-	pipe := newPipe(&rootFrame)
-	pipe.printer = printer
-	pipe.tracker = n.tracker
-	pipe.renderFrame = shredder.Join(true, n.renderThread.Frame(), n.tracker.newRenderFrame())
-	pipe.renderAny(n.tracker.ctx, n.view.content)
-	updateFrame := shredder.Join(true, n.renderThread.Frame(), n.communicationFrame)
-	updateFrame.Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
-		defer rootFrame.Activate()
-		if !ok {
-			printer.release()
-			n.cancel()
-			return
-		}
-		printer.finalize()
-		if err := pipe.Error(); err != nil {
-			n.tracker.root.inst.Call(&call{
-				ctx:     n.tracker.ctx,
-				kind:    callUpdate,
-				id:      n.tracker.id,
-				payload: printer,
-			})
-			n.tracker.parent.removeChild(n)
-			n.kill(errorKill)
-			n.error(err)
-			return
-		}
-		n.tracker.root.inst.Call(&call{
-			ctx:     n.tracker.ctx,
-			kind:    callUpdate,
-			id:      n.tracker.id,
-			ch:      n.reportCh,
-			payload: printer,
-		})
-		n.done()
-	})
-	updateFrame.Release()
-}
+func (n *node) initUnmount(num *unmountNode, prev *node) {
+	prev.killUnmount()
 
-func (n *node) unmountTakeover(prev *node) {
-	switch prev.kind {
-	case replacedNode:
-		n.accept()
-		return
-	case unmountedNode:
-		n.view = prev.view
-		n.accept()
-		return
+	switch ent := prev.entity.(type) {
+	case *replaceNode:
+		num.contents = &contents{
+			initializeFrame: &shredder.ValveFrame{},
+		}
+		num.contents.initializeFrame.Activate()
+	case *proxyNode:
+		num.contents = ent.contents
+		num.proxyElem = ent.elem
+	case contentsNode:
+		num.contents = ent.Contents()
 	}
-	prev.kill(unmountKill)
-	prev.tracker.removeChild(prev)
-	n.view = prev.view
-	id := prev.tracker.id
-	ctx := prev.tracker.parentContext()
-	prev.communicationFrame.Run(ctx, prev.tracker.root.runtime(), func(ok bool) {
-		if !ok {
-			n.cancel()
+	nm, ok := prev.entity.(nodeMount)
+	if !ok || !num.remove {
+		num.Accept()
+	}
+	nm.WriteFrame().Run(nm.Tracker().parentContext(), nm.Tracker().runtime(), func(b bool) {
+		if !b {
+			num.Cancel()
 			return
 		}
-		prev.tracker.root.inst.Call(&call{
-			ctx:  ctx,
-			kind: callReplace,
-			id:   id,
-			ch:   n.reportCh,
-		})
-		n.done()
-	})
-}
-
-func (n *node) replaceTakeover(prev *node) {
-	switch prev.kind {
-	case replacedNode, unmountedNode:
-		n.accept()
-		return
-	}
-	prev.kill(unmountKill)
-	prev.tracker.parent.removeChild(prev)
-	parent := prev.tracker.parent
-	id := prev.tracker.id
-	ctx := parent.ctx
-	if n.view.content == nil {
-		prev.communicationFrame.Run(parent.ctx, parent.root.runtime(), func(ok bool) {
-			defer n.done()
-			if !ok {
-				n.cancel()
-				return
-			}
-			prev.tracker.root.inst.Call(&call{
-				ctx:     ctx,
-				kind:    callReplace,
-				id:      id,
-				ch:      n.reportCh,
-				payload: nil,
-			})
-		})
-		return
-	}
-	rootFrame := shredder.ValveFrame{}
-	disableGzip := prev.tracker.root.inst.Conf().ServerDisableGzip
-	printer := newPrinter(disableGzip)
-	pipe := newPipe(&rootFrame)
-	pipe.printer = printer
-	pipe.tracker = parent
-	pipe.renderFrame = shredder.Join(true, parent.newRenderFrame(), n.renderThread.Frame())
-	pipe.renderAny(parent.ctx, n.view.content)
-	replaceFrame := shredder.Join(true, n.renderThread.Frame(), prev.communicationFrame)
-	replaceFrame.Run(prev.tracker.parentContext(), prev.tracker.root.runtime(), func(ok bool) {
-		defer rootFrame.Activate()
-		if !ok {
-			printer.release()
-			n.cancel()
-			return
-		}
-		printer.finalize()
-		if err := pipe.Error(); err != nil {
-			prev.tracker.root.inst.Call(&call{
-				ctx:     parent.ctx,
-				kind:    callReplace,
-				id:      id,
-				payload: printer,
-			})
-			n.error(err)
-			return
-		}
-		prev.tracker.root.inst.Call(&call{
-			ctx:     parent.ctx,
+		nm.Tracker().root.inst.Call(&call{
+			ctx:     nm.Tracker().parentContext(),
+			ch:      num.CallCh(),
 			kind:    callReplace,
-			id:      id,
-			ch:      n.reportCh,
-			payload: printer,
-		})
-		n.done()
-	})
-	replaceFrame.Release()
-}
-
-func (n *node) proxyTakeover(prev *node) {
-	n.view.content = prev.view.content
-	switch prev.kind {
-	case replacedNode:
-	case updatedNode, editorNode, proxyNode:
-		prev.kill(removeKill)
-		prev.tracker.parent.removeChild(prev)
-	}
-}
-
-func (n *node) editorTakover(prev *node) {
-	n.view = prev.view
-	switch prev.kind {
-	case updatedNode, editorNode:
-		prev.kill(removeKill)
-		prev.tracker.parent.removeChild(prev)
-	case replacedNode:
-		n.kind = replacedNode
-		n.takoverFrame.Activate()
-	case proxyNode:
-		prev.kill(removeKill)
-		prev.tracker.parent.removeChild(prev)
-		n.kind = proxyNode
-	}
-}
-
-func (n *node) render(parentPipe *pipe) {
-	pipe := parentPipe.branch()
-	parent := parentPipe.tracker
-	frame := shredder.Join(true, parentPipe.renderFrame, n.renderThread.Frame())
-	defer frame.Release()
-	frame.Run(parent.ctx, parent.root.runtime(), func(ok bool) {
-		if !ok {
-			defer n.takoverFrame.Activate()
-			if n.kind == replacedNode {
-				return
-			}
-			n.kind = unmountedNode
-			return
-		}
-		if n.kind == replacedNode {
-			pipe.renderAny(parent.ctx, n.view.content)
-			return
-		}
-		n.communicationFrame = pipe.rootFrame
-		n.tracker = newTracker(parent)
-		n.tracker.parent.addChild(n)
-		pipe.tracker = n.tracker
-		renderThread := &shredder.Thread{}
-		pipe.renderFrame = shredder.Join(true, parentPipe.renderFrame, n.tracker.newRenderFrame(), renderThread.Frame())
-		parentCore := core.NewCore(n.tracker.root.inst, childDoorCore{
-			tracker: parent,
-			id:      n.tracker.id,
-		})
-		parentCtx := context.WithValue(parent.ctx, ctex.KeyCore, parentCore)
-		switch n.kind {
-		case editorNode:
-			n.takoverFrame.Activate()
-			pipe.renderView(parentCtx, n.view)
-		case proxyNode:
-			pipe.renderProxy(parentCtx, n.view, &n.takoverFrame)
-		}
-		renderThread.Frame().Run(n.tracker.ctx, n.tracker.root.runtime(), func(ok bool) {
-			if !ok {
-				return
-			}
-			if err := pipe.Error(); err != nil {
-				n.tracker.parent.removeChild(n)
-				n.kill(errorKill)
-				n.error(err)
-			}
+			id:      nm.Tracker().id,
+			payload: pipe.EmptyPayload(),
 		})
 	})
 }
 
-func (n *node) error(err error) {
-	n.reportCh <- err
-	close(n.reportCh)
-	n.done()
-}
+func (n *node) initEditor(prev *node) {
+	prev.killRemove()
 
-func (n *node) accept() {
-	close(n.reportCh)
-	n.done()
-}
-
-func (n *node) cancel() {
-	n.error(context.Canceled)
-}
-
-type killKind int
-
-const (
-	cascadeKill killKind = iota
-	unmountKill
-	removeKill
-	errorKill
-)
-
-func (n *node) kill(kind killKind) bool {
-	if !n.killed.CompareAndSwap(false, true) {
-		return false
-	}
-	if n.kind == unmountedNode || n.kind == replacedNode {
-		panic("door: unmounted/replaced node can't be killed")
-	}
-	switch kind {
-	case errorKill:
-		n.tracker.kill()
-	case cascadeKill:
-		unmounted := &node{
-			kind: unmountedNode,
-			view: n.view,
+	switch prevEnt := prev.entity.(type) {
+	case *replaceNode:
+		n.entity = prevEnt
+	case *proxyNode:
+		np := &proxyNode{
+			mountNode: mountNode{
+				tracker: newTracker(n.contextParent()),
+				contents: &contents{
+					initializeFrame: &shredder.ValveFrame{},
+				},
+			},
+			elem:         prevEnt.elem,
+			prevContents: prevEnt.contents,
 		}
-		unmounted.takoverFrame.Activate()
-		n.door.node.CompareAndSwap(n, unmounted)
-		n.tracker.kill()
-	case unmountKill:
-		n.tracker.kill()
-	case removeKill:
-		id := n.tracker.id
-		ctx := n.tracker.parentContext()
-		n.communicationFrame.Run(n.tracker.parentContext(), n.tracker.root.runtime(), func(ok bool) {
-			if !ok {
-				return
+		np.initMountFrame()
+		np.setReplaceId()
+		n.entity = np
+
+		np.tracker.parent.addChild(n)
+	case *unmountNode:
+		if prevEnt.wasProxy() {
+			np := &proxyNode{
+				mountNode: mountNode{
+					tracker: newTracker(n.contextParent()),
+					contents: &contents{
+						initializeFrame: &shredder.ValveFrame{},
+					},
+				},
+				elem:         prevEnt.proxyElem,
+				prevContents: prevEnt.contents,
 			}
-			n.tracker.root.inst.Call(&call{
-				ctx:  ctx,
-				kind: callReplace,
-				id:   id,
-			})
-		})
-		n.tracker.kill()
+			np.initMountFrame()
+			np.setReplaceId()
+			n.entity = np
+
+			np.tracker.parent.addChild(n)
+		} else {
+			nu := &updateNode{
+				mountNode: mountNode{
+					tracker: newTracker(n.contextParent()),
+					contents: &contents{
+						initializeFrame: prevEnt.contents.initializeFrame,
+						content:         prevEnt.contents.content,
+						container:       prevEnt.contents.container,
+					},
+				},
+			}
+			nu.initMountFrame()
+			n.entity = nu
+
+			nu.tracker.parent.addChild(n)
+		}
+	case *updateNode:
+		nu := &updateNode{
+			mountNode: mountNode{
+				tracker: newTracker(n.contextParent()),
+				contents: &contents{
+					initializeFrame: prevEnt.contents.initializeFrame,
+					content:         prevEnt.contents.content,
+					container:       prevEnt.contents.container,
+				},
+			},
+		}
+		nu.initMountFrame()
+		n.entity = nu
+
+		nu.tracker.parent.addChild(n)
+	}
+}
+
+func (n *node) initRedraw(nr *redrawNode, prev *node) {
+	switch prevEnt := prev.entity.(type) {
+	case *replaceNode:
+		n.entity = prevEnt
+		nr.Report(errors.New("replaced door can't be reloaded"))
+	case *unmountNode:
+		n.entity = prevEnt
+		nr.Report(errors.New("unmounted door can't be reloaded"))
+	case *proxyNode:
+		prev.killUnmount()
+
+		np := &proxyNode{
+			taskNode: nr.taskNode,
+			mountNode: mountNode{
+				tracker: newTracker(prevEnt.tracker.parent),
+				contents: &contents{
+					initializeFrame: &shredder.ValveFrame{},
+				},
+				mountFrame: prevEnt.mountFrame,
+			},
+			elem:         prevEnt.elem,
+			prevContents: prevEnt.contents,
+		}
+		np.inheritReplaceId(prevEnt)
+		n.entity = np
+
+		np.tracker.parent.addChild(n)
+
+		n.writeProxyReplace(np)
+	case *updateNode:
+		nu := &updateNode{
+			taskNode: nr.taskNode,
+			content:  prevEnt.contents.content,
+		}
+		n.entity = nu
+		n.initUpdate(nu, prev)
+	}
+}
+
+func (n *node) initRebase(nr *rebaseNode, prev *node) {
+	switch prevEnt := prev.entity.(type) {
+	case nodeMount:
+		prev.killUnmount()
+		np := &proxyNode{
+			taskNode: nr.taskNode,
+			mountNode: mountNode{
+				tracker: newTracker(prevEnt.Tracker().parent),
+				contents: &contents{
+					initializeFrame: &shredder.ValveFrame{},
+				},
+				mountFrame: prevEnt.MountFrame(),
+			},
+			elem: nr.elem,
+		}
+		np.inheritReplaceId(prevEnt)
+		n.entity = np
+
+		np.tracker.parent.addChild(n)
+
+		n.writeProxyReplace(np)
 	default:
-		panic("door: invalid kill kind")
+		nr.Accept()
+		n.entity = &unmountNode{
+			proxyElem: nr.elem,
+		}
 	}
-	return true
+
+}
+
+func (n *node) initUpdate(nu *updateNode, prev *node) {
+	switch prevEnt := prev.entity.(type) {
+	case *replaceNode:
+		num := &unmountNode{
+			contents: &contents{
+				container:       &Container{},
+				initializeFrame: &shredder.ValveFrame{},
+				content:         nu.content,
+			},
+		}
+		num.contents.initializeFrame.Activate()
+		n.entity = num
+		nu.Accept()
+	case *unmountNode:
+		num := &unmountNode{
+			contents: &contents{
+				initializeFrame: prevEnt.Contents().initializeFrame,
+				container:       prevEnt.Contents().container,
+				content:         nu.content,
+			},
+		}
+		n.entity = num
+		nu.Accept()
+	case nodeMount:
+		nu.tracker = newTrackerFrom(prevEnt.Tracker())
+
+		nu.contents = &contents{
+			initializeFrame: prevEnt.Contents().initializeFrame,
+			container:       prevEnt.Contents().container,
+			content:         nu.content,
+		}
+		nu.mountFrame = prevEnt.MountFrame()
+
+		prev.killReplace(n)
+
+		n.writeUpdate(nu)
+	}
+}
+
+func (n *node) writeReplace(nr *replaceNode, parentTracker *tracker, prevWriteFrame *shredder.ValveFrame) {
+	thread := shredder.Thread{}
+	renderFrame := shredder.Join(true, thread.Frame(), parentTracker.newRenderFrame())
+	defer renderFrame.Release()
+	writeFrame := shredder.Join(true, thread.Frame(), prevWriteFrame)
+	mountFrame := &shredder.ValveFrame{}
+	pip := pipe.NewPipe(parentTracker.Context(), parentTracker.runtime(), renderFrame, mountFrame)
+	renderFrame.Submit(parentTracker.ctx, parentTracker.runtime(), func(b bool) {
+		if !b {
+			return
+		}
+		pip.RenderContent(nr.content)
+	})
+	writeFrame.Run(parentTracker.ctx, parentTracker.runtime(), func(b bool) {
+		defer mountFrame.Activate()
+		if !b {
+			nr.Cancel()
+			return
+		}
+		payload := pip.Payload(parentTracker.inst().Conf().ServerDisableGzip)
+		if e, ok := payload.(error); ok {
+			nr.Report(e)
+		}
+		parentTracker.inst().Call(&call{
+			ctx:     parentTracker.ctx,
+			kind:    callReplace,
+			id:      nr.replaceId,
+			ch:      nr.CallCh(),
+			payload: payload,
+		})
+	})
+}
+
+func (n *node) writeUpdate(nu *updateNode) {
+
+	// 	nu.tracker.root.debug("UPDATE ", nu.tracker.id, nu.tracker.parent.id)
+	thread := shredder.Thread{}
+	renderFrame := shredder.Join(true, thread.Frame(), nu.tracker.newRenderFrame())
+	defer renderFrame.Release()
+	sendFrame := shredder.Join(true, thread.Frame(), nu.WriteFrame())
+	defer sendFrame.Release()
+	mountFrame := &shredder.ValveFrame{}
+	pip := pipe.NewPipe(nu.tracker.ctx, nu.tracker.runtime(), renderFrame, mountFrame)
+	renderFrame.Submit(nu.tracker.ctx, nu.tracker.runtime(), func(b bool) {
+		if !b {
+			return
+		}
+		pip.RenderContent(nu.contents.content)
+	})
+	sendFrame.Run(nu.tracker.ctx, nu.tracker.runtime(), func(b bool) {
+		defer mountFrame.Activate()
+		if !b {
+			nu.Cancel()
+			return
+		}
+		payload := pip.Payload(nu.tracker.inst().Conf().ServerDisableGzip)
+		if e, ok := payload.(error); ok {
+			nu.Report(e)
+			n.killUnmount()
+		}
+		nu.tracker.inst().Call(&call{
+			ctx:     nu.tracker.ctx,
+			kind:    callUpdate,
+			id:      nu.tracker.id,
+			ch:      nu.CallCh(),
+			payload: payload,
+		})
+	})
+
+}
+
+func (n *node) writeProxyReplace(pn *proxyNode) {
+	// pn.tracker.root.debug("PROXY_REPLACE ", pn.tracker.id, "-", pn.replaceId.Load(), pn.tracker.parent.id)
+	thread := shredder.Thread{}
+	renderFrame := shredder.Join(true, thread.Frame(), pn.tracker.newRenderFrame())
+	defer renderFrame.Release()
+	sendFrame := shredder.Join(true, thread.Frame(), pn.WriteFrame())
+	defer sendFrame.Release()
+	mountFrame := &shredder.ValveFrame{}
+	pip := pipe.NewPipe(pn.tracker.Context(), pn.tracker.runtime(), renderFrame, mountFrame)
+	renderFrame.Submit(pn.tracker.parentContext(), pn.tracker.runtime(), func(b bool) {
+		if !b {
+			return
+		}
+		cont, ok := pip.RenderProxy(pn.elem)
+		pn.contents.container = &cont
+		if !pip.IsEmpty() || pn.prevContents == nil || !ok {
+			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id)
+			pn.contents.initializeFrame.Activate()
+			return
+		}
+		prevReady := shredder.Join(false, renderFrame, pn.prevContents.initializeFrame)
+		defer prevReady.Release()
+		prevReady.Run(pn.tracker.Context(), pn.tracker.runtime(), func(b bool) {
+			if pn.prevContents.content != nil {
+				pn.contents.content = pn.prevContents.content
+				pip.RenderContent(pn.contents.content)
+			}
+			pn.prevContents = nil
+			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id)
+			pn.contents.initializeFrame.Activate()
+		})
+	})
+	sendFrame.Run(pn.tracker.ctx, pn.tracker.runtime(), func(b bool) {
+		defer mountFrame.Activate()
+		if !b {
+			pn.Cancel()
+			return
+		}
+		replaceId := pn.setReplaceId()
+		if replaceId == 0 {
+			pn.Cancel()
+			return
+		}
+		payload := pip.Payload(pn.tracker.inst().Conf().ServerDisableGzip)
+		if e, ok := payload.(error); ok {
+			pn.Report(e)
+			n.killUnmount()
+		}
+		pn.tracker.inst().Call(&call{
+			ctx:     pn.tracker.parentContext(),
+			kind:    callReplace,
+			id:      replaceId,
+			ch:      pn.CallCh(),
+			payload: payload,
+		})
+	})
+}
+
+func (n *node) Render(pip pipe.Pipe) {
+	branch := pip.Branch()
+	n.initFrame.Run(pip.Context(), pip.Runtime(), func(b bool) {
+		switch ent := n.entity.(type) {
+		case *replaceNode:
+			n.renderReplace(ent, pip, branch)
+		case *updateNode:
+			n.renderUpdate(ent, pip, branch)
+		case *proxyNode:
+			n.renderProxy(ent, pip, branch)
+		default:
+			panic("unexpected node enity to render")
+		}
+	})
+}
+
+func (n *node) renderReplace(nr *replaceNode, pip pipe.Pipe, branch pipe.Branch) {
+	pip = pipe.NewPipe(pip.Context(), pip.Runtime(), pip.RenderFrame(), pip.FinalFrame())
+	pip.RenderFrame().Run(pip.Context(), pip.Runtime(), func(b bool) {
+		if !b {
+			close(branch)
+			return
+		}
+		defer pip.Submit(branch)
+		pip.RenderContent(nr.content)
+	})
+
+}
+
+func (n *node) renderUpdate(nr *updateNode, pip pipe.Pipe, branch pipe.Branch) {
+	nr.SetMountFrame(pip.FinalFrame())
+	renderFrame := shredder.Join(true, pip.RenderFrame(), nr.Tracker().newRenderFrame(), nr.contents.initializeFrame)
+	defer renderFrame.Release()
+	pip = pipe.NewPipe(nr.tracker.Context(), nr.tracker.runtime(), renderFrame, pip.FinalFrame())
+	renderFrame.Submit(nr.tracker.parentContext(), nr.tracker.runtime(), func(b bool) {
+		if !b {
+			close(branch)
+			return
+		}
+		defer func() {
+			if err := pip.Submit(branch); err != nil {
+				n.killUnmount()
+			}
+		}()
+		pip.RenderContent(nr.contents.content)
+		nr.contents.container.Apply(pip, nr.tracker.containerContext(), nr.tracker.id)
+	})
+}
+
+func (n *node) renderProxy(pn *proxyNode, pip pipe.Pipe, branch pipe.Branch) {
+	pn.SetMountFrame(pip.FinalFrame())
+	renderFrame := shredder.Join(true, pip.RenderFrame(), pn.Tracker().newRenderFrame())
+	defer renderFrame.Release()
+	pip = pipe.NewPipe(pn.tracker.Context(), pn.tracker.runtime(), renderFrame, pip.FinalFrame())
+	renderFrame.Submit(pn.tracker.parentContext(), pn.tracker.runtime(), func(b bool) {
+		submit := false
+		defer func() {
+			if !submit {
+				return
+			}
+			if err := pip.Submit(branch); err != nil {
+				n.killUnmount()
+			}
+		}()
+		cont, ok := pip.RenderProxy(pn.elem)
+		pn.contents.container = &cont
+		if !pip.IsEmpty() || pn.prevContents == nil || !ok {
+			pn.prevContents = nil
+			pn.contents.initializeFrame.Activate()
+			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id)
+			submit = true
+			return
+		}
+		prevReady := shredder.Join(false, renderFrame, pn.prevContents.initializeFrame)
+		defer prevReady.Release()
+		prevReady.Run(pn.tracker.Context(), pn.tracker.runtime(), func(b bool) {
+			defer func() {
+				if err := pip.Submit(branch); err != nil {
+					n.killUnmount()
+				}
+			}()
+			if pn.prevContents.content != nil {
+				pn.contents.content = pn.prevContents.content
+				pip.RenderContent(pn.contents.content)
+			}
+			pn.prevContents = nil
+			pn.contents.initializeFrame.Activate()
+			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id)
+		})
+	})
+}
+
+func (n *node) killCascade() {
+	nm, ok := n.entity.(nodeMount)
+	if !ok {
+		panic("must be mounted for cascade kill")
+	}
+	if !nm.Kill() {
+		return
+	}
+	n.door.takeoverSelf(n, &node{
+		ctx:  n.ctx,
+		door: n.door,
+		entity: &unmountNode{
+			remove: false,
+		},
+	})
+}
+
+func (n *node) killReplace(new *node) {
+	nm, ok := n.entity.(nodeMount)
+	if !ok {
+		panic("must be mounted to replace")
+	}
+	nm.Kill()
+	nm.Tracker().parent.replaceChild(n, new)
+}
+
+func (n *node) killRemove() {
+	nm, ok := n.entity.(nodeMount)
+	if !ok {
+		return
+	}
+	if nm.Kill() {
+		nm.Tracker().parent.removeChild(n, nm.Tracker().id)
+	}
+	nm.WriteFrame().Run(nm.Tracker().parentContext(), nm.Tracker().runtime(), func(ok bool) {
+		if !ok {
+			return
+		}
+		nm.Tracker().root.inst.Call(&call{
+			ctx:     nm.Tracker().parentContext(),
+			kind:    callReplace,
+			id:      nm.Tracker().id,
+			payload: pipe.EmptyPayload(),
+		})
+	})
+}
+
+func (n *node) killUnmount() {
+	nm, ok := n.entity.(nodeMount)
+	if !ok {
+		return
+	}
+	if !nm.Kill() {
+		return
+	}
+	nm.Tracker().parent.removeChild(n, nm.Tracker().id)
 }

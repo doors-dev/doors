@@ -83,7 +83,7 @@ const actions = {
 			navigator.replace(path)
 			return
 		}
-		navigator.push(path)
+		navigator.push(path, true)
 	},
 	door_replace: (ext: Extras, doorId: number) => {
 		doors.replace(doorId, ext.payload!.text!)

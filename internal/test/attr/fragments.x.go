@@ -195,7 +195,7 @@ func (f *callFragment) Main() gox.Elem {
 				__e = __c.Init("script"); if __e != nil { return }
 				{
 					__e = __c.Submit(); if __e != nil { return }
-					__e = __c.Raw("$on(\"myCall\", (data) => {\n\t\t\tdocument.getElementById(\"target\").innerHTML = `${data}`\n\t\t\treturn \"response\"\n\t\t})\n\t\tawait $hook(\"myHook\", $data(\"myData\"))"); if __e != nil { return }
+					__e = __c.Raw("$on(\"myCall\", (data) => {\n\t\t\tdocument.getElementById(\"target\").innerHTML = `${data}`\n\t\t\treturn \"response\"\n\t\t})\n\t\tawait $hook(\"myHook\", await $data(\"myData\"))"); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 			return })); if __e != nil { return }
@@ -259,7 +259,7 @@ func (f *hookFragment) Main() gox.Elem {
 		{
 			__e = __c.AttrMod(f.attr()...); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-			__e = __c.Raw("const a = await $hook(\"myHook\", $data(\"myData\"))\n\t\tdocument.getElementById(\"target\").innerHTML = `${a}`\n\t\tconst b = await $hook(\"rawHook\", $data(\"myData\"))\n\t\tdocument.getElementById(\"target2\").innerHTML = `${b}`"); if __e != nil { return }
+			__e = __c.Raw("const a = await $hook(\"myHook\", await $data(\"myData\"))\n\t\tdocument.getElementById(\"target\").innerHTML = `${a}`\n\t\tconst b = await $hook(\"rawHook\", await $data(\"myData\"))\n\t\tdocument.getElementById(\"target2\").innerHTML = `${b}`"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
@@ -283,7 +283,7 @@ func (f *dataFragment) Main() gox.Elem {
 		{
 			__e = __c.AttrSet("data:myData", f.data); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-			__e = __c.Raw("document.getElementById(\"target\").innerHTML = $data(\"myData\")"); if __e != nil { return }
+			__e = __c.Raw("document.getElementById(\"target\").innerHTML = await $data(\"myData\")"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })

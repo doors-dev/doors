@@ -10,12 +10,9 @@ package doors
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 
-	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
@@ -147,7 +144,7 @@ func (h *AHref) active() []any {
 		return nil
 	}
 	h.Active.QueryMatcher = append(h.Active.QueryMatcher, queryMatch([]any{"all"}))
-	if common.IsNill(h.Active.PathMatcher) {
+	if h.Active.PathMatcher == nil {
 		h.Active.PathMatcher = PathMatcherFull()
 	}
 	return []any{h.Active.PathMatcher, h.Active.QueryMatcher, h.Active.FragmentMatch, front.IntoIndicate(h.Active.Indicator)}
@@ -165,14 +162,13 @@ func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		return nil
 	}
 	h.Scope = append([]Scope{&ScopeBlocking{}, linkScope{}}, h.Scope...)
-	on, ok := link.ClickHandler()
-	if ok {
+	if link.On != nil {
 		handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			if len(h.After) != 0 {
 				req := &req{w: w, r: r, ctx: ctx}
 				req.After(h.After)
 			}
-			on(ctx)
+			link.On(ctx)
 			return false
 		}
 		hook, ok := core.RegisterHook(handler, nil)
@@ -192,14 +188,11 @@ func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 			Hook:     hook,
 		})
 	}
-	path, ok := link.Path()
-	if ok {
-		fragment := ""
-		if h.Fragment != "" {
-			fragment = "#" + h.Fragment
-		}
-		attrs.Get("href").Set(path + fragment)
+	fragment := ""
+	if h.Fragment != "" {
+		fragment = "#" + h.Fragment
 	}
+	attrs.Get("href").Set(link.Location.String() + fragment)
 	active := h.active()
 	if active != nil {
 		front.AttrsSetActive(attrs, active)
@@ -228,11 +221,7 @@ func (s ARawSrc) init(ctx context.Context) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	src := fmt.Sprintf("/~0/%s/%d/%d", core.InstanceID(), hook.DoorID, hook.HookID)
-	if s.Name != "" {
-		src = src + "/" + s.Name
-	}
-	return src, true
+	return core.PathMaker().Hook(core.InstanceID(), hook.DoorID, hook.HookID, s.Name), true
 }
 
 func (s ARawSrc) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -270,10 +259,7 @@ func (s ASrc) init(ctx context.Context) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	if s.Name == "" {
-		s.Name = filepath.Base(s.Path)
-	}
-	return fmt.Sprintf("/~0/%s/%d/%d/%s", core.InstanceID(), hook.DoorID, hook.HookID, s.Name), true
+	return core.PathMaker().Hook(core.InstanceID(), hook.DoorID, hook.HookID, s.Name), true
 }
 
 func (s ASrc) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

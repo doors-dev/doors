@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 
+	"github.com/doors-dev/doors/internal/door/pipe"
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
@@ -34,16 +35,16 @@ type call struct {
 	ch      chan error
 	kind    callKind
 	id      uint64
-	payload *printer
+	payload pipe.Payload
 }
 
 func (n *call) Cancel() {
-	n.payload.release()
+	n.payload.Release()
 	n.send(context.Canceled)
 }
 
 func (n *call) Result(_ json.RawMessage, err error) {
-	n.payload.release()
+	n.payload.Release()
 	if err != nil {
 		slog.Error("door rendering error", slog.String("error", err.Error()))
 	}
@@ -62,19 +63,17 @@ func (c *call) Action() (action.Action, bool) {
 	if c.ctx.Err() != nil {
 		return nil, false
 	}
-	payload, payloadType := c.payload.payload()
+	payload := c.payload.Payload()
 	switch c.kind {
 	case callReplace:
 		return action.DoorReplace{
-			ID:          c.id,
-			Payload:     payload,
-			PayloadType: payloadType,
+			ID:      c.id,
+			Payload: payload,
 		}, true
 	case callUpdate:
 		return action.DoorUpdate{
-			ID:          c.id,
-			Payload:     payload,
-			PayloadType: payloadType,
+			ID:      c.id,
+			Payload: payload,
 		}, true
 	default:
 		panic("unsupporte door call type")

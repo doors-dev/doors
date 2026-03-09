@@ -15,7 +15,6 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/mr-tron/base58"
 	"github.com/zeebo/blake3"
 )
 
@@ -28,8 +27,8 @@ func NewResource(content []byte, contentType string, s resourceSettings) *Resour
 	hash := blake3.Sum256(content)
 	shortHash := hash[:16]
 	return &Resource{
-		hash:        *(*[16]byte)(shortHash),
-		hashString:  base58.Encode(shortHash),
+		hash: *(*[16]byte)(shortHash),
+		// hashString:  base58.Encode(shortHash),
 		settings:    s,
 		content:     content,
 		contentType: contentType,
@@ -37,7 +36,7 @@ func NewResource(content []byte, contentType string, s resourceSettings) *Resour
 }
 
 type Resource struct {
-	hashString  string
+	// hashString  string
 	settings    resourceSettings
 	hash        [16]byte
 	once        sync.Once
@@ -46,9 +45,14 @@ type Resource struct {
 	contentType string
 }
 
+func (s *Resource) Hash() [16]byte {
+	return s.hash
+}
+
+/*
 func (s *Resource) HashString() string {
 	return s.hashString
-}
+} */
 
 func (s *Resource) Content() []byte {
 	return s.content

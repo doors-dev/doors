@@ -11,6 +11,7 @@ import { capture } from './capture'
 import { HookErr, hookErrKinds } from './capture'
 import controller from './controller'
 import navigator from './navigator'
+import { decodePayload } from './package'
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
 	const attrName = `data-d0h-${name}`
@@ -54,11 +55,14 @@ class $D {
 		return await res.json()
 	}
 
-	data = (name: string): any => {
+	data = async (name: string): Promise<any> => {
 		const attrName = `data-d0d-${name}`
-		const value = this.anchor.getAttribute(attrName)
-		if (value == null) return undefined
-		return JSON.parse(value)
+		const encodedPayload = this.anchor.getAttribute(attrName)
+		if (encodedPayload == null) {
+			return undefined
+		}
+		const payload = await decodePayload(JSON.parse(encodedPayload))
+		return payload.any
 	}
 }
 

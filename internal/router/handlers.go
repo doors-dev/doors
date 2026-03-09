@@ -11,30 +11,15 @@ package router
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"reflect"
-	"regexp"
-	"strconv"
-	"strings"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
-	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router/model"
-	"github.com/mr-tron/base58"
 )
-
-var instanceRegexp = regexp.MustCompile(`^([0-9a-zA-Z]+)$`)
-var hookRegexp = regexp.MustCompile(`^([0-9a-zA-Z]+)/(\d+)/(\d+)(/[^/]+)?`)
-var importRegexp = regexp.MustCompile(`^r/([0-9a-zA-Z]+)\.([^/]+)`)
-
-func ResourcePath(r *resources.Resource, ext string) string {
-	return fmt.Sprint("/~0/r/" + r.HashString() + "." + ext)
-}
 
 func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceID string, doorID uint64, hookID uint64, track uint64) {
 	ses := rr.getSession(w, r)
@@ -53,39 +38,7 @@ func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceID s
 	}
 }
 
-func (rr *Router) tryServeHook(w http.ResponseWriter, r *http.Request) bool {
-	if r.Method != "POST" && r.Method != "GET" {
-		return false
-	}
-	matches := hookRegexp.FindStringSubmatch(r.URL.Path)
-	if len(matches) == 0 {
-		return false
-	}
-	instanceID := matches[1]
-	doorId, err := strconv.ParseUint(matches[2], 10, 64)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return true
-	}
-	hookId, err2 := strconv.ParseUint(matches[3], 10, 64)
-	if err2 != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return true
-	}
-	track := uint64(0)
-	trackStr := r.URL.Query().Get("t")
-	if trackStr != "" {
-		track, err = strconv.ParseUint(trackStr, 10, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return true
-		}
-	}
-	rr.serveHook(w, r, instanceID, doorId, hookId, track)
-	return true
-}
-
-func (rr *Router) restorePath(w http.ResponseWriter, r *http.Request, instId string) {
+func (rr *Router) restoreLocation(w http.ResponseWriter, r *http.Request, instId string, l path.Location) {
 	w.Header().Set("Cache-Control", "no-cache")
 	ses := rr.getSession(w, r)
 	if ses == nil {
@@ -97,7 +50,7 @@ func (rr *Router) restorePath(w http.ResponseWriter, r *http.Request, instId str
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	ok = inst.RestorePath(r)
+	ok = inst.RestorePath(l)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -106,17 +59,9 @@ func (rr *Router) restorePath(w http.ResponseWriter, r *http.Request, instId str
 }
 
 func (rr *Router) serveModelRedirect(w http.ResponseWriter, r *http.Request, s *instance.Session, l path.Location, model any, status int) {
-	name := path.GetAdapterName(model)
-	adapter, ok := rr.modelAdapters[name]
-	if !ok {
-		err := errors.New("Adapter " + name + " not found")
-		slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
-		rr.serveError(w, r, s, l, err)
-		return
-	}
-	location, err := adapter.EncodeAny(model)
+	location, err := rr.modelAdapters.Encode(model)
 	if err != nil {
-		err := errors.New("Adapter " + name + " encoding error: " + err.Error())
+		err := errors.New("Adapter encoding error: " + err.Error())
 		slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
 		rr.serveError(w, r, s, l, err)
 		return
@@ -138,14 +83,13 @@ func (rr *Router) serveInstance(w http.ResponseWriter, r *http.Request, s *insta
 }
 
 func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
-	instId := r.Header.Get("D0-r")
-	if instId != "" {
-		rr.restorePath(w, r, instId)
+	ses := rr.ensureSession(w, r)
+	loc, err := path.NewLocationFromURL(r.URL)
+	if err != nil {
+		rr.serveError(w, r, ses, loc, err)
 		return true
 	}
-	loc := path.NewRequestLocation(r)
 	var a any = loc
-	ses := rr.ensureSession(w, r)
 	var counter = 0
 	opt := instance.Options{
 		Rerouted: false,
@@ -185,7 +129,7 @@ main:
 	return false
 }
 
-func (rr *Router) servePut(w http.ResponseWriter, r *http.Request, instanceId string) {
+func (rr *Router) serveSync(w http.ResponseWriter, r *http.Request, instanceId string) {
 	ses := rr.getSession(w, r)
 	if ses == nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -199,36 +143,6 @@ func (rr *Router) servePut(w http.ResponseWriter, r *http.Request, instanceId st
 	inst.Connect(w, r)
 }
 
-func (rr *Router) tryServePut(w http.ResponseWriter, r *http.Request) bool {
-	if r.Method != "PUT" {
-		return false
-	}
-	matches := instanceRegexp.FindStringSubmatch(r.URL.Path)
-	if len(matches) == 0 {
-		return false
-	}
-	instanceId := matches[1]
-	rr.servePut(w, r, instanceId)
-	return true
-}
-
-func (rr *Router) tryServeAssets(w http.ResponseWriter, r *http.Request) bool {
-	if r.Method != "GET" {
-		return false
-	}
-	script := rr.registry.MainScript()
-	if r.URL.Path == script.HashString()+".js" {
-		script.Serve(w, r)
-		return true
-	}
-	style := rr.registry.MainStyle()
-	if r.URL.Path == style.HashString()+".css" {
-		style.Serve(w, r)
-		return true
-	}
-	return false
-}
-
 func (rr *Router) tryServeRoute(w http.ResponseWriter, r *http.Request) bool {
 	for _, route := range rr.routes {
 		if !route.Match(r) {
@@ -239,25 +153,6 @@ func (rr *Router) tryServeRoute(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	return false
-}
-
-func (rr *Router) tryServeResource(w http.ResponseWriter, r *http.Request) bool {
-	if r.Method != "GET" {
-		return false
-	}
-	matches := importRegexp.FindStringSubmatch(r.URL.Path)
-	if len(matches) == 0 {
-		return false
-	}
-	hashStr := matches[1]
-	hash, err := base58.Decode(hashStr)
-	if err != nil {
-		w.WriteHeader(400)
-		return true
-	}
-	rr.registry.Serve(hash, w, r)
-	return true
-
 }
 
 func (rr *Router) tryServeContent(w http.ResponseWriter, r *http.Request) bool {
@@ -274,24 +169,35 @@ func (rr *Router) tryServeContent(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (rr *Router) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
-	url := r.URL.Path
-	if !strings.HasPrefix(url, "/~0/") {
+	match, ok := rr.pathMaker.Match(r)
+	if !ok {
 		return false
 	}
-	r.URL.Path = strings.TrimPrefix(url, "/~0/")
-	if rr.tryServeAssets(w, r) {
+
+	if hash, ok := match.Resource(); ok {
+		if r.Method != http.MethodGet {
+			return false
+		}
+		rr.registry.Serve(hash, w, r)
 		return true
 	}
-	if rr.tryServeResource(w, r) {
+
+	if hook, ok := match.Hook(); ok {
+		rr.serveHook(w, r, hook.Instance, hook.Door, hook.Hook, hook.Track)
 		return true
 	}
-	if rr.tryServeHook(w, r) {
+
+	if instanceID, ok := match.Sync(); ok {
+		if r.Method != http.MethodPut {
+			return false
+		}
+		rr.serveSync(w, r, instanceID)
 		return true
 	}
-	if rr.tryServePut(w, r) {
+	if match, ok := match.Undo(); ok {
+		rr.restoreLocation(w, r, match.Instance, match.Location)
 		return true
 	}
-	r.URL.Path = url
 	return false
 }
 
@@ -326,7 +232,7 @@ func (rr *Router) serveError(w http.ResponseWriter, r *http.Request, ses *instan
 	inst, ok := instance.NewInstance(ses,
 		path.NewLocationAdapter(),
 		beam.NewSourceEqual(loc, func(a, b path.Location) bool {
-			return reflect.DeepEqual(a, b)
+			return path.EqualLocation(a, b)
 		}),
 		comp,
 		instance.Options{

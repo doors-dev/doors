@@ -27,14 +27,14 @@ type store struct {
 
 // Load gets a value from storage by key.
 // Returns nil if absent. Callers must type-assert the result.
-func (c *store) Load(key any) any {
+func (c Store) Load(key any) any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.storage[key]
 }
 
 // Save stores the value under key. Returns the previous value under the key.
-func (c *store) Save(key any, value any) any {
+func (c Store) Save(key any, value any) any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	v := c.storage[key]
@@ -43,7 +43,7 @@ func (c *store) Save(key any, value any) any {
 }
 
 // Remove removes the value.
-func (c *store) Remove(key any) any {
+func (c Store) Remove(key any) any {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	v := c.storage[key]
@@ -53,7 +53,7 @@ func (c *store) Remove(key any) any {
 
 // Iniy returns the value stored under key,
 // initializing it with new() if the key is not already present.
-func (c *store) Init(key any, new func() any) any {
+func (c Store) Init(key any, new func() any) any {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if v, ok := c.storage[key]; ok {

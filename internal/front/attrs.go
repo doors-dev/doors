@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/gox"
 )
 
@@ -20,7 +22,7 @@ func AttrsSetHook(attrs gox.Attrs, name string, hook Hook) {
 }
 
 func AttrsSetData(attrs gox.Attrs, name string, data any) {
-	attrs.Get(fmt.Sprintf("data-d0d-%s", name)).Set(jsonAttr{data})
+	attrs.Get(fmt.Sprintf("data-d0d-%s", name)).Set(payloadAttr{data})
 }
 
 func AttrsAppendDyn(attrs gox.Attrs, id uint64, name string) {
@@ -33,28 +35,10 @@ func AttrsSetActive(attrs gox.Attrs, active []any) {
 	attrs.Get("data-d0a").Set(val)
 }
 
-type jsonWriter struct {
-	w io.Writer
-}
-
-func (j jsonWriter) Write(b []byte) (n int, err error) {
-	adj := 0
-	if len(b) > 0 && b[len(b)-1] == '\n' {
-		b = b[:len(b)-1]
-		adj = 1
-	}
-	n, err = j.w.Write(b)
-	if err != nil {
-		return
-	}
-	n += adj
-	return
-}
-
 type jsonAttrs []any
 
 func (j jsonAttrs) Output(w io.Writer) error {
-	enc := json.NewEncoder(jsonWriter{w})
+	enc := json.NewEncoder(common.NewJsonWriter(w))
 	enc.SetEscapeHTML(false)
 	return enc.Encode(j)
 }
@@ -80,9 +64,22 @@ type jsonAttr struct {
 }
 
 func (j jsonAttr) Output(w io.Writer) error {
-	enc := json.NewEncoder(jsonWriter{w})
+	enc := json.NewEncoder(common.NewJsonWriter(w))
 	enc.SetEscapeHTML(false)
 	return enc.Encode(j.value)
 }
 
 var _ gox.Output = jsonAttr{}
+
+type payloadAttr struct {
+	value any
+}
+
+func (j payloadAttr) Output(w io.Writer) error {
+	payload, err := action.IntoPayload(j.value, false)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(common.NewJsonWriter(w))
+	return enc.Encode(payload)
+}

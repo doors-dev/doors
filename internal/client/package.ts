@@ -44,34 +44,49 @@ export type Payload = {
 }
 
 
-export async function decodePayload(payload: [PayloadType, string] | undefined): Promise<Payload> {
+export async function decodePayload(payload: [PayloadType, any] | undefined): Promise<Payload> {
 	if (payload === undefined) {
 		return {}
 	}
-	const [payloadType, encoded] = payload
+	const [payloadType, content] = payload
 	if (payloadType === payloadTypes.none) {
 		return {}
 	}
-	const prefix = "data:application/octet-stream;base64,";
-	const res = await fetch(prefix + encoded);
+	if (!isGzip(payloadType)) {
+		if (isText(payloadType)) {
+			return {
+				text: content,
+				any: content,
+			}
+		}
+		if (isJson(payloadType)) {
+			const json = content
+			return {
+				json,
+				any: json,
+			}
+		}
+	}
+	const prefix = "data:application/octet-stream;base64,"
+	const res = await fetch(prefix + content)
 	let stream = res.body!
 	if (isGzip(payloadType)) {
-		const ds = new DecompressionStream("gzip");
+		const ds = new DecompressionStream("gzip")
 		stream = stream.pipeThrough(ds)
 	}
 	const resp = new Response(stream)
-	if (isText(payloadType)) {
-		const text = await resp.text()
-		return {
-			text,
-			any: text,
-		}
-	}
 	if (isBinary(payloadType)) {
 		const binary = await resp.arrayBuffer()
 		return {
 			binary,
 			any: binary,
+		}
+	}
+	if (isText(payloadType)) {
+		const text = await resp.text()
+		return {
+			text,
+			any: text,
 		}
 	}
 	if (isJson(payloadType)) {

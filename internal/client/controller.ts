@@ -6,7 +6,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
-import { id, disconnectAfter, ttl, solitairePing } from "./params"
+import { id, disconnectAfter, ttl, solitairePing, prefix } from "./params"
 import action from "./calls"
 import { ProgressiveDelay, AbortTimer, ReliableTimer } from "./lib"
 
@@ -278,7 +278,7 @@ class Connection {
 		try {
 			let response: Response
 			try {
-				response = await fetch("/~0/" + id, {
+				response = await fetch(`${prefix}/s/${id}`, {
 					signal: this.abortTimer.signal,
 					method: "PUT",
 					headers: {

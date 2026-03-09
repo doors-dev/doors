@@ -6,7 +6,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
-import { id } from "./params"
+import { id, prefix } from "./params"
 import { arraysEqual } from "./lib"
 import indicator from "./indicator"
 
@@ -34,12 +34,10 @@ const attrName = "data-d0a"
 export class Navigator {
 	private cache = new WeakMap<Element, Cache>()
 	constructor(
-		private id: string,
 	) {
 		window.addEventListener('popstate', async () => {
-			await this.update(this.urlCurrent());
+			await this.pop();
 		});
-
 	}
 
 	private searchToMap(searchParams: URLSearchParams): Map<string, string[]> {
@@ -66,7 +64,7 @@ export class Navigator {
 	}
 
 
-	public activate(e: Element | DocumentFragment | Document): void {
+	public activate(e: Element | DocumentFragment | Document = document): void {
 		this.activateLinks(this.urlCurrent(), e)
 	}
 
@@ -165,16 +163,14 @@ export class Navigator {
 		});
 	}
 
-	private async update(url: URL): Promise<void> {
+	private async pop(): Promise<void> {
 		try {
-			const r = await fetch(this.urlToStr(url), {
+			const r = await fetch(`${prefix}/u/${id}${this.urlCurrentString()}`, {
 				method: "GET",
-				headers: { "D0-r": this.id },
 			});
 			if (!r.ok) {
 				throw new Error("code " + r.status);
 			}
-			this.activateLinks(url);
 		} catch (e) {
 			location.reload()
 		}
@@ -183,8 +179,14 @@ export class Navigator {
 	private urlCurrent(): URL {
 		return new URL(window.location.href)
 	}
-	private urlToStr(url: URL): string {
-		return url.pathname + (url.search ? (url.pathname.endsWith("/") ? url.search : "/" + url.search) : "")
+
+	private urlCurrentString(): string {
+		const url = this.urlCurrent()
+		let path = url.pathname
+		if (!path.startsWith("/")) {
+			path = "/" + path
+		}
+		return path + (url.search ? (path.endsWith("/") ? url.search : "/" + url.search) : "")
 	}
 
 	private urlAreEqual(url1: URL, url2: URL, checkHash: boolean = false) {
@@ -192,21 +194,28 @@ export class Navigator {
 		return hashMatch && url1.pathname === url2.pathname && this.searchEqual(this.searchToMap(url1.searchParams), this.searchToMap(url2.searchParams))
 	}
 
-	public push(path: string, activate: boolean = true): string | undefined {
+	public push(path: string, serverPush: boolean): string | undefined {
 		const newUrl = new URL(path, window.location.origin);
-		if (activate) {
-			this.activateLinks(newUrl);
-		}
 		const currentUrl = new URL(this.urlCurrent(), window.location.origin)
-		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
-		if (!this.urlAreEqual(currentUrl, newUrl)) {
+		if (this.urlAreEqual(currentUrl, newUrl)) {
+			if (serverPush) {
+				this.activate()
+				return
+			}
+			if (newUrl.hash != currentUrl.hash) {
+				history.replaceState(null, '', path);
+			}
+			this.activate()
+		} else {
 			history.pushState(null, '', path);
-			return hash
+			if (serverPush) {
+				this.activate()
+			}
 		}
+		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
 		if (!hash) {
 			return
 		}
-		history.replaceState(null, '', path);
 		const elem = document.querySelector(hash)
 		if (!elem) {
 			return hash
@@ -214,26 +223,17 @@ export class Navigator {
 		elem.scrollIntoView({
 			behavior: "auto",
 		});
-		if (!activate) {
-			this.activate(document)
-		}
+		return
 	}
 	public replace(path: string): void {
 		const newUrl = new URL(path, window.location.origin);
-		this.activateLinks(newUrl);
 		const currentUrl = new URL(this.urlCurrent(), window.location.origin)
 		if (!this.urlAreEqual(currentUrl, newUrl)) {
-			history.replaceState(null, '', path);
-			return
-		}
-		if (newUrl.hash) {
-			document.querySelector(newUrl.hash)?.scrollIntoView({
-				behavior: "auto",
-			});
+			this.activateLinks(newUrl);
 			history.replaceState(null, '', path);
 		}
 	}
 
 }
 
-export default new Navigator(id)
+export default new Navigator()

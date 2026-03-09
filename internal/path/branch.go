@@ -1,123 +1,182 @@
-// doors
-// Copyright (c) 2026 doors dev LLC
-//
-// Dual-licensed: AGPL-3.0-only (see LICENSE) OR a commercial license.
-// Commercial inquiries: sales@doors.dev
-//
-// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
-
 package path
 
 import (
 	"errors"
+	"reflect"
+	"strings"
 )
 
-type mutation = func(any) error
-type mutations = []mutation
+func newBranch(index int, path string, fields map[string]field) (branch, error) {
+	parts := strings.Split(path, "/")
+	segments := make([]segment, 0, len(parts))
+	for i, part := range parts {
+		last := i == len(parts)-1
+		name, ok := strings.CutPrefix(part, ":")
+		if !ok {
+			segments = append(segments, newLiteralSegment(part))
+			continue
+		}
+		var optional bool
+		var multiple bool
+		name, optional = strings.CutSuffix(name, "?")
+		name, multiple = strings.CutSuffix(name, "+")
+		if multiple && !optional {
+			name, optional = strings.CutSuffix(name, "?")
+		}
+		var both bool
+		name, both = strings.CutSuffix(name, "*")
+		if both {
+			if optional || multiple {
+				return branch{}, errors.New("path parameter cannot combine '*' with '?' or '+'")
+			}
+			optional = both
+			multiple = both
+		}
+		if optional && !last {
+			return branch{}, errors.New("optional path parameter must be the last segment")
+		}
+		if multiple && !last {
+			return branch{}, errors.New("multi-segment path parameter must be the last segment")
+		}
+		field, ok := fields[name]
+		if !ok {
+			return branch{}, errors.New("path parameter field " + name + " was not found among exported compatible fields")
+		}
+		if multiple {
+			multiField, ok := field.multi()
+			if !ok {
+				return branch{}, errors.New("multi-segment path parameter field " + name + " must have type []string")
+			}
+			segments = append(segments, newMultiSegment(multiField, optional))
+		} else {
+			singleField, ok := field.single()
+			if !ok {
+				return branch{}, errors.New("single-segment path parameter field " + name + " cannot be a slice")
+			}
+			if optional {
+				if !singleField.kind.isPtr() {
+					return branch{}, errors.New("optional single-segment path parameter field " + name + " must be a pointer")
+				}
+			} else {
+				if singleField.kind.isPtr() {
+					return branch{}, errors.New("required single-segment path parameter field " + name + " must not be a pointer")
+				}
+			}
+			segments = append(segments, newSingleSegment(singleField, optional))
+		}
+	}
+	return branch{
+		segments:    segments,
+		markerIndex: index,
+	}, nil
+}
 
 type branch struct {
-	atoms  []*atom
-	marker *marker
+	markerIndex int
+	segments    []segment
 }
 
-func newBranch(path string, marker field) (*branch, error) {
-	b := &branch{
-		marker: newMarker(marker),
-		atoms:  make([]*atom, 0),
-	}
-	a := newAtom()
-	for _, r := range path {
-		switch r {
-		case ':':
-			err := a.capturePart()
-			if err != nil {
-				return nil, err
-			}
-		case '|':
-			err := a.addTo(b)
-			if err != nil {
-				return nil, err
-			}
-			a = newAtom()
-		case '+':
-			err := a.captureToEnd()
-			if err != nil {
-				return nil, err
-			}
-		case '*':
-			err := a.captureToEndOpt()
-			if err != nil {
-				return nil, err
-			}
-		case '/':
-			a.setTail()
-			err := a.addTo(b)
-			if err != nil {
-				return nil, err
-			}
-			a = newAtom()
-		default:
-			a.append(r)
+func (b branch) encode(m reflect.Value) ([]string, error) {
+	parts := make([]string, 0, len(b.segments))
+	for i, segment := range b.segments {
+		last := i == len(b.segments)-1
+		if s, ok := segment.literal(); ok {
+			parts = append(parts, s)
+			continue
 		}
-	}
-	a.setTail()
-	a.addTo(b)
-	return b, nil
-}
-
-func (b *branch) setLastTail() {
-	if len(b.atoms) == 0 {
-		return
-	}
-	b.atoms[len(b.atoms)-1].setTail()
-}
-
-func (b *branch) setMark(m any) {
-	b.marker.set(m)
-}
-
-func (b *branch) encode(m any) ([]string, error) {
-	parts := make([]string, 0)
-	for _, part := range b.atoms {
-		p, err := part.encode(m)
-		if err != nil {
-			return nil, err
+		if s, ok := segment.single(); ok {
+			if !last && s.optional {
+				panic("optional capture can only be the last")
+			}
+			v, ok := s.get(m)
+			if !ok {
+				if !s.optional {
+					return nil, errors.New("no value provided for non-optional fiekd")
+				}
+				continue
+			}
+			parts = append(parts, v)
+			continue
 		}
-		parts = append(parts, p...)
+		if s, ok := segment.multi(); ok {
+			if !last {
+				panic("multi capture can only be the last")
+			}
+			v := s.get(m)
+			if len(v) == 0 {
+				if !s.optional {
+					return nil, errors.New("no value provided for non-optional fiekd")
+				}
+			}
+			parts = append(parts, v...)
+			continue
+		}
+		panic("unknown segment type")
 	}
 	return parts, nil
 }
 
-func (b *branch) checkMark(a any) bool {
-	return b.marker.get(a)
-}
-
-func (b *branch) decode(p []rune) (mutations, bool) {
-	ms := []mutation{b.marker.set}
-	if len(b.atoms) == 0 {
-		if len(p) == 0 {
-			return ms, true
+func (b branch) decode(m reflect.Value, parts []string) bool {
+	if len(b.segments) == 0 {
+		if len(parts) == 0 {
+			return true
 		}
-		return nil, false
+		return false
 	}
-	m, ok := b.atoms[0].decode(p, b.atoms[1:])
-	if ok {
-		ms := append(ms, m...)
-		return ms, true
+	if len(parts) < len(b.segments)-1 {
+		return false
 	}
-	return nil, false
+	if len(parts) > len(b.segments) {
+		if _, ok := b.segments[len(b.segments)-1].multi(); !ok {
+			return false
+		}
+	}
+	for i, segment := range b.segments {
+		last := i == len(b.segments)-1
+		if s, ok := segment.literal(); ok {
+			if len(parts) <= i {
+				return false
+			}
+			if parts[i] != s {
+				return false
+			}
+			continue
+		}
+		if s, ok := segment.single(); ok {
+			if !last && s.optional {
+				panic("optional capture can only be the last")
+			}
+			if len(parts) <= i {
+				if !s.optional {
+					return false
+				}
+			} else if !s.set(m, parts[i]) {
+				return false
+			}
+			continue
+		}
+		if s, ok := segment.multi(); ok {
+			if !last {
+				panic("multi capture can only be the last")
+			}
+			if len(parts) <= i {
+				if !s.optional {
+					return false
+				}
+			} else {
+				s.set(m, parts[i:])
+			}
+			continue
+		}
+		panic("unknown segment type")
+	}
+	return true
 }
 
-func (b *branch) collectParams(s map[string][]*atom) {
-	for _, p := range b.atoms {
-		p.collectParams(s)
-	}
+func (b branch) getMarker(m reflect.Value) bool {
+	return m.Field(b.markerIndex).Bool()
 }
 
-func (b *branch) append(part *atom) error {
-	if len(b.atoms) > 0 && b.atoms[len(b.atoms)-1].isEnd() {
-		return errors.New("Capture syntax error, cannot append after end")
-	}
-	b.atoms = append(b.atoms, part)
-	return nil
+func (b branch) setMarker(m reflect.Value) {
+	m.Field(b.markerIndex).SetBool(true)
 }
