@@ -1,134 +1,113 @@
-// doors
-// Copyright (c) 2026 doors dev LLC
-//
-// Dual-licensed: AGPL-3.0-only (see LICENSE) OR a commercial license.
-// Commercial inquiries: sales@doors.dev
-//
-// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
-
 package path
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
-	"regexp"
 	"strings"
 )
 
-type field struct {
-	i int
-	f reflect.StructField
+type pathVariant struct {
+	index   int
+	pattern string
 }
 
 type adapterBuilder[M any] struct {
-	g      *group
+	value  M
+	path   []pathVariant
 	fields map[string]field
-	name   string
 }
 
-func newAdapterBuilder[M any]() *adapterBuilder[M] {
-	return &adapterBuilder[M]{
-		g:      newGroup(),
-		fields: make(map[string]field),
-		name:   "",
+func (a adapterBuilder[M]) build() (adapter[M], error) {
+	if err := a.scanFields(); err != nil {
+		return nil, err
 	}
+	if len(a.path) == 0 {
+		return nil, errors.New("no path patterns provided in the path model struct")
+	}
+	branches := make([]branch, 0, len(a.path))
+	for _, path := range a.path {
+		branch, err := newBranch(path.index, path.pattern, a.fields)
+		if err != nil {
+			return nil, err
+		}
+		branches = append(branches, branch)
+	}
+	return adapter[M](branches), nil
 }
 
-func (a *adapterBuilder[M]) processPath(f field, p string) error {
-	if f.f.Type.Kind() != reflect.Bool {
-		return errors.New("Path field must be of boolean type")
-	}
-	if !f.f.IsExported() {
-		return errors.New("Path field must be exported")
-	}
-	re := regexp.MustCompile(`\s+`)
-	p = re.ReplaceAllString(strings.Trim(p, "/"), "")
-	b, err := newBranch(p, f)
-	if err != nil {
-		return err
-	}
-	a.g.append(b)
-	return nil
-}
-
-func (a *adapterBuilder[M]) processQuery(f reflect.StructField) error {
-	if !f.IsExported() {
-		return errors.New("Query field must be exported")
-	}
-	return nil
-}
-
-func (a *adapterBuilder[M]) readStruct() error {
-	var m M
-	t := reflect.TypeOf(m)
+func (a *adapterBuilder[M]) scanFields() error {
+	t := reflect.TypeOf(a.value)
 	if t.Kind() != reflect.Struct {
 		return errors.New("Model must be struct")
 	}
-	pathFound := false
 	for i := range t.NumField() {
 		f := t.Field(i)
-		t := f.Tag
-		val, ok := t.Lookup("path")
+		path, ok := f.Tag.Lookup("path")
 		if ok {
-			err := a.processPath(field{f: f, i: i}, val)
-			if err != nil {
-				return err
+			if !f.IsExported() {
+				return errors.New("Path field " + f.Name + " is not exported")
 			}
-			pathFound = true
-		}
-		q := t.Get("query")
-		if q != "" {
-			err := a.processQuery(f)
-			if err != nil {
-				return err
+			if f.Type.Kind() != reflect.Bool {
+				return errors.New("Path field must be of bool type")
 			}
+			a.addPath(f, path)
 			continue
 		}
-		if f.IsExported() {
-			a.fields[f.Name] = field{
-				i: i,
-				f: f,
+		_, ok = f.Tag.Lookup("query")
+		if ok {
+			if !f.IsExported() {
+				return errors.New("Query field " + f.Name + " is not exported")
 			}
 		}
-	}
-	if !pathFound {
-		return errors.New("Path fields not found")
-	}
-	a.name = GetAdapterName(&m)
-	return nil
-}
-
-func (a *adapterBuilder[M]) processParams() error {
-	params := make(map[string][]*atom)
-	a.g.collectParams(params)
-	for param := range params {
-		field, ok := a.fields[param]
-		if !ok {
-			return errors.New(fmt.Sprint("Param field not found or not exported", param))
-		}
-		for _, a := range params[param] {
-			capture, err := newCapture(field, a)
-			if err != nil {
-				return err
-			}
-			a.setCapture(capture)
-		}
+		a.addField(f, i)
 	}
 	return nil
 }
 
-func (a *adapterBuilder[M]) build() (Adapter[M], error) {
-	err := a.readStruct()
-	if err != nil {
-		return nil, err
+func (a *adapterBuilder[M]) addField(f reflect.StructField, index int) {
+	if !f.IsExported() {
+		return
 	}
-	err = a.processParams()
-	if err != nil {
-		return nil, err
+	var kind fieldKind
+	switch f.Type.Kind() {
+	case reflect.Slice:
+		if f.Type.Elem().Kind() != reflect.String {
+			return
+		}
+		a.fields[f.Name] = newMultiField(index)
+		return
+	case reflect.Ptr:
+		switch f.Type.Elem().Kind() {
+		case reflect.String:
+			kind = kindStringPtr
+		case reflect.Int, reflect.Int64:
+			kind = kindIntPtr
+		case reflect.Float64:
+			kind = kindFloatPtr
+		case reflect.Uint, reflect.Uint64:
+			kind = kindUintPtr
+		default:
+			return
+		}
+	case reflect.String:
+		kind = kindString
+	case reflect.Int, reflect.Int64:
+		kind = kindInt
+	case reflect.Float64:
+		kind = kindFloat
+	case reflect.Uint, reflect.Uint64:
+		kind = kindUint
+	default:
+		return
 	}
-	return &adapter[M]{
-		g:    a.g,
-		name: a.name,
-	}, nil
+	a.fields[f.Name] = newSingleField(index, kind)
+}
+
+func (a *adapterBuilder[M]) addPath(f reflect.StructField, path string) {
+	path = strings.TrimSpace(path)
+	path = strings.Trim(path, "/")
+	a.path = append(a.path, pathVariant{
+		index:   f.Index[0],
+		pattern: path,
+	})
 }

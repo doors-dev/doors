@@ -128,7 +128,7 @@ elem (f *callFragment) Main() {
 			document.getElementById("target").innerHTML = `${data}`
 			return "response"
 		})
-		await $hook("myHook", $data("myData"))
+		await $hook("myHook", await $data("myData"))
 	</script>
 }
 
@@ -173,9 +173,9 @@ elem (f *hookFragment) Main() {
 	<div id="target"></div>
 	<div id="target2"></div>
 	<script (f.attr()...)>
-		const a = await $hook("myHook", $data("myData"))
+		const a = await $hook("myHook", await $data("myData"))
 		document.getElementById("target").innerHTML = `${a}`
-		const b = await $hook("rawHook", $data("myData"))
+		const b = await $hook("rawHook", await $data("myData"))
 		document.getElementById("target2").innerHTML = `${b}`
 	</script>
 }
@@ -188,6 +188,6 @@ type dataFragment struct {
 elem (f *dataFragment) Main() {
 	<div id="target"></div>
 	<script data:myData=(f.data)>
-		document.getElementById("target").innerHTML = $data("myData")
+		document.getElementById("target").innerHTML = await $data("myData")
 	</script>
 }

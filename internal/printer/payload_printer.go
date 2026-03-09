@@ -1,4 +1,4 @@
-package door
+package printer
 
 import (
 	"compress/gzip"
@@ -21,35 +21,33 @@ func (s *sliceWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-type printer struct {
-	buf  sliceWriter
-	gzip *gzip.Writer
+type PayloadPrinter struct {
+	buf     sliceWriter
+	gzip    *gzip.Writer
+	printer gox.Printer
 }
 
-func newPrinter(disableGzip bool) *printer {
-	b := &printer{
+func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
+	b := &PayloadPrinter{
 		buf: bufferPrinterPool.Get().(sliceWriter),
 	}
 	if !disableGzip {
 		b.gzip = gzip.NewWriter(&b.buf)
+		b.printer = newResourcePrinter(defaultPrinter{b.gzip})
+	} else {
+		b.printer = newResourcePrinter(defaultPrinter{&b.buf})
 	}
 	return b
 }
 
-func (b *printer) payload() ([]byte, action.PayloadType) {
-	if b == nil {
-		return nil, action.PayloadText
-	}
+func (b *PayloadPrinter) Payload() action.Payload {
 	if b.gzip != nil {
-		return b.buf, action.PayloadTextGZ
+		return action.NewTextGZ(b.buf)
 	}
-	return b.buf, action.PayloadText
+	return action.NewTextBytes(b.buf)
 }
 
-func (b *printer) release() {
-	if b == nil {
-		return
-	}
+func (b *PayloadPrinter) Release() {
 	if b.buf == nil {
 		return
 	}
@@ -58,16 +56,13 @@ func (b *printer) release() {
 	b.buf = nil
 }
 
-func (b *printer) finalize() {
+func (b *PayloadPrinter) Finalize() {
 	if b.gzip == nil {
 		return
 	}
 	b.gzip.Close()
 }
 
-func (b *printer) Send(job gox.Job) error {
-	if b.gzip != nil {
-		return job.Output(b.gzip)
-	}
-	return job.Output(&b.buf)
+func (b *PayloadPrinter) Send(job gox.Job) error {
+	return b.printer.Send(job)
 }

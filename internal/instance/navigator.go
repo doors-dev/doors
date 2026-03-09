@@ -10,205 +10,142 @@ package instance
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/path"
+	"github.com/gammazero/deque"
 )
 
 func newNavigator[M any](
 	inst *Instance[M],
 	adapter path.Adapter[M],
-	adapters map[string]path.AnyAdapter,
+	adapters path.Adapters,
 	beam beam.Source[M],
 	ctx context.Context,
 	rerouted bool,
 ) *navigator[M] {
 	return &navigator[M]{
-		inst:        inst,
-		adapter:     adapter,
-		adapters:    adapters,
-		rerouted:    rerouted,
-		historyHead: &historyHead[M]{},
-		ctx:         ctx,
-		model:       beam,
+		inst:     inst,
+		adapter:  adapter,
+		adapters: adapters,
+		rerouted: rerouted,
+		ctx:      ctx,
+		model:    beam,
+		first:    true,
 	}
 }
 
-const historyLimit = 32
+const historyLimit = 64
 
 type navigator[M any] struct {
-	inst        *Instance[M]
-	adapter     path.Adapter[M]
-	adapters    map[string]path.AnyAdapter
-	rerouted    bool
-	model       beam.Source[M]
-	mu          sync.Mutex
-	historyHead *historyHead[M]
-	ctx         context.Context
-	seq         int
-}
-
-type navigatorState[M any] struct {
-	model *M
-	path  string
-	err   error
+	inst     *Instance[M]
+	adapter  path.Adapter[M]
+	adapters path.Adapters
+	model    beam.Source[M]
+	mu       sync.Mutex
+	history  deque.Deque[path.Location]
+	ctx      context.Context
+	seq      int
+	rerouted bool
+	first    bool
 }
 
 func (n *navigator[M]) newLink(a any) (core.Link, error) {
-	m, ok := a.(M)
-	if !ok {
-		var ref *M
-		ref, ok = a.(*M)
-		if ok {
-			m = *ref
-		}
-	}
+	m, ok := n.adapter.Assert(a)
 	if ok {
-		location, err := n.adapter.Encode(m)
+		loc, err := n.adapter.Encode(m)
 		if err != nil {
 			return core.Link{}, err
 		}
 		return core.Link{
-			Location: &location,
+			Location: loc,
 			On: func(ctx context.Context) {
-				n.model.Update(ctx, m)
+				n.model.Update(ctx, *m)
 			},
 		}, nil
 	}
-	name := path.GetAdapterName(a)
-	adapter, found := n.adapters[name]
-	if !found {
-		return core.Link{}, errors.New(fmt.Sprint("Adapter for ", name, " is not registered"))
-	}
-	location, err := adapter.EncodeAny(a)
+	loc, err := n.adapters.Encode(a)
 	if err != nil {
 		return core.Link{}, err
 	}
 	return core.Link{
-		Location: &location,
+		Location: loc,
 		On:       nil,
 	}, nil
 }
 
 func (n *navigator[M]) init() {
-	state := beam.NewBeam(n.model, func(m M) navigatorState[M] {
-		l, err := n.adapter.Encode(m)
+	n.model.Sub(n.ctx, func(ctx context.Context, m M) bool {
+		l, err := n.adapter.Encode(&m)
 		if err != nil {
 			slog.Error(
 				"Path model encoding error on beam update",
 				slog.String("error", err.Error()),
 				slog.String("model", fmt.Sprintf("%+v", m)),
 			)
-			return navigatorState[M]{
-				model: &m,
-				err:   err,
-			}
+			return false
 		}
-		return navigatorState[M]{
-			model: &m,
-			path:  l.String(),
-		}
-	})
-	ns, ok := state.ReadAndSub(n.ctx, func(ctx context.Context, ns navigatorState[M]) bool {
-		n.pushHistory(&ns, true, false)
+		n.push(l)
 		return false
 	})
-	if !ok {
-		return
-	}
-	n.pushHistory(&ns, n.rerouted, true)
 }
 
-func (n *navigator[M]) restore(r *http.Request) bool {
+func (n *navigator[M]) push(l path.Location) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	entry := n.historyHead.retrieve(r.RequestURI)
-	if entry != nil {
-		n.model.Update(n.ctx, *entry.model)
-		return true
+	if n.history.Len() != 0 && path.EqualLocation(n.history.Front(), l) {
+		return
+	}
+	n.history.PushFront(l)
+	if n.history.Len() > historyLimit {
+		n.history.PopBack()
+	}
+	replace := false
+	if n.first {
+		n.first = false
+		if !n.rerouted {
+			return
+		}
+		replace = true
+	}
+	n.seq += 1
+	seq := n.seq
+	n.inst.CallCheck(
+		func() bool {
+			n.mu.Lock()
+			defer n.mu.Unlock()
+			return seq == n.seq
+		},
+		&action.SetPath{Path: l.Path(), Replace: replace},
+		nil,
+		nil,
+		action.CallParams{},
+	)
+}
+
+func (n *navigator[M]) restore(l path.Location) bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	for prev := range n.history.Iter() {
+		if path.EqualLocation(prev, l) {
+			goto found
+		}
 	}
 	return false
-}
-
-func (n *navigator[M]) pushHistory(ns *navigatorState[M], sync bool, replace bool) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	if sync {
-		n.seq += 1
-		seq := n.seq
-		n.inst.CallCheck(
-			func() bool {
-				n.mu.Lock()
-				defer n.mu.Unlock()
-				return seq == n.seq
-			},
-			&action.SetPath{Path: ns.path, Replace: replace},
-			nil,
-			nil,
-			action.CallParams{},
+found:
+	m, ok := n.adapter.Decode(l)
+	if !ok {
+		slog.Error(
+			"can't restore previous location, model decoding failed",
+			slog.String("location", fmt.Sprintf("%+v", l)),
 		)
+		return false
 	}
-	n.historyHead.push(ns)
-}
-
-type historyHead[M any] struct {
-	entry *historyEntry[M]
-}
-
-func (h *historyHead[M]) retrieve(path string) *navigatorState[M] {
-	if h.entry == nil {
-		return nil
-	}
-	return h.entry.retrieve(path)
-}
-
-func (h *historyHead[M]) push(n *navigatorState[M]) {
-	entry := &historyEntry[M]{
-		n: n,
-	}
-	if h.entry == nil {
-		h.entry = entry
-		return
-	}
-	entry.next = h.entry
-	entry.next.shake(entry, n.path, 1)
-
-	h.entry = entry
-}
-
-type historyEntry[M any] struct {
-	next *historyEntry[M]
-	n    *navigatorState[M]
-}
-
-func (e *historyEntry[M]) retrieve(path string) *navigatorState[M] {
-	if e.n.path == path {
-		return e.n
-	}
-	if e.next == nil {
-		return nil
-	}
-	return e.next.retrieve(path)
-}
-
-func (e *historyEntry[M]) shake(prev *historyEntry[M], path string, count int) {
-	if count == historyLimit {
-		prev.next = nil
-		return
-	}
-	if e.n.path == path {
-		prev.next = e.next
-		return
-	}
-	if e.next == nil {
-		return
-	}
-	e.next.shake(e, path, count+1)
+	n.model.Update(n.ctx, *m)
+	return true
 }

@@ -22,23 +22,17 @@ type Hook struct {
 }
 
 type Link struct {
-	Location *path.Location
+	Location path.Location
 	On       func(context.Context)
 }
 
-func (h *Link) Path() (string, bool) {
-	if h.Location == nil {
-		return "", false
-	}
-	return h.Location.String(), true
-}
-
+/*
 func (h *Link) ClickHandler() (func(context.Context), bool) {
 	if h.On == nil {
 		return nil, false
 	}
 	return h.On, true
-}
+} */
 
 type ModuleRegistry interface {
 	Add(specifier string, path string)
@@ -62,7 +56,8 @@ type Instance interface {
 	SessionEnd()
 	InstanceEnd()
 	SessionID() string
-	Adapter(name string) (path.AnyAdapter, bool)
+	Adapters() path.Adapters
+	PathMaker() path.PathMaker
 }
 
 type Door interface {
@@ -87,8 +82,20 @@ type core struct {
 	inst Instance
 }
 
-func (c Core) Adapter(name string) (path.AnyAdapter, bool) {
-	return c.inst.Adapter(name)
+func (c Core) PathMaker() path.PathMaker {
+	return c.inst.PathMaker()
+}
+
+func (c Core) Door() Door {
+	return c.door
+}
+
+func (c Core) Instance() Instance {
+	return c.inst
+}
+
+func (c Core) Adapters() path.Adapters {
+	return c.inst.Adapters()
 }
 
 func (c Core) SessionExpire(d time.Duration) {

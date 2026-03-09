@@ -122,11 +122,11 @@ func TestDoorUpdateX(t *testing.T) {
 	defer page.Close()
 	test.TestMust(t, page, "#init")
 	test.Click(t, page, "#updatex")
-	test.TestReport(t, page, "ok")
+	test.TestReport(t, page, "ok upd")
 	test.TestMustNot(t, page, "#init")
 	test.TestMust(t, page, "#updated")
 	test.Click(t, page, "#removex")
-	test.TestReport(t, page, "ok")
+	test.TestReport(t, page, "ok del")
 	test.TestMustNot(t, page, "#updated")
 	test.Click(t, page, "#updatex")
 	test.TestReport(t, page, "channel closed")
@@ -136,8 +136,10 @@ func TestDoorMultiple(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &FragmentMany{}
 	})
-	page := bro.Page(t, "/")
+
 	defer bro.Close()
+	page := bro.Page(t, "/")
+
 	defer page.Close()
 	<-time.After(100 * time.Millisecond)
 	c := test.Count(page, ".sample")
@@ -159,11 +161,12 @@ func TestDoorLifeCycle(t *testing.T) {
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
-
 	test.TestMust(t, page, "#presist")
 	test.TestMustNot(t, page, "#new")
-	test.Click(t, page, "#updateEmpty")
+	test.Click(t, page, "#reload")
 	test.TestMust(t, page, "#presist")
+	test.Click(t, page, "#updateEmpty")
+	test.TestMustNot(t, page, "#presist")
 	test.TestMust(t, page, "#new")
 	test.Click(t, page, "#updateContent")
 	test.TestMustNot(t, page, "#new")

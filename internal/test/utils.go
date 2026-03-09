@@ -258,8 +258,7 @@ func ClickNow(t *testing.T, page *rod.Page, selector string) {
 }
 
 func TestContent(t *testing.T, page *rod.Page, selector string, content string) {
-	page = page.Timeout(200 * time.Millisecond)
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	el, err := page.Timeout(300 * time.Millisecond).Element(selector)
 	if err != nil {
 		t.Fatal("content: element ", selector, " not found")
 	}

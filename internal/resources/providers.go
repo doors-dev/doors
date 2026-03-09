@@ -117,7 +117,7 @@ func (e ScriptInlineFS) Apply(opt *api.BuildOptions) error {
 	}
 	if kind == KindTS {
 		args = "$on: (name: string, handler: (arg: any) => any) => void, " +
-			"$data: (name: string) => any, " +
+			"$data: (name: string) => Promise<any>, " +
 			"$hook: (name: string, arg: any) => Promise<any>, " +
 			"$fetch: (name: string, arg: any) => Promise<Response>, " +
 			"$G: {[key: string]: any}, " +

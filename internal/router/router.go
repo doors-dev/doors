@@ -9,7 +9,6 @@
 package router
 
 import (
-	"errors"
 	"net/http"
 	"sync"
 
@@ -26,9 +25,7 @@ func NewRouter() (router *Router) {
 	conf := &common.SystemConf{}
 	common.InitDefaults(conf)
 	router = &Router{
-		sessions:        sync.Map{},
-		modelAdapters:   make(map[string]path.AnyAdapter),
-		fallback:        nil,
+		pathMaker:       path.NewPathMaker(""),
 		conf:            conf,
 		buildProfiles:   resources.BaseProfile{},
 		sessionCallback: sessionHooks{},
@@ -51,9 +48,10 @@ func (s sessionHooks) Create(string, http.Header) {}
 func (s sessionHooks) Delete(string) {}
 
 type Router struct {
+	pathMaker       path.PathMaker
 	lisence         license.License
 	sessions        sync.Map
-	modelAdapters   map[string]path.AnyAdapter
+	modelAdapters   path.Adapters
 	modelRoutes     []model.AnyModelRoute
 	routes          []Route
 	fallback        http.Handler
@@ -63,6 +61,10 @@ type Router struct {
 	csp             *common.CSP
 	conf            *common.SystemConf
 	buildProfiles   resources.BuildProfiles
+}
+
+func (rr *Router) PathMaker() path.PathMaker {
+	return rr.pathMaker
 }
 
 func (rr *Router) License() license.License {
@@ -81,7 +83,7 @@ func (rr *Router) RemoveSession(id string) {
 	rr.sessions.Delete(id)
 	rr.sessionCallback.Delete(id)
 }
-func (rr *Router) Adapters() map[string]path.AnyAdapter {
+func (rr *Router) Adapters() path.Adapters {
 	return rr.modelAdapters
 }
 
@@ -123,12 +125,8 @@ func (rr *Router) getSession(w http.ResponseWriter, r *http.Request) *instance.S
 
 func (rr *Router) addModelRoute(modelRoute model.AnyModelRoute) {
 	adapter := modelRoute.Adapter()
-	_, has := rr.modelAdapters[adapter.Name()]
-	if has {
-		panic(errors.New("Can't register same model twice " + adapter.Name()))
-	}
 	rr.modelRoutes = append(rr.modelRoutes, modelRoute)
-	rr.modelAdapters[adapter.Name()] = adapter
+	rr.modelAdapters.Add(adapter)
 }
 
 func (rr *Router) addRoute(r Route) {

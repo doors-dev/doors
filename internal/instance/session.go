@@ -28,9 +28,10 @@ type ScriptOptions struct {
 type router interface {
 	ResourceRegistry() *resources.Registry
 	CSP() *common.CSP
-	Adapters() map[string]path.AnyAdapter
+	Adapters() path.Adapters
 	RemoveSession(string)
 	Conf() *common.SystemConf
+	PathMaker() path.PathMaker
 	License() license.License
 }
 

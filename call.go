@@ -45,7 +45,7 @@ func XCall[T any](ctx context.Context, action Action) (<-chan CallResult[T], con
 func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], context.CancelFunc) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	ch := make(chan CallResult[T], 1)
-	a, params, err := action.action(ctx, core)
+	a, params, err := action.action(ctx, core, !core.Conf().ServerDisableGzip)
 	res := CallResult[T]{}
 	if err != nil {
 		slog.Error("Action preparation errror", slog.String("error", err.Error()))

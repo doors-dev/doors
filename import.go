@@ -20,7 +20,6 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/resources"
-	"github.com/doors-dev/doors/internal/router"
 	"github.com/doors-dev/gox"
 )
 
@@ -45,7 +44,7 @@ const (
 func (h HostMode) src(core core.Core, res *resources.Resource, name string) (string, error) {
 	switch h {
 	case HostModePublic:
-		return router.ResourcePath(res, name), nil
+		return core.PathMaker().Resource(res, name), nil
 	case HostModePrivate, HostModeNoCache:
 		hook, ok := core.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			res.Serve(w, r)
@@ -54,7 +53,7 @@ func (h HostMode) src(core core.Core, res *resources.Resource, name string) (str
 		if !ok {
 			return "", context.Canceled
 		}
-		return fmt.Sprintf("/~0/%s/%d/%d/%s", core.InstanceID(), hook.DoorID, hook.HookID, name), nil
+		return core.PathMaker().Hook(core.InstanceID(), hook.DoorID, hook.HookID, name), nil
 	default:
 		panic("wrong host mode")
 	}

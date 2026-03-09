@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.7
 
 package door
 
@@ -113,13 +113,13 @@ func (f *FragmentX) Main() gox.Elem {
 			err, ok := <-ch
 			if !ok {
 				f.rep(ctx, "channel closed")
-				return true
+				return false
 			}
 			if err != nil {
 				f.rep(ctx, "channel err: " + err.Error())
-				return true
+				return false
 			}
-			f.rep(ctx, "ok")
+			f.rep(ctx, "ok upd")
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -139,14 +139,14 @@ func (f *FragmentX) Main() gox.Elem {
 			err, ok := <-ch
 			if !ok {
 				f.rep(ctx, "channel closed")
-				return true
+				return false
 			}
 			if err != nil {
 				f.rep(ctx, "channel err: " + err.Error())
-				return true
+				return false
 			}
-			f.rep(ctx, "ok")
-			return true
+			f.rep(ctx, "ok del")
+			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); gox.Noop(ctx)
@@ -355,12 +355,21 @@ func (f *LifeCycleFragment) Main() gox.Elem {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = f.frame.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); gox.Noop(ctx)
-			__e = __c.InitContainer(); if __e != nil { return }
-			{
-				__e = __c.Any(f.initial()); if __e != nil { return }
-			}
-			__e = __c.Close(); if __e != nil { return }
+			__e = __c.Any(f.initial()); if __e != nil { return }
 		return })); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "reload"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+				f.node.Reload(ctx)
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("Reload"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("button"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("id", "updateEmpty"); if __e != nil { return }

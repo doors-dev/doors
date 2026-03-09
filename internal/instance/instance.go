@@ -33,7 +33,7 @@ import (
 type AnyInstance interface {
 	ID() string
 	Serve(http.ResponseWriter, *http.Request) error
-	RestorePath(*http.Request) bool
+	RestorePath(path.Location) bool
 	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request, uint64) bool
 	Connect(w http.ResponseWriter, r *http.Request)
 	SetStatus(int)
@@ -92,9 +92,41 @@ type Instance[M any] struct {
 	pageStatus atomic.Int32
 }
 
-func (i *Instance[M]) Adapter(name string) (path.AnyAdapter, bool) {
-	a, found := i.session.router.Adapters()[name]
-	return a, found
+func (inst *Instance[M]) init() error {
+	ok := inst.state.CompareAndSwap(initial, active)
+	if !ok {
+		return errors.New("Instance already started or killed")
+	}
+	ctx := context.WithValue(context.Background(), ctex.KeySessionStore, inst.session.store)
+	ctx = context.WithValue(ctx, ctex.KeyInstanceStore, inst.store)
+	inst.runtime = shredder.NewRuntime(ctx, inst.Conf().InstanceGoroutineLimit, inst)
+	inst.root = door.NewRoot(inst)
+	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Conf()))
+	inst.navigator = newNavigator(
+		inst,
+		inst.setup.adapter,
+		inst.session.router.Adapters(),
+		inst.setup.beam,
+		inst.root.Context(),
+		inst.setup.rerouted,
+	)
+	inst.killTimer = &killTimer{
+		initial: inst.Conf().InstanceConnectTimeout,
+		regular: inst.Conf().InstanceTTL,
+		inst:    inst,
+	}
+	inst.csp = inst.session.router.CSP().NewCollector()
+	inst.importMap = newImportMap()
+	inst.killTimer.keepAlive()
+	return nil
+}
+
+func (i *Instance[M]) PathMaker() path.PathMaker {
+	return i.session.router.PathMaker()
+}
+
+func (i *Instance[M]) Adapters() path.Adapters {
+	return i.session.router.Adapters()
 }
 
 func (i *Instance[M]) SessionExpire(d time.Duration) {
@@ -112,8 +144,16 @@ func (i *Instance[M]) InstanceEnd() {
 func (i *Instance[M]) SessionID() string {
 	return i.session.ID()
 }
+
 func (d *Instance[M]) SetStatus(status int) {
 	d.pageStatus.Store(int32(status))
+}
+
+func (inst *Instance[M]) getStatus() int {
+	if s := inst.pageStatus.Load(); s > 0 {
+		return int(s)
+	}
+	return http.StatusOK
 }
 
 func (d *Instance[M]) License() license.License {
@@ -160,64 +200,6 @@ func (inst *Instance[M]) Runtime() shredder.Runtime {
 	return inst.runtime
 }
 
-func (inst *Instance[M]) init() error {
-	ok := inst.state.CompareAndSwap(initial, active)
-	if !ok {
-		return errors.New("Instance already started or killed")
-	}
-	ctx := context.WithValue(context.Background(), ctex.KeySessionStore, inst.session.store)
-	ctx = context.WithValue(ctx, ctex.KeyInstanceStore, inst.store)
-	inst.runtime = shredder.NewRuntime(ctx, inst.Conf().InstanceGoroutineLimit, inst)
-	inst.root = door.NewRoot(inst)
-	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Conf()))
-	inst.navigator = newNavigator(
-		inst,
-		inst.setup.adapter,
-		inst.session.router.Adapters(),
-		inst.setup.beam,
-		inst.root.Context(),
-		inst.setup.rerouted,
-	)
-	inst.killTimer = &killTimer{
-		initial: inst.Conf().InstanceConnectTimeout,
-		regular: inst.Conf().InstanceTTL,
-		inst:    inst,
-	}
-	inst.csp = inst.session.router.CSP().NewCollector()
-	inst.importMap = newImportMap()
-	inst.killTimer.keepAlive()
-	return nil
-}
-
-func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
-	if err := inst.init(); err != nil {
-		return err
-	}
-	pipe, frame := inst.root.Render(inst.setup.comp)
-	inst.setup = nil
-	ch := make(chan struct{})
-	frame.Run(nil, nil, func(b bool) {
-		close(ch)
-	})
-	<-ch
-	if err := pipe.Error(); err != nil {
-		inst.end(common.EndCauseKilled)
-		return err
-	}
-	static := inst.root.IsStatic()
-	if err := inst.render(w, r, pipe, static); err != nil {
-		inst.end(common.EndCauseKilled)
-		return err
-	}
-	if static {
-		inst.end(common.EndCauseKilled)
-		return nil
-	}
-	inst.navigator.init()
-	return nil
-
-}
-
 func (inst *Instance[M]) TriggerHook(doorID uint64, hookID uint64, w http.ResponseWriter, r *http.Request, track uint64) (ok bool) {
 	defer func() {
 		if ok {
@@ -262,6 +244,6 @@ func (inst *Instance[M]) end(cause common.EndCause) {
 	inst.root.Kill()
 }
 
-func (inst *Instance[M]) RestorePath(r *http.Request) bool {
-	return inst.navigator.restore(r)
+func (inst *Instance[M]) RestorePath(l path.Location) bool {
+	return inst.navigator.restore(l)
 }

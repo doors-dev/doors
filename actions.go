@@ -9,11 +9,7 @@
 package doors
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/json"
-	"io"
 	"log/slog"
 	"time"
 
@@ -25,14 +21,14 @@ import (
 
 // Action performs a client-side operation
 type Action interface {
-	action(context.Context, core.Core) (action.Action, action.CallParams, error)
+	action(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error)
 }
 
 func intoActions(ctx context.Context, actions []Action) action.Actions {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	arr := make(action.Actions, 0)
 	for _, action := range actions {
-		a, _, err := action.action(ctx, core)
+		a, _, err := action.action(ctx, core, false)
 		if err != nil {
 			slog.Error("Action preparation error", slog.String("error", err.Error()))
 			continue
@@ -54,49 +50,16 @@ func ActionOnlyEmit(name string, arg any) []Action {
 	return []Action{ActionEmit{Name: name, Arg: arg}}
 }
 
-func (a ActionEmit) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+func (a ActionEmit) action(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error) {
+	payload, err := action.IntoPayload(a.Arg, gz)
+	if err != nil {
+		return nil, action.CallParams{}, err
+	}
 	act := action.Emit{
-		Name:   a.Name,
-		DoorID: core.DoorID(),
+		Name:    a.Name,
+		DoorID:  core.DoorID(),
+		Payload: payload,
 	}
-	if bytes, ok := a.Arg.([]byte); ok {
-		act.Payload = bytes
-		act.PayloadType = action.PayloadBinary
-		return act, action.CallParams{}, nil
-	}
-	buf := &bytes.Buffer{}
-	var w io.Writer = buf
-	var wgz *gzip.Writer
-	gz := !core.Conf().ServerDisableGzip
-	if gz {
-		wgz = gzip.NewWriter(buf)
-		w = wgz
-	}
-	if str, ok := a.Arg.(string); ok {
-		io.WriteString(w, str)
-		if gz {
-			act.PayloadType = action.PayloadTextGZ
-		} else {
-			act.PayloadType = action.PayloadText
-		}
-	} else {
-		encoder := json.NewEncoder(w)
-		encoder.SetEscapeHTML(false)
-		if err := encoder.Encode(a.Arg); err != nil {
-			return nil, action.CallParams{}, err
-		}
-		if gz {
-			act.PayloadType = action.PayloadJSONGZ
-		} else {
-			act.PayloadType = action.PayloadJSON
-		}
-	}
-	if gz {
-		if err := wgz.Close(); err != nil {
-			return nil, action.CallParams{}, err
-		}
-	}
-	act.Payload = buf.Bytes()
 	return act, action.CallParams{}, nil
 }
 
@@ -108,7 +71,7 @@ func ActionOnlyLocationReload() []Action {
 	return []Action{ActionLocationReload{}}
 }
 
-func (a ActionLocationReload) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+func (a ActionLocationReload) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	return &action.LocationReload{}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
@@ -122,7 +85,7 @@ func ActionOnlyLocationReplace(model any) []Action {
 	return []Action{ActionLocationReplace{Model: model}}
 }
 
-func (a ActionLocationReplace) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+func (a ActionLocationReplace) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	l, err := NewLocation(ctx, a.Model)
 	if err != nil {
 		return nil, action.CallParams{}, err
@@ -143,7 +106,7 @@ func ActionOnlyLocationAssign(model any) []Action {
 	return []Action{ActionLocationAssign{Model: model}}
 }
 
-func (a ActionLocationAssign) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+func (a ActionLocationAssign) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	l, err := NewLocation(ctx, a.Model)
 	if err != nil {
 		return nil, action.CallParams{}, err
@@ -164,7 +127,7 @@ func ActionOnlyRawLocationAssign(url string) []Action {
 	return []Action{ActionRawLocationAssign{URL: url}}
 }
 
-func (a ActionRawLocationAssign) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+func (a ActionRawLocationAssign) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	return &action.LocationAssign{
 		URL:    a.URL,
 		Origin: false,
@@ -182,7 +145,7 @@ func ActionOnlyScroll(selector string, smooth bool) []Action {
 	return []Action{ActionScroll{Selector: selector, Smooth: smooth}}
 }
 
-func (a ActionScroll) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+func (a ActionScroll) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	return action.Scroll{
 		Selector: a.Selector,
 		Smooth:   a.Smooth,
@@ -200,7 +163,7 @@ func ActionOnlyIndicate(indicator []Indicator, duration time.Duration) []Action 
 	return []Action{ActionIndicate{Indicator: indicator, Duration: duration}}
 }
 
-func (a ActionIndicate) action(ctx context.Context, core core.Core) (action.Action, action.CallParams, error) {
+func (a ActionIndicate) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	return action.Indicate{
 		Indicate: front.IntoIndicate(a.Indicator),
 		Duration: a.Duration,

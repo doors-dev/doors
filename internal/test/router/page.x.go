@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.7
 
 package router
 
@@ -102,27 +102,23 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 				__e = __c.Submit(); if __e != nil { return }
 				__e = doors.Inject(0, b).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); gox.Noop(ctx)
-					__e = __c.InitContainer(); if __e != nil { return }
-					{
-						if ctx.Value(0).(PathC).PathC1 {
-							__e = __c.Init("div"); if __e != nil { return }
-							{
-								__e = __c.AttrSet("id", "path"); if __e != nil { return }
-								__e = __c.Submit(); if __e != nil { return }
-								__e = __c.Text("c1"); if __e != nil { return }
-							}
-							__e = __c.Close(); if __e != nil { return }
-						} else  {
-							__e = __c.Init("div"); if __e != nil { return }
-							{
-								__e = __c.AttrSet("id", "path"); if __e != nil { return }
-								__e = __c.Submit(); if __e != nil { return }
-								__e = __c.Text("c2"); if __e != nil { return }
-							}
-							__e = __c.Close(); if __e != nil { return }
+					if ctx.Value(0).(PathC).PathC1 {
+						__e = __c.Init("div"); if __e != nil { return }
+						{
+							__e = __c.AttrSet("id", "path"); if __e != nil { return }
+							__e = __c.Submit(); if __e != nil { return }
+							__e = __c.Text("c1"); if __e != nil { return }
 						}
+						__e = __c.Close(); if __e != nil { return }
+					} else  {
+						__e = __c.Init("div"); if __e != nil { return }
+						{
+							__e = __c.AttrSet("id", "path"); if __e != nil { return }
+							__e = __c.Submit(); if __e != nil { return }
+							__e = __c.Text("c2"); if __e != nil { return }
+						}
+						__e = __c.Close(); if __e != nil { return }
 					}
-					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 				__e = doors.AHref{
 				Model: PathC{

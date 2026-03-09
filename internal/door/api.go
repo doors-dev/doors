@@ -12,6 +12,7 @@ import (
 	"context"
 
 	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/gox"
 )
 
 // Reload re-renders the door with its current content.
@@ -22,12 +23,21 @@ func (d *Door) Reload(ctx context.Context) {
 	d.reload(ctx)
 }
 
-// Update changes the content of the door and re-renders it in place.
+// Update changes the content of the door.
 // The door's children are replaced with the new content while preserving
 // the door's DOM element. If the door is not currently mounted, the content
 // change is stored and will be applied when the door is rendered.
 func (d *Door) Update(ctx context.Context, content any) {
 	d.update(ctx, content)
+}
+
+// Rebase replaces the entire door element with a new dynamic door element
+// created from the provided content, while maintaining the reference to the
+// same door object. Unlike Replace, the result remains a live door that can
+// be updated further. If the door is not currently mounted, the content
+// change is stored and will be applied when the door is rendered.
+func (d *Door) Rebase(ctx context.Context, el gox.Elem) {
+	d.rebase(ctx, el)
 }
 
 // Replace replaces the entire door element with new content.
@@ -80,6 +90,16 @@ func (d *Door) XReload(ctx context.Context) <-chan error {
 func (d *Door) XUpdate(ctx context.Context, content any) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XUpdate")
 	return d.update(ctx, content)
+}
+
+// XRebase returns a channel that can be used to track when the rebase operation completes.
+// The channel will receive nil on success or an error if the operation fails.
+// The channel is closed after sending the result. If the door is not mounted,
+// the channel is closed immediately without sending any value.
+// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
+func (d *Door) XRebase(ctx context.Context, el gox.Elem) <-chan error {
+	ctex.LogBlockingWarning(ctx, "Door", "XRebase")
+	return d.rebase(ctx, el)
 }
 
 // XReplace returns a channel that can be used to track when the replace operation completes.

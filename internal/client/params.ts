@@ -8,7 +8,7 @@
 
 const license = document.currentScript!.dataset.license?.split(":")
 
-const agplMsg = "AGPL-3.0-only mode (see LICENSE).";
+const agplMsg = "AGPL-3.0";
 
 
 if (license == null) {
@@ -23,7 +23,7 @@ if (license == null) {
 				"[doors] Invalid license provided.",
 				"Id: " + id,
 				"Licensed domain: " + domain,
-				"AGPL-3.0-only mode (see LICENSE).",
+				"AGPL-3.0 mode (see LICENSE).",
 			].join("\n")
 		);
 	} else {
@@ -38,6 +38,7 @@ if (license == null) {
 }
 
 export const id: string = document.currentScript!.id
+export const prefix: string = document.currentScript!.dataset.prefix!
 export const rootId: number = Number(document.currentScript!.dataset.root)
 export const ttl: number = Number(document.currentScript!.dataset.ttl)
 export const disconnectAfter: number = Number(document.currentScript!.dataset.disconnect)
