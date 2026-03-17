@@ -55,12 +55,18 @@ function getSelfId(el: Element): (number | undefined) {
 }
 
 function getParentId(el: Element): number {
-	const parent = el.parentElement!.closest(`${tag}, [${attr}]`)
+	const parentAttr = el.getAttribute("data-d0p")
+	if (parentAttr !== null) {
+		return Number(parentAttr)
+	}
+	const parent = el.parentElement?.closest(`${tag}, [${attr}]`)
 	if (!parent) {
 		return rootId
 	}
 	return getSelfId(parent)!
 }
+
+
 
 class Doors {
 	private elements = new Map<number, DoorElement>()
@@ -69,24 +75,32 @@ class Doors {
 	private onRemove = new Map<number, Array<Closure>>()
 	private impostors = new Map<number, Set<number>>()
 
-	private scanImpostors(parent: Element | Document) {
+	private scanImpostors(parent: Element | Document | DocumentFragment) {
 		for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attrIndexed}="indexed"])`)) {
 			const id = element.getAttribute(attr)
 			element.setAttribute(attrIndexed, "indexed")
-			this.register(element, id!)
+			this.register(element, { impostorId: id! })
 		}
 	}
 
 	private clear(id: number) {
 		this.handlers.delete(id)
+		this.clearClosures(id)
+		this.clearImpostors(id)
+	}
+
+	private clearClosures(id: number) {
 		const closures = this.onClear.get(id)
-		if (closures === undefined) {
+		if (!closures) {
 			return
 		}
 		this.onClear.delete(id)
 		closures.forEach(c => execute(c))
+	}
+
+	private clearImpostors(id: number) {
 		const impostors = this.impostors.get(id)
-		if (impostors === undefined) {
+		if (!impostors) {
 			return
 		}
 		for (const impostor of impostors) {
@@ -95,10 +109,11 @@ class Doors {
 		}
 	}
 
-	register(element: Element, impostorId?: string) {
-		const impostor = impostorId !== undefined;
+	register(element: Element, info: { impostorId?: string }) {
+		const impostor = info.impostorId !== undefined;
+
 		const door = element as DoorElement
-		const id = impostor ? Number(impostorId) : doorId(element.id);
+		const id = impostor ? Number(info.impostorId) : doorId(element.id);
 		door._d0r = {
 			id: id,
 			parent: getParentId(element),
@@ -135,11 +150,11 @@ class Doors {
 		}
 	}
 
-	scan(parent: Element | Document) {
+	scan(parent: Element | Document | DocumentFragment) {
 		this.scanImpostors(parent)
 		attachCaptures(parent)
 		attachDyna(parent)
-		navigator.activate(parent)
+		navigator.scan(parent)
 	}
 
 	update(id: number, content: string) {
@@ -153,13 +168,8 @@ class Doors {
 		range.selectNodeContents(door)
 		range.deleteContents()
 		const fragment = range.createContextualFragment(content)
-		navigator.activate(fragment)
-		attachCaptures(fragment)
-
+		this.scan(fragment)
 		range.insertNode(fragment)
-
-		this.scanImpostors(door)
-		attachDyna(door)
 	}
 
 	replace(id: number, content: string) {
@@ -170,19 +180,12 @@ class Doors {
 		if (door._d0r.impostor) {
 			this.unregister(door)
 		}
-		const parent = door.parentElement!
 		const range = document.createRange()
 		range.selectNode(door)
 		range.deleteContents()
 		const fragment = range.createContextualFragment(content)
-
-		navigator.activate(fragment)
-		attachCaptures(fragment)
-
+		this.scan(fragment)
 		range.insertNode(fragment)
-
-		this.scanImpostors(parent)
-		attachDyna(parent)
 	}
 
 	on(
@@ -201,6 +204,8 @@ class Doors {
 		}
 		handlers.set(name, handler)
 	}
+
+
 
 	onUnmount(element: Element, handler: () => void | Promise<void>): void {
 		let id = getSelfId(element)
@@ -246,7 +251,7 @@ customElements.define(tag,
 			super()
 		}
 		connectedCallback() {
-			doors.register(this)
+			doors.register(this, {})
 		}
 		disconnectedCallback() {
 			doors.unregister(this)

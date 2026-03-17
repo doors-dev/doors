@@ -9,6 +9,7 @@
 import { id, prefix } from "./params"
 import { arraysEqual } from "./lib"
 import indicator from "./indicator"
+import doors from "./door";
 
 
 type PathMatchType = "full" | "starts" | "parts";
@@ -24,15 +25,25 @@ const queryMatcherTypes = {
 type QueryMatchType = typeof queryMatcherTypes[keyof typeof queryMatcherTypes]
 
 
-type Cache = {
-	indicator: number | undefined,
+export type LinkData = {
 	url: URL,
+	state: {
+		indicator: number | undefined,
+		url: URL | undefined,
+	},
 	settings: any
 }
-const attrName = "data-d0a"
+
+export type LinkElement = Element & {
+	_d0r: LinkData
+}
+
+
+const linkAttr = "data-d0a"
 
 export class Navigator {
-	private cache = new WeakMap<Element, Cache>()
+	private registry = new Set<LinkElement>()
+
 	constructor(
 	) {
 		window.addEventListener('popstate', async () => {
@@ -63,104 +74,122 @@ export class Navigator {
 		return true;
 	}
 
+	scan(parent: Element | Document | DocumentFragment) {
+		const url = this.urlCurrent()
+		for (const element of parent.querySelectorAll(`[${linkAttr}][href]:not([${linkAttr}="indexed"])`) as any as Array<HTMLAnchorElement>) {
+			const settings = JSON.parse(element.getAttribute(linkAttr)!)
+			element.setAttribute(linkAttr, "indexed")
+			const linkElement = this.newLink(element, settings)
+			this.activateLink(linkElement, url)
+			this.registry.add(linkElement)
+			doors.onUnmount(linkElement, () => {
+				this.registry.delete(linkElement)
+			})
+		}
+	}
 
-	public activate(e: Element | DocumentFragment | Document = document): void {
-		this.activateLinks(this.urlCurrent(), e)
+	activate(url: URL) {
+		for (const link of this.registry.values()) {
+			this.activateLink(link, url)
+		}
+	}
+
+	public activateCurrent(): void {
+		this.activate(this.urlCurrent())
 	}
 
 	private trim(path: string): string {
 		return path.replace(/^\/+|\/+$/g, "")
 	}
 
-	private activateLinks(newUrl: URL, parent: Element | DocumentFragment | Document = document): void {
-
-		const links = parent.querySelectorAll(`[${attrName}]`) as any as Array<HTMLAnchorElement>;
-		links.forEach(link => {
-			const href = link.getAttribute("href")
-			if (href === null) {
-				return
+	private newLink(el: Element, settings: any): LinkElement {
+		const linkEl = el as LinkElement
+		linkEl._d0r = {
+			url: new URL(el.getAttribute("href")!, window.location.origin),
+			settings: settings,
+			state: {
+				indicator: undefined,
+				url: undefined
 			}
-			let cache = this.cache.get(link)
-			let settings = cache?.settings
-			if (!settings) {
-				settings = JSON.parse(link.getAttribute(attrName)!)
-				link.setAttribute(attrName, "cached")
+		}
+		return linkEl
+	}
+	private activateLink(el: LinkElement, newUrl: URL): LinkElement {
+		const data = el._d0r
+		const [pathMatchTuple, queryMatchers, matchFragment, indicators]: any = data.settings
+		if (data.state.url && this.urlAreEqual(data.state.url, newUrl, matchFragment)) {
+			return el
+		}
+		const pathMatch: PathMatchType = pathMatchTuple[0];
+		const pathMatchArg: [number] | undefined = pathMatchTuple[1];
+		const url = data.url
+		let match = false;
+		const newPath = this.trim(newUrl.pathname)
+		const linkPath = this.trim(url.pathname)
+		if (pathMatch === "full") {
+			match = newPath === linkPath
+		} else if (pathMatch === "starts") {
+			match = newPath.startsWith(linkPath);
+		} else if (pathMatch === "parts" && pathMatchArg !== undefined) {
+			const newMatchPath = newPath.split("/")
+			const linkMatchPath = linkPath.split("/")
+			for (const index of pathMatchArg) {
+				if (newMatchPath[index] !== linkMatchPath[index]) {
+					match = false
+					break
+				}
 			}
-			const [pathMatchTuple, queryMatchers, matchFragment, indicators]: any = settings;
-			if (!!cache && this.urlAreEqual(cache.url, newUrl, matchFragment)) {
-				return
-			}
-
-			const pathMatch: PathMatchType = pathMatchTuple[0];
-			const pathMatchArg: [number] | undefined = pathMatchTuple[1];
-			const url = new URL(href, window.location.origin);
-			let match = false;
-			const newPath = this.trim(newUrl.pathname)
-			const linkPath = this.trim(url.pathname)
-			if (pathMatch === "full") {
-				match = newPath === linkPath
-			} else if (pathMatch === "starts") {
-				match = newPath.startsWith(linkPath);
-			} else if (pathMatch === "parts" && pathMatchArg !== undefined) {
-				const newMatchPath = newPath.split("/")
-				const linkMatchPath = linkPath.split("/")
-				for (const index of pathMatchArg) {
-					if (newMatchPath[index] !== linkMatchPath[index]) {
-						match = false
+		}
+		if (match) {
+			const newSearch = this.searchToMap(newUrl.searchParams)
+			const search = this.searchToMap(url.searchParams)
+			for (const matcher of queryMatchers) {
+				const matchType: QueryMatchType = matcher[0];
+				const matchArg: string[] | undefined = matcher[1];
+				if (matchType == queryMatcherTypes.all) {
+					match = this.searchEqual(newSearch, search);
+					break
+				}
+				if (matchType == queryMatcherTypes.ignoreAll) {
+					break
+				}
+				if (matchType == queryMatcherTypes.ignoreSome) {
+					for (const param of matchArg!) {
+						newSearch.delete(param)
+						search.delete(param)
+					}
+				}
+				if (matchType == queryMatcherTypes.ifPresent || matchType == queryMatcherTypes.some) {
+					const a = new Map()
+					const b = new Map()
+					for (const param of matchArg!) {
+						if (matchType == queryMatcherTypes.ifPresent && !newSearch.has(param)) {
+							search.delete(param)
+							continue
+						}
+						a.set(param, newSearch.get(param))
+						newSearch.delete(param)
+						b.set(param, search.get(param))
+						search.delete(param)
+					}
+					match = this.searchEqual(a, b);
+					if (!match) {
 						break
 					}
 				}
 			}
-			if (match) {
-				const newSearch = this.searchToMap(newUrl.searchParams)
-				const search = this.searchToMap(url.searchParams)
-				for (const matcher of queryMatchers) {
-					const matchType: QueryMatchType = matcher[0];
-					const matchArg: string[] | undefined = matcher[1];
-					if (matchType == queryMatcherTypes.all) {
-						match = this.searchEqual(newSearch, search);
-						break
-					}
-					if (matchType == queryMatcherTypes.ignoreAll) {
-						break
-					}
-					if (matchType == queryMatcherTypes.ignoreSome) {
-						for (const param of matchArg!) {
-							newSearch.delete(param)
-							search.delete(param)
-						}
-					}
-					if (matchType == queryMatcherTypes.ifPresent || matchType == queryMatcherTypes.some) {
-						const a = new Map()
-						const b = new Map()
-						for (const param of matchArg!) {
-							if (matchType == queryMatcherTypes.ifPresent && !newSearch.has(param)) {
-								search.delete(param)
-								continue
-							}
-							a.set(param, newSearch.get(param))
-							newSearch.delete(param)
-							b.set(param, search.get(param))
-							search.delete(param)
-						}
-						match = this.searchEqual(a, b);
-						if (!match) {
-							break
-						}
-					}
-				}
-			}
-			if (match && matchFragment) {
-				match = url.hash == newUrl.hash
-			}
-			const prevIndicator = cache?.indicator
-			if (match) {
-				this.cache.set(link, { indicator: indicator.start(link, indicators), url: newUrl, settings })
-			} else {
-				this.cache.set(link, { indicator: undefined, url: newUrl, settings })
-			}
-			indicator.end(prevIndicator)
-		});
+		}
+		if (match && matchFragment) {
+			match = url.hash == newUrl.hash
+		}
+		const prevIndicator = data.state.indicator
+		let newIndicator: number | undefined = undefined
+		if (match) {
+			newIndicator = indicator.start(el, indicators)
+		}
+		data.state = { indicator: newIndicator, url: newUrl }
+		indicator.end(prevIndicator)
+		return el
 	}
 
 	private async pop(): Promise<void> {
@@ -176,7 +205,7 @@ export class Navigator {
 		}
 	}
 
-	private urlCurrent(): URL {
+	urlCurrent(): URL {
 		return new URL(window.location.href)
 	}
 
@@ -199,26 +228,27 @@ export class Navigator {
 		const currentUrl = new URL(this.urlCurrent(), window.location.origin)
 		if (this.urlAreEqual(currentUrl, newUrl)) {
 			if (serverPush) {
-				this.activate()
+				this.activateCurrent()
 				return
 			}
 			if (newUrl.hash != currentUrl.hash) {
 				history.replaceState(null, '', path);
 			}
-			this.activate()
+			this.activateCurrent()
 		} else {
 			history.pushState(null, '', path);
 			if (serverPush) {
-				this.activate()
+				this.activateCurrent()
 			}
 		}
 		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
 		if (!hash) {
 			return
 		}
-		const elem = document.querySelector(hash)
+		const selector = "#" + CSS.escape(hash.slice(1))
+		const elem = document.querySelector(selector)
 		if (!elem) {
-			return hash
+			return selector
 		}
 		elem.scrollIntoView({
 			behavior: "auto",
@@ -229,7 +259,9 @@ export class Navigator {
 		const newUrl = new URL(path, window.location.origin);
 		const currentUrl = new URL(this.urlCurrent(), window.location.origin)
 		if (!this.urlAreEqual(currentUrl, newUrl)) {
-			this.activateLinks(newUrl);
+			//			this.activateLinks(newUrl);
+			//			
+			doors.activateLinks(newUrl)
 			history.replaceState(null, '', path);
 		}
 	}

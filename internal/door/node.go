@@ -391,7 +391,7 @@ func (n *node) writeProxyReplace(pn *proxyNode) {
 		cont, ok := pip.RenderProxy(pn.elem)
 		pn.contents.container = &cont
 		if !pip.IsEmpty() || pn.prevContents == nil || !ok {
-			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id)
+			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id, pn.tracker.parent.id)
 			pn.contents.initializeFrame.Activate()
 			return
 		}
@@ -403,7 +403,7 @@ func (n *node) writeProxyReplace(pn *proxyNode) {
 				pip.RenderContent(pn.contents.content)
 			}
 			pn.prevContents = nil
-			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id)
+			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id, pn.tracker.parent.id)
 			pn.contents.initializeFrame.Activate()
 		})
 	})
@@ -478,7 +478,7 @@ func (n *node) renderUpdate(nr *updateNode, pip pipe.Pipe, branch pipe.Branch) {
 			}
 		}()
 		pip.RenderContent(nr.contents.content)
-		nr.contents.container.Apply(pip, nr.tracker.containerContext(), nr.tracker.id)
+		nr.contents.container.Apply(pip, nr.tracker.containerContext(), nr.tracker.id, nr.tracker.parent.id)
 	})
 }
 
@@ -502,7 +502,7 @@ func (n *node) renderProxy(pn *proxyNode, pip pipe.Pipe, branch pipe.Branch) {
 		if !pip.IsEmpty() || pn.prevContents == nil || !ok {
 			pn.prevContents = nil
 			pn.contents.initializeFrame.Activate()
-			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id)
+			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id, pn.tracker.parent.id)
 			submit = true
 			return
 		}
@@ -520,7 +520,7 @@ func (n *node) renderProxy(pn *proxyNode, pip pipe.Pipe, branch pipe.Branch) {
 			}
 			pn.prevContents = nil
 			pn.contents.initializeFrame.Activate()
-			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id)
+			pn.contents.container.Apply(pip, pn.tracker.containerContext(), pn.tracker.id, pn.tracker.parent.id)
 		})
 	})
 }

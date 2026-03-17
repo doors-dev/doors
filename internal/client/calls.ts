@@ -118,6 +118,7 @@ export default function action(name: string, args: Array<any>, extras: Extras = 
 		}
 		return [output, undefined]
 	} catch (e) {
+		console.error(e)
 		if (e && typeof e === "object" && typeof e.message === "string") {
 			return [undefined, e]
 		}

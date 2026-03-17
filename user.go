@@ -84,26 +84,26 @@ func NewLocation(ctx context.Context, model any) (Location, error) {
 	return location, nil
 }
 
-// IdRand returns a cryptographically secure, URL-safe random ID.
+// IDRand returns a cryptographically secure, URL-safe random ID.
 // Suitable for sessions, instances, tokens, attributes. Case-sensitive.
-func IdRand() string {
+func IDRand() string {
 	return common.RandId()
 }
 
-// IdString creates Id using provided string, hashbased.
+// IDString creates ID using provided string, hashbased.
 // For the same string outputs the same result.
 // Suitable for HTML attributes.
-func IdString(string string) string {
+func IDString(string string) string {
 	hasher := blake3.New()
 	hasher.WriteString(string)
 	hash := hasher.Sum(nil)
 	return common.EncodeId(hash)
 }
 
-// IdBytes creates Id using provided bytes, hashbased.
+// IDBytes creates ID using provided bytes, hashbased.
 // For the same bytes outputs the same result.
 // Suitable for HTML attributes.
-func IdBytes(b []byte) string {
+func IDBytes(b []byte) string {
 	hash := blake3.Sum256(b)
 	return common.EncodeId(hash[:])
 }

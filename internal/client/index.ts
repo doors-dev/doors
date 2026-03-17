@@ -91,7 +91,7 @@ function init(
 	const $sys = {
 		ready: $d.ready,
 		clean: $d.clean,
-		activateLinks: () => navigator.activate(document),
+		activateLinks: () => navigator.activateCurrent(),
 	}
 	return f($on, $data, $hook, $fetch, $G, $sys, HookErr)
 }

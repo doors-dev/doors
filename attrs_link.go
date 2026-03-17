@@ -195,6 +195,7 @@ func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	attrs.Get("href").Set(link.Location.String() + fragment)
 	active := h.active()
 	if active != nil {
+		front.AttrsSetParent(attrs, core.DoorID())
 		front.AttrsSetActive(attrs, active)
 	}
 	return nil

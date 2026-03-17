@@ -155,14 +155,15 @@ func (a ADyn) Proxy(cur gox.Cursor, elem gox.Elem) error {
 }
 
 func (a ADyn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	core := ctx.Value(ctex.KeyCore).(core.Core)
 	if !a.initialized {
 		a.initialized = true
 		a.id = core.NewID()
 	}
 	front.AttrsAppendDyn(attrs, a.id, a.name)
+	front.AttrsSetParent(attrs, core.DoorID())
 	if a.enable {
 		attrs.Get(a.name).Set(a.value)
 	}

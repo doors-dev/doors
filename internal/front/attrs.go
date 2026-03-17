@@ -30,6 +30,19 @@ func AttrsAppendDyn(attrs gox.Attrs, id uint64, name string) {
 	attrs.Get("data-d0y").Set(val)
 }
 
+func AttrsSetParent(attrs gox.Attrs, parent uint64) {
+	attrs.Get("data-d0p").Set(fmt.Sprintf("%d", parent))
+}
+
+func AttrsSetDoor(attrs gox.Attrs, id uint64, container bool) {
+	if container {
+		attrs.Get("id").Set(fmt.Sprintf("d0r%d", id))
+		return
+	}
+	attrs.Get("data-d0r").Set(fmt.Sprintf("%d", id))
+
+}
+
 func AttrsSetActive(attrs gox.Attrs, active []any) {
 	val := jsonAttr{active}
 	attrs.Get("data-d0a").Set(val)
