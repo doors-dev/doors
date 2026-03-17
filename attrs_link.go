@@ -60,11 +60,17 @@ func PathMatcherStarts() PathMatcher {
 
 // PathMatcherParts checks if path parts by specified indexes matche
 func PathMatcherParts(i ...int) PathMatcher {
+	if i == nil {
+		i = []int{}
+	}
 	return pathMatch([]any{"parts", i})
 }
 
 // QueryMatcherIgnoreSome excludes the given query parameters from comparison.
 func QueryMatcherIgnoreSome(params ...string) QueryMatcher {
+	if params == nil {
+		params = []string{}
+	}
 	return queryMatch([]any{"ignore_some", params})
 }
 
@@ -85,7 +91,10 @@ func QueryMatcherOnlyIgnoreAll() []QueryMatcher {
 
 // QueryMatcherSome matches only the provided query parameters.
 func QueryMatcherSome(params ...string) QueryMatcher {
-	return queryMatch([]any{"some"})
+	if params == nil {
+		params = []string{}
+	}
+	return queryMatch([]any{"some", params})
 }
 
 // QueryMatcherOnlySome matches the provided query parameters and ignores all others.
@@ -95,6 +104,9 @@ func QueryMatcherOnlySome(params ...string) []QueryMatcher {
 
 // QueryMatcherIfPresent matches the given parameters only if they are present.
 func QueryMatcherIfPresent(params ...string) QueryMatcher {
+	if params == nil {
+		params = []string{}
+	}
 	return queryMatch([]any{"if", params})
 }
 
