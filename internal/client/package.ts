@@ -129,6 +129,7 @@ export class Package {
 
 	private stream(): ReadableStream {
 		const blob = new Blob(this.parts as any)
+		this.parts = []
 		if (!isGzip(this.payloadType)) {
 			return blob.stream()
 		}
@@ -209,6 +210,7 @@ export class Header {
 
 	async package(): Promise<Package> {
 		const header = await new Response(new Blob(this.headerParts as any, { type: "application/json" })).json();
+		this.headerParts = []
 		return new Package(header)
 	}
 

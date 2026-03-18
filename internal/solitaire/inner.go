@@ -7,28 +7,31 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
 package solitaire
-
+/*
 import (
 	"errors"
 	"github.com/doors-dev/doors/internal/front/action"
-	"github.com/doors-dev/doors/internal/solitaire/expirator"
 	"github.com/doors-dev/doors/internal/solitaire/inner"
+	"github.com/doors-dev/doors/internal/solitaire/expirator"
+	"io"
 	"sync"
 	"time"
 )
 
-func newDeck(expirator *expirator.Expirator, queueLimit int, issueLimit int, syncTimeout time.Duration) *deck {
+func newDeck(inst Instance, queueLimit int, issueLimit int, syncTimeout time.Duration) *deck {
 	d := &deck{
-		expirator:   expirator,
+		inst:        inst,
 		issueLimit:  issueLimit,
 		queueLimit:  queueLimit,
 		issued:      make(map[uint64]*issuedCall),
 		syncTimeout: syncTimeout,
 	}
+	d.expirator = expirator.NewExpirator(d)
 	return d
 }
 
 type deck struct {
+	inst         Instance
 	issueLimit   int
 	queueLimit   int
 	syncTimeout  time.Duration
@@ -36,9 +39,14 @@ type deck struct {
 	issued       map[uint64]*issuedCall
 	mu           sync.Mutex
 	killed       bool
+	deckSize     int
 	latestReport uint64
 	expirator    *expirator.Expirator
 	inner        inner.Deck
+}
+
+func (d *deck) Expire() {
+	d.inst.SyncError(errors.New("sync timeout"))
 }
 
 func (d *deck) End() {
@@ -59,7 +67,7 @@ func (d *deck) PendingCount() int {
 	return len(d.issued)
 }
 func (d *deck) QueueLength() int {
-	return d.inner.Len()
+	return d.deckSize
 }
 
 func (d *deck) Pending() bool {
@@ -72,32 +80,41 @@ type writeResult int
 
 const (
 	writeOk writeResult = iota
-	writeNothing
+	nothingToWrite
 	writeErr
-	writeLimit
+	pendingLimit
 	writeSyncErr
 )
 
+type flushWriter interface {
+	io.Writer
+	afterFlush(func())
+}
 
-func (d *deck) WriteNext(w *writer) (res writeResult, syncErr error) {
+func (d *deck) WriteNext(w flushWriter) (res writeResult, err error) {
+	defer func() {
+		if res == writeSyncErr {
+			d.inst.SyncError(err)
+		}
+	}()
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for {
 		if d.killed {
-			return writeErr, nil
+			return writeSyncErr, errors.New("killed")
 		}
 		if len(d.issued) == d.issueLimit {
-			return writeLimit, nil
+			return pendingLimit, nil
 		}
-		card := d.inner.Cut()
+		card := d.cutTop()
 		if card == nil {
-			return writeNothing, nil
+			return nothingToWrite, nil
 		}
-		header := newHeader(card.Beg, card.End)
+		header := newHeader(card.StartSeq, card.EndSeq)
 		if card.IsFiller() {
 			if err := header.writeFiller(w); err != nil {
-				d.inner.Fill(card.Beg, card.End)
-				return writeErr, nil
+				d.skipRange(card.StartSeq, card.EndSeq)
+				return writeErr, err
 			}
 			return writeOk, nil
 		}
@@ -105,7 +122,7 @@ func (d *deck) WriteNext(w *writer) (res writeResult, syncErr error) {
 		if !ok {
 			d.expirator.Report(card.Seq())
 			card.Call.Cancel()
-			d.inner.Fill(card.Beg, card.End)
+			d.skipRange(card.StartSeq, card.EndSeq)
 			continue
 		}
 		issuedCall := &issuedCall{
@@ -118,35 +135,49 @@ func (d *deck) WriteNext(w *writer) (res writeResult, syncErr error) {
 				if err := d.cancelCut(card); err != nil {
 					return writeSyncErr, err
 				}
-				return writeErr, nil
+				return writeErr, err
 			}
 			d.expirator.Report(card.Seq())
 			issuedCall.call.Result(nil, errors.Join(errors.New("call serialization error"), err))
-			d.inner.Fill(card.Beg, card.End)
+			d.skipRange(card.StartSeq, card.EndSeq)
 			_, err := w.Write(errorTerminator)
 			if err != nil {
-				return writeErr, nil
+				return writeErr, err
 			}
 			return writeOk, nil
 		}
 		d.issued[card.Seq()] = issuedCall
-		w.AfterFlush(issuedCall.call.Written)
+		w.afterFlush(issuedCall.call.Written)
 		return writeOk, nil
 	}
 }
 
-func (d *deck) CollectResults(r map[uint64]result) (int, error) {
+func (d *deck) extractRestored(seq uint64) (*inner.Card, error) {
+	card, err := d.inner.ExtractRestored(seq)
+	if card != nil {
+		d.dec()
+	}
+	return card, err
+}
+
+func (d *deck) OnReport(s *report) (counter int, err error) {
+	defer func() {
+		if err != nil {
+			d.inst.SyncError(err)
+		}
+	}()
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	counter := 0
-	for seq, result := range r {
+	latest := uint64(0)
+	for seq := range s.Results {
 		if seq > d.seq {
 			return counter, errors.New("ready overflows last seq")
 		}
-		d.latestReport = max(d.latestReport, seq)
+		latest = max(latest, seq)
+		result := s.Results[seq]
 		issued, ok := d.issued[seq]
 		if !ok {
-			restored, err := d.inner.ExtractRestored(seq)
+			restored, err := d.extractRestored(seq)
 			if err != nil {
 				return counter, err
 			}
@@ -156,68 +187,60 @@ func (d *deck) CollectResults(r map[uint64]result) (int, error) {
 			counter += 1
 			d.expirator.Report(seq)
 			restored.Call.Result(result.output, result.err)
+			// restored.call.clean()
 			continue
 		}
 		delete(d.issued, seq)
 		counter += 1
 		d.expirator.Report(seq)
 		issued.call.Result(result.output, result.err)
+		// issued.call.clean()
 	}
-	return counter, nil
-}
-
-func (d *deck) HeatUp() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.inner.IsCold(d.seq) && len(d.issued) > 0 {
-		d.seq += 1
-		d.inner.Fill(d.seq, d.seq)
+	prevEnd := latest
+	if latest < d.latestReport {
+		tolarance := min(uint64(d.issueLimit), d.seq)
+		prevEnd = max(d.latestReport, tolarance) - tolarance
+	} else {
+		d.latestReport = latest
 	}
-}
-
-func (d *deck) FillGaps(g []gap) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	tolarance := min(uint64(d.issueLimit), d.seq)
-	prevEnd := max(d.latestReport, tolarance) - tolarance
-	for _, gap := range g {
+	for _, gap := range s.Gaps {
 		if gap.end < gap.start {
-			return errors.New("gap range issue")
+			return counter, errors.New("gap range issue")
 		}
 		if gap.end > d.seq {
-			return errors.New("gap overflows last seq")
+			return counter, errors.New("gap overflows last seq")
 		}
 		if prevEnd >= gap.start {
-			return errors.New("gap overlap")
+			return counter, errors.New("gap overlap")
 		}
 		prevEnd = gap.end
-		var beg uint64
-		for seq := max(gap.start, d.latestReport); seq <= gap.end; seq++ {
-			if beg == 0 {
-				beg = seq
+		for seq := gap.start; seq <= gap.end; seq++ {
+			if seq <= d.latestReport {
+				continue
 			}
 			call, ok := d.issued[seq]
 			if !ok {
+				d.skipSeq(seq)
 				continue
 			}
-			if beg != seq {
-				d.inner.Fill(beg, seq-1)
-			}
-			beg = 0
 			delete(d.issued, seq)
 			if err := d.restore(seq, call.call); err != nil {
-				return err
+				return counter, err
 			}
 		}
-		if beg != 0 {
-			d.inner.Fill(beg, gap.end)
-		}
 	}
-	return nil
+	if d.inner.IsCold(d.seq) && len(d.issued) > 0 {
+		d.seq += 1
+		d.skipSeq(d.seq)
+	}
+	return counter, nil
 }
-
-
 func (d *deck) Insert(c action.Call) (err error) {
+	defer func() {
+		if err != nil {
+			d.inst.SyncError(err)
+		}
+	}()
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.killed {
@@ -236,24 +259,57 @@ func (d *deck) Insert(c action.Call) (err error) {
 	d.inner.Append(card)
 	deadline := time.Now().Add(dc.Params.Timeout)
 	d.expirator.Track(d.seq, deadline)
-	return d.checkQueueLength()
+	return d.inc()
 }
 
-func (d *deck) checkQueueLength() error {
-	if d.inner.Len() < d.queueLimit {
-		return nil
+func (d *deck) inc() error {
+	d.deckSize += 1
+	if d.deckSize > d.queueLimit {
+		return errors.New("call queue limit reached")
 	}
-	return errors.New("call queue limit reached")
+	return nil
+}
+func (d *deck) dec() {
+	d.deckSize -= 1
 }
 
 func (d *deck) restore(seq uint64, c *inner.Call) error {
 	n := inner.NewRestoredCard(seq, c)
-	d.inner.Insert(n)
-	return d.checkQueueLength()
+	err := d.inner.Insert(n)
+	if err != nil {
+		return err
+	}
+	return d.inc()
 
+}
+
+func (d *deck) skipSeq(seq uint64) {
+	d.inner.Skip(seq)
+}
+
+func (d *deck) cutTop() *inner.Card {
+	card := d.inner.Cut()
+	if card == nil {
+		return nil
+	}
+	if !card.IsFiller() {
+		d.dec()
+	}
+	return card
 }
 
 func (d *deck) cancelCut(n *inner.Card) error {
-	d.inner.Insert(n)
-	return d.checkQueueLength()
+	if n.IsFiller() {
+		panic("Cannot cancel filler cut")
+	}
+	if err := d.inner.Insert(n); err != nil {
+		return err
+	}
+	return d.inc()
 }
+
+func (d *deck) skipRange(start uint64, end uint64) {
+	for seq := start; seq <= end; seq++ {
+		d.skipSeq(seq)
+	}
+} */

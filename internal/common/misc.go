@@ -62,7 +62,7 @@ func RandId() string {
 const idLen = 22
 
 func EncodeId(b []byte) string {
-    s := base58.Encode(b)
+	s := base58.Encode(b)
 	if len(s) == 0 {
 		return s
 	}

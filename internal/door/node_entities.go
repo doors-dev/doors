@@ -205,7 +205,6 @@ func (c *proxyNode) inheritReplaceId(prev nodeMount) {
 	c.replaceId.Store(prev.ReplaceId())
 }
 
-
 var _ nodeMount = &proxyNode{}
 
 type editorNode struct{}

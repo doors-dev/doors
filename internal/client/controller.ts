@@ -13,6 +13,7 @@ import { ProgressiveDelay, AbortTimer, ReliableTimer } from "./lib"
 import doors from "./door"
 import { Package, Header } from "./package";
 
+const STRESS_MODE = false
 
 const controlBytes = {
 	terminator: 0xFF,
@@ -34,10 +35,25 @@ class Solitaire {
 
 	}
 	private collectedLost = new Set<number>()
-	returnLost(lost: Lost) {
+	return(lost: Lost) {
 		for (const gap of lost) {
 			this.collectedLost.delete(gap)
 		}
+	}
+	isDone(): boolean {
+		return !this.top
+	}
+	collectLost(): Lost {
+		const lost: Lost = []
+		for (const seq of this.getLost()) {
+			if (this.collectedLost.has(seq)) {
+				continue
+			}
+			lost.push(seq)
+			this.collectedLost.add(seq)
+		}
+		return lost
+
 	}
 	private getLost(): Lost {
 		let lost: Lost = []
@@ -47,24 +63,12 @@ class Solitaire {
 		this.top.lost(this.cursor - 1, lost)
 		return lost
 	}
-	isDone(): boolean {
-		return !this.top
-	}
-	collectLost(): Lost {
-		return this.getLost().filter((seq) => {
-			if (this.collectedLost.has(seq)) {
-				return false
-			}
-			this.collectedLost.add(seq)
-			return true
-		})
-	}
 	collect(): Array<Package> {
 		const a: Array<Package> = []
 		if (!this.top) {
 			return a
 		}
-		if (this.top.start != this.cursor) {
+		if (this.top.start > this.cursor) {
 			return a
 		}
 		this.top.collect(a, this)
@@ -73,10 +77,6 @@ class Solitaire {
 		return a.filter(p => !p.isFiller)
 	}
 	insert(p: Package) {
-		// console.log(this.cursor, !!this.top, "ARRIVED", p.start, p.end, [...this.collectedLost])
-		for (let seq = p.start; seq <= p.end; seq++) {
-			this.collectedLost.delete(seq)
-		}
 		if (p.end < this.cursor) {
 			return
 		}
@@ -92,6 +92,9 @@ class Solitaire {
 class Card {
 	private next: Card
 	constructor(private p: Package) {
+	}
+	get end(): number {
+		return this.p.end
 	}
 	get start(): number {
 		return this.p.start
@@ -221,6 +224,7 @@ type Lost = Array<number>
 type Gap = ([number, number] | [number])
 type Gaps = Array<Gap>
 
+
 class Connection {
 	private status: SyncStatus = connectorStatus.signal
 	private abortTimer: AbortTimer
@@ -307,11 +311,9 @@ class Connection {
 				if (result.done) {
 					throw new Error()
 				}
-				/*
-				if (Math.random() > 0.5) {
+				if (STRESS_MODE && Math.random() > 0.5) {
 					throw new Error()
-				} 
-				*/
+				}
 
 				value = result.value
 				const done = await this.onChunk(value)
@@ -498,12 +500,13 @@ class Controller {
 		if (this.rolling) {
 			return
 		}
-		if (delay) {
+		if (!STRESS_MODE && delay) {
 			this.rolling = true
 			this.delay.wait().then(() => {
 				this.rolling = false
 				this.connect()
 			})
+			return
 		}
 		this.connect()
 	}
@@ -526,15 +529,7 @@ class Controller {
 	}
 	report(connection: Connection, report: Report, results: Results, lost: Lost) {
 		this.connections.delete(connection)
-		if (lost.length > 0) {
-			if (report == reports.ok) {
-				setTimeout(() => {
-					this.deck.returnLost(lost)
-				}, 0)
-			} else {
-				this.deck.returnLost(lost)
-			}
-		}
+		this.deck.return(lost)
 		if (report == reports.broken) {
 			this.tracker.return(results)
 		}

@@ -123,17 +123,17 @@ export class Navigator {
 		const pathMatch: PathMatchType = pathMatchTuple[0];
 		const pathMatchArg: [number] | undefined = pathMatchTuple[1];
 		const url = data.url
-		let match = false;
+		let match = true;
 		const newPath = this.trim(newUrl.pathname)
 		const linkPath = this.trim(url.pathname)
 		if (pathMatch === "full") {
 			match = newPath === linkPath
 		} else if (pathMatch === "starts") {
 			match = newPath.startsWith(linkPath);
-		} else if (pathMatch === "parts" && pathMatchArg !== undefined) {
+		} else if (pathMatch === "parts") {
 			const newMatchPath = newPath.split("/")
 			const linkMatchPath = linkPath.split("/")
-			for (const index of pathMatchArg) {
+			for (const index of pathMatchArg!) {
 				if (newMatchPath[index] !== linkMatchPath[index]) {
 					match = false
 					break
@@ -259,9 +259,7 @@ export class Navigator {
 		const newUrl = new URL(path, window.location.origin);
 		const currentUrl = new URL(this.urlCurrent(), window.location.origin)
 		if (!this.urlAreEqual(currentUrl, newUrl)) {
-			//			this.activateLinks(newUrl);
-			//			
-			doors.activateLinks(newUrl)
+			this.activate(newUrl)
 			history.replaceState(null, '', path);
 		}
 	}

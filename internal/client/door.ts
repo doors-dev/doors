@@ -205,8 +205,6 @@ class Doors {
 		handlers.set(name, handler)
 	}
 
-
-
 	onUnmount(element: Element, handler: () => void | Promise<void>): void {
 		let id = getSelfId(element)
 		if (id !== undefined) {

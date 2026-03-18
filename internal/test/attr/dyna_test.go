@@ -8,8 +8,8 @@ import (
 )
 
 func TestDyna(t *testing.T) {
-	v1 := doors.IdRand()
-	v2 := doors.IdRand()
+	v1 := doors.IDRand()
+	v2 := doors.IDRand()
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &dynaFragment{
 			v1: v1,

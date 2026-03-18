@@ -31,7 +31,11 @@ func AttrsAppendDyn(attrs gox.Attrs, id uint64, name string) {
 }
 
 func AttrsSetParent(attrs gox.Attrs, parent uint64) {
-	attrs.Get("data-d0p").Set(fmt.Sprintf("%d", parent))
+	attr := attrs.Get("data-d0p")
+	if attr.IsSet() {
+		return
+	}
+	attr.Set(fmt.Sprintf("%d", parent))
 }
 
 func AttrsSetDoor(attrs gox.Attrs, id uint64, container bool) {

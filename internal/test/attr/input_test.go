@@ -66,13 +66,13 @@ func TestInputChange(t *testing.T) {
 	defer page.Close()
 	_ = proto.EmulationSetTimezoneOverride{TimezoneID: "UTC"}.Call(page)
 	text := map[string]string{
-		"password": doors.IdRand(),
-		"textarea": doors.IdRand(),
-		"search":   doors.IdRand(),
-		"text":     doors.IdRand(),
+		"password": doors.IDRand(),
+		"textarea": doors.IDRand(),
+		"search":   doors.IDRand(),
+		"text":     doors.IDRand(),
 		"tel":      fmt.Sprint(time.Now().Nanosecond()),
-		"url":      strings.ToLower("https://" + doors.IdRand() + ".com"),
-		"email":    strings.ToLower(doors.IdRand() + "@" + doors.IdRand() + ".com"),
+		"url":      strings.ToLower("https://" + doors.IDRand() + ".com"),
+		"email":    strings.ToLower(doors.IDRand() + "@" + doors.IDRand() + ".com"),
 	}
 
 	for kind := range text {
