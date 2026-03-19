@@ -78,7 +78,6 @@ const (
 	writeSyncErr
 )
 
-
 func (d *deck) WriteNext(w *writer) (res writeResult, syncErr error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -215,7 +214,6 @@ func (d *deck) FillGaps(g []gap) error {
 	}
 	return nil
 }
-
 
 func (d *deck) Insert(c action.Call) (err error) {
 	d.mu.Lock()
