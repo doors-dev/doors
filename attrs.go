@@ -101,22 +101,28 @@ func (m *proxyAttrModPrinter) Send(job gox.Job) error {
 	if m.mod == nil {
 		return m.cur.Send(job)
 	}
-	mod := m.mod
-	m.mod = nil
 	comp, ok := job.(*gox.JobComp)
 	if ok {
+		mod := m.mod
+		m.mod = nil
 		return m.printComp(mod, comp)
 	}
 	open, ok := job.(*gox.JobHeadOpen)
 	if ok {
+		if open.Kind == gox.KindContainer {
+			return m.cur.Send(open)
+		}
+		mod := m.mod
+		m.mod = nil
 		return m.printHead(mod, open)
 	}
+	m.mod = nil
 	return errors.New("Can't attach attribute modifer - unexpected job type")
 }
 
 func (m *proxyAttrModPrinter) printHead(mod gox.Modify, job *gox.JobHeadOpen) error {
-	if job.Kind == gox.KindContainer || job.Tag == "d0-r" {
-		return errors.New("Can't attach attribute modifer on non-tag or door")
+	if job.Tag == "d0-r" {
+		return errors.New("Can't attach attribute modifer on door container")
 	}
 	job.Attrs.AddMod(mod)
 	return m.cur.Send(job)

@@ -54,8 +54,8 @@ func PathMatcherStarts() PathMatcher {
 	return pathMatch([]any{"starts"})
 }
 
-// PathMatcherParts checks if path parts by specified indexes matche
-func PathMatcherParts(i ...int) PathMatcher {
+// PathMatcherSegments checks if path segment by specified indexes matche
+func PathMatcherSegments(i ...int) PathMatcher {
 	if i == nil {
 		i = []int{}
 	}

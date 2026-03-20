@@ -108,7 +108,7 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
 //
 // Example:
 //
-//	~>Inject("user", userBeam) ~(UserProfile()) // Can use ctx.Value("user").(User) to get current user
+//	~>Inject("user", userBeam) <span> ~(ctx.Value("user").(User).Name) </span> // Can use ctx.Value("user").(User) to get current user
 func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
 		door := &Door{}
@@ -127,45 +127,6 @@ func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 	})
 }
 
-/*func Inject[T any](key any, beam Beam[T]) gox.Proxy {
-	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
-		door := &Door{}
-		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
-			door.Update(ctx, gox.Elem(func(cur gox.Cursor) error {
-				ctx := context.WithValue(cur.Context(), key, v)
-				cur = gox.NewCursor(ctx, cur)
-				return el(cur)
-			}))
-			return false
-		})
-		if !ok {
-			return nil
-		}
-		return cur.Editor(door)
-	})
-}*/
-
-/*
-// If shows children if the beam value is true
-func If(beam Beam[bool]) templ.Component {
-	return E(func(ctx context.Context) templ.Component {
-		children := templ.GetChildren(ctx)
-		ctx = templ.ClearChildren(ctx)
-		door := &Door{}
-		ok := beam.Sub(ctx, func(ctx context.Context, v bool) bool {
-			if !v {
-				door.Clear(ctx)
-				return false
-			}
-			door.Update(ctx, children)
-			return false
-		})
-		if !ok {
-			return nil
-		}
-		return door
-	})
-} */
 
 // Go starts a goroutine at render time using a blocking-safe context tied to the component's lifecycle.
 //
