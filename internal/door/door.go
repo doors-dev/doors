@@ -28,7 +28,7 @@ func (d *Door) Proxy(cur gox.Cursor, elem gox.Elem) error {
 			elem: elem,
 		},
 	}
-	d.takeover(node)
+	d.takeover(node, shredder.FreeFrame{})
 	return cur.Send(node)
 }
 
@@ -38,8 +38,14 @@ func (d *Door) Edit(cur gox.Cursor) error {
 		door:   d,
 		entity: &editorNode{},
 	}
-	d.takeover(node)
+	d.takeover(node, shredder.FreeFrame{})
 	return cur.Send(node)
+}
+
+func (d *Door) Main() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		return d.Edit(cur)
+	})
 }
 
 func (d *Door) rebase(ctx context.Context, el gox.Elem) <-chan error {
@@ -52,7 +58,7 @@ func (d *Door) rebase(ctx context.Context, el gox.Elem) <-chan error {
 			elem:     el,
 		},
 	}
-	d.takeover(node)
+	d.takeover(node, task.TaskFrame())
 	return ch
 }
 
@@ -66,7 +72,7 @@ func (d *Door) unmount(ctx context.Context) <-chan error {
 			remove:   true,
 		},
 	}
-	d.takeover(node)
+	d.takeover(node, task.TaskFrame())
 	return ch
 }
 
@@ -80,7 +86,7 @@ func (d *Door) update(ctx context.Context, content any) <-chan error {
 			content:  content,
 		},
 	}
-	d.takeover(node)
+	d.takeover(node, task.TaskFrame())
 	return ch
 }
 
@@ -93,7 +99,7 @@ func (d *Door) reload(ctx context.Context) <-chan error {
 			taskNode: task,
 		},
 	}
-	d.takeover(node)
+	d.takeover(node, task.TaskFrame())
 	return ch
 }
 
@@ -107,7 +113,7 @@ func (d *Door) replace(ctx context.Context, content any) <-chan error {
 			content:  content,
 		},
 	}
-	d.takeover(node)
+	d.takeover(node, task.TaskFrame())
 	return ch
 }
 
@@ -138,12 +144,14 @@ func (d *Door) takeoverSelf(prev *node, next *node) {
 	})
 }
 
-func (d *Door) takeover(next *node) {
+func (d *Door) takeover(next *node, taskFrame shredder.SimpleFrame) {
 	prev := d.node.Swap(next)
 	if prev == nil {
 		prev = d.defaultNode()
 	}
-	prev.initFrame.Run(nil, nil, func(b bool) {
+	initFrame := shredder.Join(true, &prev.initFrame, taskFrame)
+	defer initFrame.Release()
+	initFrame.Run(nil, nil, func(b bool) {
 		defer next.initFrame.Activate()
 		next.init(prev)
 	})

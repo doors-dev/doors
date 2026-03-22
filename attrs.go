@@ -54,7 +54,7 @@ type eventAttr[E any] struct {
 	before    []Action
 	scope     []Scope
 	indicator []Indicator
-	on        func(context.Context, ReqEvent[E]) bool
+	on        func(context.Context, RequestEvent[E]) bool
 }
 
 func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
@@ -83,7 +83,7 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		return false
 	}
 	return p.on(ctx, &eventRequest[E]{
-		req: req{
+		request: request{
 			r:   r,
 			w:   w,
 			ctx: ctx,

@@ -49,7 +49,7 @@ func SelectQueryAll(query string) Selector {
 		query: query,
 	}
 }
-func SelectParentQuery(query string) Selector {
+func SelectQueryParent(query string) Selector {
 	return Selector{
 		mode:  SelectModeParentQuery,
 		query: query,

@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.15+dirty
 
 package test
 
@@ -133,7 +133,7 @@ func Button(id string, handler func(context.Context) bool) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.AClick{
-		On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			return handler(ctx)
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {

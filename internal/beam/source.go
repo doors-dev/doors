@@ -202,8 +202,7 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 		close(ch)
 		return ch
 	}
-
-	done := ctex.WgAdd(ctx)
+	ctxFrame := ctex.Frame(ctx)
 
 	stopped := atomic.Bool{}
 
@@ -224,8 +223,8 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 	}
 
 	sh := shredder.Thread{}
-	syncFrame := sh.Frame()
-	checkFrame := sh.Frame()
+	syncFrame := shredder.Join(true, ctxFrame)
+	checkFrame := shredder.Join(true, ctxFrame, sh.Frame())
 	cleanFrame := &shredder.ValveFrame{}
 
 	for _, sub := range s.subs.Slice() {
@@ -237,7 +236,6 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 	s.mu.Unlock()
 
 	checkFrame.Run(nil, nil, func(bool) {
-		defer done()
 		ch <- nil
 		close(ch)
 		if stopped.Load() {
@@ -245,6 +243,8 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 		}
 		cleanFrame.Activate()
 	})
+
+	checkFrame.Release()
 
 	cleanFrame.Run(nil, nil, func(bool) {
 		s.mu.Lock()

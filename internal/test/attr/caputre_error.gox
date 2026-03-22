@@ -88,7 +88,7 @@ elem (f *errorFragment) button(id string, on []doors.Action) {
 func (f *errorFragment) handler(on []doors.Action) doors.Attr {
 	return doors.AClick{
 		OnError: on,
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			w := r.(R)
 			w.W().WriteHeader(http.StatusBadGateway)
 			return false

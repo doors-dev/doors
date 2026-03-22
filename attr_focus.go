@@ -17,6 +17,8 @@ import (
 
 type FocusEvent = front.FocusEvent
 
+type RequestFocus = RequestEvent[FocusEvent]
+
 type focusIOEventHook struct {
 	// If true, stops the event from bubbling up the DOM.
 	// Optional.
@@ -37,7 +39,7 @@ type focusIOEventHook struct {
 	// Receives a typed REvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, ReqEvent[FocusEvent]) bool
+	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -72,7 +74,7 @@ type focusEventHook struct {
 	// Receives a typed REvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, ReqEvent[FocusEvent]) bool
+	On func(context.Context, RequestEvent[FocusEvent]) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -107,7 +109,7 @@ type AFocus struct {
 	// Receives a typed REvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, ReqEvent[FocusEvent]) bool
+	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -137,7 +139,7 @@ type ABlur struct {
 	// Receives a typed REvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, ReqEvent[FocusEvent]) bool
+	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -173,7 +175,7 @@ type AFocusIn struct {
 	// Receives a typed REvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, ReqEvent[FocusEvent]) bool
+	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action
@@ -209,7 +211,7 @@ type AFocusOut struct {
 	// Receives a typed REvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
-	On func(context.Context, ReqEvent[FocusEvent]) bool
+	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
 	OnError []Action

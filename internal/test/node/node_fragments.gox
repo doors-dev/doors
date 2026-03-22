@@ -64,7 +64,7 @@ elem (f *FragmentX) Main() {
 		~(test.Marker("init"))
 	</>
 	~>(f.report) ~>doors.AClick{
-		On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			ch := f.n.XUpdate(ctx, test.Marker("updated"))
 			err, ok := <-ch
 			if !ok {
@@ -81,7 +81,7 @@ elem (f *FragmentX) Main() {
 	} <button id="updatex">C</button>
 	
 	~>doors.AClick{
-		On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			ch := f.n.XDelete(ctx)
 			err, ok := <-ch
 			if !ok {
@@ -116,7 +116,7 @@ elem (f *EmbeddedFragment) Main() {
 	<button
 		id="remove"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.n2.Delete(ctx)
 				return true
 			},
@@ -126,7 +126,7 @@ elem (f *EmbeddedFragment) Main() {
 	<button
 		id="clear"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.n1.Clear(ctx)
 				return true
 			},
@@ -136,7 +136,7 @@ elem (f *EmbeddedFragment) Main() {
 	<button
 		id="replace"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.n2.Update(ctx, test.Marker("replaced"))
 				f.n3.Update(ctx, test.Marker("temp"))
 				f.n3.Replace(ctx, &f.n2)
@@ -163,7 +163,7 @@ elem (f *DynamicFragment) Main() {
 	<button
 		id="update"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.n1.Update(ctx, test.Marker("updated"))
 				return true
 			},
@@ -173,7 +173,7 @@ elem (f *DynamicFragment) Main() {
 	<button
 		id="replace"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.n2.Update(ctx, test.Marker("replaced"))
 				f.n1.Replace(ctx, &f.n2)
 				return true
@@ -184,7 +184,7 @@ elem (f *DynamicFragment) Main() {
 	<button
 		id="remove"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.n2.Delete(ctx)
 				return true
 			},
@@ -240,7 +240,7 @@ elem (f *LifeCycleFragment) Main() {
 	<button
 		id="reload"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.node.Reload(ctx)
 				return false
 			},
@@ -250,7 +250,7 @@ elem (f *LifeCycleFragment) Main() {
 	<button
 		id="updateEmpty"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.frame.Update(ctx, f.newEmpty())
 				return false
 			},
@@ -260,7 +260,7 @@ elem (f *LifeCycleFragment) Main() {
 	<button
 		id="updateContent"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.frame.Update(ctx, f.newContent())
 				return false
 			},
@@ -270,7 +270,7 @@ elem (f *LifeCycleFragment) Main() {
 	<button
 		id="updateEditor"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.frame.Update(ctx, f.newEditor())
 				return false
 			},
@@ -280,7 +280,7 @@ elem (f *LifeCycleFragment) Main() {
 	<button
 		id="clear"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.node.Clear(ctx)
 				return false
 			},
@@ -290,7 +290,7 @@ elem (f *LifeCycleFragment) Main() {
 	<button
 		id="unmount"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.node.Unmount(ctx)
 				return false
 			},
@@ -300,7 +300,7 @@ elem (f *LifeCycleFragment) Main() {
 	<button
 		id="remove"
 		(doors.AClick{
-			On: func(ctx context.Context, _ doors.ReqEvent[doors.PointerEvent]) bool {
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.node.Delete(ctx)
 				return false
 			},

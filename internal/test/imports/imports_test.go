@@ -24,8 +24,8 @@ func checkColor(t *testing.T, page *rod.Page) {
 func testStyle(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	bro := test.NewBro(browser,
 		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
-				return doors.ResPage(&test.Page{
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponsePage(&test.Page{
 					Source: r,
 					Header: "Testing Imports",
 					H:      h,
@@ -44,8 +44,8 @@ func testStyle(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 func testModule(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	bro := test.NewBro(browser,
 		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
-				return doors.ResPage(&test.Page{
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponsePage(&test.Page{
 					Source: r,
 					Header: "Testing Imports",
 					H:      h,
@@ -105,8 +105,8 @@ func TestStyle(t *testing.T) {
 func TestReact(t *testing.T) {
 	bro := test.NewBro(browser,
 		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
-				return doors.ResPage(&test.Page{
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponsePage(&test.Page{
 					Source: r,
 					Header: "Testing Imports",
 					H:      reactHead,
@@ -135,8 +135,8 @@ func TestReact(t *testing.T) {
 func TestFiles(t *testing.T) {
 	bro := test.NewBro(browser,
 		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.ReqModel, r doors.Source[test.Path]) doors.Res {
-				return doors.ResPage(&test.Page{
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponsePage(&test.Page{
 					Source: r,
 					Header: "Testing Imports",
 					H:      staticFiles,

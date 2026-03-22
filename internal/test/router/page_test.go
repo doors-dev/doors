@@ -21,8 +21,8 @@ func testPath(t *testing.T, page *rod.Page, path string) {
 
 func TestPageStatic(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(req doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResPage(static("a", 0))
+		doors.UseModel(r, func(req doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponsePage(static("a", 0))
 		})
 	})
 	defer bro.Close()
@@ -33,8 +33,8 @@ func TestPageStatic(t *testing.T) {
 
 func TestPageStaticCode(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResPage(static("a", 404))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponsePage(static("a", 404))
 		})
 	})
 	defer bro.Close()
@@ -45,11 +45,11 @@ func TestPageStaticCode(t *testing.T) {
 
 func TestPageRedirect(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResRedirect(PathB{}, 0)
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponseRedirect(PathB{}, 0)
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathB]) doors.Res {
-			return doors.ResPage(static("b", 0))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
+			return doors.ResponsePage(static("b", 0))
 		})
 	})
 	defer bro.Close()
@@ -60,11 +60,11 @@ func TestPageRedirect(t *testing.T) {
 
 func TestPageReroute(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResReroute(PathC{PathC1: true})
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponseReroute(PathC{PathC1: true})
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
-			return doors.ResPage(pageC(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
+			return doors.ResponsePage(pageC(r))
 		})
 	})
 	defer bro.Close()
@@ -96,11 +96,11 @@ func TestPageRerouteDetached(t *testing.T) {
 
 func TestPageError(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResRedirect(PathC{}, 0)
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponseRedirect(PathC{}, 0)
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
-			return doors.ResPage(pageC(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
+			return doors.ResponsePage(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)
@@ -114,11 +114,11 @@ func TestPageError(t *testing.T) {
 
 func TestPageInfiniteReroute(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResReroute(PathC{})
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponseReroute(PathC{})
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
-			return doors.ResReroute(PathA{})
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
+			return doors.ResponseReroute(PathA{})
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)
@@ -132,11 +132,11 @@ func TestPageInfiniteReroute(t *testing.T) {
 
 func TestLocations(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResPage(pageA(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponsePage(pageA(r))
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
-			return doors.ResPage(pageC(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
+			return doors.ResponsePage(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)
@@ -172,17 +172,17 @@ func TestLocations(t *testing.T) {
 
 func TestAfterAssign(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResPage(pageA(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponsePage(pageA(r))
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
-			return doors.ResPage(pageC(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
+			return doors.ResponsePage(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", 0)
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathB]) doors.Res {
-			return doors.ResPage(static("b", 0))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
+			return doors.ResponsePage(static("b", 0))
 		})
 	})
 	defer bro.Close()
@@ -198,17 +198,17 @@ func TestAfterAssign(t *testing.T) {
 
 func TestAfterReplace(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResPage(pageA(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponsePage(pageA(r))
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
-			return doors.ResPage(pageC(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
+			return doors.ResponsePage(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathB]) doors.Res {
-			return doors.ResPage(static("b", 0))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
+			return doors.ResponsePage(static("b", 0))
 		})
 	})
 	defer bro.Close()
@@ -224,17 +224,17 @@ func TestAfterReplace(t *testing.T) {
 
 func TestAfterReload(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResPage(pageA(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
+			return doors.ResponsePage(pageA(r))
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
-			return doors.ResPage(pageC(r))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
+			return doors.ResponsePage(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)
 		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathB]) doors.Res {
-			return doors.ResPage(static("b", 0))
+		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
+			return doors.ResponsePage(static("b", 0))
 		})
 	})
 	defer bro.Close()

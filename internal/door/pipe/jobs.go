@@ -10,6 +10,7 @@ package pipe
 
 import (
 	"context"
+	"sync/atomic"
 
 	"github.com/doors-dev/gox"
 	"github.com/gammazero/deque"
@@ -29,9 +30,9 @@ cycle:
 	}
 	for item := range next.IterPopFront() {
 		switch item := item.(type) {
-		case chan any:
-			v, ok := <-item
-			if !ok {
+		case *atomic.Value:
+			v := item.Load()
+			if v == nil {
 				continue
 			}
 			switch v := v.(type) {

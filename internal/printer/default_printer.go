@@ -19,8 +19,5 @@ type defaultPrinter struct {
 }
 
 func (d defaultPrinter) Send(job gox.Job) error {
-	if job.Context().Err() != nil {
-		return nil
-	}
 	return job.Output(d.w)
 }

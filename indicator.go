@@ -43,9 +43,9 @@ func SelectorQueryAll(query string) Selector {
 	return (selector)(front.SelectQueryAll(query))
 }
 
-// SelectorParentQuery selects the closest ancestor matching a CSS query.
-func SelectorParentQuery(query string) Selector {
-	return (selector)(front.SelectParentQuery(query))
+// SelectorQueryParent selects the closest ancestor matching a CSS query.
+func SelectorQueryParent(query string) Selector {
+	return (selector)(front.SelectQueryParent(query))
 }
 
 // IndicatorContent temporarily replaces innerHTML on the selected element.
@@ -194,7 +194,7 @@ func IndicatorOnlyClassRemoveQueryAll(query string, class string) []Indicator {
 // IndicatorOnlyContentQueryParent sets content on the closest ancestor matching a CSS query.
 func IndicatorOnlyContentQueryParent(query string, content string) []Indicator {
 	return []Indicator{IndicatorContent{
-		Selector: SelectorParentQuery(query),
+		Selector: SelectorQueryParent(query),
 		Content:  content,
 	}}
 }
@@ -202,7 +202,7 @@ func IndicatorOnlyContentQueryParent(query string, content string) []Indicator {
 // IndicatorOnlyAttrQueryParent sets an attribute on the closest ancestor matching a CSS query.
 func IndicatorOnlyAttrQueryParent(query string, attr string, value string) []Indicator {
 	return []Indicator{IndicatorAttr{
-		Selector: SelectorParentQuery(query),
+		Selector: SelectorQueryParent(query),
 		Name:     attr,
 		Value:    value,
 	}}
@@ -211,7 +211,7 @@ func IndicatorOnlyAttrQueryParent(query string, attr string, value string) []Ind
 // IndicatorOnlyClassQueryParent adds classes to the closest ancestor matching a CSS query.
 func IndicatorOnlyClassQueryParent(query string, class string) []Indicator {
 	return []Indicator{IndicatorClass{
-		Selector: SelectorParentQuery(query),
+		Selector: SelectorQueryParent(query),
 		Class:    class,
 	}}
 }
@@ -219,7 +219,7 @@ func IndicatorOnlyClassQueryParent(query string, class string) []Indicator {
 // IndicatorOnlyClassRemoveQueryParent removes classes from the closest ancestor matching a CSS query.
 func IndicatorOnlyClassRemoveQueryParent(query string, class string) []Indicator {
 	return []Indicator{IndicatorClassRemove{
-		Selector: SelectorParentQuery(query),
+		Selector: SelectorQueryParent(query),
 		Class:    class,
 	}}
 }

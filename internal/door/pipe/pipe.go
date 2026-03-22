@@ -10,6 +10,7 @@ package pipe
 
 import (
 	"context"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -21,7 +22,7 @@ type Pipe = *pipe
 
 type Buffer = *deque.Deque[any]
 
-type Branch = chan<- any
+type Branch = *atomic.Value
 
 func NewPipe(
 	ctx context.Context,
@@ -65,9 +66,9 @@ func (p Pipe) FinalFrame() *shredder.ValveFrame {
 }
 
 func (p Pipe) Branch() Branch {
-	ch := make(chan any, 1)
-	p.buffer.PushBack(ch)
-	return ch
+	v := &atomic.Value{}
+	p.buffer.PushBack(v)
+	return v
 }
 
 func (p Pipe) RenderProxy(el gox.Elem) (ProxyContainer, bool) {
@@ -126,12 +127,10 @@ func (p *pipe) Collect() (Stack, error) {
 
 func (p *pipe) Submit(b Branch) error {
 	if p.err != nil {
-		b <- p.err
-		close(b)
+		b.Store(p.err)
 		return p.err
 	}
-	b <- p.buffer
-	close(b)
+	b.Store(p.buffer)
 	p.buffer = nil
 	return nil
 }
@@ -161,7 +160,6 @@ func (p *pipe) Send(j gox.Job) error {
 		pip := NewPipe(ctx, p.runtime, p.renderFrame, p.finalFrame)
 		p.renderFrame.Submit(ctx, p.runtime, func(b bool) {
 			if !b {
-				close(branch)
 				return
 			}
 			defer pip.Submit(branch)

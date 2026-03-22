@@ -39,17 +39,17 @@ func NewRouter() Router {
 // Use represents a router modification that can be used to configure routing behavior.
 type Use = router.Use
 
-type Res = model.Res
+type Response = model.Res
 
-func ResPage(comp gox.Comp) Res {
+func ResponsePage(comp gox.Comp) Response {
 	return model.ResApp(comp)
 }
 
-func ResRedirect(m any, status int) Res {
+func ResponseRedirect(m any, status int) Response {
 	return model.ResRedirect(m, status)
 }
 
-func ResReroute(m any) Res {
+func ResponseReroute(m any) Response {
 	return model.ResReroute(m)
 }
 
@@ -65,10 +65,10 @@ func ResReroute(m any) Res {
 //	    ID   int                                  // Captured from :ID parameter
 //	    Tag  *string `query:"tag"`               // Query parameter ?tag=golang
 //	}
-func UseModel[M any](r Router, handler func(r ReqModel, s Source[M]) Res) {
+func UseModel[M any](r Router, handler func(r RequestModel, s Source[M]) Response) {
 	r.Use(router.UseModel(func(w http.ResponseWriter, r *http.Request, source beam.Source[M], store ctex.Store) model.Res {
 		req := modelRequest{
-			req: req{
+			request: request{
 				r: r,
 				w: w,
 			},
@@ -361,4 +361,8 @@ func UseCSP(r Router, csp CSP) {
 // or via email sales@doors.dev
 func UseLicense(r Router, cert string) {
 	r.Use(router.UseLicense(cert))
+}
+
+func UseServerID(r Router, id string) {
+	r.Use(router.UseServerID(id))
 }

@@ -116,14 +116,16 @@ func (n *node) initUnmount(num *unmountNode, prev *node) {
 	if !ok || !num.remove {
 		num.Accept()
 	}
-	nm.WriteFrame().Run(nm.Tracker().parentContext(), nm.Tracker().runtime(), func(b bool) {
+	sendFrame := shredder.Join(true, nm.WriteFrame(), num.TaskFrame())
+	defer sendFrame.Release()
+	sendFrame.Run(nm.Tracker().parentContext(), nm.Tracker().runtime(), func(b bool) {
 		if !b {
 			num.Cancel()
 			return
 		}
 		nm.Tracker().root.inst.Call(&call{
 			ctx:     nm.Tracker().parentContext(),
-			ch:      num.CallCh(),
+			task:    num.taskNode,
 			kind:    callReplace,
 			id:      nm.Tracker().id,
 			payload: pipe.EmptyPayload(),
@@ -316,7 +318,8 @@ func (n *node) writeReplace(nr *replaceNode, parentTracker *tracker, prevWriteFr
 	thread := shredder.Thread{}
 	renderFrame := shredder.Join(true, thread.Frame(), parentTracker.newRenderFrame())
 	defer renderFrame.Release()
-	writeFrame := shredder.Join(true, thread.Frame(), prevWriteFrame)
+	sendFrame := shredder.Join(true, thread.Frame(), prevWriteFrame, nr.TaskFrame())
+	defer sendFrame.Release()
 	mountFrame := &shredder.ValveFrame{}
 	pip := pipe.NewPipe(parentTracker.Context(), parentTracker.runtime(), renderFrame, mountFrame)
 	renderFrame.Submit(parentTracker.ctx, parentTracker.runtime(), func(b bool) {
@@ -325,7 +328,7 @@ func (n *node) writeReplace(nr *replaceNode, parentTracker *tracker, prevWriteFr
 		}
 		pip.RenderContent(nr.content)
 	})
-	writeFrame.Run(parentTracker.ctx, parentTracker.runtime(), func(b bool) {
+	sendFrame.Run(parentTracker.ctx, parentTracker.runtime(), func(b bool) {
 		defer mountFrame.Activate()
 		if !b {
 			nr.Cancel()
@@ -339,7 +342,7 @@ func (n *node) writeReplace(nr *replaceNode, parentTracker *tracker, prevWriteFr
 			ctx:     parentTracker.ctx,
 			kind:    callReplace,
 			id:      nr.replaceId,
-			ch:      nr.CallCh(),
+			task:    nr.taskNode,
 			payload: payload,
 		})
 	})
@@ -351,7 +354,7 @@ func (n *node) writeUpdate(nu *updateNode) {
 	thread := shredder.Thread{}
 	renderFrame := shredder.Join(true, thread.Frame(), nu.tracker.newRenderFrame())
 	defer renderFrame.Release()
-	sendFrame := shredder.Join(true, thread.Frame(), nu.WriteFrame())
+	sendFrame := shredder.Join(true, thread.Frame(), nu.WriteFrame(), nu.TaskFrame())
 	defer sendFrame.Release()
 	mountFrame := &shredder.ValveFrame{}
 	pip := pipe.NewPipe(nu.tracker.ctx, nu.tracker.runtime(), renderFrame, mountFrame)
@@ -376,7 +379,7 @@ func (n *node) writeUpdate(nu *updateNode) {
 			ctx:     nu.tracker.ctx,
 			kind:    callUpdate,
 			id:      nu.tracker.id,
-			ch:      nu.CallCh(),
+			task:    nu.taskNode,
 			payload: payload,
 		})
 	})
@@ -388,7 +391,7 @@ func (n *node) writeProxyReplace(pn *proxyNode) {
 	thread := shredder.Thread{}
 	renderFrame := shredder.Join(true, thread.Frame(), pn.tracker.newRenderFrame())
 	defer renderFrame.Release()
-	sendFrame := shredder.Join(true, thread.Frame(), pn.WriteFrame())
+	sendFrame := shredder.Join(true, thread.Frame(), pn.WriteFrame(), pn.TaskFrame())
 	defer sendFrame.Release()
 	mountFrame := &shredder.ValveFrame{}
 	pip := pipe.NewPipe(pn.tracker.Context(), pn.tracker.runtime(), renderFrame, mountFrame)
@@ -435,7 +438,7 @@ func (n *node) writeProxyReplace(pn *proxyNode) {
 			ctx:     pn.tracker.parentContext(),
 			kind:    callReplace,
 			id:      replaceId,
-			ch:      pn.CallCh(),
+			task:    pn.taskNode,
 			payload: payload,
 		})
 	})
@@ -461,7 +464,6 @@ func (n *node) renderReplace(nr *replaceNode, pip pipe.Pipe, branch pipe.Branch)
 	pip = pipe.NewPipe(pip.Context(), pip.Runtime(), pip.RenderFrame(), pip.FinalFrame())
 	pip.RenderFrame().Run(pip.Context(), pip.Runtime(), func(b bool) {
 		if !b {
-			close(branch)
 			return
 		}
 		defer pip.Submit(branch)
@@ -477,7 +479,6 @@ func (n *node) renderUpdate(nr *updateNode, pip pipe.Pipe, branch pipe.Branch) {
 	pip = pipe.NewPipe(nr.tracker.Context(), nr.tracker.runtime(), renderFrame, pip.FinalFrame())
 	renderFrame.Submit(nr.tracker.parentContext(), nr.tracker.runtime(), func(b bool) {
 		if !b {
-			close(branch)
 			return
 		}
 		defer func() {

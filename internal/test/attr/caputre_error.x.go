@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.15+dirty
 
 package attr
 
@@ -112,7 +112,7 @@ func (f *errorFragment) button(id string, on []doors.Action) gox.Elem {
 func (f *errorFragment) handler(on []doors.Action) doors.Attr {
 	return doors.AClick{
 		OnError: on,
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			w := r.(R)
 			w.W().WriteHeader(http.StatusBadGateway)
 			return false

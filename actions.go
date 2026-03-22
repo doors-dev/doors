@@ -117,17 +117,17 @@ func (a ActionLocationAssign) action(ctx context.Context, core core.Core, _ bool
 	}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
-// ActionRawLocationAssign navigates to a specified URL
-type ActionRawLocationAssign struct {
+// ActionLocationRawAssign navigates to a specified URL
+type ActionLocationRawAssign struct {
 	URL string
 }
 
-// ActionOnlyRawLocationAssign returns a single ActionLocationAssign.
-func ActionOnlyRawLocationAssign(url string) []Action {
-	return []Action{ActionRawLocationAssign{URL: url}}
+// ActionOnlyLocationRawAssign returns a single ActionLocationAssign.
+func ActionOnlyLocationRawAssign(url string) []Action {
+	return []Action{ActionLocationRawAssign{URL: url}}
 }
 
-func (a ActionRawLocationAssign) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
+func (a ActionLocationRawAssign) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	return &action.LocationAssign{
 		URL:    a.URL,
 		Origin: false,

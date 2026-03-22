@@ -68,13 +68,13 @@ func (h *hook) wait() chan struct{} {
 	return ch
 }
 
-func (h *hook) trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
+func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) (Done, bool) {
 	ch := h.wait()
 	if h.state.Load() != hookActive {
 		close(ch)
 		return false, false
 	}
-	ctx := ctex.WgInsert(h.tracker.ctx)
+	ctx, frame := ctex.FrameInsert(h.tracker.ctx)
 	ctx = ctex.SetBlockingCtx(ctx)
 	done, err := h.tracker.root.runtime().SafeHook(ctx, w, r, h.triggerFunc)
 	if err != nil {
@@ -84,8 +84,11 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request) (Done, bool) {
 		h.state.Store(hookDone)
 	}
 	close(ch)
-	if err == nil {
-		ctex.WgWait(ctx)
-	}
+	frame.RunAfter(nil, nil, func(b bool) {
+		if track == 0 {
+			return
+		}
+		h.tracker.inst().Call(reportHook(track))
+	})
 	return done, true
 }

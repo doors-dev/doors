@@ -14,7 +14,6 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
@@ -25,11 +24,9 @@ func (c *Instance[M]) CallCtx(ctx context.Context, action action.Action, onResul
 		}
 		return func() {}
 	}
-	done := ctex.WgAdd(ctx)
 	ctx, cancel := context.WithCancel(context.Background())
 	call := &ctxCall{
 		ctx:      ctx,
-		done:     done,
 		action:   action,
 		onResult: onResult,
 		onCancel: onCancel,
@@ -48,7 +45,6 @@ func (c *Instance[M]) CallCheck(check func() bool, action action.Action, onResul
 		params:   params,
 	}
 	c.solitaire.Call(call)
-	return
 }
 
 type checkCall struct {
@@ -97,7 +93,6 @@ func (c *checkCall) Result(r json.RawMessage, err error) {
 type ctxCall struct {
 	ctx      context.Context
 	action   action.Action
-	done     func()
 	onResult func(json.RawMessage, error)
 	onCancel func()
 	params   action.CallParams
@@ -115,7 +110,6 @@ func (c *ctxCall) Action() (action.Action, bool) {
 }
 
 func (c ctxCall) Cancel() {
-	defer c.done()
 	if c.onCancel == nil {
 		return
 	}
@@ -126,7 +120,6 @@ func (c *ctxCall) Result(r json.RawMessage, err error) {
 	if err != nil {
 		slog.Error("Call failed", slog.String("action", c.action.Log()), slog.String("error", err.Error()))
 	}
-	defer c.done()
 	if c.onResult == nil {
 		return
 	}

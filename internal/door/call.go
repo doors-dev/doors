@@ -40,7 +40,7 @@ const (
 
 type call struct {
 	ctx     context.Context
-	ch      chan error
+	task    *taskNode
 	kind    callKind
 	id      uint64
 	payload pipe.Payload
@@ -60,11 +60,10 @@ func (n *call) Result(_ json.RawMessage, err error) {
 }
 
 func (n *call) send(err error) {
-	if n.ch == nil {
+	if n.task == nil {
 		return
 	}
-	n.ch <- err
-	close(n.ch)
+	n.task.Report(err)
 }
 
 func (c *call) Action() (action.Action, bool) {

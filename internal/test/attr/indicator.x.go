@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.15+dirty
 
 package attr
 
@@ -183,7 +183,7 @@ func (f *indicatorFragment) button(id string, indicator []doors.Indicator) gox.E
 func (f *indicatorFragment) handler(indicator []doors.Indicator) doors.Attr {
 	return doors.AClick{
 		Indicator: indicator,
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			<-time.After(500 * time.Millisecond)
 			return false
 		},

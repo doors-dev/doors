@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.15+dirty
 
 package attr
 
@@ -36,7 +36,7 @@ func (f *formFragment) Main() gox.Elem {
 
 func (f *formFragment) submitSimple() doors.Attr {
 	return doors.ASubmit[formData]{
-		On: func(ctx context.Context, r doors.RForm[formData]) bool {
+		On: func(ctx context.Context, r doors.RequestForm[formData]) bool {
 			f.r.Update(ctx, 0, r.Data().Name)
 			f.r.Update(ctx, 1, r.Data().Email)
 			f.r.Update(ctx, 2, fmt.Sprint(r.Data().Age))
@@ -47,7 +47,7 @@ func (f *formFragment) submitSimple() doors.Attr {
 }
 func (f *formFragment) submitRaw() doors.Attr {
 	return doors.ARawSubmit{
-		On: func(ctx context.Context, rf doors.ReqRawForm) bool {
+		On: func(ctx context.Context, rf doors.RequestRawForm) bool {
 			form, _ := rf.ParseForm(10_000_000)
 			fileHeader := form.Form().File["attachment"][0]
 			file, err := fileHeader.Open()

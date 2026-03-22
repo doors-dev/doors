@@ -313,3 +313,82 @@ func (f FreeFrame) schedule(e executable) {
 }
 
 var _ SimpleFrame = FreeFrame{}
+
+type AfterFrame struct {
+	mu      sync.Mutex
+	counter int
+	after   executable
+}
+
+/*
+type Done = func()
+
+func (f *AfterFrame) Add() Done {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.counter == -1 {
+		return func() {}
+	}
+	f.counter += 1
+	return func() {
+		f.report(nil)
+	}
+} */
+
+func (f *AfterFrame) RunAfter(ctx context.Context, r Runtime, fun func(bool)) {
+	e := run{runtime: r, ctx: ctx, fun: fun}
+	f.mu.Lock()
+	if f.after != nil {
+		f.mu.Unlock()
+		panic("After function already specified")
+	}
+	if f.counter == -1 {
+		f.mu.Unlock()
+		panic("After function already fired")
+	}
+	if f.counter == 0 {
+		f.counter = -1
+		f.mu.Unlock()
+		e.execute(func(err error) {})
+		return
+	}
+	f.after = e
+	f.mu.Unlock()
+}
+
+func (f *AfterFrame) Run(ctx context.Context, r Runtime, fun func(bool)) {
+	f.schedule(run{runtime: r, ctx: ctx, fun: fun})
+
+}
+
+func (f *AfterFrame) Submit(ctx context.Context, r Runtime, fun func(bool)) {
+	f.schedule(spawn{runtime: r, ctx: ctx, fun: fun})
+}
+
+func (f *AfterFrame) report(error) {
+	f.mu.Lock()
+	if f.counter == -1 {
+		f.mu.Unlock()
+		panic("Can't report after complete")
+	}
+	f.counter -= 1
+	if f.counter != 0 || f.after == nil {
+		f.mu.Unlock()
+		return
+	}
+	f.counter = -1
+	f.mu.Unlock()
+	f.after.execute(func(err error) {})
+}
+
+func (f *AfterFrame) schedule(e executable) {
+	f.mu.Lock()
+	if f.counter == -1 {
+		f.mu.Unlock()
+		e.execute(func(err error) {})
+		return
+	}
+	f.counter += 1
+	f.mu.Unlock()
+	e.execute(f.report)
+}

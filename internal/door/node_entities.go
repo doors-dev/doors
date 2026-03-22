@@ -77,45 +77,33 @@ func (c *mountNode) WriteFrame() *shredder.ValveFrame {
 }
 
 func newTaskNode(ctx context.Context) (*taskNode, <-chan error) {
-	done := ctex.WgAdd(ctx)
+	frame := ctex.Frame(ctx)
 	ch := make(chan error, 1)
-	return &taskNode{&ch, done}, ch
+	return &taskNode{&ch, frame}, ch
 }
 
 type taskNode struct {
-	ch   *chan error
-	done func()
+	ch    *chan error
+	frame shredder.SimpleFrame
 }
 
-func (t *taskNode) CallCh() chan error {
+func (t *taskNode) TaskFrame() shredder.SimpleFrame {
 	if t == nil {
-		return nil
+		return shredder.FreeFrame{}
 	}
-	if t.done != nil {
-		t.done()
-		t.done = nil
-	}
-	if t.ch != nil {
-		ch := *t.ch
-		t.ch = nil
-		return ch
-	}
-	return nil
+	return t.frame
 }
 
 func (t *taskNode) Report(err error) {
 	if t == nil {
 		return
 	}
-	if t.ch != nil {
-		*t.ch <- err
-		close(*t.ch)
-		t.ch = nil
+	if t.ch == nil {
+		return
 	}
-	if t.done != nil {
-		t.done()
-		t.done = nil
-	}
+	*t.ch <- err
+	close(*t.ch)
+	t.ch = nil
 }
 
 func (t *taskNode) Cancel() {
@@ -132,10 +120,6 @@ func (t *taskNode) Accept() {
 	if t.ch != nil {
 		close(*t.ch)
 		t.ch = nil
-	}
-	if t.done != nil {
-		t.done()
-		t.done = nil
 	}
 }
 

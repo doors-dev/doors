@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.11+dirty
+// Managed by GoX v0.1.15+dirty
 
 package router
 
@@ -30,7 +30,7 @@ func pageA(b doors.Source[PathA]) gox.Elem {
 				}
 				__e = __c.Close(); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 					doors.Call(ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
 					return false
 				},
@@ -148,7 +148,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 					doors.Call(ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
 					return true
 				},
@@ -170,7 +170,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 				}
 				__e = __c.Close(); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 					doors.Call(ctx, doors.ActionLocationReload{})
 					return false
 				},
@@ -185,7 +185,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 					r.After(doors.ActionOnlyLocationAssign(PathB{}))
 					return false
 				},
@@ -200,7 +200,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 					r.After(doors.ActionOnlyLocationReplace(PathB{}))
 					return false
 				},
@@ -215,7 +215,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 				__e = doors.AClick{
-				On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 					r.After(doors.ActionOnlyLocationReload())
 					return false
 				},

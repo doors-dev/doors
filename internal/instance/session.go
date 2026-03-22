@@ -26,6 +26,7 @@ type ScriptOptions struct {
 }
 
 type router interface {
+	SessionCookie() string
 	ResourceRegistry() *resources.Registry
 	CSP() *common.CSP
 	Adapters() path.Adapters
@@ -77,7 +78,7 @@ func (sess *Session) Renew(w http.ResponseWriter) bool {
 		return false
 	}
 	cookie := &http.Cookie{
-		Name:     "d0-r",
+		Name:     sess.router.SessionCookie(),
 		Value:    sess.id,
 		HttpOnly: true,
 		Path:     "/",

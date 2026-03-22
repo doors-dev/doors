@@ -63,6 +63,10 @@ type Router struct {
 	buildProfiles   resources.BuildProfiles
 }
 
+func (rr *Router) SessionCookie() string {
+	return "d0r"+rr.pathMaker.ID()
+}
+
 func (rr *Router) PathMaker() path.PathMaker {
 	return rr.pathMaker
 }
@@ -108,7 +112,7 @@ func (rr *Router) ensureSession(w http.ResponseWriter, r *http.Request) *instanc
 }
 
 func (rr *Router) getSession(w http.ResponseWriter, r *http.Request) *instance.Session {
-	c, err := r.Cookie("d0-r")
+	c, err := r.Cookie(rr.SessionCookie())
 	if err != nil {
 		return nil
 	}

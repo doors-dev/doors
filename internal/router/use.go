@@ -11,6 +11,7 @@ package router
 import (
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/license"
@@ -102,5 +103,14 @@ func UseLicense(cert string) Use {
 			return
 		}
 		rr.lisence = lic
+	})
+}
+
+func UseServerID(id string) Use {
+	if id != url.PathEscape(id) {
+		panic("Server ID must be URL compatible without escaping")
+	}
+	return useFunc(func(rr *Router) {
+		rr.pathMaker = path.NewPathMaker(id)
 	})
 }

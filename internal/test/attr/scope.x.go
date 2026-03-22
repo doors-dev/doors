@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.15+dirty
 
 package attr
 
@@ -94,7 +94,7 @@ func (f *scopeFragment) button(id string, scope []doors.Scope, marker string, de
 func (f *scopeFragment) handler(scope []doors.Scope, marker string, delay bool) doors.Attr {
 	return doors.AClick{
 		Scope: scope,
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			if delay {
 				<-time.After(300 * time.Millisecond)
 			}

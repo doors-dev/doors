@@ -16,5 +16,5 @@ const (
 	KeyInstanceStore
 	KeyBlocking
 	KeyRouter
-	keyWg
+	keyFrame
 )

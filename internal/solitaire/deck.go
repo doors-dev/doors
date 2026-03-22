@@ -190,11 +190,8 @@ func (d *deck) FillGaps(g []gap) error {
 			return errors.New("gap overlap")
 		}
 		prevEnd = gap.end
-		var beg uint64
+		beg := gap.start
 		for seq := max(gap.start, d.latestReport); seq <= gap.end; seq++ {
-			if beg == 0 {
-				beg = seq
-			}
 			call, ok := d.issued[seq]
 			if !ok {
 				continue
@@ -202,13 +199,13 @@ func (d *deck) FillGaps(g []gap) error {
 			if beg != seq {
 				d.inner.Fill(beg, seq-1)
 			}
-			beg = 0
+			beg = seq + 1
 			delete(d.issued, seq)
 			if err := d.restore(seq, call.call); err != nil {
 				return err
 			}
 		}
-		if beg != 0 {
+		if beg <= gap.end {
 			d.inner.Fill(beg, gap.end)
 		}
 	}

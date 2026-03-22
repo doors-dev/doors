@@ -78,8 +78,8 @@ type Door = door.Door
 // Returns:
 //   - A templ.Component that updates reactively as the Beam value changes
 
-func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.EditorComp {
+	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		door := &Door{}
 		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
 			door.Update(ctx, gox.Elem(func(cur gox.Cursor) error {
@@ -126,7 +126,6 @@ func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 		return cur.Editor(door)
 	})
 }
-
 
 // Go starts a goroutine at render time using a blocking-safe context tied to the component's lifecycle.
 //
@@ -243,8 +242,8 @@ $on(await $data("event"), (data) => {
 // Returns:
 //   - A gox.Editor that renders title and meta elements with remote call scripts.
 
-func TitleMeta[M any](b Beam[M], el func(M) gox.Elem) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func TitleMeta[M any](b Beam[M], el func(M) gox.Elem) gox.EditorComp {
+	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		ctx := cur.Context()
 		core := ctx.Value(ctex.KeyCore).(core.Core)
 		eventName := fmt.Sprintf("head~%d", core.NewID())
@@ -252,9 +251,8 @@ func TitleMeta[M any](b Beam[M], el func(M) gox.Elem) gox.Editor {
 		gz := !core.Conf().ServerDisableGzip
 		m, ok := b.ReadAndSub(cur.Context(), func(ctx context.Context, m M) bool {
 			seq := currentSeq.Add(1)
-			report := ctex.WgAdd(ctx)
-			core.Runtime().Submit(ctx, func(ok bool) {
-				defer report()
+			ctxFrame := ctex.Frame(ctx)
+			ctxFrame.Submit(ctx, core.Runtime(), func(ok bool) {
 				if !ok {
 					return
 				}
@@ -288,7 +286,7 @@ func TitleMeta[M any](b Beam[M], el func(M) gox.Elem) gox.Editor {
 					nil,
 					params,
 				)
-			}, nil)
+			})
 			return false
 		})
 		if !ok {

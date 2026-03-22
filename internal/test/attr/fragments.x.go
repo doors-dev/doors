@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.15+dirty
 
 package attr
 
@@ -25,7 +25,7 @@ func (f *pointerFragment) Main() gox.Elem {
 
 		__e = __c.Any(f.r); if __e != nil { return }
 		__e = doors.APointerDown{
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "DOWN")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
@@ -42,7 +42,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.APointerUp{
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "UP")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
@@ -59,7 +59,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.APointerEnter{
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "ENTER")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
@@ -83,7 +83,7 @@ func (f *pointerFragment) Main() gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = doors.APointerLeave{
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "LEAVE")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
@@ -100,7 +100,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.APointerMove{
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "MOVE")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
@@ -117,7 +117,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 		__e = doors.APointerOver{
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OVER")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
@@ -141,7 +141,7 @@ func (f *pointerFragment) Main() gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = doors.APointerOut{
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OUT")
 			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
 			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
@@ -178,7 +178,7 @@ func (f *callFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 		__e = doors.AHook[string]{
 		Name: "myHook",
-		On: func(ctx context.Context, r doors.ReqHook[string]) (any, bool) {
+		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
 			f.r.Update(ctx, 0, r.Data())
 			ch, _ := doors.XCall[string](ctx, doors.ActionEmit{Name: "myCall", Arg: len(r.Data())})
 			res := <-ch
@@ -213,14 +213,14 @@ func (d *hookFragment) attr() []gox.Modify {
 	return []gox.Modify{
 		doors.AHook[string]{
 			Name: "myHook",
-			On: func(ctx context.Context, r doors.ReqHook[string]) (any, bool) {
+			On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
 				d.r.Update(ctx, 0, r.Data())
 				return len(r.Data()), true
 			},
 		},
 		doors.ARawHook{
 			Name: "rawHook",
-			On: func(ctx context.Context, r doors.ReqRawHook) bool {
+			On: func(ctx context.Context, r doors.RequestRawHook) bool {
 				body, err := io.ReadAll(r.Body())
 				if err != nil {
 					return true

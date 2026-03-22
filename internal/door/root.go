@@ -127,14 +127,7 @@ func (i Root) TriggerHook(doorID uint64, hookId uint64, w http.ResponseWriter, r
 			return false
 		}
 	}
-	ok := tracker.trigger(hookId, w, r)
-	if !ok {
-		return false
-	}
-	if track != 0 {
-		i.inst.Call(reportHook(track))
-	}
-	return true
+	return tracker.trigger(hookId, w, r, track)
 }
 
 func (r *root) addTracker(t *tracker) {

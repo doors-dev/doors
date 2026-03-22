@@ -174,7 +174,7 @@ func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	if link.On != nil {
 		handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			if len(h.After) != 0 {
-				req := &req{w: w, r: r, ctx: ctx}
+				req := &request{w: w, r: r, ctx: ctx}
 				req.After(h.After)
 			}
 			link.On(ctx)

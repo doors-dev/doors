@@ -87,7 +87,7 @@ elem (f *LinksFragment) Main() {
 	<br>
 	<br>
 	~>doors.AClick{
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			r.After(doors.ActionOnlyEmit("alert", "Hello!"))
 			return false
 		},

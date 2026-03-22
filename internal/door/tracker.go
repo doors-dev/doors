@@ -183,14 +183,14 @@ func (t *tracker) cancelHook(hookID uint64) {
 	}
 }
 
-func (t *tracker) trigger(id uint64, w http.ResponseWriter, r *http.Request) bool {
+func (t *tracker) trigger(id uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
 	t.mu.Lock()
 	hook, ok := t.hooks[id]
 	t.mu.Unlock()
 	if !ok {
 		return false
 	}
-	done, ok := hook.trigger(w, r)
+	done, ok := hook.trigger(w, r, track)
 	if !ok {
 		return false
 	}

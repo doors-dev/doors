@@ -153,7 +153,7 @@ func (s *singleWatcher[T]) sync(_id int, ctx context.Context, seq uint, cleanFra
 	if !updated {
 		return false
 	}
-	ctx = ctex.WgInfect(ctx, s.ctx)
+	ctx = ctex.FrameInfect(ctx, s.ctx)
 	return s.w.Watch(ctx, *v)
 }
 

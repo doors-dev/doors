@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.15+dirty
 
 package components
 
@@ -158,7 +158,7 @@ func (f *LinksFragment) Main() gox.Elem {
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = doors.AClick{
-		On: func(ctx context.Context, r doors.ReqEvent[doors.PointerEvent]) bool {
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			r.After(doors.ActionOnlyEmit("alert", "Hello!"))
 			return false
 		},

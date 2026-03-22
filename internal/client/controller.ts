@@ -73,6 +73,9 @@ class Solitaire {
 		}
 		this.top.collect(a, this)
 		const tail = a[a.length - 1]
+		if (tail.end < this.cursor) {
+			debugger;
+		}
 		this.cursor = tail.end + 1
 		return a.filter(p => !p.isFiller)
 	}
@@ -314,7 +317,6 @@ class Connection {
 				if (STRESS_MODE && Math.random() > 0.5) {
 					throw new Error()
 				}
-
 				value = result.value
 				const done = await this.onChunk(value)
 				this.ctrl.flush()
@@ -392,7 +394,16 @@ class Connection {
 		const chunk = remaining >= data.length ? data : data.subarray(0, remaining)
 		this.package!.append(chunk)
 		if (await this.package!.finalize()) {
-			this.ctrl.onPackage(this.package!)
+
+			if (STRESS_MODE && Math.random() > 0.5) {
+				const p = this.package!
+				setTimeout(() => {
+					this.ctrl.onPackage(p)
+					this.ctrl.flush()
+				}, Math.round(Math.random() * 200))
+			} else {
+				this.ctrl.onPackage(this.package!)
+			}
 			this.package = undefined
 			this.status = connectorStatus.signal
 		}
@@ -614,11 +625,11 @@ class Controller {
 	}
 }
 
-const c = new Controller()
+const ctrl = new Controller()
 
 export default {
-	ready: c.ready,
+	ready: ctrl.ready,
 	gone() {
-		c.kill()
+		ctrl.kill()
 	}
 }
