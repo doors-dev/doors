@@ -223,7 +223,7 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 	}
 
 	sh := shredder.Thread{}
-	syncFrame := shredder.Join(true, ctxFrame)
+	syncFrame := shredder.Join(true, sh.Frame())
 	checkFrame := shredder.Join(true, ctxFrame, sh.Frame())
 	cleanFrame := &shredder.ValveFrame{}
 
