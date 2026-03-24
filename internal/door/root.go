@@ -91,7 +91,7 @@ func (r Root) Kill() {
 
 type Stack = pipe.Stack
 
-func (r Root) Render(comp gox.Comp) (Stack, error) {
+func (r Root) Render(comp gox.Comp, init func()) (Stack, error) {
 	thread := shredder.Thread{}
 	mountFrame := &shredder.ValveFrame{}
 	renderFrame := shredder.Join(true, thread.Frame(), r.tracker.newRenderFrame())
@@ -103,6 +103,7 @@ func (r Root) Render(comp gox.Comp) (Stack, error) {
 	)
 	ch := make(chan struct{})
 	renderFrame.Run(r.tracker.ctx, r.runtime(), func(b bool) {
+		init()
 		pipe.RenderContent(comp)
 	})
 	renderFrame.Release()

@@ -23,7 +23,7 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 	if err := inst.init(); err != nil {
 		return err
 	}
-	stack, err := inst.root.Render(inst.setup.comp)
+	stack, err := inst.root.Render(inst.setup.comp, inst.navigator.init)
 	inst.setup = nil
 	if err != nil {
 		inst.end(common.EndCauseKilled)
@@ -38,7 +38,6 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 		inst.end(common.EndCauseKilled)
 		return nil
 	}
-	inst.navigator.init()
 	return nil
 }
 
