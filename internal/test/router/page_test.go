@@ -22,7 +22,7 @@ func testPath(t *testing.T, page *rod.Page, path string) {
 func TestPageStatic(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(req doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponsePage(static("a", 0))
+			return doors.ResponseComp(static("a", 0))
 		})
 	})
 	defer bro.Close()
@@ -34,7 +34,7 @@ func TestPageStatic(t *testing.T) {
 func TestPageStaticCode(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponsePage(static("a", 404))
+			return doors.ResponseComp(static("a", 404))
 		})
 	})
 	defer bro.Close()
@@ -49,7 +49,7 @@ func TestPageRedirect(t *testing.T) {
 			return doors.ResponseRedirect(PathB{}, 0)
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
-			return doors.ResponsePage(static("b", 0))
+			return doors.ResponseComp(static("b", 0))
 		})
 	})
 	defer bro.Close()
@@ -64,7 +64,7 @@ func TestPageReroute(t *testing.T) {
 			return doors.ResponseReroute(PathC{PathC1: true})
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponsePage(pageC(r))
+			return doors.ResponseComp(pageC(r))
 		})
 	})
 	defer bro.Close()
@@ -100,7 +100,7 @@ func TestPageError(t *testing.T) {
 			return doors.ResponseRedirect(PathC{}, 0)
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponsePage(pageC(r))
+			return doors.ResponseComp(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)
@@ -133,10 +133,10 @@ func TestPageInfiniteReroute(t *testing.T) {
 func TestLocations(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponsePage(pageA(r))
+			return doors.ResponseComp(pageA(r))
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponsePage(pageC(r))
+			return doors.ResponseComp(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)
@@ -173,16 +173,16 @@ func TestLocations(t *testing.T) {
 func TestAfterAssign(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponsePage(pageA(r))
+			return doors.ResponseComp(pageA(r))
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponsePage(pageC(r))
+			return doors.ResponseComp(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", 0)
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
-			return doors.ResponsePage(static("b", 0))
+			return doors.ResponseComp(static("b", 0))
 		})
 	})
 	defer bro.Close()
@@ -199,16 +199,16 @@ func TestAfterAssign(t *testing.T) {
 func TestAfterReplace(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponsePage(pageA(r))
+			return doors.ResponseComp(pageA(r))
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponsePage(pageC(r))
+			return doors.ResponseComp(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
-			return doors.ResponsePage(static("b", 0))
+			return doors.ResponseComp(static("b", 0))
 		})
 	})
 	defer bro.Close()
@@ -225,16 +225,16 @@ func TestAfterReplace(t *testing.T) {
 func TestAfterReload(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponsePage(pageA(r))
+			return doors.ResponseComp(pageA(r))
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponsePage(pageC(r))
+			return doors.ResponseComp(pageC(r))
 		})
 		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
 			return static("error", -1)
 		})
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
-			return doors.ResponsePage(static("b", 0))
+			return doors.ResponseComp(static("b", 0))
 		})
 	})
 	defer bro.Close()

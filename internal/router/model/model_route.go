@@ -85,7 +85,7 @@ type redirect struct {
 	status int
 }
 
-func ResApp(comp gox.Comp) Res {
+func ResComp(comp gox.Comp) Res {
 	return Res{
 		entity: component{comp},
 	}

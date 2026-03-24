@@ -13,7 +13,7 @@ func TestTitle(t *testing.T) {
 	p := common.RandId()
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-			return doors.ResponsePage(&test.Page{
+			return doors.ResponseComp(&test.Page{
 				Source: r,
 				H:      head,
 				F: &LinksFragment{

@@ -112,7 +112,7 @@ func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
 		b,
 		func(r doors.Router) {
 			doors.UseModel(r, func(req doors.RequestModel, s doors.Source[Path]) doors.Response {
-				return doors.ResponsePage(&Page{
+				return doors.ResponseComp(&Page{
 					Source: s,
 					F:      f(),
 				})

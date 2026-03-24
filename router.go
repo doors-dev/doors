@@ -41,8 +41,8 @@ type Use = router.Use
 
 type Response = model.Res
 
-func ResponsePage(comp gox.Comp) Response {
-	return model.ResApp(comp)
+func ResponseComp(comp gox.Comp) Response {
+	return model.ResComp(comp)
 }
 
 func ResponseRedirect(m any, status int) Response {
