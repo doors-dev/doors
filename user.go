@@ -64,7 +64,7 @@ func SessionStore(ctx context.Context) Store {
 // InstanceStore returns instance-scoped goroutine-safe
 // storage
 func InstanceStore(ctx context.Context) Store {
-	return ctx.Value(ctex.KeySessionStore).(Store)
+	return ctx.Value(ctex.KeyInstanceStore).(Store)
 }
 
 // Location represents a URL built from a path model: path plus query.

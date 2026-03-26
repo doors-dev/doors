@@ -166,15 +166,3 @@ func (a AData) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return nil
 }
 
-type ADataMap map[string]any
-
-func (dm ADataMap) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(dm, cur, elem)
-}
-
-func (dm ADataMap) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
-	for name, value := range dm {
-		front.AttrsSetData(attrs, name, value)
-	}
-	return nil
-}

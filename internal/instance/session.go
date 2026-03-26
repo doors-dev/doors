@@ -179,7 +179,11 @@ func (sess *Session) SetExpiration(d time.Duration) {
 	if sess.killed {
 		return
 	}
-	sess.expireTime = time.Now().Add(d)
+	if d == 0 {
+		sess.expireTime = time.Time{}
+	} else {
+		sess.expireTime = time.Now().Add(d)
+	}
 	sess.resetKillTimer()
 }
 

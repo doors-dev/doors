@@ -1,0 +1,263 @@
+# State
+
+In **Doors**, state starts with one `doors.Source[T]` and branches into smaller `doors.Beam[T]` values.
+
+- `Source` is state you can update
+- `Beam` is a read-only view of state
+
+A `Source` also implements `Beam`, so you can read, subscribe to, and derive from the same value.
+
+Always start with a `Source`, then derive smaller `Beam`s from it.
+
+The pattern is:
+
+- keep one source of truth
+- derive smaller beams from it
+- subscribe only the page fragments that need each piece
+
+## Source
+
+Use a `Source` for state your page owns: selected IDs, filters, form values, route state, toggles, and similar durable UI values.
+
+Create one with `doors.NewSource(...)` when normal `==` equality is enough:
+
+```go
+count := doors.NewSource(0)
+```
+
+Use `doors.NewSourceEqual(...)` when you need custom equality:
+
+```go
+settings := doors.NewSourceEqual(Settings{}, func(new Settings, old Settings) bool {
+	return new == old
+})
+```
+
+The equality function should return `true` when the values should be treated as equal, which suppresses propagation.
+
+For reference-type values like slices, maps, pointers, or mutable structs, do not mutate the stored value in place. Replace it with a fresh value instead.
+
+## Beam
+
+Use a `Beam` when a part of the page only needs a smaller read-only view of state.
+
+```go
+settings := doors.NewSource(Settings{
+	Units: "metric",
+	Days:  7,
+})
+
+units := doors.NewBeam(settings, func(s Settings) string {
+	return s.Units
+})
+
+days := doors.NewBeam(settings, func(s Settings) int {
+	return s.Days
+})
+```
+
+This is one of the main ways **Doors** keeps updates small. If only `Units` changes, the `days` beam can stay unchanged and the fragment using it does not need to rerender.
+
+Use `doors.NewBeamEqual(...)` when the derived value needs custom equality.
+
+Sources and beams are not limited to one page instance. They can be local to one page or shared more broadly, depending on where you store them.
+
+## Read
+
+Reading and subscribing need a valid **Doors** context, such as the `ctx` you get in render code, handlers, subscriptions, or `doors.Go(...)`.
+
+Updating a `Source` can be done from any context.
+
+### Read
+
+```go
+value, ok := beam.Read(ctx)
+```
+
+Use `Read(ctx)` when you want the value that is consistent with the current **Doors** render/update cycle.
+
+### Get
+
+```go
+value := source.Get()
+```
+
+`Get()` returns the latest stored value without using a render context.
+
+Use it when you want the current value directly. Do not use it when render consistency matters.
+
+### Sub
+
+```go
+ok := beam.Sub(ctx, func(ctx context.Context, value T) bool {
+	return false
+})
+```
+
+`Sub` calls the callback immediately with the current value, then again on later updates.
+
+The subscription ends when:
+
+- your callback returns `true`
+- the owning dynamic parent is unmounted
+
+### ReadAndSub
+
+```go
+value, ok := beam.ReadAndSub(ctx, func(ctx context.Context, value T) bool {
+	return false
+})
+```
+
+This returns the current value first, then subscribes to future updates. The callback is for later updates only.
+
+### XSub
+
+Use `XSub` and `XReadAndSub` when you also need:
+
+- a cancel function
+- an `onCancel` callback
+
+### Watcher
+
+`AddWatcher` is the low-level subscription API behind the helpers above. Most app code should use `Sub` or `ReadAndSub`.
+
+## Update
+
+Use `Update` when you already know the next value:
+
+```go
+settings.Update(ctx, Settings{
+	Units: "imperial",
+	Days:  7,
+})
+```
+
+Use `Mutate` when the new value naturally depends on the old one:
+
+```go
+settings.Mutate(ctx, func(s Settings) Settings {
+	s.Days = 14
+	return s
+})
+```
+
+The `XUpdate` and `XMutate` variants return a completion channel. Most code does not need them.
+
+They are useful when completion itself matters, especially for backpressure. For example, if updates arrive very quickly, waiting for `XUpdate` lets a producer send the next state only after the previous one finished propagating.
+
+## Render
+
+`doors.Sub` is the simplest way to render a `Beam`:
+
+```gox
+<>
+	~(doors.Sub(counter, elem(v int) {
+		<span>~(v)</span>
+	}))
+</>
+```
+
+It creates a dynamic fragment that subscribes to the beam and rerenders that fragment when the value changes.
+
+`doors.Inject` subscribes to a beam and places the current value into the child context:
+
+```gox
+<>
+	~>(doors.Inject("settings", settings)) <section>
+		~{
+			s := ctx.Value("settings").(Settings)
+		}
+		<span>Days: ~(s.Days)</span>
+	</section>
+</>
+```
+
+Use `Inject` when you want the following subtree to stay the root element of the dynamic fragment, instead of rendering through `doors.Sub`.
+
+## Consistency
+
+The most important state guarantee in **Doors** is consistency.
+
+During one render/update cycle, a Door subtree sees one coherent view of a `Source` and all `Beam`s derived from it. A parent and its children do not see different versions halfway through the same render.
+
+That is why `Read(ctx)` matters. It participates in that coordinated view. `Get()` does not.
+
+In practice, this means beam-driven rendering stays predictable even when several parts of the page are updating at once.
+
+Unmounting a dynamic parent also cancels subscriptions inside it automatically.
+
+## Skipping
+
+By default, a `Source` is allowed to skip stale in-flight updates.
+
+That is usually what you want for UI state. If a newer value arrives before an older one finishes propagating, **Doors** prefers getting the UI to the latest useful state instead of insisting that every intermediate value must be rendered.
+
+If you really need every value to propagate, call:
+
+```go
+source.DisableSkipping()
+```
+
+Use this only when the source behaves more like a message stream than like normal UI state.
+
+## Rules
+
+- Prefer one `Source` plus many derived `Beam`s over many unrelated mutable sources.
+- Keep state small and structural. Store IDs, filters, settings, selections, and route values.
+- Use `Read(ctx)` when you need the render-consistent value.
+- Use `Get()` only when you explicitly want the latest stored value outside render guarantees.
+- Return a fresh value from `Mutate` or pass a fresh value to `Update` instead of mutating reference-type state in place.
+- Use `DisableSkipping` only when you truly need every update delivered.
+
+## Example
+
+```gox
+type SearchState struct {
+	Query string
+	Page  int
+}
+
+type Search struct {
+	state doors.Source[SearchState]
+	query doors.Beam[string]
+	page  doors.Beam[int]
+}
+
+func NewSearch() *Search {
+	state := doors.NewSource(SearchState{})
+	return &Search{
+		state: state,
+		query: doors.NewBeam(state, func(s SearchState) string { return s.Query }),
+		page:  doors.NewBeam(state, func(s SearchState) int { return s.Page }),
+	}
+}
+
+elem (s *Search) Main() {
+	<>
+		<input
+			type="search"
+			(doors.AInput{
+				On: func(ctx context.Context, ev doors.RequestEvent[doors.InputEvent]) bool {
+					value := ev.Event().Value
+					s.state.Mutate(ctx, func(st SearchState) SearchState {
+						st.Query = value
+						st.Page = 1
+						return st
+					})
+					return false
+				},
+			})/>
+
+		~(doors.Sub(s.query, elem(q string) {
+			<p>Query: ~(q)</p>
+		}))
+
+		~(doors.Sub(s.page, elem(page int) {
+			<p>Page: ~(page)</p>
+		}))
+	</>
+}
+```
+
+This keeps one source of truth while letting the query and page fragments update independently.

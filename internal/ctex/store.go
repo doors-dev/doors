@@ -35,8 +35,8 @@ func (c Store) Load(key any) any {
 
 // Save stores the value under key. Returns the previous value under the key.
 func (c Store) Save(key any, value any) any {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	v := c.storage[key]
 	c.storage[key] = value
 	return v
