@@ -85,6 +85,6 @@ doors.CSP{
 
 Outputs header like:
 
-```
+```text
 default-src 'self'; connect-src 'self' https://api.example.com; script-src 'self' 'strict-dynamic'; style-src 'self'; form-action 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; report-to default
 ```

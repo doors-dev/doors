@@ -67,8 +67,8 @@ That is why scopes and indication feel immediate: they start on the client befor
 Most event attributes share the same core fields:
 
 - `On`: backend handler
-- `Scope`: request scheduling rules, covered in [11-scopes.md](/Users/alex/Lib/doors/docs/docs/11-scopes.md)
-- `Indicator`: temporary client-side feedback, covered in [12-indication.md](/Users/alex/Lib/doors/docs/docs/12-indication.md)
+- `Scope`: request scheduling rules, covered in [Scopes](./10-scopes.md)
+- `Indicator`: temporary client-side feedback, covered in [Indication](./11-indication.md)
 - `Before`: client-side actions before the request
 - `OnError`: client-side actions if the request fails
 
@@ -293,7 +293,7 @@ Example:
 </script>
 ```
 
-See [09-custom-attrs.md](/Users/alex/Lib/doors/docs/docs/09-custom-attrs.md) and [14-javascript.md](/Users/alex/Lib/doors/docs/docs/14-javascript.md).
+See [Custom Attrs](./13-custom-attrs.md) and [JavaScript](./14-javascript.md).
 
 ## Reuse
 
@@ -318,11 +318,11 @@ For a one-off attribute on one element, you usually do not need `doors.A(...)`.
 
 ## Related
 
-- Use [10-navigation.md](/Users/alex/Lib/doors/docs/docs/10-navigation.md) for `doors.AHref`.
-- Use [09-custom-attrs.md](/Users/alex/Lib/doors/docs/docs/09-custom-attrs.md) for `doors.AHook[...]`, `doors.ARawHook`, `doors.AData`, and `doors.ADyn`.
-- Use [11-scopes.md](/Users/alex/Lib/doors/docs/docs/11-scopes.md) for request scheduling.
-- Use [12-indication.md](/Users/alex/Lib/doors/docs/docs/12-indication.md) for client-side feedback.
-- Use [13-actions.md](/Users/alex/Lib/doors/docs/docs/13-actions.md) for `Before`, `OnError`, and `After` actions.
+- Use [Navigation](./09-navigation.md) for `doors.AHref`.
+- Use [Custom Attrs](./13-custom-attrs.md) for `doors.AHook[...]`, `doors.ARawHook`, `doors.AData`, and `doors.ADyn`.
+- Use [Scopes](./10-scopes.md) for request scheduling.
+- Use [Indication](./11-indication.md) for client-side feedback.
+- Use [Actions](./12-actions.md) for `Before`, `OnError`, and `After` actions.
 
 ## Rules
 

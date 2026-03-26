@@ -148,9 +148,9 @@ Reusing one `ADyn` value across several mounted elements means `Value(...)` and 
 
 ## Rules
 
-- Use [08-events.md](/Users/alex/Lib/doors/docs/docs/08-events.md) for normal DOM events.
+- Use [Events](./08-events.md) for normal DOM events.
 - Prefer `AHook[T]` first; move to `ARawHook` only when transport control needs it.
 - Use `AData` or `data:name=(...)` for script inputs instead of hardcoded JS literals.
 - Use `ADyn` when you want to keep the same DOM node and just change one attribute.
 - Use normal rendering and state when the whole UI should react, not just one attribute.
-- See [14-javascript.md](/Users/alex/Lib/doors/docs/docs/14-javascript.md) for `$hook`, `$fetch`, `$data`, `HookErr`, and client-side details.
+- See [JavaScript](./14-javascript.md) for `$hook`, `$fetch`, `$data`, `HookErr`, and client-side details.

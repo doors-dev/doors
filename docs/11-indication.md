@@ -117,5 +117,5 @@ This keeps the typing interaction responsive, debounces requests, and shows feed
 - Use indication for temporary interaction feedback, not as your main UI state.
 - Use `SelectorTarget()` when the pending state belongs on the active element; query selectors when it belongs elsewhere.
 - Use helpers first, then move to manual `Indicator...` values when one event needs several temporary DOM changes.
-- Use [11-scopes.md](/Users/alex/Lib/doors/docs/docs/11-scopes.md) together with indication when request timing matters.
-- Use [13-actions.md](/Users/alex/Lib/doors/docs/docs/13-actions.md) when you want to trigger indication as an action instead of from an event attribute.
+- Use [Scopes](./10-scopes.md) together with indication when request timing matters.
+- Use [Actions](./12-actions.md) when you want to trigger indication as an action instead of from an event attribute.

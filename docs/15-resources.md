@@ -41,7 +41,7 @@ It does not accept `SourceLocal` or `SourceExternal`.
 
 The browser does not receive the original inline body directly.
 
-That is what lets **Doors** inject the managed-script runtime wrapper used by [14-javascript.md](/Users/alex/Lib/doors/docs/docs/14-javascript.md).
+That is what lets **Doors** inject the managed-script runtime wrapper used by [JavaScript](./14-javascript.md).
 
 ## Common
 
@@ -159,7 +159,7 @@ Use `Raw` when the source is already built and **Doors** should just serve it.
 
 That is especially useful for module-heavy code such as TSX bundles.
 
-Detailed build configuration is covered in [16-configuration.md](/Users/alex/Lib/doors/docs/docs/16-configuration.md).
+Detailed build configuration is covered in [Configuration](./19-configuration.md).
 
 ## Behavior
 
@@ -182,4 +182,4 @@ Public, private, and no-cache modes change how the browser reaches the resource,
 - Use `Style` for CSS.
 - Use `SourceLocal` or `SourceExternal` only when the asset is already hosted.
 - Use `Bundle` when dependencies should ship together and `Raw` when the file is already built.
-- See [14-javascript.md](/Users/alex/Lib/doors/docs/docs/14-javascript.md) for managed script behavior and helper APIs.
+- See [JavaScript](./14-javascript.md) for managed script behavior and helper APIs.

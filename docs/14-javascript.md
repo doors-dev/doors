@@ -117,7 +117,7 @@ If your page already has the value on the Go side, prefer `AData` over an extra 
 
 Use hooks when JavaScript is already in control and needs to call back into Go.
 
-For normal clicks, inputs, and forms, stay with [08-events.md](/Users/alex/Lib/doors/docs/docs/08-events.md).
+For normal clicks, inputs, and forms, stay with [Events](./08-events.md).
 
 Use `AHook[T]` with `$hook(...)` when JSON input and output are the natural fit.
 
@@ -146,7 +146,7 @@ When `$hook(...)` or `$fetch(...)` sends data, the client picks the request body
 - `Blob`, `File`, `ReadableStream`, `ArrayBuffer`, typed arrays: raw body
 - anything else: JSON body
 
-Hook API details are covered in [09-custom-attrs.md](/Users/alex/Lib/doors/docs/docs/09-custom-attrs.md).
+Hook API details are covered in [Custom Attrs](./13-custom-attrs.md).
 
 ## Errors
 
@@ -205,7 +205,7 @@ So the nearest matching handler wins, and local handlers shadow outer ones.
 
 If they return a `Promise`, the action fails.
 
-Action details are covered in [13-actions.md](/Users/alex/Lib/doors/docs/docs/13-actions.md).
+Action details are covered in [Actions](./12-actions.md).
 
 ## Modules
 
@@ -236,7 +236,7 @@ This is the same pattern used in the `imports` tests to mount React and Preact c
 
 Script and module builds go through the esbuild-backed resource pipeline.
 
-Use `Profile` when you want a named build profile, and see [15-resources.md](/Users/alex/Lib/doors/docs/docs/15-resources.md) and [16-configuration.md](/Users/alex/Lib/doors/docs/docs/16-configuration.md) for the build and hosting details.
+Use `Profile` when you want a named build profile, and see [Resources](./15-resources.md) and [Configuration](./19-configuration.md) for the build and hosting details.
 
 ## Cleanup
 

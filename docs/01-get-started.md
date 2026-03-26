@@ -1,17 +1,14 @@
 # Get Started
 
-
 ## Install GoX
 
 > Ensure your Go is at least 1.25.1; you can check in the terminal by running `go version`
 
+**Doors** is built on top of [GoX](https://github.com/doors-dev/gox), a purpose-built Go language extension that turns HTML templates into typed Go expressions and adds `elem` primitives.
 
-**Doors** is build on top of [GoX](https://github.com/doors-dev/gox) - purposely designed Go language extenstion that turns HTML templates into typed Go expressions and adds `elem` primitives.
+**GoX** comes with its own language server, which mostly acts as a [gopls](https://go.dev/gopls/) proxy while adding extra features on top.
 
-**GoX** comes with it's own language server, that mostly acts as [Gopls](https://go.dev/gopls/) proxy while adding some extra features on top.
-
-Please use the official [VS Code](https://marketplace.visualstudio.com/items?itemName=doors-dev.gox) or [Neovim](https://github.com/doors-dev/nvim-gox) extensions, alternatively you can follow the manual installation guide in [README](https://github.com/doors-dev/gox).
-
+Please use the official [VS Code](https://marketplace.visualstudio.com/items?itemName=doors-dev.gox) or [Neovim](https://github.com/doors-dev/nvim-gox) extension. Alternatively, follow the manual installation guide in the [GoX README](https://github.com/doors-dev/gox).
 
 ## Setup Project
 
@@ -29,9 +26,9 @@ go mod init github.com/doors-dev/doors-examples/hello-doors
 go get github.com/doors-dev/doors
 ```
 
-## App Component 
+## App Component
 
-Write component with page template to `app.gox`
+Write a component with the page template to `app.gox`:
 
 ```gox
 package main
@@ -57,7 +54,7 @@ elem (a App) Main() {
 }
 ```
 
-Component in **Doors** (and **GoX**) must have `Main()` method that returns `gox.Elem`. Keyword `elem` allows to write html template immidiately in the function body. 
+Components in **Doors** (and **GoX**) must have a `Main()` method that returns `gox.Elem`. The `elem` keyword lets you write an HTML template directly in the function body.
 
 > GoX language server compiles it and manages `.x.go` file automatically! 
 
@@ -91,41 +88,37 @@ func main() {
 }
 ```
 
-Start go programm with `go run .` and take a look at [http://localhost:8080](http://localhost:8080)!
+Start the program with `go run .` and open [http://localhost:8080](http://localhost:8080).
 
-#### what just happened:
+#### What Just Happened?
 
-We declared a **model**. **Doors** uses struct with tagged fields to match, decode and encode path:
+We declared a **model**. **Doors** uses a struct with tagged fields to match, decode, and encode a path:
 
 ```go
 type Path struct {
 	Home    bool `path:"/"` // first path pattern
-	Catalog bool `path:"/catalog/:ID?"`  // second path pattern with optional ID param
-    ID      *string
+	Catalog bool `path:"/catalog/:ID?"` // second path pattern with optional ID param
+	ID      *string
 }
 ```
 
-Next, we added model handler to the router and served our App component:
+Next, we added a model handler to the router and served our `App` component:
 
 ```go
 doors.UseModel(r, func(r doors.RequestModel, s doors.Source[Path]) doors.Response {
-    return doors.ResponseComp(App{})
+	return doors.ResponseComp(App{})
 })
 ```
-> `doors.RequestModel` provides access to http data (cookies, headers), while `doors.Source[Path]` is reactive state primitive
-with **model** value. Usually you store **Source** to the component field to use it in rendering.
+> `doors.RequestModel` provides access to HTTP data such as cookies and headers, while `doors.Source[Path]` is the reactive state primitive that holds the current model value. Usually you store that `Source` on the component so you can use it during rendering.
 
-Finaly, **Doors** router just plugs in into Go's standart http server:
+Finally, the **Doors** router plugs straight into Go's standard HTTP server:
+
 ```go
- http.ListenAndServe(":8080", r)
+http.ListenAndServe(":8080", r)
 ```
 
-### Next 
-- [Learn GoX syntax](https://doors.dev)
-- [Learn about model and routing](https://doors.dev)
+### Next
 
-
-
-
-
-
+- [Core Concepts](./02-core-concepts.md) explains the runtime model behind sessions, instances, doors, hooks, and state.
+- [Template Syntax](./03-template-syntax.md) covers the GoX syntax used throughout the docs.
+- [Path Model](./04-path-model.md) and [Router](./05-router.md) take the next step into URL design and request handling.

@@ -5,7 +5,7 @@ In **Doors**, navigation usually happens in one of two ways:
 - declaratively with `doors.AHref`
 - programmatically by updating the current page's path `doors.Source[Path]`
 
-Both use the same path model rules described in [04-path-model.md](/Users/alex/Lib/doors/docs/docs/04-path-model.md).
+Both use the same path model rules described in [Path Model](./04-path-model.md).
 
 ## AHref
 
@@ -204,4 +204,4 @@ That is why it supports:
 
 One useful special case: if `OnError` is left `nil` on a dynamic `AHref`, **Doors** falls back to a location reload.
 
-For the action types themselves, see [13-actions.md](/Users/alex/Lib/doors/docs/docs/13-actions.md).
+For the action types themselves, see [Actions](./12-actions.md).

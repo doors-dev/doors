@@ -1,6 +1,6 @@
 # doors
 
-Back-end UI Framework for feature-rich, secure, and fast web apps in Go.
+Backend UI framework for feature-rich, secure, and fast web apps in Go.
 
 ⚠️ **Beta - Not Ready for Production**
 
@@ -10,12 +10,12 @@ Back-end UI Framework for feature-rich, secure, and fast web apps in Go.
 * Read the [Docs](https://doors.dev/docs/) to dive into details.
 * Check out the [API Reference](https://docs.doors.dev).
 
-## Philosophy 
+## Philosophy
 
-### Explicid
+### Explicit
 Build direct connections between events, state, and HTML in a completely type-safe environment. *It hits different*.
 
-### Lightweight 
+### Lightweight
 Fast loading, non-blocking execution environment, minimal memory footprint
 
 ### Server Centric
@@ -24,8 +24,8 @@ Business logic runs on the server, and the browser acts like a human I/O.
 ### Straight
 Native experience of classic MPA with natural reactive UI capabilities.
 
-### JS friendly
-If you need - integration, bundling, and serving tools included.
+### JS Friendly
+If you need it, integration, bundling, and serving tools are included.
 
 ## How It Works
 
@@ -50,7 +50,7 @@ If you need - integration, bundling, and serving tools included.
 
 **Beam** - Reactive state primitive on the server:
 
-- SourceBeam for mutable state
+- Source for mutable state
 - Derived beams for computed values
 - Respects the dynamic container tree, guaranteeing render consistency
 
@@ -75,7 +75,7 @@ If you need - integration, bundling, and serving tools included.
 - Takes advantage of QUIC
 
 ### Event Handling
-- Secure session-scoped DOM event handeling in Go 
+- Secure session-scoped DOM event handling in Go
 - Events as separate HTTP requests
 - Advanced concurrency control (blocking, debounce, and more)
 
@@ -116,7 +116,6 @@ Commercial inquiries: [sales@doors.dev](mailto:sales@doors.dev)
 
 ### Full License Texts
 
-- [LICENSE](./LICENSE) — AGPL-3.0-only text  
-- [LICENSING.md](./LICENSING.md) — Dual-licensing terms (AGPL or commercial)  
-- [COMMERCIAL.md](./COMMERCIAL.md) — Commercial licensing summary
-
+- [AGPL-3.0 License](./LICENSE) — AGPL-3.0-only text
+- [Licensing Terms](./LICENSING.md) — Dual-licensing terms (AGPL or commercial)
+- [Commercial License Summary](./COMMERCIAL.md) — Commercial licensing summary

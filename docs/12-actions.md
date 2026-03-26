@@ -13,7 +13,7 @@ Good fits are:
 
 If the UI should simply render different content, prefer normal rendering.
 
-If only one attribute should change on an existing element, `ADyn` from [09-custom-attrs.md](/Users/alex/Lib/doors/docs/docs/09-custom-attrs.md) is often a better fit than an action.
+If only one attribute should change on an existing element, `ADyn` from [Custom Attrs](./13-custom-attrs.md) is often a better fit than an action.
 
 ## Places
 
@@ -117,7 +117,7 @@ They go through the browser location API and load the target page again.
 
 That makes them useful when you intentionally want a full page load.
 
-For normal in-app navigation, prefer [10-navigation.md](/Users/alex/Lib/doors/docs/docs/10-navigation.md), especially `AHref` and path model mutation.
+For normal in-app navigation, prefer [Navigation](./09-navigation.md), especially `AHref` and path model mutation.
 
 Built-ins:
 
@@ -160,7 +160,7 @@ When `ActionIndicate` runs from `Before`, `r.After(...)`, or `OnError`, `Selecto
 
 When it runs from direct `Call` or `XCall`, there is no event target, so use explicit selectors like `SelectorQuery(...)`.
 
-Indication details are covered in [12-indication.md](/Users/alex/Lib/doors/docs/docs/12-indication.md).
+Indication details are covered in [Indication](./11-indication.md).
 
 ## Helpers
 
