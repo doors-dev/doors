@@ -30,14 +30,17 @@ func newResourcePrinter(printer gox.Printer) gox.Printer {
 
 type resourcePrinter struct {
 	printer  gox.Printer
-	resource *resource
+	resource any
 }
 
 func (r *resourcePrinter) Send(job gox.Job) error {
-	if r.resource == nil {
-		return r.scan(job)
+	if res, ok := r.resource.(*resource); ok {
+		return r.processRes(job, res)
 	}
-	return r.process(job)
+	if title, ok := r.resource.(*title); ok {
+		return r.processTitle(job, title)
+	}
+	return r.scan(job)
 }
 
 func (p *resourcePrinter) scan(job gox.Job) error {
@@ -46,6 +49,11 @@ func (p *resourcePrinter) scan(job gox.Job) error {
 		return p.printer.Send(job)
 	}
 	switch true {
+	case strings.EqualFold(openJob.Tag, "title"):
+		p.resource = &title{openJob:openJob}
+		return nil
+	case strings.EqualFold(openJob.Tag, "meta"):
+		return p.processMeta(openJob)
 	case strings.EqualFold(openJob.Tag, "script"):
 		return p.prepareScript(openJob)
 	case strings.EqualFold(openJob.Tag, "style"):
@@ -53,6 +61,31 @@ func (p *resourcePrinter) scan(job gox.Job) error {
 	default:
 		return p.printer.Send(job)
 	}
+}
+
+func (p *resourcePrinter) processMeta(openJob *gox.JobHeadOpen) error {
+	if openJob.Kind != gox.KindVoid {
+		return errors.New("encountered non-void meta tag")
+	}
+	property := false
+	attr := openJob.Attrs.Get("name")
+	if !attr.IsSet() {
+		property = true
+		attr = openJob.Attrs.Get("property")
+		if !attr.IsSet() {
+			return p.printer.Send(openJob)
+		}
+	}
+	b := &bytes.Buffer{}
+	if err := attr.OutputValue(b); err != nil {
+		return err
+	}
+	attr.Unset()
+	name := b.String()
+	core := openJob.Context().Value(ctex.KeyCore).(core.Core)
+	core.UpdateMeta(name, property, openJob.Attrs.Clone())
+	gox.Release(openJob)
+	return nil
 }
 
 func (p *resourcePrinter) prepareStyle(job *gox.JobHeadOpen) error {
@@ -137,26 +170,25 @@ func (p *resourcePrinter) prepareScript(job *gox.JobHeadOpen) error {
 	return nil
 }
 
-func (p *resourcePrinter) process(job gox.Job) error {
+func (p *resourcePrinter) processRes(job gox.Job, res *resource) error {
 	closeJob, ok := job.(*gox.JobHeadClose)
 	if ok {
-		if closeJob.ID != p.resource.openJob.ID {
+		if closeJob.ID != res.openJob.ID {
 			return errors.New("resource head close id missmatch")
 		}
-		p.resource.closeJob = closeJob
-		r := p.resource
+		res.closeJob = closeJob
 		p.resource = nil
-		return r.render(p.printer)
+		return res.render(p.printer)
 	}
 	r, ok := job.(*gox.JobRaw)
 	if ok {
-		p.resource.appendString(r.Text)
+		res.appendString(r.Text)
 		gox.Release(r)
 		return nil
 	}
 	b, ok := job.(*gox.JobBytes)
 	if ok {
-		p.resource.appendBytes(b.Bytes)
+		res.appendBytes(b.Bytes)
 		gox.Release(b)
 		return nil
 	}
@@ -339,4 +371,33 @@ func (r *resource) dump(p gox.Printer) error {
 		return err
 	}
 	return nil
+}
+
+func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
+	if _, ok := j.(*gox.JobHeadOpen); ok {
+		return errors.New("title can't contain other tags")
+	}
+	if _, ok := j.(*gox.JobComp); ok {
+		panic("components are not expected here, must pe processed via pipe")
+	}
+	if closeJob, ok := j.(*gox.JobHeadClose); ok {
+		if closeJob.ID != tit.openJob.ID {
+			return errors.New("unexpected close job")
+		}
+		core := j.Context().Value(ctex.KeyCore).(core.Core)
+		content := tit.buf.String()
+		attrs := tit.openJob.Attrs.Clone()
+		core.UpdateTitle(content, attrs)
+		gox.Release(tit.openJob)
+		gox.Release(closeJob)
+		r.resource = nil
+		return nil
+	}
+	return j.Output(&tit.buf)
+}
+
+
+type title struct {
+	openJob *gox.JobHeadOpen
+	buf     bytes.Buffer
 }

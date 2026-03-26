@@ -51,7 +51,7 @@ func (inst *Instance[M]) render(w http.ResponseWriter, r *http.Request, pipe doo
 		defer wgz.Close()
 		writer = wgz
 	}
-	pr := printer.NewPagePrinter(writer, inst.root.Context(), static, importMap)
+	pr := printer.NewPagePrinter(writer, inst.root.Context(), static, importMap, inst.meta)
 	return pipe.Print(pr)
 }
 

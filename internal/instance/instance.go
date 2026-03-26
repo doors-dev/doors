@@ -90,6 +90,7 @@ type Instance[M any] struct {
 	csp        *common.CSPCollector
 	importMap  *importMap
 	pageStatus atomic.Int32
+	meta  *titleMeta
 }
 
 func (inst *Instance[M]) init() error {
@@ -117,6 +118,7 @@ func (inst *Instance[M]) init() error {
 	}
 	inst.csp = inst.session.router.CSP().NewCollector()
 	inst.importMap = newImportMap()
+	inst.meta = newTitleMeta(inst)
 	inst.killTimer.keepAlive()
 	return nil
 }

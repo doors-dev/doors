@@ -22,6 +22,17 @@ type Extras = {
 	element?: Element,
 }
 
+function syncAttributes(el: Element, attrs: {[key:string]:string}) {
+	for (const { name } of Array.from(el.attributes)) {
+		if (!(name in attrs)) {
+			el.removeAttribute(name)
+		}
+	}
+	for (const [name, value] of Object.entries(attrs)) {
+		el.setAttribute(name, value)
+	}
+}
+
 const actions = {
 	location_reload: (_: Extras) => {
 		doAfter(() => {
@@ -33,6 +44,28 @@ const actions = {
 		if (id) {
 			setTimeout(() => indicator.end(id), duration)
 		}
+	},
+	update_title: (_: Extras, content: string, attrs: {[key:string]:string}) => {
+		let title = document.head.querySelector("title")
+		if (!title) {
+			title = document.createElement("title")
+			document.head.appendChild(title)
+		}
+		title.textContent = content
+		syncAttributes(title, attrs)
+	},
+	update_meta: (_: Extras, name: string, property: boolean, attrs: {[key:string]:string}) => {
+		const key = property ? "property" : "name"
+		const targetAttrs = {
+			...attrs,
+			[key]: name,
+		}
+		let meta = document.head.querySelector(`meta[${key}=${JSON.stringify(name)}]`)
+		if (!meta) {
+			meta = document.createElement("meta")
+			document.head.appendChild(meta)
+		}
+		syncAttributes(meta, targetAttrs)
 	},
 	report_hook: (_: Extras, track: number) => {
 		report(track)

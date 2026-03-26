@@ -17,9 +17,9 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-func NewPagePrinter(w io.Writer, ctx context.Context, static bool, importMap []byte) gox.Printer {
+func NewPagePrinter(w io.Writer, ctx context.Context, static bool, importMap []byte, meta gox.Editor) gox.Printer {
 	cur := gox.NewCursor(ctx, defaultPrinter{w})
-	pagePrinter := &pagePrinter{cur: cur, static: static, importMap: importMap}
+	pagePrinter := &pagePrinter{cur: cur, static: static, importMap: importMap, meta: meta}
 	return newResourcePrinter(pagePrinter)
 }
 
@@ -36,6 +36,7 @@ type pagePrinter struct {
 	static    bool
 	importMap []byte
 	state     pagePrinterState
+	meta      gox.Editor
 	headID    uint64
 }
 
@@ -122,6 +123,9 @@ func (p *pagePrinter) insert() error {
 		if err := p.cur.Comp(front.Include); err != nil {
 			return err
 		}
+	}
+	if err := p.meta.Edit(p.cur); err != nil {
+		return err
 	}
 	if len(p.importMap) > 0 {
 		if err := p.cur.Init("script"); err != nil {

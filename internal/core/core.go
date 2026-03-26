@@ -21,6 +21,7 @@ import (
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
+	"github.com/doors-dev/gox"
 )
 
 type Hook struct {
@@ -66,6 +67,8 @@ type Instance interface {
 	SessionID() string
 	Adapters() path.Adapters
 	PathMaker() path.PathMaker
+	UpdateTitle(content string, attrs gox.Attrs)
+	UpdateMeta(name string, property bool, attrs gox.Attrs)
 }
 
 type Door interface {
@@ -88,6 +91,14 @@ var _ beam.Core = &core{}
 type core struct {
 	door Door
 	inst Instance
+}
+
+func (c Core) UpdateMeta(name string, property bool, attrs gox.Attrs) {
+	c.inst.UpdateMeta(name, property, attrs)
+}
+
+func (c Core) UpdateTitle(content string, attrs gox.Attrs) {
+	c.inst.UpdateTitle(content, attrs)
 }
 
 func (c Core) PathMaker() path.PathMaker {

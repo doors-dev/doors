@@ -15,14 +15,40 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
+	"log/slog"
 	"runtime/debug"
 	"time"
 	"unsafe"
 
+	"github.com/doors-dev/gox"
 	"github.com/mr-tron/base58"
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
 )
+
+func AttrsToMap(a gox.Attrs) map[string]string {
+	attrs := make(map[string]string)
+	b := &bytes.Buffer{}
+	for _, attr := range a.List() {
+		if !attr.IsSet() {
+			continue
+		}
+		if err := attr.OutputName(b); err != nil {
+			slog.Error("Can't write attr name", "err", err)
+			continue
+		}
+		name := b.String()
+		b.Reset()
+		if err := attr.OutputValue(b); err != nil {
+			slog.Error("Can't write attr value", "err", err)
+			continue
+		}
+		value := b.String()
+		b.Reset()
+		attrs[name] = value
+	}
+	return attrs
+}
 
 var bytesNull = []byte("null")
 

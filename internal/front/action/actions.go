@@ -191,6 +191,39 @@ func (a ReportHook) Invocation() Invocation {
 	}
 }
 
+type UpdateTitle struct {
+	Content string
+	Attrs   map[string]string
+}
+
+func (u UpdateTitle) Log() string {
+	return "update_title"
+}
+
+func (u UpdateTitle) Invocation() Invocation {
+	return Invocation{
+		name: "update_title",
+		arg:  []any{u.Content, u.Attrs},
+	}
+}
+
+type UpdateMeta struct {
+	Name     string
+	Property bool
+	Attrs    map[string]string
+}
+
+func (u UpdateMeta) Log() string {
+	return "update_meta"
+}
+
+func (u UpdateMeta) Invocation() Invocation {
+	return Invocation{
+		name: "update_meta",
+		arg:  []any{u.Name, u.Property, u.Attrs},
+	}
+}
+
 type Test struct {
 	Arg any
 }
