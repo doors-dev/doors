@@ -105,7 +105,7 @@ doors.UseRoute(router, doors.RouteFile{
 
 `doors.RouteResource` and `doors.RouteResourceFS` serve fixed public paths through the **Doors** resource registry.
 
-Use them when you want the resource handling behavior from the framework, but still want a stable URL of your own.
+Use them when you want the same resource handling behavior as the **Doors** runtime, but still want a stable URL of your own.
 
 ## Fallback
 

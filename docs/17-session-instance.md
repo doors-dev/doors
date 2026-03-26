@@ -11,7 +11,7 @@ These utilities are for the cases where you want to:
 
 - cap how long the current **Doors** session may live
 - force-end a session or just one instance
-- attach framework IDs to logs or traces
+- attach runtime IDs to logs or traces
 
 For session and instance storage, see [Storage & Auth](./16-storage-auth.md).
 
@@ -127,7 +127,7 @@ These IDs are useful for:
 - grouping related events
 - debugging multi-tab behavior
 
-They are framework runtime IDs, not user IDs or authentication tokens.
+They are **Doors** runtime IDs, not user IDs or authentication tokens.
 
 ## Rules
 

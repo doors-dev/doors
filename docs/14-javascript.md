@@ -16,21 +16,32 @@ The usual flow is:
 
 Example:
 
+```go
+//go:embed web/picker.ts
+var pickerTS []byte
+```
+
 ```gox
 <>
-	~>doors.AData{
+	~>(doors.AData{
 		Name: "userId",
 		Value: userID,
-	} ~>doors.AHook[string]{
+	}, doors.AHook[string]{
 		Name: "save",
 		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
-			return len(r.Data()), false
+			_ = r.Data()
+			return nil, true
 		},
-	} ~doors.ScriptInline{
-		Source: doors.SourcePath("web/picker.ts"),
+	}) ~doors.ScriptInline{
+		Source: doors.SourceScriptBytes{
+			Content: pickerTS,
+			TypeScript: true,
+		},
 	}
 </>
 ```
+
+Embedding the script like this is often convenient because the app stays self-contained in one binary.
 
 Inside `web/picker.ts`, that script can use `await $data("userId")` and `await $hook("save", value)`.
 
@@ -47,7 +58,11 @@ Every managed inline script is converted into a built resource and the final pag
 
 The original inline body is not left in the final HTML.
 
-That conversion is what gives you:
+Managed inline scripts are not executed as raw top-level browser source.
+
+Instead, **Doors** wraps the script body in an anonymous async function and runs it through the client runtime with the framework helpers already in scope.
+
+That is what gives you:
 
 - helper variables like `$data`, `$hook`, and `$on`
 - top-level `await`
@@ -59,6 +74,59 @@ If you set `src`, add `escape`, or use a non-JavaScript `type`, **Doors** leaves
 That includes `type="module"` and TypeScript MIME types.
 
 For TypeScript, use `doors.ScriptInline` or `doors.ScriptModule`, not `type="application/typescript"` on a plain inline script.
+
+## Build
+
+Buildable JavaScript in **Doors** goes through esbuild before the browser sees it.
+
+In practice:
+
+- `doors.ScriptInline` always goes through esbuild
+- a managed plain inline `<script>...</script>` is converted into the same kind of built resource and also goes through esbuild
+- `doors.ScriptCommon` and `doors.ScriptModule` go through esbuild when their source is buildable
+- `ScriptOutputRaw` skips that build step for `ScriptCommon` and `ScriptModule`
+- `SourceLocal` and `SourceExternal` do not go through esbuild at all
+
+Buildable sources here means the source comes from your app code, such as `SourcePath`, `SourceFS`, `SourceScriptString`, or `SourceScriptBytes`.
+
+That build step is what gives **Doors**:
+
+- TypeScript support for `ScriptInline` and `ScriptModule`
+- minification by default
+- bundling when `ScriptOutputBundle` is used
+- JSX handling when your esbuild config enables it
+
+If you need named build profiles, use the `Profile` field on `ScriptInline`, `ScriptCommon`, or `ScriptModule`.
+
+Plain managed inline `<script>...</script>` uses the default profile.
+
+Build settings are configured at the router level with `doors.UseESConf(...)`.
+
+See [Resources](./15-resources.md) for the serving side and [Configuration](./19-configuration.md) for the esbuild config itself.
+
+### TypeScript
+
+When you edit a `.ts` file used by `doors.ScriptInline`, a small ambient declaration file can make editor tooling much nicer.
+
+For example:
+
+```ts
+declare const $on: (name: string, handler: (arg: any) => any) => void;
+declare const $data: (name: string) => any;
+declare const $hook: (name: string, arg: any) => Promise<any>;
+declare const $fetch: (name: string, arg: any) => Promise<Response>;
+declare const $G: { [key: string]: any };
+declare const $sys: {
+	ready: () => Promise<undefined>,
+	clean: (handler: () => void | Promise<void>) => void,
+	activateLinks: () => void,
+};
+declare const HookErr: new (...args: any[]) => Error;
+```
+
+TSserver may still warn about top-level `await`.
+
+That warning is expected here and can be ignored, because **Doors** wraps managed inline scripts in an anonymous async function before they run in the browser.
 
 ## Scope
 
@@ -168,7 +236,7 @@ Catch these in script code when failure is part of the normal flow:
 ```gox
 <script>
 	try {
-		await $hook("save", {ok: true})
+		await $hook("save", "hello")
 	} catch (err) {
 		if (err instanceof HookErr && err.notFound()) {
 			console.log("hook is gone")
@@ -233,6 +301,10 @@ If `Specifier` is empty, `ScriptModule` just renders a normal module script tag.
 ```
 
 This is the same pattern used in the `imports` tests to mount React and Preact components into a **Doors** page.
+
+`ScriptModule` builds and serves the module code, but it does not wrap that module with `$data`, `$hook`, or the other managed-script helpers.
+
+Those helpers belong to managed inline scripts.
 
 Script and module builds go through the esbuild-backed resource pipeline.
 

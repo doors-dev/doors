@@ -1,121 +1,147 @@
-# doors
+# Doors
 
-Backend UI framework for feature-rich, secure, and fast web apps in Go.
+Doors is a server-driven UI runtime for building reactive web applications in Go.
 
-⚠️ **Beta - Not Ready for Production**
+Instead of splitting product logic across a frontend app, an API layer, and a backend full of duplicated flow, Doors keeps application flow on the server and treats the browser as a renderer and input layer. You write interactive UI in Go, keep data and capabilities on the server, and get real-time updates without building the usual frontend/backend boundary first.
 
-## Getting Started
+## What Doors gives you
 
-* See the [Tutorial](https://doors.dev/tutorial/) for building your first doors application.
-* Read the [Docs](https://doors.dev/docs/) to dive into details.
-* Check out the [API Reference](https://docs.doors.dev).
+- Reactive web applications written in Go
+- UI interactions without designing a public API
+- JavaScript as an option, not a requirement
+- Real-time synchronization built into the runtime
+- Asset serving and app delivery oriented around a single binary
+- A model that keeps business logic, state changes, and rendering in one place
 
-## Philosophy
+## Core model
 
-### Explicit
-Build direct connections between events, state, and HTML in a completely type-safe environment. *It hits different*.
+Doors applications run on a stateful Go server. The browser acts as a remote renderer and input layer.
 
-### Lightweight
-Fast loading, non-blocking execution environment, minimal memory footprint
+That means you can keep:
 
-### Server Centric
-Business logic runs on the server, and the browser acts like a human I/O. 
+- event handling
+- permissions
+- business rules
+- data access
+- UI rendering
 
-### Straight
-Native experience of classic MPA with natural reactive UI capabilities.
+in one execution flow instead of splitting them between browser code, handlers, API contracts, and state reassembly.
 
-### JS Friendly
-If you need it, integration, bundling, and serving tools are included.
+## Why it feels different
 
-## How It Works
+### Your Go server is the UI runtime
 
-### Stateful Server + Ultra-Thin Client
+Doors is not a thin HTML enhancement layer. It is a runtime for interactive applications where the server owns the flow and the browser reflects the current UI state.
 
-> API-free architecture
+### No frontend/backend drift by default
 
-1. **User loads page** → Server creates instance and sets session cookie
-2. **Server maintains state** → Live representation of each user's page
-3. **Persistent connection** → Lightweight client syncs with server
-4. **Events flow up** → User interactions sent to Go handlers
-5. **Updates flow down** → Server sends specific DOM changes
+Because the interaction model stays in Go, there is less duplicated logic and less contract drift between client and server.
 
+### Less exposed surface area
 
-### Core Components
+Doors does not push you toward turning every UI action into a public API. Session-scoped communication happens under the hood, which reduces boilerplate and avoids a common source of security mistakes.
 
-**Door** - Dynamic container in HTML where content can change:
+### One stack, top to bottom
 
-- Update, Replace, Remove, Clear, Reload operations
-- Form a tree structure, where each branch has its own lifecycle
-- Provides local [context](https://pkg.go.dev/context) that can be used as an unmount hook.
+The runtime is designed from UI authoring down to delivery: templates, state, routing, synchronization, assets, and deployment all support the same server-driven model.
 
-**Beam** - Reactive state primitive on the server:
+## Good fit for AI-assisted coding
 
-- Source for mutable state
-- Derived beams for computed values
-- Respects the dynamic container tree, guaranteeing render consistency
+Doors is also a strong environment for AI-assisted development because there is no hard frontend/backend split for generated changes to bridge. The code, state, and business logic stay in one Go codebase, while privileged operations and data remain on the server.
 
-**Path Models** - Type-safe routing through Go structs:
+## Key ideas
 
-- Declare multiple path variants (the matched field becomes true)
-* Use type-safe parameter capturing 
-* Use splat parameter to capture the remaining path tail
-* Use almost any types for query parameters ([go-playground/form](https://github.com/go-playground/form) under the hood)
-
-### Instance and Session Model
-
-- Each browser tab creates an **instance** (live server connection)
-- Multiple instances share a **session** (common state)
-- Navigation within same Path Model: reactive updates
-- Navigation to different Path Model: new instance created
-
-### Real-Time Sync Protocol
-
-- Client maintains a connection for synchronization via short-lived, handover HTTP requests
-- Works through proxies and firewalls
-- Takes advantage of QUIC
-
-### Event Handling
-- Secure session-scoped DOM event handling in Go
-- Events as separate HTTP requests
-- Advanced concurrency control (blocking, debounce, and more)
+- `gox` for writing HTML-like UI directly as Go expressions
+- Reactive state primitives that can be subscribed to, derived, and mutated
+- Dynamic containers that can be updated, replaced, or removed at runtime
+- Type-safe routing with URLs represented as Go structs
+- Real-time client sync without making WebSockets or SSE your app architecture
+- Server-rendered interactions scoped to what each user can actually see
 
 
-## When to use *doors*
+## Example
 
-**Excellent for:**
+```gox
+type Search struct {
+    input doors.Source[string]
+}
+
+elem (s Search) Main() {
+    <input
+        (doors.AInput{
+            On: func(ctx context.Context, r doors.RequestInput) bool {
+                s.input.Update(ctx, r.Event().Value)
+                return false
+            },
+        })
+        type="text"
+        placeholder="search">
+
+    ~(doors.Sub(s.input, s.results))
+}
+
+elem (s Search) results(input string) {
+    ~(for _, user := range Users.Search(input) {
+        <card>
+            ~(user.Name)
+        </card>
+    })
+}
+```
+
+The point is not just writing less JavaScript. The point is keeping the UI event, the state mutation, the rendering logic, and the server-side behavior in the same language and runtime.
+
+## Where Doors fits best
+
 - SaaS products
-- Business process automation (ERP, CRM, etc)
-- Administrative interfaces
+- Business systems
 - Customer portals
-- Internal tools 
-- Other form-heavy applications
+- Admin panels
+- Internal tools
+- Realtime apps with meaningful server-side workflows
 
-**Not ideal for:**
-- Public marketing websites with minimal interactivity
-- Offline-first applications
-- Static content sites
+## Where it is not the right fit
 
-## Comparison
+- Static or mostly non-interactive sites
+- Client-first apps with minimal server behavior
+- Offline-first PWAs where the browser must be the primary runtime
 
-Unlike **React/Vue**: No business logic on the client side, no hydration, NPM-free.
+## Comparisons
 
-Unlike **htmx**: Full type safety, reactive state, and programmatic control from Go.
+### Doors vs HTMX
 
-Unlike **Phoenix LiveView**: Explicit update model, parallel rendering & non-blocking event handling and QUIC friendly
+HTMX enhances HTML by coordinating behavior through attributes and endpoints. Doors is a UI runtime: you write interactive flow directly in Go and let the runtime handle synchronization.
 
-## License
+### Doors vs React, Next.js, and similar stacks
 
-*doors* is **dual-licensed** by **doors dev LLC**:
+Typical JavaScript stacks place a large share of product behavior in the browser while the server mostly acts as a data service. Doors keeps that flow on the server in Go, with the browser focused on display and input.
 
-- **Open Source:** **GNU Affero General Public License v3.0 only (AGPL-3.0-only)**  
-- **Commercial:** a paid commercial license for proprietary / closed-source use or other non-AGPL-compliant use
+## Learn more
 
-If you cannot (or do not want to) comply with the AGPL requirements (including providing Corresponding Source to users who interact with the software over a network), you must obtain a commercial license.
+- [doors.dev](https://doors.dev)
+- [Tutorial](https://doors.dev/tutorial/)
+- [Documentation](https://doors.dev/docs/)
+- [API Reference](https://docs.doors.dev)
+- [GoX](https://github.com/doors-dev/gox)
 
-Commercial inquiries: [sales@doors.dev](mailto:sales@doors.dev)
+## Status
 
-### Full License Texts
+Doors is in beta. It is ready for development now and can be used in production with care, but the ecosystem is still maturing and you should expect fixes and updates as it evolves.
 
-- [AGPL-3.0 License](./LICENSE) — AGPL-3.0-only text
-- [Licensing Terms](./LICENSING.md) — Dual-licensing terms (AGPL or commercial)
-- [Commercial License Summary](./COMMERCIAL.md) — Commercial licensing summary
+## Licensing
+
+Doors is dual-licensed by **doors dev LLC**.
+
+- **Open-source use:** available under **AGPL-3.0-only**
+- **Commercial use:** required for proprietary / closed-source use or other use that cannot comply with AGPL-3.0-only
+- Commercial licensing details: [doors.dev/license](https://doors.dev/license)
+
+Commercial licenses are issued through an Order Form and a separate commercial agreement. The signed agreement controls.
+
+Contact: [sales@doors.dev](mailto:sales@doors.dev)
+
+See also:
+
+- [AGPL-3.0 License](./LICENSE)
+- [Licensing Terms](./LICENSING.md)
+- [Commercial License Summary](./COMMERCIAL.md)

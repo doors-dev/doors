@@ -100,7 +100,7 @@ The handler receives `doors.RequestRawHook`, which adds:
 - `r.Reader()` or `r.ParseForm(...)` for multipart forms
 - `r.W()` when you want to write the response yourself
 
-## Dyn
+## Dynamic
 
 Use `doors.NewADyn(name, value, enable)` when one HTML attribute should change later without rerendering the whole element.
 
@@ -137,12 +137,6 @@ Good fits are:
 	</button>
 </>
 ```
-
-## Reuse
-
-Reusing one activated hook attribute with `doors.A(ctx, ...)` across elements means those elements share the same hook instance.
-
-Calls to that instance are serialized in **Doors**.
 
 Reusing one `ADyn` value across several mounted elements means `Value(...)` and `Enable(...)` update every currently mounted copy.
 

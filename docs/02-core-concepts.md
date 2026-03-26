@@ -1,6 +1,6 @@
 # Core Concepts
 
-**Doors** is easiest to understand if you stop thinking in terms of "request in, HTML out" and instead think of each interactive page as a live server-side object.
+**Doors** is easiest to understand as a UI runtime. Stop thinking in terms of "request in, HTML out" and instead think of each interactive page as a live server-side object.
 
 When a user opens a page, **Doors** decodes the URL into your path model, creates a page instance, renders HTML, and keeps that instance around as long as the page needs to stay interactive. Events, state changes, and partial updates all happen through that same live instance.
 
@@ -90,7 +90,7 @@ One practical rule helps avoid many bugs: treat source values as immutable. If a
 
 ## Context
 
-In **Doors**, `context.Context` is not just for cancellation. It also tells the framework where you are in the dynamic tree and which instance/session/lifecycle scope your code belongs to.
+In **Doors**, `context.Context` is not just for cancellation. It also tells the **Doors** runtime where you are in the dynamic tree and which instance/session/lifecycle scope your code belongs to.
 
 Use the `ctx` that **Doors** gives you in:
 
@@ -113,7 +113,7 @@ Do not swap it for `context.Background()` when calling **Doors** APIs like beam 
 
 ## Runtime
 
-Rendering, event handling, and beam propagation happen on the framework runtime. That work should stay fast.
+Rendering, event handling, and beam propagation happen on the **Doors** runtime. That work should stay fast.
 
 In practice, this means the code running in places like:
 
@@ -156,7 +156,7 @@ Handlers already run inside the correct page/session context. That removes plumb
 
 ## DOM
 
-When **Doors** renders a dynamic subtree, treat that subtree as framework-owned.
+When **Doors** renders a dynamic subtree, treat that subtree as runtime-managed.
 
 The safest integrations are the ones that cooperate with **Doors**:
 
@@ -164,4 +164,4 @@ The safest integrations are the ones that cooperate with **Doors**:
 - keep custom JavaScript scoped to clear boundaries
 - avoid manually mutating the same nodes that **Doors** is also updating
 
-Direct DOM work is still possible, but it should complement the framework instead of racing against it.
+Direct DOM work is still possible, but it should complement the runtime instead of racing against it.

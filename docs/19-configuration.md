@@ -7,7 +7,7 @@ Reach for configuration when you need to change a few router-level things:
 - session or instance lifetime and runtime limits
 - Content Security Policy
 - esbuild behavior for scripts and modules
-- the server ID used in **Doors** system URLs and session cookie naming
+- the server ID used in **Doors** runtime URLs and session cookie naming
 
 All of these are router-level settings:
 
@@ -45,7 +45,7 @@ Configuration is applied to the router with:
 
 ## Server ID
 
-Use `doors.UseServerID(...)` when this router should have its own framework URL prefix and session cookie namespace.
+Use `doors.UseServerID(...)` when this router should have its own **Doors** runtime URL prefix and session cookie namespace.
 
 ```go
 doors.UseServerID(r, "blue")
@@ -53,14 +53,14 @@ doors.UseServerID(r, "blue")
 
 This value is used in two places:
 
-- framework system URLs are built under a prefix like `/~/blue/...`
+- **Doors** runtime URLs are built under a prefix like `/~/blue/...`
 - the **Doors** session cookie name becomes `d0rblue`
 
 That separation is especially useful when you run multiple **Doors** deployments side by side, for example:
 
 - sticky load-balancing setups
 - blue/green or canary rollouts
-- migrations where old and new deployments should not steal each other's framework session
+- migrations where old and new deployments should not steal each other's **Doors** session
 
 The ID must already be URL-safe. If it needs escaping, **Doors** will panic during setup.
 
@@ -85,7 +85,7 @@ The fields that matter most in practice are:
 - `InstanceGoroutineLimit`: max goroutines per page instance for runtime work. Default `16`.
 - `DisconnectHiddenTimer`: how long hidden pages stay connected before disconnecting. Default `InstanceTTL / 2`.
 - `RequestTimeout`: max duration of a client request or hook call. Default `30s`.
-- `ServerCacheControl`: cache header for framework-served JS and CSS resources. Default `public, max-age=31536000, immutable`.
+- `ServerCacheControl`: cache header for **Doors**-served JS and CSS resources. Default `public, max-age=31536000, immutable`.
 - `ServerDisableGzip`: disables gzip for HTML, JS, and CSS.
 
 The `Solitaire*` fields tune the sync transport between server and browser:
@@ -107,7 +107,7 @@ doors.UseCSP(r, doors.CSP{
 })
 ```
 
-When enabled, **Doors** builds the `Content-Security-Policy` header per page and automatically collects hashes and sources from framework-managed resources.
+When enabled, **Doors** builds the `Content-Security-Policy` header per page and automatically collects hashes and sources from **Doors**-managed resources.
 
 In practice, that means:
 
@@ -121,7 +121,7 @@ The field groups behave like this:
 
 | Fields | `nil` | `[]` | values |
 | --- | --- | --- | --- |
-| `ScriptSources`, `StyleSources`, `ConnectSources` | keep only the framework defaults | keep only the framework defaults | append your values |
+| `ScriptSources`, `StyleSources`, `ConnectSources` | keep only the **Doors** defaults | keep only the **Doors** defaults | append your values |
 | `DefaultSources` | use the built-in default | omit the directive | emit your values |
 | `FormActions`, `ObjectSources`, `FrameSources`, `FrameAcestors`, `BaseURIAllow` | default to `'none'` | omit the directive | emit your values |
 | `ImgSources`, `FontSources`, `MediaSources`, `Sandbox`, `WorkerSources` | omit the directive | omit the directive | emit your values |
@@ -190,7 +190,7 @@ One important rule: resource types still apply the entry-point and output settin
 Three smaller router-level helpers are worth knowing about:
 
 - `doors.UseSessionCallback(...)`: observe **Doors** session create/delete events. `Create` receives the new session ID and the headers from the request that created it.
-- `doors.UseErrorPage(...)`: render your own page for internal framework errors. The callback receives the requested `doors.Location` and the `error`.
+- `doors.UseErrorPage(...)`: render your own page for internal runtime errors. The callback receives the requested `doors.Location` and the `error`.
 - `doors.UseLicense(...)`: load the license certificate used for non-AGPL production use.
 
 ## Rules
