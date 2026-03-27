@@ -9,14 +9,52 @@ import (
 	"github.com/go-rod/rod"
 )
 
-func reportInt(t *testing.T, page *rod.Page, id int) int {
+type reportSnapshot struct {
+	count  int
+	marker string
+}
+
+func reportSnapshotNow(t *testing.T, page *rod.Page) reportSnapshot {
 	t.Helper()
-	value := test.GetReportContent(t, page, id)
-	n, err := strconv.Atoi(value)
-	if err != nil {
-		t.Fatalf("report %d expected integer, got %q", id, value)
+	value := page.MustEval(`() => {
+		const count = document.querySelector("#report-0")?.textContent ?? ""
+		const marker = document.querySelector("#report-1")?.textContent ?? ""
+		return [count, marker]
+	}`)
+	items := value.Arr()
+	if len(items) != 2 {
+		t.Fatalf("expected two report values, got %v", value)
 	}
-	return n
+	count, err := strconv.Atoi(items[0].Str())
+	if err != nil {
+		t.Fatalf("report 0 expected integer, got %q", items[0].Str())
+	}
+	return reportSnapshot{
+		count:  count,
+		marker: items[1].Str(),
+	}
+}
+
+func waitSnapshot(t *testing.T, page *rod.Page, timeout time.Duration, cond func(reportSnapshot) bool, message string) reportSnapshot {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for {
+		snapshot := reportSnapshotNow(t, page)
+		if cond(snapshot) {
+			return snapshot
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s before timeout, got count=%d marker=%q", message, snapshot.count, snapshot.marker)
+		}
+		<-time.After(25 * time.Millisecond)
+	}
+}
+
+func waitSnapshotExact(t *testing.T, page *rod.Page, timeout time.Duration, count int, marker string, message string) {
+	t.Helper()
+	waitSnapshot(t, page, timeout, func(snapshot reportSnapshot) bool {
+		return snapshot.count == count && snapshot.marker == marker
+	}, message)
 }
 
 func TestScopeBlocking(t *testing.T) {
@@ -139,45 +177,10 @@ func TestScopeFrame(t *testing.T) {
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
-	test.ClickNow(t, page, "#f1")
-	test.ClickNow(t, page, "#f1")
-	test.ClickNow(t, page, "#f2")
-	test.ClickNow(t, page, "#f3")
-	test.ClickNow(t, page, "#f1")
-	test.ClickNow(t, page, "#f4")
-	<-time.After(100 * time.Millisecond)
-	count := reportInt(t, page, 0)
-	if count < 1 || count > 2 {
-		t.Fatalf("frame scope expected early progress between 1 and 2, got %d", count)
-	}
-	marker := test.GetReportContent(t, page, 1)
-	if count == 1 && marker != "2" {
-		t.Fatalf("frame scope first completion should be marker 2, got %q", marker)
-	}
-	if count == 2 && marker != "1" {
-		t.Fatalf("frame scope second completion should be marker 1, got %q", marker)
-	}
-	<-time.After(300 * time.Millisecond)
-	count = reportInt(t, page, 0)
-	if count < 2 || count > 3 {
-		t.Fatalf("frame scope expected mid progress between 2 and 3, got %d", count)
-	}
-	if marker = test.GetReportContent(t, page, 1); marker != "1" {
-		t.Fatalf("frame scope should still be on marker 1 before the final queued frame completes, got %q", marker)
-	}
-	<-time.After(250 * time.Millisecond)
-	count = reportInt(t, page, 0)
-	if count < 3 || count > 4 {
-		t.Fatalf("frame scope expected late progress between 3 and 4, got %d", count)
-	}
-	marker = test.GetReportContent(t, page, 1)
-	if count == 3 && marker != "1" {
-		t.Fatalf("frame scope third completion should still be marker 1, got %q", marker)
-	}
-	if count == 4 && marker != "3" {
-		t.Fatalf("frame scope final completion should be marker 3 once it lands early, got %q", marker)
-	}
-	<-time.After(400 * time.Millisecond)
+	test.ClickBurst(t, page, "#f1", "#f1", "#f2", "#f3", "#f1", "#f4")
+	waitSnapshotExact(t, page, 400*time.Millisecond, 1, "2", "frame scope first completion")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 3, "1", "frame scope queued completions")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 4, "3", "frame scope barrier completion")
 	test.TestReport(t, page, "4")
 	test.TestReportId(t, page, 1, "3")
 	//
@@ -200,43 +203,22 @@ func TestScopePipe(t *testing.T) {
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
-	test.ClickNow(t, page, "#p1")
-	test.ClickNow(t, page, "#p2")
-	test.ClickNow(t, page, "#p4")
-	test.ClickNow(t, page, "#p3")
-	test.ClickNow(t, page, "#p5")
+	test.ClickBurst(t, page, "#p1", "#p2", "#p4", "#p3", "#p5")
 
 	// noise
-	test.ClickNow(t, page, "#p4")
-	test.ClickNow(t, page, "#p2")
-	test.ClickNow(t, page, "#p3")
+	test.ClickBurst(t, page, "#p4", "#p2", "#p3")
 
 	<-time.After(450 * time.Millisecond)
+	snapshot := reportSnapshotNow(t, page)
+	if snapshot.count != 0 || snapshot.marker != "0" {
+		t.Fatalf("pipe scope should not complete anything before debounced serial work matures, got count=%d marker=%q", snapshot.count, snapshot.marker)
+	}
 
 	//noise
-	test.ClickNow(t, page, "#p4")
-	test.ClickNow(t, page, "#p2")
-	test.ClickNow(t, page, "#p3")
-
-	count := reportInt(t, page, 0)
-	if count < 1 || count > 2 {
-		t.Fatalf("pipe scope expected early progress between 1 and 2, got %d", count)
-	}
-
-	<-time.After(300 * time.Millisecond)
-	count = reportInt(t, page, 0)
-	if count < 2 || count > 3 {
-		t.Fatalf("pipe scope expected mid progress between 2 and 3, got %d", count)
-	}
-	marker := test.GetReportContent(t, page, 1)
-	if count == 2 && marker != "3" {
-		t.Fatalf("pipe scope should still be on marker 3 before the final frame-only action completes, got %q", marker)
-	}
-	if count == 3 && marker != "5" {
-		t.Fatalf("pipe scope final completion should be marker 5 once it lands early, got %q", marker)
-	}
-
-	<-time.After(300 * time.Millisecond)
+	test.ClickBurst(t, page, "#p4", "#p2", "#p3")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 1, "2", "pipe scope first serial completion")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 2, "3", "pipe scope second serial completion")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 3, "5", "pipe scope barrier completion")
 	test.TestReport(t, page, "3")
 	test.TestReportId(t, page, 1, "5")
 }

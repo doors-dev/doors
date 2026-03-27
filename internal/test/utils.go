@@ -257,6 +257,22 @@ func ClickNow(t *testing.T, page *rod.Page, selector string) {
 	el.MustClick()
 }
 
+func ClickBurst(t *testing.T, page *rod.Page, selectors ...string) {
+	t.Helper()
+	_, err := page.Eval(`(selectors) => {
+		for (const selector of selectors) {
+			const el = document.querySelector(selector)
+			if (!(el instanceof HTMLElement)) {
+				throw new Error("click burst element not found: " + selector)
+			}
+			el.click()
+		}
+	}`, selectors)
+	if err != nil {
+		t.Fatal("click burst failed: ", err)
+	}
+}
+
 func TestContent(t *testing.T, page *rod.Page, selector string, content string) {
 	el, err := page.Timeout(300 * time.Millisecond).Element(selector)
 	if err != nil {
