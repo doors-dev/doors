@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/doors-dev/doors/internal/test"
 	"github.com/go-rod/rod"
 )
 
@@ -16,7 +17,7 @@ func TestMain(m *testing.M) {
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
-	browser = rod.New().MustConnect()
+	browser = test.NewBrowser()
 	code := m.Run()
 	browser.MustClose()
 	os.Exit(code)
