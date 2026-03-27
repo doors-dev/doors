@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   test:
@@ -39,12 +38,12 @@ jobs:
           install-dependencies: true
 
       - name: Run test suite with coverage
-        run: go test -count=1 -p 1 -coverpkg=./... -coverprofile=coverage.out ./...
+        run: go test -count=1 -p 1 -coverpkg=./... -coverprofile=coverage.txt ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          use_oidc: true
-          files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.txt
           fail_ci_if_error: false
           verbose: true
