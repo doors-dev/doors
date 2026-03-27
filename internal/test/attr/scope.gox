@@ -30,10 +30,10 @@ elem (f *scopeFragment) scopePipeline() {
 		ss := &doors.ScopeSerial{}
 		fs := &doors.ScopeFrame{}
 	}
-	~(f.button("p1", []doors.Scope{ds.Scope(100 * time.Millisecond, 0)}, "1", false))
-	~(f.button("p2", []doors.Scope{fs.Scope(false), ds.Scope(100 * time.Millisecond, 0), ss}, "2", true))
-	~(f.button("p3", []doors.Scope{fs.Scope(false), ds2.Scope(100 * time.Millisecond, 0), ss}, "3", true))
-	~(f.button("p4", []doors.Scope{fs.Scope(false), ds2.Scope(100 * time.Millisecond, 0), ss}, "4", false))
+	~(f.button("p1", []doors.Scope{ds.Scope(250 * time.Millisecond, 0)}, "1", false))
+	~(f.button("p2", []doors.Scope{fs.Scope(false), ds.Scope(250 * time.Millisecond, 0), ss}, "2", true))
+	~(f.button("p3", []doors.Scope{fs.Scope(false), ds2.Scope(250 * time.Millisecond, 0), ss}, "3", true))
+	~(f.button("p4", []doors.Scope{fs.Scope(false), ds2.Scope(250 * time.Millisecond, 0), ss}, "4", false))
 	~(f.button("p5", []doors.Scope{fs.Scope(true)}, "5", true))
 }
 

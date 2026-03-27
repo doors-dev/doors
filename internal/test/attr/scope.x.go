@@ -33,10 +33,10 @@ func (f *scopeFragment) scopePipeline() gox.Elem {
 		ss := &doors.ScopeSerial{}
 		fs := &doors.ScopeFrame{}
 
-		__e = __c.Any(f.button("p1", []doors.Scope{ds.Scope(100 * time.Millisecond, 0)}, "1", false)); if __e != nil { return }
-		__e = __c.Any(f.button("p2", []doors.Scope{fs.Scope(false), ds.Scope(100 * time.Millisecond, 0), ss}, "2", true)); if __e != nil { return }
-		__e = __c.Any(f.button("p3", []doors.Scope{fs.Scope(false), ds2.Scope(100 * time.Millisecond, 0), ss}, "3", true)); if __e != nil { return }
-		__e = __c.Any(f.button("p4", []doors.Scope{fs.Scope(false), ds2.Scope(100 * time.Millisecond, 0), ss}, "4", false)); if __e != nil { return }
+		__e = __c.Any(f.button("p1", []doors.Scope{ds.Scope(250 * time.Millisecond, 0)}, "1", false)); if __e != nil { return }
+		__e = __c.Any(f.button("p2", []doors.Scope{fs.Scope(false), ds.Scope(250 * time.Millisecond, 0), ss}, "2", true)); if __e != nil { return }
+		__e = __c.Any(f.button("p3", []doors.Scope{fs.Scope(false), ds2.Scope(250 * time.Millisecond, 0), ss}, "3", true)); if __e != nil { return }
+		__e = __c.Any(f.button("p4", []doors.Scope{fs.Scope(false), ds2.Scope(250 * time.Millisecond, 0), ss}, "4", false)); if __e != nil { return }
 		__e = __c.Any(f.button("p5", []doors.Scope{fs.Scope(true)}, "5", true)); if __e != nil { return }
 	return })
 }
