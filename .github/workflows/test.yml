@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   test:
@@ -37,5 +38,13 @@ jobs:
           chrome-version: stable
           install-dependencies: true
 
-      - name: Run test suite
-        run: go test -count=1 -p 1 ./...
+      - name: Run test suite with coverage
+        run: go test -count=1 -p 1 -coverpkg=./... -coverprofile=coverage.out ./...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: coverage.out
+          fail_ci_if_error: false
+          verbose: true

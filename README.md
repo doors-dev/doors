@@ -1,5 +1,7 @@
 # Doors
 
+[![Coverage](https://codecov.io/gh/doors-dev/doors/branch/main/graph/badge.svg)](https://codecov.io/gh/doors-dev/doors)
+
 Doors is a server-driven UI runtime for building reactive web applications in Go.
 
 Instead of splitting product logic across a frontend app, an API layer, and a backend full of duplicated flow, Doors keeps application flow on the server and treats the browser as a renderer and input layer. You write interactive UI in Go, keep data and capabilities on the server, and get real-time updates without building the usual frontend/backend boundary first.
