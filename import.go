@@ -1,3 +1,5 @@
+//go:build doors_imports_disabled
+
 // doors
 // Copyright (c) 2026 doors dev LLC
 //

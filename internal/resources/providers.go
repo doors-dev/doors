@@ -62,6 +62,32 @@ func (e StaticPath) entryID(w idWriter) {
 	w.WriteString(e.Path)
 }
 
+type StaticBytes struct {
+	Content []byte
+}
+
+func (e StaticBytes) Read() ([]byte, error) {
+	return e.Content, nil
+}
+
+func (e StaticBytes) entryID(w idWriter) {
+	w.WriteString("content")
+	w.Write(e.Content)
+}
+
+type StaticString struct {
+	Content string
+}
+
+func (e StaticString) Read() ([]byte, error) {
+	return common.AsBytes(e.Content), nil
+}
+
+func (e StaticString) entryID(w idWriter) {
+	w.WriteString("content")
+	w.WriteString(e.Content)
+}
+
 type ScriptEntry interface {
 	Read() ([]byte, error)
 	Apply(*api.BuildOptions) error

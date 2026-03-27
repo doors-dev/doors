@@ -41,9 +41,9 @@ func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
 	}
 	if !disableGzip {
 		b.gzip = gzip.NewWriter(&b.buf)
-		b.printer = newResourcePrinter(defaultPrinter{b.gzip})
+		b.printer = defaultPrinter{b.gzip}
 	} else {
-		b.printer = newResourcePrinter(defaultPrinter{&b.buf})
+		b.printer = defaultPrinter{&b.buf}
 	}
 	return b
 }

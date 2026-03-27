@@ -64,6 +64,12 @@ func (r *proxyPrinter) init(job gox.Job) error {
 		return r.pip.Send(job)
 	}
 	if openJob.Kind == gox.KindRegular {
+		if strings.EqualFold(openJob.Tag, "head") {
+			return errors.New("Door does not support <head> as a container")
+		}
+		if strings.EqualFold(openJob.Tag, "title") {
+			return errors.New("Door does not support <title> as a container")
+		}
 		if strings.EqualFold(openJob.Tag, "script") {
 			r.wrapper = wrapperContainer{}
 			return r.pip.Send(job)

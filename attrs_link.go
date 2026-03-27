@@ -121,9 +121,9 @@ type Active struct {
 	Indicator []Indicator
 }
 
-// AHref prepares the href attribute for internal navigation
+// ALink prepares the href attribute for internal navigation
 // and configures dynamic link behavior.
-type AHref struct {
+type ALink struct {
 	// Target path model value. Required.
 	Model any
 	// Fragment identifier
@@ -148,7 +148,7 @@ type AHref struct {
 	OnError []Action
 }
 
-func (h *AHref) active() []any {
+func (h *ALink) active() []any {
 	if len(h.Active.Indicator) == 0 {
 		return nil
 	}
@@ -159,11 +159,11 @@ func (h *AHref) active() []any {
 	return []any{h.Active.PathMatcher, h.Active.QueryMatcher, h.Active.FragmentMatch, front.IntoIndicate(h.Active.Indicator)}
 }
 
-func (h AHref) Proxy(cur gox.Cursor, elem gox.Elem) error {
+func (h ALink) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(h, cur, elem)
 }
 
-func (h AHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
+func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	link, err := core.NewLink(h.Model)
 	if err != nil {

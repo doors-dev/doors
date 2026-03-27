@@ -60,7 +60,7 @@ func (t *titleMeta) Edit(cur gox.Cursor) error {
 		panic("title meta rendered twice")
 	}
 	t.rendered = true
-	defer t.mu.Unlock()
+	t.mu.Unlock()
 	if err := cur.Init("title"); err != nil {
 		return err
 	}
@@ -86,6 +86,9 @@ func (t *titleMeta) Edit(cur gox.Cursor) error {
 			return err
 		}
 	}
+	t.meta = nil
+	t.titleAttrs = nil
+	t.title = ""
 	return nil
 }
 

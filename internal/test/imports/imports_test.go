@@ -77,6 +77,12 @@ func TestModuleRaw(t *testing.T) {
 func TestModuleRawBytes(t *testing.T) {
 	testModule(t, moduleRawBytesHead)
 }
+func TestModuleRawBytesShort(t *testing.T) {
+	testModule(t, moduleRawBytesShortHead)
+}
+func TestModuleRawBytesModify(t *testing.T) {
+	testModule(t, moduleRawBytesModifyHead)
+}
 func TestModuleFS(t *testing.T) {
 	testModule(t, moduleBundleFSHead)
 }
@@ -97,6 +103,12 @@ func TestStyleExternal(t *testing.T) {
 
 func TestStyleBytes(t *testing.T) {
 	testStyle(t, styleBytesHead)
+}
+func TestStyleBytesShort(t *testing.T) {
+	testStyle(t, styleBytesShortHead)
+}
+func TestStyleBytesModify(t *testing.T) {
+	testStyle(t, styleBytesModifyHead)
 }
 func TestStyle(t *testing.T) {
 	testStyle(t, styleHead)

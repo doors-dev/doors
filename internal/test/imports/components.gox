@@ -11,138 +11,160 @@ import (
 
 elem staticFiles(_b doors.Source[test.Path]) {
 	~(fileHref())
-	~(fileRawHref())
 	~(fileSrc())
 	~(fileRawSrc())
+	~(fileHrefModify())
+	~(fileRawHrefModify())
+	~(fileSrcModify())
+	~(fileRawSrcModify())
 }
 
 elem fileHref() {
-	~>doors.AFileHref{
-		Path: modulePath + "/style.css",
-	} <link rel="stylesheet"/>
+	<link rel="stylesheet" href=(doors.ResourceLocalFS(modulePath + "/style.css"))/>
 }
 
 elem fileRawHref() {
-	~>doors.ARawFileHref{
-		Handler: func(w http.ResponseWriter, r *http.Request) {
-			w.Write(styleRawBytes)
-		},
-	} <link rel="stylesheet"/>
+	<link rel="stylesheet" href=(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(styleRawBytes)
+	})/>
 }
 
 elem fileSrc() {
-	~>doors.ASrc{
-		Path: modulePath + "/index.js",
-	} <script></script>
+	<script src=(doors.ResourceLocalFS(modulePath + "/index.js"))></script>
 }
 
 elem fileRawSrc() {
-	~>doors.ARawSrc{
-		Handler: func(w http.ResponseWriter, r *http.Request) {
-			w.Write(moduleBytes)
-		},
-	} <script></script>
+	<script src=(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(moduleBytes)
+	})></script>
+}
+
+elem fileHrefModify() {
+	<link rel="stylesheet" (doors.ResourceLocalFS(modulePath + "/style.css"))/>
+}
+
+elem fileRawHrefModify() {
+	<link rel="stylesheet" (doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(styleRawBytes)
+	}))/>
+}
+
+elem fileSrcModify() {
+	<script (doors.ResourceLocalFS(modulePath + "/index.js"))></script>
+}
+
+elem fileRawSrcModify() {
+	<script (doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(moduleBytes)
+	}))></script>
 }
 
 elem styleBytesHead(_b doors.Source[test.Path]) {
-	~doors.Style{
-		Source: doors.SourceStyleBytes(styleRawBytes),
-	}
+	<link rel="stylesheet" href=(doors.ResourceBytes(styleRawBytes))/>
+}
+
+elem styleBytesShortHead(_b doors.Source[test.Path]) {
+	<link rel="stylesheet" href=(styleRawBytes)/>
+}
+
+elem styleBytesModifyHead(_b doors.Source[test.Path]) {
+	<link rel="stylesheet" (doors.ResourceBytes(styleRawBytes))/>
 }
 
 elem styleExternalHead(_b doors.Source[test.Path]) {
-	~doors.Style{
-		Source: doors.SourceExternal(test.Host + "/module/style.css",),
-	}
+	<link rel="stylesheet" href=(doors.ResourceExternal(test.Host + "/module/style.css"))/>
 }
 
 elem styleHostedHead(_b doors.Source[test.Path]) {
-	~doors.Style{
-		Source: doors.SourceLocal("/module/style.css"),
-	}
+	<link rel="stylesheet" href=("/module/style.css")/>
 }
 
 elem styleHead(_b doors.Source[test.Path]) {
-	~doors.Style{
-		Source: doors.SourcePath(modulePath + "/style.css"),
-	}
+	<link rel="stylesheet" href=(doors.ResourceLocalFS(modulePath + "/style.css"))/>
 }
 
 elem moduleExternalHead(_b doors.Source[test.Path]) {
-	~doors.ScriptModule{
-		Source: doors.SourceExternal(test.Host + "/module/index.js"),
-		Specifier: "module",
-	}
+	<script
+		src=(doors.ResourceExternal(test.Host + "/module/index.js"))
+		type="module"
+		specifieronly="module"></script>
 }
 
 elem moduleBundleHostHead(_b doors.Source[test.Path]) {
-	~doors.ScriptModule{
-		Specifier: "module",
-		Source: doors.SourceLocal("/module/index.js"),
-	}
+	<script
+		src=("/module/index.js")
+		type="module"
+		specifieronly="module"></script>
 }
 
 elem moduleBundleFSHead(_b doors.Source[test.Path]) {
 	~{
 		moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src")
 	}
-	~doors.ScriptModule{
-		Specifier: "module",
-		Output: doors.ScriptOutputBundle,
-		Source: doors.SourceFS{
-			FS: moduleBundleDir,
-			Path: "index.ts",
-			Name: "dd",
-		},
-	}
+	<script
+		src=(doors.ResourceFS(moduleBundleDir, "index.ts"))
+		type="module"
+		output="bundle"
+		specifieronly="module"></script>
 }
 
 elem moduleRawBytesHead(_b doors.Source[test.Path]) {
-	~doors.ScriptModule{
-		Specifier: "module",
-		Source: doors.SourceScriptBytes{
-			Content: moduleRawBytes,
-		},
-		Output: doors.ScriptOutputRaw,
-	}
+	<script
+		src=(doors.ResourceBytes(moduleRawBytes))
+		type="module"
+		output="raw"
+		specifieronly="module"></script>
+}
+
+elem moduleRawBytesShortHead(_b doors.Source[test.Path]) {
+	<script
+		src=(moduleRawBytes)
+		type="module"
+		output="raw"
+		specifieronly="module"></script>
+}
+
+elem moduleRawBytesModifyHead(_b doors.Source[test.Path]) {
+	<script
+		(doors.ResourceBytes(moduleRawBytes))
+		type="module"
+		output="raw"
+		specifieronly="module"></script>
 }
 
 elem moduleRawHead(_b doors.Source[test.Path]) {
-	~doors.ScriptModule{
-		Specifier: "module",
-		Source: doors.SourcePath(modulePath + "/index.js"),
-		Output: doors.ScriptOutputRaw,
-	}
+	<script
+		src=(doors.ResourceLocalFS(modulePath + "/index.js"))
+		type="module"
+		output="raw"
+		specifieronly="module"></script>
 }
 
 elem moduleBytesHead(_b doors.Source[test.Path]) {
-	~doors.ScriptModule{
-		Specifier: "module",
-		Source: doors.SourceScriptBytes{
-			Content: moduleRawBytes,
-		},
-	}
+	<script
+		src=(doors.ResourceBytes(moduleRawBytes))
+		type="module"
+		specifieronly="module"></script>
 }
 
 elem moduleHead(_b doors.Source[test.Path]) {
 	<script
-		(doors.ScriptModule{
-			Specifier: "module",
-			Source: doors.SourcePath(modulePath + "/index.ts"),
-		})></script>
+		src=(doors.ResourceLocalFS(modulePath + "/index.ts"))
+		type="module"
+		specifier="module"></script>
 }
 
 elem reactHead(_b doors.Source[test.Path]) {
-	~doors.ScriptModule{
-		Specifier: "preact",
-		Source: doors.SourcePath(preactPath + "/index.tsx"),
-		Output: doors.ScriptOutputBundle,
-	}
-	~doors.ScriptModule{
-		Specifier: "react",
-		Source: doors.SourcePath(reactPath + "/index.tsx"),
-		Output: doors.ScriptOutputBundle,
-	}
+	<script
+		src=(doors.ResourceLocalFS(preactPath + "/index.tsx"))
+		type="module"
+		output="bundle"
+		specifieronly="preact"></script>
+	<script
+		src=(doors.ResourceLocalFS(reactPath + "/index.tsx"))
+		type="module"
+		output="bundle"
+		specifieronly="react"></script>
 }
 
 type ModuleFragment struct {

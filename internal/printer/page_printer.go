@@ -19,8 +19,7 @@ import (
 
 func NewPagePrinter(w io.Writer, ctx context.Context, static bool, importMap []byte, meta gox.Editor) gox.Printer {
 	cur := gox.NewCursor(ctx, defaultPrinter{w})
-	pagePrinter := &pagePrinter{cur: cur, static: static, importMap: importMap, meta: meta}
-	return newResourcePrinter(pagePrinter)
+	return &pagePrinter{cur: cur, static: static, importMap: importMap, meta: meta}
 }
 
 type pagePrinterState int

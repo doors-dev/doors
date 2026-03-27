@@ -36,6 +36,8 @@ func NewPipe(
 		renderFrame: renderFrame,
 		finalFrame:  finalFrame,
 	}
+	p.printFront = printer.NewResourcePrinter(pushFrontPrinter{p.buffer})
+	p.printBack = printer.NewResourcePrinter(pushBackPrinter{p.buffer})
 	p.cursor = gox.NewCursor(ctx, p)
 	return p
 }
@@ -45,6 +47,8 @@ type pipe struct {
 	buffer      Buffer
 	renderFrame shredder.Frame
 	finalFrame  *shredder.ValveFrame
+	printFront  gox.Printer
+	printBack   gox.Printer
 	cursor      gox.Cursor
 	err         error
 }
@@ -149,7 +153,7 @@ func (p *pipe) Send(j gox.Job) error {
 		if err := v.Attrs.ApplyMods(v.Ctx, v.Tag); err != nil {
 			return err
 		}
-		p.buffer.PushBack(j)
+		return p.printBack.Send(j)
 	case Renderable:
 		v.Render(p)
 	case *gox.JobComp:
@@ -166,18 +170,19 @@ func (p *pipe) Send(j gox.Job) error {
 			pip.RenderContent(comp)
 		})
 	default:
-		p.buffer.PushBack(j)
+		return p.printBack.Send(j)
 	}
 	return nil
 }
-
 func (p *pipe) push(j gox.Job) {
 	if v, ok := j.(*gox.JobHeadOpen); ok {
 		if err := v.Attrs.ApplyMods(v.Ctx, v.Tag); err != nil {
 			p.err = err
 		}
 	}
-	p.buffer.PushBack(j)
+	if err := p.printBack.Send(j); err != nil {
+		p.err = err
+	}
 }
 
 func (p *pipe) unshift(j gox.Job) {
@@ -186,5 +191,25 @@ func (p *pipe) unshift(j gox.Job) {
 			p.err = err
 		}
 	}
-	p.buffer.PushFront(j)
+	if err := p.printFront.Send(j); err != nil {
+		p.err = err
+	}
+}
+
+type pushFrontPrinter struct {
+	buf Buffer
+}
+
+func (p pushFrontPrinter) Send(j gox.Job) error {
+	p.buf.PushFront(j)
+	return nil
+}
+
+type pushBackPrinter struct {
+	buf Buffer
+}
+
+func (p pushBackPrinter) Send(j gox.Job) error {
+	p.buf.PushBack(j)
+	return nil
 }
