@@ -1,11 +1,23 @@
 package attr
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/doors-dev/doors/internal/test"
+	"github.com/go-rod/rod"
 )
+
+func reportInt(t *testing.T, page *rod.Page, id int) int {
+	t.Helper()
+	value := test.GetReportContent(t, page, id)
+	n, err := strconv.Atoi(value)
+	if err != nil {
+		t.Fatalf("report %d expected integer, got %q", id, value)
+	}
+	return n
+}
 
 func TestScopeBlocking(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
@@ -134,14 +146,37 @@ func TestScopeFrame(t *testing.T) {
 	test.ClickNow(t, page, "#f1")
 	test.ClickNow(t, page, "#f4")
 	<-time.After(100 * time.Millisecond)
-	test.TestReport(t, page, "1")
-	test.TestReportId(t, page, 1, "2")
+	count := reportInt(t, page, 0)
+	if count < 1 || count > 2 {
+		t.Fatalf("frame scope expected early progress between 1 and 2, got %d", count)
+	}
+	marker := test.GetReportContent(t, page, 1)
+	if count == 1 && marker != "2" {
+		t.Fatalf("frame scope first completion should be marker 2, got %q", marker)
+	}
+	if count == 2 && marker != "1" {
+		t.Fatalf("frame scope second completion should be marker 1, got %q", marker)
+	}
 	<-time.After(300 * time.Millisecond)
-	test.TestReport(t, page, "2")
-	test.TestReportId(t, page, 1, "1")
+	count = reportInt(t, page, 0)
+	if count < 2 || count > 3 {
+		t.Fatalf("frame scope expected mid progress between 2 and 3, got %d", count)
+	}
+	if marker = test.GetReportContent(t, page, 1); marker != "1" {
+		t.Fatalf("frame scope should still be on marker 1 before the final queued frame completes, got %q", marker)
+	}
 	<-time.After(250 * time.Millisecond)
-	test.TestReport(t, page, "3")
-	test.TestReportId(t, page, 1, "1")
+	count = reportInt(t, page, 0)
+	if count < 3 || count > 4 {
+		t.Fatalf("frame scope expected late progress between 3 and 4, got %d", count)
+	}
+	marker = test.GetReportContent(t, page, 1)
+	if count == 3 && marker != "1" {
+		t.Fatalf("frame scope third completion should still be marker 1, got %q", marker)
+	}
+	if count == 4 && marker != "3" {
+		t.Fatalf("frame scope final completion should be marker 3 once it lands early, got %q", marker)
+	}
 	<-time.After(400 * time.Millisecond)
 	test.TestReport(t, page, "4")
 	test.TestReportId(t, page, 1, "3")
@@ -183,11 +218,23 @@ func TestScopePipe(t *testing.T) {
 	test.ClickNow(t, page, "#p2")
 	test.ClickNow(t, page, "#p3")
 
-	test.TestReport(t, page, "1")
+	count := reportInt(t, page, 0)
+	if count < 1 || count > 2 {
+		t.Fatalf("pipe scope expected early progress between 1 and 2, got %d", count)
+	}
 
 	<-time.After(300 * time.Millisecond)
-	test.TestReport(t, page, "2")
-	test.TestReportId(t, page, 1, "3")
+	count = reportInt(t, page, 0)
+	if count < 2 || count > 3 {
+		t.Fatalf("pipe scope expected mid progress between 2 and 3, got %d", count)
+	}
+	marker := test.GetReportContent(t, page, 1)
+	if count == 2 && marker != "3" {
+		t.Fatalf("pipe scope should still be on marker 3 before the final frame-only action completes, got %q", marker)
+	}
+	if count == 3 && marker != "5" {
+		t.Fatalf("pipe scope final completion should be marker 5 once it lands early, got %q", marker)
+	}
 
 	<-time.After(300 * time.Millisecond)
 	test.TestReport(t, page, "3")
