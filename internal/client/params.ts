@@ -6,35 +6,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
-const license = document.currentScript!.dataset.license?.split(":")
-
-const agplMsg = "AGPL-3.0";
-
-
-if (license == null) {
-	console.info("[doors] " + agplMsg);
-} else {
-	const [id, tier, domain] = license
-	const isLocalHost = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)
-	const correctDomain = domain === "*" || location.hostname === domain || location.hostname.endsWith("." + domain);
-	if (!isLocalHost && !correctDomain) {
-		console.warn(
-			[
-				"[doors] Invalid license provided.",
-				"Id: " + id,
-				"Licensed domain: " + domain,
-				"AGPL-3.0 mode (see LICENSE).",
-			].join("\n")
-		);
-	} else {
-		console.info(
-			[
-				"[doors] " + tier + " license provided.",
-				...isLocalHost ? ["Running in localhost mode.", "Licensed domain: " + domain] : [],
-				"Id: " + id,
-			].join("\n")
-		);
-	}
+if (document.currentScript!.dataset.lic == null) {
+	console.info("DOORS AGPL-3.0-only")
 }
 
 export const id: string = document.currentScript!.id

@@ -15,7 +15,6 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 )
@@ -33,7 +32,7 @@ type router interface {
 	RemoveSession(string)
 	Conf() *common.SystemConf
 	PathMaker() path.PathMaker
-	License() license.License
+	License() string
 }
 
 func NewSession(r router) *Session {

@@ -315,12 +315,17 @@ func UseCSP(r Router, csp CSP) {
 	r.Use(router.UseCSP(&csp))
 }
 
-// UseLicense verifies and adds license certificate.
-// License is required for non AGPL3 complient use.
+// UseLicense stores a license string on the managed Doors client script.
+// When omitted, the client prints the AGPL notice.
 // You can purchase suitable license at https://doors.dev
 // or via email sales@doors.dev
-func UseLicense(r Router, cert string) {
-	r.Use(router.UseLicense(cert))
+func UseLicense(r Router, license string) {
+	r.Use(router.UseLicense(license))
+}
+
+// UseLicence is an alias of UseLicense.
+func UseLicence(r Router, license string) {
+	UseLicense(r, license)
 }
 
 func UseServerID(r Router, id string) {

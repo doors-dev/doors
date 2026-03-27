@@ -9,12 +9,10 @@
 package router
 
 import (
-	"log/slog"
 	"net/http"
 	"net/url"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router/model"
@@ -89,20 +87,9 @@ func UseCSP(csp *common.CSP) Use {
 	})
 }
 
-const issuer = "Doors5qRhZiAB4Fmhpd5Td2Rn4BwkFiqCdBMw7BzbCsp"
-
-func UseLicense(cert string) Use {
+func UseLicense(license string) Use {
 	return useFunc(func(rr *Router) {
-		lic, err := license.ReadCert(cert)
-		if err != nil {
-			slog.Error("license error", slog.String("error", err.Error()))
-			return
-		}
-		if lic.GetIssuer() != issuer {
-			slog.Error("license error", slog.String("error", "wrong issuer key"))
-			return
-		}
-		rr.lisence = lic
+		rr.license = license
 	})
 }
 

@@ -111,7 +111,7 @@ func TestRouteResourceAndFallback(t *testing.T) {
 	UseESConf(router, ESOptions{JSX: JSXReact(), Minify: false})
 	UseSystemConf(router, SystemConf{})
 	UseCSP(router, CSP{})
-	UseLicense(router, "invalid-cert")
+	UseLicense(router, "Doors Commercial")
 	UseServerID(router, "blue")
 
 	server := httptest.NewServer(router)
@@ -152,4 +152,14 @@ func TestRouteMatchRejectsRoot(t *testing.T) {
 	if (RouteFile{Path: ""}).Match(req) {
 		t.Fatal("expected file route to reject empty path")
 	}
+}
+
+func TestUseLicenceAlias(t *testing.T) {
+	router := NewRouter()
+	UseLicence(router, "Doors Commercial")
+
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	_, _, _ = readURL(t, server, "/missing")
 }

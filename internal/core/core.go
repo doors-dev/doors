@@ -17,7 +17,6 @@ import (
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
-	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -59,7 +58,7 @@ type Instance interface {
 	NewID() uint64
 	NewLink(any) (Link, error)
 	Runtime() shredder.Runtime
-	License() license.License
+	License() string
 	SetStatus(int)
 	SessionExpire(time.Duration)
 	SessionEnd()
@@ -147,7 +146,7 @@ func (c Core) SetStatus(status int) {
 	c.inst.SetStatus(status)
 }
 
-func (c Core) License() license.License {
+func (c Core) License() string {
 	return c.inst.License()
 }
 

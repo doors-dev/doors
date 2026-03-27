@@ -1,8 +1,6 @@
 package router
 
 import (
-	"crypto/ed25519"
-	"crypto/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,7 +9,6 @@ import (
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/router/model"
 	"github.com/evanw/esbuild/pkg/api"
@@ -139,25 +136,9 @@ func TestUseModelAndRoute(t *testing.T) {
 func TestUseLicenseAndServerIDValidation(t *testing.T) {
 	router := NewRouter()
 
-	UseLicense("not-a-valid-cert").apply(router)
-	if router.License() != nil {
-		t.Fatal("expected invalid license cert to be ignored")
-	}
-
-	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cert := &license.LicenseDomain{
-		Tier:   license.TierStartup,
-		Domain: "example.com",
-	}
-	if err := cert.Encode(privateKey); err != nil {
-		t.Fatal(err)
-	}
-	UseLicense(cert.GetCert()).apply(router)
-	if router.License() != nil {
-		t.Fatal("expected wrong issuer cert to be ignored")
+	UseLicense("Doors Commercial").apply(router)
+	if router.License() != "Doors Commercial" {
+		t.Fatal("expected license string to be stored")
 	}
 
 	defer func() {

@@ -12,7 +12,6 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/action"
-	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -82,8 +81,8 @@ func (h *helperInstance) Runtime() shredder.Runtime {
 	return nil
 }
 
-func (h *helperInstance) License() license.License {
-	return nil
+func (h *helperInstance) License() string {
+	return ""
 }
 
 func (h *helperInstance) SetStatus(int) {}

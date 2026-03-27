@@ -191,7 +191,7 @@ Three smaller router-level helpers are worth knowing about:
 
 - `doors.UseSessionCallback(...)`: observe **Doors** session create/delete events. `Create` receives the new session ID and the headers from the request that created it.
 - `doors.UseErrorPage(...)`: render your own page for internal runtime errors. The callback receives the requested `doors.Location` and the `error`.
-- `doors.UseLicense(...)`: load the license certificate used for non-AGPL production use.
+- `doors.UseLicense(...)`: attach a license string to the managed client script. When omitted, the client prints `Doors AGPL3.0`.
 
 ## Rules
 

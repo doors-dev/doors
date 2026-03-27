@@ -22,7 +22,6 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front/action"
-	"github.com/doors-dev/doors/internal/license"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -90,7 +89,7 @@ type Instance[M any] struct {
 	csp        *common.CSPCollector
 	importMap  *importMap
 	pageStatus atomic.Int32
-	meta  *titleMeta
+	meta       *titleMeta
 }
 
 func (inst *Instance[M]) init() error {
@@ -158,7 +157,7 @@ func (inst *Instance[M]) getStatus() int {
 	return http.StatusOK
 }
 
-func (d *Instance[M]) License() license.License {
+func (d *Instance[M]) License() string {
 	return d.session.router.License()
 }
 

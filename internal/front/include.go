@@ -9,8 +9,6 @@
 package front
 
 import (
-	"fmt"
-
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/gox"
@@ -63,10 +61,8 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.AttrSet("data-ping", conf.SolitairePing.Milliseconds()); err != nil {
 			return err
 		}
-		lic := core.License()
-		if lic != nil {
-			licInfo := fmt.Sprintf("%s:%s:%s", lic.GetId(), lic.GetTier().String(), lic.GetDomain())
-			if err := cur.AttrSet("data-license", licInfo); err != nil {
+		if lic := core.License(); lic != "" {
+			if err := cur.AttrSet("data-lic", lic); err != nil {
 				return err
 			}
 		}
