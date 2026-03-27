@@ -31,7 +31,7 @@ func (s scopeFunc) Scope(core core.Core) ScopeSet {
 // ScopeBlocking cancels new events while one is processing.
 // Useful for preventing double-clicks or duplicate submissions.
 type ScopeBlocking struct {
-	id front.ScopeAutoId
+	id front.AutoId
 }
 
 func (b *ScopeBlocking) Scope(core core.Core) ScopeSet {
@@ -45,7 +45,7 @@ func ScopeOnlyBlocking() []Scope {
 
 // ScopeSerial queues events and processes them in order.
 type ScopeSerial struct {
-	id front.ScopeAutoId
+	id front.AutoId
 }
 
 func (b *ScopeSerial) Scope(core core.Core) ScopeSet {
@@ -60,7 +60,7 @@ func ScopeOnlySerial() []Scope {
 // ScopeDebounce delays events by duration but guarantees execution
 // within the specified limit. New events reset the delay.
 type ScopeDebounce struct {
-	id front.ScopeAutoId
+	id front.AutoId
 }
 
 // Scope creates a debounced scope.
@@ -81,7 +81,7 @@ func ScopeOnlyDebounce(duration, limit time.Duration) []Scope {
 // Immediate events run normally. Frame events wait for all prior
 // events to finish, block new ones, then run exclusively.
 type ScopeFrame struct {
-	id front.ScopeAutoId
+	id front.AutoId
 }
 
 // Scope creates a frame-based scope.
@@ -96,7 +96,7 @@ func (d *ScopeFrame) Scope(frame bool) Scope {
 // ScopeConcurrent can be occupied by events with the same
 // groupId, other - blocked
 type ScopeConcurrent struct {
-	id front.ScopeAutoId
+	id front.AutoId
 }
 
 func (d *ScopeConcurrent) Scope(groupId int) Scope {
@@ -110,7 +110,7 @@ func (d *ScopeConcurrent) Scope(groupId int) Scope {
 // and the new event takes priority. This is useful if you need to
 // cancel pending indication of other events.
 type ScopeLatest struct {
-	id front.ScopeAutoId
+	id front.AutoId
 }
 
 func (b *ScopeLatest) Scope(core core.Core) ScopeSet {

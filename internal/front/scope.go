@@ -40,12 +40,12 @@ type Scope interface {
 	Scope(core core.Core) ScopeSet
 }
 
-type ScopeAutoId struct {
+type AutoId struct {
 	once sync.Once
 	id   string
 }
 
-func (s *ScopeAutoId) Id(inst core.Core) string {
+func (s *AutoId) Id(inst core.Core) string {
 	s.once.Do(func() {
 		id := inst.NewID()
 		s.id = fmt.Sprint(id)

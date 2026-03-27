@@ -55,13 +55,13 @@ elem pageC(b doors.Source[PathC]) {
 				<div id="path">c2</div>
 			})
 			
-			~>doors.AHref{
+			~>doors.ALink{
 				Model: PathC{
 					PathC1: true,
 				},
 			} <a>c1</a>
 			
-			~>doors.AHref{
+			~>doors.ALink{
 				Model: PathC{
 					PathC2: true,
 				},

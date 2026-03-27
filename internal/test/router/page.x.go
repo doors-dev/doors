@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.15+dirty
+// Managed by GoX v0.1.17+dirty
 
 package router
 
@@ -120,7 +120,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 						__e = __c.Close(); if __e != nil { return }
 					}
 				return })); if __e != nil { return }
-				__e = doors.AHref{
+				__e = doors.ALink{
 				Model: PathC{
 					PathC1: true,
 				},
@@ -133,7 +133,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 					}
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
-				__e = doors.AHref{
+				__e = doors.ALink{
 				Model: PathC{
 					PathC2: true,
 				},

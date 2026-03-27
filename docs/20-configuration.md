@@ -6,7 +6,7 @@ Reach for configuration when you need to change a few router-level things:
 
 - session or instance lifetime and runtime limits
 - Content Security Policy
-- esbuild behavior for scripts and modules
+- esbuild behavior for scripts, modules, and stylesheets
 - the server ID used in **Doors** runtime URLs and session cookie naming
 
 All of these are router-level settings:
@@ -135,9 +135,9 @@ The field groups behave like this:
 This is used for:
 
 - the main **Doors** client bundle
-- buildable `ScriptInline`
-- buildable `ScriptCommon`
-- buildable `ScriptModule`
+- managed inline `<script>...</script>` resources
+- buildable `<script src=(...)>` resources
+- buildable `<link rel="stylesheet" href=(...)>` and `<style>...</style>` resources
 
 Use `doors.UseESConf(...)` when you want different esbuild options.
 
@@ -179,7 +179,7 @@ type ESConf interface {
 }
 ```
 
-The `profile` value comes from the `Profile` field on `ScriptInline`, `ScriptCommon`, or `ScriptModule`.
+The `profile` value comes from the `profile` attribute on script resources.
 
 Your implementation must support the default profile `""`, because **Doors** uses it for its own main client build too.
 

@@ -65,20 +65,20 @@ type LinksFragment struct {
 }
 
 elem (f *LinksFragment) Main() {
-	~>doors.AHref{
+	~>doors.ALink{
 		Model: test.Path{
 			Vh: true,
 		},
 	} <a id="home">home</a>
 	
-	~>doors.AHref{
+	~>doors.ALink{
 		Model: test.Path{
 			Vp: true,
 			P: f.Param,
 		},
 	} <a id="param">param</a>
 	
-	~>doors.AHref{
+	~>doors.ALink{
 		Model: test.Path{
 			Vs: true,
 			P: f.Param,

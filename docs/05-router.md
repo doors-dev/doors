@@ -134,4 +134,4 @@ When you need more control, router-level helpers include:
 
 Use these when you are configuring the router itself, not when you are defining page URLs. Page URL design belongs in your path models.
 
-For the main router-level settings, see [Configuration](./19-configuration.md).
+For the main router-level settings, see [Configuration](./20-configuration.md).

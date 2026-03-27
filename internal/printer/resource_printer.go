@@ -81,6 +81,9 @@ func (p *resourcePrinter) scan(job gox.Job) error {
 }
 
 func (p *resourcePrinter) scanGenericSrc(openJob *gox.JobHeadOpen) error {
+	if openJob.Kind == gox.KindContainer {
+		return nil
+	}
 	attr, ok := openJob.Attrs.Find("src")
 	if !ok {
 		attr, ok = openJob.Attrs.Find("href")
@@ -91,18 +94,45 @@ func (p *resourcePrinter) scanGenericSrc(openJob *gox.JobHeadOpen) error {
 	if !attr.IsSet() {
 		return p.printer.Send(openJob)
 	}
+	cache := false
+	if a, ok := openJob.Attrs.Find("cache"); ok && a.IsSet() {
+		a.Unset()
+		cache = true
+	}
+	typ := ""
+	if a, ok := openJob.Attrs.Find("content-type"); ok && a.IsSet() {
+		typ, _ = a.Value().(string)
+		a.Unset()
+	}
 	src, ok := p.getSource(attr).(Source)
 	if !ok {
+		if cache {
+			return errors.New("cache attr requires ResourceFS, ResourceLocalFS, ResourceBytes, or ResourceString")
+		}
+		return p.printer.Send(openJob)
+	}
+	name := ""
+	if nameAttr, ok := openJob.Attrs.Find("name"); ok && nameAttr.IsSet() {
+		name, _ = nameAttr.Value().(string)
+		nameAttr.Unset()
+	}
+	if cache {
+		static, ok := src.(SourceStatic)
+		if !ok {
+			return errors.New("cache attr requires ResourceFS, ResourceLocalFS, ResourceBytes, or ResourceString")
+		}
+		core := openJob.Context().Value(ctex.KeyCore).(core.Core)
+		res, err := core.ResourceRegistry().Static(static.StaticEntry(), typ)
+		if err != nil {
+			return err
+		}
+		path := core.PathMaker().Resource(res, name)
+		attr.Set(path)
 		return p.printer.Send(openJob)
 	}
 	handler := src.Handler()
 	if handler == nil {
 		return errors.New("source does not provide a handler")
-	}
-	name := ""
-	nameAttr, ok := openJob.Attrs.Find("name")
-	if ok && nameAttr.IsSet() {
-		name, _ = nameAttr.Value().(string)
 	}
 	core := openJob.Context().Value(ctex.KeyCore).(core.Core)
 	hook, ok := core.RegisterHook(handler, nil)
@@ -111,9 +141,6 @@ func (p *resourcePrinter) scanGenericSrc(openJob *gox.JobHeadOpen) error {
 	}
 	path := core.PathMaker().Hook(core.InstanceID(), hook.DoorID, hook.HookID, name)
 	attr.Set(path)
-	if nameAttr != nil {
-		nameAttr.Unset()
-	}
 	return p.printer.Send(openJob)
 }
 
@@ -147,12 +174,12 @@ func (p *resourcePrinter) prepareStyle(job *gox.JobHeadOpen) error {
 	name := ""
 	output := styleDefault
 	for _, attr := range job.Attrs.List() {
-		if strings.EqualFold(attr.Name(), "name") {
+		if attr.Name() == "name" {
 			name, _ = attr.Value().(string)
 			attr.Unset()
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "output") && attr.IsSet() {
+		if attr.Name() == "output" && attr.IsSet() {
 			v, ok := p.parseStyleOutput(attr.Value())
 			if !ok {
 				return errors.New("unexpected style output kind")
@@ -161,12 +188,12 @@ func (p *resourcePrinter) prepareStyle(job *gox.JobHeadOpen) error {
 			output = v
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "private") && attr.IsSet() {
+		if attr.Name() == "private" && attr.IsSet() {
 			attr.Unset()
 			mode = resources.ModeCache
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "nocache") && attr.IsSet() {
+		if attr.Name() == "nocache" && attr.IsSet() {
 			attr.Unset()
 			mode = resources.ModeNoCache
 			continue
@@ -195,12 +222,12 @@ func (p *resourcePrinter) prepareLinkStyle(job *gox.JobHeadOpen) error {
 	var nameAttr gox.Attr
 	var hrefAttr gox.Attr
 	for _, attr := range job.Attrs.List() {
-		if strings.EqualFold(attr.Name(), "name") {
+		if attr.Name() == "name" {
 			nameAttr = attr
 			name, _ = attr.Value().(string)
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "output") && attr.IsSet() {
+		if attr.Name() == "output" && attr.IsSet() {
 			v, ok := p.parseStyleOutput(attr.Value())
 			if !ok {
 				return errors.New("unexpected style output kind")
@@ -209,17 +236,17 @@ func (p *resourcePrinter) prepareLinkStyle(job *gox.JobHeadOpen) error {
 			styleMode = v
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "private") && attr.IsSet() {
+		if attr.Name() == "private" && attr.IsSet() {
 			attr.Unset()
 			mode = resources.ModeCache
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "nocache") && attr.IsSet() {
+		if attr.Name() == "nocache" && attr.IsSet() {
 			attr.Unset()
 			mode = resources.ModeNoCache
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "href") && attr.IsSet() {
+		if attr.Name() == "href" && attr.IsSet() {
 			hrefAttr = attr
 			continue
 		}
@@ -449,9 +476,9 @@ type scriptRefScan struct {
 	unknown    bool
 	output     scriptOutout
 	specifier  string
-	only       bool
 	module     bool
 	profile    string
+	keepTag    bool
 }
 
 func (s *scriptRefScan) scan() error {
@@ -463,7 +490,7 @@ func (s *scriptRefScan) scan() error {
 		sourceName = "href"
 	}
 	for _, attr := range s.job.Attrs.List() {
-		if strings.EqualFold(attr.Name(), "output") && attr.IsSet() {
+		if attr.Name() == "output" && attr.IsSet() {
 			v, ok := s.p.parseScriptOutput(attr.Value())
 			if !ok {
 				return errors.New("unknown script output")
@@ -472,7 +499,7 @@ func (s *scriptRefScan) scan() error {
 			s.output = v
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "name") {
+		if attr.Name() == "name" {
 			s.name, _ = attr.Value().(string)
 			if s.kind == scriptRefModulePreload {
 				s.nameAttr = attr
@@ -481,37 +508,31 @@ func (s *scriptRefScan) scan() error {
 			}
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "profile") {
+		if attr.Name() == "profile" {
 			s.profile, _ = attr.Value().(string)
 			attr.Unset()
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "specifier") {
+		if attr.Name() == "specifier" {
 			s.specifier, _ = attr.Value().(string)
 			attr.Unset()
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "specifieronly") {
-			s.specifier, _ = attr.Value().(string)
-			attr.Unset()
-			s.only = true
-			continue
-		}
-		if strings.EqualFold(attr.Name(), "private") && attr.IsSet() {
+		if attr.Name() == "private" && attr.IsSet() {
 			attr.Unset()
 			s.mode = resources.ModeCache
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "nocache") && attr.IsSet() {
+		if attr.Name() == "nocache" && attr.IsSet() {
 			attr.Unset()
 			s.mode = resources.ModeNoCache
 			continue
 		}
-		if strings.EqualFold(attr.Name(), sourceName) && attr.IsSet() {
+		if attr.Name() == sourceName && attr.IsSet() {
 			s.sourceAttr = attr
 			continue
 		}
-		if strings.EqualFold(attr.Name(), "type") && attr.IsSet() {
+		if attr.Name() == "type" && attr.IsSet() {
 			typ, _ := attr.Value().(string)
 			switch s.kind {
 			case scriptRefScript:
@@ -558,7 +579,17 @@ func (s *scriptRefScan) scan() error {
 				value := attr.Value()
 				attr.Unset()
 				front.AttrsSetData(s.job.Attrs, name, value)
+				continue
 			}
+		}
+		if s.kind == scriptRefModulePreload && attr.Name() == "rel" {
+			continue
+		}
+		if strings.HasPrefix(attr.Name(), "data-d0") {
+			continue
+		}
+		if attr.IsSet() {
+			s.keepTag = true
 		}
 	}
 	return nil
@@ -576,6 +607,7 @@ func (s *scriptRefScan) build() error {
 			s.job.Attrs.Get("type").Set("module")
 		}
 	}
+	only := s.kind == scriptRefScript && s.specifier != "" && !s.keepTag
 	if s.unknown {
 		return s.p.printer.Send(s.job)
 	}
@@ -630,7 +662,7 @@ func (s *scriptRefScan) build() error {
 		if s.specifier != "" {
 			core.ModuleRegistry().Add(s.specifier, src)
 		}
-		if s.only {
+		if only {
 			if s.kind == scriptRefModulePreload && s.nameAttr != nil {
 				s.nameAttr.Unset()
 			}
@@ -659,7 +691,7 @@ func (s *scriptRefScan) build() error {
 		if s.specifier != "" {
 			core.ModuleRegistry().Add(s.specifier, path)
 		}
-		if s.only {
+		if only {
 			if s.kind == scriptRefModulePreload && s.nameAttr != nil {
 				s.nameAttr.Unset()
 			}
@@ -688,7 +720,7 @@ func (s *scriptRefScan) build() error {
 		if s.specifier != "" {
 			core.ModuleRegistry().Add(s.specifier, path)
 		}
-		if s.only {
+		if only {
 			if s.kind == scriptRefModulePreload && s.nameAttr != nil {
 				s.nameAttr.Unset()
 			}
@@ -717,7 +749,7 @@ func (s *scriptRefScan) build() error {
 			core.ModuleRegistry().Add(s.specifier, string(src))
 		}
 		core.CSPCollector().ScriptSource(string(src))
-		if s.only {
+		if only {
 			if s.kind == scriptRefModulePreload && s.nameAttr != nil {
 				s.nameAttr.Unset()
 			}
@@ -749,7 +781,7 @@ func (s *scriptRefScan) build() error {
 		if s.specifier != "" {
 			core.ModuleRegistry().Add(s.specifier, path)
 		}
-		if s.only {
+		if only {
 			if s.kind == scriptRefModulePreload && s.nameAttr != nil {
 				s.nameAttr.Unset()
 			}

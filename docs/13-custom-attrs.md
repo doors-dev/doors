@@ -84,7 +84,9 @@ Return `true` to remove it after the call.
 
 ## Raw
 
-Use `doors.ARawHook` with `$fetch(name, arg)` when you need lower-level transport control.
+Use `doors.ARawHook` when the Go side needs lower-level transport control.
+
+This is separate from whether the browser calls it through `$hook(...)` or `$fetch(...)`.
 
 That is the right fit for:
 
@@ -147,4 +149,4 @@ Reusing one `ADyn` value across several mounted elements means `Value(...)` and 
 - Use `AData` or `data:name=(...)` for script inputs instead of hardcoded JS literals.
 - Use `ADyn` when you want to keep the same DOM node and just change one attribute.
 - Use normal rendering and state when the whole UI should react, not just one attribute.
-- See [JavaScript](./14-javascript.md) for `$hook`, `$fetch`, `$data`, `HookErr`, and client-side details.
+- See [JavaScript](./15-javascript.md) for `$hook`, `$fetch`, `$data`, `HookErr`, and client-side details.

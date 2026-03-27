@@ -13,7 +13,7 @@ These utilities are for the cases where you want to:
 - force-end a session or just one instance
 - attach runtime IDs to logs or traces
 
-For session and instance storage, see [Storage & Auth](./16-storage-auth.md).
+For session and instance storage, see [Storage & Auth](./17-storage-auth.md).
 
 ## Use
 

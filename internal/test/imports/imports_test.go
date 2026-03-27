@@ -43,6 +43,15 @@ func testStyle(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	checkColor(t, page)
 }
 func testModule(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
+	page := modulePage(t, h)
+	defer page.Close()
+
+	<-time.After(100 * time.Millisecond)
+	test.TestReport(t, page, "hello")
+}
+
+func modulePage(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) *rod.Page {
+	t.Helper()
 	bro := test.NewBro(browser,
 		func(r doors.Router) {
 			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
@@ -56,13 +65,16 @@ func testModule(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
 		},
 	)
-	defer bro.Close()
+	t.Cleanup(func() {
+		bro.Close()
+	})
 
 	<-time.After(100 * time.Millisecond)
 	page := bro.Page(t, "/")
-	defer page.Close()
-	<-time.After(100 * time.Millisecond)
-	test.TestReport(t, page, "hello")
+	t.Cleanup(func() {
+		page.Close()
+	})
+	return page
 }
 
 func testValue(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
@@ -84,6 +96,31 @@ func testValue(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	defer page.Close()
 	<-time.After(100 * time.Millisecond)
 	test.TestReport(t, page, "hello")
+}
+
+func emptyPage(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) *rod.Page {
+	t.Helper()
+	bro := test.NewBro(browser,
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponseComp(&test.Page{
+					Source: r,
+					Header: "Testing Imports",
+					H:      h,
+					F:      &Empty{},
+				})
+			})
+			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
+		},
+	)
+	t.Cleanup(func() {
+		bro.Close()
+	})
+	page := bro.Page(t, "/")
+	t.Cleanup(func() {
+		page.Close()
+	})
+	return page
 }
 
 func getAttr(t *testing.T, page *rod.Page, selector string, name string) string {
@@ -128,6 +165,12 @@ func testStyleAttr(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, check
 func TestModule(t *testing.T) {
 	testModule(t, moduleHead)
 }
+func TestModuleVisible(t *testing.T) {
+	page := modulePage(t, moduleVisibleHead)
+	<-time.After(100 * time.Millisecond)
+	test.TestReport(t, page, "hello")
+	test.TestAttr(t, page, "#module-tag", "type", "module")
+}
 
 func TestModuleBytes(t *testing.T) {
 	testModule(t, moduleBytesHead)
@@ -148,7 +191,15 @@ func TestModuleRawBytesModify(t *testing.T) {
 	testModule(t, moduleRawBytesModifyHead)
 }
 func TestModulePreloadBytes(t *testing.T) {
-	testModule(t, modulePreloadBytesHead)
+	page := emptyPage(t, modulePreloadBytesHead)
+	test.TestAttr(t, page, `head link[rel="modulepreload"]`, "rel", "modulepreload")
+}
+func TestModulePreloadNamed(t *testing.T) {
+	page := emptyPage(t, modulePreloadNamedHead)
+	href := getAttr(t, page, `head link[rel="modulepreload"]`, "href")
+	if !strings.Contains(href, ".module-preload.js") {
+		t.Fatal("expected modulepreload href to contain .module-preload.js, got ", href)
+	}
 }
 func TestModuleFS(t *testing.T) {
 	testModule(t, moduleBundleFSHead)
@@ -208,6 +259,13 @@ func TestStyleNamed(t *testing.T) {
 		}
 	})
 }
+
+func TestModuleNamed(t *testing.T) {
+	page := modulePage(t, moduleHead)
+	<-time.After(100 * time.Millisecond)
+	test.TestReport(t, page, "hello")
+	test.TestMustNot(t, page, `script[src*="module.js"]`)
+}
 func TestStylePrivateNamed(t *testing.T) {
 	testStyleAttr(t, stylePrivateNamedHead, func(t *testing.T, href string) {
 		if !strings.Contains(href, "/h/") {
@@ -265,4 +323,37 @@ func TestFiles(t *testing.T) {
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
+	href := getAttr(t, page, "#cached-href", "href")
+	if !strings.Contains(href, "/r/") {
+		t.Fatal("expected cached href to use resource route, got ", href)
+	}
+	if !strings.Contains(href, ".hello.txt") {
+		t.Fatal("expected cached href to contain .hello.txt, got ", href)
+	}
+	href = getAttr(t, page, "#cached-href-modify", "href")
+	if !strings.Contains(href, "/r/") {
+		t.Fatal("expected cached href modify to use resource route, got ", href)
+	}
+	if !strings.Contains(href, ".hello-modify.txt") {
+		t.Fatal("expected cached href modify to contain .hello-modify.txt, got ", href)
+	}
+}
+
+func TestFileCachedBad(t *testing.T) {
+	bro := test.NewBro(browser,
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponseComp(&test.Page{
+					Source: r,
+					Header: "Testing Imports",
+					H:      fileCachedHrefBad,
+					F:      &Empty{},
+				})
+			})
+		},
+	)
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+	test.TestMust(t, page, `[data-fw="error"]`)
 }

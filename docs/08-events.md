@@ -293,7 +293,7 @@ Example:
 </script>
 ```
 
-See [Custom Attrs](./13-custom-attrs.md) and [JavaScript](./14-javascript.md).
+See [Custom Attrs](./13-custom-attrs.md) and [JavaScript](./15-javascript.md).
 
 ## Reuse
 
