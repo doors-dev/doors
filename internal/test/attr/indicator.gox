@@ -118,10 +118,37 @@ elem (f *indicatorFragment) restore() {
 
 elem (f *indicatorFragment) selectors() {
 	<div id="next" class="block"></div>
+	<div id="all-a" class="multi keep">all-a</div>
+	<div id="all-b" class="multi keep">all-b</div>
 	<div id="parent" class="block">
 		~(f.button("indicate-parent", doors.IndicatorOnlyAttrQueryParent(".block", "data-check", "true")))
 		~(f.button("indicate-self", doors.IndicatorOnlyContent("indication")))
 		~(f.button("indicate-selector", doors.IndicatorOnlyAttrQuery("#next", "data-check", "true")))
+		~(f.button("indicate-self-attr", doors.IndicatorOnlyAttr("data-self", "true")))
+		~>doors.AClick{
+			Indicator: doors.IndicatorOnlyClass("self-active"),
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				<-time.After(500 * time.Millisecond)
+				return false
+			},
+		} <button id="indicate-self-class">indicate-self-class</button>
+		~>doors.AClick{
+			Indicator: doors.IndicatorOnlyClassRemove("remove-me"),
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				<-time.After(500 * time.Millisecond)
+				return false
+			},
+		} <button id="indicate-self-class-remove" class="remove-me keep">indicate-self-class-remove</button>
+		~(f.button("indicate-query-content", doors.IndicatorOnlyContentQuery("#next", "content")))
+		~(f.button("indicate-query-class", doors.IndicatorOnlyClassQuery("#next", "query-class")))
+		~(f.button("indicate-query-class-remove", doors.IndicatorOnlyClassRemoveQuery("#next", "block")))
+		~(f.button("indicate-all-content", doors.IndicatorOnlyContentQueryAll(".multi", "all")))
+		~(f.button("indicate-all-attr", doors.IndicatorOnlyAttrQueryAll(".multi", "data-all", "true")))
+		~(f.button("indicate-all-class", doors.IndicatorOnlyClassQueryAll(".multi", "all-class")))
+		~(f.button("indicate-all-class-remove", doors.IndicatorOnlyClassRemoveQueryAll(".multi", "keep")))
+		~(f.button("indicate-parent-content", doors.IndicatorOnlyContentQueryParent(".block", "parent-content")))
+		~(f.button("indicate-parent-class", doors.IndicatorOnlyClassQueryParent(".block", "parent-class")))
+		~(f.button("indicate-parent-class-remove", doors.IndicatorOnlyClassRemoveQueryParent(".block", "block")))
 	</div>
 }
 

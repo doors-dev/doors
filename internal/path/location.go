@@ -46,7 +46,7 @@ func EqualLocation(a, b Location) bool {
 	return slices.Equal(a.Segments, b.Segments) && maps.EqualFunc(a.Query, b.Query, slices.Equal)
 }
 
-func NewLocationFromEscapedPath(s string) (Location, error) {
+func NewLocationFromEscapedURI(s string) (Location, error) {
 	u, err := url.Parse(s)
 	if err != nil {
 		return Location{}, err

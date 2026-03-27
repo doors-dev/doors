@@ -132,6 +132,45 @@ func TestDoorUpdateX(t *testing.T) {
 	test.TestReport(t, page, "channel closed")
 }
 
+func TestDoorXLifecycle(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentXDoor{}
+	})
+	page := bro.Page(t, "/")
+	defer bro.Close()
+	defer page.Close()
+
+	test.TestMust(t, page, "#x-init")
+
+	test.Click(t, page, "#xreload")
+	test.TestReport(t, page, "ok reload")
+	test.TestMust(t, page, "#x-init")
+
+	test.Click(t, page, "#xrebase")
+	test.TestReport(t, page, "ok rebase")
+	test.TestMust(t, page, "#x-rebased-root")
+	test.TestMust(t, page, "#x-rebased")
+
+	test.Click(t, page, "#xclear")
+	test.TestReport(t, page, "ok clear")
+	test.TestMustNot(t, page, "#x-rebased")
+
+	test.Click(t, page, "#xupdate")
+	test.TestReport(t, page, "ok update")
+	test.TestMust(t, page, "#x-updated")
+
+	test.Click(t, page, "#xunmount")
+	test.TestReport(t, page, "ok unmount")
+	test.TestMustNot(t, page, "#x-updated")
+
+	test.Click(t, page, "#xremount")
+	test.TestMust(t, page, "#x-updated")
+
+	test.Click(t, page, "#xreplace")
+	test.TestReport(t, page, "ok replace")
+	test.TestMust(t, page, "#x-replaced")
+}
+
 func TestDoorMultiple(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &FragmentMany{}
@@ -211,4 +250,145 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.Click(t, page, "#updateEditor")
 	test.TestMust(t, page, "#new2")
 	test.TestMust(t, page, "#presist2")
+}
+
+func TestDoorDetachedReplaceTransitions(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentDetachedReplace{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#replace-base")
+
+	test.Click(t, page, "#replace-detached")
+	test.TestReport(t, page, "ok replace")
+	test.TestMust(t, page, "#replace-detached")
+
+	test.Click(t, page, "#reload-after-replace")
+	test.TestReport(t, page, "channel err: replaced door can't be reloaded")
+
+	test.Click(t, page, "#update-after-replace")
+	test.TestReport(t, page, "channel closed")
+	test.TestMustNot(t, page, "#replace-updated")
+
+	test.Click(t, page, "#remount-after-replace")
+	test.TestMust(t, page, "#replace-updated")
+}
+
+func TestDoorDetachedUnmountRebaseTransitions(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentDetachedRebase{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#rebase-base")
+
+	test.Click(t, page, "#unmount-detached")
+	test.TestReport(t, page, "ok unmount")
+	test.TestMustNot(t, page, "#rebase-base")
+
+	test.Click(t, page, "#reload-after-unmount")
+	test.TestReport(t, page, "channel err: unmounted door can't be reloaded")
+
+	test.Click(t, page, "#rebase-after-unmount")
+	test.TestReport(t, page, "channel closed")
+	test.TestMustNot(t, page, "#rebased-detached-root")
+
+	test.Click(t, page, "#remount-after-rebase")
+	test.TestMust(t, page, "#rebased-detached-root")
+	test.TestMust(t, page, "#rebased-detached")
+}
+
+func TestDoorProxyMoveBetweenParents(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentProxyMove{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#frame1 #proxy-base")
+	test.TestMustNot(t, page, "#frame2 #proxy-base")
+
+	test.Click(t, page, "#rebase-proxy-move")
+	test.TestReport(t, page, "ok rebase")
+	test.TestMust(t, page, "#frame1 #proxy-moved-root")
+	test.TestMustNot(t, page, "#frame2 #proxy-moved-root")
+
+	test.Click(t, page, "#move-proxy")
+	test.TestMustNot(t, page, "#frame1 #proxy-moved-root")
+	test.TestMust(t, page, "#frame2 #proxy-moved-root")
+	test.TestMust(t, page, "#frame2 #proxy-moved")
+}
+
+func TestDoorHierarchyCascade(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentHierarchy{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#host1 #child-body")
+	test.TestMust(t, page, "#host1 #grand-init")
+	test.TestMustNot(t, page, "#host2 #child-body")
+
+	test.Click(t, page, "#move-child")
+	test.TestMustNot(t, page, "#host1 #child-body")
+	test.TestMust(t, page, "#host2 #child-body")
+	test.TestMust(t, page, "#host2 #grand-init")
+
+	test.Click(t, page, "#grand-update")
+	test.TestReport(t, page, "ok grand")
+	test.TestMust(t, page, "#host2 #grand-updated")
+
+	test.Click(t, page, "#remove-host2")
+	test.TestMustNot(t, page, "#host2")
+	test.TestMustNot(t, page, "#grand-updated")
+
+	test.Click(t, page, "#grand-update")
+	test.TestReport(t, page, "channel closed")
+}
+
+func TestDoorUpdateErrorTransition(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentErrorTransitions{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#error-base")
+	test.Click(t, page, "#update-error")
+	test.TestReport(t, page, "channel err: update boom")
+}
+
+func TestDoorReplaceErrorTransition(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentErrorTransitions{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#error-base")
+	test.Click(t, page, "#replace-error")
+	test.TestReport(t, page, "channel err: replace boom")
+}
+
+func TestDoorRebaseErrorTransition(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentErrorTransitions{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#error-base")
+	test.Click(t, page, "#rebase-error")
+	test.TestReport(t, page, "channel err: rebase boom")
 }

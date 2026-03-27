@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.15+dirty
+// Managed by GoX v0.1.17+dirty
 
 package attr
 
@@ -155,12 +155,72 @@ func (f *indicatorFragment) selectors() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
+			__e = __c.AttrSet("id", "all-a"); if __e != nil { return }
+			__e = __c.AttrSet("class", "multi keep"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("all-a"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "all-b"); if __e != nil { return }
+			__e = __c.AttrSet("class", "multi keep"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("all-b"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
 			__e = __c.AttrSet("id", "parent"); if __e != nil { return }
 			__e = __c.AttrSet("class", "block"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Any(f.button("indicate-parent", doors.IndicatorOnlyAttrQueryParent(".block", "data-check", "true"))); if __e != nil { return }
 			__e = __c.Any(f.button("indicate-self", doors.IndicatorOnlyContent("indication"))); if __e != nil { return }
 			__e = __c.Any(f.button("indicate-selector", doors.IndicatorOnlyAttrQuery("#next", "data-check", "true"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-self-attr", doors.IndicatorOnlyAttr("data-self", "true"))); if __e != nil { return }
+			__e = doors.AClick{
+			Indicator: doors.IndicatorOnlyClass("self-active"),
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				<-time.After(500 * time.Millisecond)
+				return false
+			},
+		}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+				ctx := __c.Context(); gox.Noop(ctx)
+				__e = __c.Init("button"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "indicate-self-class"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Text("indicate-self-class"); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })); if __e != nil { return }
+			__e = doors.AClick{
+			Indicator: doors.IndicatorOnlyClassRemove("remove-me"),
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				<-time.After(500 * time.Millisecond)
+				return false
+			},
+		}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+				ctx := __c.Context(); gox.Noop(ctx)
+				__e = __c.Init("button"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "indicate-self-class-remove"); if __e != nil { return }
+					__e = __c.AttrSet("class", "remove-me keep"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Text("indicate-self-class-remove"); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-query-content", doors.IndicatorOnlyContentQuery("#next", "content"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-query-class", doors.IndicatorOnlyClassQuery("#next", "query-class"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-query-class-remove", doors.IndicatorOnlyClassRemoveQuery("#next", "block"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-all-content", doors.IndicatorOnlyContentQueryAll(".multi", "all"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-all-attr", doors.IndicatorOnlyAttrQueryAll(".multi", "data-all", "true"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-all-class", doors.IndicatorOnlyClassQueryAll(".multi", "all-class"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-all-class-remove", doors.IndicatorOnlyClassRemoveQueryAll(".multi", "keep"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-parent-content", doors.IndicatorOnlyContentQueryParent(".block", "parent-content"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-parent-class", doors.IndicatorOnlyClassQueryParent(".block", "parent-class"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-parent-class-remove", doors.IndicatorOnlyClassRemoveQueryParent(".block", "block"))); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })

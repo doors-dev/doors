@@ -102,3 +102,38 @@ func TestNoSkip(t *testing.T) {
 	<-time.After(500 * time.Millisecond)
 	test.TestReport(t, page, "propagated")
 }
+
+func TestEqualSubAndGo(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamEqualFragment{
+				r: test.NewReporter(3),
+				b: doors.NewSourceEqual(state{}, func(new state, old state) bool {
+					return new.Int == old.Int
+				}),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestReportId(t, page, 0, "0")
+	test.TestContent(t, page, "#parity", "even")
+	<-time.After(150 * time.Millisecond)
+	test.TestReportId(t, page, 2, "go")
+
+	test.Click(t, page, "#same")
+	test.TestReportId(t, page, 0, "0")
+	test.TestContent(t, page, "#parity", "even")
+
+	test.Click(t, page, "#one")
+	test.TestReportId(t, page, 0, "1")
+	test.TestContent(t, page, "#parity", "odd")
+
+	test.Click(t, page, "#three")
+	test.TestReportId(t, page, 0, "3")
+	test.TestContent(t, page, "#parity", "odd")
+
+	test.Click(t, page, "#get")
+	test.TestReportId(t, page, 1, "3")
+}

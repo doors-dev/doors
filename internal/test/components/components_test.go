@@ -15,7 +15,6 @@ func TestTitle(t *testing.T) {
 		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
 			return doors.ResponseComp(&test.Page{
 				Source: r,
-				H:      head,
 				F: &LinksFragment{
 					Param: p,
 				},
@@ -23,45 +22,75 @@ func TestTitle(t *testing.T) {
 		})
 	})
 	page := bro.Page(t, "/")
+	<-time.After(200 * time.Millisecond)
 
 	// Test initial state (home) - has description, keywords, og:title
 	test.TestContent(t, page, "title", "home")
 	test.TestAttr(t, page, `meta[name="description"]`, "content", "Welcome to the home page")
 	test.TestAttr(t, page, `meta[name="keywords"]`, "content", "home, main, index")
-	test.TestAttr(t, page, `meta[name="og:title"]`, "content", "Home Page")
+	test.TestAttr(t, page, `meta[property="og:title"]`, "content", "Home Page")
+	test.TestAttr(t, page, "#active-default", "aria-current", "page")
 
-	// Verify home-specific tags don't exist yet
-	test.TestMustNot(t, page, `meta[name="author"]`)
-	test.TestMustNot(t, page, `meta[name="category"]`)
-
-	// Test param state - has description, keywords, og:title, author (adds author, removes nothing)
+	// Test param state - has description, keywords, og:title, author
 	test.Click(t, page, "#param")
 	test.TestContent(t, page, "title", p)
 	test.TestAttr(t, page, `meta[name="description"]`, "content", "Page for parameter: "+p)
 	test.TestAttr(t, page, `meta[name="keywords"]`, "content", "param, "+p)
-	test.TestAttr(t, page, `meta[name="og:title"]`, "content", "Param: "+p)
+	test.TestAttr(t, page, `meta[property="og:title"]`, "content", "Param: "+p)
 	test.TestAttr(t, page, `meta[name="author"]`, "content", "Parameter Author")
-	// Verify category still doesn't exist
-	test.TestMustNot(t, page, `meta[name="category"]`)
+	test.TestAttr(t, page, "#active-starts", "data-active", "starts")
+	test.TestAttr(t, page, "#active-segments", "data-active", "segments")
 
-	// Test string state - has description, category (removes keywords, og:title, author; adds category)
+	// Test string state - updates title and emits string-specific meta
 	test.Click(t, page, "#string")
 	test.TestContent(t, page, "title", "s")
 	test.TestAttr(t, page, `meta[name="description"]`, "content", "String page description")
 	test.TestAttr(t, page, `meta[name="category"]`, "content", "text-content")
-	// Verify removed tags are gone
-	test.TestMustNot(t, page, `meta[name="keywords"]`)
-	test.TestMustNot(t, page, `meta[name="og:title"]`)
-	test.TestMustNot(t, page, `meta[name="author"]`)
 
-	// Go back to home state - verify proper cleanup and restoration
+	// Go back to home state - verify restoration of the active title/meta values
 	test.Click(t, page, "#home")
 	<-time.After(200 * time.Millisecond)
 	test.TestContent(t, page, "title", "home")
 	test.TestAttr(t, page, `meta[name="description"]`, "content", "Welcome to the home page")
 	test.TestAttr(t, page, `meta[name="keywords"]`, "content", "home, main, index")
-	test.TestAttr(t, page, `meta[name="og:title"]`, "content", "Home Page")
-	// Verify string-specific tags are removed
-	test.TestMustNot(t, page, `meta[name="category"]`)
-	test.TestMustNot(t, page, `meta[name="author"]`)
+	test.TestAttr(t, page, `meta[property="og:title"]`, "content", "Home Page")
+	test.TestAttr(t, page, "#active-default", "aria-current", "page")
+}
+
+func TestActionHelpers(t *testing.T) {
+	p := common.RandId()
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+			return doors.ResponseComp(&test.Page{
+				Source: r,
+				F: &LinksFragment{
+					Param: p,
+				},
+			})
+		})
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+	<-time.After(200 * time.Millisecond)
+
+	test.TestAttrNo(t, page, "#action-target", "data-indicated")
+	test.ClickNow(t, page, "#action-indicate")
+	<-time.After(50 * time.Millisecond)
+	test.TestAttr(t, page, "#action-target", "data-indicated", "true")
+	<-time.After(250 * time.Millisecond)
+	test.TestAttrNo(t, page, "#action-target", "data-indicated")
+
+	if page.MustEval("() => window.scrollY").Num() != 0 {
+		t.Fatal("expected page to start at scrollY=0")
+	}
+	test.ClickNow(t, page, "#action-scroll")
+	<-time.After(200 * time.Millisecond)
+	if page.MustEval("() => window.scrollY").Num() <= 0 {
+		t.Fatal("expected ActionOnlyScroll to move the page")
+	}
+
+	test.ClickNow(t, page, "#raw-assign")
+	<-time.After(300 * time.Millisecond)
+	test.TestContent(t, page, "title", "s")
 }

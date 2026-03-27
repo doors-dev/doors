@@ -1,0 +1,40 @@
+package components
+
+import (
+	"context"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type lifecycleSessionKey struct{}
+type lifecycleInstanceKey struct{}
+
+type LifecycleFragment struct {
+	test.NoBeam
+}
+
+elem (f *LifecycleFragment) Main() {
+	<div id="session-id">~(doors.SessionId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="session-marker">~(doors.SessionStore(ctx).Init(lifecycleSessionKey{}, func() any {
+		return common.RandId()
+	}).(string))</div>
+	<div id="instance-marker">~(doors.InstanceStore(ctx).Init(lifecycleInstanceKey{}, func() any {
+		return common.RandId()
+	}).(string))</div>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			doors.InstanceEnd(ctx)
+			return false
+		},
+	} <button id="end-instance">end-instance</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			doors.SessionEnd(ctx)
+			return false
+		},
+	} <button id="end-session">end-session</button>
+}

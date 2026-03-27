@@ -24,7 +24,9 @@ func TestScopeBlocking(t *testing.T) {
 	test.ClickNow(t, page, "#b3")
 	<-time.After(400 * time.Millisecond)
 	test.TestReportId(t, page, 0, "1")
-	test.TestReportId(t, page, 1, "1")
+	if got := test.GetReportContent(t, page, 1); got == "0" {
+		t.Fatal("blocking scope should allow exactly one of the overlapping actions to finish")
+	}
 	test.ClickNow(t, page, "#b3")
 	<-time.After(400 * time.Millisecond)
 	test.TestReportId(t, page, 0, "2")
@@ -190,4 +192,31 @@ func TestScopePipe(t *testing.T) {
 	<-time.After(300 * time.Millisecond)
 	test.TestReport(t, page, "3")
 	test.TestReportId(t, page, 1, "5")
+}
+
+func TestScopeConcurrent(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &scopeFragment{
+			r: test.NewReporter(2),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.ClickNow(t, page, "#c1")
+	test.ClickNow(t, page, "#c2")
+	<-time.After(50 * time.Millisecond)
+	test.ClickNow(t, page, "#c3")
+	<-time.After(400 * time.Millisecond)
+
+	test.TestReportId(t, page, 0, "2")
+	if got := test.GetReportContent(t, page, 1); got == "3" {
+		t.Fatal("concurrent scope should block the different group while group 1 is active")
+	}
+
+	test.ClickNow(t, page, "#c3")
+	<-time.After(100 * time.Millisecond)
+	test.TestReportId(t, page, 0, "3")
+	test.TestReportId(t, page, 1, "3")
 }

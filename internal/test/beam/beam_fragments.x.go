@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.17+dirty
 
 package beam
 
@@ -255,5 +255,73 @@ func (f *BeamUpdateFragment) Main() gox.Elem {
 			return true
 		}),
 		f.r); if __e != nil { return }
+	return })
+}
+
+type BeamEqualFragment struct {
+	r *test.Reporter
+	b doors.Source[state]
+	p doors.Beam[string]
+	test.NoBeam
+}
+
+func (f *BeamEqualFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		if f.p == nil {
+			f.p = doors.NewBeamEqual(f.b, func(s state) string {
+				if s.Int%2 == 0 {
+					return "even"
+				}
+				return "odd"
+			}, func(new string, old string) bool {
+				return new == old
+			})
+		}
+		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+			return false
+		})
+
+		__e = __c.Any(doors.Sub(f.p, func(v string) gox.Elem {
+		return gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("div"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "parity"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Any(v); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })
+	})); if __e != nil { return }
+		__e = __c.Any(doors.Go(func(ctx context.Context) {
+		<-time.After(100 * time.Millisecond)
+		f.r.Update(ctx, 2, "go")
+	})); if __e != nil { return }
+		__e = __c.Many(test.Button("same", func(ctx context.Context) bool {
+			f.b.Update(ctx, state{
+				Int: 0,
+				Str: "same",
+			})
+			return false
+		}),
+		test.Button("one", func(ctx context.Context) bool {
+			f.b.Update(ctx, state{
+				Int: 1,
+			})
+			return false
+		}),
+		test.Button("three", func(ctx context.Context) bool {
+			f.b.Update(ctx, state{
+				Int: 3,
+			})
+			return false
+		}),
+		test.Button("get", func(ctx context.Context) bool {
+			f.r.Update(ctx, 1, fmt.Sprint(f.b.Get().Int))
+			return false
+		}),
+		f.r,); if __e != nil { return }
 	return })
 }

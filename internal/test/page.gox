@@ -9,6 +9,14 @@ type NoBeam struct{}
 
 func (f NoBeam) setBeam(_ doors.Source[Path]) {}
 
+type Beam struct {
+	B doors.Source[Path]
+}
+
+func (f *Beam) setBeam(b doors.Source[Path]) {
+	f.B = b
+}
+
 type Path struct {
 	Vh bool `path:""`
 	Vs bool `path:"/s"`

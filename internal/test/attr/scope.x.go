@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.15+dirty
+// Managed by GoX v0.1.17+dirty
 
 package attr
 
@@ -73,6 +73,16 @@ func (f *scopeFragment) Main() gox.Elem {
 		__e = __c.Any(f.button("f2", []doors.Scope{frame.Scope(false)}, "2", false)); if __e != nil { return }
 		__e = __c.Any(f.button("f3", []doors.Scope{frame.Scope(true)}, "3", true)); if __e != nil { return }
 		__e = __c.Any(f.button("f4", []doors.Scope{frame.Scope(true)}, "4", false)); if __e != nil { return }
+		latest := doors.ScopeOnlyLatest()
+
+		__e = __c.Any(f.buttonLatest("l1", latest, "1")); if __e != nil { return }
+		__e = __c.Any(f.buttonLatest("l2", latest, "2")); if __e != nil { return }
+		__e = __c.Any(f.buttonLatest("l3", latest, "3")); if __e != nil { return }
+		concurrent := &doors.ScopeConcurrent{}
+
+		__e = __c.Any(f.button("c1", []doors.Scope{concurrent.Scope(1)}, "1", true)); if __e != nil { return }
+		__e = __c.Any(f.button("c2", []doors.Scope{concurrent.Scope(1)}, "2", true)); if __e != nil { return }
+		__e = __c.Any(f.button("c3", []doors.Scope{concurrent.Scope(2)}, "3", false)); if __e != nil { return }
 		__e = __c.Any(f.scopePipeline()); if __e != nil { return }
 	return })
 }
@@ -91,12 +101,41 @@ func (f *scopeFragment) button(id string, scope []doors.Scope, marker string, de
 	return })
 }
 
+func (f *scopeFragment) buttonLatest(id string, scope []doors.Scope, marker string) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", id); if __e != nil { return }
+			__e = __c.AttrMod(doors.A(ctx, f.handlerLatest(scope, marker))); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(id); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
 func (f *scopeFragment) handler(scope []doors.Scope, marker string, delay bool) doors.Attr {
 	return doors.AClick{
 		Scope: scope,
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			if delay {
 				<-time.After(300 * time.Millisecond)
+			}
+			f.update(ctx, marker)
+			return false
+		},
+	}
+}
+
+func (f *scopeFragment) handlerLatest(scope []doors.Scope, marker string) doors.Attr {
+	return doors.AClick{
+		Scope: scope,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			select {
+			case <-time.After(300 * time.Millisecond):
+			case <-ctx.Done():
+				return false
 			}
 			f.update(ctx, marker)
 			return false

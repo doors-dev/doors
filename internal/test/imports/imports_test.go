@@ -1,6 +1,8 @@
 package imports
 
 import (
+	"io"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -98,6 +100,29 @@ func testValue(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	test.TestReport(t, page, "hello")
 }
 
+func testValueAttr(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, selector string, name string, check func(t *testing.T, value string)) {
+	t.Helper()
+	bro := test.NewBro(browser,
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponseComp(&test.Page{
+					Source: r,
+					Header: "Testing Imports",
+					H:      h,
+					F:      &ValueFragment{},
+				})
+			})
+			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
+		},
+	)
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+	<-time.After(100 * time.Millisecond)
+	test.TestReport(t, page, "hello")
+	check(t, getAttr(t, page, selector, name))
+}
+
 func emptyPage(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) *rod.Page {
 	t.Helper()
 	bro := test.NewBro(browser,
@@ -162,6 +187,26 @@ func testStyleAttr(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, check
 	check(t, getAttr(t, page, `head link[rel="stylesheet"]`, "href"))
 }
 
+func fetchText(t *testing.T, url string) string {
+	t.Helper()
+	if strings.HasPrefix(url, "/") {
+		url = test.Host + url
+	}
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status %d for %s", resp.StatusCode, url)
+	}
+	return string(body)
+}
+
 func TestModule(t *testing.T) {
 	testModule(t, moduleHead)
 }
@@ -218,11 +263,57 @@ func TestModuleProxy(t *testing.T) {
 func TestScriptInline(t *testing.T) {
 	testValue(t, scriptInlineHead)
 }
+func TestScriptInlineNamedExt(t *testing.T) {
+	testValueAttr(t, scriptInlineNamedExtHead, "#script-inline-ext", "src", func(t *testing.T, src string) {
+		if !strings.Contains(src, "/r/") && !strings.Contains(src, "/h/") {
+			t.Fatal("expected inline script to be served through resource or hook path, got ", src)
+		}
+		if !strings.HasSuffix(src, ".inline-script.js") {
+			t.Fatal("expected named inline script path to end with .inline-script.js, got ", src)
+		}
+		if strings.HasSuffix(src, ".inline-script.js.js") {
+			t.Fatal("expected named inline script path to avoid duplicate extension, got ", src)
+		}
+	})
+}
+func TestScriptInlineBytes(t *testing.T) {
+	testValue(t, scriptInlineBytesHead)
+}
 func TestScriptString(t *testing.T) {
 	testValue(t, scriptStringHead)
 }
+func TestScriptPrivate(t *testing.T) {
+	testValueAttr(t, scriptPrivateHead, "#script-private", "src", func(t *testing.T, src string) {
+		if !strings.Contains(src, "/h/") {
+			t.Fatal("expected private script path to use hook route, got ", src)
+		}
+		if !strings.HasSuffix(src, "/private-script.js") {
+			t.Fatal("expected private script path to end with /private-script.js, got ", src)
+		}
+	})
+}
+func TestScriptNoCache(t *testing.T) {
+	testValueAttr(t, scriptNoCacheHead, "#script-nocache", "src", func(t *testing.T, src string) {
+		if !strings.Contains(src, "/h/") {
+			t.Fatal("expected nocache script path to use hook route, got ", src)
+		}
+		if !strings.HasSuffix(src, "/nocache-script.js") {
+			t.Fatal("expected nocache script path to end with /nocache-script.js, got ", src)
+		}
+	})
+}
 func TestStyleHosted(t *testing.T) {
 	testStyle(t, styleHostedHead)
+}
+func TestStyleHostedRaw(t *testing.T) {
+	testStyleAttr(t, styleHostedRawHead, func(t *testing.T, href string) {
+		if !strings.Contains(href, "/module/style.css") {
+			t.Fatal("expected raw hosted stylesheet path to keep /module/style.css, got ", href)
+		}
+		if strings.Contains(href, "/h/") || strings.Contains(href, "/r/") {
+			t.Fatal("expected raw hosted stylesheet path to stay direct, got ", href)
+		}
+	})
 }
 func TestStyleExternal(t *testing.T) {
 	testStyle(t, styleExternalHead)
@@ -233,6 +324,23 @@ func TestStyleBytes(t *testing.T) {
 }
 func TestStyleInline(t *testing.T) {
 	testStyle(t, styleInlineHead)
+}
+func TestStyleRaw(t *testing.T) {
+	page := emptyPage(t, styleRawHead)
+	<-time.After(100 * time.Millisecond)
+	checkColor(t, page)
+	test.TestMust(t, page, "head style")
+}
+func TestStyleMinify(t *testing.T) {
+	testStyleAttr(t, styleMinifyHead, func(t *testing.T, href string) {
+		css := fetchText(t, href)
+		if strings.Contains(css, "\n") {
+			t.Fatal("expected minified stylesheet to avoid newlines, got ", css)
+		}
+		if !strings.Contains(css, "h1{color:red}") && !strings.Contains(css, "h1{color:red;}") {
+			t.Fatal("expected minified stylesheet content, got ", css)
+		}
+	})
 }
 func TestStyleBytesShort(t *testing.T) {
 	testStyle(t, styleBytesShortHead)
@@ -273,6 +381,39 @@ func TestStylePrivateNamed(t *testing.T) {
 		}
 		if !strings.HasSuffix(href, "/private.css") {
 			t.Fatal("expected private stylesheet path to end with /private.css, got ", href)
+		}
+	})
+}
+func TestStylePrivate(t *testing.T) {
+	testStyleAttr(t, stylePrivateHead, func(t *testing.T, href string) {
+		if !strings.Contains(href, "/h/") {
+			t.Fatal("expected private inline stylesheet path to use hook route, got ", href)
+		}
+		if !strings.HasSuffix(href, "/private-inline.css") {
+			t.Fatal("expected private inline stylesheet path to end with /private-inline.css, got ", href)
+		}
+	})
+}
+func TestStylePrivateNamedExt(t *testing.T) {
+	testStyleAttr(t, stylePrivateNamedExtHead, func(t *testing.T, href string) {
+		if !strings.Contains(href, "/h/") {
+			t.Fatal("expected private inline stylesheet path to use hook route, got ", href)
+		}
+		if !strings.HasSuffix(href, "/private-inline.css") {
+			t.Fatal("expected private inline stylesheet path to end with /private-inline.css, got ", href)
+		}
+		if strings.HasSuffix(href, "/private-inline.css.css") {
+			t.Fatal("expected private inline stylesheet path to avoid duplicate extension, got ", href)
+		}
+	})
+}
+func TestStyleNoCache(t *testing.T) {
+	testStyleAttr(t, styleNoCacheHead, func(t *testing.T, href string) {
+		if !strings.Contains(href, "/h/") {
+			t.Fatal("expected nocache inline stylesheet path to use hook route, got ", href)
+		}
+		if !strings.HasSuffix(href, "/nocache-inline.css") {
+			t.Fatal("expected nocache inline stylesheet path to end with /nocache-inline.css, got ", href)
 		}
 	})
 }
@@ -336,6 +477,27 @@ func TestFiles(t *testing.T) {
 	}
 	if !strings.Contains(href, ".hello-modify.txt") {
 		t.Fatal("expected cached href modify to contain .hello-modify.txt, got ", href)
+	}
+	href = getAttr(t, page, "#private-href", "href")
+	if !strings.Contains(href, "/h/") {
+		t.Fatal("expected private href to use hook route, got ", href)
+	}
+	if !strings.Contains(href, "/private.txt") {
+		t.Fatal("expected private href to contain /private.txt, got ", href)
+	}
+	href = getAttr(t, page, "#private-href-modify", "href")
+	if !strings.Contains(href, "/h/") {
+		t.Fatal("expected private href modify to use hook route, got ", href)
+	}
+	if !strings.Contains(href, "/private-modify.txt") {
+		t.Fatal("expected private href modify to contain /private-modify.txt, got ", href)
+	}
+	src := getAttr(t, page, "#private-frame", "src")
+	if !strings.Contains(src, "/h/") {
+		t.Fatal("expected private frame src to use hook route, got ", src)
+	}
+	if !strings.Contains(src, "/frame.html") {
+		t.Fatal("expected private frame src to contain /frame.html, got ", src)
 	}
 }
 

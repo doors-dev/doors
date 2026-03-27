@@ -215,3 +215,62 @@ elem (f *BeamUpdateFragment) Main() {
 		f.r
 	)
 }
+
+type BeamEqualFragment struct {
+	r *test.Reporter
+	b doors.Source[state]
+	p doors.Beam[string]
+	test.NoBeam
+}
+
+elem (f *BeamEqualFragment) Main() {
+	~{
+		if f.p == nil {
+			f.p = doors.NewBeamEqual(f.b, func(s state) string {
+				if s.Int%2 == 0 {
+					return "even"
+				}
+				return "odd"
+			}, func(new string, old string) bool {
+				return new == old
+			})
+		}
+		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+			return false
+		})
+	}
+	~(doors.Sub(f.p, elem(v string) {
+		<div id="parity">~(v)</div>
+	}))
+	~(doors.Go(func(ctx context.Context) {
+		<-time.After(100 * time.Millisecond)
+		f.r.Update(ctx, 2, "go")
+	}))
+	~(
+		test.Button("same", func(ctx context.Context) bool {
+			f.b.Update(ctx, state{
+				Int: 0,
+				Str: "same",
+			})
+			return false
+		}),
+		test.Button("one", func(ctx context.Context) bool {
+			f.b.Update(ctx, state{
+				Int: 1,
+			})
+			return false
+		}),
+		test.Button("three", func(ctx context.Context) bool {
+			f.b.Update(ctx, state{
+				Int: 3,
+			})
+			return false
+		}),
+		test.Button("get", func(ctx context.Context) bool {
+			f.r.Update(ctx, 1, fmt.Sprint(f.b.Get().Int))
+			return false
+		}),
+		f.r,
+	)
+}

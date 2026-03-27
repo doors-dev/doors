@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/doors-dev/doors/internal/core"
@@ -870,14 +871,21 @@ func (r *resource) render(p gox.Printer) error {
 	}
 	switch r.kind {
 	case resourceScript:
-		r.name += ".js"
+		r.name = resourceFileName(r.name, "js")
 		return r.renderScript(core, p)
 	case resourceStyle:
-		r.name += ".css"
+		r.name = resourceFileName(r.name, "css")
 		return r.renderStyle(core, p)
 	default:
 		panic("unknown resource kind")
 	}
+}
+
+func resourceFileName(name string, ext string) string {
+	if filepath.Ext(name) != "" {
+		return name
+	}
+	return name + "." + ext
 }
 
 func (r *resource) renderScript(core core.Core, p gox.Printer) error {

@@ -44,7 +44,7 @@ func testPath[V any](t *testing.T, path string, expected bool) (*V, Adapter[V]) 
 	if err != nil {
 		t.Error("Can't create adapter", err)
 	}
-	li, err := NewLocationFromString(path)
+	li, err := NewLocationFromEscapedURI(path)
 	if err != nil {
 		panic(err)
 	}

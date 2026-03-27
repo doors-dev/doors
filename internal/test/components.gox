@@ -3,7 +3,6 @@ package test
 import (
 	"context"
 	"fmt"
-	"net/http"
 	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/gox"
@@ -33,11 +32,11 @@ elem Document(p page) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			~>doors.ARawFileHref{
-				Handler: func(w http.ResponseWriter, r *http.Request) {},
-			} <link
+			<link
 				rel="icon"
-				type="image/png"/>
+				type="image/png"
+				href=(doors.ResourceBytes([]byte{}))
+				name="favicon.png"/>
 			~(p.head())
 		</head>
 		<body>

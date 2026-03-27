@@ -1,11 +1,10 @@
-// Managed by GoX v0.1.15+dirty
+// Managed by GoX v0.1.17+dirty
 
 package test
 
 import (
 	"context"
 	"fmt"
-	"net/http"
 	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/gox"
@@ -71,17 +70,14 @@ func Document(p page) gox.Elem {
 					__e = __c.AttrSet("content", "width=device-width, initial-scale=1.0"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
-				__e = doors.ARawFileHref{
-				Handler: func(w http.ResponseWriter, r *http.Request) {},
-			}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-					ctx := __c.Context(); gox.Noop(ctx)
-					__e = __c.InitVoid("link"); if __e != nil { return }
-					{
-						__e = __c.AttrSet("rel", "icon"); if __e != nil { return }
-						__e = __c.AttrSet("type", "image/png"); if __e != nil { return }
-					}
-					__e = __c.Submit(); if __e != nil { return }
-				return })); if __e != nil { return }
+				__e = __c.InitVoid("link"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("rel", "icon"); if __e != nil { return }
+					__e = __c.AttrSet("type", "image/png"); if __e != nil { return }
+					__e = __c.AttrSet("href", doors.ResourceBytes([]byte{})); if __e != nil { return }
+					__e = __c.AttrSet("name", "favicon.png"); if __e != nil { return }
+				}
+				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Any(p.head()); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }

@@ -74,7 +74,7 @@ func (m Match) Undo() (UndoPath, bool) {
 	return e, ok
 }
 
-var hookRegexp = regexp.MustCompile(`^/h/([0-9a-zA-Z]+)/(\d+)/(\d+)(/[^/]+)?$`)
+var hookRegexp = regexp.MustCompile(`^/h/([0-9a-zA-Z]+)/(\d+)/(\d+)(\?.*|/.*)?$`)
 var resourceRegexp = regexp.MustCompile(`^/r/([0-9a-zA-Z]+)(\.[^/]+)?$`)
 var syncPath = regexp.MustCompile(`^/s/([0-9a-zA-Z]+)(/)?$`)
 var undoPath = regexp.MustCompile(`^/u/([0-9a-zA-Z]+)(/.*)$`)
@@ -88,7 +88,7 @@ func (pm PathMaker) Prefix() string {
 }
 
 func (pm PathMaker) Match(r *http.Request) (Match, bool) {
-	path, ok := strings.CutPrefix(r.URL.Path, pm.Prefix())
+	path, ok := strings.CutPrefix(r.URL.RequestURI(), pm.Prefix())
 	if !ok {
 		return Match{}, false
 	}
@@ -138,7 +138,7 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 	if len(matches) != 0 {
 		instanceID := matches[1]
 		path := matches[2]
-		l, err := NewLocationFromEscapedPath(path)
+		l, err := NewLocationFromEscapedURI(path)
 		if err != nil {
 			return Match{}, false
 		}

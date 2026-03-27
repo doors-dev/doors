@@ -1,9 +1,10 @@
-// Managed by GoX v0.1.15+dirty
+// Managed by GoX v0.1.17+dirty
 
 package door
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	
 	"github.com/doors-dev/doors"
@@ -155,6 +156,146 @@ func (f *FragmentX) Main() gox.Elem {
 				__e = __c.AttrSet("id", "removex"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("R"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+	return })
+}
+
+type FragmentXDoor struct {
+	report doors.Door
+	frame doors.Door
+	n doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentXDoor) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, test.Report(s))
+}
+
+func (f *FragmentXDoor) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+	err, ok := <-ch
+	if !ok {
+		f.rep(ctx, "channel closed")
+		return false
+	}
+	if err != nil {
+		f.rep(ctx, "channel err: "+err.Error())
+		return false
+	}
+	f.rep(ctx, okMsg)
+	return false
+}
+
+func (f *FragmentXDoor) mount() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Any(&f.n); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentXDoor) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		f.n.Update(ctx, test.Marker("x-init"))
+		f.frame.Update(ctx, f.mount())
+
+		__e = __c.Any(&f.frame); if __e != nil { return }
+		__e = __c.Any(&f.report); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.n.XReload(ctx), "ok reload")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "xreload"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("xreload"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.n.XRebase(ctx, gox.Elem(func(__c gox.Cursor) (__e error) {
+				ctx := __c.Context(); gox.Noop(ctx)
+				__e = __c.Init("section"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "x-rebased-root"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Any(test.Marker("x-rebased")); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })), "ok rebase")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "xrebase"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("xrebase"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.n.XClear(ctx), "ok clear")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "xclear"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("xclear"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.n.XUpdate(ctx, test.Marker("x-updated")), "ok update")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "xupdate"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("xupdate"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.n.XUnmount(ctx), "ok unmount")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "xunmount"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("xunmount"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Any(test.Button("xremount", func(ctx context.Context) bool {
+		f.frame.Update(ctx, f.mount())
+		return false
+	})); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.n.XReplace(ctx, test.Marker("x-replaced")), "ok replace")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "xreplace"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("xreplace"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
@@ -520,5 +661,509 @@ func (f *LifeCycleFragment) newEditor() gox.Elem {
 			__e = __c.Any(&f.node); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+type FragmentDetachedReplace struct {
+	report doors.Door
+	frame doors.Door
+	node doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentDetachedReplace) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, test.Report(s))
+}
+
+func (f *FragmentDetachedReplace) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+	err, ok := <-ch
+	if !ok {
+		f.rep(ctx, "channel closed")
+		return false
+	}
+	if err != nil {
+		f.rep(ctx, "channel err: "+err.Error())
+		return false
+	}
+	f.rep(ctx, okMsg)
+	return false
+}
+
+func (f *FragmentDetachedReplace) mount() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Any(&f.node); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentDetachedReplace) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		f.node.Update(ctx, test.Marker("replace-base"))
+		f.frame.Update(ctx, f.mount())
+
+		__e = __c.Any(&f.frame); if __e != nil { return }
+		__e = __c.Any(&f.report); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XReplace(ctx, test.Marker("replace-detached")), "ok replace")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "replace-detached"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("replace-detached"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XReload(ctx), "ok reload")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "reload-after-replace"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("reload-after-replace"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XUpdate(ctx, test.Marker("replace-updated")), "ok update")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "update-after-replace"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("update-after-replace"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Any(test.Button("remount-after-replace", func(ctx context.Context) bool {
+		f.frame.Update(ctx, f.mount())
+		return false
+	})); if __e != nil { return }
+	return })
+}
+
+type FragmentDetachedRebase struct {
+	report doors.Door
+	frame doors.Door
+	node doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentDetachedRebase) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, test.Report(s))
+}
+
+func (f *FragmentDetachedRebase) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+	err, ok := <-ch
+	if !ok {
+		f.rep(ctx, "channel closed")
+		return false
+	}
+	if err != nil {
+		f.rep(ctx, "channel err: "+err.Error())
+		return false
+	}
+	f.rep(ctx, okMsg)
+	return false
+}
+
+func (f *FragmentDetachedRebase) mount() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Any(&f.node); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentDetachedRebase) rebased() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("section"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "rebased-detached-root"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(test.Marker("rebased-detached")); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentDetachedRebase) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		f.node.Update(ctx, test.Marker("rebase-base"))
+		f.frame.Update(ctx, f.mount())
+
+		__e = __c.Any(&f.frame); if __e != nil { return }
+		__e = __c.Any(&f.report); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XUnmount(ctx), "ok unmount")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "unmount-detached"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("unmount-detached"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XReload(ctx), "ok reload")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "reload-after-unmount"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("reload-after-unmount"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XRebase(ctx, f.rebased()), "ok rebase")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "rebase-after-unmount"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("rebase-after-unmount"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Any(test.Button("remount-after-rebase", func(ctx context.Context) bool {
+		f.frame.Update(ctx, f.mount())
+		return false
+	})); if __e != nil { return }
+	return })
+}
+
+type FragmentProxyMove struct {
+	report doors.Door
+	frame1 doors.Door
+	frame2 doors.Door
+	node doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentProxyMove) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, test.Report(s))
+}
+
+func (f *FragmentProxyMove) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+	err, ok := <-ch
+	if !ok {
+		f.rep(ctx, "channel closed")
+		return false
+	}
+	if err != nil {
+		f.rep(ctx, "channel err: "+err.Error())
+		return false
+	}
+	f.rep(ctx, okMsg)
+	return false
+}
+
+func (f *FragmentProxyMove) mountFrame1() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("section"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "frame1"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(&f.node); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentProxyMove) mountFrame2() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("section"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "frame2"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(&f.node); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentProxyMove) frame2Empty() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("section"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "frame2"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentProxyMove) rebased() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("section"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "proxy-moved-root"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(test.Marker("proxy-moved")); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentProxyMove) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		f.node.Update(ctx, test.Marker("proxy-base"))
+		f.frame1.Update(ctx, f.mountFrame1())
+		f.frame2.Update(ctx, f.frame2Empty())
+
+		__e = __c.Any(&f.frame1); if __e != nil { return }
+		__e = __c.Any(&f.frame2); if __e != nil { return }
+		__e = __c.Any(&f.report); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XRebase(ctx, f.rebased()), "ok rebase")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "rebase-proxy-move"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("rebase-proxy-move"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Any(test.Button("move-proxy", func(ctx context.Context) bool {
+		f.frame2.Update(ctx, f.mountFrame2())
+		return false
+	})); if __e != nil { return }
+	return })
+}
+
+type FragmentHierarchy struct {
+	report doors.Door
+	host1 doors.Door
+	host2 doors.Door
+	child doors.Door
+	grand doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentHierarchy) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, test.Report(s))
+}
+
+func (f *FragmentHierarchy) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+	err, ok := <-ch
+	if !ok {
+		f.rep(ctx, "channel closed")
+		return false
+	}
+	if err != nil {
+		f.rep(ctx, "channel err: "+err.Error())
+		return false
+	}
+	f.rep(ctx, okMsg)
+	return false
+}
+
+func (f *FragmentHierarchy) childBody() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("article"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "child-body"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(&f.grand); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentHierarchy) host1Body() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("section"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "host1"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(&f.child); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentHierarchy) host2Body() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("section"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "host2"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(&f.child); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentHierarchy) host2Empty() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("section"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "host2"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentHierarchy) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		f.grand.Update(ctx, test.Marker("grand-init"))
+		f.child.Update(ctx, f.childBody())
+		f.host1.Update(ctx, f.host1Body())
+		f.host2.Update(ctx, f.host2Empty())
+
+		__e = __c.Any(&f.host1); if __e != nil { return }
+		__e = __c.Any(&f.host2); if __e != nil { return }
+		__e = __c.Any(&f.report); if __e != nil { return }
+		__e = __c.Any(test.Button("move-child", func(ctx context.Context) bool {
+		f.host2.Update(ctx, f.host2Body())
+		return false
+	})); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.grand.XUpdate(ctx, test.Marker("grand-updated")), "ok grand")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "grand-update"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("grand-update"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Any(test.Button("remove-host2", func(ctx context.Context) bool {
+		f.host2.Delete(ctx)
+		return false
+	})); if __e != nil { return }
+	return })
+}
+
+type FragmentErrorTransitions struct {
+	report doors.Door
+	frame doors.Door
+	node doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentErrorTransitions) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, test.Report(s))
+}
+
+func (f *FragmentErrorTransitions) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+	err, ok := <-ch
+	if !ok {
+		f.rep(ctx, "channel closed")
+		return false
+	}
+	if err != nil {
+		f.rep(ctx, "channel err: "+err.Error())
+		return false
+	}
+	f.rep(ctx, okMsg)
+	return false
+}
+
+func (f *FragmentErrorTransitions) errElem(msg string) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		return errors.New(msg)
+	})
+}
+
+func (f *FragmentErrorTransitions) mount() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Any(&f.node); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentErrorTransitions) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		f.node.Update(ctx, test.Marker("error-base"))
+		f.frame.Update(ctx, f.mount())
+
+		__e = __c.Any(&f.frame); if __e != nil { return }
+		__e = __c.Any(&f.report); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XUpdate(ctx, f.errElem("update boom")), "ok update")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "update-error"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("update-error"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XReplace(ctx, f.errElem("replace boom")), "ok replace")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "replace-error"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("replace-error"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.XRebase(ctx, f.errElem("rebase boom")), "ok rebase")
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "rebase-error"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("rebase-error"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
 	return })
 }

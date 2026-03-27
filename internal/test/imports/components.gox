@@ -19,6 +19,9 @@ elem staticFiles(_b doors.Source[test.Path]) {
 	~(fileRawSrcModify())
 	~(fileCachedHref())
 	~(fileCachedHrefModify())
+	~(filePrivateHref())
+	~(filePrivateHrefModify())
+	~(framePrivateSrc())
 }
 
 elem fileHref() {
@@ -81,6 +84,31 @@ elem fileCachedHrefModify() {
 	</a>
 }
 
+elem filePrivateHref() {
+	<a
+		id="private-href"
+		href=(doors.ResourceBytes([]byte("hello")))
+		name="private.txt">
+		Download
+	</a>
+}
+
+elem filePrivateHrefModify() {
+	<a
+		id="private-href-modify"
+		(doors.ResourceBytes([]byte("hello")))
+		name="private-modify.txt">
+		Download
+	</a>
+}
+
+elem framePrivateSrc() {
+	<iframe
+		id="private-frame"
+		src=(doors.ResourceString(`<html><body>frame</body></html>`))
+		name="frame.html"></iframe>
+}
+
 elem fileCachedHrefBad(_b doors.Source[test.Path]) {
 	<a
 		href=(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +125,22 @@ elem styleBytesHead(_b doors.Source[test.Path]) {
 
 elem styleInlineHead(_b doors.Source[test.Path]) {
 	<style>
+		h1 {
+			color: red;
+		}
+	</style>
+}
+
+elem styleRawHead(_b doors.Source[test.Path]) {
+	<style output="raw">
+		h1 {
+			color: red;
+		}
+	</style>
+}
+
+elem styleMinifyHead(_b doors.Source[test.Path]) {
+	<style output="minify">
 		h1 {
 			color: red;
 		}
@@ -127,6 +171,10 @@ elem styleHostedHead(_b doors.Source[test.Path]) {
 	<link rel="stylesheet" href=("/module/style.css")/>
 }
 
+elem styleHostedRawHead(_b doors.Source[test.Path]) {
+	<link rel="stylesheet" href=("/module/style.css") output="raw"/>
+}
+
 elem styleHead(_b doors.Source[test.Path]) {
 	<link rel="stylesheet" href=(doors.ResourceLocalFS(modulePath + "/style.css"))/>
 }
@@ -144,6 +192,30 @@ elem styleNamedHead(_b doors.Source[test.Path]) {
 
 elem stylePrivateNamedHead(_b doors.Source[test.Path]) {
 	<link rel="stylesheet" href=(doors.ResourceBytes(styleRawBytes)) private name="private.css"/>
+}
+
+elem stylePrivateHead(_b doors.Source[test.Path]) {
+	<style private name="private-inline">
+		h1 {
+			color: red;
+		}
+	</style>
+}
+
+elem stylePrivateNamedExtHead(_b doors.Source[test.Path]) {
+	<style private name="private-inline.css">
+		h1 {
+			color: red;
+		}
+	</style>
+}
+
+elem styleNoCacheHead(_b doors.Source[test.Path]) {
+	<style nocache name="nocache-inline">
+		h1 {
+			color: red;
+		}
+	</style>
 }
 
 elem moduleExternalHead(_b doors.Source[test.Path]) {
@@ -261,8 +333,36 @@ elem scriptInlineHead(_b doors.Source[test.Path]) {
 	</script>
 }
 
+elem scriptInlineNamedExtHead(_b doors.Source[test.Path]) {
+	<script id="script-inline-ext" name="inline-script.js">
+		window.__importsValue = "hello"
+	</script>
+}
+
+elem scriptInlineBytesHead(_b doors.Source[test.Path]) {
+	<script
+		src=(doors.ResourceBytes([]byte(`window.__importsValue = "hello"`)))
+		output="inline"></script>
+}
+
 elem scriptStringHead(_b doors.Source[test.Path]) {
 	<script src=(doors.ResourceString(`window.__importsValue = "hello"`))></script>
+}
+
+elem scriptPrivateHead(_b doors.Source[test.Path]) {
+	<script
+		id="script-private"
+		src=(doors.ResourceString(`window.__importsValue = "hello"`))
+		private
+		name="private-script.js"></script>
+}
+
+elem scriptNoCacheHead(_b doors.Source[test.Path]) {
+	<script
+		id="script-nocache"
+		src=(doors.ResourceString(`window.__importsValue = "hello"`))
+		nocache
+		name="nocache-script.js"></script>
 }
 
 elem reactHead(_b doors.Source[test.Path]) {

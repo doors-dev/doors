@@ -2,6 +2,7 @@ package components
 
 import (
 	"context"
+	"time"
 	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
@@ -9,62 +10,115 @@ import (
 )
 
 elem head(b doors.Source[test.Path]) {
-	~(doors.TitleMeta(b, elem(p test.Path) {
-		~(if p.Vh {
+	~>(doors.Inject(0, b)) <div hidden id="head-anchor">
+		~(if ctx.Value(0).(test.Path).Vh {
 			<title>home</title>
 			<meta name="description" content="Welcome to the home page">
 			<meta name="keywords" content="home, main, index">
-			<meta name="og:title" content="Home Page">
-		} else if p.Vs {
+			<meta property="og:title" content="Home Page">
+		} else if ctx.Value(0).(test.Path).Vs {
 			<title>s</title>
 			<meta name="description" content="String page description">
 			<meta name="category" content="text-content">
 		} else {
-			<title>~(p.P)</title>
-			<meta name="description" content=("Page for parameter: " + p.P)>
-			<meta name="keywords" content=("param, " + p.P)>
-			<meta name="og:title" content=("Param: " + p.P)>
+			<title>~(ctx.Value(0).(test.Path).P)</title>
+			<meta name="description" content=("Page for parameter: " + ctx.Value(0).(test.Path).P)>
+			<meta name="keywords" content=("param, " + ctx.Value(0).(test.Path).P)>
+			<meta property="og:title" content=("Param: " + ctx.Value(0).(test.Path).P)>
 			<meta name="author" content="Parameter Author">
 		})
-	}))
-	~/* ~(doors.Head(b, func(p test.Path) doors.HeadData {
- 		if p.Vh {
- 			return doors.HeadData{
- 				Title: "home",
- 				Meta: map[string]string{
- 					"description": "Welcome to the home page",
- 					"keywords": "home, main, index",
- 					"og:title": "Home Page",
- 				},
- 			}
- 		}
- 		if p.Vs {
- 			return doors.HeadData{
- 				Title: "s",
- 				Meta: map[string]string{
- 					"description": "String page description",
- 					"category": "text-content",
- 				},
- 			}
- 		}
- 		return doors.HeadData{
- 			Title: p.P,
- 			Meta: map[string]string{
- 				"description": "Page for parameter: " + p.P,
- 				"keywords": "param, " + p.P,
- 				"og:title": "Param: " + p.P,
- 				"author": "Parameter Author",
- 			},
- 		}
- 	})) */
+	</div>
 }
 
 type LinksFragment struct {
-	test.NoBeam
+	test.Beam
 	Param string
 }
 
 elem (f *LinksFragment) Main() {
+	~(head(f.B))
+	<div hidden id="active-links">
+		~>doors.ALink{
+			Model: test.Path{
+				Vh: true,
+			},
+			Active: doors.Active{
+				Indicator: doors.IndicatorOnlyAttr("aria-current", "page"),
+			},
+		} <a id="active-default">active-default</a>
+		~>doors.ALink{
+			Model: test.Path{
+				Vp: true,
+				P: f.Param,
+			},
+			Active: doors.Active{
+				PathMatcher: doors.PathMatcherStarts(),
+				Indicator: doors.IndicatorOnlyAttr("data-active", "starts"),
+			},
+		} <a id="active-starts">active-starts</a>
+		~>doors.ALink{
+			Model: test.Path{
+				Vp: true,
+				P: f.Param,
+			},
+			Active: doors.Active{
+				PathMatcher: doors.PathMatcherSegments(0),
+				Indicator: doors.IndicatorOnlyAttr("data-active", "segments"),
+			},
+		} <a id="active-segments">active-segments</a>
+		~>doors.ALink{
+			Model: test.Path{
+				Vh: true,
+			},
+			Fragment: "details",
+			Active: doors.Active{
+				QueryMatcher: doors.QueryMatcherOnlyIgnoreAll(),
+				FragmentMatch: true,
+				Indicator: doors.IndicatorOnlyAttr("data-active", "fragment"),
+			},
+		} <a id="active-fragment">active-fragment</a>
+		~>doors.ALink{
+			Model: test.Path{
+				Vh: true,
+			},
+			Active: doors.Active{
+				QueryMatcher: []doors.QueryMatcher{
+					doors.QueryMatcherIgnoreSome("page"),
+					doors.QueryMatcherSome("mode"),
+					doors.QueryMatcherIfPresent("optional"),
+				},
+				Indicator: doors.IndicatorOnlyAttr("data-active", "query"),
+			},
+		} <a id="active-query">active-query</a>
+		~>doors.ALink{
+			Model: test.Path{
+				Vh: true,
+			},
+			Active: doors.Active{
+				QueryMatcher: doors.QueryMatcherOnlyIgnoreSome("page"),
+				Indicator: doors.IndicatorOnlyAttr("data-active", "only-ignore-some"),
+			},
+		} <a id="active-query-only-ignore-some">active-query-only-ignore-some</a>
+		~>doors.ALink{
+			Model: test.Path{
+				Vh: true,
+			},
+			Active: doors.Active{
+				QueryMatcher: doors.QueryMatcherOnlySome("mode"),
+				Indicator: doors.IndicatorOnlyAttr("data-active", "only-some"),
+			},
+		} <a id="active-query-only-some">active-query-only-some</a>
+		~>doors.ALink{
+			Model: test.Path{
+				Vh: true,
+			},
+			Active: doors.Active{
+				QueryMatcher: doors.QueryMatcherOnlyIfPresent("optional"),
+				Indicator: doors.IndicatorOnlyAttr("data-active", "only-if-present"),
+			},
+		} <a id="active-query-only-if-present">active-query-only-if-present</a>
+	</div>
+	
 	~>doors.ALink{
 		Model: test.Path{
 			Vh: true,
@@ -86,6 +140,28 @@ elem (f *LinksFragment) Main() {
 	} <a id="string">string</a>
 	<br>
 	<br>
+	<div id="action-target">action-target</div>
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			r.After(doors.ActionOnlyLocationRawAssign(test.Host + "/s"))
+			return false
+		},
+	} <button id="raw-assign">raw-assign</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			r.After(doors.ActionOnlyIndicate(
+				doors.IndicatorOnlyAttrQuery("#action-target", "data-indicated", "true"),
+				200 * time.Millisecond,
+			))
+			return false
+		},
+	} <button id="action-indicate">action-indicate</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			r.After(doors.ActionOnlyScroll("#scroll-target", false))
+			return false
+		},
+	} <button id="action-scroll">action-scroll</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			r.After(doors.ActionOnlyEmit("alert", "Hello!"))
@@ -99,4 +175,6 @@ elem (f *LinksFragment) Main() {
 			alert(message)
 		})
 	</script>
+	<div style="height: 1800px"></div>
+	<div id="scroll-target">scroll-target</div>
 }

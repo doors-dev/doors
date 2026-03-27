@@ -209,7 +209,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}
 	return nil
 }
-
+/*
 // ARawSrc prepares the src attribute for a downloadable resource
 // served directly and privately through a custom handler.
 type ARawSrc struct {
@@ -332,4 +332,4 @@ func (s ARawFileHref) Modify(ctx context.Context, _ string, attrs gox.Attrs) err
 	}
 	attrs.Get("href").Set(link)
 	return nil
-}
+} */
