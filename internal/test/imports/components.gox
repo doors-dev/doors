@@ -63,6 +63,14 @@ elem styleBytesHead(_b doors.Source[test.Path]) {
 	<link rel="stylesheet" href=(doors.ResourceBytes(styleRawBytes))/>
 }
 
+elem styleInlineHead(_b doors.Source[test.Path]) {
+	<style>
+		h1 {
+			color: red;
+		}
+	</style>
+}
+
 elem styleBytesShortHead(_b doors.Source[test.Path]) {
 	<link rel="stylesheet" href=(styleRawBytes)/>
 }
@@ -71,8 +79,16 @@ elem styleBytesModifyHead(_b doors.Source[test.Path]) {
 	<link rel="stylesheet" (doors.ResourceBytes(styleRawBytes))/>
 }
 
+elem styleStringHead(_b doors.Source[test.Path]) {
+	<link rel="stylesheet" href=(doors.ResourceString(string(styleRawBytes)))/>
+}
+
 elem styleExternalHead(_b doors.Source[test.Path]) {
 	<link rel="stylesheet" href=(doors.ResourceExternal(test.Host + "/module/style.css"))/>
+}
+
+elem styleProxyHead(_b doors.Source[test.Path]) {
+	<link rel="stylesheet" href=(doors.ResourceProxy(test.Host + "/module/style.css"))/>
 }
 
 elem styleHostedHead(_b doors.Source[test.Path]) {
@@ -81,6 +97,21 @@ elem styleHostedHead(_b doors.Source[test.Path]) {
 
 elem styleHead(_b doors.Source[test.Path]) {
 	<link rel="stylesheet" href=(doors.ResourceLocalFS(modulePath + "/style.css"))/>
+}
+
+elem styleFSHead(_b doors.Source[test.Path]) {
+	~{
+		moduleDir, _ := fs.Sub(moduleFS, "module_src")
+	}
+	<link rel="stylesheet" href=(doors.ResourceFS(moduleDir, "style.css"))/>
+}
+
+elem styleNamedHead(_b doors.Source[test.Path]) {
+	<link rel="stylesheet" href=(doors.ResourceBytes(styleRawBytes)) name="named.css"/>
+}
+
+elem stylePrivateNamedHead(_b doors.Source[test.Path]) {
+	<link rel="stylesheet" href=(doors.ResourceBytes(styleRawBytes)) private name="private.css"/>
 }
 
 elem moduleExternalHead(_b doors.Source[test.Path]) {
@@ -132,6 +163,13 @@ elem moduleRawBytesModifyHead(_b doors.Source[test.Path]) {
 		specifieronly="module"></script>
 }
 
+elem modulePreloadBytesHead(_b doors.Source[test.Path]) {
+	<link
+		rel="modulepreload"
+		href=(doors.ResourceBytes(moduleRawBytes))
+		specifieronly="module"/>
+}
+
 elem moduleRawHead(_b doors.Source[test.Path]) {
 	<script
 		src=(doors.ResourceLocalFS(modulePath + "/index.js"))
@@ -147,11 +185,35 @@ elem moduleBytesHead(_b doors.Source[test.Path]) {
 		specifieronly="module"></script>
 }
 
+elem moduleStringHead(_b doors.Source[test.Path]) {
+	<script
+		src=(doors.ResourceString(string(moduleRawBytes)))
+		type="module"
+		specifieronly="module"></script>
+}
+
+elem moduleProxyHead(_b doors.Source[test.Path]) {
+	<script
+		src=(doors.ResourceProxy(test.Host + "/module/index.js"))
+		type="module"
+		specifieronly="module"></script>
+}
+
 elem moduleHead(_b doors.Source[test.Path]) {
 	<script
 		src=(doors.ResourceLocalFS(modulePath + "/index.ts"))
 		type="module"
 		specifier="module"></script>
+}
+
+elem scriptInlineHead(_b doors.Source[test.Path]) {
+	<script>
+		window.__importsValue = "hello"
+	</script>
+}
+
+elem scriptStringHead(_b doors.Source[test.Path]) {
+	<script src=(doors.ResourceString(`window.__importsValue = "hello"`))></script>
 }
 
 elem reactHead(_b doors.Source[test.Path]) {
@@ -193,6 +255,17 @@ elem (f *ReactFragment) Main() {
 	<script>
 		const app = await import("react")
 		app.init(document.getElementById("react"))
+	</script>
+}
+
+type ValueFragment struct {
+	test.NoBeam
+}
+
+elem (f *ValueFragment) Main() {
+	<div id="report-0"></div>
+	<script>
+		document.getElementById("report-0").innerHTML = window.__importsValue
 	</script>
 }
 

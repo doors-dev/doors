@@ -1,6 +1,7 @@
 package imports
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -64,12 +65,75 @@ func testModule(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	test.TestReport(t, page, "hello")
 }
 
+func testValue(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
+	bro := test.NewBro(browser,
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponseComp(&test.Page{
+					Source: r,
+					Header: "Testing Imports",
+					H:      h,
+					F:      &ValueFragment{},
+				})
+			})
+			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
+		},
+	)
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+	<-time.After(100 * time.Millisecond)
+	test.TestReport(t, page, "hello")
+}
+
+func getAttr(t *testing.T, page *rod.Page, selector string, name string) string {
+	t.Helper()
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		t.Fatal("attr: element ", selector, " not found")
+	}
+	attr, err := el.Attribute(name)
+	if err != nil {
+		t.Fatal("attr: element ", selector, " attribute ", name, " not found")
+	}
+	if attr == nil {
+		t.Fatal("attr: element ", selector, " attribute ", name, " is nil")
+	}
+	return *attr
+}
+
+func testStyleAttr(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, check func(t *testing.T, href string)) {
+	t.Helper()
+	bro := test.NewBro(browser,
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponseComp(&test.Page{
+					Source: r,
+					Header: "Testing Imports",
+					H:      h,
+					F:      &ModuleFragment{},
+				})
+			})
+			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
+		},
+	)
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+	<-time.After(100 * time.Millisecond)
+	checkColor(t, page)
+	check(t, getAttr(t, page, `head link[rel="stylesheet"]`, "href"))
+}
+
 func TestModule(t *testing.T) {
 	testModule(t, moduleHead)
 }
 
 func TestModuleBytes(t *testing.T) {
 	testModule(t, moduleBytesHead)
+}
+func TestModuleString(t *testing.T) {
+	testModule(t, moduleStringHead)
 }
 func TestModuleRaw(t *testing.T) {
 	testModule(t, moduleRawHead)
@@ -83,6 +147,9 @@ func TestModuleRawBytesShort(t *testing.T) {
 func TestModuleRawBytesModify(t *testing.T) {
 	testModule(t, moduleRawBytesModifyHead)
 }
+func TestModulePreloadBytes(t *testing.T) {
+	testModule(t, modulePreloadBytesHead)
+}
 func TestModuleFS(t *testing.T) {
 	testModule(t, moduleBundleFSHead)
 }
@@ -94,6 +161,15 @@ func TestModulHosted(t *testing.T) {
 func TestModuleExternal(t *testing.T) {
 	testModule(t, moduleExternalHead)
 }
+func TestModuleProxy(t *testing.T) {
+	testModule(t, moduleProxyHead)
+}
+func TestScriptInline(t *testing.T) {
+	testValue(t, scriptInlineHead)
+}
+func TestScriptString(t *testing.T) {
+	testValue(t, scriptStringHead)
+}
 func TestStyleHosted(t *testing.T) {
 	testStyle(t, styleHostedHead)
 }
@@ -104,14 +180,43 @@ func TestStyleExternal(t *testing.T) {
 func TestStyleBytes(t *testing.T) {
 	testStyle(t, styleBytesHead)
 }
+func TestStyleInline(t *testing.T) {
+	testStyle(t, styleInlineHead)
+}
 func TestStyleBytesShort(t *testing.T) {
 	testStyle(t, styleBytesShortHead)
 }
 func TestStyleBytesModify(t *testing.T) {
 	testStyle(t, styleBytesModifyHead)
 }
+func TestStyleString(t *testing.T) {
+	testStyle(t, styleStringHead)
+}
+func TestStyleProxy(t *testing.T) {
+	testStyle(t, styleProxyHead)
+}
 func TestStyle(t *testing.T) {
 	testStyle(t, styleHead)
+}
+func TestStyleFS(t *testing.T) {
+	testStyle(t, styleFSHead)
+}
+func TestStyleNamed(t *testing.T) {
+	testStyleAttr(t, styleNamedHead, func(t *testing.T, href string) {
+		if !strings.Contains(href, ".named.css") {
+			t.Fatal("expected hosted stylesheet path to contain .named.css, got ", href)
+		}
+	})
+}
+func TestStylePrivateNamed(t *testing.T) {
+	testStyleAttr(t, stylePrivateNamedHead, func(t *testing.T, href string) {
+		if !strings.Contains(href, "/h/") {
+			t.Fatal("expected private stylesheet path to use hook route, got ", href)
+		}
+		if !strings.HasSuffix(href, "/private.css") {
+			t.Fatal("expected private stylesheet path to end with /private.css, got ", href)
+		}
+	})
 }
 
 func TestReact(t *testing.T) {

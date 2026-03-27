@@ -144,6 +144,18 @@ func styleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 	return })
 }
 
+func styleInlineHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("style"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw("h1 {\n\t\t\tcolor: red;\n\t\t}"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
 func styleBytesShortHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
@@ -168,6 +180,18 @@ func styleBytesModifyHead(_b doors.Source[test.Path]) gox.Elem {
 	return })
 }
 
+func styleStringHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.InitVoid("link"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.AttrSet("href", doors.ResourceString(string(styleRawBytes))); if __e != nil { return }
+		}
+		__e = __c.Submit(); if __e != nil { return }
+	return })
+}
+
 func styleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
@@ -175,6 +199,18 @@ func styleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 		{
 			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
 			__e = __c.AttrSet("href", doors.ResourceExternal(test.Host + "/module/style.css")); if __e != nil { return }
+		}
+		__e = __c.Submit(); if __e != nil { return }
+	return })
+}
+
+func styleProxyHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.InitVoid("link"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.AttrSet("href", doors.ResourceProxy(test.Host + "/module/style.css")); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -199,6 +235,47 @@ func styleHead(_b doors.Source[test.Path]) gox.Elem {
 		{
 			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
 			__e = __c.AttrSet("href", doors.ResourceLocalFS(modulePath + "/style.css")); if __e != nil { return }
+		}
+		__e = __c.Submit(); if __e != nil { return }
+	return })
+}
+
+func styleFSHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		moduleDir, _ := fs.Sub(moduleFS, "module_src")
+
+		__e = __c.InitVoid("link"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.AttrSet("href", doors.ResourceFS(moduleDir, "style.css")); if __e != nil { return }
+		}
+		__e = __c.Submit(); if __e != nil { return }
+	return })
+}
+
+func styleNamedHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.InitVoid("link"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.AttrSet("href", doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
+			__e = __c.AttrSet("name", "named.css"); if __e != nil { return }
+		}
+		__e = __c.Submit(); if __e != nil { return }
+	return })
+}
+
+func stylePrivateNamedHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.InitVoid("link"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.AttrSet("href", doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
+			__e = __c.AttrSet("private", true); if __e != nil { return }
+			__e = __c.AttrSet("name", "private.css"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -300,6 +377,19 @@ func moduleRawBytesModifyHead(_b doors.Source[test.Path]) gox.Elem {
 	return })
 }
 
+func modulePreloadBytesHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.InitVoid("link"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("rel", "modulepreload"); if __e != nil { return }
+			__e = __c.AttrSet("href", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
+			__e = __c.AttrSet("specifieronly", "module"); if __e != nil { return }
+		}
+		__e = __c.Submit(); if __e != nil { return }
+	return })
+}
+
 func moduleRawHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
@@ -331,6 +421,36 @@ func moduleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 	return })
 }
 
+func moduleStringHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("src", doors.ResourceString(string(moduleRawBytes))); if __e != nil { return }
+			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.AttrSet("specifieronly", "module"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw(""); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func moduleProxyHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("src", doors.ResourceProxy(test.Host + "/module/index.js")); if __e != nil { return }
+			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.AttrSet("specifieronly", "module"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw(""); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
 func moduleHead(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
@@ -339,6 +459,31 @@ func moduleHead(_b doors.Source[test.Path]) gox.Elem {
 			__e = __c.AttrSet("src", doors.ResourceLocalFS(modulePath + "/index.ts")); if __e != nil { return }
 			__e = __c.AttrSet("type", "module"); if __e != nil { return }
 			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw(""); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func scriptInlineHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw("window.__importsValue = \"hello\""); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func scriptStringHead(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("src", doors.ResourceString(`window.__importsValue = "hello"`)); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -423,6 +568,28 @@ func (f *ReactFragment) Main() gox.Elem {
 		{
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("const app = await import(\"react\")\n\t\tapp.init(document.getElementById(\"react\"))"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+type ValueFragment struct {
+	test.NoBeam
+}
+
+func (f *ValueFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "report-0"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw("document.getElementById(\"report-0\").innerHTML = window.__importsValue"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
