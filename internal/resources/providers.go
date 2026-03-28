@@ -127,12 +127,24 @@ type ScriptInlineFS struct {
 	Name string
 }
 
+func inlineScriptArgs(kind Kind) string {
+	if kind != KindTS {
+		return "$on, $data, $hook, $fetch, $G, $sys, HookErr"
+	}
+	return "$on: (name: string, handler: (arg: any, err?: Error) => any) => void, " +
+		"$data: (name: string) => Promise<any>, " +
+		"$hook: (name: string, arg?: any) => Promise<any>, " +
+		"$fetch: (name: string, arg?: any) => Promise<Response>, " +
+		"$G: {[key: string]: any}, " +
+		"$sys: {ready:() => Promise<void>, clean: (handler: () => void | Promise<void>) => void, activateLinks: () => void}, " +
+		"HookErr: new (...args: any[]) => Error"
+}
+
 func (e ScriptInlineFS) Read() ([]byte, error) {
 	return fs.ReadFile(e.FS, e.Path)
 }
 
 func (e ScriptInlineFS) Apply(opt *api.BuildOptions) error {
-	args := "$on, $data, $hook, $fetch, $G, $sys, HookErr"
 	data, err := e.Read()
 	if err != nil {
 		return err
@@ -141,17 +153,8 @@ func (e ScriptInlineFS) Apply(opt *api.BuildOptions) error {
 	if strings.HasSuffix(strings.ToLower(e.Path), ".ts") {
 		kind = KindTS
 	}
-	if kind == KindTS {
-		args = "$on: (name: string, handler: (arg: any) => any) => void, " +
-			"$data: (name: string) => Promise<any>, " +
-			"$hook: (name: string, arg: any) => Promise<any>, " +
-			"$fetch: (name: string, arg: any) => Promise<Response>, " +
-			"$G: {[key: string]: any}, " +
-			"$sys: {ready:() => Promise<undefined> , clean: (handler: () => void | Promise<void>) => void, activateLinks: () => void}, " +
-			"HookErr: new (...args: any[]) => Error"
-	}
 	opt.Stdin = &api.StdinOptions{
-		Contents:   "_d0r(document.currentScript, async (" + args + ") => {\n" + string(data) + "\n})",
+		Contents:   "_d0r(document.currentScript, async (" + inlineScriptArgs(kind) + ") => {\n" + string(data) + "\n})",
 		Sourcefile: "index." + kind.String(),
 		Loader:     kind.Loader(),
 	}
@@ -249,7 +252,6 @@ func (e ScriptInlinePath) Read() ([]byte, error) {
 }
 
 func (e ScriptInlinePath) Apply(opt *api.BuildOptions) error {
-	args := "$on, $data, $hook, $fetch, $G, $sys, HookErr"
 	data, err := e.Read()
 	if err != nil {
 		return err
@@ -258,17 +260,8 @@ func (e ScriptInlinePath) Apply(opt *api.BuildOptions) error {
 	if strings.HasSuffix(strings.ToLower(e.Path), ".ts") {
 		kind = KindTS
 	}
-	if kind == KindTS {
-		args = "$on: (name: string, handler: (arg: any) => any) => void, " +
-			"$data: (name: string) => any, " +
-			"$hook: (name: string, arg: any) => Promise<any>, " +
-			"$fetch: (name: string, arg: any) => Promise<Response>, " +
-			"$G: {[key: string]: any}, " +
-			"$sys: {ready:() => Promise<undefined> , clean: (handler: () => void | Promise<void>) => void }, " +
-			"HookErr: new (...args: any[]) => Error"
-	}
 	opt.Stdin = &api.StdinOptions{
-		Contents:   "_d0r(document.currentScript, async (" + args + ") => {\n" + string(data) + "\n})",
+		Contents:   "_d0r(document.currentScript, async (" + inlineScriptArgs(kind) + ") => {\n" + string(data) + "\n})",
 		Sourcefile: "index." + kind.String(),
 		Loader:     kind.Loader(),
 	}
@@ -290,18 +283,8 @@ func (e ScriptInlineString) Read() ([]byte, error) {
 }
 
 func (e ScriptInlineString) Apply(opt *api.BuildOptions) error {
-	args := "$on, $data, $hook, $fetch, $G, $sys, HookErr"
-	if e.Kind == KindTS {
-		args = "$on: (name: string, handler: (arg: any) => any) => void, " +
-			"$data: (name: string) => any, " +
-			"$hook: (name: string, arg: any) => Promise<any>, " +
-			"$fetch: (name: string, arg: any) => Promise<Response>, " +
-			"$G: {[key: string]: any}, " +
-			"$sys: {ready:() => Promise<undefined> , clean: (handler: () => void | Promise<void>) => void }, " +
-			"HookErr: new (...args: any[]) => Error"
-	}
 	opt.Stdin = &api.StdinOptions{
-		Contents:   "_d0r(document.currentScript, async (" + args + ") => {\n" + e.Content + "\n})",
+		Contents:   "_d0r(document.currentScript, async (" + inlineScriptArgs(e.Kind) + ") => {\n" + e.Content + "\n})",
 		Sourcefile: "index." + e.Kind.String(),
 		Loader:     e.Kind.Loader(),
 	}
@@ -324,18 +307,8 @@ func (e ScriptInlineBytes) Read() ([]byte, error) {
 }
 
 func (e ScriptInlineBytes) Apply(opt *api.BuildOptions) error {
-	args := "$on, $data, $hook, $fetch, $G, $sys, HookErr"
-	if e.Kind == KindTS {
-		args = "$on: (name: string, handler: (arg: any) => any) => void, " +
-			"$data: (name: string) => any, " +
-			"$hook: (name: string, arg: any) => Promise<any>, " +
-			"$fetch: (name: string, arg: any) => Promise<Response>, " +
-			"$G: {[key: string]: any}, " +
-			"$sys: {ready:() => Promise<undefined> , clean: (handler: () => void | Promise<void>) => void }, " +
-			"HookErr: new (...args: any[]) => Error"
-	}
 	opt.Stdin = &api.StdinOptions{
-		Contents:   "_d0r(document.currentScript, async (" + args + ") => {\n" + string(e.Content) + "\n})",
+		Contents:   "_d0r(document.currentScript, async (" + inlineScriptArgs(e.Kind) + ") => {\n" + string(e.Content) + "\n})",
 		Sourcefile: "index." + e.Kind.String(),
 		Loader:     e.Kind.Loader(),
 	}

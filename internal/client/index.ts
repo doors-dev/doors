@@ -34,7 +34,7 @@ class $D {
 		return global
 	}
 
-	ready(): Promise<undefined> {
+	ready(): Promise<void> {
 		return controller.ready
 	}
 
@@ -70,16 +70,17 @@ class $D {
 function init(
 	anchor: HTMLElement,
 	f: (
-		$on: $D['on'],
+		$on: (name: string, handler: (arg: any, err?: HookErr) => any) => void,
 		$data: $D['data'],
-		$hook: $D['hook'],
-		$fetch: $D['fetch'],
+		$hook: (name: string, arg?: any) => Promise<any>,
+		$fetch: (name: string, arg?: any) => Promise<Response>,
 		$G: $D['G'],
 		$sys: {
 			ready: $D['ready'],
 			clean: $D['clean'],
+			activateLinks: () => void,
 		},
-		HookErr: any,
+		HookErr: typeof HookErr,
 	) => Promise<void> | void
 ) {
 	const $d = new $D(anchor)

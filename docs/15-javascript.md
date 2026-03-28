@@ -240,7 +240,7 @@ Use `doors.AData` or `data:name=(...)` when the script needs values from Go at r
 </script>
 ```
 
-`string` becomes a JavaScript string, `[]byte` becomes an `ArrayBuffer`, and other values are decoded from JSON.
+`$data(...)` always returns a promise. `string` becomes a JavaScript string, `[]byte` becomes an `ArrayBuffer`, and other values are decoded from JSON. In practice, that means binary data still needs `await` before you can use the `ArrayBuffer`.
 
 If the value is already known at render time, prefer `AData` over an extra hook call.
 

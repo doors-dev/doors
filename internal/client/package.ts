@@ -43,8 +43,10 @@ export type Payload = {
 	any?: any,
 }
 
+export type EncodedPayload = [PayloadType, any]
+export type DecodedPayload = Payload | Promise<Payload>
 
-export async function decodePayload(payload: [PayloadType, any] | undefined): Promise<Payload> {
+export function decodePayload(payload: EncodedPayload | undefined): DecodedPayload {
 	if (payload === undefined) {
 		return {}
 	}
@@ -67,36 +69,38 @@ export async function decodePayload(payload: [PayloadType, any] | undefined): Pr
 			}
 		}
 	}
-	const prefix = "data:application/octet-stream;base64,"
-	const res = await fetch(prefix + content)
-	let stream = res.body!
-	if (isGzip(payloadType)) {
-		const ds = new DecompressionStream("gzip")
-		stream = stream.pipeThrough(ds)
-	}
-	const resp = new Response(stream)
-	if (isBinary(payloadType)) {
-		const binary = await resp.arrayBuffer()
-		return {
-			binary,
-			any: binary,
+	return (async () => {
+		const prefix = "data:application/octet-stream;base64,"
+		const res = await fetch(prefix + content)
+		let stream = res.body!
+		if (isGzip(payloadType)) {
+			const ds = new DecompressionStream("gzip")
+			stream = stream.pipeThrough(ds)
 		}
-	}
-	if (isText(payloadType)) {
-		const text = await resp.text()
-		return {
-			text,
-			any: text,
+		const resp = new Response(stream)
+		if (isBinary(payloadType)) {
+			const binary = await resp.arrayBuffer()
+			return {
+				binary,
+				any: binary,
+			}
 		}
-	}
-	if (isJson(payloadType)) {
-		const json = await resp.json()
-		return {
-			json,
-			any: json,
+		if (isText(payloadType)) {
+			const text = await resp.text()
+			return {
+				text,
+				any: text,
+			}
 		}
-	}
-	throw new Error("unsupported payload type")
+		if (isJson(payloadType)) {
+			const json = await resp.json()
+			return {
+				json,
+				any: json,
+			}
+		}
+		throw new Error("unsupported payload type")
+	})()
 }
 
 export class Package {

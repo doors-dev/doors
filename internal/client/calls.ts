@@ -13,7 +13,7 @@ import { removeAttr, setAttr } from "./dyna"
 import { HookErr } from "./capture"
 import { doAfter } from "./lib"
 import { report } from "./scope.ts"
-import { Payload, PayloadType } from "./package.ts"
+import { EncodedPayload, Payload } from "./package.ts"
 
 
 type Extras = {
@@ -134,7 +134,7 @@ type Err = {
 
 export type CallResult = ([Output, undefined] | [undefined, Err])
 
-export type Action = [string, Array<any>, [PayloadType, string]] | [string, Array<any>]
+export type Action = [string, Array<any>, EncodedPayload] | [string, Array<any>]
 
 export default function action(name: string, args: Array<any>, extras: Extras = {}): CallResult {
 	try {
