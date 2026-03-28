@@ -38,7 +38,10 @@ jobs:
           install-dependencies: true
 
       - name: Run test suite with coverage
-        run: go test -count=1 -p 1 -coverpkg=./... -coverprofile=coverage.txt ./...
+        run: |
+          pkgs=$(go list ./... | grep -v '^github.com/doors-dev/doors/internal/test')
+          coverpkg=$(echo "$pkgs" | paste -sd,)
+          go test -count=1 -p 1 -coverpkg="$coverpkg" -coverprofile=coverage.txt $pkgs
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
