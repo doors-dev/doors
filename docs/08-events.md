@@ -319,7 +319,8 @@ For a one-off attribute on one element, you usually do not need `doors.A(...)`.
 ## Related
 
 - Use [Navigation](./09-navigation.md) for `doors.ALink`.
-- Use [Custom Attrs](./13-custom-attrs.md) for `doors.AHook[...]`, `doors.ARawHook`, `doors.AData`, and `doors.ADyn`.
+- Use [JavaScript](./15-javascript.md) for `doors.AHook[...]`, `doors.ARawHook`, and `doors.AData`.
+- Use [Shared Attr](./17-shared-attr.md) for `doors.AShared`.
 - Use [Scopes](./10-scopes.md) for request scheduling.
 - Use [Indication](./11-indication.md) for client-side feedback.
 - Use [Actions](./12-actions.md) for `Before`, `OnError`, and `After` actions.

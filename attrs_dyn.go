@@ -21,21 +21,21 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// ADyn is a dynamic attribute that can be updated at runtime.
-type ADyn = *aDyn
+// AShared is a dynamic attribute handle shared across attached elements.
+type AShared = *aShared
 
-var _ Attr = &aDyn{}
+var _ Attr = &aShared{}
 
-// NewADyn returns a new dynamic attribute with the given name, value, and state.
-func NewADyn(name string, value string, enable bool) ADyn {
-	return &aDyn{
+// NewAShared returns a new enabled shared attribute handle.
+func NewAShared(name string, value string) AShared {
+	return &aShared{
 		name:   name,
 		value:  value,
-		enable: enable,
+		enable: true,
 	}
 }
 
-type aDyn struct {
+type aShared struct {
 	mu          sync.Mutex
 	name        string
 	value       string
@@ -45,13 +45,13 @@ type aDyn struct {
 	seq         int
 }
 
-func (a *aDyn) check(seq int) bool {
+func (a *aShared) check(seq int) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.seq == seq
 }
 
-func (a *aDyn) restore(seq int, value string, enable bool) {
+func (a *aShared) restore(seq int, value string, enable bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if seq != a.seq {
@@ -62,11 +62,20 @@ func (a *aDyn) restore(seq int, value string, enable bool) {
 	a.value = value
 }
 
-// Enable adds or removes the attribute.
-func (a ADyn) Enable(ctx context.Context, enable bool) {
+// Enable adds the attribute to attached elements.
+func (a AShared) Enable(ctx context.Context) {
+	a.updateEnable(ctx, true)
+}
+
+// Disable removes the attribute from attached elements.
+func (a AShared) Disable(ctx context.Context) {
+	a.updateEnable(ctx, false)
+}
+
+func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	ctex.LogCanceled(ctx, "dynamic attribute enable")
+	ctex.LogCanceled(ctx, "shared attribute enable")
 	prevValue := a.value
 	prevEnable := a.enable
 	if a.enable == enable {
@@ -95,23 +104,23 @@ func (a ADyn) Enable(ctx context.Context, enable bool) {
 			return a.check(seq)
 		},
 		act,
-		func(rm json.RawMessage, err error) {
-			if err == nil {
-				return
-			}
-			slog.Error("Dynamic attribute call err " + err.Error())
-			a.restore(seq, prevValue, prevEnable)
-		},
+			func(rm json.RawMessage, err error) {
+				if err == nil {
+					return
+				}
+				slog.Error("Shared attribute call err " + err.Error())
+				a.restore(seq, prevValue, prevEnable)
+			},
 		nil,
 		action.CallParams{},
 	)
 }
 
-// Value sets the attribute's value.
-func (a ADyn) Value(ctx context.Context, value string) {
+// Update sets the attribute's value.
+func (a AShared) Update(ctx context.Context, value string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	ctex.LogCanceled(ctx, "dynamic attribute value")
+	ctex.LogCanceled(ctx, "shared attribute value")
 	prevValue := a.value
 	prevEnable := a.enable
 	if ctx.Err() != nil {
@@ -138,23 +147,23 @@ func (a ADyn) Value(ctx context.Context, value string) {
 			ID:    a.id,
 			Value: a.value,
 		},
-		func(rm json.RawMessage, err error) {
-			if err == nil {
-				return
-			}
-			slog.Error("Dynamic attribute call err " + err.Error())
-			a.restore(seq, prevValue, prevEnable)
-		},
+			func(rm json.RawMessage, err error) {
+				if err == nil {
+					return
+				}
+				slog.Error("Shared attribute call err " + err.Error())
+				a.restore(seq, prevValue, prevEnable)
+			},
 		nil,
 		action.CallParams{},
 	)
 }
 
-func (a ADyn) Proxy(cur gox.Cursor, elem gox.Elem) error {
+func (a AShared) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return proxyAddAttrMod(a, cur, elem)
 }
 
-func (a ADyn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
+func (a AShared) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	a.mu.Lock()
 	defer a.mu.Unlock()

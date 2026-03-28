@@ -13,7 +13,7 @@ Good fits are:
 
 If the UI should simply render different content, prefer normal rendering.
 
-If only one attribute should change on an existing element, `ADyn` from [Custom Attrs](./13-custom-attrs.md) is often a better fit than an action.
+If one attribute should stay shared across existing elements, `AShared` from [Shared Attr](./17-shared-attr.md) is often a better fit than an action.
 
 ## Places
 
@@ -179,7 +179,7 @@ They are mostly there for `Before`, `OnError`, and `r.After(...)`.
 ## Rules
 
 - Prefer rendering and state for durable UI changes.
-- Prefer `ADyn` when one existing attribute should change without rerendering the element.
+- Prefer `AShared` when one existing attribute should stay shared without rerendering the elements.
 - Use `doors.Call` when the result does not matter.
 - Use `doors.XCall` mainly with `ActionEmit`.
 - Keep `$on(...)` handlers synchronous and scoped intentionally.

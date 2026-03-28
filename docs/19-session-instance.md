@@ -13,7 +13,7 @@ These utilities are for the cases where you want to:
 - force-end a session or just one instance
 - attach runtime IDs to logs or traces
 
-For session and instance storage, see [Storage & Auth](./17-storage-auth.md).
+For session and instance storage, see [Storage & Auth](./18-storage-auth.md).
 
 ## Use
 
@@ -26,7 +26,7 @@ These functions need a **Doors** context, such as the `ctx` you get in:
 
 Use the current **Doors** `ctx`, not `context.Background()`.
 
-## Life
+## Lifecycle
 
 By default, **Doors** manages session and instance lifetime automatically.
 
@@ -34,10 +34,9 @@ At a high level:
 
 - a session is created when the request does not have a live **Doors** session cookie
 - that session is renewed on later requests and uses a timer-based lifetime
-- a dynamic page gets its own live instance
-- a static page instance ends immediately after render
+- a page gets its own live instance
 
-Dynamic instances also have their own lifecycle rules:
+Instances also have their own lifecycle rules:
 
 - a new instance must get its first client connection within `InstanceConnectTimeout`
 - after that, inactive instances are cleaned up by `InstanceTTL`

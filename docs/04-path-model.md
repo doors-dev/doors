@@ -174,7 +174,7 @@ The common response helpers are:
 
 This is the right place for auth checks, redirects, response headers, and similar gatekeeping before the page is rendered.
 
-It is also the usual place to initialize shared session state from cookies or headers. For that pattern, see [Storage & Auth](./17-storage-auth.md).
+It is also the usual place to initialize shared session state from cookies or headers. For that pattern, see [Storage & Auth](./18-storage-auth.md).
 
 ## URLs
 

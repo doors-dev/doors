@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.15+dirty
+// Managed by GoX v0.1.17+dirty
 
 package attr
 
@@ -17,7 +17,7 @@ type dynaFragment struct {
 	v2 string
 }
 
-func (f *dynaFragment) content(da1 doors.ADyn, da2 doors.ADyn) gox.Elem {
+func (f *dynaFragment) content(da1 doors.AShared, da2 doors.AShared) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = da1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -59,12 +59,12 @@ func (f *dynaFragment) content(da1 doors.ADyn, da2 doors.ADyn) gox.Elem {
 	return })
 }
 
-func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.Elem {
+func (f *dynaFragment) buttons(index string, da doors.AShared, value string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
 		__e = doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			da.Enable(ctx, true)
+			da.Enable(ctx)
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -80,7 +80,7 @@ func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.El
 		return })); if __e != nil { return }
 		__e = doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			da.Enable(ctx, false)
+			da.Disable(ctx)
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -96,7 +96,7 @@ func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.El
 		return })); if __e != nil { return }
 		__e = doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			da.Value(ctx, value)
+			da.Update(ctx, value)
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -116,9 +116,9 @@ func (f *dynaFragment) buttons(index string, da doors.ADyn, value string) gox.El
 func (f *dynaFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
-		da1 := doors.NewADyn("data-test1", f.v1, true)
+		da1 := doors.NewAShared("data-test1", f.v1)
 
-		da2 := doors.NewADyn("data-test2", f.v2, false)
+		da2 := doors.NewAShared("data-test2", f.v2)
 
 		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); gox.Noop(ctx)
@@ -132,8 +132,8 @@ func (f *dynaFragment) Main() gox.Elem {
 		__e = __c.Any(f.buttons("2", da2, f.v1)); if __e != nil { return }
 		__e = doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			da1.Value(ctx, f.v1)
-			da2.Value(ctx, f.v2)
+			da1.Update(ctx, f.v1)
+			da2.Update(ctx, f.v2)
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {

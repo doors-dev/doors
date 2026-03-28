@@ -15,29 +15,29 @@ type dynaFragment struct {
 	v2 string
 }
 
-elem (f *dynaFragment) content(da1 doors.ADyn, da2 doors.ADyn) {
+elem (f *dynaFragment) content(da1 doors.AShared, da2 doors.AShared) {
 	~>(da1) ~>(da2) <div id="t1"></div>
 	~>(da1) ~>(da2) <div id="t2">
 		~>(da1) ~>(da2) <div id="t3"></div>
 	</div>
 }
 
-elem (f *dynaFragment) buttons(index string, da doors.ADyn, value string) {
+elem (f *dynaFragment) buttons(index string, da doors.AShared, value string) {
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			da.Enable(ctx, true)
+			da.Enable(ctx)
 			return false
 		},
 	} <button id=("enable-" + index)>enable-~(index)</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			da.Enable(ctx, false)
+			da.Disable(ctx)
 			return false
 		},
 	} <button id=("disable-" + index)>disable-~(index)</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			da.Value(ctx, value)
+			da.Update(ctx, value)
 			return false
 		},
 	} <button id=("update-" + index)>update-~(index)</button>
@@ -45,10 +45,10 @@ elem (f *dynaFragment) buttons(index string, da doors.ADyn, value string) {
 
 elem (f *dynaFragment) Main() {
 	~{
-		da1 := doors.NewADyn("data-test1", f.v1, true)
+		da1 := doors.NewAShared("data-test1", f.v1)
 	}
 	~{
-		da2 := doors.NewADyn("data-test2", f.v2, false)
+		da2 := doors.NewAShared("data-test2", f.v2)
 	}
 	~>(f.n) <>
 		~(f.content(da1, da2))
@@ -57,8 +57,8 @@ elem (f *dynaFragment) Main() {
 	~(f.buttons("2", da2, f.v1))
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			da1.Value(ctx, f.v1)
-			da2.Value(ctx, f.v2)
+			da1.Update(ctx, f.v1)
+			da2.Update(ctx, f.v2)
 			return false
 		},
 	} <button id="reset">reset</button>

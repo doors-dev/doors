@@ -4,6 +4,8 @@ This page covers script resources and JavaScript runtime features in **Doors**.
 
 If generic resource syntax is new, start with [Resources](./14-resources.md). This page focuses on what is specific to `<script>` and modules.
 
+It also covers the Go to JavaScript bridge: `doors.AData`, `doors.AHook[...]`, `doors.ARawHook`, `$data(...)`, `$hook(...)`, `$fetch(...)`, and `$on(...)`.
+
 ## Start
 
 Most pages start with one of these:
@@ -222,11 +224,11 @@ Example:
 	specifier="react_app"></script>
 ```
 
-Build configuration itself is covered in [Configuration](./20-configuration.md).
+Build configuration itself is covered in [Configuration](./21-configuration.md).
 
 ## Go Bridge
 
-### Data
+### Data Binding
 
 Use `doors.AData` or `data:name=(...)` when the script needs values from Go at render time:
 
@@ -241,6 +243,10 @@ Use `doors.AData` or `data:name=(...)` when the script needs values from Go at r
 ```
 
 `$data(...)` always returns a promise. `string` becomes a JavaScript string, `[]byte` becomes an `ArrayBuffer`, and other values are decoded from JSON. In practice, that means binary data still needs `await` before you can use the `ArrayBuffer`.
+
+GoX shorthand such as `data:userId=(userID)` is equivalent to attaching `doors.AData{Name: "userId", Value: userID}`.
+
+Attach several `AData` attrs or several `data:name=(...)` entries when the script needs more than one server-provided value.
 
 If the value is already known at render time, prefer `AData` over an extra hook call.
 
@@ -262,6 +268,16 @@ Use:
 
 These are not a 1:1 pair. For example, `$hook(...)` can call `ARawHook`.
 
+For `AHook[T]`, the handler receives `doors.RequestHook[T]`, so it can:
+
+- read `r.Data()`
+- read or set cookies
+- schedule `r.After(...)` actions
+
+Return `false` to keep the hook active.
+
+Return `true` to remove it after the call.
+
 ```gox
 <script
 	(doors.AHook[string]{
@@ -277,7 +293,32 @@ These are not a 1:1 pair. For example, `$hook(...)` can call `ARawHook`.
 </script>
 ```
 
-When `$hook(...)` or `$fetch(...)` sends data, the client chooses the request body shape automatically. Hook API details are covered in [Custom Attrs](./13-custom-attrs.md).
+### Raw Variant
+
+Use `doors.ARawHook` when the Go side needs lower-level transport control.
+
+That is the right fit for:
+
+- raw request body access
+- multipart handling
+- uploads
+- custom decoding
+- custom response bodies or headers
+
+The handler receives `doors.RequestRawHook`, which adds:
+
+- `r.Body()` for raw request bodies
+- `r.Reader()` or `r.ParseForm(...)` for multipart forms
+- `r.W()` when you want to write the response yourself
+
+When `$hook(...)` or `$fetch(...)` sends data, the client chooses the request body shape automatically:
+
+- `undefined`: no body
+- `FormData`: `multipart/form-data`
+- `URLSearchParams`: `application/x-www-form-urlencoded`
+- `Blob`: raw blob body
+- `File` or `ReadableStream`: `application/octet-stream`
+- any other value: JSON
 
 ### Client API
 

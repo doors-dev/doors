@@ -22,16 +22,21 @@ func TestDyna(t *testing.T) {
 	test.TestAttr(t, page, "#t1", "data-test1", v1)
 	test.TestAttr(t, page, "#t2", "data-test1", v1)
 	test.TestAttr(t, page, "#t3", "data-test1", v1)
+	test.TestAttr(t, page, "#t1", "data-test2", v2)
+	test.TestAttr(t, page, "#t2", "data-test2", v2)
+	test.TestAttr(t, page, "#t3", "data-test2", v2)
+
+	test.Click(t, page, "#disable-2")
+	test.TestAttrNo(t, page, "#t1", "data-test2")
+	test.TestAttrNo(t, page, "#t2", "data-test2")
+	test.TestAttrNo(t, page, "#t3", "data-test2")
+
+	test.Click(t, page, "#update-2")
 	test.TestAttrNo(t, page, "#t1", "data-test2")
 	test.TestAttrNo(t, page, "#t2", "data-test2")
 	test.TestAttrNo(t, page, "#t3", "data-test2")
 
 	test.Click(t, page, "#enable-2")
-	test.TestAttr(t, page, "#t1", "data-test2", v2)
-	test.TestAttr(t, page, "#t2", "data-test2", v2)
-	test.TestAttr(t, page, "#t3", "data-test2", v2)
-
-	test.Click(t, page, "#update-2")
 	test.TestAttr(t, page, "#t1", "data-test2", v1)
 	test.TestAttr(t, page, "#t2", "data-test2", v1)
 	test.TestAttr(t, page, "#t3", "data-test2", v1)
