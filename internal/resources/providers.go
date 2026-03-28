@@ -380,6 +380,7 @@ type ScriptFormat interface {
 type FormatDefault struct{}
 
 func (f FormatDefault) Apply(opt *api.BuildOptions) {
+	_ = opt
 }
 
 func (f FormatDefault) formatID(w idWriter) {
