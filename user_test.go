@@ -214,6 +214,22 @@ func TestCallUsesSolitaireDisableGzip(t *testing.T) {
 	}
 }
 
+func TestCallUsesCanceledContext(t *testing.T) {
+	ctx, inst := helperContext(t, nil)
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+
+	Call(canceled, ActionEmit{Name: "still-runs", Arg: "hello"})
+
+	emit, ok := inst.lastCallAction.(action.Emit)
+	if !ok {
+		t.Fatalf("expected emit action from canceled context, got %T", inst.lastCallAction)
+	}
+	if emit.Name != "still-runs" {
+		t.Fatalf("expected canceled-context call to dispatch action %q, got %q", "still-runs", emit.Name)
+	}
+}
+
 func TestSharedAttrRestoreOnUpdateError(t *testing.T) {
 	ctx, inst := helperContext(t, nil)
 	shared := NewAShared("data-shared", "start")

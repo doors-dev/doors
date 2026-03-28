@@ -17,5 +17,5 @@ func LogCanceled(ctx context.Context, action string) {
 	if ctx.Err() == nil {
 		return
 	}
-	slog.Warn("Tried to perfrom " + action + " from the canceled context")
+	slog.Warn("Requested " + action + " from a canceled context. For long-running goroutines or awaited X* operations, use doors.Free(ctx)")
 }

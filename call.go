@@ -56,9 +56,7 @@ func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], cont
 		return ch, func() {}
 	}
 	if ctx.Err() != nil {
-		close(ch)
-		slog.Error("Call attempt from the canceled context", slog.String("action", a.Log()))
-		return ch, func() {}
+		ctex.LogCanceled(ctx, "call "+a.Log())
 	}
 	cancel := core.CallCtx(
 		ctx,

@@ -12,6 +12,7 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
@@ -54,6 +55,7 @@ func (d *Door) Main() gox.Elem {
 }
 
 func (d *Door) rebase(ctx context.Context, el gox.Elem) <-chan error {
+	ctex.LogCanceled(ctx, "Door rebase")
 	task, ch := newTaskNode(ctx)
 	node := &node{
 		ctx:  ctx,
@@ -68,6 +70,7 @@ func (d *Door) rebase(ctx context.Context, el gox.Elem) <-chan error {
 }
 
 func (d *Door) unmount(ctx context.Context) <-chan error {
+	ctex.LogCanceled(ctx, "Door unmount")
 	task, ch := newTaskNode(ctx)
 	node := &node{
 		ctx:  ctx,
@@ -82,6 +85,7 @@ func (d *Door) unmount(ctx context.Context) <-chan error {
 }
 
 func (d *Door) update(ctx context.Context, content any) <-chan error {
+	ctex.LogCanceled(ctx, "Door update")
 	task, ch := newTaskNode(ctx)
 	node := &node{
 		ctx:  ctx,
@@ -96,6 +100,7 @@ func (d *Door) update(ctx context.Context, content any) <-chan error {
 }
 
 func (d *Door) reload(ctx context.Context) <-chan error {
+	ctex.LogCanceled(ctx, "Door reload")
 	task, ch := newTaskNode(ctx)
 	node := &node{
 		ctx:  ctx,
@@ -109,6 +114,7 @@ func (d *Door) reload(ctx context.Context) <-chan error {
 }
 
 func (d *Door) replace(ctx context.Context, content any) <-chan error {
+	ctex.LogCanceled(ctx, "Door replace")
 	task, ch := newTaskNode(ctx)
 	node := &node{
 		ctx:  ctx,
