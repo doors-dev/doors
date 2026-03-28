@@ -73,31 +73,36 @@ func (a AShared) Disable(ctx context.Context) {
 }
 
 func (a *aShared) updateEnable(ctx context.Context, enable bool) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
 	ctex.LogCanceled(ctx, "shared attribute enable")
+	a.mu.Lock()
 	prevValue := a.value
 	prevEnable := a.enable
 	if a.enable == enable {
+		a.mu.Unlock()
 		return
 	}
 	a.enable = enable
 	a.seq += 1
 	seq := a.seq
-	if !a.initialized {
-		return
-	}
+	enabled := a.enable
+	initialized := a.initialized
+	id := a.id
+	value := a.value
+	a.mu.Unlock()
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	var act action.Action
-	if a.enable {
+	if enabled {
 		act = &action.DynaSet{
-			ID:    a.id,
-			Value: a.value,
+			ID:    id,
+			Value: value,
 		}
 	} else {
 		act = &action.DynaRemove{
-			ID: a.id,
+			ID: id,
 		}
+	}
+	if !initialized {
+		return
 	}
 	core.CallCheck(
 		func() bool {
@@ -119,23 +124,29 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 // Update sets the attribute's value.
 func (a AShared) Update(ctx context.Context, value string) {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	ctex.LogCanceled(ctx, "shared attribute value")
 	prevValue := a.value
 	prevEnable := a.enable
 	if ctx.Err() != nil {
+		a.mu.Unlock()
 		return
 	}
 	if a.value == value {
+		a.mu.Unlock()
 		return
 	}
 	a.value = value
 	a.seq += 1
 	seq := a.seq
 	if !a.enable {
+		a.mu.Unlock()
 		return
 	}
-	if !a.initialized {
+	initialized := a.initialized
+	id := a.id
+	nextValue := a.value
+	a.mu.Unlock()
+	if !initialized {
 		return
 	}
 	core := ctx.Value(ctex.KeyCore).(core.Core)
@@ -144,8 +155,8 @@ func (a AShared) Update(ctx context.Context, value string) {
 			return a.check(seq)
 		},
 		&action.DynaSet{
-			ID:    a.id,
-			Value: a.value,
+			ID:    id,
+			Value: nextValue,
 		},
 		func(rm json.RawMessage, err error) {
 			if err == nil {

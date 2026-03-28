@@ -3,6 +3,7 @@ package doors
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -38,6 +39,7 @@ type helperInstance struct {
 	conf           common.SystemConf
 	lastCallAction action.Action
 	lastCallParams action.CallParams
+	callCheckErr   error
 }
 
 func (h *helperInstance) CallCtx(_ context.Context, act action.Action, _ func(json.RawMessage, error), _ func(), params action.CallParams) context.CancelFunc {
@@ -46,9 +48,12 @@ func (h *helperInstance) CallCtx(_ context.Context, act action.Action, _ func(js
 	return func() {}
 }
 
-func (h *helperInstance) CallCheck(_ func() bool, act action.Action, _ func(json.RawMessage, error), _ func(), params action.CallParams) {
+func (h *helperInstance) CallCheck(_ func() bool, act action.Action, onResult func(json.RawMessage, error), _ func(), params action.CallParams) {
 	h.lastCallAction = act
 	h.lastCallParams = params
+	if onResult != nil && h.callCheckErr != nil {
+		onResult(nil, h.callCheckErr)
+	}
 }
 
 func (h *helperInstance) CSPCollector() *common.CSPCollector {
@@ -202,5 +207,63 @@ func TestCallUsesSolitaireDisableGzip(t *testing.T) {
 	}
 	if emit.Payload.Type() != action.PayloadText {
 		t.Fatalf("expected plain text payload when solitaire gzip is disabled, got %v", emit.Payload.Type())
+	}
+}
+
+func TestSharedAttrRestoreOnUpdateError(t *testing.T) {
+	ctx, inst := helperContext(t, nil)
+	shared := NewAShared("data-shared", "start")
+	attrs := gox.NewAttrs()
+	if err := shared.Modify(ctx, "div", attrs); err != nil {
+		t.Fatal(err)
+	}
+	inst.callCheckErr = errors.New("boom")
+
+	shared.Update(ctx, "next")
+
+	set, ok := inst.lastCallAction.(*action.DynaSet)
+	if !ok {
+		t.Fatalf("expected DynaSet action, got %T", inst.lastCallAction)
+	}
+	if set.Value != "next" {
+		t.Fatalf("expected attempted update value %q, got %q", "next", set.Value)
+	}
+	if shared.value != "start" {
+		t.Fatalf("expected shared value restored to %q, got %q", "start", shared.value)
+	}
+	if !shared.enable {
+		t.Fatal("expected shared attr to stay enabled after restore")
+	}
+	if shared.seq != 0 {
+		t.Fatalf("expected restore to rewind seq to 0, got %d", shared.seq)
+	}
+}
+
+func TestSharedAttrRestoreOnDisableError(t *testing.T) {
+	ctx, inst := helperContext(t, nil)
+	shared := NewAShared("data-shared", "start")
+	attrs := gox.NewAttrs()
+	if err := shared.Modify(ctx, "div", attrs); err != nil {
+		t.Fatal(err)
+	}
+	inst.callCheckErr = errors.New("boom")
+
+	shared.Disable(ctx)
+
+	remove, ok := inst.lastCallAction.(*action.DynaRemove)
+	if !ok {
+		t.Fatalf("expected DynaRemove action, got %T", inst.lastCallAction)
+	}
+	if remove.ID == 0 {
+		t.Fatal("expected dynamic attr id on remove action")
+	}
+	if !shared.enable {
+		t.Fatal("expected shared attr enable flag restored after failed disable")
+	}
+	if shared.value != "start" {
+		t.Fatalf("expected shared value preserved as %q, got %q", "start", shared.value)
+	}
+	if shared.seq != 0 {
+		t.Fatalf("expected restore to rewind seq to 0, got %d", shared.seq)
 	}
 }
