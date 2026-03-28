@@ -4,7 +4,7 @@
 
 A Door lets you render a place in the page now and change just that place later from handlers, subscriptions, or `doors.Go(...)`. It is the tool you reach for when you do not want a whole-page reroute.
 
-Doors are often stored on struct fields when the same Door needs to be reused:
+**Doors** are often stored on struct fields when the same Door needs to be reused:
 
 ```gox
 type Panel struct {
@@ -192,7 +192,7 @@ This means:
 
 After a Door has been replaced or deleted, later calls still update the Door's stored state. They do not automatically put that old Door back into the DOM, but they do affect what will happen if the Door is rendered again later.
 
-This is why Doors work well for deferred fragments, conditional UI, and long-lived stateful components.
+This is why **Doors** works well for deferred fragments, conditional UI, and long-lived stateful components.
 
 ## Use Cases
 

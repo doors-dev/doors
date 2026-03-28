@@ -28,8 +28,10 @@ count := doors.NewSource(0)
 Use `doors.NewSourceEqual(...)` when you need custom equality:
 
 ```go
+import "reflect"
+
 settings := doors.NewSourceEqual(Settings{}, func(new Settings, old Settings) bool {
-	return new == old
+	return reflect.DeepEqual(new, old)
 })
 ```
 

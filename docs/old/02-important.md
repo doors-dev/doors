@@ -186,7 +186,7 @@ There are certain configuration options related to the instance lifecycle:
 
 Instance memory consumption depends highly on page complexity, but I expect it to typically be around 50-150KB and low enough to choose generous, UX friendly values for those settings. 
 
-> Refer to [Configuration](./03-configutation.md) for more details.
+> Refer to [Configuration](./03-configuration.md) for more details.
 
 ## 5. Avoid storing database data in state.
 
@@ -255,4 +255,3 @@ If you need data **only to produce render output** - render and forget, so you w
 ## 6. Be careful with front-end manipulations via JavaScript 
 
 The framework controls parts of the DOM, so separate concerns clearly.
-

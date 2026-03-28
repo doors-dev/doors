@@ -1,6 +1,6 @@
 # Router
 
-The doors framework provides a router that plugs into the standard Go `http.Server`.  
+The **Doors** framework provides a router that plugs into the standard Go `http.Server`.  
 It handles app routing, static files, hooks, and framework resources.
 
 ```go
@@ -292,7 +292,7 @@ Configure esbuild options and profiles for JavaScript/TypeScript.
 func UseESConf(conf ESConf) Use
 ```
 
-> Check [esbuild](./ref/06-esbuild.md) for details
+> Check [esbuild](./24-esbuild.md) for details
 
 ---
 

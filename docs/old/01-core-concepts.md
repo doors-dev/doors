@@ -20,7 +20,7 @@ A live page within a session. Each instance exists in server memory and encapsul
 
 A dynamic placeholder or container that can be updated, removed, or replaced. It has no visual footprint but enables reactive updates.
 
-- Doors form a synchronized dynamic tree during rendering.
+- **Doors** forms a synchronized dynamic tree during rendering.
 - Features like append/prepend are implemented using placeholder doors that can be replaced.
 
 ## Path Model
@@ -65,4 +65,3 @@ The standard Go `context.Context`, extended and used throughout *doors* to:
 - Read **beam** values
 - Track **hook**-triggered changes completions
 - Access and modify **instance/session** entities
-
