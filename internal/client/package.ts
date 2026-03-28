@@ -109,15 +109,15 @@ export class Package {
 	isFiller: boolean
 	action: string
 	arg: any
-	private parts: Uint8Array[] = []
-	private length = 0
-	private payloadType: PayloadType = payloadTypes.none
-	private payload: Payload | undefined = undefined
+	private parts_: Uint8Array[] = []
+	private length_ = 0
+	private payloadType_: PayloadType = payloadTypes.none
+	private payload_: Payload | undefined = undefined
 
 	constructor(header: Array<any>) {
 		const payloadInfo = header.pop()
-		this.payloadType = payloadInfo ? payloadInfo[0] : payloadTypes.none
-		this.length = payloadInfo ? payloadInfo[1] : 0;
+		this.payloadType_ = payloadInfo ? payloadInfo[0] : payloadTypes.none
+		this.length_ = payloadInfo ? payloadInfo[1] : 0;
 		this.end = header[0][0]
 		this.start = header[0].length == 2 ? header[0][1] : header[0][0]
 		this.action = header.length == 2 ? header[1][0] : ""
@@ -125,16 +125,16 @@ export class Package {
 		this.isFiller = header.length == 1
 	}
 
-	private written = 0
+	private written_ = 0
 
 	remaining(): number {
-		return this.length - this.written
+		return this.length_ - this.written_
 	}
 
 	private stream(): ReadableStream {
-		const blob = new Blob(this.parts as any)
-		this.parts = []
-		if (!isGzip(this.payloadType)) {
+		const blob = new Blob(this.parts_ as any)
+		this.parts_ = []
+		if (!isGzip(this.payloadType_)) {
 			return blob.stream()
 		}
 		const ds = new DecompressionStream("gzip");
@@ -142,45 +142,45 @@ export class Package {
 	}
 
 	async finalize(): Promise<boolean> {
-		if (this.payload != undefined) {
+		if (this.payload_ != undefined) {
 			throw new Error("already finalized")
 		}
 		if (this.remaining() != 0) {
 			return false
 		}
-		if (this.payloadType == payloadTypes.none) {
-			this.payload = {}
+		if (this.payloadType_ == payloadTypes.none) {
+			this.payload_ = {}
 			return true
 		}
 		const resp = new Response(this.stream())
-		if (isText(this.payloadType)) {
+		if (isText(this.payloadType_)) {
 			let text = ""
-			if (this.length != 0) {
+			if (this.length_ != 0) {
 				text = await resp.text()
 			}
-			this.payload = {
+			this.payload_ = {
 				text,
 				any: text,
 			}
 			return true
 		}
-		if (isBinary(this.payloadType)) {
+		if (isBinary(this.payloadType_)) {
 			let binary = new ArrayBuffer(0)
-			if (this.length != 0) {
+			if (this.length_ != 0) {
 				binary = await resp.arrayBuffer()
 			}
-			this.payload = {
+			this.payload_ = {
 				binary,
 				any: binary,
 			}
 			return true
 		}
-		if (isJson(this.payloadType)) {
+		if (isJson(this.payloadType_)) {
 			let json = null
-			if (this.length != 0) {
+			if (this.length_ != 0) {
 				json = await resp.json()
 			}
-			this.payload = {
+			this.payload_ = {
 				json,
 				any: json,
 			}
@@ -190,31 +190,31 @@ export class Package {
 	}
 
 	append(buf: Uint8Array) {
-		if (this.payload != undefined) {
+		if (this.payload_ != undefined) {
 			throw new Error("payload already finalized")
 		}
 		if (buf.length > this.remaining()) {
 			throw new Error("overflow")
 		}
-		this.parts.push(buf)
-		this.written += buf.length
+		this.parts_.push(buf)
+		this.written_ += buf.length
 	}
 
 	getPayload(): Payload {
-		if (this.payload == undefined) {
+		if (this.payload_ == undefined) {
 			throw new Error("payload not finalized")
 		}
-		return this.payload
+		return this.payload_
 	}
 
 }
 
 export class Header {
-	private headerParts: Array<Uint8Array> = []
+	private headerParts_: Array<Uint8Array> = []
 
 	async package(): Promise<Package> {
-		const header = await new Response(new Blob(this.headerParts as any, { type: "application/json" })).json();
-		this.headerParts = []
+		const header = await new Response(new Blob(this.headerParts_ as any, { type: "application/json" })).json();
+		this.headerParts_ = []
 		return new Package(header)
 	}
 
@@ -222,6 +222,6 @@ export class Header {
 		if (buf.length == 0) {
 			return
 		}
-		this.headerParts.push(buf)
+		this.headerParts_.push(buf)
 	}
 }

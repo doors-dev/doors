@@ -18,16 +18,16 @@ export type ScopeSet = [keyof typeof newScope, string, any]
 
 
 export class Hook {
-	private res: (value: Response) => void
-	private rej: (reason: HookErr) => void
-	private promise: Promise<Response>
-	private scopeStack: Array<Scope> = []
-	private fetch: any = {}
-	private scopeQueue: Array<ScopeSet>
-	private indiciatorId: number | undefined = undefined
-	private track: number | undefined = undefined
-	private defaultAfter: Array<Action> = []
-	constructor(private params: {
+	private res_: (value: Response) => void
+	private rej_: (reason: HookErr) => void
+	private promise_: Promise<Response>
+	private scopeStack_: Array<Scope> = []
+	private fetch_: any = {}
+	private scopeQueue_: Array<ScopeSet>
+	private indicatorId_: number | undefined = undefined
+	private track_: number | undefined = undefined
+	private defaultAfter_: Array<Action> = []
+	constructor(private params_: {
 		doorId: number,
 		hookId: number,
 		event?: Event,
@@ -35,14 +35,14 @@ export class Hook {
 		indicator: Array<IndicatorEntry>,
 		before: Array<Action>
 	}) {
-		this.promise = new Promise((res, rej) => {
-			this.res = res
-			this.rej = rej
+		this.promise_ = new Promise((res, rej) => {
+			this.res_ = res
+			this.rej_ = rej
 		})
-		if (!this.params.scopeQueue || this.params.scopeQueue.length == 0) {
-			this.scopeQueue = [["free", "", undefined]]
+		if (!this.params_.scopeQueue || this.params_.scopeQueue.length == 0) {
+			this.scopeQueue_ = [["free", "", undefined]]
 		} else {
-			this.scopeQueue = [...this.params.scopeQueue]
+			this.scopeQueue_ = [...this.params_.scopeQueue]
 		}
 
 	}
@@ -50,57 +50,57 @@ export class Hook {
 		const captureFunction = captures[name]
 		if (!captureFunction) {
 			this.err(new HookErr(hookErrKinds.capture, new Error("capture " + name + " not found")))
-			return this.promise
+			return this.promise_
 		}
 		try {
 			const params = captureFunction(arg, opt)
 			if (Array.isArray(params)) {
-				[this.fetch, this.defaultAfter] = params
+				[this.fetch_, this.defaultAfter_] = params
 			} else {
-				this.fetch = params
+				this.fetch_ = params
 			}
-			if (this.fetch === undefined) {
-				this.rej(new HookErr(hookErrKinds.canceled))
-				return this.promise
+			if (this.fetch_ === undefined) {
+				this.rej_(new HookErr(hookErrKinds.canceled))
+				return this.promise_
 			}
 		} catch (e) {
-			this.rej(new HookErr(hookErrKinds.capture, e))
-			return this.promise
+			this.rej_(new HookErr(hookErrKinds.capture, e))
+			return this.promise_
 		}
 		runtime.submitHook(this)
-		return this.promise
+		return this.promise_
 	}
 	nextScope() {
-		return this.scopeQueue.shift()
+		return this.scopeQueue_.shift()
 	}
 	stackScope(scope: Scope) {
-		this.scopeStack.unshift(scope)
+		this.scopeStack_.unshift(scope)
 	}
 	private async actions(actions: Array<Action>) {
 		for (const [name, arg, payload] of actions) {
-			const [_, err] = action(name, arg, { element: this.params.event?.target as any, payload: await decodePayload(payload) })
+			const [_, err] = action(name, arg, { element: this.params_.event?.target as any, payload: await decodePayload(payload) })
 			if (err) {
 				console.error("hook action err", err)
 			}
 		}
 	}
-	private abortTimer: AbortTimer | undefined
+	private abortTimer_: AbortTimer | undefined
 	execute() {
 		let target: Element | null = null
-		if (this.params.event?.currentTarget) {
-			target = this.params.event.currentTarget as Element
+		if (this.params_.event?.currentTarget) {
+			target = this.params_.event.currentTarget as Element
 		}
-		this.indiciatorId = indicator.start(target, this.params.indicator)
-		this.abortTimer = new AbortTimer(requestTimeout)
-		this.track = runtime.hookRegister(this)
-		const track = this.track
-		this.actions(this.params.before).then(() => {
-			fetch(`${prefix}/h/${id}/${this.params.doorId}/${this.params.hookId}?t=${track}`, {
+		this.indicatorId_ = indicator.start(target, this.params_.indicator)
+		this.abortTimer_ = new AbortTimer(requestTimeout)
+		this.track_ = runtime.hookRegister(this)
+		const track = this.track_
+		this.actions(this.params_.before).then(() => {
+			fetch(`${prefix}/h/${id}/${this.params_.doorId}/${this.params_.hookId}?t=${track}`, {
 				method: "POST",
-				signal: this.abortTimer!.signal,
-				...this.fetch,
+				signal: this.abortTimer_!.signal,
+				...this.fetch_,
 			}).then(r => {
-				this.abortTimer!.cancel()
+				this.abortTimer_!.cancel()
 				if (r.ok) {
 					runtime.hookOk(track, r)
 					return
@@ -117,101 +117,101 @@ export class Hook {
 					runtime.hookErr(track, new HookErr(hookErrKinds.other, r))
 				}
 			}).catch(e => {
-				if (this.abortTimer!.status == "aborted") {
+				if (this.abortTimer_!.status == "aborted") {
 					runtime.hookErr(track, new HookErr(hookErrKinds.canceled))
 					return
 				}
-				if (this.abortTimer!.status == "running") {
-					this.abortTimer!.cancel()
+				if (this.abortTimer_!.status == "running") {
+					this.abortTimer_!.cancel()
 				}
 				runtime.hookErr(track, new HookErr(hookErrKinds.network, e))
 			})
 		})
 	}
 	private done() {
-		this.scopeStack.forEach(s => s.done(this))
+		this.scopeStack_.forEach(s => s.done(this))
 	}
 	cancel() {
-		if (this.abortTimer) {
-			this.abortTimer.abort()
+		if (this.abortTimer_) {
+			this.abortTimer_.abort()
 			return
 		}
-		if (this.params.event) {
-			this.params.event.preventDefault()
-			this.params.event.stopPropagation()
+		if (this.params_.event) {
+			this.params_.event.preventDefault()
+			this.params_.event.stopPropagation()
 		}
 		this.err(new HookErr(hookErrKinds.canceled))
 	}
 
-	private response: Response | undefined = undefined
-	private reported = false
+	private response_: Response | undefined = undefined
+	private reported_ = false
 	report(): boolean {
-		this.reported = true
-		if (this.response) {
-			return this.ok(this.response)
+		this.reported_ = true
+		if (this.response_) {
+			return this.ok(this.response_)
 		}
 		return false
 	}
 	ok(r: Response): boolean {
-		if (!this.reported) {
-			this.response = r
+		if (!this.reported_) {
+			this.response_ = r
 			return false
 		}
-		const afterActions = this.defaultAfter
+		const afterActions = this.defaultAfter_
 		const after = r.headers.get("D0-After")
 		if (after) {
 			afterActions.push(...JSON.parse(after))
 		}
 		this.actions(afterActions).then(() => {
-			indicator.end(this.indiciatorId)
+			indicator.end(this.indicatorId_)
 			this.done()
-			this.res(r)
+			this.res_(r)
 		})
 		return true
 	}
 	err(r: HookErr) {
-		this.rej(r)
+		this.rej_(r)
 		this.done()
-		indicator.end(this.indiciatorId)
+		indicator.end(this.indicatorId_)
 	}
 }
 
 
 
 class Runtime {
-	private scopes = new Map<string, Scope>()
-	private hooks = new Map<number, Hook>()
-	private track = 0
+	private scopes_ = new Map<string, Scope>()
+	private hooks_ = new Map<number, Hook>()
+	private track_ = 0
 	constructor() {
 
 	}
 	public hookIsRegistered(track: number): boolean {
-		return this.hooks.has(track)
+		return this.hooks_.has(track)
 	}
 	public hookRegister(hook: Hook): number {
-		this.track += 1
-		this.hooks.set(this.track, hook)
-		return this.track
+		this.track_ += 1
+		this.hooks_.set(this.track_, hook)
+		return this.track_
 	}
 	public hookErr(track: number, err: HookErr) {
-		this.hooks.get(track)!.err(err)
-		this.hooks.delete(track)
+		this.hooks_.get(track)!.err(err)
+		this.hooks_.delete(track)
 	}
 	public hookOk(track: number, r: Response) {
-		if (this.hooks.get(track)!.ok(r)) {
-			this.hooks.delete(track)
+		if (this.hooks_.get(track)!.ok(r)) {
+			this.hooks_.delete(track)
 		}
 	}
 	public hookReport(track: number) {
 		if (!this.hookIsRegistered(track)) {
 			return
 		}
-		if (this.hooks.get(track)!.report()) {
-			this.hooks.delete(track)
+		if (this.hooks_.get(track)!.report()) {
+			this.hooks_.delete(track)
 		}
 	}
 	public scopeDone(id: string) {
-		this.scopes.delete(id)
+		this.scopes_.delete(id)
 	}
 	public submitHook(hook: Hook) {
 		const set = hook.nextScope()!
@@ -219,10 +219,10 @@ class Runtime {
 	}
 	public nextScope(hook: Hook, set: ScopeSet) {
 		const [type, id, opt] = set
-		let scope = this.scopes.get(id)
+		let scope = this.scopes_.get(id)
 		if (!scope) {
 			scope = newScope[type](this, id)
-			this.scopes.set(id, scope)
+			this.scopes_.set(id, scope)
 		}
 		scope.submit(hook, opt)
 	}
@@ -230,24 +230,24 @@ class Runtime {
 
 
 abstract class Scope {
-	private counter = 0
-	constructor(protected runtime: Runtime, protected id: string) {
+	private counter_ = 0
+	constructor(protected runtime_: Runtime, protected id_: string) {
 
 	}
 	protected get size() {
-		return this.counter
+		return this.counter_
 	}
 	public done(fetch: Hook) {
-		this.counter -= 1
+		this.counter_ -= 1
 		this.complete(fetch)
-		if (this.counter > 0) {
+		if (this.counter_ > 0) {
 			return
 		}
-		this.runtime.scopeDone(this.id)
+		this.runtime_.scopeDone(this.id_)
 	}
 	public submit(hook: Hook, opt: any) {
 		hook.stackScope(this)
-		this.counter += 1
+		this.counter_ += 1
 		this.process(hook, opt)
 	}
 	protected promote(hook: Hook) {
@@ -256,7 +256,7 @@ abstract class Scope {
 			hook.execute()
 			return
 		}
-		this.runtime.nextScope(hook, next)
+		this.runtime_.nextScope(hook, next)
 	}
 	protected abstract process(hook: Hook, opt: any): void
 	protected abstract complete(hook: Hook): void
@@ -276,51 +276,51 @@ const newScope = {
 } as const;
 
 class DebounceScope extends Scope {
-	private durationTimer: any = null
-	private limitTimer: any = null
-	private hook: Hook | null = null
+	private durationTimer_: any = null
+	private limitTimer_: any = null
+	private hook_: Hook | null = null
 	private launch() {
 		this.clearTimeouts()
-		const hook = this.hook!
-		this.hook = null
+		const hook = this.hook_!
+		this.hook_ = null
 		this.promote(hook)
 	}
 	private clearTimeouts() {
-		clearTimeout(this.durationTimer)
-		clearTimeout(this.limitTimer)
-		this.durationTimer = null
-		this.limitTimer = null
+		clearTimeout(this.durationTimer_)
+		clearTimeout(this.limitTimer_)
+		this.durationTimer_ = null
+		this.limitTimer_ = null
 	}
 	private resetDuration(duration: number) {
-		if (this.durationTimer) {
-			clearTimeout(this.durationTimer)
+		if (this.durationTimer_) {
+			clearTimeout(this.durationTimer_)
 		}
-		this.durationTimer = setTimeout(() => {
+		this.durationTimer_ = setTimeout(() => {
 			this.launch()
 		}, duration)
 	}
 	private resetLimit(limit: number) {
-		if (this.limitTimer != null) {
+		if (this.limitTimer_ != null) {
 			return
 		}
 		if (limit == 0) {
 			return
 		}
-		this.limitTimer = setTimeout(() => {
+		this.limitTimer_ = setTimeout(() => {
 			this.launch()
 		}, limit)
 	}
 	protected complete(hook: Hook): void {
-		if (this.hook !== hook) {
+		if (this.hook_ !== hook) {
 			return
 		}
-		this.hook = null
+		this.hook_ = null
 		this.clearTimeouts()
 	}
 	protected process(hook: Hook, opt: any): void {
 		const [duration, limit] = opt
-		const oldHook = this.hook
-		this.hook = hook
+		const oldHook = this.hook_
+		this.hook_ = hook
 		if (oldHook) {
 			oldHook.cancel()
 		}
@@ -330,21 +330,21 @@ class DebounceScope extends Scope {
 }
 
 class SerialScope extends Scope {
-	private queue: Array<Hook> = []
+	private queue_: Array<Hook> = []
 	protected complete(hook: Hook): void {
-		if (this.queue[0] === hook) {
-			this.queue.shift()
-			const next = this.queue[0]
+		if (this.queue_[0] === hook) {
+			this.queue_.shift()
+			const next = this.queue_[0]
 			if (next) {
 				this.promote(next)
 			}
 			return
 		}
-		this.queue = this.queue.filter(h => h !== hook)
+		this.queue_ = this.queue_.filter(h => h !== hook)
 	}
 	protected process(hook: Hook, _opt: any): void {
-		this.queue.push(hook)
-		if (this.queue.length == 1) {
+		this.queue_.push(hook)
+		if (this.queue_.length == 1) {
 			this.promote(hook)
 		}
 	}
@@ -364,41 +364,41 @@ class BlockingScope extends Scope {
 }
 
 class ConcurrentScope extends Scope {
-	private groupId: number = 0
+	private groupId_: number = 0
 
 	protected complete(_hook: Hook): void {
 	}
 
 	protected process(hook: Hook, opt: any): void {
 		const id = opt as number
-		if (this.size != 1 && this.groupId != id) {
+		if (this.size != 1 && this.groupId_ != id) {
 			hook.cancel()
 			return
 		}
-		this.groupId = id
+		this.groupId_ = id
 		this.promote(hook)
 	}
 }
 
 class FrameScope extends Scope {
-	private frameHook: Hook | null = null
+	private frameHook_: Hook | null = null
 	protected complete(hook: Hook): void {
-		if (!this.frameHook) {
+		if (!this.frameHook_) {
 			return
 		}
-		if (this.frameHook == hook) {
-			this.frameHook = null
+		if (this.frameHook_ == hook) {
+			this.frameHook_ = null
 			return
 		}
 		if (this.size != 1) {
 			return
 		}
-		this.promote(this.frameHook)
+		this.promote(this.frameHook_)
 
 	}
 	protected process(hook: Hook, opt: any): void {
 		const frame = opt as boolean
-		if (this.frameHook) {
+		if (this.frameHook_) {
 			hook.cancel()
 			return
 		}
@@ -406,7 +406,7 @@ class FrameScope extends Scope {
 			this.promote(hook)
 			return
 		}
-		this.frameHook = hook
+		this.frameHook_ = hook
 		if (this.size != 1) {
 			return
 		}
@@ -415,18 +415,18 @@ class FrameScope extends Scope {
 }
 
 class LatestScope extends Scope {
-	private last: Hook | null = null
+	private last_: Hook | null = null
 	protected complete(hook: Hook): void {
-		if (this.last !== hook) {
+		if (this.last_ !== hook) {
 			return
 		}
-		this.last = null
+		this.last_ = null
 	}
 	protected process(hook: Hook, _opt: any): void {
-		if (this.last) {
-			this.last.cancel()
+		if (this.last_) {
+			this.last_.cancel()
 		}
-		this.last = hook
+		this.last_ = hook
 		this.promote(hook)
 	}
 }

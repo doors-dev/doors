@@ -30,14 +30,14 @@ const signals = {
 
 class Solitaire {
 	top: Card
-	private cursor: number = 1
+	private cursor_: number = 1
 	constructor() {
 
 	}
-	private collectedLost = new Set<number>()
+	private collectedLost_ = new Set<number>()
 	return(lost: Lost) {
 		for (const gap of lost) {
-			this.collectedLost.delete(gap)
+			this.collectedLost_.delete(gap)
 		}
 	}
 	isDone(): boolean {
@@ -46,11 +46,11 @@ class Solitaire {
 	collectLost(): Lost {
 		const lost: Lost = []
 		for (const seq of this.getLost()) {
-			if (this.collectedLost.has(seq)) {
+			if (this.collectedLost_.has(seq)) {
 				continue
 			}
 			lost.push(seq)
-			this.collectedLost.add(seq)
+			this.collectedLost_.add(seq)
 		}
 		return lost
 
@@ -60,7 +60,7 @@ class Solitaire {
 		if (!this.top) {
 			return lost
 		}
-		this.top.lost(this.cursor - 1, lost)
+		this.top.lost(this.cursor_ - 1, lost)
 		return lost
 	}
 	collect(): Array<Package> {
@@ -68,19 +68,19 @@ class Solitaire {
 		if (!this.top) {
 			return a
 		}
-		if (this.top.start > this.cursor) {
+		if (this.top.start > this.cursor_) {
 			return a
 		}
 		this.top.collect(a, this)
 		const tail = a[a.length - 1]
-		if (tail.end < this.cursor) {
+		if (tail.end < this.cursor_) {
 			debugger;
 		}
-		this.cursor = tail.end + 1
+		this.cursor_ = tail.end + 1
 		return a.filter(p => !p.isFiller)
 	}
 	insert(p: Package) {
-		if (p.end < this.cursor) {
+		if (p.end < this.cursor_) {
 			return
 		}
 		if (!this.top) {
@@ -93,25 +93,25 @@ class Solitaire {
 }
 
 class Card {
-	private next: Card
-	constructor(private p: Package) {
+	private next_: Card
+	constructor(private p_: Package) {
 	}
 	get end(): number {
-		return this.p.end
+		return this.p_.end
 	}
 	get start(): number {
-		return this.p.start
+		return this.p_.start
 	}
 	lost(end: number, lost: Lost) {
-		if (end < this.p.start - 1) {
+		if (end < this.p_.start - 1) {
 			const lostStart = end + 1
-			const lostEnd = this.p.start - 1
+			const lostEnd = this.p_.start - 1
 			for (let seq = lostStart; seq <= lostEnd; seq++) {
 				lost.push(seq)
 			}
 		}
-		if (this.next) {
-			this.next.lost(this.p.end, lost)
+		if (this.next_) {
+			this.next_.lost(this.p_.end, lost)
 		}
 	}
 	collect(a: Array<Package>, h: Solitaire) {
@@ -125,83 +125,83 @@ class Card {
 		if (!match) {
 			return
 		}
-		a.push(this.p)
-		h.top = this.next
-		if (this.next) {
-			this.next.collect(a, h)
+		a.push(this.p_)
+		h.top = this.next_
+		if (this.next_) {
+			this.next_.collect(a, h)
 		}
 	}
 	insert(p: Package) {
-		// console.log(this.p.start, this.p.end, "INSERTING", p.start, p.end)
-		if (p.end < this.p.start) {
+		// console.log(this.p_.start, this.p_.end, "INSERTING", p.start, p.end)
+		if (p.end < this.p_.start) {
 			// console.log("REPLACED");
-			if (this.next) {
-				this.next.insert(this.p)
+			if (this.next_) {
+				this.next_.insert(this.p_)
 			} else {
-				this.next = new Card(this.p)
+				this.next_ = new Card(this.p_)
 			}
-			this.p = p
+			this.p_ = p
 			return
 		}
-		if (p.start > this.p.end) {
+		if (p.start > this.p_.end) {
 			// console.log("PASSED");
-			if (this.next) {
-				this.next.insert(p)
+			if (this.next_) {
+				this.next_.insert(p)
 			} else {
-				this.next = new Card(p)
+				this.next_ = new Card(p)
 			}
 			return
 		}
-		if (p.start == this.p.end) {
+		if (p.start == this.p_.end) {
 			// console.log("CONSUMED, EXTENDING RIGHT FROM TAIL");
-			p.start = this.p.start
-			this.p = p
-			if (this.next) {
-				this.next.cover(this.p.end, this)
+			p.start = this.p_.start
+			this.p_ = p
+			if (this.next_) {
+				this.next_.cover(this.p_.end, this)
 			}
 			return
 		}
 		// start < end
-		if (p.start <= this.p.start && p.end >= this.p.end) {
+		if (p.start <= this.p_.start && p.end >= this.p_.end) {
 			//      console.log("CONSUMED, EXTENING BOTH SIDED");
-			this.p = p
-			if (this.next) {
-				this.next.cover(this.p.end, this)
+			this.p_ = p
+			if (this.next_) {
+				this.next_.cover(this.p_.end, this)
 			}
 			return
 		}
-		if (p.end >= this.p.end) { // && p.start > this.start
+		if (p.end >= this.p_.end) { // && p.start > this.start
 			//       console.log("CONSUMED, EXTENDING RIGHT");
-			p.start = this.p.start
-			this.p = p
-			if (this.next) {
-				this.next.cover(this.p.end, this)
+			p.start = this.p_.start
+			this.p_ = p
+			if (this.next_) {
+				this.next_.cover(this.p_.end, this)
 			}
 			return
 		}
 		// p.end < this.end
 		// console.log("ENDEDN BEFORE, EXTENDING RIGHT");
-		p.start = Math.min(this.p.start, p.start)
-		this.p.start = p.end + 1
-		if (this.next) {
-			this.next.insert(this.p)
+		p.start = Math.min(this.p_.start, p.start)
+		this.p_.start = p.end + 1
+		if (this.next_) {
+			this.next_.insert(this.p_)
 		} else {
-			this.next = new Card(this.p)
+			this.next_ = new Card(this.p_)
 		}
-		this.p = p
+		this.p_ = p
 	}
 	private cover(end: number, head: Card) {
-		if (end >= this.p.end) {
-			head.next = this.next
-			if (this.next) {
-				this.next.cover(end, head)
+		if (end >= this.p_.end) {
+			head.next_ = this.next_
+			if (this.next_) {
+				this.next_.cover(end, head)
 			}
 			return
 		}
-		if (this.p.start > end) {
+		if (this.p_.start > end) {
 			return
 		}
-		this.p.start = end + 1
+		this.p_.start = end + 1
 		return
 	}
 }
@@ -229,40 +229,40 @@ type Gaps = Array<Gap>
 
 
 class Connection {
-	private status: SyncStatus = connectorStatus.signal
-	private abortTimer: AbortTimer
-	private rollTimer: ReliableTimer
-	constructor(private ctrl: Controller, private results: Results, private lost: Lost) {
-		this.abortTimer = new AbortTimer(solitairePing * 4 / 3)
-		this.rollTimer = new ReliableTimer(solitairePing, () => {
-			this.ctrl.requestRoll(this)
+	private status_: SyncStatus = connectorStatus.signal
+	private abortTimer_: AbortTimer
+	private rollTimer_: ReliableTimer
+	constructor(private ctrl_: Controller, private results_: Results, private lost_: Lost) {
+		this.abortTimer_ = new AbortTimer(solitairePing * 4 / 3)
+		this.rollTimer_ = new ReliableTimer(solitairePing, () => {
+			this.ctrl_.requestRoll(this)
 		})
 		this.run()
 	}
-	private header: Header | undefined
-	private package: Package | undefined
+	private header_: Header | undefined
+	private package_: Package | undefined
 
 	abort() {
-		this.abortTimer.abort()
+		this.abortTimer_.abort()
 	}
-	private acked = false
+	private acked_ = false
 	private ack() {
-		if (this.acked) {
+		if (this.acked_) {
 			return
 		}
-		this.acked = true
+		this.acked_ = true
 
 	}
 	private report(ok: boolean = false) {
-		this.abortTimer.cancel()
-		this.rollTimer.cancel()
-		const report = ok ? reports.ok : this.acked ? reports.interrupted : reports.broken;
-		this.ctrl.report(this, report, this.results, this.lost)
+		this.abortTimer_.cancel()
+		this.rollTimer_.cancel()
+		const report = ok ? reports.ok : this.acked_ ? reports.interrupted : reports.broken;
+		this.ctrl_.report(this, report, this.results_, this.lost_)
 	}
 	private get gaps(): Gaps {
 		const gaps: Gaps = []
 		let gap: any
-		for (const seq of this.lost) {
+		for (const seq of this.lost_) {
 			if (!gap) {
 				gap = [seq]
 				continue
@@ -286,7 +286,7 @@ class Connection {
 			let response: Response
 			try {
 				response = await fetch(`${prefix}/s/${id}`, {
-					signal: this.abortTimer.signal,
+					signal: this.abortTimer_.signal,
 					method: "PUT",
 					headers: {
 						Accept: "application/octet-stream",
@@ -294,14 +294,14 @@ class Connection {
 					},
 					body: JSON.stringify({
 						gaps: this.gaps,
-						results: Object.fromEntries(this.results!),
+						results: Object.fromEntries(this.results_!),
 					}),
 				})
 			} catch (e) {
 				throw new NetworkError()
 			}
 			if (response.status === 401 || response.status === 410) {
-				this.ctrl.kill()
+				this.ctrl_.kill()
 				throw new Error()
 			}
 			if (!response.ok) {
@@ -319,7 +319,7 @@ class Connection {
 				}
 				value = result.value
 				const done = await this.onChunk(value)
-				this.ctrl.flush()
+				this.ctrl_.flush()
 				if (done) {
 					reader.cancel()
 					break
@@ -334,7 +334,7 @@ class Connection {
 		if (data.length == 0) {
 			return false
 		}
-		if (this.status == connectorStatus.signal) {
+		if (this.status_ == connectorStatus.signal) {
 			const signal = data[0]
 			switch (signal) {
 				case signals.ack:
@@ -344,17 +344,17 @@ class Connection {
 					}
 					return await this.onChunk(data.subarray(1))
 				case signals.action:
-					this.status = connectorStatus.header
-					this.header = new Header()
+					this.status_ = connectorStatus.header
+					this.header_ = new Header()
 					if (data.length == 1) {
 						return false
 					}
 					return await this.onChunk(data.subarray(1))
 				case signals.suspend:
-					this.ctrl.suspend()
+					this.ctrl_.suspend()
 					break;
 				case signals.kill:
-					this.ctrl.kill()
+					this.ctrl_.kill()
 					break;
 				case signals.roll:
 					break
@@ -363,22 +363,22 @@ class Connection {
 			}
 			return true
 		}
-		if (this.status == connectorStatus.header) {
+		if (this.status_ == connectorStatus.header) {
 			for (let i = 0; i < data.length; i++) {
 				const byte = data[i]
 				if (byte == controlBytes.terminator) {
-					this.header!.append(data.subarray(0, i))
-					this.package = await this.header!.package()
-					this.header = undefined
-					this.status = connectorStatus.payload
-					if (await this.package!.finalize()) {
-						this.ctrl.onPackage(this.package)
-						this.package = undefined
-						this.status = connectorStatus.signal
+					this.header_!.append(data.subarray(0, i))
+					this.package_ = await this.header_!.package()
+					this.header_ = undefined
+					this.status_ = connectorStatus.payload
+					if (await this.package_!.finalize()) {
+						this.ctrl_.onPackage(this.package_)
+						this.package_ = undefined
+						this.status_ = connectorStatus.signal
 					}
 				} else if (byte == controlBytes.discard) {
-					this.header = undefined
-					this.status = connectorStatus.signal
+					this.header_ = undefined
+					this.status_ = connectorStatus.signal
 				} else {
 					continue
 				}
@@ -387,25 +387,25 @@ class Connection {
 				}
 				return await this.onChunk(data.subarray(i + 1))
 			}
-			this.header!.append(data)
+			this.header_!.append(data)
 			return false
 		}
-		const remaining = this.package!.remaining();
+		const remaining = this.package_!.remaining();
 		const chunk = remaining >= data.length ? data : data.subarray(0, remaining)
-		this.package!.append(chunk)
-		if (await this.package!.finalize()) {
+		this.package_!.append(chunk)
+		if (await this.package_!.finalize()) {
 
 			if (STRESS_MODE && Math.random() > 0.5) {
-				const p = this.package!
+				const p = this.package_!
 				setTimeout(() => {
-					this.ctrl.onPackage(p)
-					this.ctrl.flush()
+					this.ctrl_.onPackage(p)
+					this.ctrl_.flush()
 				}, Math.round(Math.random() * 200))
 			} else {
-				this.ctrl.onPackage(this.package!)
+				this.ctrl_.onPackage(this.package_!)
 			}
-			this.package = undefined
-			this.status = connectorStatus.signal
+			this.package_ = undefined
+			this.status_ = connectorStatus.signal
 		}
 		if (chunk.length == data.length) {
 			return false
@@ -417,23 +417,23 @@ class Connection {
 type Results = Map<number, [any, undefined] | [undefined, string]>
 
 class Tracker {
-	private buffered: Results = new Map()
+	private buffered_: Results = new Map()
 	process(p: Package) {
 		const [ok, err] = action(p.action, p.arg, { payload: p.getPayload() })
-		this.buffered.set(p.end, [ok, err?.message])
+		this.buffered_.set(p.end, [ok, err?.message])
 	}
 	return(collected: Results) {
 		for (const [seq, entry] of collected.entries()) {
-			this.buffered.set(seq, entry)
+			this.buffered_.set(seq, entry)
 		}
 	}
 	collect(): Results {
-		const collected = this.buffered
-		this.buffered = new Map()
+		const collected = this.buffered_
+		this.buffered_ = new Map()
 		return collected
 	}
 	isDone(): boolean {
-		return this.buffered.size == 0
+		return this.buffered_.size == 0
 	}
 }
 
@@ -446,10 +446,10 @@ const state = {
 type State = typeof state[keyof typeof state]
 
 class Controller {
-	private connections = new Set<Connection>()
-	private state: State = state.active
-	private loaded = false
-	private delay = new ProgressiveDelay()
+	private connections_ = new Set<Connection>()
+	private state_: State = state.active
+	private loaded_ = false
+	private delay_ = new ProgressiveDelay()
 	deck = new Solitaire()
 	tracker = new Tracker()
 	ready: Promise<undefined>
@@ -479,9 +479,9 @@ class Controller {
 		this.ttlTimer.reset()
 	}
 	private onReady() {
-		this.loaded = true
+		this.loaded_ = true
 		doors.scan(document)
-		if (this.state == state.dead) {
+		if (this.state_ == state.dead) {
 			return
 		}
 		this.flush()
@@ -490,7 +490,7 @@ class Controller {
 		this.deck.insert(p)
 	}
 	flush() {
-		if (!this.loaded) {
+		if (!this.loaded_) {
 			return
 		}
 		const collection = this.deck.collect()
@@ -503,121 +503,121 @@ class Controller {
 		}
 		this.roll()
 	}
-	private rolling = false
+	private rolling_ = false
 	private roll(delay = false) {
-		if (this.state != state.active) {
+		if (this.state_ != state.active) {
 			return
 		}
-		if (this.rolling) {
+		if (this.rolling_) {
 			return
 		}
 		if (!STRESS_MODE && delay) {
-			this.rolling = true
-			this.delay.wait().then(() => {
-				this.rolling = false
-				this.connect()
+			this.rolling_ = true
+			this.delay_.wait().then(() => {
+				this.rolling_ = false
+				this.connect_()
 			})
 			return
 		}
-		this.connect()
+		this.connect_()
 	}
-	private connect() {
+	private connect_() {
 		const results = this.tracker.collect()
 		const lost = this.deck.collectLost()
-		if (lost.length == 0 && results.size == 0 && this.connections.size > 1) {
+		if (lost.length == 0 && results.size == 0 && this.connections_.size > 1) {
 			return
 		}
-		this.connections.add(new Connection(this, results, lost))
+		this.connections_.add(new Connection(this, results, lost))
 	}
 	requestRoll(connection: Connection) {
-		if (!this.connections.has(connection)) {
+		if (!this.connections_.has(connection)) {
 			return
 		}
-		if (this.connections.size != 1) {
+		if (this.connections_.size != 1) {
 			return
 		}
 		this.roll()
 	}
 	report(connection: Connection, report: Report, results: Results, lost: Lost) {
-		this.connections.delete(connection)
+		this.connections_.delete(connection)
 		this.deck.return(lost)
 		if (report == reports.broken) {
 			this.tracker.return(results)
 		}
 		if (report == reports.ok) {
-			this.delay.reset()
+			this.delay_.reset()
 		}
-		if (this.connections.size >= 6 || (this.connections.size != 0 && report == reports.ok)) {
+		if (this.connections_.size >= 6 || (this.connections_.size != 0 && report == reports.ok)) {
 			return
 		}
 		this.roll(report == reports.broken)
 	}
 
 
-	private sleepTimer: any = null
+	private sleepTimer_: any = null
 	private sleep() {
-		clearTimeout(this.sleepTimer)
-		this.sleepTimer = null
-		if (this.state != state.active) {
+		clearTimeout(this.sleepTimer_)
+		this.sleepTimer_ = null
+		if (this.state_ != state.active) {
 			return
 		}
-		this.state = state.sleep
+		this.state_ = state.sleep
 		this.closeConnections()
 	}
 	private hidden() {
-		if (this.state != state.active) {
+		if (this.state_ != state.active) {
 			return
 		}
-		if (this.sleepTimer != null) {
+		if (this.sleepTimer_ != null) {
 			return
 		}
-		this.sleepTimer = setTimeout(() => {
+		this.sleepTimer_ = setTimeout(() => {
 			this.sleep()
 		}, disconnectAfter)
 	}
 
 	private closeConnections() {
-		for (const connection of this.connections) {
+		for (const connection of this.connections_) {
 			connection.abort()
 		}
 	}
 	private showed() {
-		clearTimeout(this.sleepTimer)
-		this.sleepTimer = null
-		if (this.state == state.dead) {
+		clearTimeout(this.sleepTimer_)
+		this.sleepTimer_ = null
+		if (this.state_ == state.dead) {
 			this.reload()
 			return
 		}
-		this.delay.reset()
-		if (this.state != state.sleep) {
+		this.delay_.reset()
+		if (this.state_ != state.sleep) {
 			return
 		}
-		this.state = state.active
-		if (this.connections.size != 0) {
+		this.state_ = state.active
+		if (this.connections_.size != 0) {
 			return
 		}
 		this.roll()
 	}
-	private reloaded = false
+	private reloaded_ = false
 	private reload() {
-		if (this.reloaded) {
+		if (this.reloaded_) {
 			return
 		}
-		this.reloaded = true
+		this.reloaded_ = true
 		location.reload()
 	}
 	suspend() {
-		if (this.state == state.dead) {
+		if (this.state_ == state.dead) {
 			return
 		}
-		this.state = state.dead
+		this.state_ = state.dead
 		this.closeConnections();
 		["pointerdown", "pointermove", "pointerup", "scroll", "focus", "keydown", "input"].forEach(event => {
 			window.addEventListener(event, () => this.reload(), true);
 		});
 	}
 	kill() {
-		this.state = state.dead
+		this.state_ = state.dead
 		if (!document.hidden) {
 			this.reload()
 		}

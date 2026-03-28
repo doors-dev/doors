@@ -9,45 +9,45 @@
 import doors from "./door"
 
 class Dyna {
-    private elements = new Set<Element>()
+    private elements_ = new Set<Element>()
     constructor(private name: string) {
 
     }
     add(element: Element): boolean {
-        if (this.elements.has(element)) {
+        if (this.elements_.has(element)) {
             return false
         }
-        this.elements.add(element)
+        this.elements_.add(element)
         return true
     }
     remove(element: Element) {
-        this.elements.delete(element)
+        this.elements_.delete(element)
     }
     isEmpty(): boolean {
-        return this.elements.size === 0
+        return this.elements_.size === 0
     }
     removeAttr(): number {
-        for (const element of this.elements) {
+        for (const element of this.elements_) {
             element.removeAttribute(this.name)
         }
-        return this.elements.size
+        return this.elements_.size
     }
     setAttr(value: string): number {
-        for (const element of this.elements) {
+        for (const element of this.elements_) {
             element.setAttribute(this.name, value)
         }
-        return this.elements.size
+        return this.elements_.size
     }
 }
 
 class Registry {
-    private registry = new Map<number, Dyna>()
+    private registry_ = new Map<number, Dyna>()
 
     add(element: Element, id: number, name: string) {
-        let dyna = this.registry.get(id)
+        let dyna = this.registry_.get(id)
         if (!dyna) {
             dyna = new Dyna(name)
-            this.registry.set(id, dyna)
+            this.registry_.set(id, dyna)
         }
         if (!dyna.add(element)) {
             return
@@ -55,19 +55,19 @@ class Registry {
         doors.onUnmount(element, () => {
             dyna.remove(element)
             if (dyna.isEmpty()) {
-                this.registry.delete(id)
+                this.registry_.delete(id)
             }
         })
     }
     removeAttr(id: number): number {
-        const dyna = this.registry.get(id)
+        const dyna = this.registry_.get(id)
         if (!dyna) {
             return 0
         }
         return dyna.removeAttr()
     }
     setAttr(id: number, value: string): number {
-        const dyna = this.registry.get(id)
+        const dyna = this.registry_.get(id)
         if (!dyna) {
             return 0
         }

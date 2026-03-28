@@ -142,24 +142,24 @@ const step = 200
 const jitterMult = 0.4
 
 export class ProgressiveDelay {
-    private marker = 0
+    private marker_ = 0
     private fee = 0
-    private limited = false
+    private limited_ = false
     private resetMarker() {
-        this.marker = Date.now()
+        this.marker_ = Date.now()
     }
     private resetFee() {
         this.fee = 0
-        this.limited = false
+        this.limited_ = false
     }
     private increaseFee() {
-        if (this.limited) {
+        if (this.limited_) {
             return
         }
         this.fee++
     }
     private diff() {
-        const diff = Date.now() - this.marker
+        const diff = Date.now() - this.marker_
         if (diff <= zeroThreshold) {
             return 0
         }
@@ -168,7 +168,7 @@ export class ProgressiveDelay {
     private delay(): number {
         let delay = step * Math.pow(2, this.fee)
         if (delay > maxDelay) {
-            this.limited = true
+            this.limited_ = true
             delay = maxDelay
         }
         const jitter = Math.random() * delay * jitterMult
@@ -199,43 +199,43 @@ export class ProgressiveDelay {
 }
 
 export class ReliableTimer {
-    private interval: number
+    private interval_: number
     private done: boolean = false
-    private deadline: number
+    private deadline_: number
     private tick: number
-    constructor(private timeout: number, handler: Function) {
-        this.timeout = timeout
-        this.tick = 0.05 * this.timeout
+    constructor(private timeout_: number, handler: Function) {
+        this.timeout_ = timeout_
+        this.tick = 0.05 * this.timeout_
         this.reset()
-        this.interval = setInterval(() => {
-            if (Date.now() < this.deadline) {
+        this.interval_ = setInterval(() => {
+            if (Date.now() < this.deadline_) {
                 return
             }
             this.done = true
-            clearInterval(this.interval)
+            clearInterval(this.interval_)
             handler()
         }, this.tick)
     }
     reset() {
-        this.deadline = Date.now() + this.timeout - this.tick / 2
+        this.deadline_ = Date.now() + this.timeout_ - this.tick / 2
     }
     cancel() {
-        clearInterval(this.interval)
+        clearInterval(this.interval_)
         return !this.done
     }
 }
 
 export class AbortTimer {
-    private abortController = new AbortController()
-    private timer: ReliableTimer
+    private abortController_ = new AbortController()
+    private timer_: ReliableTimer
     private _expired = false
     constructor(timeout: number) {
-        this.timer = new ReliableTimer(timeout, () => {
+        this.timer_ = new ReliableTimer(timeout, () => {
             if (this.signal.aborted) {
                 return
             }
             this._expired = true
-            this.abortController.abort("timeout")
+            this.abortController_.abort("timeout")
         })
     }
     get status(): "running" | "aborted" | "expired" {
@@ -248,14 +248,14 @@ export class AbortTimer {
         return "aborted"
     }
     cancel() {
-        this.timer.cancel()
+        this.timer_.cancel()
     }
     abort() {
-        this.timer.cancel()
-        this.abortController.abort()
+        this.timer_.cancel()
+        this.abortController_.abort()
     }
     get signal() {
-        return this.abortController.signal
+        return this.abortController_.signal
     }
 }
 
@@ -268,4 +268,3 @@ export interface ReadonlySet<T> {
     forEach(callbackfn: (value: T, value2: T, set: ReadonlySet<T>) => void, thisArg?: any): void;
     [Symbol.iterator](): IterableIterator<T>;
 }
-
