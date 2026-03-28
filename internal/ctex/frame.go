@@ -43,51 +43,10 @@ func FrameInfect(source context.Context, target context.Context) context.Context
 	return context.WithValue(target, keyFrame, f)
 }
 
-/*
-type atomicWg = *atomic.Pointer[sync.WaitGroup]
-
-func WgInsert(ctx context.Context) context.Context {
-	awg := &atomic.Pointer[sync.WaitGroup]{}
-	awg.Store(&sync.WaitGroup{})
-	return context.WithValue(ctx, keyWg, awg)
-}
-
-func WgInfect(source context.Context, target context.Context) context.Context {
-	awg, ok := source.Value(keyWg).(atomicWg)
+func FrameRemove(ctx context.Context) context.Context {
+	_, ok := ctx.Value(keyFrame).(*shredder.AfterFrame)
 	if !ok {
-		return target
+		return ctx
 	}
-	return context.WithValue(target, keyWg, awg)
+	return context.WithValue(ctx, keyFrame, nil)
 }
-
-func WgWait(ctx context.Context) {
-	awg, ok := ctx.Value(keyWg).(atomicWg)
-	if !ok {
-		log.Fatal("Must have")
-	}
-	wg := awg.Load()
-	if wg == nil {
-		log.Fatal("Must have")
-	}
-	wg.Wait()
-	awg.Store(nil)
-}
-
-type Done = func()
-
-var none = func() {}
-
-func WgAdd(ctx context.Context) Done {
-	awg, ok := ctx.Value(keyWg).(atomicWg)
-	if !ok {
-		return none
-	}
-	wg := awg.Load()
-	if wg == nil {
-		return none
-	}
-	wg.Add(1)
-	return func() {
-		wg.Done()
-	}
-} */

@@ -15,6 +15,7 @@ import (
 )
 
 func FreeContext(ctx context.Context, runtime context.Context) context.Context {
+	ctx = FrameRemove(ctx)
 	return freeContext{ctx, runtime}
 }
 
