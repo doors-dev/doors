@@ -45,6 +45,9 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if solitaire.Queue != conf.SolitaireQueue || solitaire.Pending != conf.SolitairePending {
 		t.Fatal("expected solitaire config to mirror system config")
 	}
+	if solitaire.DisableGzip != conf.SolitaireDisableGzip {
+		t.Fatal("expected solitaire gzip setting to mirror system config")
+	}
 
 	custom := &SystemConf{
 		RequestTimeout:          2 * time.Second,

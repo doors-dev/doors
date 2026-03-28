@@ -334,7 +334,7 @@ func (n *node) writeReplace(nr *replaceNode, parentTracker *tracker, prevWriteFr
 			nr.Cancel()
 			return
 		}
-		payload := pip.Payload(parentTracker.inst().Conf().ServerDisableGzip)
+		payload := pip.Payload(parentTracker.inst().Conf().SolitaireDisableGzip)
 		if e, ok := payload.(error); ok {
 			nr.Report(e)
 		}
@@ -370,7 +370,7 @@ func (n *node) writeUpdate(nu *updateNode) {
 			nu.Cancel()
 			return
 		}
-		payload := pip.Payload(nu.tracker.inst().Conf().ServerDisableGzip)
+		payload := pip.Payload(nu.tracker.inst().Conf().SolitaireDisableGzip)
 		if e, ok := payload.(error); ok {
 			nu.Report(e)
 			n.killUnmount()
@@ -429,7 +429,7 @@ func (n *node) writeProxyReplace(pn *proxyNode) {
 			pn.Cancel()
 			return
 		}
-		payload := pip.Payload(pn.tracker.inst().Conf().ServerDisableGzip)
+		payload := pip.Payload(pn.tracker.inst().Conf().SolitaireDisableGzip)
 		if e, ok := payload.(error); ok {
 			pn.Report(e)
 			n.killUnmount()

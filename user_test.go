@@ -33,16 +33,22 @@ func (helperDoor) ID() uint64 {
 }
 
 type helperInstance struct {
-	expire   time.Duration
-	adapters path.Adapters
-	conf     common.SystemConf
+	expire         time.Duration
+	adapters       path.Adapters
+	conf           common.SystemConf
+	lastCallAction action.Action
+	lastCallParams action.CallParams
 }
 
-func (h *helperInstance) CallCtx(context.Context, action.Action, func(json.RawMessage, error), func(), action.CallParams) context.CancelFunc {
+func (h *helperInstance) CallCtx(_ context.Context, act action.Action, _ func(json.RawMessage, error), _ func(), params action.CallParams) context.CancelFunc {
+	h.lastCallAction = act
+	h.lastCallParams = params
 	return func() {}
 }
 
-func (h *helperInstance) CallCheck(func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (h *helperInstance) CallCheck(_ func() bool, act action.Action, _ func(json.RawMessage, error), _ func(), params action.CallParams) {
+	h.lastCallAction = act
+	h.lastCallParams = params
 }
 
 func (h *helperInstance) CSPCollector() *common.CSPCollector {
@@ -173,5 +179,28 @@ func TestUserHelpers(t *testing.T) {
 	}
 	if !ctex.IsBlockingCtx(AllowBlocking(context.Background())) {
 		t.Fatal("expected AllowBlocking to mark context as blocking")
+	}
+}
+
+func TestCallUsesSolitaireDisableGzip(t *testing.T) {
+	ctx, inst := helperContext(t, nil)
+
+	Call(ctx, ActionEmit{Name: "plain", Arg: "hello"})
+	emit, ok := inst.lastCallAction.(action.Emit)
+	if !ok {
+		t.Fatalf("expected emit action, got %T", inst.lastCallAction)
+	}
+	if emit.Payload.Type() != action.PayloadTextGZ {
+		t.Fatalf("expected gzip text payload by default, got %v", emit.Payload.Type())
+	}
+
+	inst.conf.SolitaireDisableGzip = true
+	Call(ctx, ActionEmit{Name: "plain", Arg: "hello"})
+	emit, ok = inst.lastCallAction.(action.Emit)
+	if !ok {
+		t.Fatalf("expected emit action, got %T", inst.lastCallAction)
+	}
+	if emit.Payload.Type() != action.PayloadText {
+		t.Fatalf("expected plain text payload when solitaire gzip is disabled, got %v", emit.Payload.Type())
 	}
 }

@@ -60,6 +60,8 @@ type SystemConf struct {
 	// SolitaireFlushSizeLimit is the max buffered bytes before forcing a flush.
 	// Default: 32 KB
 	SolitaireFlushSizeLimit int
+	// SolitaireDisableGzip disables gzip compression for solitaire sync payloads if true.
+	SolitaireDisableGzip bool
 	// SolitaireQueue is the max queued server→client sync task.
 	// Exceeding this kills the instance. Default: 1024.
 	SolitaireQueue int
@@ -73,6 +75,7 @@ type SolitaireConf struct {
 	FlushSize    int
 	RollDuration time.Duration
 	FlushTimeout time.Duration
+	DisableGzip  bool
 	Queue        int
 	Pending      int
 	SyncTimeout  time.Duration
@@ -85,6 +88,7 @@ func GetSolitaireConf(s *SystemConf) *SolitaireConf {
 		FlushSize:    s.SolitaireFlushSizeLimit,
 		RollDuration: s.SolitaireRollTimeout,
 		FlushTimeout: s.SolitaireFlushTimeout,
+		DisableGzip:  s.SolitaireDisableGzip,
 		Queue:        s.SolitaireQueue,
 		Pending:      s.SolitairePending,
 	}
