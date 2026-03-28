@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,66 @@ func testPath(t *testing.T, page *rod.Page, path string) {
 	if last != path {
 		t.Fatal("path expected " + path + " actual " + last)
 	}
+}
+
+func testQueryValue(t *testing.T, page *rod.Page, key string, value string) {
+	t.Helper()
+	info, err := url.Parse(page.MustInfo().URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Query().Get(key); got != value {
+		t.Fatalf("query %s expected %q actual %q", key, value, got)
+	}
+}
+
+func testNoQueryValue(t *testing.T, page *rod.Page, key string) {
+	t.Helper()
+	info, err := url.Parse(page.MustInfo().URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Query().Get(key); got != "" {
+		t.Fatalf("query %s expected empty actual %q", key, got)
+	}
+}
+
+func waitQueryValue(t *testing.T, page *rod.Page, key string, value string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		info, err := url.Parse(page.MustInfo().URL)
+		if err == nil && info.Query().Get(key) == value {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	testQueryValue(t, page, key, value)
+}
+
+func waitNoQueryValue(t *testing.T, page *rod.Page, key string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		info, err := url.Parse(page.MustInfo().URL)
+		if err == nil && info.Query().Get(key) == "" {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	testNoQueryValue(t, page, key)
+}
+
+func waitContent(t *testing.T, page *rod.Page, selector string, content string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if test.GetContent(t, page, selector) == content {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	test.TestContent(t, page, selector, content)
 }
 
 func TestPageStatic(t *testing.T) {
@@ -168,6 +229,47 @@ func TestLocations(t *testing.T) {
 	page.NavigateBack()
 	<-time.After(100 * time.Millisecond)
 	testPath(t, page, "a")
+}
+
+func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathQuery]) doors.Response {
+			return doors.ResponseComp(pageQuery(s))
+		})
+	})
+	defer bro.Close()
+
+	page := bro.Page(t, "/q")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	testNoQueryValue(t, page, "tag")
+	testNoQueryValue(t, page, "page")
+	test.TestContent(t, page, "#tag", "")
+	test.TestContent(t, page, "#page-value", "")
+
+	test.Click(t, page, "#query-next")
+	waitQueryValue(t, page, "tag", "next")
+	waitQueryValue(t, page, "page", "2")
+	waitContent(t, page, "#tag", "next")
+	waitContent(t, page, "#page-value", "2")
+
+	nextInstance := test.GetContent(t, page, "#instance-id")
+	if nextInstance != initialInstance {
+		t.Fatalf("expected same instance after same-model navigation, got %q then %q", initialInstance, nextInstance)
+	}
+
+	page.NavigateBack()
+	waitNoQueryValue(t, page, "tag")
+	waitNoQueryValue(t, page, "page")
+
+	waitContent(t, page, "#tag", "")
+	waitContent(t, page, "#page-value", "")
+
+	restoredInstance := test.GetContent(t, page, "#instance-id")
+	if restoredInstance != initialInstance {
+		t.Fatalf("expected browser back restore to keep same instance, got %q then %q", initialInstance, restoredInstance)
+	}
 }
 
 func TestAfterAssign(t *testing.T) {

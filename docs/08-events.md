@@ -318,7 +318,7 @@ For a one-off attribute on one element, you usually do not need `doors.A(...)`.
 
 ## Related
 
-- Use [Navigation](./09-navigation.md) for `doors.AHref`.
+- Use [Navigation](./09-navigation.md) for `doors.ALink`.
 - Use [Custom Attrs](./13-custom-attrs.md) for `doors.AHook[...]`, `doors.ARawHook`, `doors.AData`, and `doors.ADyn`.
 - Use [Scopes](./10-scopes.md) for request scheduling.
 - Use [Indication](./11-indication.md) for client-side feedback.

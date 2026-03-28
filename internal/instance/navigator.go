@@ -118,11 +118,11 @@ func (n *navigator[M]) push(ctx context.Context, l path.Location) {
 	seq := n.seq
 	after, ok := ctex.AfterFrame(ctx)
 	if !ok {
-		n.call(l.Path(), seq, replace)
+		n.call(l.String(), seq, replace)
 		return
 	}
 	after.RunAfter(nil, nil, func(b bool) {
-		n.call(l.Path(), seq, replace)
+		n.call(l.String(), seq, replace)
 	})
 }
 

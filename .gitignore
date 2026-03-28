@@ -6,6 +6,8 @@
 *.test
 *.out
 coverage.*
+*.cover
+*.coverage
 *.coverprofile
 profile.cov
 go.work

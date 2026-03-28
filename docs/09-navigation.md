@@ -2,14 +2,14 @@
 
 In **Doors**, navigation usually happens in one of two ways:
 
-- declaratively with `doors.AHref`
+- declaratively with `doors.ALink`
 - programmatically by updating the current page's path `doors.Source[Path]`
 
 Both use the same path model rules described in [Path Model](./04-path-model.md).
 
-## AHref
+## ALink
 
-Use `doors.AHref` for normal links.
+Use `doors.ALink` for normal links.
 
 It does two things:
 
@@ -18,7 +18,7 @@ It does two things:
 
 ```gox
 <>
-	~>doors.AHref{
+	~>doors.ALink{
 		Model: Path{
 			Home: true,
 		},
@@ -41,7 +41,7 @@ Common optional fields are:
 
 ## Link Behavior
 
-`AHref` automatically chooses between same-page navigation and a normal page load.
+`ALink` automatically chooses between same-page navigation and a normal page load.
 
 If the target model has the same registered model type as the current page:
 
@@ -56,7 +56,7 @@ If the target model belongs to a different registered model type:
 
 That means you can usually write links in terms of models and let **Doors** decide how to navigate.
 
-`AHref` always sets a real `href`, so the link remains a valid browser link even without the dynamic behavior.
+`ALink` always sets a real `href`, so the link remains a valid browser link even without the dynamic behavior.
 
 ## Fragment
 
@@ -64,7 +64,7 @@ Use `Fragment` to append `#...` to the generated URL:
 
 ```gox
 <>
-	~>doors.AHref{
+	~>doors.ALink{
 		Model: Path{Docs: true},
 		Fragment: "api",
 	} <a>API</a>
@@ -77,7 +77,7 @@ Use `Active` when a link should reflect the current location.
 
 ```gox
 <>
-	~>doors.AHref{
+	~>doors.ALink{
 		Model: Path{
 			Dashboard: true,
 			ID:        f.id,
@@ -192,7 +192,7 @@ a.path.Update(ctx, Path{
 
 ## Actions
 
-`AHref` also participates in the same request pipeline as other **Doors** attributes.
+`ALink` also participates in the same request pipeline as other **Doors** attributes.
 
 That is why it supports:
 
@@ -202,6 +202,6 @@ That is why it supports:
 - `After`
 - `OnError`
 
-One useful special case: if `OnError` is left `nil` on a dynamic `AHref`, **Doors** falls back to a location reload.
+One useful special case: if `OnError` is left `nil` on a dynamic `ALink`, **Doors** falls back to a location reload.
 
 For the action types themselves, see [Actions](./12-actions.md).

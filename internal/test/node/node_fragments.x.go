@@ -110,7 +110,7 @@ func (f *FragmentProxyWrappedSiblings) Main() gox.Elem {
 			if err := cur.Close(); err != nil {
 				return err
 			}
-
+			
 			if err := cur.Init("div"); err != nil {
 				return err
 			}

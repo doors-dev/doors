@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"fmt"
 	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/gox"
@@ -27,6 +28,42 @@ elem pageA(b doors.Source[PathA]) {
 
 type PathB struct {
 	Path bool `path:"/b"`
+}
+
+type PathQuery struct {
+	Path bool `path:"/q"`
+	Tag *string `query:"tag"`
+	Page *int `query:"page"`
+}
+
+elem pageQuery(b doors.Source[PathQuery]) {
+	<html>
+		<body>
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			~>(doors.Inject(0, b)) <div id="tag">
+				~(if ctx.Value(0).(PathQuery).Tag != nil {
+					~(*ctx.Value(0).(PathQuery).Tag)
+				})
+			</div>
+			~>(doors.Inject(0, b)) <div id="page-value">
+				~(if ctx.Value(0).(PathQuery).Page != nil {
+					~(fmt.Sprint(*ctx.Value(0).(PathQuery).Page))
+				})
+			</div>
+			
+			~{
+				tag := "next"
+				page := 2
+			}
+			~>doors.ALink{
+				Model: PathQuery{
+					Path: true,
+					Tag: &tag,
+					Page: &page,
+				},
+			} <a id="query-next">query-next</a>
+		</body>
+	</html>
 }
 
 elem static(path string, code int) {

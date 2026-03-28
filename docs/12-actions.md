@@ -21,7 +21,7 @@ You can schedule actions in five common places:
 
 - `doors.Call(ctx, action)` for fire-and-forget dispatch from Go
 - `doors.XCall[T](ctx, action)` when Go needs the client result
-- `Before` on a request attr such as an event attr or `AHref`, just before the request is sent
+- `Before` on a request attr such as an event attr or `ALink`, just before the request is sent
 - `r.After(...)` after a successful request
 - `OnError` on a request attr when a client-visible hook error happens
 
@@ -117,7 +117,7 @@ They go through the browser location API and load the target page again.
 
 That makes them useful when you intentionally want a full page load.
 
-For normal in-app navigation, prefer [Navigation](./09-navigation.md), especially `AHref` and path model mutation.
+For normal in-app navigation, prefer [Navigation](./09-navigation.md), especially `ALink` and path model mutation.
 
 Built-ins:
 
@@ -183,6 +183,6 @@ They are mostly there for `Before`, `OnError`, and `r.After(...)`.
 - Use `doors.Call` when the result does not matter.
 - Use `doors.XCall` mainly with `ActionEmit`.
 - Keep `$on(...)` handlers synchronous and scoped intentionally.
-- Prefer path model mutation or `AHref` for in-app navigation.
+- Prefer path model mutation or `ALink` for in-app navigation.
 - Use location actions when you intentionally want a full page load.
 - Use `r.After(...)` for success-only follow-up and `OnError` for fallback or recovery behavior.

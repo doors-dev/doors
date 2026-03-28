@@ -4,6 +4,7 @@ package router
 
 import (
 	"context"
+	"fmt"
 	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/gox"
@@ -53,6 +54,78 @@ func pageA(b doors.Source[PathA]) gox.Elem {
 
 type PathB struct {
 	Path bool `path:"/b"`
+}
+
+type PathQuery struct {
+	Path bool `path:"/q"`
+	Tag *string `query:"tag"`
+	Page *int `query:"page"`
+}
+
+func pageQuery(b doors.Source[PathQuery]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("html"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Init("body"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "instance-id"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+				__e = doors.Inject(0, b).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("div"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "tag"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						if ctx.Value(0).(PathQuery).Tag != nil {
+							__e = __c.Any(*ctx.Value(0).(PathQuery).Tag); if __e != nil { return }
+						}
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+				__e = doors.Inject(0, b).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("div"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "page-value"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						if ctx.Value(0).(PathQuery).Page != nil {
+							__e = __c.Any(fmt.Sprint(*ctx.Value(0).(PathQuery).Page)); if __e != nil { return }
+						}
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+				tag := "next"
+				page := 2
+
+				__e = doors.ALink{
+				Model: PathQuery{
+					Path: true,
+					Tag: &tag,
+					Page: &page,
+				},
+			}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("a"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "query-next"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Text("query-next"); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
 }
 
 func static(path string, code int) gox.Elem {
