@@ -4,16 +4,16 @@
 
 Doors is a server-driven UI runtime for building reactive web applications in Go.
 
-Instead of splitting product logic across a frontend app, an API layer, and a backend full of duplicated flow, Doors keeps application flow on the server and treats the browser as a renderer and input layer. You write interactive UI in Go, keep data and capabilities on the server, and get real-time updates without building the usual frontend/backend boundary first.
+In Doors, the server owns the interaction flow and the browser acts as a renderer and input layer. You build interactive UI in Go, keep state and capabilities on the server, and let the runtime synchronize updates back to the page.
 
-## What Doors gives you
+## What it includes
 
 - Reactive web applications written in Go
-- UI interactions without designing a public API
+- UI interactions without first designing a public API
 - JavaScript as an option, not a requirement
-- Real-time synchronization built into the runtime
-- Asset serving and app delivery oriented around a single binary
-- A model that keeps business logic, state changes, and rendering in one place
+- Built-in real-time synchronization
+- Asset serving and delivery that fit a single-binary deployment model
+- One place for business logic, state changes, and rendering
 
 ## Core model
 
@@ -29,27 +29,23 @@ That means you can keep:
 
 in one execution flow instead of splitting them between browser code, handlers, API contracts, and state reassembly.
 
-## Why it feels different
+## Why it is useful
 
 ### Your Go server is the UI runtime
 
-Doors is not a thin HTML enhancement layer. It is a runtime for interactive applications where the server owns the flow and the browser reflects the current UI state.
+Doors is not an HTML enhancement layer. It is a runtime for interactive applications where the server owns the flow and the browser reflects current UI state.
 
 ### No frontend/backend drift by default
 
-Because the interaction model stays in Go, there is less duplicated logic and less contract drift between client and server.
+Because the interaction model stays in Go, there is less duplicated logic and less drift between client and server behavior.
 
 ### Less exposed surface area
 
-Doors does not push you toward turning every UI action into a public API. Session-scoped communication happens under the hood, which reduces boilerplate and avoids a common source of security mistakes.
+Doors does not push every UI action into a public API. Session-scoped communication happens under the hood, which cuts boilerplate and narrows the exposed surface area.
 
 ### One stack, top to bottom
 
-The runtime is designed from UI authoring down to delivery: templates, state, routing, synchronization, assets, and deployment all support the same server-driven model.
-
-## Good fit for AI-assisted coding
-
-Doors is also a strong environment for AI-assisted development because there is no hard frontend/backend split for generated changes to bridge. The code, state, and business logic stay in one Go codebase, while privileged operations and data remain on the server.
+Templates, state, routing, synchronization, assets, and deployment all follow the same server-driven model.
 
 ## Key ideas
 
@@ -59,7 +55,6 @@ Doors is also a strong environment for AI-assisted development because there is 
 - Type-safe routing with URLs represented as Go structs
 - Real-time client sync without making WebSockets or SSE your app architecture
 - Server-rendered interactions scoped to what each user can actually see
-
 
 ## Example
 
@@ -91,7 +86,7 @@ elem (s Search) results(input string) {
 }
 ```
 
-The point is not just writing less JavaScript. The point is keeping the UI event, the state mutation, the rendering logic, and the server-side behavior in the same language and runtime.
+The point is to keep the UI event, state mutation, rendering logic, and server-side behavior in the same language and runtime.
 
 ## Where Doors fits best
 
@@ -112,11 +107,11 @@ The point is not just writing less JavaScript. The point is keeping the UI event
 
 ### Doors vs HTMX
 
-HTMX enhances HTML by coordinating behavior through attributes and endpoints. Doors is a UI runtime: you write interactive flow directly in Go and let the runtime handle synchronization.
+HTMX enhances HTML by coordinating behavior through attributes and endpoints. Doors is a UI runtime: you write the interaction flow directly in Go and let the runtime handle synchronization.
 
 ### Doors vs React, Next.js, and similar stacks
 
-Typical JavaScript stacks place a large share of product behavior in the browser while the server mostly acts as a data service. Doors keeps that flow on the server in Go, with the browser focused on display and input.
+Typical JavaScript stacks place much of the interaction model in the browser while the server acts mainly as a data service. Doors keeps that flow on the server in Go, with the browser focused on display and input.
 
 ## Learn more
 
@@ -128,7 +123,7 @@ Typical JavaScript stacks place a large share of product behavior in the browser
 
 ## Status
 
-Doors is in beta. It is ready for development now and can be used in production with care, but the ecosystem is still maturing and you should expect fixes and updates as it evolves.
+Doors is in beta. It is ready for development and can be used in production with care, but the ecosystem is still maturing. Expect fixes, refinements, and some breaking changes as it evolves.
 
 ## Licensing
 
