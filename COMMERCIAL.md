@@ -10,6 +10,6 @@ you need a Commercial License.
 Commercial licenses are issued via an Order Form and a separate commercial agreement.
 This file is informational only; the signed commercial agreement controls.
 
-Contact: sales@doors.dev
+For commercial licensing, contact sales@doors.dev or visit https://doors.dev.
 
   
