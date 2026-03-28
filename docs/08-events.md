@@ -2,7 +2,9 @@
 
 In **Doors**, DOM events are handled through attributes.
 
-An event attribute connects a browser event to a backend handler, with optional client-side scheduling, indication, and actions around the request.
+An event attribute connects a browser event to a Go handler.
+
+Around that handler, **Doors** can also manage client-side scheduling, pending indication, and follow-up actions.
 
 That same system is used for:
 
@@ -11,6 +13,32 @@ That same system is used for:
 - focus events
 - input and change events
 - form submission
+
+## Start
+
+Most event attrs look like `doors.AClick`, `doors.AInput`, or `doors.ASubmit[T]`.
+
+The smallest useful example is:
+
+```gox
+<button
+	(doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			return false
+		},
+	})>
+	Click
+</button>
+```
+
+The core shape is still the same: an event attr has an `On` handler and that handler returns `bool`.
+
+Return:
+
+- `false` to keep the handler active
+- `true` to mark it done and remove it
+
+For normal DOM events, `false` is the common default.
 
 ## Attach
 
@@ -47,57 +75,15 @@ The modifier form attaches directly to the element you are editing.
 
 The proxy form walks through the following subtree until it reaches the real rendered element and attaches there. That is useful when the final element is inside another component.
 
-## Flow
+## Handler
 
-When an event fires, the client/runtime flow is roughly:
-
-1. capture the browser event and build the payload
-2. apply client-side event options such as `PreventDefault`, `StopPropagation`, `ExactTarget`, or key `Filter`
-3. run client-side scopes
-4. start indication
-5. run any `Before` actions
-6. send the request to the server handler
-7. run `After` actions if the request succeeds
-8. run `OnError` actions if the request fails
-
-That is why scopes and indication feel immediate: they start on the client before the server finishes the request.
-
-## Common
-
-Most event attributes share the same core fields:
-
-- `On`: backend handler
-- `Scope`: request scheduling rules, covered in [Scopes](./10-scopes.md)
-- `Indicator`: temporary client-side feedback, covered in [Indication](./11-indication.md)
-- `Before`: client-side actions before the request
-- `OnError`: client-side actions if the request fails
-
-`After` is different: it is not an attribute field. You schedule it from inside the handler with `r.After(...)`.
-
-Some families also add fields like:
-
-- `PreventDefault`
-- `StopPropagation`
-- `ExactTarget`
-- `Filter`
-- `ExcludeValue`
-
-The `On` handler returns `bool`:
-
-- `false` keeps the handler active
-- `true` marks it done so it can be removed
-
-For normal DOM events, `false` is the common default.
-
-## Request
-
-For DOM events, the handler receives `doors.RequestEvent[T]`.
+For normal DOM events, the handler receives `doors.RequestEvent[T]`.
 
 That gives you:
 
 - `r.Event()` for the typed event payload
 - `r.SetCookie(...)` and `r.GetCookie(...)`
-- `r.After(...)` to schedule client-side actions after the request
+- `r.After(...)` to schedule client-side actions after the request succeeds
 
 Example:
 
@@ -113,15 +99,43 @@ Form handlers use:
 - `doors.RequestForm[T]` for decoded form data
 - `doors.RequestRawForm` for raw multipart access
 
-## Execution
+## Options
 
-Each activated event attribute in **Doors** has its own backend hook instance.
+Most event attrs share the same request-lifecycle fields:
 
-Calls to that same instance are serialized.
+- `On`: backend handler
+- `Scope`: request scheduling rules, covered in [Scopes](./10-scopes.md)
+- `Indicator`: temporary client-side feedback, covered in [Indication](./11-indication.md)
+- `Before`: client-side actions before the request
+- `OnError`: client-side actions if the request fails
 
-That means rapid repeated events on the same active handler do not run concurrently on the backend.
+`After` is different: it is not an attribute field. You schedule it from inside the handler with `r.After(...)`.
 
-If you prepare one activated attribute with `doors.A(ctx, ...)` and reuse it across multiple elements, those elements share the same hook instance and the same execution queue.
+Some event families also add browser-event options such as:
+
+- `PreventDefault`
+- `StopPropagation`
+- `ExactTarget`
+- `Filter`
+- `ExcludeValue`
+
+Not every event family supports every one of these options.
+
+## Flow
+
+When an event fires, the client/runtime flow is roughly:
+
+1. capture the browser event and build the payload
+2. apply client-side event options such as `PreventDefault`, `StopPropagation`, `ExactTarget`, or key `Filter`
+3. run client-side scopes
+4. start indication
+5. run any `Before` actions
+6. send the request to the server
+7. run the Go handler
+8. run `After` actions if the request succeeds
+9. run `OnError` actions if the request fails
+
+That is why scopes and indication feel immediate: they start on the client before the server finishes the request.
 
 ## Pointer
 
@@ -159,7 +173,7 @@ Example:
 
 The pointer payload includes the usual browser pointer fields, including coordinates, button state, pointer type, pressure, and timestamp.
 
-## Keys
+## Keyboard
 
 Keyboard attributes are:
 
@@ -260,6 +274,33 @@ Use `ARawSubmit` when you want direct multipart access for streaming, custom par
 
 For form decoding, **Doors** uses [go-playground/form v4](https://github.com/go-playground/form/tree/v4.2.1).
 
+## Reuse
+
+Use `doors.A(ctx, ...)` when you want to prepare one activated attribute value and reuse it.
+
+```gox
+<>
+	~{
+		radio := doors.A(ctx, doors.AChange{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.ChangeEvent]) bool {
+				return false
+			},
+		})
+	}
+
+	<input type="radio" name="pick" value="a" (radio)/>
+	<input type="radio" name="pick" value="b" (radio)/>
+</>
+```
+
+For a one-off attribute on one element, you usually do not need `doors.A(...)`.
+
+Each activated event attr has its own backend hook instance.
+
+Calls to that same instance are serialized, so rapid repeated events on one active handler do not run concurrently on the backend.
+
+If you reuse one activated attr across several elements, those elements also share the same hook instance and the same execution queue.
+
 ## Unsupported
 
 If the browser event you need is not supported by the built-in `doors.A...` event attributes, wire it yourself in JavaScript and call a custom hook.
@@ -293,28 +334,7 @@ Example:
 </script>
 ```
 
-See [Custom Attrs](./13-custom-attrs.md) and [JavaScript](./15-javascript.md).
-
-## Reuse
-
-Use `doors.A(ctx, ...)` when you want to prepare one activated attribute value and reuse it.
-
-```gox
-<>
-	~{
-		radio := doors.A(ctx, doors.AChange{
-			On: func(ctx context.Context, r doors.RequestEvent[doors.ChangeEvent]) bool {
-				return false
-			},
-		})
-	}
-
-	<input type="radio" name="pick" value="a" (radio)/>
-	<input type="radio" name="pick" value="b" (radio)/>
-</>
-```
-
-For a one-off attribute on one element, you usually do not need `doors.A(...)`.
+See [JavaScript](./15-javascript.md).
 
 ## Related
 

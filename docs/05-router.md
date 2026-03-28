@@ -2,7 +2,11 @@
 
 The **Doors** router is the HTTP entry point for your app.
 
-You create it with `doors.NewRouter()`, register page models and any custom routes you need, then pass it to `http.ListenAndServe`.
+Most apps use it in three steps:
+
+1. create a router with `doors.NewRouter()`
+2. register page models with `doors.UseModel(...)`
+3. pass the router to `http.ListenAndServe`
 
 ```go
 router := doors.NewRouter()
@@ -18,27 +22,43 @@ if err := http.ListenAndServe(":8080", router); err != nil {
 
 `doors.Router` implements `http.Handler`, so it plugs directly into the standard Go server.
 
-## Flow
+In practice, the router is where you decide:
 
-For normal app requests, the router works in this order:
+- which page models belong to this app
+- which non-page endpoints should live beside them
+- which router-wide settings apply to the whole app
 
-1. custom `Route`s added with `doors.UseRoute`
-2. page models added with `doors.UseModel`
-3. fallback handler, if configured
-4. `404 Not Found`
+## Start
 
-That means custom routes always get the first chance to handle a request.
+Start with `doors.UseModel(...)`.
 
-## Routes
+That is the normal path for **Doors** pages:
 
-Use `doors.UseRoute` for endpoints that are not page models, such as:
+```go
+type Path struct {
+	Home bool `path:"/"`
+}
+
+doors.UseModel(router, func(r doors.RequestModel, s doors.Source[Path]) doors.Response {
+	return doors.ResponseComp(Page(s))
+})
+```
+
+If your app is mainly pages, you can often stop there.
+
+Path matching, decoding, and URL generation are covered in [Path Model](./04-path-model.md).
+
+## Custom Routes
+
+Use `doors.UseRoute(...)` only when the endpoint is not really a page model.
+
+Good fits are:
 
 - health checks
-- webhooks
-- custom file endpoints
+- simple public `GET` endpoints
 - static file mounts
 
-To add one, implement `doors.Route`:
+`doors.UseRoute(...)` takes a `doors.Route`:
 
 ```go
 type Route interface {
@@ -64,11 +84,20 @@ func (HealthRoute) Serve(w http.ResponseWriter, r *http.Request) {
 doors.UseRoute(router, HealthRoute{})
 ```
 
+The important practical rule is simple:
+
+- use `UseModel` for app pages
+- use `UseRoute` for public `GET` endpoints that should bypass page-model routing
+
+`UseRoute` participates in the router's normal content handling, which means it is used for `GET` requests.
+
+If you need a broader HTTP surface such as webhooks, APIs, or another mux, hand unmatched requests to something else with [Fallback](#fallback) or mount **Doors** inside a larger server.
+
 ## Files
 
-**Doors** includes a few ready-to-use route types for serving files.
+**Doors** includes ready-to-use routes for common file serving cases.
 
-### RouteFS
+### `RouteFS`
 
 Serve an `fs.FS` under a URL prefix:
 
@@ -79,7 +108,7 @@ doors.UseRoute(router, doors.RouteFS{
 })
 ```
 
-### RouteDir
+### `RouteDir`
 
 Serve a local directory under a URL prefix:
 
@@ -90,7 +119,7 @@ doors.UseRoute(router, doors.RouteDir{
 })
 ```
 
-### RouteFile
+### `RouteFile`
 
 Serve one local file at a fixed path:
 
@@ -101,11 +130,36 @@ doors.UseRoute(router, doors.RouteFile{
 })
 ```
 
-### Resources
+### Resource Routes
 
-`doors.RouteResource` and `doors.RouteResourceFS` serve fixed public paths through the **Doors** resource registry.
+`doors.RouteResource` serves a fixed public path through the **Doors** resource registry.
 
-Use them when you want the same resource handling behavior as the **Doors** runtime, but still want a stable URL of your own.
+Use it when you want the same resource handling behavior as the **Doors** runtime, but still want a stable URL of your own.
+
+## Matching
+
+When a request comes in, the router first handles its own framework URLs:
+
+- resource URLs
+- hook URLs
+- sync and restore URLs
+
+After that, normal app content is handled in this order:
+
+1. routes added with `doors.UseRoute(...)`
+2. models added with `doors.UseModel(...)`
+3. the fallback handler, if one is configured
+4. `404 Not Found`
+
+That ordering matters most when you mix custom routes and page models in the same app.
+
+In practice:
+
+- `UseRoute` gets first chance to handle a request
+- `UseModel` handles the normal page-routing path
+- `UseFallback` is for handing unmatched traffic to something else
+
+If you are deciding between route and model behavior for a page URL, that ordering is the one that matters.
 
 ## Fallback
 
@@ -117,11 +171,13 @@ doors.UseFallback(router, myMux)
 
 This is useful when **Doors** is only part of a larger server.
 
-## Config
+## Router Settings
 
 Most apps only need `doors.NewRouter()`, `doors.UseModel(...)`, and maybe `doors.UseRoute(...)`.
 
-When you need more control, router-level helpers include:
+Add router-wide settings only when you need them.
+
+Common helpers include:
 
 - `doors.UseFallback(...)`
 - `doors.UseSystemConf(...)`
@@ -132,6 +188,6 @@ When you need more control, router-level helpers include:
 - `doors.UseESConf(...)`
 - `doors.UseLicense(...)`
 
-Use these when you are configuring the router itself, not when you are defining page URLs. Page URL design belongs in your path models.
+These configure the router itself. They are separate from path-model design and page behavior.
 
 For the main router-level settings, see [Configuration](./21-configuration.md).

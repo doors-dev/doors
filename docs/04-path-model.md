@@ -31,6 +31,40 @@ When a request matches this model, **Doors** decodes the URL into `Path` and pas
 
 That source becomes the route state for the current page instance. If the user navigates within the same model type, the page can react to the updated model instead of doing a full reload.
 
+Inside the `UseModel` handler, read the current model with `s.Get()`:
+
+```go
+doors.UseModel(router, func(r doors.RequestModel, s doors.Source[Path]) doors.Response {
+	path := s.Get()
+	if path.Legacy {
+		return doors.ResponseRedirect(Path{Home: true}, http.StatusMovedPermanently)
+	}
+	return doors.ResponseComp(Page(s))
+})
+```
+
+Use `Get()` here because this handler does not run with a **Doors** render/runtime `ctx`. The `Read(ctx)`-style methods are for places that do have that runtime context.
+
+## Location
+
+`doors.Location` is the special catch-all model.
+
+If you register `doors.Source[doors.Location]`, that handler matches every URL:
+
+```go
+doors.UseModel(router, func(r doors.RequestModel, s doors.Source[doors.Location]) doors.Response {
+	return doors.ResponseComp(Page(s))
+})
+```
+
+This is useful when you want the raw path and query instead of a decoded struct model.
+
+For example, a request like `/any/deep/path?tag=hello&page=7` arrives as `doors.Location` with:
+
+- `Path()` as `/any/deep/path`
+- `Query.Get("tag")` as `hello`
+- `Query.Get("page")` as `7`
+
 ## Variants
 
 A path model can contain multiple page variants. Each variant is an exported `bool` field tagged with `path:"..."`.
