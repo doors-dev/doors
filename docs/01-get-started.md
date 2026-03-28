@@ -10,6 +10,20 @@
 
 Please use the official [VS Code](https://marketplace.visualstudio.com/items?itemName=doors-dev.gox) or [Neovim](https://github.com/doors-dev/nvim-gox) extension. Alternatively, follow the manual installation guide in the [GoX README](https://github.com/doors-dev/gox).
 
+It is also recommended to have the `gox` binary on your `PATH`.
+
+That lets you run commands such as `gox fmt` and `gox gen` yourself, and it also helps editor tooling and code agents trigger the same workflow when needed.
+
+### GoX Workflow
+
+The practical workflow is simple:
+
+- write GoX source in `.gox`
+- use `.go` for ordinary Go files when that fits naturally
+- treat `.x.go` as generated output, don't edit it
+
+> The language server keeps generated files up to date while you work, and you can use `gox gen` or `gox fmt` when you want to run generation or formatting yourself.
+
 ## Setup Project
 
 Create a new directory containing our project:
@@ -56,7 +70,7 @@ elem (a App) Main() {
 
 Components in **Doors** (and **GoX**) must have a `Main()` method that returns `gox.Elem`. The `elem` keyword lets you write an HTML template directly in the function body.
 
-> GoX language server compiles it and manages `.x.go` file automatically! 
+> GoX language server compiles it and manages `.x.go` files automatically.
 
 ## Serve The App
 

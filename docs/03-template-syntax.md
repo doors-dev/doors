@@ -6,6 +6,8 @@ It is compatible with `templ` and can write the resulting HTML directly to an `i
 
 **GoX** support is provided by its own language server, which enables a nearly seamless experience across `.gox` and `.go` files. It also compiles `.x.go` files to `.go` automatically as you type, and saves the generated output when you save the `.gox` file.
 
+> It is worth keeping `gox` on your `PATH`, so you, your editor tooling, and code agents can run commands like `gox fmt` and `gox gen` when needed.
+
 ## HTML as Expression
 
 In `.gox` files, HTML compiles to a value of type `gox.Elem`.
