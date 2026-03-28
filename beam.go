@@ -10,87 +10,54 @@ package doors
 
 import "github.com/doors-dev/doors/internal/beam"
 
-// Beam represents a reactive value stream that can be read, subscribed to, or watched.
+// Beam is a read-only reactive value.
 //
-// When used in a render cycle, it is guaranteed that a Door and all of its children
-// will observe the exact same value for a given Beam. This ensures stable and predictable
-// rendering behavior, even when multiple components depend on the same reactive source.
+// Use a [Beam] to read, subscribe to, or derive a smaller view of state. During
+// one render/update cycle, a Door subtree observes one consistent value for the
+// same beam.
 type Beam[T any] = beam.Beam[T]
 
-// Source is the initial Beam (others are derived from it), which, in addition to its core
-// functionality, includes the ability to update values and propagate changes to all
-// subscribers and derived beams. It serves as the root of a reactive value chain.
-// Updates and mutations are synchronized across all subscribers, ensuring consistent
-// state during rendering cycles. During a render cycle, all consumers will see a
-// consistent view of the latest value. The source maintains a sequence of values for
-// synchronization purposes.
+// Source is a writable [Beam].
 //
-// IMPORTANT: For reference types (slices, maps, pointers, structs), do not modify
-// the data directly. Instead, create or provide a different instance.
-// Direct modification can break the consistency guarantees since subscribers may
-// observe partial changes or inconsistent state.
+// Create a source with [NewSource] or [NewSourceEqual], then derive smaller
+// beams with [NewBeam] or [NewBeamEqual]. For reference types such as slices,
+// maps, pointers, or mutable structs, replace the stored value instead of
+// mutating it in place.
 type Source[T any] = beam.Source[T]
 
-// NewSource creates a new SourceBeam with the given initial value.
-// Updates are only propagated when the new value passes the default distinct
-// function with != comparison to the old value
+// NewSource creates a [Source] that uses `==` to suppress equal updates.
 //
-// Parameters:
-//   - init: the initial value for the SourceBeam
+// Example:
 //
-// Returns:
-//   - A new Source[T] instance
+//	count := doors.NewSource(0)
 func NewSource[T comparable](init T) Source[T] {
 	return beam.NewSource(init)
 }
 
-// NewSourceEqual creates a new SourceBeam with a custom equality function.
+// NewSourceEqual creates a [Source] with a custom equality function.
 //
-// The equality function receives new and old values and should return true
-// if the new value is considered different and should be propagated to subscribers.
-// If equality is nil, every update will be propagated regardless of value equality.
-//
-// Parameters:
-//   - init: the initial value for the SourceBeam
-//   - equality: a function to determine if transformed values should propagate (equal values ignored)
-//     or nil to always propagate
-//
-// Returns:
-//   - A new Source[T] instance that uses the equality function for update filtering
+// equal should report whether new and old should be treated as equal and
+// therefore not propagated. If equal is nil, every update propagates.
 func NewSourceEqual[T any](init T, equal func(new T, old T) bool) Source[T] {
 	return beam.NewSourceEqual(init, equal)
 }
 
-// NewBeam derives a new Beam[T2] from an existing Beam[T] by applying a transformation function.
+// NewBeam derives a [Beam] from source and uses `==` to suppress equal
+// derived values.
 //
-// The cast function maps values from the source beam2.to the derived beam.
-// Updates are only propagated when the new value passes the default equality
-// function with != comparison to the old value
+// Example:
 //
-// Parameters:
-//   - source: the source Beam[T] to derive from
-//   - cast: a function that transforms values from type T to type T2
-//
-// Returns:
-//   - A new Beam[T2] that emits transformed values when they differ from the previous value
+//	fullName := doors.NewBeam(user, func(u User) string {
+//		return u.FirstName + " " + u.LastName
+//	})
 func NewBeam[T any, T2 comparable](source Beam[T], cast func(T) T2) Beam[T2] {
 	return beam.NewBeam(source, cast)
 }
 
-// NewBeamEqual derives a new Beam[T2] from an existing Beam[T] using custom transformation and filtering.
+// NewBeamEqual derives a [Beam] from source with a custom equality function.
 //
-// The cast function transforms source values from type T to type T2. The equality function
-// determines whether updated values should be propagated by comparing new and old values.
-// If equality function is nil, every transformation will be propagated regardless of value equality.
-//
-// Parameters:
-//   - source: the source Beam[T] to derive from
-//   - cast: a function to transform T → T2
-//   - equality: a function to determine if transformed values should propagate (equal values ignored)
-//     or nil to always propagate
-//
-// Returns:
-//   - A new Beam[T2] that emits transformed values filtered by the equality function
+// equal should report whether new and old should be treated as equal and
+// therefore not propagated. If equal is nil, every derived value propagates.
 func NewBeamEqual[T any, T2 any](source Beam[T], cast func(T) T2, equal func(new T2, old T2) bool) Beam[T2] {
 	return beam.NewBeamEqual(source, cast, equal)
 }

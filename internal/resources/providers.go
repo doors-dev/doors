@@ -132,7 +132,7 @@ func inlineScriptArgs(kind Kind) string {
 		return "$on, $data, $hook, $fetch, $G, $sys, HookErr"
 	}
 	return "$on: (name: string, handler: (arg: any, err?: Error) => any) => void, " +
-		"$data: (name: string) => Promise<any>, " +
+		"$data: <T = any>(name: string) => T | Promise<ArrayBuffer>, " +
 		"$hook: (name: string, arg?: any) => Promise<any>, " +
 		"$fetch: (name: string, arg?: any) => Promise<Response>, " +
 		"$G: {[key: string]: any}, " +

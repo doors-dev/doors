@@ -161,7 +161,7 @@ func TestScriptEntries(t *testing.T) {
 		if tsOpt.Stdin == nil || tsOpt.Stdin.Sourcefile != "index.ts" || tsOpt.Stdin.Loader != api.LoaderTS {
 			t.Fatalf("ScriptInlineFS TS stdin = %#v", tsOpt.Stdin)
 		}
-		if !strings.Contains(tsOpt.Stdin.Contents, "$on: (name: string") {
+		if !strings.Contains(tsOpt.Stdin.Contents, "$data: <T = any>(name: string) => T | Promise<ArrayBuffer>") {
 			t.Fatalf("ScriptInlineFS TS contents = %q", tsOpt.Stdin.Contents)
 		}
 		if got := entryIDString(t, ts); got != "inline_fsindex.tsinline" {
@@ -244,7 +244,7 @@ func TestScriptEntries(t *testing.T) {
 		if tsOpt.Stdin == nil || tsOpt.Stdin.Sourcefile != "index.ts" || tsOpt.Stdin.Loader != api.LoaderTS {
 			t.Fatalf("ScriptInlinePath TS stdin = %#v", tsOpt.Stdin)
 		}
-		if !strings.Contains(tsOpt.Stdin.Contents, "$on: (name: string") {
+		if !strings.Contains(tsOpt.Stdin.Contents, "$data: <T = any>(name: string) => T | Promise<ArrayBuffer>") {
 			t.Fatalf("ScriptInlinePath TS contents = %q", tsOpt.Stdin.Contents)
 		}
 
@@ -282,7 +282,7 @@ func TestScriptEntries(t *testing.T) {
 		if tsOpt.Stdin == nil || tsOpt.Stdin.Sourcefile != "index.ts" || tsOpt.Stdin.Loader != api.LoaderTS {
 			t.Fatalf("ScriptInlineString TS stdin = %#v", tsOpt.Stdin)
 		}
-		if !strings.Contains(tsOpt.Stdin.Contents, "$on: (name: string") {
+		if !strings.Contains(tsOpt.Stdin.Contents, "$data: <T = any>(name: string) => T | Promise<ArrayBuffer>") {
 			t.Fatalf("ScriptInlineString TS contents = %q", tsOpt.Stdin.Contents)
 		}
 	})
@@ -315,7 +315,7 @@ func TestScriptEntries(t *testing.T) {
 		if tsOpt.Stdin == nil || tsOpt.Stdin.Sourcefile != "index.ts" || tsOpt.Stdin.Loader != api.LoaderTS {
 			t.Fatalf("ScriptInlineBytes TS stdin = %#v", tsOpt.Stdin)
 		}
-		if !strings.Contains(tsOpt.Stdin.Contents, "$on: (name: string") {
+		if !strings.Contains(tsOpt.Stdin.Contents, "$data: <T = any>(name: string) => T | Promise<ArrayBuffer>") {
 			t.Fatalf("ScriptInlineBytes TS contents = %q", tsOpt.Stdin.Contents)
 		}
 	})

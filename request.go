@@ -18,13 +18,15 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 )
 
-// RequestAfter allows setting client-side actions to run after a request completes.
+// RequestAfter schedules client-side actions to run after a successful
+// request.
 type RequestAfter interface {
-	// After sets client-side actions to run once the request finishes.
+	// After appends client-side actions to the successful response.
 	After([]Action) error
 }
 
-// Request provides basic request operations including cookie management.
+// Request exposes the common server-side request helpers available to Doors
+// handlers.
 type Request interface {
 	// SetCookie adds a cookie to the response.
 	SetCookie(cookie *http.Cookie)
@@ -32,7 +34,7 @@ type Request interface {
 	GetCookie(name string) (*http.Cookie, error)
 }
 
-// RequestEvent provides request handling for event hooks with typed event data.
+// RequestEvent is the request context passed to event handlers.
 type RequestEvent[E any] interface {
 	Request
 	RequestAfter
@@ -40,7 +42,7 @@ type RequestEvent[E any] interface {
 	Event() E
 }
 
-// RequestForm provides request handling for form submissions with typed form data.
+// RequestForm is the request context passed to decoded form handlers.
 type RequestForm[D any] interface {
 	Request
 	RequestAfter
@@ -48,7 +50,7 @@ type RequestForm[D any] interface {
 	Data() D
 }
 
-// RequestRawForm provides access to raw multipart form data for streaming or custom parsing.
+// RequestRawForm is the request context passed to raw multipart form handlers.
 type RequestRawForm interface {
 	Request
 	RequestAfter
@@ -60,7 +62,7 @@ type RequestRawForm interface {
 	ParseForm(maxMemory int) (ParsedForm, error)
 }
 
-// ParsedForm exposes parsed form values and uploaded files.
+// ParsedForm exposes parsed multipart form values and files.
 type ParsedForm interface {
 	// FormValues returns all parsed form values.
 	FormValues() url.Values
@@ -72,7 +74,7 @@ type ParsedForm interface {
 	Form() *multipart.Form
 }
 
-// RequestHook provides request handling for hook handlers with typed data.
+// RequestHook is the request context passed to typed JavaScript hook handlers.
 type RequestHook[D any] interface {
 	Request
 	RequestAfter
@@ -80,13 +82,17 @@ type RequestHook[D any] interface {
 	Data() D
 }
 
-// RequestRawHook provides access to raw request data for hook handlers without parsing.
+// RequestRawHook is the request context passed to raw JavaScript hook handlers.
 type RequestRawHook interface {
 	RequestRawForm
 	// Body returns the raw request body reader.
 	Body() io.ReadCloser
 }
 
+// RequestModel is the request context passed to [UseModel] handlers.
+//
+// Use it for cookies, request and response headers, and session-scoped state
+// while deciding which [Response] to return.
 type RequestModel interface {
 	Request
 	// SessionStore returns session-scoped storage.

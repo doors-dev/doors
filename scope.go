@@ -15,11 +15,11 @@ import (
 	"github.com/doors-dev/doors/internal/front"
 )
 
-// Scope controls concurrency for event processing.
-// It defines how events are queued, blocked, debounced, or serialized.
+// Scope controls how overlapping client-side events coordinate before the
+// backend request starts.
 type Scope = front.Scope
 
-// ScopeSet holds the configuration of a scope instance.
+// ScopeSet is the serialized form of a [Scope].
 type ScopeSet = front.ScopeSet
 
 type scopeFunc func(core core.Core) ScopeSet
@@ -28,8 +28,8 @@ func (s scopeFunc) Scope(core core.Core) ScopeSet {
 	return s(core)
 }
 
-// ScopeBlocking cancels new events while one is processing.
-// Useful for preventing double-clicks or duplicate submissions.
+// ScopeBlocking rejects a new event while another event in the same shared
+// scope is still running.
 type ScopeBlocking struct {
 	id front.AutoId
 }
@@ -38,12 +38,12 @@ func (b *ScopeBlocking) Scope(core core.Core) ScopeSet {
 	return front.BlockingScope(b.id.Id(core))
 }
 
-// ScopeOnlyBlocking creates a blocking scope that cancels concurrent events.
+// ScopeOnlyBlocking returns a single [ScopeBlocking].
 func ScopeOnlyBlocking() []Scope {
 	return []Scope{&ScopeBlocking{}}
 }
 
-// ScopeSerial queues events and processes them in order.
+// ScopeSerial queues accepted events and runs them in arrival order.
 type ScopeSerial struct {
 	id front.AutoId
 }
@@ -52,63 +52,61 @@ func (b *ScopeSerial) Scope(core core.Core) ScopeSet {
 	return front.SerialScope(b.id.Id(core))
 }
 
-// ScopeOnlySerial creates a serial scope that executes events sequentially.
+// ScopeOnlySerial returns a single [ScopeSerial].
 func ScopeOnlySerial() []Scope {
 	return []Scope{&ScopeSerial{}}
 }
 
-// ScopeDebounce delays events by duration but guarantees execution
-// within the specified limit. New events reset the delay.
+// ScopeDebounce delays a burst of events and keeps the latest pending one.
 type ScopeDebounce struct {
 	id front.AutoId
 }
 
-// Scope creates a debounced scope.
-//   - duration: debounce delay, reset by new events
-//   - limit: maximum wait before execution regardless of new events
+// Scope returns a debounced [Scope].
+//
+// duration is the resettable delay. limit is the maximum total wait; 0 means
+// no maximum.
 func (d *ScopeDebounce) Scope(duration, limit time.Duration) Scope {
 	return scopeFunc(func(core core.Core) ScopeSet {
 		return front.DebounceScope(d.id.Id(core), duration, limit)
 	})
 }
 
-// ScopeOnlyDebounce creates a debounced scope with duration and limit.
+// ScopeOnlyDebounce returns one debounced [Scope].
 func ScopeOnlyDebounce(duration, limit time.Duration) []Scope {
 	return []Scope{(&ScopeDebounce{}).Scope(duration, limit)}
 }
 
-// ScopeFrame distinguishes immediate and frame events.
-// Immediate events run normally. Frame events wait for all prior
-// events to finish, block new ones, then run exclusively.
+// ScopeFrame coordinates normal events with a barrier event.
+//
+// Normal members use Scope(false). The barrier member uses Scope(true), waits
+// for earlier members to finish, and then runs exclusively.
 type ScopeFrame struct {
 	id front.AutoId
 }
 
-// Scope creates a frame-based scope.
-//   - frame=false: execute immediately
-//   - frame=true: wait for completion of all events, then execute exclusively
+// Scope returns a frame member or a frame barrier depending on frame.
 func (d *ScopeFrame) Scope(frame bool) Scope {
 	return scopeFunc(func(core core.Core) ScopeSet {
 		return front.FrameScope(d.id.Id(core), frame)
 	})
 }
 
-// ScopeConcurrent can be occupied by events with the same
-// groupId, other - blocked
+// ScopeConcurrent allows overlap only for events that use the same group id.
 type ScopeConcurrent struct {
 	id front.AutoId
 }
 
+// Scope returns a concurrent [Scope] for groupId.
 func (d *ScopeConcurrent) Scope(groupId int) Scope {
 	return scopeFunc(func(core core.Core) ScopeSet {
 		return front.ConcurrentScope(d.id.Id(core), groupId)
 	})
 }
 
-// ScopeLatest cancels previous events and only processes the most recent one.
-// When a new event arrives, any currently processing event is cancelled
-// and the new event takes priority. This is useful if you need to
-// cancel pending indication of other events.
+// ScopeLatest keeps only the newest event in a shared scope.
+// When a new event arrives, any currently processing event is canceled and the
+// new event takes priority.
 type ScopeLatest struct {
 	id front.AutoId
 }
@@ -117,9 +115,7 @@ func (b *ScopeLatest) Scope(core core.Core) ScopeSet {
 	return front.LatestScope(b.id.Id(core))
 }
 
-// ScopeLatest creates a scope that only processes the most recent event,
-// cancelling any previous events that are still processing. This ensures
-// only the latest user action is processed.
+// ScopeOnlyLatest returns a single [ScopeLatest].
 func ScopeOnlyLatest() []Scope {
 	return []Scope{&ScopeLatest{}}
 }

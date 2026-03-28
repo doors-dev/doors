@@ -22,48 +22,73 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// Router represents the main HTTP router that handles all requests.
-// It implements http.Handler and provides configuration through Use().
+// Router serves a Doors application over HTTP.
+//
+// Use [NewRouter] to create one, register page models with [UseModel], and
+// then pass it to an HTTP server.
 type Router interface {
 	http.Handler
 	Use(r Use)
 }
 
-// NewRouter creates a new router instance with default configuration.
-// The router handles app routing, static files, hooks, and framework resources.
+// NewRouter returns a router with the default Doors configuration.
+//
+// Example:
+//
+//	router := doors.NewRouter()
+//	doors.UseModel(router, func(r doors.RequestModel, s doors.Source[Path]) doors.Response {
+//		return doors.ResponseComp(Page(s))
+//	})
 func NewRouter() Router {
 	return router.NewRouter()
 }
 
-// Use represents a router modification that can be used to configure routing behavior.
+// Use configures a [Router].
 type Use = router.Use
 
+// Response describes how a matched page model should be handled.
+//
+// Use [ResponseComp] to render a page, [ResponseRedirect] to send an HTTP
+// redirect, or [ResponseReroute] to hand the request to another registered
+// model without redirecting the browser.
 type Response = model.Res
 
+// ResponseComp returns a [Response] that renders comp for the matched model.
 func ResponseComp(comp gox.Comp) Response {
 	return model.ResComp(comp)
 }
 
+// ResponseRedirect returns a [Response] that redirects to model.
+//
+// status may be 0 to let Doors choose its default redirect status.
 func ResponseRedirect(m any, status int) Response {
 	return model.ResRedirect(m, status)
 }
 
+// ResponseReroute returns a [Response] that resolves another registered model
+// on the server without changing the current HTTP response into a redirect.
 func ResponseReroute(m any) Response {
 	return model.ResReroute(m)
 }
 
-// UseModel registers a model handler for a path model type M.
-// The model defines path/query patterns via struct tags.
+// UseModel registers a page model and its handler on r.
+//
+// The model type M defines matching and URL generation through `path` and
+// `query` struct tags. The handler receives the request metadata and the
+// current route as a [Source].
 //
 // Example:
 //
 //	type BlogPath struct {
-//	    Home bool   `path:"/"`                    // Match root path
-//	    Post bool   `path:"/post/:ID"`           // Match /post/123, capture ID
-//	    List bool   `path:"/posts"`              // Match /posts
-//	    ID   int                                  // Captured from :ID parameter
-//	    Tag  *string `query:"tag"`               // Query parameter ?tag=golang
+//		Home bool    `path:"/"`
+//		Post bool    `path:"/posts/:ID"`
+//		ID   int
+//		Tag  *string `query:"tag"`
 //	}
+//
+//	doors.UseModel(router, func(r doors.RequestModel, s doors.Source[BlogPath]) doors.Response {
+//		return doors.ResponseComp(Page(s))
+//	})
 func UseModel[M any](r Router, handler func(r RequestModel, s Source[M]) Response) {
 	r.Use(router.UseModel(func(w http.ResponseWriter, r *http.Request, source beam.Source[M], store ctex.Store) model.Res {
 		req := modelRequest{
@@ -77,6 +102,10 @@ func UseModel[M any](r Router, handler func(r RequestModel, s Source[M]) Respons
 	}))
 }
 
+// Route handles a non-page GET endpoint inside a [Router].
+//
+// Use [UseRoute] for endpoints such as health checks, stable file mounts, or
+// other GET handlers that should live beside model-based pages.
 type Route = router.Route
 
 type responseWriter struct {
@@ -130,6 +159,10 @@ func serveFS(prefix string, fs http.FileSystem, cacheControl string, w http.Resp
 	http.StripPrefix(normalizePrefix(prefix), http.FileServer(fs)).ServeHTTP(rw, r)
 }
 
+// RouteResource serves one static [ResourceStatic] at a fixed public path.
+//
+// Use it when you want a stable URL but still want Doors to prepare the
+// resource through its registry.
 type RouteResource struct {
 	// URL path at which the file is served.
 	// Required.
@@ -172,8 +205,7 @@ func (rt RouteResource) Serve(w http.ResponseWriter, r *http.Request) {
 	res.Serve(w, r)
 }
 
-// RouteFS serves files from an fs.FS under a URL prefix.
-// The prefix must not be root ("/").
+// RouteFS serves files from an [fs.FS] under Prefix.
 type RouteFS struct {
 	// URL prefix under which files are served.
 	// Required.
@@ -199,8 +231,7 @@ func (rt RouteFS) Serve(w http.ResponseWriter, r *http.Request) {
 	serveFS(rt.Prefix, httpFS, rt.CacheControl, w, r)
 }
 
-// RouteDir serves files from a local directory under a URL prefix.
-// The prefix must not be root ("/").
+// RouteDir serves files from a local directory under Prefix.
 type RouteDir struct {
 	// URL prefix under which files are served.
 	// Required.
@@ -225,8 +256,7 @@ func (rt RouteDir) Serve(w http.ResponseWriter, r *http.Request) {
 	serveFS(rt.Prefix, httpFS, rt.CacheControl, w, r)
 }
 
-// RouteFile serves a single file at a fixed URL path.
-// The path must not be root ("/").
+// RouteFile serves one local file at Path.
 type RouteFile struct {
 	// URL path at which the file is served.
 	// Required.
@@ -262,55 +292,49 @@ func (rt RouteFile) Serve(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(rw, r, rt.FilePath)
 }
 
-// UseRoute adds a custom Route to the router.
-// A Route must implement:
-//   - Match(*http.Request) bool: whether the route handles the request
-//   - Serve(http.ResponseWriter, *http.Request): serve the matched request
+// UseRoute adds rt to r before model-based page routing.
 func UseRoute(r Router, rt Route) {
 	r.Use(router.UseRoute(rt))
 }
 
-// UseFallback sets a fallback handler for requests that don't match any routes.
-// This is useful for integrating with other HTTP handlers or serving custom 404 pages.
+// UseFallback sends unmatched requests to handler.
+//
+// This is useful when Doors is mounted inside a larger HTTP server.
 func UseFallback(r Router, handler http.Handler) {
 	r.Use(router.UseFallback(handler))
 }
 
+// SessionCallback observes session creation and removal.
 type SessionCallback = router.SessionCallback
 
-// UseSessionCallback registers callbacks for session lifecycle events.
-// The Create callback is called when a new session is created.
-// The Delete callback is called when a session is removed.
+// UseSessionCallback registers session lifecycle callbacks on r.
 func UseSessionCallback(r Router, callback SessionCallback) {
 	r.Use(router.UseSessionCallback(callback))
 }
 
-// UseESConf configures esbuild profiles for JavaScript/TypeScript processing.
-// Different profiles can be used for development vs production builds.
+// UseESConf configures esbuild profiles used by script and style imports.
 func UseESConf(r Router, conf ESConf) {
 	r.Use(router.UseESConf(conf))
 }
 
-// SystemConf contains system-wide configuration options for the framework.
+// SystemConf configures router, instance, and transport behavior.
 type SystemConf = common.SystemConf
 
-// UseSystemConf applies system-wide configuration including timeouts,
-// limits, and other framework behavior settings.
+// UseSystemConf applies conf to r after filling in Doors defaults.
 func UseSystemConf(r Router, conf SystemConf) {
 	r.Use(router.UseSystemConf(conf))
 }
 
-// UseErrorPage sets a custom error page component for handling internal errors.
-// The component receives the error message as a parameter.
+// UseErrorPage renders page when Doors hits an internal routing, instance, or
+// rendering error.
 func UseErrorPage(r Router, page func(l Location, err error) gox.Comp) {
 	r.Use(router.UseErrorPage(page))
 }
 
-// CSP represents Content Security Policy configuration.
+// CSP configures the Content-Security-Policy header generated by Doors.
 type CSP = common.CSP
 
-// UseCSP configures Content Security Policy headers for enhanced security.
-// This helps prevent XSS attacks and other security vulnerabilities.
+// UseCSP configures the Content-Security-Policy header for r.
 func UseCSP(r Router, csp CSP) {
 	r.Use(router.UseCSP(&csp))
 }
@@ -328,6 +352,10 @@ func UseLicence(r Router, license string) {
 	UseLicense(r, license)
 }
 
+// UseServerID sets the stable server identifier used in Doors-generated paths
+// and cookies.
+//
+// id must already be URL-safe.
 func UseServerID(r Router, id string) {
 	r.Use(router.UseServerID(id))
 }

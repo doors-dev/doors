@@ -121,6 +121,7 @@ func (s *SystemConf) solitaireDefaults() {
 	}
 }
 
+// InitDefaults fills zero or invalid values in s with Doors defaults.
 func InitDefaults(s *SystemConf) {
 	if s.RequestTimeout <= 0 {
 		s.RequestTimeout = 30 * time.Second

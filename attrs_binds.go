@@ -21,14 +21,10 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// AHook binds a backend handler to a named client-side hook, allowing
-// JavaScript code to call Go functions via $hook(name, ...).
+// AHook exposes a named Go handler to the browser through `$hook(name, ...)`.
 //
 // Input data is unmarshaled from JSON into type T.
-// Output data is marshaled to JSON from any.
-//
-// Generic parameters:
-//   - T: input data type, sent from the client
+// The returned value is encoded back to JSON.
 type AHook[T any] struct {
 	// Name of the hook to call from JavaScript via $hook(name, ...).
 	// Required.
@@ -94,12 +90,10 @@ func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 }
 
-// ARawHook binds a backend handler to a named client-side hook, allowing
-// JavaScript code to call Go functions via $hook(name, ...).
+// ARawHook exposes a named Go handler to the browser through `$hook(name, ...)`
+// without JSON decoding or encoding.
 //
-// Unlike AHook, ARawHook does not perform JSON unmarshaling or marshaling.
-// Instead, it gives full access to the raw request body and multipart form data,
-// useful for streaming, custom parsing, or file uploads.
+// Use it for streaming, custom protocols, or file uploads.
 type ARawHook struct {
 	// Name of the hook to call from JavaScript via $hook(name, ...).
 	// Required.
@@ -143,13 +137,12 @@ func (h *ARawHook) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	})
 }
 
-// AData exposes server-provided data to JavaScript via $data(name).
+// AData exposes Value to browser code through `$data(name)`.
 //
-// The Value ([]byte, string or any) is encoded and made available for client-side access.
-// This is useful for passing initial state, configuration, or constants
-// directly into the client runtime.
+// `$data(...)` returns strings and JSON-backed values directly. For `[]byte`,
+// it returns a promise that resolves to an `ArrayBuffer`.
 type AData struct {
-	// Name of the data entry to read via JavaScript with await $data(name).
+	// Name of the data entry to read via JavaScript with $data(name).
 	// Required.
 	Name string
 	// Value to expose to the client. Marshaled to JSON.

@@ -25,21 +25,32 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// ScriptSource provides script input for [ScriptModule], [ScriptInline], or
+// [ScriptCommon].
 type ScriptSource interface {
 	name(ext string) string
 	scriptEntry(inline bool) resources.ScriptEntry
 }
 
+// StyleSource provides style input for [Style].
 type StyleSource interface {
 	name(ext string) string
 	styleEntry() resources.StyleEntry
 }
 
+// HostMode controls whether generated resources use stable public URLs,
+// instance-private hook URLs, or cache-bypassing private URLs.
 type HostMode int
 
 const (
+	// HostModePublic serves the generated resource from the public resource
+	// registry.
 	HostModePublic HostMode = iota
+	// HostModePrivate serves the generated resource through an instance-private
+	// hook URL.
 	HostModePrivate
+	// HostModeNoCache serves the generated resource through an instance-private
+	// hook URL that skips cache reuse.
 	HostModeNoCache
 )
 
@@ -74,6 +85,7 @@ func (h HostMode) resourceMode() resources.ResourceMode {
 	}
 }
 
+// SourceFS reads a script or style file from FS.
 type SourceFS struct {
 	FS   fs.FS
 	Path string
@@ -107,6 +119,7 @@ func (s SourceFS) scriptEntry(inline bool) resources.ScriptEntry {
 	}
 }
 
+// SourcePath reads a script or style file from the local filesystem.
 type SourcePath string
 
 func (s SourcePath) name(ext string) string {
@@ -133,6 +146,7 @@ func (s SourcePath) styleEntry() resources.StyleEntry {
 	}
 }
 
+// SourceStyleString provides CSS from an in-memory string.
 type SourceStyleString string
 
 func (s SourceStyleString) name(ext string) string {
@@ -145,6 +159,7 @@ func (s SourceStyleString) styleEntry() resources.StyleEntry {
 	}
 }
 
+// SourceStyleBytes provides CSS from in-memory bytes.
 type SourceStyleBytes []byte
 
 func (s SourceStyleBytes) name(ext string) string {
@@ -157,6 +172,7 @@ func (s SourceStyleBytes) styleEntry() resources.StyleEntry {
 	}
 }
 
+// SourceScriptBytes provides JavaScript or TypeScript from in-memory bytes.
 type SourceScriptBytes struct {
 	Content    []byte
 	TypeScript bool
@@ -183,6 +199,8 @@ func (s SourceScriptBytes) scriptEntry(inline bool) resources.ScriptEntry {
 	}
 }
 
+// SourceScriptString provides JavaScript or TypeScript from an in-memory
+// string.
 type SourceScriptString struct {
 	Content    string
 	TypeScript bool
@@ -209,6 +227,7 @@ func (s SourceScriptString) scriptEntry(inline bool) resources.ScriptEntry {
 	}
 }
 
+// SourceExternal points at an already-hosted script or stylesheet URL.
 type SourceExternal string
 
 func (s SourceExternal) name(ext string) string {
@@ -223,6 +242,8 @@ func (s SourceExternal) styleEntry() resources.StyleEntry {
 	panic("external source can't provide style entry")
 }
 
+// SourceLocal bypasses Doors hosting and uses a browser-visible local path as
+// is.
 type SourceLocal string
 
 func (s SourceLocal) name(ext string) string {
@@ -237,11 +258,17 @@ func (s SourceLocal) styleEntry() resources.StyleEntry {
 	panic("local source can't provide style entry")
 }
 
+// ScriptOutput controls how Doors builds JavaScript sources before serving
+// them.
 type ScriptOutput int
 
 const (
+	// ScriptOutputDefault lets Doors choose the normal build output.
 	ScriptOutputDefault ScriptOutput = iota
+	// ScriptOutputBundle asks Doors to bundle dependencies.
 	ScriptOutputBundle
+	// ScriptOutputRaw asks Doors to serve the source without wrapping or
+	// bundling.
 	ScriptOutputRaw
 )
 
@@ -262,6 +289,8 @@ func (f ScriptOutput) scriptFormat(module bool) resources.ScriptFormat {
 	}
 }
 
+// ScriptModule emits a `<script type="module">` tag or registers a module
+// specifier in the import map.
 type ScriptModule struct {
 	Source    ScriptSource
 	Output    ScriptOutput
@@ -341,6 +370,7 @@ func (m ScriptModule) Modify(ctx context.Context, tag string, attrs gox.Attrs) e
 	return nil
 }
 
+// ScriptInline emits a classic inline-ready script resource.
 type ScriptInline struct {
 	Source   ScriptSource
 	HostMode HostMode
@@ -404,6 +434,7 @@ func (m ScriptInline) Modify(ctx context.Context, tag string, attrs gox.Attrs) e
 	return nil
 }
 
+// ScriptCommon emits a classic non-module script tag.
 type ScriptCommon struct {
 	Source   ScriptSource
 	HostMode HostMode
@@ -469,6 +500,7 @@ func (m ScriptCommon) Modify(ctx context.Context, tag string, attrs gox.Attrs) e
 	return nil
 }
 
+// Style emits a stylesheet link for Source.
 type Style struct {
 	Source   StyleSource
 	HostMode HostMode

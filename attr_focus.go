@@ -15,8 +15,10 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// FocusEvent is the payload sent to focus event handlers.
 type FocusEvent = front.FocusEvent
 
+// RequestFocus is the typed request passed to focus event handlers.
 type RequestFocus = RequestEvent[FocusEvent]
 
 type focusIOEventHook struct {

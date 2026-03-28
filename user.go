@@ -26,14 +26,14 @@ func SessionExpire(ctx context.Context, d time.Duration) {
 }
 
 // SessionEnd immediately ends the current session and all instances.
-// Use during logout to close authorized pages and free server resources.
+// Use it during logout to close authorized pages and free server resources.
 func SessionEnd(ctx context.Context) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.SessionEnd()
 }
 
-// InstanceEnd ends the current instance (tab/window) but keeps the session
-// and other instances active.
+// InstanceEnd ends the current instance (tab/window) but keeps the session and
+// other instances active.
 func InstanceEnd(ctx context.Context) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.InstanceEnd()
@@ -53,27 +53,26 @@ func SessionId(ctx context.Context) string {
 	return core.SessionID()
 }
 
+// Store is goroutine-safe key-value storage used for session and instance
+// state.
 type Store = ctex.Store
 
-// SessionStore returns session-scoped goroutine-safe
-// storage
+// SessionStore returns storage shared by all instances in the current session.
 func SessionStore(ctx context.Context) Store {
 	return ctx.Value(ctex.KeySessionStore).(Store)
 }
 
-// InstanceStore returns instance-scoped goroutine-safe
-// storage
+// InstanceStore returns storage scoped to the current instance only.
 func InstanceStore(ctx context.Context) Store {
 	return ctx.Value(ctex.KeyInstanceStore).(Store)
 }
 
-// Location represents a URL built from a path model: path plus query.
-// Use with navigation functions or href attributes.
+// Location is a parsed or generated URL path plus query string.
 type Location = path.Location
 
-// NewLocation encodes model into a Location using the registered adapter
-// for the model's type.
-// Returns an error if no adapter is registered or encoding fails.
+// NewLocation encodes model into a [Location] using the registered adapter for
+// the model's type. It returns an error if no adapter is registered or
+// encoding fails.
 func NewLocation(ctx context.Context, model any) (Location, error) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	location, err := core.Adapters().Encode(model)
@@ -84,15 +83,12 @@ func NewLocation(ctx context.Context, model any) (Location, error) {
 	return location, nil
 }
 
-// IDRand returns a cryptographically secure, URL-safe random ID.
-// Suitable for sessions, instances, tokens, attributes. Case-sensitive.
+// IDRand returns a cryptographically secure, URL-safe identifier.
 func IDRand() string {
 	return common.RandId()
 }
 
-// IDString creates ID using provided string, hashbased.
-// For the same string outputs the same result.
-// Suitable for HTML attributes.
+// IDString returns a stable URL-safe identifier derived from string.
 func IDString(string string) string {
 	hasher := blake3.New()
 	hasher.WriteString(string)
@@ -100,16 +96,14 @@ func IDString(string string) string {
 	return common.EncodeId(hash)
 }
 
-// IDBytes creates ID using provided bytes, hashbased.
-// For the same bytes outputs the same result.
-// Suitable for HTML attributes.
+// IDBytes returns a stable URL-safe identifier derived from b.
 func IDBytes(b []byte) string {
 	hash := blake3.Sum256(b)
 	return common.EncodeId(hash[:])
 }
 
-// AllowBlocking returns a context that suppresses warnings when used
-// with blocking X* operations. Use with caution.
+// AllowBlocking marks ctx as safe for waiting on blocking Doors operations such
+// as X-prefixed methods. Use it with caution.
 func AllowBlocking(ctx context.Context) context.Context {
 	return ctex.SetBlockingCtx(ctx)
 }

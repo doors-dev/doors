@@ -55,13 +55,18 @@ class $D {
 		return await res.json()
 	}
 
-	data = async (name: string): Promise<any> => {
+	data = (name: string): Promise<any> | any => {
 		const attrName = `data-d0d-${name}`
 		const encodedPayload = this.anchor_.getAttribute(attrName)
 		if (encodedPayload == null) {
 			return undefined
 		}
-		const payload = await decodePayload(JSON.parse(encodedPayload))
+		const payload = decodePayload(JSON.parse(encodedPayload))
+		if (payload instanceof Promise) {
+			return (async () => {
+				return (await payload).any
+			})()
+		}
 		return payload.any
 	}
 }

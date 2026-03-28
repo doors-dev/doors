@@ -10,6 +10,7 @@ package front
 
 import "time"
 
+// PointerEvent mirrors the browser PointerEvent payload sent to Doors.
 type PointerEvent struct {
 	Type               string    `json:"type"`
 	PointerID          int       `json:"pointerId"`
@@ -33,6 +34,7 @@ type PointerEvent struct {
 	Timestamp          time.Time `json:"timestamp"`
 }
 
+// KeyboardEvent mirrors the browser KeyboardEvent payload sent to Doors.
 type KeyboardEvent struct {
 	Type      string    `json:"type"`
 	Key       string    `json:"key"`
@@ -45,11 +47,13 @@ type KeyboardEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// FocusEvent mirrors the browser FocusEvent payload sent to Doors.
 type FocusEvent struct {
 	Type      string    `json:"type"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// ChangeEvent describes a committed form value change.
 type ChangeEvent struct {
 	Type      string     `json:"type"`
 	Name      string     `json:"name"`
@@ -60,6 +64,7 @@ type ChangeEvent struct {
 	Checked   bool       `json:"checked"`
 	Timestamp time.Time  `json:"timestamp"`
 }
+// InputEvent describes a live form value edit.
 type InputEvent struct {
 	Type      string `json:"type"`
 	Name      string `json:"name"`

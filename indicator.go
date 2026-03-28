@@ -10,14 +10,15 @@ package doors
 
 import "github.com/doors-dev/doors/internal/front"
 
-// Indicator is a temporary DOM modification.
-// It can change content, attributes, or classes, and is cleaned up automatically.
+// Indicator is a temporary DOM change applied on the client.
+//
+// Indicators are commonly used for pending states such as "Loading..." text,
+// temporary classes, or transient attributes while a request is in flight.
 type Indicator = front.Indicator
 
 type indicate = front.Indicate
 
-// Selector targets DOM elements for indicators.
-// Select by event source, CSS query, or closest matching parent.
+// Selector chooses which DOM nodes an [Indicator] should target.
 type Selector interface {
 	selector() front.Selector
 }
@@ -33,22 +34,22 @@ func SelectorTarget() Selector {
 	return (selector)(front.SelectTarget())
 }
 
-// SelectorQuery selects the first element matching a CSS query (e.g. "#id", ".class").
+// SelectorQuery selects the first element matching query.
 func SelectorQuery(query string) Selector {
 	return (selector)(front.SelectQuery(query))
 }
 
-// SelectorQuery selects all elements matching a CSS query (e.g. "#id", ".class").
+// SelectorQueryAll selects every element matching query.
 func SelectorQueryAll(query string) Selector {
 	return (selector)(front.SelectQueryAll(query))
 }
 
-// SelectorQueryParent selects the closest ancestor matching a CSS query.
+// SelectorQueryParent selects the closest ancestor matching query.
 func SelectorQueryParent(query string) Selector {
 	return (selector)(front.SelectQueryParent(query))
 }
 
-// IndicatorContent temporarily replaces innerHTML on the selected element.
+// IndicatorContent temporarily replaces the selected element's inner HTML.
 type IndicatorContent struct {
 	Selector Selector // Target element
 	Content  string   // Replacement content
@@ -89,8 +90,8 @@ func (c IndicatorClassRemove) Indicate() indicate {
 	return front.IndicateClassRemove(c.Selector.selector(), c.Class)
 }
 
-// *Only* helpers are convenience functions for simple indication.
-// They target the event source element, a CSS query, or a closest matching parent.
+// The `IndicatorOnly...` helpers build one-element indicator slices for the
+// most common targeting patterns.
 
 // IndicatorOnlyContent sets content on the event target element.
 func IndicatorOnlyContent(content string) []Indicator {

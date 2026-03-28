@@ -13,8 +13,10 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
+// ESConf provides named esbuild profiles for script and style processing.
 type ESConf = resources.BuildProfiles
 
+// JSX configures how esbuild should transform JSX input.
 type JSX struct {
 	JSX          api.JSX
 	Factory      string
@@ -24,6 +26,7 @@ type JSX struct {
 	Dev          bool
 }
 
+// JSXPreact returns JSX settings suitable for classic Preact transforms.
 func JSXPreact() JSX {
 	return JSX{
 		Factory:  "h",
@@ -31,18 +34,21 @@ func JSXPreact() JSX {
 	}
 }
 
+// JSXReact returns JSX settings suitable for React's automatic runtime.
 func JSXReact() JSX {
 	return JSX{
 		JSX: api.JSXAutomatic,
 	}
 }
 
+// ESOptions is a simple [ESConf] implementation for one build profile.
 type ESOptions struct {
 	External []string
 	Minify   bool
 	JSX      JSX
 }
 
+// Options implements [ESConf].
 func (opt ESOptions) Options(_profile string) api.BuildOptions {
 	return api.BuildOptions{
 		Target:            api.ES2022,

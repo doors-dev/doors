@@ -319,8 +319,8 @@ func TestProcessMetaBranches(t *testing.T) {
 	if inst.metas[1].name != "og:title" || !inst.metas[1].property {
 		t.Fatalf("unexpected property meta update = %#v", inst.metas[1])
 	}
-	if attr, ok := inst.metas[0].attrs.Find("name"); ok && attr.IsSet() {
-		t.Fatalf("expected name attr to be unset in stored meta, got %#v", attr.Value())
+	if _, ok := inst.metas[0].attrs.Find("name"); ok {
+		t.Fatalf("expected name attr to be unset in stored meta")
 	}
 
 	var out bytes.Buffer

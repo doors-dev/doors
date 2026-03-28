@@ -192,7 +192,8 @@ a.path.Update(ctx, Path{
 
 ## Actions
 
-`ALink` also participates in the same request pipeline as other **Doors** attributes.
+When an `ALink` upgrades to same-model dynamic navigation, it participates in
+the same request pipeline as other **Doors** attributes.
 
 That is why it supports:
 
@@ -202,6 +203,7 @@ That is why it supports:
 - `After`
 - `OnError`
 
-One useful special case: if `OnError` is left `nil` on a dynamic `ALink`, **Doors** falls back to a location reload.
+One useful special case: if `OnError` is left `nil` on a dynamic `ALink`,
+**Doors** falls back to a location reload.
 
 For the action types themselves, see [Actions](./12-actions.md).

@@ -18,57 +18,50 @@ import (
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
+// Source is a writable [Beam].
 type Source[T any] interface {
 	Beam[T]
 
-	// Update sets a new value and propagates it to all subscribers and derived beams.
-	// The update is applied only if it passes the source's distinct function.
-	// Any context is allowed.
-	//
+	// Update sets a new value and propagates it to subscribers and derived
+	// beams. The update is applied only if it passes the source's distinct
+	// function. Any context is allowed.
 	Update(context.Context, T)
 
-	// XUpdate performs an update and returns a channel that signals when the update
-	// has been fully propagated to all subscribers. This allows coordination of
-	// dependent operations that must wait for the update to complete.
+	// XUpdate behaves like [Source.Update] and returns a channel that reports
+	// when propagation has finished.
 	//
-	// The returned channel receives nil on successful propagation or an error if
-	// provided context is invalid or instance ended before propagation finished.
-	//
-	// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
-	//
-	// Returns the completion channel.
+	// The channel receives nil on successful propagation or an error if the
+	// context is invalid or the instance ends before propagation finishes.
+	// Wait on it only in contexts where blocking is allowed, such as hooks or
+	// goroutines.
 	XUpdate(context.Context, T) <-chan error
 
-	// Mutate allows modifying the current value using the provided function.
-	// The function receives a copy of the current value and returns a new one.
-	// The mutation is applied only if the result passes the source's distinct function.
-	// Return of copy without modification will do nothing (if distinct function != nil)
+	// Mutate computes the next value from the current value and propagates it
+	// if it passes the source's distinct function. The function receives a copy
+	// of the current value and must return the next value. Returning an
+	// unchanged copy is a no-op when a distinct function is in use.
 	// Any context is allowed.
-
 	Mutate(context.Context, func(T) T)
 
-	// XMutate performs a mutation and returns a channel that signals when the mutation
-	// has been fully propagated to all subscribers. This allows coordination of
-	// dependent operations that must wait for the mutation to complete.
+	// XMutate behaves like [Source.Mutate] and returns a channel that reports
+	// when propagation has finished.
 	//
-	// The returned channel receives nil on successful propagation or an error if
-	// provided context is invalid or instance ended before propagation finished.
-	// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
-	//
-	// Returns the completion channel
+	// The channel receives nil on successful propagation or an error if the
+	// context is invalid or the instance ends before propagation finishes.
+	// Wait on it only in contexts where blocking is allowed, such as hooks or
+	// goroutines.
 	XMutate(context.Context, func(T) T) <-chan error
 
-	// Get returns the most recently set or mutated value without requiring a context.
-	// This provides direct access to the current state and is not affected by
-	// context cancellation and doors tree state, unlike Read.
+	// Get returns the most recently stored value without requiring a runtime
+	// context.
 	//
-	// WARNING: Get() does not participate in render cycle consistency guarantees.
-	// Use Read() to ensure consistent values across the component tree.
+	// Unlike [Beam.Read], Get does not participate in render-cycle consistency
+	// guarantees. Use Read when consistency across the component tree matters.
 	Get() T
 
-	// DisableSkipping makes data propagation continue even if a new value
-	// is issued. Useful, if you use beam as a communication channel
-	// and want all data to be delivered to subscribers.
+	// DisableSkipping forces every committed value to propagate, even if newer
+	// values arrive before earlier updates finish syncing. This is useful when a
+	// source is used as a communication channel and every message matters.
 	DisableSkipping()
 }
 
@@ -109,6 +102,7 @@ func (s *source[T]) removeSub(sc *screen) {
 	s.subs.Remove(sc)
 }
 
+// NewSourceEqual creates a [Source] with a custom equality function.
 func NewSourceEqual[T any](init T, equal func(new T, old T) bool) Source[T] {
 	if equal == nil {
 		equal = func(T, T) bool {
@@ -130,14 +124,17 @@ func equal[T comparable](new T, old T) bool {
 	return new == old
 }
 
+// NewSource creates a [Source] that uses `==` to suppress equal updates.
 func NewSource[T comparable](init T) Source[T] {
 	return NewSourceEqual(init, equal)
 }
 
+// DisableSkipping forces every committed value to propagate.
 func (s *source[T]) DisableSkipping() {
 	s.noSkip = true
 }
 
+// Get returns the latest committed value.
 func (s *source[T]) Get() T {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -164,20 +161,24 @@ func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool)
 	return value, !s.equal(*value, *prevValue)
 }
 
+// XUpdate behaves like [Source.Update] and returns a completion channel.
 func (s *source[T]) XUpdate(ctx context.Context, v T) <-chan error {
 	ctex.LogBlockingWarning(ctx, "SourceBeam", "XUpdate")
 	return s.mutateOrUpdate(ctx, nil, &v)
 }
 
+// Update stores v and starts propagation.
 func (s *source[T]) Update(ctx context.Context, v T) {
 	s.mutateOrUpdate(ctx, nil, &v)
 }
 
+// XMutate behaves like [Source.Mutate] and returns a completion channel.
 func (s *source[T]) XMutate(ctx context.Context, m func(T) T) <-chan error {
 	ctex.LogBlockingWarning(ctx, "SourceBeam", "XMutate")
 	return s.mutateOrUpdate(ctx, m, nil)
 }
 
+// Mutate updates the value by applying m to the current value.
 func (s *source[T]) Mutate(ctx context.Context, m func(T) T) {
 	s.mutateOrUpdate(ctx, m, nil)
 }

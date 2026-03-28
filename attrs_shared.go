@@ -21,12 +21,15 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// AShared is a dynamic attribute handle shared across attached elements.
+// AShared is a reusable dynamic attribute handle shared across every element it
+// is attached to.
 type AShared = *aShared
 
 var _ Attr = &aShared{}
 
-// NewAShared returns a new enabled shared attribute handle.
+// NewAShared returns an enabled shared attribute handle.
+//
+// Update, Enable, and Disable affect every attached element together.
 func NewAShared(name string, value string) AShared {
 	return &aShared{
 		name:   name,

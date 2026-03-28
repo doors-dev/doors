@@ -19,11 +19,15 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// HrefActiveMatch describes a path matching strategy for active links.
 type HrefActiveMatch int
 
 const (
+	// MatchFull requires the entire path to match.
 	MatchFull HrefActiveMatch = iota
+	// MatchPath requires the same path but ignores the query.
 	MatchPath
+	// MatchStarts requires the current path to start with the target path.
 	MatchStarts
 )
 
@@ -38,23 +42,28 @@ func (q pathMatch) pathMatch() pathMatch {
 	return q
 }
 
+// QueryMatcher customizes how query parameters participate in active-link
+// matching.
 type QueryMatcher interface {
 	queryMatch() queryMatch
 }
 
+// PathMatcher customizes how the path participates in active-link matching.
 type PathMatcher interface {
 	pathMatch() pathMatch
 }
 
+// PathMatcherFull matches the full generated path.
 func PathMatcherFull() PathMatcher {
 	return pathMatch([]any{"full"})
 }
 
+// PathMatcherStarts matches when the current path starts with the link path.
 func PathMatcherStarts() PathMatcher {
 	return pathMatch([]any{"starts"})
 }
 
-// PathMatcherSegments checks if path segment by specified indexes matche
+// PathMatcherSegments matches only the listed path segment indexes.
 func PathMatcherSegments(i ...int) PathMatcher {
 	if i == nil {
 		i = []int{}
@@ -108,12 +117,11 @@ func QueryMatcherOnlyIfPresent(params ...string) []QueryMatcher {
 	return []QueryMatcher{QueryMatcherIfPresent(params...), QueryMatcherIgnoreAll()}
 }
 
-// Active configures active link
-// indication
+// Active configures how [ALink] marks itself as active.
 type Active struct {
 	// Path match strategy
 	PathMatcher PathMatcher
-	// Query param match strategy, applied sequientially
+	// Query param match strategy, applied sequentially.
 	QueryMatcher []QueryMatcher
 	// Match fragment, false by default
 	FragmentMatch bool
@@ -121,8 +129,14 @@ type Active struct {
 	Indicator []Indicator
 }
 
-// ALink prepares the href attribute for internal navigation
-// and configures dynamic link behavior.
+// ALink builds a real `href` from Model and, when possible, upgrades the link
+// to same-model client navigation.
+//
+// Example:
+//
+//	attrs := doors.A(ctx, doors.ALink{
+//		Model: Path{Home: true},
+//	})
 type ALink struct {
 	// Target path model value. Required.
 	Model any

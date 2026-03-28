@@ -19,7 +19,7 @@ import (
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
-// Action performs a client-side operation
+// Action performs a client-side operation.
 type Action interface {
 	action(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error)
 }
@@ -39,7 +39,7 @@ func intoActions(ctx context.Context, actions []Action) action.Actions {
 }
 
 // ActionEmit invokes a client-side handler registered with
-// $on(name: string, func: (arg: any, err?: Error) => any).
+// `$on(name, handler)`.
 type ActionEmit struct {
 	Name string
 	Arg  any
@@ -75,7 +75,8 @@ func (a ActionLocationReload) action(ctx context.Context, core core.Core, _ bool
 	return &action.LocationReload{}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
-// ActionLocationReplace replaces the current location with a model-derived URL.
+// ActionLocationReplace replaces the current history entry with a model-derived
+// URL.
 type ActionLocationReplace struct {
 	Model any
 }
@@ -117,12 +118,12 @@ func (a ActionLocationAssign) action(ctx context.Context, core core.Core, _ bool
 	}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
-// ActionLocationRawAssign navigates to a specified URL
+// ActionLocationRawAssign navigates to url without first encoding a path model.
 type ActionLocationRawAssign struct {
 	URL string
 }
 
-// ActionOnlyLocationRawAssign returns a single ActionLocationAssign.
+// ActionOnlyLocationRawAssign returns a single [ActionLocationRawAssign].
 func ActionOnlyLocationRawAssign(url string) []Action {
 	return []Action{ActionLocationRawAssign{URL: url}}
 }
@@ -152,7 +153,7 @@ func (a ActionScroll) action(ctx context.Context, core core.Core, _ bool) (actio
 	}, action.CallParams{}, nil
 }
 
-// ActionIndicate applies indicators for a fixed duration.
+// ActionIndicate applies indicators for Duration.
 type ActionIndicate struct {
 	Indicator []Indicator
 	Duration  time.Duration

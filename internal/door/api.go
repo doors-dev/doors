@@ -16,127 +16,114 @@ import (
 )
 
 // Reload re-renders the door with its current content.
-// This is useful when you want to refresh a door without changing its content,
-// for example to reflect external state changes. If the door is not currently
-// mounted, the operation completes immediately without visual effect.
+// If the door is not currently mounted, the operation completes immediately
+// without a visual effect.
 func (d *Door) Reload(ctx context.Context) {
 	d.reload(ctx)
 }
 
-// Update changes the content of the door.
-// The door's children are replaced with the new content while preserving
-// the door's DOM element. If the door is not currently mounted, the content
-// change is stored and will be applied when the door is rendered.
+// Update replaces the door's current children while keeping the same door
+// container mounted. If the door is not currently mounted, the content change
+// is stored and will be applied when the door is rendered.
 func (d *Door) Update(ctx context.Context, content any) {
 	d.update(ctx, content)
 }
 
-// Rebase replaces the entire door element with a new dynamic door element
-// created from the provided content, while maintaining the reference to the
-// same door object. Unlike Replace, the result remains a live door that can
-// be updated further. If the door is not currently mounted, the content
-// change is stored and will be applied when the door is rendered.
+// Rebase replaces the rendered door with el while keeping the same Go [Door]
+// handle alive for later updates. Unlike [Door.Replace], the result remains a
+// live door that can be updated further. If the door is not currently mounted,
+// the change is stored and will be applied when the door is rendered.
 func (d *Door) Rebase(ctx context.Context, el gox.Elem) {
 	d.rebase(ctx, el)
 }
 
-// Replace replaces the entire door element with new content.
-// Unlike Update, this removes the door's DOM element entirely and replaces
-// it with the rendered content. If the door is not currently mounted, the
-// content change is stored and will be applied when the door is rendered.
+// Replace removes the current door container and replaces it with content.
+// Unlike [Door.Update], this removes the door's DOM element entirely. If the
+// door is not currently mounted, the change is stored and will be applied when
+// the door is rendered.
 func (d *Door) Replace(ctx context.Context, content any) {
 	ctx = ctex.ClearBlockingCtx(ctx)
 	d.replace(ctx, content)
 }
 
-// Delete removes the door and its DOM element from the page, while
-// resetting it's content.
-// If the door is not currently mounted, it is marked as removed and will
-// not render if attempted to be rendered.
+// Delete removes the door and forgets its current content. If the door is not
+// currently mounted, it is marked as removed and will not render later.
 func (d *Door) Delete(ctx context.Context) {
 	ctx = ctex.ClearBlockingCtx(ctx)
 	d.replace(ctx, nil)
 }
 
-// Unmount removes the door and its DOM element from the page, while
-// preserving the door's content.
+// Unmount removes the door from the page but keeps its current content for a
+// future mount.
 func (d *Door) Unmount(ctx context.Context) {
 	ctx = ctex.ClearBlockingCtx(ctx)
 	d.unmount(ctx)
 }
 
-// Clear removes all content from the door, equivalent to Update(ctx, nil).
-// The door's DOM element remains but its children are removed.
-// This is useful for emptying a container while keeping it available for future content.
+// Clear removes all door content while keeping the container mounted.
+// It is equivalent to Update(ctx, nil).
 func (d *Door) Clear(ctx context.Context) {
 	d.update(ctx, nil)
 }
 
-// XReload returns a channel that can be used to track when the reload operation completes.
-// The channel will receive nil on success or an error if the operation fails.
-// The channel is closed after sending the result. If the door is not mounted,
-// the channel is closed immediately without sending any value.
-// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
+// XReload tracks completion of [Door.Reload].
+// The channel receives nil on success or an error on failure, then closes.
+// If the door is not mounted, it closes immediately without sending a value.
+// Wait on it only in contexts where blocking is allowed.
 func (d *Door) XReload(ctx context.Context) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XUpdate")
 	return d.reload(ctx)
 }
 
-// XUpdate returns a channel that can be used to track when the update operation completes.
-// The channel will receive nil on success or an error if the operation fails.
-// The channel is closed after sending the result. If the door is not mounted,
-// the channel is closed immediately without sending any value.
-// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
+// XUpdate tracks completion of [Door.Update].
+// The channel receives nil on success or an error on failure, then closes.
+// If the door is not mounted, it closes immediately without sending a value.
+// Wait on it only in contexts where blocking is allowed.
 func (d *Door) XUpdate(ctx context.Context, content any) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XUpdate")
 	return d.update(ctx, content)
 }
 
-// XRebase returns a channel that can be used to track when the rebase operation completes.
-// The channel will receive nil on success or an error if the operation fails.
-// The channel is closed after sending the result. If the door is not mounted,
-// the channel is closed immediately without sending any value.
-// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
+// XRebase tracks completion of [Door.Rebase].
+// The channel receives nil on success or an error on failure, then closes.
+// If the door is not mounted, it closes immediately without sending a value.
+// Wait on it only in contexts where blocking is allowed.
 func (d *Door) XRebase(ctx context.Context, el gox.Elem) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XRebase")
 	return d.rebase(ctx, el)
 }
 
-// XReplace returns a channel that can be used to track when the replace operation completes.
-// The channel will receive nil on success or an error if the operation fails.
-// The channel is closed after sending the result. If the door is not mounted,
-// the channel is closed immediately without sending any value.
-// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
+// XReplace tracks completion of [Door.Replace].
+// The channel receives nil on success or an error on failure, then closes.
+// If the door is not mounted, it closes immediately without sending a value.
+// Wait on it only in contexts where blocking is allowed.
 func (d *Door) XReplace(ctx context.Context, content any) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XReplace")
 	return d.replace(ctx, content)
 }
 
-// XDelete returns a channel that can be used to track when the remove operation completes.
-// The channel will receive nil on success or an error if the operation fails.
-// The channel is closed after sending the result. If the door is not mounted,
-// the channel is closed immediately without sending any value.
-// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
+// XDelete tracks completion of [Door.Delete].
+// The channel receives nil on success or an error on failure, then closes.
+// If the door is not mounted, it closes immediately without sending a value.
+// Wait on it only in contexts where blocking is allowed.
 func (d *Door) XDelete(ctx context.Context) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XDelete")
 	return d.replace(ctx, nil)
 }
 
-// XUnmount returns a channel that can be used to track when the unmount operation completes.
-// The channel will receive nil on success or an error if the operation fails.
-// The channel is closed after sending the result. If the door is not mounted,
-// the channel is closed immediately without sending any value.
-// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
+// XUnmount tracks completion of [Door.Unmount].
+// The channel receives nil on success or an error on failure, then closes.
+// If the door is not mounted, it closes immediately without sending a value.
+// Wait on it only in contexts where blocking is allowed.
 func (d *Door) XUnmount(ctx context.Context) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XUnmount")
 	return d.unmount(ctx)
 }
 
-// XClear returns a channel that can be used to track when the clear operation completes.
-// The channel will receive nil on success or an error if the operation fails.
-// The channel is closed after sending the result. If the door is not mounted,
-// the channel is closed immediately without sending any value.
-// Wait on the channel only in contexts where blocking is allowed (hooks, goroutines).
+// XClear tracks completion of [Door.Clear].
+// The channel receives nil on success or an error on failure, then closes.
+// If the door is not mounted, it closes immediately without sending a value.
+// Wait on it only in contexts where blocking is allowed.
 func (d *Door) XClear(ctx context.Context) <-chan error {
 	ctex.LogBlockingWarning(ctx, "Door", "XClear")
 	return d.update(ctx, nil)

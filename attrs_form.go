@@ -20,8 +20,7 @@ import (
 	"github.com/go-playground/form/v4"
 )
 
-// ARawSubmit handles form submissions with raw multipart data,
-// giving full control over uploads, streaming, and parsing.
+// ARawSubmit handles a form submission with raw multipart access.
 type ARawSubmit struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
@@ -76,8 +75,8 @@ func init() {
 	formDecoder = form.NewDecoder()
 }
 
-// ASubmit handles form submissions with decoded data of type T,
-// which must be a struct annotated for go-playground/form.
+// ASubmit handles a form submission by decoding it into T with
+// go-playground/form.
 type ASubmit[T any] struct {
 	// MaxMemory sets the maximum number of bytes to parse into memory.
 	// It is passed to ParseMultipartForm.
@@ -151,27 +150,16 @@ func (s *ASubmit[V]) handle(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 
+// ChangeEvent is the payload sent to [AChange] handlers.
 type ChangeEvent = front.ChangeEvent
+
+// RequestChange is the typed request passed to [AChange] handlers.
 type RequestChange = RequestEvent[ChangeEvent]
 
-// AChange is an attribute struct used with A(ctx, ...) to handle 'change' events via backend hooks.
+// AChange handles the browser `change` event.
 //
-// It binds to inputs, selects, or other form elements and triggers the On handler
-// when the value is committed (typically when focus leaves or enter is pressed).
-//
-// This is useful for handling committed input changes (unlike 'input', which fires continuously).
-//
-// Example:
-//
-//	<input type="text" { A(ctx, AChange{
-//	    On: func(ctx context.Context, ev EventRequest[ChangeEvent]) bool {
-//	        // handle changed input value
-//	        return true
-//	    },
-//	})... }>
-
-// AChange prepares a change event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// Use it for committed values such as blur-triggered input changes or select
+// changes.
 type AChange struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
@@ -207,9 +195,15 @@ func (p AChange) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}.apply(ctx, attrs)
 }
 
+// InputEvent is the payload sent to [AInput] handlers.
 type InputEvent = front.InputEvent
+
+// RequestInput is the typed request passed to [AInput] handlers.
 type RequestInput = RequestEvent[InputEvent]
 
+// AInput handles the browser `input` event.
+//
+// Use it for live updates while the user is still editing a value.
 type AInput struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.

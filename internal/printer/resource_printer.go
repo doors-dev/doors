@@ -92,16 +92,13 @@ func (p *resourcePrinter) scanGenericSrc(openJob *gox.JobHeadOpen) error {
 			return p.printer.Send(openJob)
 		}
 	}
-	if !attr.IsSet() {
-		return p.printer.Send(openJob)
-	}
 	cache := false
-	if a, ok := openJob.Attrs.Find("cache"); ok && a.IsSet() {
+	if a, ok := openJob.Attrs.Find("cache"); ok {
 		a.Unset()
 		cache = true
 	}
 	typ := ""
-	if a, ok := openJob.Attrs.Find("content-type"); ok && a.IsSet() {
+	if a, ok := openJob.Attrs.Find("content-type"); ok {
 		typ, _ = a.Value().(string)
 		a.Unset()
 	}
@@ -113,7 +110,7 @@ func (p *resourcePrinter) scanGenericSrc(openJob *gox.JobHeadOpen) error {
 		return p.printer.Send(openJob)
 	}
 	name := ""
-	if nameAttr, ok := openJob.Attrs.Find("name"); ok && nameAttr.IsSet() {
+	if nameAttr, ok := openJob.Attrs.Find("name"); ok {
 		name, _ = nameAttr.Value().(string)
 		nameAttr.Unset()
 	}

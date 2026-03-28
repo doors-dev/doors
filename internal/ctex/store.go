@@ -12,8 +12,10 @@ import (
 	"sync"
 )
 
+// Store is goroutine-safe key-value storage.
 type Store = *store
 
+// NewStore creates an empty [Store].
 func NewStore() Store {
 	return &store{
 		storage: make(map[any]any),
@@ -25,15 +27,14 @@ type store struct {
 	mu      sync.RWMutex
 }
 
-// Load gets a value from storage by key.
-// Returns nil if absent. Callers must type-assert the result.
+// Load returns the value stored under key or nil if key is absent.
 func (c Store) Load(key any) any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.storage[key]
 }
 
-// Save stores the value under key. Returns the previous value under the key.
+// Save stores value under key and returns the previous value.
 func (c Store) Save(key any, value any) any {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -42,7 +43,7 @@ func (c Store) Save(key any, value any) any {
 	return v
 }
 
-// Remove removes the value.
+// Remove deletes the value stored under key and returns it.
 func (c Store) Remove(key any) any {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -51,8 +52,7 @@ func (c Store) Remove(key any) any {
 	return v
 }
 
-// Iniy returns the value stored under key,
-// initializing it with new() if the key is not already present.
+// Init returns the value stored under key, creating it with new if needed.
 func (c Store) Init(key any, new func() any) any {
 	c.mu.Lock()
 	defer c.mu.Unlock()

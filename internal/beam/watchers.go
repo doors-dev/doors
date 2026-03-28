@@ -12,14 +12,13 @@ import (
 	"context"
 )
 
-// Watcher defines hooks for observing and reacting to the lifecycle of a Beam value stream.
+// Watcher receives low-level lifecycle callbacks for a [Beam].
 type Watcher[T any] interface {
-	// Cancel is called when the watcher is terminated due to context cancellation.
-	// or cancel function call.
+	// Cancel is called when the watcher stops because of context cancellation or
+	// an explicit cancel call.
 	Cancel()
-	// Called with initial value syncronously and then
-	// with each update in it's own goroutine
-	// Return true (done) to stop receiving further updates.
+	// Watch receives the initial value synchronously and later updates
+	// asynchronously. Returning true stops the watcher.
 	Watch(ctx context.Context, value T) bool
 }
 

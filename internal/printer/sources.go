@@ -22,7 +22,10 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// Source describes content or a URL that can be attached to HTML resource
+// attributes and, when needed, served by Doors.
 type Source interface {
+	// Handler serves the resource request.
 	Handler() HandlerFunc
 	name(ext string) string
 	scriptEntry(inline bool, ts bool) resources.ScriptEntry
@@ -30,8 +33,10 @@ type Source interface {
 	gox.Modify
 }
 
+// SourceStatic is a [Source] that can also be mounted at a stable public path.
 type SourceStatic interface {
 	Source
+	// StaticEntry returns the underlying static resource description.
 	StaticEntry() resources.StaticEntry
 }
 

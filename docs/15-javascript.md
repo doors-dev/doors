@@ -38,7 +38,7 @@ var pickerTS []byte
 </>
 ```
 
-Inside `web/picker.ts`, that script can use `await $data("userId")` and `await $hook("save", value)`.
+Inside `web/picker.ts`, that script can use `$data("userId")` and `await $hook("save", value)`.
 
 ## Scripts
 
@@ -236,13 +236,13 @@ Use `doors.AData` or `data:name=(...)` when the script needs values from Go at r
 <script
 	data:userId=(userID)
 	data:theme=(theme)>
-	const userId = await $data("userId")
-	const theme = await $data("theme")
+	const userId = $data("userId")
+	const theme = $data("theme")
 	console.log(userId, theme)
 </script>
 ```
 
-`$data(...)` always returns a promise. `string` becomes a JavaScript string, `[]byte` becomes an `ArrayBuffer`, and other values are decoded from JSON. In practice, that means binary data still needs `await` before you can use the `ArrayBuffer`.
+`$data(...)` returns the decoded value directly for `string` and JSON-backed values. For `[]byte`, it returns a promise that resolves to an `ArrayBuffer`, so binary data still needs `await`.
 
 GoX shorthand such as `data:userId=(userID)` is equivalent to attaching `doors.AData{Name: "userId", Value: userID}`.
 
@@ -317,14 +317,15 @@ When `$hook(...)` or `$fetch(...)` sends data, the client chooses the request bo
 - `FormData`: `multipart/form-data`
 - `URLSearchParams`: `application/x-www-form-urlencoded`
 - `Blob`: raw blob body
-- `File` or `ReadableStream`: `application/octet-stream`
+- `File`: raw file body
+- `ReadableStream`: `application/octet-stream`
 - any other value: JSON
 
 ### Client API
 
 The main client-side helpers are:
 
-- `$data(name: string): Promise<any>`
+- `$data<T = any>(name: string): T | Promise<ArrayBuffer>`
 - `$hook(name: string, arg?: any): Promise<any>`
 - `$fetch(name: string, arg?: any): Promise<Response>`
 - `$on(name: string, handler: (arg: any, err?: HookErr) => any): void`

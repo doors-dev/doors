@@ -15,11 +15,16 @@ import (
 	"strings"
 )
 
+// Location is a parsed or generated URL path plus query string.
 type Location struct {
+	// Query holds the decoded query parameters.
 	Query    url.Values
+	// Segments holds the decoded path segments without leading or trailing
+	// slashes.
 	Segments []string
 }
 
+// Path returns the escaped path portion of l without the query string.
 func (l Location) Path() string {
 	b := strings.Builder{}
 	for _, part := range l.Segments {
@@ -29,6 +34,7 @@ func (l Location) Path() string {
 	return b.String()
 }
 
+// String returns l encoded as `/<segments>?<query>`.
 func (l Location) String() string {
 	b := strings.Builder{}
 	for _, part := range l.Segments {
@@ -42,10 +48,12 @@ func (l Location) String() string {
 	return b.String()
 }
 
+// EqualLocation reports whether a and b encode the same path and query.
 func EqualLocation(a, b Location) bool {
 	return slices.Equal(a.Segments, b.Segments) && maps.EqualFunc(a.Query, b.Query, slices.Equal)
 }
 
+// NewLocationFromEscapedURI parses s into a [Location].
 func NewLocationFromEscapedURI(s string) (Location, error) {
 	u, err := url.Parse(s)
 	if err != nil {
@@ -54,6 +62,7 @@ func NewLocationFromEscapedURI(s string) (Location, error) {
 	return NewLocationFromURL(u)
 }
 
+// NewLocationFromURL decodes u into a [Location].
 func NewLocationFromURL(u *url.URL) (Location, error) {
 	parts := make([]string, 0)
 	trimmed := strings.Trim(u.EscapedPath(), "/")
@@ -70,6 +79,8 @@ func NewLocationFromURL(u *url.URL) (Location, error) {
 	}, nil
 }
 
+// NewLocationAdapter returns an adapter that treats [Location] as a path
+// model.
 func NewLocationAdapter() Adapter[Location] {
 	return locationAdapter{}
 }

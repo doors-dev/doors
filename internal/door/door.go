@@ -16,10 +16,13 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// Door is a dynamic fragment placeholder that can be rendered and then updated
+// over time.
 type Door struct {
 	node atomic.Pointer[node]
 }
 
+// Proxy renders d as a proxy around elem.
 func (d *Door) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	node := &node{
 		ctx:  cur.Context(),
@@ -32,6 +35,7 @@ func (d *Door) Proxy(cur gox.Cursor, elem gox.Elem) error {
 	return cur.Send(node)
 }
 
+// Edit renders d as an editable dynamic container.
 func (d *Door) Edit(cur gox.Cursor) error {
 	node := &node{
 		ctx:    cur.Context(),
@@ -42,6 +46,7 @@ func (d *Door) Edit(cur gox.Cursor) error {
 	return cur.Send(node)
 }
 
+// Main returns d as a [gox.Elem].
 func (d *Door) Main() gox.Elem {
 	return gox.Elem(func(cur gox.Cursor) error {
 		return d.Edit(cur)

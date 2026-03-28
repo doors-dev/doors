@@ -16,61 +16,34 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// Door represents a dynamic placeholder in the DOM tree that can be updated,
-// replaced, or removed at runtime.
+// Door is a dynamic placeholder in the DOM tree that can be updated,
+// replaced, or removed after render.
 //
-// It is a fundamental building block of the framework, used to manage dynamic HTML content.
-// All changes made to a Door are automatically synchronized with the frontend DOM.
+// Doors start inactive and become active when rendered. Operations on an
+// inactive door are stored virtually and applied when the door becomes active.
+// If a door is removed or replaced, it becomes inactive again, but operations
+// continue to update that virtual state for future rendering.
 //
-// A Door is itself a templ.Component and can be used directly in templates:
+// The context used while rendering a door's content follows the door's
+// lifecycle, which makes `ctx.Done()` safe to use in background goroutines
+// that depend on the door staying mounted.
 //
-//		~(door)
-//		// or
-//		~>(door)
-//		<div>
-//	     Initial Content
-//	 </div>
-//
-// Doors start inactive and become active when rendered. Operations on inactive doors
-// are stored virtually and applied when the door becomes active. If a door is removed
-// or replaced, it becomes inactive again, but operations continue to update its virtual
-// state for potential future rendering.
-//
-// The context used when rendering a Door's content follows the Door's lifecycle.
-// This allows you to safely use `ctx.Done()` inside background goroutines
-// that depend on the Door's presence in the DOM.
-//
-// Extended methods (prefixed with X) return a channel that can be used to track
-// when operations complete. The channel receives nil on success or an error on failure,
-// then closes. For inactive doors, the channel closes immediately without sending a value.
-//
-// During a single render cycle, Doors and their children are guaranteed to observe
-// consistent state (Beam), ensuring stable and predictable rendering.
+// X-prefixed methods return a channel that reports completion. For inactive
+// doors, that channel closes immediately without sending a value.
 type Door = door.Door
 
-// Sub creates a reactive component that automatically updates when a Beam value changes.
+// Sub renders a dynamic fragment driven by beam.
 //
-// It subscribes to the Beam and re-renders the inner content whenever the value changes.
-// The render function is called with the current Beam value and must return a templ.Component.
-//
-// This is the preferred way to bind Beam values into the DOM in a declarative and reactive manner.
+// It subscribes to beam and re-renders the inner content whenever the value
+// changes. Returning nil from el clears the fragment.
 //
 // Example:
 //
-//
 //	elem demo(beam Beam[int]) {
-//	    ~(doors.Sub(beam, elem(v int) {
-//	        <span>~(value)</span>
-//	    }))
+//		~(doors.Sub(beam, elem(v int) {
+//			<span>~(v)</span>
+//		}))
 //	}
-//
-// Parameters:
-//   - beam: the reactive Beam to observe
-//   - el: a function that maps the current Beam value to a gox.Elem
-//
-// Returns:
-//   - A templ.Component that updates reactively as the Beam value changes
-
 func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.EditorComp {
 	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		door := &Door{}
@@ -92,16 +65,17 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.EditorComp {
 	})
 }
 
-// Inject creates a reactive component that injects Beam values into the context for child components.
-//
-// It subscribes to the Beam and re-renders its children whenever the value changes,
-// making the current value available to child components.
-//
-// This enables passing reactive values down the component tree without explicit prop drilling.
+// Inject renders el with the latest beam value stored in the child context
+// under key.
 //
 // Example:
 //
-//	~>Inject("user", userBeam) <span> ~(ctx.Value("user").(User).Name) </span> // Can use ctx.Value("user").(User) to get current user
+//	~>doors.Inject("user", userBeam) <section>
+//		~{
+//			user := ctx.Value("user").(User)
+//		}
+//		<span>~(user.Name)</span>
+//	</section>
 func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
 		door := &Door{}
@@ -120,12 +94,11 @@ func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 	})
 }
 
-// Go starts a goroutine at render time using a blocking-safe context tied to the component's lifecycle.
+// Go starts f when the surrounding component is rendered.
 //
-// The goroutine runs only if the component is rendered. The context is canceled when the component
-// is unmounted, allowing for proper cleanup. You must explicitly listen to ctx.Done() to stop work.
-//
-// The context allows safe blocking operations, making it safe to use with X* operations (e.g., XUpdate, XRemove).
+// The passed context is canceled when the dynamic owner is unmounted, which
+// makes [Go] a good fit for background loops that should stop with the page.
+// The context is also marked as blocking-safe for X* operations.
 //
 // Example:
 //
@@ -139,12 +112,6 @@ func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 //	        }
 //	    }
 //	})
-//
-// Parameters:
-//   - f: a function to run in a goroutine, scoped to the component's render lifecycle
-//
-// Returns:
-//   - A non-visual templ.Component that starts the goroutine when rendered
 func Go(f func(context.Context)) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(ctex.KeyCore).(core.Core)
@@ -154,10 +121,11 @@ func Go(f func(context.Context)) gox.Editor {
 	})
 }
 
-// Status sets the HTTP status code
-// when rendered in a template.
-// Makes effect only at initial page render.
-// Example: ~(doors.Status(404))
+// Status sets the initial HTTP status code for the current page render.
+//
+// Example:
+//
+//	~(doors.Status(http.StatusNotFound))
 func Status(statusCode int) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(ctex.KeyCore).(core.Core)
