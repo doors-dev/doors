@@ -23,4 +23,4 @@ a **Commercial License** from doors dev LLC.
 Commercial licenses are provided under a separate written agreement (Order Form and
 commercial terms) delivered to paying customers.
 
-Contact: sales@doors.dev
+For commercial licensing, contact sales@doors.dev or visit https://doors.dev.
