@@ -141,4 +141,4 @@ See also:
 
 - [AGPL-3.0 License](./LICENSE)
 - [Licensing Terms](./LICENSING.md)
-- [Commercial License Summary](./COMMERCIAL.md)
+- [Commercial License Summary](./LICENSE-COMMERCIAL)
