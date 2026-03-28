@@ -24,11 +24,9 @@ Use `~>(door)` when you want a real element in the template to become the Door c
 
 ```gox
 elem (p *Panel) Main() {
-	<>
-		~>(p.body) <div class="panel">
-			Initial content
-		</div>
-	</>
+	~>(p.body) <div class="panel">
+		Initial content
+	</div>
 }
 ```
 
@@ -38,9 +36,7 @@ If the proxied element has no inner content, **Doors** uses the Door's current s
 
 ```gox
 elem (p *Panel) Main() {
-	<>
-		~>(p.body) <div class="panel"></div>
-	</>
+	~>(p.body) <div class="panel"></div>
 }
 ```
 
@@ -52,12 +48,10 @@ Use `~(&door)` when you want to render the Door's current state directly:
 
 ```gox
 elem (p *Panel) Main() {
-	<>
-		~{
-			p.body.Update(ctx, <div>Prepared before mount</div>)
-		}
-		~(&p.body)
-	</>
+	~{
+		p.body.Update(ctx, <div>Prepared before mount</div>)
+	}
+	~(&p.body)
 }
 ```
 

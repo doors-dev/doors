@@ -150,7 +150,40 @@ They are useful when completion itself matters, especially for backpressure. For
 
 ## Render
 
-`doors.Sub` is the simplest way to render a `Beam`:
+A `Beam` is not something you render directly.
+
+At the lowest level, you subscribe to a `Beam` and use its values to update rendered content through a `doors.Door`:
+
+1. keep a `doors.Door` on the component
+2. subscribe to the beam during render
+3. update that door when the beam value changes
+4. render the door
+
+```gox
+type CounterView struct {
+	counter doors.Beam[int]
+	body    doors.Door
+}
+
+elem (c *CounterView) Main() {
+	~{
+		c.counter.Sub(ctx, func(ctx context.Context, v int) bool {
+			c.body.Update(ctx, v)
+			return false
+		})
+	}
+
+	~>(c.body) <span></span>
+}
+```
+
+That is the core pattern: the subscription drives updates into a `Door`, and the `Door` keeps that fragment in sync.
+
+For most app code, the helper components are easier.
+
+### Sub
+
+`doors.Sub` wraps that pattern for the common case:
 
 ```gox
 <>
@@ -161,6 +194,8 @@ They are useful when completion itself matters, especially for backpressure. For
 ```
 
 It creates a dynamic fragment that subscribes to the beam and rerenders that fragment when the value changes.
+
+### Inject
 
 `doors.Inject` subscribes to a beam and places the current value into the child context:
 
@@ -236,29 +271,27 @@ func NewSearch() *Search {
 }
 
 elem (s *Search) Main() {
-	<>
-		<input
-			type="search"
-			(doors.AInput{
-				On: func(ctx context.Context, ev doors.RequestEvent[doors.InputEvent]) bool {
-					value := ev.Event().Value
-					s.state.Mutate(ctx, func(st SearchState) SearchState {
-						st.Query = value
-						st.Page = 1
-						return st
-					})
-					return false
-				},
-			})/>
+	<input
+		type="search"
+		(doors.AInput{
+			On: func(ctx context.Context, ev doors.RequestEvent[doors.InputEvent]) bool {
+				value := ev.Event().Value
+				s.state.Mutate(ctx, func(st SearchState) SearchState {
+					st.Query = value
+					st.Page = 1
+					return st
+				})
+				return false
+			},
+		})/>
 
-		~(doors.Sub(s.query, elem(q string) {
-			<p>Query: ~(q)</p>
-		}))
+	~(doors.Sub(s.query, elem(q string) {
+		<p>Query: ~(q)</p>
+	}))
 
-		~(doors.Sub(s.page, elem(page int) {
-			<p>Page: ~(page)</p>
-		}))
-	</>
+	~(doors.Sub(s.page, elem(page int) {
+		<p>Page: ~(page)</p>
+	}))
 }
 ```
 

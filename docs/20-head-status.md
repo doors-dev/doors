@@ -19,10 +19,8 @@ For example:
 
 ```gox
 elem Page() {
-	<>
-		<title>Docs</title>
-		<meta name="description" content="doors dev desc">
-	</>
+	<title>Docs</title>
+	<meta name="description" content="doors dev desc">
 
 	<main>
 		<h1>Docs</h1>
