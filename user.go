@@ -102,8 +102,18 @@ func IDBytes(b []byte) string {
 	return common.EncodeId(hash[:])
 }
 
-// AllowBlocking marks ctx as safe for waiting on blocking Doors operations such
-// as X-prefixed methods. Use it with caution.
-func AllowBlocking(ctx context.Context) context.Context {
-	return ctex.SetBlockingCtx(ctx)
+// Free returns a context that is safe to use with extended Doors operations
+// that may wait for asynchronous completion, such as X-prefixed methods, and
+// with long-running goroutines tied to the page runtime.
+//
+// The returned context keeps the original Values from ctx, but uses the root
+// Doors context for framework features such as beam reads/subscriptions and
+// uses the instance runtime for cancellation, deadline, and lifetime.
+func Free(ctx context.Context) context.Context {
+	core, ok := ctx.Value(ctex.KeyCore).(core.Core)
+	if !ok {
+		return ctex.FreeContext(ctx, ctx)
+	}
+	ctx = context.WithValue(ctx, ctex.KeyCore, core.RootCore())
+	return ctex.FreeContext(ctx, core.Runtime().Context())
 }

@@ -157,7 +157,15 @@ These report completion:
 - a non-nil error means it failed
 - a closed channel with no value usually means the Door was not mounted by the time the operation was observed
 
-Do not wait on `X*` during rendering. If you need to wait, do it in a handler or inside `doors.Go(...)`.
+Do not wait on `X*` during rendering.
+
+If you need to wait, do it in a hook, inside `doors.Go(...)`, or in your own
+goroutine with `doors.Free(ctx)`.
+
+`doors.Free(ctx)` keeps the original context values, but switches to the root
+Doors context and extends cancellation/deadline/lifetime to the instance
+runtime. That makes it the right context for long-running goroutines and for
+waiting on `X*` completion safely.
 
 Most code should use the regular methods. Reach for `X*` when completion itself matters, such as pacing a fast stream of updates.
 

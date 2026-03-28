@@ -33,6 +33,10 @@ func (helperDoor) ID() uint64 {
 	return 1
 }
 
+func (helperDoor) RootCore() core.Core {
+	return nil
+}
+
 type helperInstance struct {
 	expire         time.Duration
 	adapters       path.Adapters
@@ -179,11 +183,11 @@ func TestUserHelpers(t *testing.T) {
 		t.Fatal("expected distinct byte ids")
 	}
 
-	if ctex.IsBlockingCtx(context.Background()) {
-		t.Fatal("unexpected blocking context by default")
+	if ctex.IsFreeCtx(context.Background()) {
+		t.Fatal("unexpected free context by default")
 	}
-	if !ctex.IsBlockingCtx(AllowBlocking(context.Background())) {
-		t.Fatal("expected AllowBlocking to mark context as blocking")
+	if !ctex.IsFreeCtx(Free(context.Background())) {
+		t.Fatal("expected Free to mark context as free")
 	}
 }
 

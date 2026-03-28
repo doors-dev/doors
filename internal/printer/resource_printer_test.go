@@ -78,6 +78,9 @@ func (titleDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.R
 	return core.Hook{}, false
 }
 func (titleDoor) ID() uint64 { return 7 }
+func (titleDoor) RootCore() core.Core {
+	return nil
+}
 
 type testMetaUpdate struct {
 	name     string
@@ -113,6 +116,9 @@ func (d *hookDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http
 }
 
 func (d *hookDoor) ID() uint64 { return d.id }
+func (d *hookDoor) RootCore() core.Core {
+	return nil
+}
 
 func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstance, *hookDoor, *testModuleRegistry) {
 	t.Helper()

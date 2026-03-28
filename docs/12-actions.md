@@ -54,7 +54,14 @@ if ok && res.Err == nil {
 }
 ```
 
-`XCall` should only be awaited where blocking is acceptable, such as hooks, `doors.Go(...)`, or your own goroutines.
+Do not wait on `XCall` during rendering.
+
+If you need to wait for the result, do it in a hook, inside `doors.Go(...)`, or
+in your own goroutine with `doors.Free(ctx)`.
+
+`doors.Free(ctx)` keeps the original context values, but switches to the root
+Doors context and extends cancellation/deadline/lifetime to the instance
+runtime.
 
 Cancellation is best-effort.
 

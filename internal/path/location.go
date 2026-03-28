@@ -18,7 +18,7 @@ import (
 // Location is a parsed or generated URL path plus query string.
 type Location struct {
 	// Query holds the decoded query parameters.
-	Query    url.Values
+	Query url.Values
 	// Segments holds the decoded path segments without leading or trailing
 	// slashes.
 	Segments []string

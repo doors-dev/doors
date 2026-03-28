@@ -148,6 +148,11 @@ The `XUpdate` and `XMutate` variants return a completion channel. Most code does
 
 They are useful when completion itself matters, especially for backpressure. For example, if updates arrive very quickly, waiting for `XUpdate` lets a producer send the next state only after the previous one finished propagating.
 
+Do not wait on `XUpdate` or `XMutate` during rendering.
+
+If you need to wait for propagation, do it in a hook, inside `doors.Go(...)`, or
+in your own goroutine with `doors.Free(ctx)`.
+
 ## Render
 
 A `Beam` is not something you render directly.

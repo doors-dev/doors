@@ -14,7 +14,6 @@ const (
 	KeyCore ctxKey = iota
 	KeySessionStore
 	KeyInstanceStore
-	KeyBlocking
 	KeyRouter
 	keyFrame
 )

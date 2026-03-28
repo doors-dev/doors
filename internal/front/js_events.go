@@ -64,6 +64,7 @@ type ChangeEvent struct {
 	Checked   bool       `json:"checked"`
 	Timestamp time.Time  `json:"timestamp"`
 }
+
 // InputEvent describes a live form value edit.
 type InputEvent struct {
 	Type      string `json:"type"`

@@ -33,12 +33,13 @@ func Call(ctx context.Context, action Action) context.CancelFunc {
 
 // XCall dispatches action to the client and returns a result channel.
 //
-// The channel closes without a value if the call is canceled. Wait on it only
-// in contexts where blocking is allowed, such as hooks or goroutines started by
-// [Go]. T is the expected decoded payload type. For actions other than
-// [ActionEmit], [json.RawMessage] is usually the right choice.
+// The channel closes without a value if the call is canceled. Do not wait on
+// it during rendering. If you need to wait, do it in a hook, inside [Go], or
+// in your own goroutine with [Free]. T is the expected decoded payload type.
+// For actions other than [ActionEmit], [json.RawMessage] is usually the right
+// choice.
 func XCall[T any](ctx context.Context, action Action) (<-chan CallResult[T], context.CancelFunc) {
-	ctex.LogBlockingWarning(ctx, "action", "XCall")
+	ctex.LogFreeWarning(ctx, "action", "XCall")
 	return call[T](ctx, action)
 }
 

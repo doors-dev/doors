@@ -98,7 +98,8 @@ func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 //
 // The passed context is canceled when the dynamic owner is unmounted, which
 // makes [Go] a good fit for background loops that should stop with the page.
-// The context is also marked as blocking-safe for X* operations.
+// The context is also equivalent to calling [Free] on the surrounding context,
+// so it is safe to use with X* operations and other long-running runtime work.
 //
 // Example:
 //
@@ -115,7 +116,7 @@ func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 func Go(f func(context.Context)) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(ctex.KeyCore).(core.Core)
-		ctx := ctex.SetBlockingCtx(cur.Context())
+		ctx := Free(cur.Context())
 		core.Runtime().Go(ctx, f)
 		return nil
 	})

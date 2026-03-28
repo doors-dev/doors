@@ -22,7 +22,7 @@ import (
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-func newRootTracker(r *root) *tracker {
+func newRootTracker(r *root) (*tracker, core.Core) {
 	t := &tracker{
 		id:     r.NewID(),
 		root:   r,
@@ -33,7 +33,7 @@ func newRootTracker(r *root) *tracker {
 	core := core.NewCore(r.inst, t)
 	t.ctx = context.WithValue(r.runtime().Context(), ctex.KeyCore, core)
 	t.cancel = func() {}
-	return t
+	return t, core
 }
 
 func newTrackerFrom(prev *tracker) *tracker {
@@ -96,6 +96,10 @@ func (t *tracker) debug(tab string) {
 
 func (t *tracker) inst() Instance {
 	return t.root.inst
+}
+
+func (t *tracker) RootCore() core.Core {
+	return t.root.core
 }
 
 func (t *tracker) runtime() shredder.Runtime {
@@ -296,6 +300,10 @@ func (h containerCore) ID() uint64 {
 
 func (h containerCore) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
 	return h.tracker.registerContainerHook(h.id, onTrigger, onCancel)
+}
+
+func (h containerCore) RootCore() core.Core {
+	return h.tracker.RootCore()
 }
 
 var _ core.Door = &containerCore{}

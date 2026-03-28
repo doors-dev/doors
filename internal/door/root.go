@@ -36,13 +36,14 @@ func NewRoot(inst Instance) Root {
 		prime:   common.NewPrime(),
 		tackers: make(map[uint64]*tracker),
 	}
-	r.tracker = newRootTracker(r)
+	r.tracker, r.core = newRootTracker(r)
 	return r
 }
 
 type root struct {
 	mu      sync.Mutex
 	cancel  context.CancelFunc
+	core    core.Core
 	prime   *common.Prime
 	inst    Instance
 	tackers map[uint64]*tracker

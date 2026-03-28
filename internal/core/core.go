@@ -74,6 +74,7 @@ type Door interface {
 	Cinema() beam.Cinema
 	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
 	ID() uint64
+	RootCore() Core
 }
 
 func NewCore(inst Instance, door Door) Core {
@@ -90,6 +91,10 @@ var _ beam.Core = &core{}
 type core struct {
 	door Door
 	inst Instance
+}
+
+func (c Core) RootCore() Core {
+	return c.door.RootCore()
 }
 
 func (c Core) UpdateMeta(name string, property bool, attrs gox.Attrs) {

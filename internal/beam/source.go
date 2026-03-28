@@ -31,9 +31,9 @@ type Source[T any] interface {
 	// when propagation has finished.
 	//
 	// The channel receives nil on successful propagation or an error if the
-	// context is invalid or the instance ends before propagation finishes.
-	// Wait on it only in contexts where blocking is allowed, such as hooks or
-	// goroutines.
+	// context is invalid or the instance ends before propagation finishes. Do
+	// not wait on it during rendering. If you need to wait, do it in a hook,
+	// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
 	XUpdate(context.Context, T) <-chan error
 
 	// Mutate computes the next value from the current value and propagates it
@@ -47,9 +47,9 @@ type Source[T any] interface {
 	// when propagation has finished.
 	//
 	// The channel receives nil on successful propagation or an error if the
-	// context is invalid or the instance ends before propagation finishes.
-	// Wait on it only in contexts where blocking is allowed, such as hooks or
-	// goroutines.
+	// context is invalid or the instance ends before propagation finishes. Do
+	// not wait on it during rendering. If you need to wait, do it in a hook,
+	// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
 	XMutate(context.Context, func(T) T) <-chan error
 
 	// Get returns the most recently stored value without requiring a runtime
@@ -163,7 +163,7 @@ func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool)
 
 // XUpdate behaves like [Source.Update] and returns a completion channel.
 func (s *source[T]) XUpdate(ctx context.Context, v T) <-chan error {
-	ctex.LogBlockingWarning(ctx, "SourceBeam", "XUpdate")
+	ctex.LogFreeWarning(ctx, "SourceBeam", "XUpdate")
 	return s.mutateOrUpdate(ctx, nil, &v)
 }
 
@@ -174,7 +174,7 @@ func (s *source[T]) Update(ctx context.Context, v T) {
 
 // XMutate behaves like [Source.Mutate] and returns a completion channel.
 func (s *source[T]) XMutate(ctx context.Context, m func(T) T) <-chan error {
-	ctex.LogBlockingWarning(ctx, "SourceBeam", "XMutate")
+	ctex.LogFreeWarning(ctx, "SourceBeam", "XMutate")
 	return s.mutateOrUpdate(ctx, m, nil)
 }
 
@@ -187,7 +187,7 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 	s.mu.Lock()
 	ch := make(chan error, 1)
 	ctex.LogCanceled(ctx, "SourceBeam mutation")
-	ctx = ctex.ClearBlockingCtx(ctx)
+	ctx = ctex.ClearFreeCtx(ctx)
 
 	seq, commited := s.commit(mut, value)
 	if !commited {

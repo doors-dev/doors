@@ -37,25 +37,25 @@ func TestStoreOperations(t *testing.T) {
 	}
 }
 
-func TestBlockingHelpers(t *testing.T) {
+func TestFreeHelpers(t *testing.T) {
 	base := context.Background()
-	if IsBlockingCtx(base) {
-		t.Fatal("expected base context to be non-blocking")
+	if IsFreeCtx(base) {
+		t.Fatal("expected base context to be non-free")
 	}
 
-	blocking := SetBlockingCtx(base)
-	if !IsBlockingCtx(blocking) {
-		t.Fatal("expected blocking context flag")
+	free := FreeContext(base, base)
+	if !IsFreeCtx(free) {
+		t.Fatal("expected free context flag")
 	}
-	if cleared := ClearBlockingCtx(base); cleared != base {
-		t.Fatal("expected clear to preserve non-blocking context")
+	if cleared := ClearFreeCtx(base); cleared != base {
+		t.Fatal("expected clear to preserve non-free context")
 	}
-	if IsBlockingCtx(ClearBlockingCtx(blocking)) {
-		t.Fatal("expected cleared context to become non-blocking")
+	if IsFreeCtx(ClearFreeCtx(free)) {
+		t.Fatal("expected cleared context to become non-free")
 	}
 
-	LogBlockingWarning(base, "beam", "recv")
-	LogBlockingWarning(blocking, "beam", "recv")
+	LogFreeWarning(base, "beam", "recv")
+	LogFreeWarning(free, "beam", "recv")
 }
 
 func TestFrameHelpers(t *testing.T) {
@@ -76,11 +76,14 @@ func TestFrameHelpers(t *testing.T) {
 		t.Fatal("expected frame helper to expose inserted frame")
 	}
 
-	target := context.WithValue(context.Background(), KeyBlocking, true)
+	target := context.WithValue(context.Background(), KeyCore, "core")
 	infected := FrameInfect(ctx, target)
 	got, ok = AfterFrame(infected)
 	if !ok || got != after {
 		t.Fatal("expected frame to infect target context")
+	}
+	if infected.Value(KeyCore) != "core" {
+		t.Fatal("expected frame infect to preserve existing target values")
 	}
 	if FrameInfect(base, target) != target {
 		t.Fatal("expected infect without frame to preserve target context")
