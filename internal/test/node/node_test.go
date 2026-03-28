@@ -35,6 +35,36 @@ func TestDoorInitialContent(t *testing.T) {
 	test.TestMust(t, page, "#init")
 }
 
+func TestDoorProxyWrapsMultipleRoots(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentProxyWrappedSiblings{}
+	})
+	page := bro.Page(t, "/")
+	defer bro.Close()
+	defer page.Close()
+
+	if c := test.Count(page, "d0-r"); c != 1 {
+		t.Fatal("expected one d0-r wrapper, got", c)
+	}
+	test.TestMust(t, page, "d0-r > #proxy-wrap-first")
+	test.TestMust(t, page, "d0-r > #proxy-wrap-second")
+}
+
+func TestDoorProxyWrapsLoopRoots(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentProxyWrappedLoop{}
+	})
+	page := bro.Page(t, "/")
+	defer bro.Close()
+	defer page.Close()
+
+	if c := test.Count(page, "d0-r"); c != 1 {
+		t.Fatal("expected one d0-r wrapper for loop proxy, got", c)
+	}
+	test.TestMust(t, page, "d0-r > #proxy-loop-0")
+	test.TestMust(t, page, "d0-r > #proxy-loop-1")
+}
+
 func DoorUpdatedBefore(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &BeforeFragment{}
@@ -250,6 +280,30 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.Click(t, page, "#updateEditor")
 	test.TestMust(t, page, "#new2")
 	test.TestMust(t, page, "#presist2")
+}
+
+func TestDoorProxyReloadPreservesUpdatedContent(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentProxyReloadContent{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#proxy-redraw-root")
+	test.TestMustNot(t, page, "#proxy-redraw-content")
+
+	test.Click(t, page, "#proxy-redraw-update")
+	test.TestMust(t, page, "#proxy-redraw-root")
+	test.TestMust(t, page, "#proxy-redraw-content")
+
+	test.Click(t, page, "#proxy-redraw-remount")
+	test.TestMust(t, page, "#proxy-redraw-root")
+	test.TestMust(t, page, "#proxy-redraw-content")
+
+	test.Click(t, page, "#proxy-redraw-reload")
+	test.TestMust(t, page, "#proxy-redraw-root")
+	test.TestMust(t, page, "#proxy-redraw-content")
 }
 
 func TestDoorDetachedReplaceTransitions(t *testing.T) {

@@ -53,7 +53,6 @@ type Match struct {
 	entity any
 }
 
-
 func (m Match) Hook() (HookMatch, bool) {
 	e, ok := m.entity.(HookMatch)
 	return e, ok

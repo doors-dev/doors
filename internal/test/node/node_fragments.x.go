@@ -85,6 +85,73 @@ func (f *FragmentMany) Main() gox.Elem {
 	return })
 }
 
+type FragmentProxyWrappedSiblings struct {
+	n doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentProxyWrappedSiblings) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Any(gox.EditorFunc(func(cur gox.Cursor) error {
+		return f.n.Proxy(cur, gox.Elem(func(cur gox.Cursor) error {
+			if err := cur.Init("div"); err != nil {
+				return err
+			}
+			if err := cur.AttrSet("id", "proxy-wrap-first"); err != nil {
+				return err
+			}
+			if err := cur.Submit(); err != nil {
+				return err
+			}
+			if err := cur.Text("first"); err != nil {
+				return err
+			}
+			if err := cur.Close(); err != nil {
+				return err
+			}
+
+			if err := cur.Init("div"); err != nil {
+				return err
+			}
+			if err := cur.AttrSet("id", "proxy-wrap-second"); err != nil {
+				return err
+			}
+			if err := cur.Submit(); err != nil {
+				return err
+			}
+			if err := cur.Text("second"); err != nil {
+				return err
+			}
+			return cur.Close()
+		}))
+	})); if __e != nil { return }
+	return })
+}
+
+type FragmentProxyWrappedLoop struct {
+	n doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentProxyWrappedLoop) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			for i := range 2 {
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", fmt.Sprintf("proxy-loop-%d", i)); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Any(fmt.Sprint(i)); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			}
+		return })); if __e != nil { return }
+	return })
+}
+
 type FragmentX struct {
 	report doors.Door
 	n doors.Door
@@ -180,7 +247,7 @@ func (f *FragmentXDoor) wait(ctx context.Context, ch <-chan error, okMsg string)
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -664,6 +731,82 @@ func (f *LifeCycleFragment) newEditor() gox.Elem {
 	return })
 }
 
+type FragmentProxyReloadContent struct {
+	frame doors.Door
+	node doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentProxyReloadContent) mountEmpty() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("section"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "proxy-redraw-frame"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = f.node.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+				ctx := __c.Context(); gox.Noop(ctx)
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "proxy-redraw-root"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func (f *FragmentProxyReloadContent) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = f.frame.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Any(f.mountEmpty()); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "proxy-redraw-update"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.node.Update(ctx, test.Marker("proxy-redraw-content"))
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("proxy-redraw-update"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "proxy-redraw-remount"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.frame.Update(ctx, f.mountEmpty())
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("proxy-redraw-remount"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "proxy-redraw-reload"); if __e != nil { return }
+			__e = __c.AttrMod(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.node.Reload(ctx)
+				return false
+			},
+		}); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("proxy-redraw-reload"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
 type FragmentDetachedReplace struct {
 	report doors.Door
 	frame doors.Door
@@ -682,7 +825,7 @@ func (f *FragmentDetachedReplace) wait(ctx context.Context, ch <-chan error, okM
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -771,7 +914,7 @@ func (f *FragmentDetachedRebase) wait(ctx context.Context, ch <-chan error, okMs
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -874,7 +1017,7 @@ func (f *FragmentProxyMove) wait(ctx context.Context, ch <-chan error, okMsg str
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -983,7 +1126,7 @@ func (f *FragmentHierarchy) wait(ctx context.Context, ch <-chan error, okMsg str
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -1095,7 +1238,7 @@ func (f *FragmentErrorTransitions) wait(ctx context.Context, ch <-chan error, ok
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)

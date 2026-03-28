@@ -178,3 +178,28 @@ elem (f *LinksFragment) Main() {
 	<div style="height: 1800px"></div>
 	<div id="scroll-target">scroll-target</div>
 }
+
+type ProxyFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+elem (f *ProxyFragment) Main() {
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 0, "literal")
+			return false
+		},
+	} ~(<button id="proxy-literal">proxy-literal</button>)
+	
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 0, "container")
+			return false
+		},
+	} ~(<>
+		<button id="proxy-container">proxy-container</button>
+	</>)
+	
+	~(f.r)
+}

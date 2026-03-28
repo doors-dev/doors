@@ -207,6 +207,37 @@ func fetchText(t *testing.T, url string) string {
 	return string(body)
 }
 
+func fetchPageCSPHeader(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, csp doors.CSP) string {
+	t.Helper()
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseCSP(r, csp)
+		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+			return doors.ResponseComp(&test.Page{
+				Source: r,
+				Header: "Testing Imports",
+				H:      h,
+				F:      &Empty{},
+			})
+		})
+		doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
+	})
+	defer bro.Close()
+
+	resp, err := http.Get(test.Host + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status %d", resp.StatusCode)
+	}
+	header := resp.Header.Get("Content-Security-Policy")
+	if header == "" {
+		t.Fatal("expected Content-Security-Policy header")
+	}
+	return header
+}
+
 func TestModule(t *testing.T) {
 	testModule(t, moduleHead)
 }
@@ -416,6 +447,28 @@ func TestStyleNoCache(t *testing.T) {
 			t.Fatal("expected nocache inline stylesheet path to end with /nocache-inline.css, got ", href)
 		}
 	})
+}
+
+func TestCSPHeader(t *testing.T) {
+	header := fetchPageCSPHeader(t, cspHead, doors.CSP{
+		ConnectSources:      []string{"https://api.example.com"},
+		ScriptStrictDynamic: true,
+	})
+	expect := []string{
+		"default-src 'self'",
+		"script-src 'self'",
+		"'strict-dynamic'",
+		test.Host + "/module/index.js",
+		"style-src 'self'",
+		test.Host + "/module/style.css",
+		"connect-src 'self' https://api.example.com",
+		"'sha256-",
+	}
+	for _, part := range expect {
+		if !strings.Contains(header, part) {
+			t.Fatalf("expected CSP header to contain %q, got %q", part, header)
+		}
+	}
 }
 
 func TestReact(t *testing.T) {

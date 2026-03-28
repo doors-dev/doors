@@ -29,9 +29,11 @@ elem fileHref() {
 }
 
 elem fileRawHref() {
-	<link rel="stylesheet" href=(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(styleRawBytes)
-	})/>
+	<link
+		rel="stylesheet"
+		href=(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(styleRawBytes)
+		})/>
 }
 
 elem fileSrc() {
@@ -39,9 +41,10 @@ elem fileSrc() {
 }
 
 elem fileRawSrc() {
-	<script src=(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(moduleBytes)
-	})></script>
+	<script
+		src=(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(moduleBytes)
+		})></script>
 }
 
 elem fileHrefModify() {
@@ -49,9 +52,11 @@ elem fileHrefModify() {
 }
 
 elem fileRawHrefModify() {
-	<link rel="stylesheet" (doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(styleRawBytes)
-	}))/>
+	<link
+		rel="stylesheet"
+		(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(styleRawBytes)
+		}))/>
 }
 
 elem fileSrcModify() {
@@ -59,9 +64,10 @@ elem fileSrcModify() {
 }
 
 elem fileRawSrcModify() {
-	<script (doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(moduleBytes)
-	}))></script>
+	<script
+		(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(moduleBytes)
+		}))></script>
 }
 
 elem fileCachedHref() {
@@ -106,7 +112,8 @@ elem framePrivateSrc() {
 	<iframe
 		id="private-frame"
 		src=(doors.ResourceString(`<html><body>frame</body></html>`))
-		name="frame.html"></iframe>
+		name="frame.html">
+	</iframe>
 }
 
 elem fileCachedHrefBad(_b doors.Source[test.Path]) {
@@ -168,11 +175,11 @@ elem styleProxyHead(_b doors.Source[test.Path]) {
 }
 
 elem styleHostedHead(_b doors.Source[test.Path]) {
-	<link rel="stylesheet" href=("/module/style.css")/>
+	<link rel="stylesheet" href="/module/style.css"/>
 }
 
 elem styleHostedRawHead(_b doors.Source[test.Path]) {
-	<link rel="stylesheet" href=("/module/style.css") output="raw"/>
+	<link rel="stylesheet" href="/module/style.css" output="raw"/>
 }
 
 elem styleHead(_b doors.Source[test.Path]) {
@@ -218,6 +225,11 @@ elem styleNoCacheHead(_b doors.Source[test.Path]) {
 	</style>
 }
 
+elem cspHead(b doors.Source[test.Path]) {
+	~(styleExternalHead(b))
+	~(moduleExternalHead(b))
+}
+
 elem moduleExternalHead(_b doors.Source[test.Path]) {
 	<script
 		src=(doors.ResourceExternal(test.Host + "/module/index.js"))
@@ -227,7 +239,7 @@ elem moduleExternalHead(_b doors.Source[test.Path]) {
 
 elem moduleBundleHostHead(_b doors.Source[test.Path]) {
 	<script
-		src=("/module/index.js")
+		src="/module/index.js"
 		type="module"
 		specifier="module"></script>
 }

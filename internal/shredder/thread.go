@@ -10,6 +10,7 @@ package shredder
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"sync/atomic"
 )
@@ -317,7 +318,7 @@ var _ SimpleFrame = FreeFrame{}
 type AfterFrame struct {
 	mu      sync.Mutex
 	counter int
-	after   executable
+	after   []executable
 }
 
 /*
@@ -338,13 +339,10 @@ func (f *AfterFrame) Add() Done {
 func (f *AfterFrame) RunAfter(ctx context.Context, r Runtime, fun func(bool)) {
 	e := run{runtime: r, ctx: ctx, fun: fun}
 	f.mu.Lock()
-	if f.after != nil {
-		f.mu.Unlock()
-		panic("After function already specified")
-	}
 	if f.counter == -1 {
 		f.mu.Unlock()
-		panic("After function already fired")
+		e.execute(func(err error) {})
+		return
 	}
 	if f.counter == 0 {
 		f.counter = -1
@@ -352,7 +350,7 @@ func (f *AfterFrame) RunAfter(ctx context.Context, r Runtime, fun func(bool)) {
 		e.execute(func(err error) {})
 		return
 	}
-	f.after = e
+	f.after = append(f.after, e)
 	f.mu.Unlock()
 }
 
@@ -377,8 +375,12 @@ func (f *AfterFrame) report(error) {
 		return
 	}
 	f.counter = -1
+	after := f.after
+	f.after = nil
 	f.mu.Unlock()
-	f.after.execute(func(err error) {})
+	for _, e := range slices.Backward(after) {
+		e.execute(func(err error) {})
+	}
 }
 
 func (f *AfterFrame) schedule(e executable) {

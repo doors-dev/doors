@@ -4,7 +4,7 @@ package components
 
 import (
 	"context"
-
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/test"
@@ -40,8 +40,8 @@ func (f *LifecycleFragment) Main() gox.Elem {
 			__e = __c.AttrSet("id", "session-marker"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Any(doors.SessionStore(ctx).Init(lifecycleSessionKey{}, func() any {
-		return common.RandId()
-	}).(string)); if __e != nil { return }
+			return common.RandId()
+		}).(string)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
@@ -49,8 +49,8 @@ func (f *LifecycleFragment) Main() gox.Elem {
 			__e = __c.AttrSet("id", "instance-marker"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Any(doors.InstanceStore(ctx).Init(lifecycleInstanceKey{}, func() any {
-		return common.RandId()
-	}).(string)); if __e != nil { return }
+			return common.RandId()
+		}).(string)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = doors.AClick{

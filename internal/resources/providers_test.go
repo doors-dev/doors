@@ -96,8 +96,8 @@ func TestStaticEntries(t *testing.T) {
 
 func TestScriptEntries(t *testing.T) {
 	fsys := fstest.MapFS{
-		"index.js": {Data: []byte(`window.value = "js"` )},
-		"index.ts": {Data: []byte(`const value: string = "ts"` )},
+		"index.js": {Data: []byte(`window.value = "js"`)},
+		"index.ts": {Data: []byte(`const value: string = "ts"`)},
 	}
 	jsPath := writeTempFile(t, "index.js", `window.value = "path-js"`)
 	tsPath := writeTempFile(t, "index.ts", `const value: string = "path-ts"`)

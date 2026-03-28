@@ -54,7 +54,7 @@ func (e errScriptEntry) Apply(opt *api.BuildOptions) error {
 	}
 	return nil
 }
-func (e errScriptEntry) entryID(w idWriter)            { _, _ = w.WriteString("err-script") }
+func (e errScriptEntry) entryID(w idWriter) { _, _ = w.WriteString("err-script") }
 
 type errStyleEntry struct{}
 

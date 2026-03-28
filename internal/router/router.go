@@ -63,7 +63,7 @@ type Router struct {
 }
 
 func (rr *Router) SessionCookie() string {
-	return "d0r" + rr.pathMaker.ID()
+	return "d0r-" + rr.pathMaker.ID()
 }
 
 func (rr *Router) PathMaker() path.PathMaker {

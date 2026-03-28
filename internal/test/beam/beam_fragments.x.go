@@ -270,7 +270,7 @@ func (f *BeamEqualFragment) Main() gox.Elem {
 		ctx := __c.Context(); gox.Noop(ctx)
 		if f.p == nil {
 			f.p = doors.NewBeamEqual(f.b, func(s state) string {
-				if s.Int%2 == 0 {
+				if s.Int % 2 == 0 {
 					return "even"
 				}
 				return "odd"

@@ -2,7 +2,7 @@ package components
 
 import (
 	"context"
-
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/test"
@@ -19,12 +19,16 @@ type LifecycleFragment struct {
 elem (f *LifecycleFragment) Main() {
 	<div id="session-id">~(doors.SessionId(ctx))</div>
 	<div id="instance-id">~(doors.InstanceId(ctx))</div>
-	<div id="session-marker">~(doors.SessionStore(ctx).Init(lifecycleSessionKey{}, func() any {
-		return common.RandId()
-	}).(string))</div>
-	<div id="instance-marker">~(doors.InstanceStore(ctx).Init(lifecycleInstanceKey{}, func() any {
-		return common.RandId()
-	}).(string))</div>
+	<div id="session-marker">
+		~(doors.SessionStore(ctx).Init(lifecycleSessionKey{}, func() any {
+			return common.RandId()
+		}).(string))
+	</div>
+	<div id="instance-marker">
+		~(doors.InstanceStore(ctx).Init(lifecycleInstanceKey{}, func() any {
+			return common.RandId()
+		}).(string))
+	</div>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			doors.InstanceEnd(ctx)

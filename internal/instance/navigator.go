@@ -16,6 +16,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/gammazero/deque"
@@ -90,12 +91,12 @@ func (n *navigator[M]) init() {
 			)
 			return false
 		}
-		n.push(l)
+		n.push(ctx, l)
 		return false
 	})
 }
 
-func (n *navigator[M]) push(l path.Location) {
+func (n *navigator[M]) push(ctx context.Context, l path.Location) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if n.history.Len() != 0 && path.EqualLocation(n.history.Front(), l) {
@@ -115,13 +116,24 @@ func (n *navigator[M]) push(l path.Location) {
 	}
 	n.seq += 1
 	seq := n.seq
+	after, ok := ctex.AfterFrame(ctx)
+	if !ok {
+		n.call(l.Path(), seq, replace)
+		return
+	}
+	after.RunAfter(nil, nil, func(b bool) {
+		n.call(l.Path(), seq, replace)
+	})
+}
+
+func (n *navigator[M]) call(path string, seq int, replace bool) {
 	n.inst.CallCheck(
 		func() bool {
 			n.mu.Lock()
 			defer n.mu.Unlock()
 			return seq == n.seq
 		},
-		&action.SetPath{Path: l.Path(), Replace: replace},
+		&action.SetPath{Path: path, Replace: replace},
 		nil,
 		nil,
 		action.CallParams{},

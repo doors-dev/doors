@@ -39,14 +39,15 @@ type titleInstance struct {
 func (t *titleInstance) CallCtx(context.Context, action.Action, func(json.RawMessage, error), func(), action.CallParams) context.CancelFunc {
 	return func() {}
 }
-func (t *titleInstance) CallCheck(func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {}
+func (t *titleInstance) CallCheck(func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+}
 func (t *titleInstance) CSPCollector() *common.CSPCollector {
 	if t.csp != nil {
 		return t.csp
 	}
 	return (&common.CSP{}).NewCollector()
 }
-func (t *titleInstance) ModuleRegistry() core.ModuleRegistry { return t.modules }
+func (t *titleInstance) ModuleRegistry() core.ModuleRegistry   { return t.modules }
 func (t *titleInstance) ResourceRegistry() *resources.Registry { return t.registry }
 func (t *titleInstance) ID() string                            { return "instance" }
 func (t *titleInstance) RootID() uint64                        { return 1 }

@@ -165,4 +165,3 @@ func (a AData) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	front.AttrsSetData(attrs, a.Name, a.Value)
 	return nil
 }
-

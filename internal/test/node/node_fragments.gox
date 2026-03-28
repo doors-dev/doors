@@ -50,6 +50,58 @@ elem (f *FragmentMany) Main() {
 	}))
 }
 
+type FragmentProxyWrappedSiblings struct {
+	n doors.Door
+	test.NoBeam
+}
+
+elem (f *FragmentProxyWrappedSiblings) Main() {
+	~(gox.EditorFunc(func(cur gox.Cursor) error {
+		return f.n.Proxy(cur, gox.Elem(func(cur gox.Cursor) error {
+			if err := cur.Init("div"); err != nil {
+				return err
+			}
+			if err := cur.AttrSet("id", "proxy-wrap-first"); err != nil {
+				return err
+			}
+			if err := cur.Submit(); err != nil {
+				return err
+			}
+			if err := cur.Text("first"); err != nil {
+				return err
+			}
+			if err := cur.Close(); err != nil {
+				return err
+			}
+			
+			if err := cur.Init("div"); err != nil {
+				return err
+			}
+			if err := cur.AttrSet("id", "proxy-wrap-second"); err != nil {
+				return err
+			}
+			if err := cur.Submit(); err != nil {
+				return err
+			}
+			if err := cur.Text("second"); err != nil {
+				return err
+			}
+			return cur.Close()
+		}))
+	}))
+}
+
+type FragmentProxyWrappedLoop struct {
+	n doors.Door
+	test.NoBeam
+}
+
+elem (f *FragmentProxyWrappedLoop) Main() {
+	~>(f.n) ~(for i := range 2 {
+		<div id=(fmt.Sprintf("proxy-loop-%d", i))>~(fmt.Sprint(i))</div>
+	})
+}
+
 type FragmentX struct {
 	report doors.Door
 	n doors.Door
@@ -117,7 +169,7 @@ func (f *FragmentXDoor) wait(ctx context.Context, ch <-chan error, okMsg string)
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -412,6 +464,53 @@ elem (f *LifeCycleFragment) newEditor() {
 	</div>
 }
 
+type FragmentProxyReloadContent struct {
+	frame doors.Door
+	node doors.Door
+	test.NoBeam
+}
+
+elem (f *FragmentProxyReloadContent) mountEmpty() {
+	<section id="proxy-redraw-frame">
+		~>(f.node) <div id="proxy-redraw-root">
+		</div>
+	</section>
+}
+
+elem (f *FragmentProxyReloadContent) Main() {
+	~>(f.frame) ~(f.mountEmpty())
+	<button
+		id="proxy-redraw-update"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.node.Update(ctx, test.Marker("proxy-redraw-content"))
+				return false
+			},
+		})>
+		proxy-redraw-update
+	</button>
+	<button
+		id="proxy-redraw-remount"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.frame.Update(ctx, f.mountEmpty())
+				return false
+			},
+		})>
+		proxy-redraw-remount
+	</button>
+	<button
+		id="proxy-redraw-reload"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.node.Reload(ctx)
+				return false
+			},
+		})>
+		proxy-redraw-reload
+	</button>
+}
+
 type FragmentDetachedReplace struct {
 	report doors.Door
 	frame doors.Door
@@ -430,7 +529,7 @@ func (f *FragmentDetachedReplace) wait(ctx context.Context, ch <-chan error, okM
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -487,7 +586,7 @@ func (f *FragmentDetachedRebase) wait(ctx context.Context, ch <-chan error, okMs
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -551,7 +650,7 @@ func (f *FragmentProxyMove) wait(ctx context.Context, ch <-chan error, okMsg str
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -620,7 +719,7 @@ func (f *FragmentHierarchy) wait(ctx context.Context, ch <-chan error, okMsg str
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -692,7 +791,7 @@ func (f *FragmentErrorTransitions) wait(ctx context.Context, ch <-chan error, ok
 		return false
 	}
 	if err != nil {
-		f.rep(ctx, "channel err: "+err.Error())
+		f.rep(ctx, "channel err: " + err.Error())
 		return false
 	}
 	f.rep(ctx, okMsg)

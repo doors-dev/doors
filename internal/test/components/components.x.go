@@ -412,3 +412,55 @@ func (f *LinksFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 	return })
 }
+
+type ProxyFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+func (f *ProxyFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 0, "literal")
+			return false
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+			__e = __c.AttrSet("id", "proxy-literal"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("proxy-literal"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 0, "container")
+			return false
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); gox.Noop(ctx)
+			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.InitContainer(); if __e != nil { return }
+		{
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+				__e = __c.AttrSet("id", "proxy-container"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("proxy-container"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Any(f.r); if __e != nil { return }
+	return })
+}

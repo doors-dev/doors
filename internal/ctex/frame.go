@@ -14,7 +14,6 @@ import (
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-
 func FrameInsert(ctx context.Context) (context.Context, *shredder.AfterFrame) {
 	sh := &shredder.AfterFrame{}
 	return context.WithValue(ctx, keyFrame, sh), sh

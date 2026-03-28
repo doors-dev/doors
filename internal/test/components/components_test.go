@@ -7,6 +7,7 @@ import (
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/test"
+	"github.com/go-rod/rod"
 )
 
 func TestTitle(t *testing.T) {
@@ -93,4 +94,39 @@ func TestActionHelpers(t *testing.T) {
 	test.ClickNow(t, page, "#raw-assign")
 	<-time.After(300 * time.Millisecond)
 	test.TestContent(t, page, "title", "s")
+}
+
+func proxyPage(t *testing.T) *rod.Page {
+	t.Helper()
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+			return doors.ResponseComp(&test.Page{
+				Source: r,
+				F: &ProxyFragment{
+					r: test.NewReporter(1),
+				},
+			})
+		})
+	})
+	t.Cleanup(func() {
+		bro.Close()
+	})
+
+	page := bro.Page(t, "/")
+	t.Cleanup(func() {
+		page.Close()
+	})
+	return page
+}
+
+func TestProxyAttrModifierLiteral(t *testing.T) {
+	page := proxyPage(t)
+	test.Click(t, page, "#proxy-literal")
+	test.TestReport(t, page, "literal")
+}
+
+func TestProxyAttrModifierContainerPenetration(t *testing.T) {
+	page := proxyPage(t)
+	test.Click(t, page, "#proxy-container")
+	test.TestReport(t, page, "container")
 }

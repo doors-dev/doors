@@ -48,8 +48,8 @@ func fileRawHref() gox.Elem {
 		{
 			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
 			__e = __c.AttrSet("href", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(styleRawBytes)
-	}); if __e != nil { return }
+			w.Write(styleRawBytes)
+		}); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -74,8 +74,8 @@ func fileRawSrc() gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 			__e = __c.AttrSet("src", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(moduleBytes)
-	}); if __e != nil { return }
+			w.Write(moduleBytes)
+		}); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -102,8 +102,8 @@ func fileRawHrefModify() gox.Elem {
 		{
 			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
 			__e = __c.AttrMod(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(styleRawBytes)
-	})); if __e != nil { return }
+			w.Write(styleRawBytes)
+		})); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -128,8 +128,8 @@ func fileRawSrcModify() gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 			__e = __c.AttrMod(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(moduleBytes)
-	})); if __e != nil { return }
+			w.Write(moduleBytes)
+		})); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -456,6 +456,14 @@ func styleNoCacheHead(_b doors.Source[test.Path]) gox.Elem {
 			__e = __c.Raw("h1 {\n\t\t\tcolor: red;\n\t\t}"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func cspHead(b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Any(styleExternalHead(b)); if __e != nil { return }
+		__e = __c.Any(moduleExternalHead(b)); if __e != nil { return }
 	return })
 }
 
