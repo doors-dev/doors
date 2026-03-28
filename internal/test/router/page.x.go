@@ -62,6 +62,11 @@ type PathQuery struct {
 	Page *int `query:"page"`
 }
 
+type PathEscaped struct {
+	Path bool `path:"/escaped/:Name"`
+	Name string
+}
+
 func pageQuery(b doors.Source[PathQuery]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
@@ -118,6 +123,112 @@ func pageQuery(b doors.Source[PathQuery]) gox.Elem {
 						__e = __c.AttrSet("id", "query-next"); if __e != nil { return }
 						__e = __c.Submit(); if __e != nil { return }
 						__e = __c.Text("query-next"); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func pageLocation(b doors.Source[doors.Location]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("html"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Init("body"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "instance-id"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+				__e = doors.Inject(0, b).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("div"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "location-string"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Any(ctx.Value(0).(doors.Location).String()); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+				__e = doors.Inject(0, b).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("div"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "location-path"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Any(ctx.Value(0).(doors.Location).Path()); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+				__e = doors.Inject(0, b).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("div"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "tag-value"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Any(ctx.Value(0).(doors.Location).Query.Get("tag")); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+				__e = doors.Inject(0, b).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("div"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "page-query-value"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Any(ctx.Value(0).(doors.Location).Query.Get("page")); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func pageEscaped(b doors.Source[PathEscaped]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("html"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Init("body"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+				__e = doors.Inject(0, b).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("div"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "name-value"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Any(ctx.Value(0).(PathEscaped).Name); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+				name := "next value/again"
+
+				__e = doors.ALink{
+				Model: PathEscaped{
+					Path: true,
+					Name: name,
+				},
+			}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("a"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "next-escaped"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Text("next-escaped"); if __e != nil { return }
 					}
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }

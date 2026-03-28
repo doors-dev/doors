@@ -104,13 +104,13 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 			return a.check(seq)
 		},
 		act,
-			func(rm json.RawMessage, err error) {
-				if err == nil {
-					return
-				}
-				slog.Error("Shared attribute call err " + err.Error())
-				a.restore(seq, prevValue, prevEnable)
-			},
+		func(rm json.RawMessage, err error) {
+			if err == nil {
+				return
+			}
+			slog.Error("Shared attribute call err " + err.Error())
+			a.restore(seq, prevValue, prevEnable)
+		},
 		nil,
 		action.CallParams{},
 	)
@@ -147,13 +147,13 @@ func (a AShared) Update(ctx context.Context, value string) {
 			ID:    a.id,
 			Value: a.value,
 		},
-			func(rm json.RawMessage, err error) {
-				if err == nil {
-					return
-				}
-				slog.Error("Shared attribute call err " + err.Error())
-				a.restore(seq, prevValue, prevEnable)
-			},
+		func(rm json.RawMessage, err error) {
+			if err == nil {
+				return
+			}
+			slog.Error("Shared attribute call err " + err.Error())
+			a.restore(seq, prevValue, prevEnable)
+		},
 		nil,
 		action.CallParams{},
 	)

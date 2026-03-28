@@ -272,6 +272,45 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 	}
 }
 
+func TestLocationModelMatchesAnyURL(t *testing.T) {
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[doors.Location]) doors.Response {
+			return doors.ResponseComp(pageLocation(s))
+		})
+	})
+	defer bro.Close()
+
+	page := bro.Page(t, "/any/deep/path?tag=hello&page=7")
+	defer page.Close()
+
+	test.TestContent(t, page, "#location-string", "/any/deep/path?page=7&tag=hello")
+	test.TestContent(t, page, "#location-path", "/any/deep/path")
+	test.TestContent(t, page, "#tag-value", "hello")
+	test.TestContent(t, page, "#page-query-value", "7")
+}
+
+func TestPathModelEscapedSegmentDecodeAndEncode(t *testing.T) {
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathEscaped]) doors.Response {
+			return doors.ResponseComp(pageEscaped(s))
+		})
+	})
+	defer bro.Close()
+
+	page := bro.Page(t, "/escaped/hello%20world%2Fagain")
+	defer page.Close()
+
+	test.TestContent(t, page, "#name-value", "hello world/again")
+
+	href := page.MustElement("#next-escaped").MustAttribute("href")
+	if href == nil {
+		t.Fatal("expected escaped path link href")
+	}
+	if *href != "/escaped/next%20value%2Fagain" {
+		t.Fatalf("expected escaped href %q actual %q", "/escaped/next%20value%2Fagain", *href)
+	}
+}
+
 func TestAfterAssign(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {

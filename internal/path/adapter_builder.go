@@ -25,7 +25,11 @@ type adapterBuilder[M any] struct {
 	fields map[string]field
 }
 
-func (a adapterBuilder[M]) build() (adapter[M], error) {
+func (a adapterBuilder[M]) build() (Adapter[M], error) {
+	var zero M
+	if _, ok := any(zero).(Location); ok {
+		return any(locationAdapter{}).(Adapter[M]), nil
+	}
 	if err := a.scanFields(); err != nil {
 		return nil, err
 	}

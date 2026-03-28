@@ -47,13 +47,9 @@ type Adapter[M any] interface {
 }
 
 func NewAdapter[M any]() (Adapter[M], error) {
-	adapter, err := adapterBuilder[M]{
+	return adapterBuilder[M]{
 		fields: make(map[string]field),
 	}.build()
-	if err != nil {
-		return nil, err
-	}
-	return adapter, nil
 }
 
 type adapter[M any] []branch

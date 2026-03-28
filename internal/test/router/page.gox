@@ -36,6 +36,11 @@ type PathQuery struct {
 	Page *int `query:"page"`
 }
 
+type PathEscaped struct {
+	Path bool `path:"/escaped/:Name"`
+	Name string
+}
+
 elem pageQuery(b doors.Source[PathQuery]) {
 	<html>
 		<body>
@@ -62,6 +67,45 @@ elem pageQuery(b doors.Source[PathQuery]) {
 					Page: &page,
 				},
 			} <a id="query-next">query-next</a>
+		</body>
+	</html>
+}
+
+elem pageLocation(b doors.Source[doors.Location]) {
+	<html>
+		<body>
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			~>(doors.Inject(0, b)) <div id="location-string">
+				~(ctx.Value(0).(doors.Location).String())
+			</div>
+			~>(doors.Inject(0, b)) <div id="location-path">
+				~(ctx.Value(0).(doors.Location).Path())
+			</div>
+			~>(doors.Inject(0, b)) <div id="tag-value">
+				~(ctx.Value(0).(doors.Location).Query.Get("tag"))
+			</div>
+			~>(doors.Inject(0, b)) <div id="page-query-value">
+				~(ctx.Value(0).(doors.Location).Query.Get("page"))
+			</div>
+		</body>
+	</html>
+}
+
+elem pageEscaped(b doors.Source[PathEscaped]) {
+	<html>
+		<body>
+			~>(doors.Inject(0, b)) <div id="name-value">
+				~(ctx.Value(0).(PathEscaped).Name)
+			</div>
+			~{
+				name := "next value/again"
+			}
+			~>doors.ALink{
+				Model: PathEscaped{
+					Path: true,
+					Name: name,
+				},
+			} <a id="next-escaped">next-escaped</a>
 		</body>
 	</html>
 }
