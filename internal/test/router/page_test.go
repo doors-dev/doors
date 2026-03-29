@@ -272,6 +272,39 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 	}
 }
 
+func TestBrowserBackRestoresPreviousInstanceAcrossModels(t *testing.T) {
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathCrossA]) doors.Response {
+			return doors.ResponseComp(pageCrossA())
+		})
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathCrossB]) doors.Response {
+			return doors.ResponseComp(pageCrossB())
+		})
+	})
+	defer bro.Close()
+
+	page := bro.Page(t, "/cross-a")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+
+	test.Click(t, page, "#cross-next")
+	waitContent(t, page, "#page-name", "cross-b")
+
+	nextInstance := test.GetContent(t, page, "#instance-id")
+	if nextInstance == initialInstance {
+		t.Fatalf("expected different instance after cross-model ALink navigation, got %q", nextInstance)
+	}
+
+	page.NavigateBack()
+	waitContent(t, page, "#cross-next", "cross-next")
+
+	restoredInstance := test.GetContent(t, page, "#instance-id")
+	if restoredInstance != initialInstance {
+		t.Fatalf("expected browser back to restore previous instance %q, got %q", initialInstance, restoredInstance)
+	}
+}
+
 func TestLocationModelMatchesAnyURL(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[doors.Location]) doors.Response {

@@ -41,6 +41,14 @@ type PathEscaped struct {
 	Name string
 }
 
+type PathCrossA struct {
+	Path bool `path:"/cross-a"`
+}
+
+type PathCrossB struct {
+	Path bool `path:"/cross-b"`
+}
+
 elem pageQuery(b doors.Source[PathQuery]) {
 	<html>
 		<body>
@@ -106,6 +114,28 @@ elem pageEscaped(b doors.Source[PathEscaped]) {
 					Name: name,
 				},
 			} <a id="next-escaped">next-escaped</a>
+		</body>
+	</html>
+}
+
+elem pageCrossA() {
+	<html>
+		<body>
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			~>doors.ALink{
+				Model: PathCrossB{
+					Path: true,
+				},
+			} <a id="cross-next">cross-next</a>
+		</body>
+	</html>
+}
+
+elem pageCrossB() {
+	<html>
+		<body>
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="page-name">cross-b</div>
 		</body>
 	</html>
 }

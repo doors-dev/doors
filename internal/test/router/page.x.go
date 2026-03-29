@@ -67,6 +67,14 @@ type PathEscaped struct {
 	Name string
 }
 
+type PathCrossA struct {
+	Path bool `path:"/cross-a"`
+}
+
+type PathCrossB struct {
+	Path bool `path:"/cross-b"`
+}
+
 func pageQuery(b doors.Source[PathQuery]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); gox.Noop(ctx)
@@ -232,6 +240,73 @@ func pageEscaped(b doors.Source[PathEscaped]) gox.Elem {
 					}
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func pageCrossA() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("html"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Init("body"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "instance-id"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+				__e = doors.ALink{
+				Model: PathCrossB{
+					Path: true,
+				},
+			}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); gox.Noop(ctx)
+					__e = __c.Init("a"); if __e != nil { return }
+					{
+						__e = __c.AttrSet("id", "cross-next"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Text("cross-next"); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func pageCrossB() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("html"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Init("body"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "instance-id"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "page-name"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Text("cross-b"); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		}
