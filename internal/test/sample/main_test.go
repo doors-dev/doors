@@ -1,7 +1,6 @@
 package test
 
 import (
-	"os"
 	"testing"
 
 	testsupport "github.com/doors-dev/doors/internal/test"
@@ -11,8 +10,10 @@ import (
 var browser *rod.Browser
 
 func TestMain(m *testing.M) {
-	browser = testsupport.NewBrowser()
-	code := m.Run()
-	browser.MustClose()
-	os.Exit(code)
+	testsupport.RunMain(func() int {
+		browser = testsupport.NewBrowser()
+		code := m.Run()
+		browser.MustClose()
+		return code
+	})
 }

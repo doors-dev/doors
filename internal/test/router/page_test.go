@@ -1,6 +1,8 @@
 package router
 
 import (
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -11,6 +13,62 @@ import (
 	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
 )
+
+type PathParallel struct {
+	Path bool `path:"/parallel"`
+}
+
+type slowPart struct {
+	id    string
+	text  string
+	delay time.Duration
+}
+
+func (s slowPart) Main() gox.Elem {
+	<-time.After(s.delay)
+	return gox.Elem(func(cur gox.Cursor) error {
+		if err := cur.Init("div"); err != nil {
+			return err
+		}
+		if err := cur.AttrSet("id", s.id); err != nil {
+			return err
+		}
+		if err := cur.Submit(); err != nil {
+			return err
+		}
+		if err := cur.Text(s.text); err != nil {
+			return err
+		}
+		return cur.Close()
+	})
+}
+
+func pageParallel() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		if err := cur.Init("html"); err != nil {
+			return err
+		}
+		if err := cur.Submit(); err != nil {
+			return err
+		}
+		if err := cur.Init("body"); err != nil {
+			return err
+		}
+		if err := cur.Submit(); err != nil {
+			return err
+		}
+		if err := cur.Comp(slowPart{id: "part-a", text: "part-a", delay: 500 * time.Millisecond}); err != nil {
+			return err
+		}
+		if err := cur.Comp(slowPart{id: "part-b", text: "part-b", delay: 500 * time.Millisecond}); err != nil {
+			return err
+		}
+		if err := cur.Close(); err != nil {
+			return err
+		}
+		return cur.Close()
+	})
+}
 
 func testPath(t *testing.T, page *rod.Page, path string) {
 	url := strings.Split(strings.Trim(page.MustInfo().URL, "/"), "/")
@@ -302,6 +360,78 @@ func TestBrowserBackRestoresPreviousInstanceAcrossModels(t *testing.T) {
 	restoredInstance := test.GetContent(t, page, "#instance-id")
 	if restoredInstance != initialInstance {
 		t.Fatalf("expected browser back to restore previous instance %q, got %q", initialInstance, restoredInstance)
+	}
+}
+
+func TestPageLoadTimeout(t *testing.T) {
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseSystemConf(r, doors.SystemConf{
+			RequestTimeout: time.Second,
+		})
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathSlow]) doors.Response {
+			return doors.ResponseComp(pageSlow())
+		})
+		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
+			return pageError(err)
+		})
+	})
+	defer bro.Close()
+
+	resp, err := http.Get(test.Host + "/slow")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bodyText := string(body)
+	if !strings.Contains(bodyText, "context deadline exceeded") {
+		t.Fatalf("expected timeout error page body, got %q", bodyText)
+	}
+	if strings.Contains(bodyText, "slow-page") {
+		t.Fatalf("expected timeout to prevent slow page render, got %q", bodyText)
+	}
+}
+
+func TestParallelComponentRender(t *testing.T) {
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseSystemConf(r, doors.SystemConf{
+			RequestTimeout: 2 * time.Second,
+		})
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathParallel]) doors.Response {
+			return doors.ResponseComp(pageParallel())
+		})
+	})
+	defer bro.Close()
+
+	start := time.Now()
+	resp, err := http.Get(test.Host + "/parallel")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	elapsed := time.Since(start)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status %d actual %d body %q", http.StatusOK, resp.StatusCode, string(body))
+	}
+	bodyText := string(body)
+	if !strings.Contains(bodyText, "part-a") || !strings.Contains(bodyText, "part-b") {
+		t.Fatalf("expected both slow parts in body, got %q", bodyText)
+	}
+	if test.LimitMode() {
+		if elapsed < 900*time.Millisecond {
+			t.Fatalf("expected serialized render in limit mode, got %s", elapsed)
+		}
+		return
+	}
+	if elapsed >= 900*time.Millisecond {
+		t.Fatalf("expected parallel render under %s, got %s", 900*time.Millisecond, elapsed)
 	}
 }
 

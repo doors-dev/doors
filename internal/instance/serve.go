@@ -10,6 +10,7 @@ package instance
 
 import (
 	"compress/gzip"
+	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -23,7 +24,9 @@ func (inst *Instance[M]) Serve(w http.ResponseWriter, r *http.Request) error {
 	if err := inst.init(); err != nil {
 		return err
 	}
-	stack, err := inst.root.Render(inst.setup.comp, inst.navigator.init)
+	ctx, cancel := context.WithTimeout(r.Context(), inst.Conf().RequestTimeout)
+	defer cancel()
+	stack, err := inst.root.Render(ctx, inst.setup.comp, inst.navigator.init)
 	inst.setup = nil
 	if err != nil {
 		inst.end(common.EndCauseKilled)

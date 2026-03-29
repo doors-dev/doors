@@ -92,7 +92,7 @@ func (r Root) Kill() {
 
 type Stack = pipe.Stack
 
-func (r Root) Render(comp gox.Comp, init func()) (Stack, error) {
+func (r Root) Render(requestCtx context.Context, comp gox.Comp, init func()) (Stack, error) {
 	thread := shredder.Thread{}
 	mountFrame := &shredder.ValveFrame{}
 	renderFrame := shredder.Join(true, thread.Frame(), r.tracker.newRenderFrame())
@@ -103,7 +103,7 @@ func (r Root) Render(comp gox.Comp, init func()) (Stack, error) {
 		mountFrame,
 	)
 	ch := make(chan struct{})
-	renderFrame.Run(r.tracker.ctx, r.runtime(), func(b bool) {
+	renderFrame.Submit(r.tracker.ctx, r.runtime(), func(b bool) {
 		init()
 		pipe.RenderContent(comp)
 	})
@@ -112,8 +112,12 @@ func (r Root) Render(comp gox.Comp, init func()) (Stack, error) {
 		mountFrame.Activate()
 		close(ch)
 	})
-	<-ch
-	return pipe.Collect()
+	select {
+	case <-ch:
+		return pipe.Collect()
+	case <-requestCtx.Done():
+		return nil, requestCtx.Err()
+	}
 }
 
 func (i Root) TriggerHook(doorID uint64, hookId uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {

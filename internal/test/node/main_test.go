@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 	"testing"
 
 	"github.com/doors-dev/doors/internal/test"
@@ -14,11 +13,13 @@ import (
 var browser *rod.Browser
 
 func TestMain(m *testing.M) {
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-	browser = test.NewBrowser()
-	code := m.Run()
-	browser.MustClose()
-	os.Exit(code)
+	test.RunMain(func() int {
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+		browser = test.NewBrowser()
+		code := m.Run()
+		browser.MustClose()
+		return code
+	})
 }

@@ -1,7 +1,6 @@
 package attr
 
 import (
-	"os"
 	"testing"
 
 	"github.com/doors-dev/doors/internal/test"
@@ -11,8 +10,9 @@ import (
 var browser *rod.Browser
 
 func TestMain(m *testing.M) {
-	browser = test.NewBrowser()
-	defer browser.MustClose()
-	code := m.Run()
-	os.Exit(code)
+	test.RunMain(func() int {
+		browser = test.NewBrowser()
+		defer browser.MustClose()
+		return m.Run()
+	})
 }

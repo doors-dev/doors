@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"time"
 	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/gox"
@@ -47,6 +48,10 @@ type PathCrossA struct {
 
 type PathCrossB struct {
 	Path bool `path:"/cross-b"`
+}
+
+type PathSlow struct {
+	Path bool `path:"/slow"`
 }
 
 elem pageQuery(b doors.Source[PathQuery]) {
@@ -136,6 +141,28 @@ elem pageCrossB() {
 		<body>
 			<div id="instance-id">~(doors.InstanceId(ctx))</div>
 			<div id="page-name">cross-b</div>
+		</body>
+	</html>
+}
+
+elem pageSlow() {
+	<html>
+		<body>
+			~(gox.EditorFunc(func(cur gox.Cursor) error {
+				<-time.After(1100 * time.Millisecond)
+				return nil
+			}))
+			<div id="slow-page">slow-page</div>
+		</body>
+	</html>
+}
+
+elem pageError(err error) {
+	<html>
+		~(doors.Status(500))
+		<body>
+			<div id="path">error</div>
+			<div id="error-message">~(err.Error())</div>
 		</body>
 	</html>
 }

@@ -41,10 +41,10 @@ type SystemConf struct {
 	// DisconnectHiddenTimer is how long hidden/background instances stay connected.
 	// Default: InstanceTTL/2.
 	DisconnectHiddenTimer time.Duration
-	// RequestTimeout is the max duration of a client-server request (hook).
+	// RequestTimeout is the max duration of a client-server request.
 	// Default: 30s.
 	RequestTimeout time.Duration
-	// SolitairePing is the max idle time before rolling the request.
+	// SolitairePing is the max time before rolling the request.
 	// Default: 15s.
 	SolitairePing time.Duration
 	// SolitaireSyncTimeout is the max pending duration of a server→client sync task,

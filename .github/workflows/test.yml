@@ -39,9 +39,8 @@ jobs:
 
       - name: Run test suite with coverage
         run: |
-          allpkgs=$(go list ./...)
-          coverpkg=$(echo "$allpkgs" | grep -v '^github.com/doors-dev/doors/internal/test' | paste -sd,)
-          go test -count=1 -p 1 -coverpkg="$coverpkg" -coverprofile=coverage.txt $allpkgs
+          coverpkg=$(go list ./... | grep -v '^github.com/doors-dev/doors/internal/test' | paste -sd, -)
+          BOTH=1 go test -count=1 -p 1 -coverpkg="$coverpkg" -coverprofile=coverage.txt ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

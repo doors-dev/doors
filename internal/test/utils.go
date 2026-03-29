@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors"
-	"github.com/doors-dev/doors/internal/common"
+	drouter "github.com/doors-dev/doors/internal/router"
 	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
@@ -37,6 +37,10 @@ type Bro struct {
 	s       *http.Server
 	closeCh chan struct{}
 	l       net.Listener
+}
+
+func LimitMode() bool {
+	return os.Getenv("LIMIT") != ""
 }
 
 func (s *Bro) Close() {
@@ -124,12 +128,11 @@ func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
 func NewBro(browser *rod.Browser, mod func(r doors.Router)) *Bro {
 	r := doors.NewRouter()
 	mod(r)
-	limit := os.Getenv("LIMIT") != ""
-	if limit {
-		doors.UseSystemConf(r, common.SystemConf{
-			SessionInstanceLimit:   1,
-			InstanceGoroutineLimit: 1,
-		})
+	if LimitMode() {
+		rr := r.(*drouter.Router)
+		conf := *rr.Conf()
+		conf.InstanceGoroutineLimit = 1
+		doors.UseSystemConf(r, conf)
 	}
 
 	listener, err := net.Listen("tcp", ":0")

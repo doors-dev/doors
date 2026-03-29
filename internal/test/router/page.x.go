@@ -5,6 +5,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"time"
 	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/gox"
@@ -73,6 +74,10 @@ type PathCrossA struct {
 
 type PathCrossB struct {
 	Path bool `path:"/cross-b"`
+}
+
+type PathSlow struct {
+	Path bool `path:"/slow"`
 }
 
 func pageQuery(b doors.Source[PathQuery]) gox.Elem {
@@ -305,6 +310,64 @@ func pageCrossB() gox.Elem {
 					__e = __c.AttrSet("id", "page-name"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 					__e = __c.Text("cross-b"); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func pageSlow() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("html"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Init("body"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Any(gox.EditorFunc(func(cur gox.Cursor) error {
+				<-time.After(1100 * time.Millisecond)
+				return nil
+			})); if __e != nil { return }
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "slow-page"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Text("slow-page"); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+}
+
+func pageError(err error) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); gox.Noop(ctx)
+		__e = __c.Init("html"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Any(doors.Status(500)); if __e != nil { return }
+			__e = __c.Init("body"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "path"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Text("error"); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+					__e = __c.AttrSet("id", "error-message"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Any(err.Error()); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 			}
