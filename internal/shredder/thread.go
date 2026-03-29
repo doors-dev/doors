@@ -316,42 +316,75 @@ func (f FreeFrame) schedule(e executable) {
 var _ SimpleFrame = FreeFrame{}
 
 type AfterFrame struct {
-	mu      sync.Mutex
-	counter int
-	after   []executable
+	mu        sync.Mutex
+	counter   int
+	fired     bool
+	activated bool
+	after     []executable
 }
 
-/*
-type Done = func()
-
-func (f *AfterFrame) Add() Done {
+func (f *AfterFrame) Activate() {
 	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.counter == -1 {
-		return func() {}
+	if f.activated {
+		f.mu.Unlock()
+		return
 	}
-	f.counter += 1
-	return func() {
-		f.report(nil)
+	f.activated = true
+	if f.counter != 0 {
+		f.mu.Unlock()
+		return
 	}
-} */
+	after := f.after
+	f.after = nil
+	f.fired = true
+	f.mu.Unlock()
+	for _, e := range slices.Backward(after) {
+		e.execute(func(err error) {})
+	}
+}
 
 func (f *AfterFrame) RunAfter(ctx context.Context, r Runtime, fun func(bool)) {
 	e := run{runtime: r, ctx: ctx, fun: fun}
 	f.mu.Lock()
-	if f.counter == -1 {
-		f.mu.Unlock()
-		e.execute(func(err error) {})
-		return
-	}
-	if f.counter == 0 {
-		f.counter = -1
+	if f.fired {
 		f.mu.Unlock()
 		e.execute(func(err error) {})
 		return
 	}
 	f.after = append(f.after, e)
 	f.mu.Unlock()
+}
+
+func (f *AfterFrame) schedule(e executable) {
+	f.mu.Lock()
+	if f.fired {
+		f.mu.Unlock()
+		e.execute(func(err error) {})
+		return
+	}
+	f.counter += 1
+	f.mu.Unlock()
+	e.execute(f.report)
+}
+
+func (f *AfterFrame) report(error) {
+	f.mu.Lock()
+	if f.fired {
+		f.mu.Unlock()
+		panic("Can't report after fire")
+	}
+	f.counter -= 1
+	if f.counter != 0 || !f.activated {
+		f.mu.Unlock()
+		return
+	}
+	after := f.after
+	f.after = nil
+	f.fired = true
+	f.mu.Unlock()
+	for _, e := range slices.Backward(after) {
+		e.execute(func(err error) {})
+	}
 }
 
 func (f *AfterFrame) Run(ctx context.Context, r Runtime, fun func(bool)) {
@@ -361,36 +394,4 @@ func (f *AfterFrame) Run(ctx context.Context, r Runtime, fun func(bool)) {
 
 func (f *AfterFrame) Submit(ctx context.Context, r Runtime, fun func(bool)) {
 	f.schedule(spawn{runtime: r, ctx: ctx, fun: fun})
-}
-
-func (f *AfterFrame) report(error) {
-	f.mu.Lock()
-	if f.counter == -1 {
-		f.mu.Unlock()
-		panic("Can't report after complete")
-	}
-	f.counter -= 1
-	if f.counter != 0 || f.after == nil {
-		f.mu.Unlock()
-		return
-	}
-	f.counter = -1
-	after := f.after
-	f.after = nil
-	f.mu.Unlock()
-	for _, e := range slices.Backward(after) {
-		e.execute(func(err error) {})
-	}
-}
-
-func (f *AfterFrame) schedule(e executable) {
-	f.mu.Lock()
-	if f.counter == -1 {
-		f.mu.Unlock()
-		e.execute(func(err error) {})
-		return
-	}
-	f.counter += 1
-	f.mu.Unlock()
-	e.execute(f.report)
 }

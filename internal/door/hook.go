@@ -75,7 +75,13 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) (Do
 		return false, false
 	}
 	ctx, frame := ctex.FrameInsert(h.tracker.ctx)
-	ctx = ctex.FreeContext(ctx, h.tracker.root.runtime().Context())
+	defer frame.Activate()
+	if track != 0 {
+		frame.RunAfter(nil, nil, func(b bool) {
+			h.tracker.inst().Call(reportHook(track))
+		})
+	}
+	ctx = ctex.NewFreeContext(ctx, h.tracker.root.runtime().Context())
 	done, err := h.tracker.root.runtime().SafeHook(ctx, w, r, h.triggerFunc)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -84,11 +90,5 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) (Do
 		h.state.Store(hookDone)
 	}
 	close(ch)
-	frame.RunAfter(nil, nil, func(b bool) {
-		if track == 0 {
-			return
-		}
-		h.tracker.inst().Call(reportHook(track))
-	})
 	return done, true
 }

@@ -43,7 +43,7 @@ func TestFreeHelpers(t *testing.T) {
 		t.Fatal("expected base context to be non-free")
 	}
 
-	free := FreeContext(base, base)
+	free := NewFreeContext(base, base)
 	if !IsFreeCtx(free) {
 		t.Fatal("expected free context flag")
 	}

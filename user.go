@@ -112,8 +112,8 @@ func IDBytes(b []byte) string {
 func Free(ctx context.Context) context.Context {
 	core, ok := ctx.Value(ctex.KeyCore).(core.Core)
 	if !ok {
-		return ctex.FreeContext(ctx, ctx)
+		return ctex.NewFreeContext(ctx, ctx)
 	}
 	ctx = context.WithValue(ctx, ctex.KeyCore, core.RootCore())
-	return ctex.FreeContext(ctx, core.Runtime().Context())
+	return ctex.NewFreeContext(ctx, core.Runtime().Context())
 }
