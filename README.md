@@ -2,6 +2,10 @@
 
 Back-end UI Framework for feature-rich, secure, and fast web apps in Go.
 
+## Branch Status
+
+This `templ` branch is no longer supported and is kept only for historical reference.
+
 ⚠️ **Beta - Not Ready for Production**
 
 ## Getting Started
@@ -121,6 +125,5 @@ For Enterprise terms, you may also contact [sales@doors.dev](mailto:sales@doors.
 - [LICENSE.txt](./LICENSE.txt) — BUSL with parameters  
 - [LICENSE-COMMERCIAL.txt](./LICENSE-COMMERCIAL.txt) — Commercial license summary  
 - [COMMERCIAL-EULA.md](./COMMERCIAL-EULA.md) — Full commercial terms  
-
 
 
