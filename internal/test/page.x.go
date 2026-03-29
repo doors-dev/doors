@@ -1,5 +1,6 @@
-// Managed by GoX v0.1.6
+// Managed by GoX v0.1.20-0.20260329154612-7e48b7c342d5+dirty
 
+//line page.gox:1
 package test
 
 import (
@@ -49,20 +50,28 @@ func (p *Page) head() gox.Elem {
 	return p.H(p.Source)
 }
 
+//line page.gox:50
 func (p *Page) content() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
+		ctx := __c.Context(); _ = ctx
+//line page.gox:51
 		if p.F != nil {
+//line page.gox:53
 			p.F.setBeam(p.Source)
 
+//line page.gox:55
 			__e = __c.Any(p.F); if __e != nil { return }
 		}
 	return })
+//line page.gox:57
 }
 
+//line page.gox:59
 func (p *Page) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
+		ctx := __c.Context(); _ = ctx
+//line page.gox:60
 		__e = __c.Any(Document(p)); if __e != nil { return }
 	return })
+//line page.gox:61
 }

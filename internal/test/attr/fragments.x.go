@@ -1,5 +1,6 @@
-// Managed by GoX v0.1.15+dirty
+// Managed by GoX v0.1.20-0.20260329154612-7e48b7c342d5+dirty
 
+//line fragments.gox:1
 package attr
 
 import (
@@ -18,12 +19,16 @@ type pointerFragment struct {
 	r *test.Reporter
 }
 
+//line fragments.gox:19
 func (f *pointerFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
+		ctx := __c.Context(); _ = ctx
+//line fragments.gox:21
 		f.r.Update(ctx, 0, "")
 
+//line fragments.gox:23
 		__e = __c.Any(f.r); if __e != nil { return }
+//line fragments.gox:24
 		__e = doors.APointerDown{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "DOWN")
@@ -32,15 +37,17 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
+//line fragments.gox:32
 				__e = __c.AttrSet("id", "down"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("PointerDown"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
+//line fragments.gox:35
 		__e = doors.APointerUp{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "UP")
@@ -49,15 +56,17 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
+//line fragments.gox:43
 				__e = __c.AttrSet("id", "up"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("PointerUp"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
+//line fragments.gox:46
 		__e = doors.APointerEnter{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "ENTER")
@@ -66,9 +75,10 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
+//line fragments.gox:54
 				__e = __c.AttrSet("id", "enter"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("PointerEnter"); if __e != nil { return }
@@ -77,11 +87,13 @@ func (f *pointerFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
+//line fragments.gox:57
 			__e = __c.AttrSet("id", "beforeLeave"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("beforeLeave"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
+//line fragments.gox:58
 		__e = doors.APointerLeave{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "LEAVE")
@@ -90,15 +102,17 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
+//line fragments.gox:66
 				__e = __c.AttrSet("id", "leave"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("PointerLeave"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
+//line fragments.gox:69
 		__e = doors.APointerMove{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "MOVE")
@@ -107,15 +121,17 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
+//line fragments.gox:77
 				__e = __c.AttrSet("id", "move"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("PointerMove"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
+//line fragments.gox:80
 		__e = doors.APointerOver{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OVER")
@@ -124,9 +140,10 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
+//line fragments.gox:88
 				__e = __c.AttrSet("id", "over"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("Over"); if __e != nil { return }
@@ -135,11 +152,13 @@ func (f *pointerFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
+//line fragments.gox:91
 			__e = __c.AttrSet("id", "beforeOut"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("beforeOut"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
+//line fragments.gox:92
 		__e = doors.APointerOut{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OUT")
@@ -148,9 +167,10 @@ func (f *pointerFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
+//line fragments.gox:100
 				__e = __c.AttrSet("id", "out"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("Out"); if __e != nil { return }
@@ -158,6 +178,7 @@ func (f *pointerFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
+//line fragments.gox:103
 }
 
 type callFragment struct {
@@ -166,16 +187,20 @@ type callFragment struct {
 	r *test.Reporter
 }
 
+//line fragments.gox:111
 func (f *callFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
+		ctx := __c.Context(); _ = ctx
+//line fragments.gox:112
 		__e = __c.Any(f.r); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
+//line fragments.gox:113
 			__e = __c.AttrSet("id", "target"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
+//line fragments.gox:114
 		__e = doors.AHook[string]{
 		Name: "myHook",
 		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
@@ -186,12 +211,13 @@ func (f *callFragment) Main() gox.Elem {
 			return len(r.Data()), true
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
+//line fragments.gox:123
 			__e = doors.AData{
 		Name: "myData",
 		Value: f.data,
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-				ctx := __c.Context(); gox.Noop(ctx)
+				ctx := __c.Context(); _ = ctx
 				__e = __c.Init("script"); if __e != nil { return }
 				{
 					__e = __c.Submit(); if __e != nil { return }
@@ -201,6 +227,7 @@ func (f *callFragment) Main() gox.Elem {
 			return })); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
+//line fragments.gox:133
 }
 
 type hookFragment struct {
@@ -239,30 +266,36 @@ func (d *hookFragment) attr() []gox.Modify {
 	}
 }
 
+//line fragments.gox:171
 func (f *hookFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
+		ctx := __c.Context(); _ = ctx
+//line fragments.gox:172
 		__e = __c.Any(f.r); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
+//line fragments.gox:173
 			__e = __c.AttrSet("id", "target"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
+//line fragments.gox:174
 			__e = __c.AttrSet("id", "target2"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("script"); if __e != nil { return }
 		{
+//line fragments.gox:175
 			__e = __c.AttrMod(f.attr()...); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("const a = await $hook(\"myHook\", await $data(\"myData\"))\n\t\tdocument.getElementById(\"target\").innerHTML = `${a}`\n\t\tconst b = await $hook(\"rawHook\", await $data(\"myData\"))\n\t\tdocument.getElementById(\"target2\").innerHTML = `${b}`"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
+//line fragments.gox:181
 }
 
 type dataFragment struct {
@@ -270,21 +303,25 @@ type dataFragment struct {
 	test.NoBeam
 }
 
+//line fragments.gox:188
 func (f *dataFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
+		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("div"); if __e != nil { return }
 		{
+//line fragments.gox:189
 			__e = __c.AttrSet("id", "target"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("script"); if __e != nil { return }
 		{
+//line fragments.gox:190
 			__e = __c.AttrSet("data:myData", f.data); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("document.getElementById(\"target\").innerHTML = await $data(\"myData\")"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
+//line fragments.gox:193
 }

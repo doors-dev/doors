@@ -1,5 +1,6 @@
-// Managed by GoX v0.1.15+dirty
+// Managed by GoX v0.1.20-0.20260329154612-7e48b7c342d5+dirty
 
+//line key.gox:1
 package attr
 
 import (
@@ -16,9 +17,11 @@ type keyFragment struct {
 	test.NoBeam
 }
 
+//line key.gox:17
 func (f *keyFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
+		ctx := __c.Context(); _ = ctx
+//line key.gox:18
 		__e = doors.AKeyDown{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.r.Update(ctx, 0, r.Event().Key)
@@ -26,7 +29,8 @@ func (f *keyFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
+//line key.gox:24
 			__e = doors.AKeyUp{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.r.Update(ctx, 2, r.Event().Key)
@@ -43,11 +47,14 @@ func (f *keyFragment) Main() gox.Elem {
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-				ctx := __c.Context(); gox.Noop(ctx)
+				ctx := __c.Context(); _ = ctx
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
+//line key.gox:39
 					__e = __c.AttrSet("type", "text"); if __e != nil { return }
+//line key.gox:39
 					__e = __c.AttrSet("id", "input"); if __e != nil { return }
+//line key.gox:39
 					__e = __c.AttrSet("placeholder", ""); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
@@ -57,6 +64,7 @@ func (f *keyFragment) Main() gox.Elem {
 		{
 		}
 		__e = __c.Submit(); if __e != nil { return }
+//line key.gox:42
 		f.r.Update(ctx, 0, "")
 		f.r.Update(ctx, 1, "")
 		f.r.Update(ctx, 2, "")
@@ -65,6 +73,8 @@ func (f *keyFragment) Main() gox.Elem {
 		f.r.Update(ctx, 5, "")
 		f.r.Update(ctx, 6, "")
 
+//line key.gox:50
 		__e = __c.Any(f.r); if __e != nil { return }
 	return })
+//line key.gox:51
 }

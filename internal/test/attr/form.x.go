@@ -1,5 +1,6 @@
-// Managed by GoX v0.1.15+dirty
+// Managed by GoX v0.1.20-0.20260329154612-7e48b7c342d5+dirty
 
+//line form.gox:1
 package attr
 
 import (
@@ -20,18 +21,25 @@ type formFragment struct {
 	raw bool
 }
 
+//line form.gox:21
 func (f *formFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
+		ctx := __c.Context(); _ = ctx
+//line form.gox:23
 		f.r.Update(ctx, 0, "init")
 
+//line form.gox:25
 		__e = __c.Any(f.r); if __e != nil { return }
+//line form.gox:26
 		if f.raw {
+//line form.gox:27
 			__e = __c.Any(f.form(f.submitRaw())); if __e != nil { return }
 		} else  {
+//line form.gox:29
 			__e = __c.Any(f.form(f.submitSimple())); if __e != nil { return }
 		}
 	return })
+//line form.gox:31
 }
 
 func (f *formFragment) submitSimple() doors.Attr {
@@ -73,54 +81,75 @@ type formData struct {
 	Subscribe string `form:"subscribe"`
 }
 
+//line form.gox:72
 func (f *formFragment) form(a doors.Attr) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
-		ctx := __c.Context(); gox.Noop(ctx)
+		ctx := __c.Context(); _ = ctx
+//line form.gox:73
 		__e = a.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
-			ctx := __c.Context(); gox.Noop(ctx)
+			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("form"); if __e != nil { return }
 			{
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
+//line form.gox:74
 					__e = __c.AttrSet("type", "text"); if __e != nil { return }
+//line form.gox:74
 					__e = __c.AttrSet("id", "name"); if __e != nil { return }
+//line form.gox:74
 					__e = __c.AttrSet("name", "name"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
+//line form.gox:75
 					__e = __c.AttrSet("type", "email"); if __e != nil { return }
+//line form.gox:75
 					__e = __c.AttrSet("id", "email"); if __e != nil { return }
+//line form.gox:75
 					__e = __c.AttrSet("name", "email"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
+//line form.gox:76
 					__e = __c.AttrSet("type", "number"); if __e != nil { return }
+//line form.gox:76
 					__e = __c.AttrSet("id", "age"); if __e != nil { return }
+//line form.gox:76
 					__e = __c.AttrSet("name", "age"); if __e != nil { return }
+//line form.gox:76
 					__e = __c.AttrSet("min", "0"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
+//line form.gox:77
 					__e = __c.AttrSet("type", "checkbox"); if __e != nil { return }
+//line form.gox:77
 					__e = __c.AttrSet("id", "subscribe"); if __e != nil { return }
+//line form.gox:77
 					__e = __c.AttrSet("name", "subscribe"); if __e != nil { return }
+//line form.gox:77
 					__e = __c.AttrSet("value", "on"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
+//line form.gox:78
 					__e = __c.AttrSet("type", "file"); if __e != nil { return }
+//line form.gox:78
 					__e = __c.AttrSet("id", "file"); if __e != nil { return }
+//line form.gox:78
 					__e = __c.AttrSet("name", "attachment"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Init("button"); if __e != nil { return }
 				{
+//line form.gox:79
 					__e = __c.AttrSet("id", "submit"); if __e != nil { return }
+//line form.gox:79
 					__e = __c.AttrSet("type", "submit"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 					__e = __c.Text("Submit"); if __e != nil { return }
@@ -130,4 +159,5 @@ func (f *formFragment) form(a doors.Attr) gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
+//line form.gox:81
 }
