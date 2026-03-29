@@ -486,6 +486,7 @@ func TestReact(t *testing.T) {
 	)
 	defer bro.Close()
 	page := bro.Page(t, "/")
+	defer page.Close()
 	<-time.After(100 * time.Millisecond)
 	test.TestContent(t, page, "#h2", "React")
 	test.TestContent(t, page, "#ph2", "Preact")
