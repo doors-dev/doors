@@ -92,7 +92,7 @@ type Path struct {
 func main() {
 	r := doors.NewRouter()
 
-	doors.UseModel(r, func(r doors.RequestModel, s doors.Source[Path]) doors.Response {
+	doors.UseModel(r, func(doors.RequestModel, doors.Source[Path]) doors.Response {
 		return doors.ResponseComp(App{})
 	})
 

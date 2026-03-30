@@ -2,13 +2,6 @@
 
 In **Doors**, storage is a small key-value layer attached to session or instance lifetime.
 
-The important pattern is this:
-
-- stores are not reactive by themselves
-- if the UI should react, store a `Source` in the store
-- initialize that source in the model handler
-- keep it on your `App` fields and render from there later
-
 That pattern is especially useful for authentication. The same idea also works for shared settings like theme or locale.
 
 ## Start

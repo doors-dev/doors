@@ -28,17 +28,6 @@ It does two things:
 
 `Model` is required.
 
-Common optional fields are:
-
-- `Fragment`
-- `Active`
-- `StopPropagation`
-- `Scope`
-- `Indicator`
-- `Before`
-- `After`
-- `OnError`
-
 ## Link Behavior
 
 `ALink` automatically chooses between same-page navigation and a normal page load.
@@ -116,13 +105,6 @@ Available matchers:
 - `doors.QueryMatcherSome(params...)`
 - `doors.QueryMatcherIfPresent(params...)`
 
-Helpers:
-
-- `doors.QueryMatcherOnlyIgnoreSome(params...)`
-- `doors.QueryMatcherOnlyIgnoreAll()`
-- `doors.QueryMatcherOnlySome(params...)`
-- `doors.QueryMatcherOnlyIfPresent(params...)`
-
 The query matchers are applied in order, then **Doors** compares any remaining query parameters.
 
 In practice:
@@ -131,6 +113,14 @@ In practice:
 - `IgnoreAll` ignores all remaining query parameters
 - `Some` compares only the listed keys at that step
 - `IfPresent` compares listed keys only when they exist
+
+Helpers:
+
+- `doors.QueryMatcherOnlyIgnoreSome(params...)`
+- `doors.QueryMatcherOnlyIgnoreAll()`
+- `doors.QueryMatcherOnlySome(params...)`
+- `doors.QueryMatcherOnlyIfPresent(params...)`
+
 
 ### Fragment Match
 

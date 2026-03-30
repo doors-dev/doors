@@ -7,7 +7,7 @@ In **Doors**, state starts with one `doors.Source[T]` and branches into smaller 
 
 A `Source` also implements `Beam`, so you can read, subscribe to, and derive from the same value.
 
-Always start with a `Source`, then derive smaller `Beam`s from it.
+State always starts with a `Source`, then is derived into smaller `Beam`s.
 
 The pattern is:
 
@@ -15,9 +15,9 @@ The pattern is:
 - derive smaller beams from it
 - subscribe only the page fragments that need each piece
 
-## Source
+Subscribers are triggered when the new value is not equal to the current one.
 
-Use a `Source` for state your page owns: selected IDs, filters, form values, route state, toggles, and similar durable UI values.
+## Source
 
 Create one with `doors.NewSource(...)` when normal `==` equality is enough:
 
@@ -36,8 +36,6 @@ settings := doors.NewSourceEqual(Settings{}, func(new Settings, old Settings) bo
 ```
 
 The equality function should return `true` when the values should be treated as equal, which suppresses propagation.
-
-For reference-type values like slices, maps, pointers, or mutable structs, do not mutate the stored value in place. Replace it with a fresh value instead.
 
 ## Beam
 
@@ -60,9 +58,7 @@ days := doors.NewBeam(settings, func(s Settings) int {
 
 This is one of the main ways **Doors** keeps updates small. If only `Units` changes, the `days` beam can stay unchanged and the fragment using it does not need to rerender.
 
-Use `doors.NewBeamEqual(...)` when the derived value needs custom equality.
-
-Sources and beams are not limited to one page instance. They can be local to one page or shared more broadly, depending on where you store them.
+> Sources and beams are not limited to one page instance. They can be local to one page, shared across a session, or used even more broadly.
 
 ## Read
 
@@ -139,7 +135,7 @@ Use `Mutate` when the new value naturally depends on the old one:
 
 ```go
 settings.Mutate(ctx, func(s Settings) Settings {
-	s.Days = 14
+	s.Days += 1
 	return s
 })
 ```
@@ -155,9 +151,7 @@ in your own goroutine with `doors.Free(ctx)`.
 
 ## Render
 
-A `Beam` is not something you render directly.
-
-At the lowest level, you subscribe to a `Beam` and use its values to update rendered content through a `doors.Door`:
+You subscribe to a `Beam` and use its values to update rendered content through a `doors.Door`:
 
 1. keep a `doors.Door` on the component
 2. subscribe to the beam during render
@@ -197,12 +191,13 @@ For most app code, the helper components are easier.
 	}))
 </>
 ```
-
 It creates a dynamic fragment that subscribes to the beam and rerenders that fragment when the value changes.
+
+> Unmounting/updating a dynamic parent also cancels old subscriptions inside it automatically.
 
 ### Inject
 
-`doors.Inject` subscribes to a beam and places the current value into the child context:
+`doors.Inject` subscribes to a beam, places the current value into the child context, and makes the following tag the dynamic container:
 
 ```gox
 <>
@@ -215,19 +210,14 @@ It creates a dynamic fragment that subscribes to the beam and rerenders that fra
 </>
 ```
 
-Use `Inject` when you want the following subtree to stay the root element of the dynamic fragment, instead of rendering through `doors.Sub`.
-
 ## Consistency
 
 The most important state guarantee in **Doors** is consistency.
 
 During one render/update cycle, a Door subtree sees one coherent view of a `Source` and all `Beam`s derived from it. A parent and its children do not see different versions halfway through the same render.
 
-That is why `Read(ctx)` matters. It participates in that coordinated view. `Get()` does not.
-
 In practice, this means beam-driven rendering stays predictable even when several parts of the page are updating at once.
 
-Unmounting a dynamic parent also cancels subscriptions inside it automatically.
 
 ## Skipping
 

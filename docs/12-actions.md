@@ -4,16 +4,10 @@ Actions are client-side effects triggered from Go.
 
 Use them when the browser should do something imperative instead of just rendering different HTML.
 
-Good fits are:
+For example call a JavaScript handler, registered with `$on(...)`
 
-- navigate after a successful request
-- scroll to a result or validation error
-- show a timed indication
-- call a JavaScript handler with `$on(...)`
-
-If the UI should simply render different content, prefer normal rendering.
-
-If one attribute should stay shared across existing elements, `AShared` from [Shared Attr](./17-shared-attr.md) is often a better fit than an action.
+> If the UI should simply render different content, prefer normal rendering.
+> If one attribute should stay shared across existing elements, `AShared` from [Shared Attr](./17-shared-attr.md) is often a better fit than an action.
 
 ## Places
 

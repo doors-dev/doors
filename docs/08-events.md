@@ -1,18 +1,8 @@
 # Events
 
-In **Doors**, DOM events are handled through attributes.
+In **Doors**, DOM events are handled through special attributes that connect a browser event to a Go handler.
 
-An event attribute connects a browser event to a Go handler.
-
-Around that handler, **Doors** can also manage client-side scheduling, pending indication, and follow-up actions.
-
-That same system is used for:
-
-- pointer events
-- keyboard events
-- focus events
-- input and change events
-- form submission
+Around that handler, you also manage client-side scheduling, pending indication, and follow-up actions.
 
 ## Start
 
@@ -75,6 +65,8 @@ The modifier form attaches directly to the element you are editing.
 
 The proxy form walks through the following subtree until it reaches the real rendered element and attaches there. That is useful when the final element is inside another component.
 
+> In general, there is no strict rule that says you should use a proxy only when you need to drill into a component to find the target. Use proxy syntax everywhere if you prefer it.
+
 ## Handler
 
 For normal DOM events, the handler receives `doors.RequestEvent[T]`.
@@ -83,7 +75,7 @@ That gives you:
 
 - `r.Event()` for the typed event payload
 - `r.SetCookie(...)` and `r.GetCookie(...)`
-- `r.After(...)` to schedule client-side actions after the request succeeds
+- `r.After(...)` to schedule client-side actions after the request succeeds and all triggered DOM changes are applied
 
 Example:
 
@@ -336,15 +328,6 @@ Example:
 
 See [JavaScript](./15-javascript.md).
 
-## Related
-
-- Use [Navigation](./09-navigation.md) for `doors.ALink`.
-- Use [JavaScript](./15-javascript.md) for `doors.AHook[...]`, `doors.ARawHook`, and `doors.AData`.
-- Use [Shared Attr](./17-shared-attr.md) for `doors.AShared`.
-- Use [Scopes](./10-scopes.md) for request scheduling.
-- Use [Indication](./11-indication.md) for client-side feedback.
-- Use [Actions](./12-actions.md) for `Before`, `OnError`, and `After` actions.
-
 ## Rules
 
 - Use the `ctx` that **Doors** gives you in the handler.
@@ -353,3 +336,12 @@ See [JavaScript](./15-javascript.md).
 - Use `ASubmit[T]` when typed decoding is enough; use `ARawSubmit` for upload-heavy or custom multipart flows.
 - Use scopes for interaction policy instead of rebuilding debounce/blocking logic by hand.
 - Use indication when the user needs immediate feedback before the server responds.
+
+## Related
+
+- [Navigation](./09-navigation.md) for `doors.ALink`.
+- [JavaScript](./15-javascript.md) for `doors.AHook[...]`, `doors.ARawHook`, and `doors.AData`.
+- [Shared Attr](./17-shared-attr.md) for dynamic shared attributes.
+- [Scopes](./10-scopes.md) for request scheduling.
+- [Indication](./11-indication.md) for client-side feedback.
+- [Actions](./12-actions.md) for `Before`, `OnError`, and `After` actions.

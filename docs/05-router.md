@@ -11,9 +11,7 @@ Most apps use it in three steps:
 ```go
 router := doors.NewRouter()
 
-doors.UseModel(router, func(r doors.RequestModel, s doors.Source[Path]) doors.Response {
-	return doors.ResponseComp(Page(s))
-})
+/* configuration */
 
 if err := http.ListenAndServe(":8080", router); err != nil {
 	panic(err)
@@ -50,13 +48,11 @@ Path matching, decoding, and URL generation are covered in [Path Model](./04-pat
 
 ## Custom Routes
 
-Use `doors.UseRoute(...)` only when the endpoint is not really a page model.
-
 Good fits are:
 
 - health checks
-- simple public `GET` endpoints
 - static file mounts
+- simple public `GET` endpoints
 
 `doors.UseRoute(...)` takes a `doors.Route`:
 
@@ -93,9 +89,6 @@ The important practical rule is simple:
 
 If you need a broader HTTP surface such as webhooks, APIs, or another mux, hand unmatched requests to something else with [Fallback](#fallback) or mount **Doors** inside a larger server.
 
-## Files
-
-**Doors** includes ready-to-use routes for common file serving cases.
 
 ### `RouteFS`
 
@@ -132,34 +125,14 @@ doors.UseRoute(router, doors.RouteFile{
 
 ### Resource Routes
 
-`doors.RouteResource` serves a fixed public path through the **Doors** resource registry.
+`doors.RouteResource` serves a fixed public path through the **Doors** resource registry. You can use it to serve an asset at a known path with caching and gzip support:
 
-Use it when you want the same resource handling behavior as the **Doors** runtime, but still want a stable URL of your own.
-
-## Matching
-
-When a request comes in, the router first handles its own framework URLs:
-
-- resource URLs
-- hook URLs
-- sync and restore URLs
-
-After that, normal app content is handled in this order:
-
-1. routes added with `doors.UseRoute(...)`
-2. models added with `doors.UseModel(...)`
-3. the fallback handler, if one is configured
-4. `404 Not Found`
-
-That ordering matters most when you mix custom routes and page models in the same app.
-
-In practice:
-
-- `UseRoute` gets first chance to handle a request
-- `UseModel` handles the normal page-routing path
-- `UseFallback` is for handing unmatched traffic to something else
-
-If you are deciding between route and model behavior for a page URL, that ordering is the one that matters.
+```go
+doors.UseRoute(r, doors.RouteResource{
+	Path:     "assets/sans.ttf",
+	Resource: doors.ResourceFS(assets.Get(), "sans.ttf"),
+})
+```
 
 ## Fallback
 
@@ -170,6 +143,25 @@ doors.UseFallback(router, myMux)
 ```
 
 This is useful when **Doors** is only part of a larger server.
+
+## Matching
+
+When a request comes in, the router first handles its own framework URLs:
+
+- resource URLs
+- hook URLs
+- internal sync URL
+
+After that, normal app content is handled in this order:
+
+1. routes added with `doors.UseRoute(...)`
+2. models added with `doors.UseModel(...)`
+3. the fallback handler, if one is configured
+4. `404 Not Found`
+
+Matching within each category happens in the order of registration.
+
+
 
 ## Router Settings
 

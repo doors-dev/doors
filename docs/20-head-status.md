@@ -1,4 +1,4 @@
-# Head & Status
+# Title & Meta & Status
 
 In **Doors**, `<title>`, `<meta>`, and `doors.Status(...)` are page-level tools.
 
@@ -19,9 +19,10 @@ For example:
 
 ```gox
 elem Page() {
-	<title>Docs</title>
-	<meta name="description" content="doors dev desc">
-
+    <>
+        <title>Docs</title>
+        <meta name="description" content="doors dev desc">
+    </>
 	<main>
 		<h1>Docs</h1>
 	</main>
@@ -31,8 +32,6 @@ elem Page() {
 Even though those tags are written inside the body here, **Doors** outputs them in the real `<head>`.
 
 If the page does not already contain a `<head>`, **Doors** creates one.
-
-Keep `<title>` simple: it should contain text, not nested tags.
 
 When `<title>` and `<meta>` are rendered outside a literal `<head>`, it is often clearer to wrap them in their own `<>...</>` block so readers can immediately see that this is intentional.
 

@@ -16,8 +16,6 @@ Most apps in **Doors** are built from a few ideas working together:
 - browser events route back to handlers on the same live page
 - only the changed parts of the page are updated
 
-That means routing, state, rendering, and event handling are not separate systems glued together later. They are different sides of the same runtime.
-
 ## Session
 
 The most useful distinction to learn early is this:
@@ -35,12 +33,12 @@ This is a good default way to think about it:
 Useful lifecycle controls:
 
 - `doors.SessionEnd(ctx)` force-ends the whole **Doors** session and all related instances
-- `doors.SessionExpire(ctx, d)` changes the remaining session lifetime
+- `doors.SessionExpire(ctx, d)` sets the session lifetime cap
 - `doors.InstanceEnd(ctx)` ends only the current page instance
 
 Changing the URL within the same model type usually updates the current instance. Switching to a different model type usually creates a different instance.
 
-Instances are not meant to live forever. **Doors** can suspend older or less active instances based on configuration. When that happens, the page is restored by reloading it.
+Instances are not meant to live forever. **Doors** can suspend older or less active instances based on configuration.
 
 ## Path Model
 
@@ -75,22 +73,28 @@ That keeps behavior aligned with what is actually on screen.
 
 **Doors** has built-in reactive state primitives:
 
-- a `Source` is a piece of state you can update
+- a `Source` is an original piece of state you can update
 - a `Beam` is a value derived from state or observed from it
 
-In other words, a `Source` usually holds the state your page owns, and `Beam`s let the rest of the page react to it.
-
-You usually keep small, durable UI values in sources: selected IDs, filters, search text, toggles, or the current path model. From there you derive whatever the page needs for rendering.
-
-The important user-facing behavior is consistency. During a render/update pass, one part of the page does not see "old" state while another part sees "new" state halfway through the same update.
-
-That is why `Read(ctx)` matters. It joins the coordinated render view. `Get()` is just an immediate read.
+The important user-facing behavior is consistency. During a render/update pass, a whole rendered branch will observe the same state.
 
 One practical rule helps avoid many bugs: treat source values as immutable. If a source holds a slice, map, pointer, or mutable struct, replace it with a new value instead of mutating it in place.
 
+A good default pattern is to keep identifiers and UI state in **Doors** state, then load the actual data when rendering or handling an event.
+
+For example:
+
+- keep `ProductID`, filters, pagination, and selection in sources
+- derive smaller beams from those values
+- query backing data when producing output
+
+This keeps live instances lightweight and avoids turning page memory into an accidental cache of large database records.
+
+If data is only needed to produce output, render it and forget it.
+
 ## Context
 
-In **Doors**, `context.Context` is not just for cancellation. It also tells the **Doors** runtime where you are in the dynamic tree and which instance/session/lifecycle scope your code belongs to.
+In **Doors**, `context.Context` tells the **Doors** runtime where you are in the dynamic tree and which instance/session/lifecycle scope your code belongs to.
 
 Use the `ctx` that **Doors** gives you in:
 
@@ -113,33 +117,13 @@ Do not swap it for `context.Background()` when calling **Doors** APIs like beam 
 
 ## Runtime
 
-Rendering, event handling, and beam propagation happen on the **Doors** runtime. That work should stay fast.
+Rendering and state propagation happens on the **Doors** runtime.
 
-In practice, this means the code running in places like:
-
-- page and component rendering
-- beam subscriptions and reactive updates
-- hook and event handlers
-
-It is completely normal to query a database or call an API while rendering or handling an event. That is often where application data comes from.
+It is completely normal to query a database or call an API while rendering.
 
 The thing to avoid is blocking the runtime on work that is not really part of the current render or event flow, such as long-lived waits, background loops, timers, pubsub listeners, or waiting on completion channels from runtime-triggered work.
 
 If work should continue independently of the current render/event flow, start your own goroutine or use `doors.Go(...)` when it should follow the lifetime of a rendered subtree.
-
-## Data
-
-A good default pattern is to keep identifiers and UI state in **Doors** state, then load the actual data when rendering or handling an event.
-
-For example:
-
-- keep `ProductID`, filters, pagination, and selection in sources
-- derive smaller beams from those values
-- query backing data when producing output
-
-This keeps live instances lightweight and avoids turning page memory into an accidental cache of large database records.
-
-If data is only needed to produce output, render it and forget it.
 
 ## Security
 
@@ -147,21 +131,15 @@ If data is only needed to produce output, render it and forget it.
 
 In practice:
 
-- check authentication when choosing which page response to serve
+- check authentication in the model handler and keep track via shared session state
 - check authorization while rendering protected content
 - keep a real server-side session store behind the cookie, and initialize shared auth state from it
-- re-check write permissions where the actual mutation happens, especially at the database transaction level
+- re-check write permissions if they could change before the actual mutation happens, usually at the database transaction level
 
-Handlers already run inside the correct page/session context. That removes plumbing, not responsibility.
+Handlers already run inside the correct page/session context. That means a specific handler can be triggered only by the user you rendered it for, and only while the target component is mounted and tracked by its closest dynamic parent.
+
+See [Storage & Auth](./18-storage-auth.md).
 
 ## DOM
 
-When **Doors** renders a dynamic subtree, treat that subtree as runtime-managed.
-
-The safest integrations are the ones that cooperate with **Doors**:
-
-- use **Doors** attributes, hooks, actions, and data channels
-- keep custom JavaScript scoped to clear boundaries
-- avoid manually mutating the same nodes that **Doors** is also updating
-
-Direct DOM work is still possible, but it should complement the runtime instead of racing against it.
+When **Doors** renders a dynamic subtree, treat that subtree as runtime-managed. Direct DOM work is still possible, but it should complement the runtime instead of racing against it.

@@ -11,6 +11,26 @@ Common examples are:
 - loading classes
 - showing or hiding nearby UI while a request is pending
 
+```gox
+<button
+	(doors.AClick{
+		Indicator: []doors.Indicator{
+			doors.IndicatorClass{
+				Selector: doors.SelectorTarget(),
+				Class:    "active",
+			},
+		},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			<-time.After(500 * time.Millisecond)
+			return false
+		},
+	})>
+	Save
+</button>
+```
+
+When the user clicks the button, **Doors** adds the `active` class to that same button as soon as the request starts, then removes it automatically after the request finishes.
+
 ## Why
 
 Indication runs before the server responds, so it is the right tool for immediate feedback around an in-flight request.
@@ -67,8 +87,6 @@ For simple cases, use the `IndicatorOnly*` helpers instead of building the struc
 That covers most everyday cases without much setup.
 
 ## Restore
-
-Restore is precise.
 
 When an indication ends, **Doors** restores the previous content, attributes, and class presence for the parts that indicator changed.
 

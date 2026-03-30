@@ -60,7 +60,7 @@ elem (a App) Main() {
 
 This keeps the page reactive: when the path model changes, the subscribed part of the page updates automatically.
 
-Usually you don't use `Source` directly for subscriptions, but derive it into the smaller state piece. For more advanced patterns, see [State](./07-state.md) and [Navigation](./09-navigation.md).
+Usually you do not use a `Source` directly for subscriptions. Instead, derive a smaller piece of state from it. For more advanced patterns, see [State](./07-state.md) and [Navigation](./09-navigation.md).
 
 
 ### Access the Path in the Handler
@@ -245,6 +245,8 @@ This is the right place for auth checks, redirects, response headers, and simila
 It is also the usual place to initialize shared session state from cookies or headers. For that pattern, see [Storage & Auth](./18-storage-auth.md).
 
 ## URLs
+
+> Usually you don't use direct URLs. Please refer to [Navigation](./09-navigation.md).
 
 Use `doors.NewLocation(ctx, model)` when you need a URL from a registered model value.
 
