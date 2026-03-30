@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors"
+	introuter "github.com/doors-dev/doors/internal/router"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
@@ -327,6 +328,55 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 	restoredInstance := test.GetContent(t, page, "#instance-id")
 	if restoredInstance != initialInstance {
 		t.Fatalf("expected browser back restore to keep same instance, got %q then %q", initialInstance, restoredInstance)
+	}
+}
+
+func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
+	bro := test.NewBroWrap(browser, func(r doors.Router) {
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathQuery]) doors.Response {
+			return doors.ResponseComp(pageQuery(s))
+		})
+	}, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Header.Set(introuter.ZombieHeader, "1")
+			w.Header().Set(introuter.ZombieHeader, "1")
+			next.ServeHTTP(w, r)
+		})
+	})
+	defer bro.Close()
+
+	page := bro.Page(t, "/q")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	testNoQueryValue(t, page, "tag")
+	testNoQueryValue(t, page, "page")
+	test.TestContent(t, page, "#tag", "")
+	test.TestContent(t, page, "#page-value", "")
+
+	test.Click(t, page, "#query-next")
+	waitQueryValue(t, page, "tag", "next")
+	waitQueryValue(t, page, "page", "2")
+	waitContent(t, page, "#tag", "next")
+	waitContent(t, page, "#page-value", "2")
+
+	nextInstance := test.GetContent(t, page, "#instance-id")
+	if nextInstance == initialInstance {
+		t.Fatalf("expected zombie same-model navigation to full-reload, got same instance %q", nextInstance)
+	}
+
+	page.NavigateBack()
+	waitNoQueryValue(t, page, "tag")
+	waitNoQueryValue(t, page, "page")
+	waitContent(t, page, "#tag", "")
+	waitContent(t, page, "#page-value", "")
+
+	restoredInstance := test.GetContent(t, page, "#instance-id")
+	if restoredInstance == nextInstance {
+		t.Fatalf("expected zombie browser back to full-reload, got same instance %q", restoredInstance)
+	}
+	if restoredInstance == initialInstance {
+		t.Fatalf("expected zombie browser back to create a new instance, got initial instance %q", restoredInstance)
 	}
 }
 

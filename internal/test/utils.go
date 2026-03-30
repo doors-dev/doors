@@ -126,6 +126,10 @@ func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
 }
 
 func NewBro(browser *rod.Browser, mod func(r doors.Router)) *Bro {
+	return NewBroWrap(browser, mod, nil)
+}
+
+func NewBroWrap(browser *rod.Browser, mod func(r doors.Router), wrap func(http.Handler) http.Handler) *Bro {
 	r := doors.NewRouter()
 	mod(r)
 	if LimitMode() {
@@ -142,8 +146,12 @@ func NewBro(browser *rod.Browser, mod func(r doors.Router)) *Bro {
 	port := listener.Addr().(*net.TCPAddr).Port
 	Host = fmt.Sprintf("http://localhost:%d", port)
 	println("Started on port", port)
+	handler := http.Handler(r)
+	if wrap != nil {
+		handler = wrap(handler)
+	}
 	s := &http.Server{
-		Handler: r,
+		Handler: handler,
 	}
 	ch := make(chan struct{}, 0)
 	go func() {

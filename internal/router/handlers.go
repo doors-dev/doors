@@ -38,6 +38,8 @@ func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceID s
 	}
 }
 
+const ZombieHeader = "Zombie"
+
 func (rr *Router) restoreLocation(w http.ResponseWriter, r *http.Request, instId string, l path.Location) {
 	w.Header().Set("Cache-Control", "no-cache")
 	ses := rr.getSession(w, r)
@@ -47,6 +49,11 @@ func (rr *Router) restoreLocation(w http.ResponseWriter, r *http.Request, instId
 	}
 	inst, ok := ses.GetInstance(instId)
 	if !ok {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+	if w.Header().Get(ZombieHeader) != "" {
+		inst.InstanceEnd()
 		w.WriteHeader(http.StatusGone)
 		return
 	}

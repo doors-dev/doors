@@ -30,7 +30,7 @@ func (pc PointerCapture) Listen() string {
 
 type KeyboardEventCapture struct {
 	Event           string   `json:"-"`
-	Filter          []string `json:"filter"`
+	Filter          []string `json:"fr"`
 	PreventDefault  bool     `json:"pd"`
 	StopPropagation bool     `json:"sp"`
 	ExactTarget     bool     `json:"et"`

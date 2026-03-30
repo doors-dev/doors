@@ -3,12 +3,15 @@ package doors
 import (
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/doors-dev/gox"
 )
 
 type testSessionCallback struct{}
@@ -29,6 +32,38 @@ func readURL(t *testing.T, server *httptest.Server, path string) (int, http.Head
 		t.Fatal(err)
 	}
 	return resp.StatusCode, resp.Header, string(body)
+}
+
+type countPathA struct {
+	Path bool `path:"/count-a"`
+}
+
+type countPathB struct {
+	Path bool `path:"/count-b"`
+}
+
+func countPage(label string) gox.Comp {
+	return gox.Elem(func(cur gox.Cursor) error {
+		if err := cur.Init("html"); err != nil {
+			return err
+		}
+		if err := cur.Submit(); err != nil {
+			return err
+		}
+		if err := cur.Init("body"); err != nil {
+			return err
+		}
+		if err := cur.Submit(); err != nil {
+			return err
+		}
+		if err := cur.Text(label); err != nil {
+			return err
+		}
+		if err := cur.Close(); err != nil {
+			return err
+		}
+		return cur.Close()
+	})
 }
 
 func TestRouteFileServing(t *testing.T) {
@@ -162,4 +197,62 @@ func TestUseLicenceAlias(t *testing.T) {
 	defer server.Close()
 
 	_, _, _ = readURL(t, server, "/missing")
+}
+
+func TestRouterCount(t *testing.T) {
+	router := NewRouter()
+	UseModel(router, func(r RequestModel, s Source[countPathA]) Response {
+		return ResponseComp(countPage("a"))
+	})
+	UseModel(router, func(r RequestModel, s Source[countPathB]) Response {
+		return ResponseComp(countPage("b"))
+	})
+
+	sessions, instances := router.Count()
+	if sessions != 0 || instances != 0 {
+		t.Fatalf("expected empty router count, got sessions=%d instances=%d", sessions, instances)
+	}
+
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	jar1, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client1 := &http.Client{Jar: jar1}
+
+	resp, err := client1.Get(server.URL + "/count-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	sessions, instances = router.Count()
+	if sessions != 1 || instances != 1 {
+		t.Fatalf("expected one session and one instance, got sessions=%d instances=%d", sessions, instances)
+	}
+
+	resp, err = client1.Get(server.URL + "/count-b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	sessions, instances = router.Count()
+	if sessions != 1 || instances != 2 {
+		t.Fatalf("expected one session and two instances, got sessions=%d instances=%d", sessions, instances)
+	}
+
+	client2 := &http.Client{}
+	resp, err = client2.Get(server.URL + "/count-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	sessions, instances = router.Count()
+	if sessions != 2 || instances != 3 {
+		t.Fatalf("expected two sessions and three instances, got sessions=%d instances=%d", sessions, instances)
+	}
 }

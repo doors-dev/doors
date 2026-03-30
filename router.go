@@ -28,6 +28,9 @@ import (
 // then pass it to an HTTP server.
 type Router interface {
 	http.Handler
+	// Count returns the current number of live sessions and live page
+	// instances.
+	Count() (sessions int, instances int)
 	Use(r Use)
 }
 

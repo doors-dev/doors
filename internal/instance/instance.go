@@ -36,6 +36,7 @@ type AnyInstance interface {
 	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request, uint64) bool
 	Connect(w http.ResponseWriter, r *http.Request)
 	SetStatus(int)
+	InstanceEnd()
 	end(common.EndCause)
 }
 

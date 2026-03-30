@@ -62,6 +62,18 @@ type Router struct {
 	buildProfiles   resources.BuildProfiles
 }
 
+func (rr *Router) Count() (int, int) {
+	sessions := 0
+	instances := 0
+	rr.sessions.Range(func(_, v any) bool {
+		sess := v.(*instance.Session)
+		sessions += 1
+		instances += sess.InstanceCount()
+		return true
+	})
+	return sessions, instances
+}
+
 func (rr *Router) SessionCookie() string {
 	return "d0r-" + rr.pathMaker.ID()
 }

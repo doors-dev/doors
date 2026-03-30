@@ -60,6 +60,12 @@ type Session struct {
 	killTimer  *time.Timer
 }
 
+func (sess *Session) InstanceCount() int {
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	return len(sess.instances)
+}
+
 func (sess *Session) Store() ctex.Store {
 	return sess.store
 }

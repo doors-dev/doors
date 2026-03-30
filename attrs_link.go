@@ -16,6 +16,7 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
+	"github.com/doors-dev/doors/internal/router"
 	"github.com/doors-dev/gox"
 )
 
@@ -187,6 +188,12 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	h.Scope = append([]Scope{&ScopeBlocking{}, linkScope{}}, h.Scope...)
 	if link.On != nil {
 		handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+			if r.Header.Get(router.ZombieHeader) != "" {
+				req := &request{w: w, r: r, ctx: ctx}
+				req.After(ActionOnlyLocationReload())
+				InstanceEnd(ctx)
+				return false
+			}
 			if len(h.After) != 0 {
 				req := &request{w: w, r: r, ctx: ctx}
 				req.After(h.After)
