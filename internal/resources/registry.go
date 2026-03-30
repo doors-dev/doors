@@ -130,7 +130,7 @@ func (r *Registry) Static(entry StaticEntry, contentType string) (*Resource, err
 	if err != nil {
 		return nil, err
 	}
-	res = r.create(key, content, false, contentType)
+	res = r.create(key, content, true, contentType)
 	return res, nil
 }
 
