@@ -23,13 +23,47 @@ type Path struct {
 }
 
 doors.UseModel(router, func(r doors.RequestModel, s doors.Source[Path]) doors.Response {
-	return doors.ResponseComp(Page(s))
+	return doors.ResponseComp(App{path: s})
 })
 ```
 
 When a request matches this model, **Doors** decodes the URL into `Path` and passes it to your handler as `doors.Source[Path]`.
 
-That source becomes the route state for the current page instance. If the user navigates within the same model type, the page can react to the updated model instead of doing a full reload.
+That source becomes the route state for the current page instance. If the user navigates within the same model type, the page can react to the updated model instead of reloading.
+
+Inside the component body, subscribe to the source with `doors.Sub(...)` and render whichever view matches the current route:
+
+```go
+type App struct {
+	path doors.Source[Path]
+}
+
+elem (a App) Main() {
+	<!doctype html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1">
+			<title>Hello Doors!</title>
+		</head>
+		<body>
+			~(doors.Sub(a.path, func(p Path) gox.Elem {
+				if p.Post {
+					return Post(p.ID)
+				}
+				return Home()
+			}))
+		</body>
+	</html>
+}
+```
+
+This keeps the page reactive: when the path model changes, the subscribed part of the page updates automatically.
+
+Usually you don't use `Source` directly for subscriptions, but derive it into the smaller state piece. For more advanced patterns, see [State](./07-state.md) and [Navigation](./09-navigation.md).
+
+
+### Access the Path in the Handler
 
 Inside the `UseModel` handler, read the current model with `s.Get()`:
 
