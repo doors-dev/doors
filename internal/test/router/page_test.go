@@ -139,6 +139,42 @@ func waitContent(t *testing.T, page *rod.Page, selector string, content string) 
 	test.TestContent(t, page, selector, content)
 }
 
+func hasClass(page *rod.Page, selector string, className string) bool {
+	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	if err != nil {
+		return false
+	}
+	classAttr, err := el.Attribute("class")
+	if err != nil || classAttr == nil {
+		return false
+	}
+	return strings.Contains(" "+*classAttr+" ", " "+className+" ")
+}
+
+func waitClass(t *testing.T, page *rod.Page, selector string, className string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if hasClass(page, selector, className) {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	test.TestClass(t, page, selector, className)
+}
+
+func waitClassNot(t *testing.T, page *rod.Page, selector string, className string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if !hasClass(page, selector, className) {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	test.TestClassNot(t, page, selector, className)
+}
+
 func TestPageStatic(t *testing.T) {
 	bro := test.NewBro(browser, func(r doors.Router) {
 		doors.UseModel(r, func(req doors.RequestModel, r doors.Source[PathA]) doors.Response {
@@ -500,6 +536,92 @@ func TestLocationModelMatchesAnyURL(t *testing.T) {
 	test.TestContent(t, page, "#location-path", "/any/deep/path")
 	test.TestContent(t, page, "#tag-value", "hello")
 	test.TestContent(t, page, "#page-query-value", "7")
+}
+
+func TestActiveLinkMatchersOnLoad(t *testing.T) {
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[doors.Location]) doors.Response {
+			return doors.ResponseComp(pageLocationActive(s))
+		})
+	})
+	defer bro.Close()
+
+	page := bro.Page(t, "/active?mode=view&optional=yes&page=9#details")
+	defer page.Close()
+
+	waitContent(t, page, "#location-string", "/active?mode=view&optional=yes&page=9")
+	waitClass(t, page, "#active-query", "active")
+	waitClass(t, page, "#active-only-ignore-some", "active")
+	waitClass(t, page, "#active-only-some", "active")
+	waitClass(t, page, "#active-only-if-present", "active")
+	waitClass(t, page, "#active-fragment", "active")
+	waitClassNot(t, page, "#active-full", "active")
+	waitClassNot(t, page, "#active-starts", "active")
+}
+
+func TestActiveLinkMatchersByClick(t *testing.T) {
+	bro := test.NewBro(browser, func(r doors.Router) {
+		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[doors.Location]) doors.Response {
+			return doors.ResponseComp(pageLocationActive(s))
+		})
+	})
+	defer bro.Close()
+
+	page := bro.Page(t, "/active")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+
+	waitClass(t, page, "#active-full", "active")
+	waitClass(t, page, "#active-ignore-all", "active")
+	waitClass(t, page, "#active-only-if-present", "active")
+	waitClassNot(t, page, "#active-fragment", "active")
+	waitClassNot(t, page, "#active-starts", "active")
+
+	test.Click(t, page, "#nav-starts")
+	waitContent(t, page, "#location-string", "/active/section/child")
+	waitClass(t, page, "#active-starts", "active")
+	waitClass(t, page, "#active-segments", "active")
+	waitClassNot(t, page, "#active-full", "active")
+
+	test.Click(t, page, "#nav-segments")
+	waitContent(t, page, "#location-string", "/active/other")
+	waitClass(t, page, "#active-segments", "active")
+	waitClassNot(t, page, "#active-starts", "active")
+
+	test.Click(t, page, "#nav-fragment")
+	waitClass(t, page, "#active-fragment", "active")
+	waitClass(t, page, "#active-full", "active")
+
+	test.Click(t, page, "#nav-query")
+	waitQueryValue(t, page, "mode", "view")
+	waitQueryValue(t, page, "page", "9")
+	waitClass(t, page, "#active-ignore-all", "active")
+	waitClass(t, page, "#active-query", "active")
+	waitClass(t, page, "#active-only-some", "active")
+	waitClass(t, page, "#active-only-if-present", "active")
+	waitClassNot(t, page, "#active-only-ignore-some", "active")
+	waitClassNot(t, page, "#active-fragment", "active")
+
+	test.Click(t, page, "#nav-query-optional")
+	waitQueryValue(t, page, "optional", "yes")
+	waitClass(t, page, "#active-query", "active")
+	waitClass(t, page, "#active-only-ignore-some", "active")
+	waitClass(t, page, "#active-only-some", "active")
+	waitClass(t, page, "#active-only-if-present", "active")
+
+	test.Click(t, page, "#nav-query-optional-miss")
+	waitQueryValue(t, page, "optional", "no")
+	waitClass(t, page, "#active-ignore-all", "active")
+	waitClass(t, page, "#active-only-some", "active")
+	waitClassNot(t, page, "#active-query", "active")
+	waitClassNot(t, page, "#active-only-ignore-some", "active")
+	waitClassNot(t, page, "#active-only-if-present", "active")
+
+	finalInstance := test.GetContent(t, page, "#instance-id")
+	if finalInstance != initialInstance {
+		t.Fatalf("expected same instance for same-model active-link navigation, got %q then %q", initialInstance, finalInstance)
+	}
 }
 
 func TestPathModelEscapedSegmentDecodeAndEncode(t *testing.T) {

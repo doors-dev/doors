@@ -191,3 +191,57 @@ elem (f *dataFragment) Main() {
 		document.getElementById("target").innerHTML = await $data("myData")
 	</script>
 }
+
+type captureFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+elem (f *captureFragment) Main() {
+	~{
+		f.r.Update(ctx, 0, "")
+		f.r.Update(ctx, 1, "")
+		f.r.Update(ctx, 2, "")
+		f.r.Update(ctx, 3, "")
+		f.r.Update(ctx, 4, "")
+	}
+	~(f.r)
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 0, "parent")
+			return false
+		},
+	} <div id="bubble-parent">
+		~>doors.AClick{
+			StopPropagation: true,
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 1, "child")
+				return false
+			},
+		} <button id="bubble-child">bubble-child</button>
+	</div>
+	~>doors.AClick{
+		ExactTarget: true,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 2, "exact")
+			return false
+		},
+	} <div id="exact-parent">
+		<button id="exact-child">exact-child</button>
+	</div>
+	<div id="jump">jump</div>
+	~>doors.AClick{
+		PreventDefault: true,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 3, "prevent")
+			return false
+		},
+	} <a id="prevent-link" href="#jump">prevent-link</a>
+	~>doors.AKeyDown{
+		Filter: []string{"Enter"},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+			f.r.Update(ctx, 4, r.Event().Key)
+			return false
+		},
+	} <input id="filter-input" type="text"/>
+}

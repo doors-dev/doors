@@ -325,3 +325,130 @@ func (f *dataFragment) Main() gox.Elem {
 	return })
 //line fragments.gox:193
 }
+
+type captureFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+//line fragments.gox:200
+func (f *captureFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line fragments.gox:202
+		f.r.Update(ctx, 0, "")
+		f.r.Update(ctx, 1, "")
+		f.r.Update(ctx, 2, "")
+		f.r.Update(ctx, 3, "")
+		f.r.Update(ctx, 4, "")
+
+//line fragments.gox:208
+		__e = __c.Any(f.r); if __e != nil { return }
+//line fragments.gox:209
+		__e = doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 0, "parent")
+			return false
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("div"); if __e != nil { return }
+			{
+//line fragments.gox:214
+				__e = __c.AttrSet("id", "bubble-parent"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+//line fragments.gox:215
+				__e = doors.AClick{
+			StopPropagation: true,
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 1, "child")
+				return false
+			},
+		}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); _ = ctx
+					__e = __c.Init("button"); if __e != nil { return }
+					{
+//line fragments.gox:221
+						__e = __c.AttrSet("id", "bubble-child"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Text("bubble-child"); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+//line fragments.gox:223
+		__e = doors.AClick{
+		ExactTarget: true,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 2, "exact")
+			return false
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("div"); if __e != nil { return }
+			{
+//line fragments.gox:229
+				__e = __c.AttrSet("id", "exact-parent"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Init("button"); if __e != nil { return }
+				{
+//line fragments.gox:230
+					__e = __c.AttrSet("id", "exact-child"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Text("exact-child"); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line fragments.gox:232
+			__e = __c.AttrSet("id", "jump"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("jump"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line fragments.gox:233
+		__e = doors.AClick{
+		PreventDefault: true,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 3, "prevent")
+			return false
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("a"); if __e != nil { return }
+			{
+//line fragments.gox:239
+				__e = __c.AttrSet("id", "prevent-link"); if __e != nil { return }
+//line fragments.gox:239
+				__e = __c.AttrSet("href", "#jump"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("prevent-link"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+//line fragments.gox:240
+		__e = doors.AKeyDown{
+		Filter: []string{"Enter"},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+			f.r.Update(ctx, 4, r.Event().Key)
+			return false
+		},
+	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.InitVoid("input"); if __e != nil { return }
+			{
+//line fragments.gox:246
+				__e = __c.AttrSet("id", "filter-input"); if __e != nil { return }
+//line fragments.gox:246
+				__e = __c.AttrSet("type", "text"); if __e != nil { return }
+			}
+			__e = __c.Submit(); if __e != nil { return }
+		return })); if __e != nil { return }
+	return })
+//line fragments.gox:247
+}

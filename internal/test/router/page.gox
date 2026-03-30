@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 	
 	"github.com/doors-dev/doors"
@@ -54,6 +55,14 @@ type PathSlow struct {
 	Path bool `path:"/slow"`
 }
 
+func values(items ...string) url.Values {
+	v := url.Values{}
+	for i := 0; i + 1 < len(items); i += 2 {
+		v.Add(items[i], items[i + 1])
+	}
+	return v
+}
+
 elem pageQuery(b doors.Source[PathQuery]) {
 	<html>
 		<body>
@@ -99,6 +108,180 @@ elem pageLocation(b doors.Source[doors.Location]) {
 			</div>
 			~>(doors.Inject(0, b)) <div id="page-query-value">
 				~(ctx.Value(0).(doors.Location).Query.Get("page"))
+			</div>
+		</body>
+	</html>
+}
+
+elem pageLocationActive(b doors.Source[doors.Location]) {
+	<html>
+		<body>
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			~>(doors.Inject(0, b)) <div id="location-string">
+				~(ctx.Value(0).(doors.Location).String())
+			</div>
+			<div hidden id="active-links">
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+					},
+					Active: doors.Active{
+						Indicator: doors.IndicatorOnlyClass("active"),
+					},
+				} <a id="active-full">active-full</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active", "section"},
+					},
+					Active: doors.Active{
+						PathMatcher: doors.PathMatcherStarts(),
+						Indicator: doors.IndicatorOnlyClass("active"),
+					},
+				} <a id="active-starts">active-starts</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active", "section", "fixed"},
+					},
+					Active: doors.Active{
+						PathMatcher: doors.PathMatcherSegments(0),
+						Indicator: doors.IndicatorOnlyClass("active"),
+					},
+				} <a id="active-segments">active-segments</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+						Query: values(
+							"mode", "view",
+						),
+					},
+					Active: doors.Active{
+						QueryMatcher: []doors.QueryMatcher{
+							doors.QueryMatcherIgnoreAll(),
+						},
+						Indicator: doors.IndicatorOnlyClass("active"),
+					},
+				} <a id="active-ignore-all">active-ignore-all</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+						Query: values(
+							"mode", "view",
+							"optional", "yes",
+							"page", "1",
+						),
+					},
+					Active: doors.Active{
+						QueryMatcher: []doors.QueryMatcher{
+							doors.QueryMatcherIgnoreSome("page"),
+							doors.QueryMatcherSome("mode"),
+							doors.QueryMatcherIfPresent("optional"),
+						},
+						Indicator: doors.IndicatorOnlyClass("active"),
+					},
+				} <a id="active-query">active-query</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+						Query: values(
+							"mode", "view",
+							"optional", "yes",
+							"page", "1",
+						),
+					},
+					Active: doors.Active{
+						QueryMatcher: doors.QueryMatcherOnlyIgnoreSome("page"),
+						Indicator: doors.IndicatorOnlyClass("active"),
+					},
+				} <a id="active-only-ignore-some">active-only-ignore-some</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+						Query: values(
+							"mode", "view",
+							"page", "1",
+						),
+					},
+					Active: doors.Active{
+						QueryMatcher: doors.QueryMatcherOnlySome("mode"),
+						Indicator: doors.IndicatorOnlyClass("active"),
+					},
+				} <a id="active-only-some">active-only-some</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+						Query: values(
+							"optional", "yes",
+							"page", "1",
+						),
+					},
+					Active: doors.Active{
+						QueryMatcher: doors.QueryMatcherOnlyIfPresent("optional"),
+						Indicator: doors.IndicatorOnlyClass("active"),
+					},
+				} <a id="active-only-if-present">active-only-if-present</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+					},
+					Fragment: "details",
+					Active: doors.Active{
+						QueryMatcher: doors.QueryMatcherOnlyIgnoreAll(),
+						FragmentMatch: true,
+						Indicator: doors.IndicatorOnlyClass("active"),
+					},
+				} <a id="active-fragment">active-fragment</a>
+			</div>
+			<div id="nav-links">
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+					},
+				} <a id="nav-home">nav-home</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active", "section", "child"},
+					},
+				} <a id="nav-starts">nav-starts</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active", "other"},
+					},
+				} <a id="nav-segments">nav-segments</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+					},
+					Fragment: "details",
+				} <a id="nav-fragment">nav-fragment</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+						Query: values(
+							"mode", "view",
+							"page", "9",
+						),
+					},
+				} <a id="nav-query">nav-query</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+						Query: values(
+							"mode", "view",
+							"optional", "yes",
+							"page", "9",
+						),
+					},
+				} <a id="nav-query-optional">nav-query-optional</a>
+				~>doors.ALink{
+					Model: doors.Location{
+						Segments: []string{"active"},
+						Query: values(
+							"mode", "view",
+							"optional", "no",
+							"page", "9",
+						),
+					},
+				} <a id="nav-query-optional-miss">nav-query-optional-miss</a>
 			</div>
 		</body>
 	</html>
