@@ -131,8 +131,71 @@ Finally, the **Doors** router plugs straight into Go's standard HTTP server:
 http.ListenAndServe(":8080", r)
 ```
 
+## Make It Interactive
+
+At this point you have a static page.
+
+To see the basic **Doors** flow, turn it into a tiny interactive counter.
+
+Update the imports in `app.gox` and add a small counter component:
+
+```gox
+import (
+	"context"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/gox"
+)
+
+type Counter struct {
+	count int
+	door  doors.Door // dynamic container
+}
+
+elem (c *Counter) Main() {
+	<button
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestPointer) bool {
+				c.count += 1
+				c.door.Update(ctx, c.count)
+				return false
+			},
+		})>
+		Click Me
+	</button>
+
+	~>(c.door) <span> ~// turn span into door
+		 ← Click 
+	</span>
+}
+```
+
+And render it on the page:
+
+```gox
+elem (a App) Main() {
+	<!doctype html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1">
+			<title>Hello Doors!</title>
+		</head>
+		<body>
+			<main class="container">
+				<h1>Hello Doors!</h1>
+				~(&Counter{})
+			</main>
+		</body>
+	</html>
+}
+```
+
+Now the browser click is sent back to Go, the handler updates the counter state, and the dynamic `<span>` shows the current value.
+
 ### Next
 
 - [Core Concepts](./02-core-concepts.md) explains the runtime model behind sessions, instances, doors, hooks, and state.
 - [Template Syntax](./03-template-syntax.md) covers the GoX syntax used throughout the docs.
 - [Path Model](./04-path-model.md) and [Router](./05-router.md) take the next step into URL design and request handling.
+- [State](./07-state.md) to learn about reactive state
