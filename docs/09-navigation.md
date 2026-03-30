@@ -142,7 +142,7 @@ When you update or mutate that source:
 
 This is the right approach when navigation belongs to a button, wizard step, form flow, or other interaction that is not naturally an anchor tag.
 
-## Mutate
+### Mutate
 
 Use `Mutate` when you want to preserve part of the current path and change the rest:
 
@@ -169,7 +169,7 @@ elem (a *App) goToCity(cityID int) {
 }
 ```
 
-## Update
+### Update
 
 Use `Update` when you already know the full target model:
 
@@ -180,7 +180,7 @@ a.path.Update(ctx, Path{
 })
 ```
 
-## Actions
+## Lifecycle Actions
 
 When an `ALink` upgrades to same-model dynamic navigation, it participates in
 the same request pipeline as other **Doors** attributes.

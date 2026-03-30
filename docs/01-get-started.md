@@ -131,7 +131,7 @@ Finally, the **Doors** router plugs straight into Go's standard HTTP server:
 http.ListenAndServe(":8080", r)
 ```
 
-## Make It Interactive
+## Dynamic Update
 
 At this point you have a static page.
 
