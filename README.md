@@ -1,19 +1,49 @@
-# Doors
-
 [![codecov](https://codecov.io/gh/doors-dev/doors/branch/main/graph/badge.svg?token=6FOBJKNHFZ)](https://codecov.io/gh/doors-dev/doors)
+
+# Doors
 
 Doors is a server-driven UI runtime for building reactive web applications in Go.
 
 In Doors, the server owns the interaction flow and the browser acts as a renderer and input layer. You build interactive UI in Go, keep state and capabilities on the server, and let the runtime synchronize updates back to the page.
 
+## Example
+
+```gox
+type Search struct {
+    input doors.Source[string] // reactive state
+}
+
+elem (s Search) Main() {
+    <input
+        (doors.AInput{
+            On: func(ctx context.Context, r doors.RequestInput) bool {
+                s.input.Update(ctx, r.Event().Value) // update state
+                return false
+            },
+        })
+        type="text"
+        placeholder="search">
+
+    ~(doors.Sub(s.input, s.results)) // subscribe results to state changes
+}
+
+elem (s Search) results(input string) {
+    ~(for _, user := range Users.Search(input) {
+        <card>
+            ~(user.Name)
+        </card>
+    })
+}
+```
+
 ## What it includes
 
 - Reactive web applications written in Go
-- UI interactions without first designing a public API
+- A stack with no public or hand-written API
 - JavaScript as an option, not a requirement
-- Built-in real-time synchronization
 - Asset serving and delivery that fit a single-binary deployment model
-- One place for business logic, state changes, and rendering
+- Real-time capabilities out of the box
+- A Go language extension with first-class HTML templating and its own language server
 
 ## Core model
 
@@ -29,23 +59,21 @@ That means you can keep:
 
 in one execution flow instead of splitting them between browser code, handlers, API contracts, and state reassembly.
 
-## Why it is useful
-
 ### Your Go server is the UI runtime
 
-Doors is not an HTML enhancement layer. It is a runtime for interactive applications where the server owns the flow and the browser reflects current UI state.
+In Doors, the web app runs as a stateful Go process. The browser acts as a remote renderer and input layer, while application flow, state, and side effects stay on the server.
 
-### No frontend/backend drift by default
+### Less drift between UI and backend logic
 
-Because the interaction model stays in Go, there is less duplicated logic and less drift between client and server behavior.
+Because interactions are handled in Go, you do not have to split core behavior across separate frontend and backend implementations. That reduces duplication and makes changes more consistent.
 
-### Less exposed surface area
+### Smaller exposed surface area
 
-Doors does not push every UI action into a public API. Session-scoped communication happens under the hood, which cuts boilerplate and narrows the exposed surface area.
+Doors does not turn every UI action into a public API endpoint. Session-scoped communication happens internally, so the client only gets rendered output and user-specific interaction paths.
 
-### One stack, top to bottom
+### Designed as a cohesive stack
 
-Templates, state, routing, synchronization, assets, and deployment all follow the same server-driven model.
+From template syntax and concurrency engine to synchronization protocol — each layer was designed together to **max out**.
 
 ## Key ideas
 
@@ -54,39 +82,7 @@ Templates, state, routing, synchronization, assets, and deployment all follow th
 - Dynamic containers that can be updated, replaced, or removed at runtime
 - Type-safe routing with URLs represented as Go structs
 - Real-time client sync without making WebSockets or SSE your app architecture
-- Server-rendered interactions scoped to what each user can actually see
-
-## Example
-
-```gox
-type Search struct {
-    input doors.Source[string]
-}
-
-elem (s Search) Main() {
-    <input
-        (doors.AInput{
-            On: func(ctx context.Context, r doors.RequestInput) bool {
-                s.input.Update(ctx, r.Event().Value)
-                return false
-            },
-        })
-        type="text"
-        placeholder="search">
-
-    ~(doors.Sub(s.input, s.results))
-}
-
-elem (s Search) results(input string) {
-    ~(for _, user := range Users.Search(input) {
-        <card>
-            ~(user.Name)
-        </card>
-    })
-}
-```
-
-The point is to keep the UI event, state mutation, rendering logic, and server-side behavior in the same language and runtime.
+- Secure by default — every user can interact only with what you render to them
 
 ## Where Doors fits best
 
@@ -95,7 +91,7 @@ The point is to keep the UI event, state mutation, rendering logic, and server-s
 - Customer portals
 - Admin panels
 - Internal tools
-- Realtime apps with meaningful server-side workflows
+- Real-time apps with meaningful server-side workflows
 
 ## Where it is not the right fit
 
