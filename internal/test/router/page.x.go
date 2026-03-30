@@ -89,8 +89,8 @@ type PathSlow struct {
 
 func values(items ...string) url.Values {
 	v := url.Values{}
-	for i := 0; i+1 < len(items); i += 2 {
-		v.Add(items[i], items[i+1])
+	for i := 0; i + 1 < len(items); i += 2 {
+		v.Add(items[i], items[i + 1])
 	}
 	return v
 }

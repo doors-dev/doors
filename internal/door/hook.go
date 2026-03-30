@@ -81,7 +81,6 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) (Do
 			h.tracker.inst().Call(reportHook(track))
 		})
 	}
-	ctx = ctex.NewFreeContext(ctx, h.tracker.root.runtime().Context())
 	done, err := h.tracker.root.runtime().SafeHook(ctx, w, r, h.triggerFunc)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
