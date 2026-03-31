@@ -185,7 +185,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		slog.Error("href creation  error", slog.String("link_error", err.Error()))
 		return nil
 	}
-	h.Scope = append([]Scope{&ScopeBlocking{}, linkScope{}}, h.Scope...)
+	h.Scope = append([]Scope{linkScope{}}, h.Scope...)
 	if link.On != nil {
 		handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			if r.Header.Get(router.ZombieHeader) != "" {

@@ -126,6 +126,11 @@ export class Hook {
 		this.scopeStack_.forEach(s => s.done(this))
 	}
 	cancel() {
+		if (this.response_) {
+			this.response_ = undefined
+			runtime.hookErr(this.track_!, new HookErr(hookErrKinds.canceled))
+			return
+		}
 		if (this.abortTimer_) {
 			this.abortTimer_.abort()
 			return
