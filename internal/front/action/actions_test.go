@@ -53,10 +53,10 @@ func TestActionLogsAndInvocations(t *testing.T) {
 		},
 		{
 			name:            "scroll",
-			action:          Scroll{Selector: "#target", Smooth: true},
+			action:          Scroll{Selector: "#target", Options: map[string]any{"behavior": "smooth", "block": "center"}},
 			log:             "scroll",
 			invocationName:  "scroll",
-			args:            []any{"#target", true},
+			args:            []any{"#target", map[string]any{"behavior": "smooth", "block": "center"}},
 			expectedPayload: NewNone(),
 		},
 		{
@@ -202,7 +202,7 @@ func TestInvocationAndActionsJSON(t *testing.T) {
 
 	actions := Actions{
 		LocationReload{},
-		Scroll{Selector: "#target", Smooth: true},
+		Scroll{Selector: "#target", Options: map[string]any{"behavior": "smooth"}},
 	}
 	encoded, err := actions.MarshalJSON()
 	if err != nil {

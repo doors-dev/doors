@@ -135,13 +135,20 @@ func (a ActionLocationRawAssign) action(ctx context.Context, core core.Core, _ b
 	}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
-// ActionScroll scrolls to the first element matching Selector.
+// ActionScroll scrolls the first element matching Selector into view.
+//
+// Options is passed to the browser scroll call as-is and should match the
+// shape accepted by `Element.scrollIntoView(...)`, for example:
+// `map[string]any{"behavior": "smooth", "block": "center"}`.
 type ActionScroll struct {
+	// CSS selector for the element to scroll into view.
 	Selector string
+	// Browser scroll options forwarded to `scrollIntoView(...)`.
 	Options any
 }
 
-// ActionOnlyScroll returns a single ActionScroll.
+// ActionOnlyScroll returns a single ActionScroll with default scroll
+// behavior.
 func ActionOnlyScroll(selector string) []Action {
 	return []Action{ActionScroll{Selector: selector}}
 }
@@ -149,7 +156,7 @@ func ActionOnlyScroll(selector string) []Action {
 func (a ActionScroll) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	return action.Scroll{
 		Selector: a.Selector,
-		Options: a.Options,
+		Options:  a.Options,
 	}, action.CallParams{}, nil
 }
 

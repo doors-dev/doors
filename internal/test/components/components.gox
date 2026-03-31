@@ -158,7 +158,7 @@ elem (f *LinksFragment) Main() {
 	} <button id="action-indicate">action-indicate</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyScroll("#scroll-target", false))
+			r.After(doors.ActionOnlyScroll("#scroll-target"))
 			return false
 		},
 	} <button id="action-scroll">action-scroll</button>

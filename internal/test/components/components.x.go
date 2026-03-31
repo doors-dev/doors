@@ -421,7 +421,7 @@ func (f *LinksFragment) Main() gox.Elem {
 //line components.gox:159
 		__e = doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyScroll("#scroll-target", false))
+			r.After(doors.ActionOnlyScroll("#scroll-target"))
 			return false
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {

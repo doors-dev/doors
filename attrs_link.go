@@ -195,7 +195,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 				return false
 			}
 			if h.Fragment != "" {
-				h.After = append(h.After, ActionScroll{Selector: "#"+h.Fragment})
+				h.After = append(h.After, ActionScroll{Selector: "#" + h.Fragment})
 			}
 			if len(h.After) != 0 {
 				req := &request{w: w, r: r, ctx: ctx}

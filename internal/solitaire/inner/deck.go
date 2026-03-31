@@ -52,7 +52,7 @@ func (q *Deck) firstInsert(c *Card) bool {
 }
 
 func (q *Deck) Probe(seq uint64) {
-    probe := newProbeCard(seq, q)
+	probe := newProbeCard(seq, q)
 	if q.firstInsert(probe) {
 		return
 	}

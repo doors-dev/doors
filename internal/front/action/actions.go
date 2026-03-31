@@ -41,7 +41,7 @@ func (a LocationReplace) Invocation() Invocation {
 
 type Scroll struct {
 	Selector string
-	Options any
+	Options  any
 }
 
 func (a Scroll) Log() string {
