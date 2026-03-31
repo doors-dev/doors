@@ -35,7 +35,7 @@ func (m meta) Edit(cur gox.Cursor) error {
 			return err
 		}
 	}
-	if err := cur.AttrMod(gox.AttrModFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
+	if err := cur.AttrMod(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
 		attrs.Inherit(m.attrs)
 		return nil
 	})); err != nil {
@@ -65,7 +65,7 @@ func (t *titleMeta) Edit(cur gox.Cursor) error {
 		return err
 	}
 	if t.titleAttrs != nil {
-		if err := cur.AttrMod(gox.AttrModFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
+		if err := cur.AttrMod(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
 			attrs.Inherit(t.titleAttrs)
 			return nil
 		})); err != nil {
