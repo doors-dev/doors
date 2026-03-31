@@ -2,7 +2,10 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/doors-dev/doors)](https://goreportcard.com/report/github.com/doors-dev/doors)
 [![Go Reference](https://pkg.go.dev/badge/github.com/doors-dev/doors.svg)](https://pkg.go.dev/github.com/doors-dev/doors)
 
+[doors.dev](https://doors.dev)
+
 # Doors
+
 
 Doors is a server-driven UI runtime for building reactive web applications in Go.
 
@@ -113,10 +116,10 @@ Typical JavaScript stacks place much of the interaction model in the browser whi
 
 ## Learn more
 
-- [doors.dev](https://doors.dev)
-- [Tutorial](https://doors.dev/tutorial/)
+- [Officiean Website](https://doors.dev)
 - [Documentation](https://doors.dev/docs/)
-- [API Reference](https://docs.doors.dev)
+- [Tutorial](https://doors.dev/tutorial/)
+- [API Reference](https://pkg.go.dev/github.com/doors-dev/doors)
 - [GoX](https://github.com/doors-dev/gox)
 
 ## Status
