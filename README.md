@@ -1,4 +1,6 @@
 [![codecov](https://codecov.io/gh/doors-dev/doors/branch/main/graph/badge.svg?token=6FOBJKNHFZ)](https://codecov.io/gh/doors-dev/doors)
+[![Go Report Card](https://goreportcard.com/badge/github.com/doors-dev/doors)](https://goreportcard.com/report/github.com/doors-dev/doors)
+[![Go Reference](https://pkg.go.dev/badge/github.com/doors-dev/doors.svg)](https://pkg.go.dev/github.com/doors-dev/doors)
 
 # Doors
 
