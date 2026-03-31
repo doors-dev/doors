@@ -83,9 +83,9 @@ func (w *writer) Write(data []byte) (int, error) {
 
 func newHeader(startSeq uint64, endSeq uint64) header {
 	if startSeq == endSeq {
-		return []any{[]uint64{endSeq}}
+		return []any{endSeq}
 	}
-	return []any{[]uint64{endSeq, startSeq}}
+	return []any{[]uint64{startSeq, endSeq}}
 
 }
 

@@ -26,7 +26,6 @@ export class Hook {
 	private scopeQueue_: Array<ScopeSet>
 	private indicatorId_: number | undefined = undefined
 	private track_: number | undefined = undefined
-	private defaultAfter_: Array<Action> = []
 	constructor(private params_: {
 		doorId: number,
 		hookId: number,
@@ -53,12 +52,7 @@ export class Hook {
 			return this.promise_
 		}
 		try {
-			const params = captureFunction(arg, opt)
-			if (Array.isArray(params)) {
-				[this.fetch_, this.defaultAfter_] = params
-			} else {
-				this.fetch_ = params
-			}
+			this.fetch_ = captureFunction(arg, opt)
 			if (this.fetch_ === undefined) {
 				this.rej_(new HookErr(hookErrKinds.canceled))
 				return this.promise_
@@ -157,7 +151,7 @@ export class Hook {
 			this.response_ = r
 			return false
 		}
-		const afterActions = this.defaultAfter_
+		const afterActions: Array<Action> = []
 		const after = r.headers.get("D0-After")
 		if (after) {
 			afterActions.push(...JSON.parse(after))

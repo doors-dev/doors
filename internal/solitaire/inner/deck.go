@@ -51,6 +51,14 @@ func (q *Deck) firstInsert(c *Card) bool {
 	return true
 }
 
+func (q *Deck) Probe(seq uint64) {
+    probe := newProbeCard(seq, q)
+	if q.firstInsert(probe) {
+		return
+	}
+	q.bottom.insertTail(probe)
+}
+
 func (q *Deck) Fill(beg uint64, end uint64) {
 	if q.firstInsert(newRangeFillerCard(beg, end, q)) {
 		return

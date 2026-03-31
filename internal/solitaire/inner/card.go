@@ -12,10 +12,10 @@ import "errors"
 
 func NewRestoredCard(seq uint64, c *Call) *Card {
 	return &Card{
-		Beg:      seq,
-		End:      seq,
-		Call:     c,
-		restored: true,
+		Beg:  seq,
+		End:  seq,
+		Call: c,
+		kind: cardRestored,
 	}
 }
 
@@ -24,6 +24,16 @@ func NewCard(seq uint64, c *Call) *Card {
 		Beg:  seq,
 		End:  seq,
 		Call: c,
+		kind: cardRegular,
+	}
+}
+
+func newProbeCard(seq uint64, d deck) *Card {
+	return &Card{
+		Beg:  seq,
+		End:  seq,
+		deck: d,
+		kind: cardProbe,
 	}
 }
 
@@ -31,8 +41,8 @@ func newRangeFillerCard(beg uint64, end uint64, d deck) *Card {
 	return &Card{
 		Beg:  beg,
 		End:  end,
-		Call: nil,
 		deck: d,
+		kind: cardFiller,
 	}
 }
 
@@ -41,13 +51,22 @@ type deck interface {
 	storeBottom(*Card)
 }
 
+type cardKind int
+
+const (
+	cardRegular cardKind = iota
+	cardRestored
+	cardFiller
+	cardProbe
+)
+
 type Card struct {
-	Beg      uint64
-	End      uint64
-	Call     *Call
-	tail     *Card
-	restored bool
-	deck     deck
+	Beg  uint64
+	End  uint64
+	Call *Call
+	tail *Card
+	deck deck
+	kind cardKind
 }
 
 func (c *Card) setTail(n *Card) {
@@ -94,8 +113,8 @@ func (c *Card) extractRestored(seq uint64, h head) (*Card, error) {
 		if c.IsFiller() {
 			return nil, nil
 		}
-		if !c.restored {
-			return nil, errors.New("Attempt to respond to non issued card")
+		if !c.IsRestored() {
+			return nil, errors.New("Attempt to extract to non restored card")
 		}
 		if c.tail != nil {
 			h.setTail(c.tail)
@@ -115,11 +134,19 @@ func (c *Card) Seq() uint64 {
 }
 
 func (c *Card) IsFiller() bool {
-	return c.Call == nil
+	return c.kind == cardFiller || c.kind == cardProbe
+}
+
+func (c *Card) IsRestored() bool {
+	return c.kind == cardRestored
+}
+
+func (c *Card) isProbe() bool {
+	return c.kind == cardProbe
 }
 
 func (c *Card) insertTail(n *Card) {
-	if n.IsFiller() {
+	if n.IsFiller() && !n.isProbe() {
 		panic("Cannot insert filler tail")
 	}
 	if n.Seq() <= c.Seq() {

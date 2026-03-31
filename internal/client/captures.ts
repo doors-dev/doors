@@ -93,10 +93,8 @@ export default {
 		}
 		const href = (event.currentTarget as HTMLAnchorElement).href;
 		if (href) {
-			const hash = navigator.push(href, false)
-			if (hash) {
-				const action: Action = ["scroll", [hash, false]]
-				return [{}, [action]]
+			if(!navigator.push(href, false)) {
+				return undefined
 			}
 		}
 		return {};

@@ -118,8 +118,13 @@ export class Package {
 		const payloadInfo = header.pop()
 		this.payloadType_ = payloadInfo ? payloadInfo[0] : payloadTypes.none
 		this.length_ = payloadInfo ? payloadInfo[1] : 0;
-		this.end = header[0][0]
-		this.start = header[0].length == 2 ? header[0][1] : header[0][0]
+		if (!Array.isArray(header[0])) {
+			this.start = header[0]
+			this.end = header[0]
+		} else {
+			this.start = header[0][0]
+			this.end = header[0][1]
+		}
 		this.action = header.length == 2 ? header[1][0] : ""
 		this.arg = header.length == 2 ? header[1][1] : undefined
 		this.isFiller = header.length == 1

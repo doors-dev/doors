@@ -11,7 +11,7 @@ import navigator from "./navigator"
 import indicator, { IndicatorEntry } from "./indicator"
 import { removeAttr, setAttr } from "./dyna"
 import { HookErr } from "./capture"
-import { doAfter } from "./lib"
+import { doAfter, scrollInto } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
 
@@ -81,10 +81,9 @@ const actions = {
 			location.replace(url.toString())
 		})
 	},
-	scroll: (_: Extras, selector: string, smooth: boolean) => {
-		const el = document.querySelector(selector)
-		if (el) {
-			el.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
+	scroll: (_: Extras, selector: string, options: any) => {
+		if(!scrollInto(selector, options)) {
+			throw new Error("element to scroll into not found")
 		}
 	},
 	location_assign: (_: Extras, href: string, origin: boolean) => {

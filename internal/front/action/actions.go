@@ -41,7 +41,7 @@ func (a LocationReplace) Invocation() Invocation {
 
 type Scroll struct {
 	Selector string
-	Smooth   bool
+	Options any
 }
 
 func (a Scroll) Log() string {
@@ -50,7 +50,7 @@ func (a Scroll) Log() string {
 func (a Scroll) Invocation() Invocation {
 	return Invocation{
 		name: "scroll",
-		arg:  []any{a.Selector, a.Smooth},
+		arg:  []any{a.Selector, a.Options},
 	}
 }
 

@@ -170,7 +170,7 @@ func (d *deck) HeatUp() {
 	defer d.mu.Unlock()
 	if d.inner.IsCold(d.seq) && len(d.issued) > 0 {
 		d.seq += 1
-		d.inner.Fill(d.seq, d.seq)
+		d.inner.Probe(d.seq)
 	}
 }
 

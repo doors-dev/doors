@@ -52,6 +52,9 @@ class Solitaire {
 			lost.push(seq)
 			this.collectedLost_.add(seq)
 		}
+		if (STRESS_MODE && lost.length != 0) {
+			console.log("new lost:", lost)
+		}
 		return lost
 
 	}
@@ -132,9 +135,7 @@ class Card {
 		}
 	}
 	insert(p: Package) {
-		// console.log(this.p_.start, this.p_.end, "INSERTING", p.start, p.end)
 		if (p.end < this.p_.start) {
-			// console.log("REPLACED");
 			if (this.next_) {
 				this.next_.insert(this.p_)
 			} else {
@@ -144,7 +145,6 @@ class Card {
 			return
 		}
 		if (p.start > this.p_.end) {
-			// console.log("PASSED");
 			if (this.next_) {
 				this.next_.insert(p)
 			} else {
@@ -153,7 +153,6 @@ class Card {
 			return
 		}
 		if (p.start == this.p_.end) {
-			// console.log("CONSUMED, EXTENDING RIGHT FROM TAIL");
 			p.start = this.p_.start
 			this.p_ = p
 			if (this.next_) {
@@ -163,7 +162,6 @@ class Card {
 		}
 		// start < end
 		if (p.start <= this.p_.start && p.end >= this.p_.end) {
-			//      console.log("CONSUMED, EXTENING BOTH SIDED");
 			this.p_ = p
 			if (this.next_) {
 				this.next_.cover(this.p_.end, this)
@@ -171,7 +169,6 @@ class Card {
 			return
 		}
 		if (p.end >= this.p_.end) { // && p.start > this.start
-			//       console.log("CONSUMED, EXTENDING RIGHT");
 			p.start = this.p_.start
 			this.p_ = p
 			if (this.next_) {
@@ -180,7 +177,6 @@ class Card {
 			return
 		}
 		// p.end < this.end
-		// console.log("ENDEDN BEFORE, EXTENDING RIGHT");
 		p.start = Math.min(this.p_.start, p.start)
 		this.p_.start = p.end + 1
 		if (this.next_) {
@@ -232,7 +228,7 @@ class Connection {
 	private status_: SyncStatus = connectorStatus.signal
 	private abortTimer_: AbortTimer
 	private rollTimer_: ReliableTimer
-	constructor(private ctrl_: Controller, private results_: Results, private lost_: Lost) {
+	constructor(private ctrl_: Controller, private id_: number, private results_: Results, private lost_: Lost) {
 		this.abortTimer_ = new AbortTimer(solitairePing * 4 / 3)
 		this.rollTimer_ = new ReliableTimer(solitairePing, () => {
 			this.ctrl_.requestRoll(this)
@@ -257,7 +253,7 @@ class Connection {
 		this.abortTimer_.cancel()
 		this.rollTimer_.cancel()
 		const report = ok ? reports.ok : this.acked_ ? reports.interrupted : reports.broken;
-		this.ctrl_.report(this, report, this.results_, this.lost_)
+		this.ctrl_.report(this, this.id_, report, this.results_, this.lost_)
 	}
 	private get gaps(): Gaps {
 		const gaps: Gaps = []
@@ -372,7 +368,7 @@ class Connection {
 					this.header_ = undefined
 					this.status_ = connectorStatus.payload
 					if (await this.package_!.finalize()) {
-						this.ctrl_.onPackage(this.package_)
+						this.ctrl_.onPackage(this.id_, this.package_)
 						this.package_ = undefined
 						this.status_ = connectorStatus.signal
 					}
@@ -398,11 +394,11 @@ class Connection {
 			if (STRESS_MODE && Math.random() > 0.5) {
 				const p = this.package_!
 				setTimeout(() => {
-					this.ctrl_.onPackage(p)
+					this.ctrl_.onPackage(this.id_, p)
 					this.ctrl_.flush()
 				}, Math.round(Math.random() * 200))
 			} else {
-				this.ctrl_.onPackage(this.package_!)
+				this.ctrl_.onPackage(this.id_, this.package_!)
 			}
 			this.package_ = undefined
 			this.status_ = connectorStatus.signal
@@ -450,6 +446,7 @@ class Controller {
 	private state_: State = state.active
 	private loaded_ = false
 	private delay_ = new ProgressiveDelay()
+	private counter_ = 0
 	deck = new Solitaire()
 	tracker = new Tracker()
 	ready: Promise<undefined>
@@ -485,9 +482,6 @@ class Controller {
 			return
 		}
 		this.flush()
-	}
-	onPackage(p: Package) {
-		this.deck.insert(p)
 	}
 	flush() {
 		if (!this.loaded_) {
@@ -527,7 +521,8 @@ class Controller {
 		if (lost.length == 0 && results.size == 0 && this.connections_.size > 1) {
 			return
 		}
-		this.connections_.add(new Connection(this, results, lost))
+		this.counter_ += 1
+		this.connections_.add(new Connection(this, this.counter_, results, lost))
 	}
 	requestRoll(connection: Connection) {
 		if (!this.connections_.has(connection)) {
@@ -538,12 +533,42 @@ class Controller {
 		}
 		this.roll()
 	}
-	report(connection: Connection, report: Report, results: Results, lost: Lost) {
+	private boundary_ = 1
+	private boundaryBuffer_ = new Set<number>
+	private packageBuffer_: Array<{ id: number, pkg: Package }> = []
+	onPackage(id: number, pkg: Package) {
+		if (id <= this.boundary_) {
+			this.deck.insert(pkg)
+			return
+		}
+		this.packageBuffer_.push({ id, pkg })
+	}
+	private updateBoundary(id: number) {
+		this.boundaryBuffer_.add(id)
+		if (this.boundary_ != id) {
+			return
+		}
+		while (this.boundaryBuffer_.has(this.boundary_)) {
+			this.boundaryBuffer_.delete(this.boundary_)
+			this.boundary_ += 1
+		}
+		const packageBuffer: Array<{ id: number, pkg: Package }> = []
+		for (const pb of this.packageBuffer_) {
+			if (pb.id <= this.boundary_) {
+				this.deck.insert(pb.pkg)
+				continue
+			}
+			packageBuffer.push(pb)
+		}
+		this.packageBuffer_ = packageBuffer
+	}
+	report(connection: Connection, id: number, report: Report, results: Results, lost: Lost) {
 		this.connections_.delete(connection)
 		this.deck.return(lost)
 		if (report == reports.broken) {
 			this.tracker.return(results)
 		}
+		this.updateBoundary(id)
 		if (report == reports.ok) {
 			this.delay_.reset()
 		}

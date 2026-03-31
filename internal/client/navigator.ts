@@ -7,7 +7,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-doors-commercial
 
 import { id, prefix } from "./params"
-import { arraysEqual } from "./lib"
+import { arraysEqual, scrollInto } from "./lib"
 import indicator from "./indicator"
 import doors from "./door";
 
@@ -222,38 +222,29 @@ export class Navigator {
 		const hashMatch = checkHash ? url1.hash === url2.hash : true
 		return hashMatch && url1.pathname === url2.pathname && this.searchEqual(this.searchToMap(url1.searchParams), this.searchToMap(url2.searchParams))
 	}
-
-	public push(path: string, serverPush: boolean): string | undefined {
+	public push(path: string, serverPush: boolean): boolean {
 		const newUrl = new URL(path, window.location.origin);
 		const currentUrl = new URL(this.urlCurrent(), window.location.origin)
-		if (this.urlAreEqual(currentUrl, newUrl)) {
-			if (serverPush) {
-				this.activateCurrent()
-				return
-			}
-			if (newUrl.hash != currentUrl.hash) {
-				history.replaceState(null, '', path);
-			}
-			this.activateCurrent()
-		} else {
+		if (!this.urlAreEqual(currentUrl, newUrl)) {
 			history.pushState(null, '', path);
 			if (serverPush) {
 				this.activateCurrent()
 			}
+			return true
+		}
+		if (serverPush) {
+			this.activateCurrent()
+			return false
+		}
+		if (newUrl.hash != currentUrl.hash) {
+			history.replaceState(null, '', path);
+			this.activateCurrent()
 		}
 		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
-		if (!hash) {
-			return
+		if (hash) {
+			scrollInto(hash)
 		}
-		const selector = "#" + CSS.escape(hash.slice(1))
-		const elem = document.querySelector(selector)
-		if (!elem) {
-			return selector
-		}
-		elem.scrollIntoView({
-			behavior: "auto",
-		});
-		return
+		return false
 	}
 	public replace(path: string): void {
 		const newUrl = new URL(path, window.location.origin);

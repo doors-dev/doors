@@ -138,18 +138,18 @@ func (a ActionLocationRawAssign) action(ctx context.Context, core core.Core, _ b
 // ActionScroll scrolls to the first element matching Selector.
 type ActionScroll struct {
 	Selector string
-	Smooth   bool
+	Options any
 }
 
 // ActionOnlyScroll returns a single ActionScroll.
-func ActionOnlyScroll(selector string, smooth bool) []Action {
-	return []Action{ActionScroll{Selector: selector, Smooth: smooth}}
+func ActionOnlyScroll(selector string) []Action {
+	return []Action{ActionScroll{Selector: selector}}
 }
 
 func (a ActionScroll) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	return action.Scroll{
 		Selector: a.Selector,
-		Smooth:   a.Smooth,
+		Options: a.Options,
 	}, action.CallParams{}, nil
 }
 
