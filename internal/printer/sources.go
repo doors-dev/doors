@@ -11,34 +11,29 @@ package printer
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"path/filepath"
 	"strings"
 
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
 )
 
-// Source describes content or a URL that can be attached to HTML resource
-// attributes and, when needed, served by Doors.
-type Source interface {
-	// Handler serves the resource request.
-	Handler() HandlerFunc
-	name(ext string) string
-	scriptEntry(inline bool, ts bool) resources.ScriptEntry
-	styleEntry() resources.StyleEntry
+type SourceHandler interface {
 	gox.Modify
+	Handler() HandlerFunc
 }
 
-// SourceStatic is a [Source] that can also be mounted at a stable public path.
 type SourceStatic interface {
-	Source
-	// StaticEntry returns the underlying static resource description.
+	SourceHandler
 	StaticEntry() resources.StaticEntry
+	scriptEntry(inline bool, ts bool) resources.ScriptEntry
+	styleEntry() resources.StyleEntry
 }
+
 
 type SourceFS struct {
 	FS    fs.FS
@@ -52,9 +47,6 @@ func (s SourceFS) Handler() HandlerFunc {
 	}
 }
 
-func (s SourceFS) name(ext string) string {
-	return sourceNameFromPath(s.Entry, ext)
-}
 
 func (s SourceFS) StaticEntry() resources.StaticEntry {
 	return resources.StaticFS{
@@ -87,7 +79,6 @@ func (s SourceFS) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
 	return modifySource(tag, attrs, s)
 }
 
-var _ Source = SourceFS{}
 var _ SourceStatic = SourceFS{}
 
 type SourceLocalFS string
@@ -97,10 +88,6 @@ func (s SourceLocalFS) Handler() HandlerFunc {
 		http.ServeFile(w, r, string(s))
 		return false
 	}
-}
-
-func (s SourceLocalFS) name(ext string) string {
-	return sourceNameFromPath(string(s), ext)
 }
 
 func (s SourceLocalFS) StaticEntry() resources.StaticEntry {
@@ -130,7 +117,6 @@ func (s SourceLocalFS) Modify(_ context.Context, tag string, attrs gox.Attrs) er
 	return modifySource(tag, attrs, s)
 }
 
-var _ Source = SourceLocalFS("")
 var _ SourceStatic = SourceLocalFS("")
 
 type SourceBytes []byte
@@ -140,10 +126,6 @@ func (s SourceBytes) Handler() HandlerFunc {
 		_, _ = w.Write(s)
 		return false
 	}
-}
-
-func (s SourceBytes) name(ext string) string {
-	return sourceDefaultName(ext)
 }
 
 func (s SourceBytes) StaticEntry() resources.StaticEntry {
@@ -179,7 +161,6 @@ func (s SourceBytes) Modify(_ context.Context, tag string, attrs gox.Attrs) erro
 	return modifySource(tag, attrs, s)
 }
 
-var _ Source = SourceBytes(nil)
 var _ SourceStatic = SourceBytes(nil)
 
 type SourceHook func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool
@@ -188,23 +169,11 @@ func (s SourceHook) Handler() HandlerFunc {
 	return HandlerFunc(s)
 }
 
-func (s SourceHook) name(ext string) string {
-	return sourceDefaultName(ext)
-}
-
-func (s SourceHook) scriptEntry(inline bool, ts bool) resources.ScriptEntry {
-	return nil
-}
-
-func (s SourceHook) styleEntry() resources.StyleEntry {
-	return nil
-}
-
 func (s SourceHook) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
 	return modifySource(tag, attrs, s)
 }
 
-var _ Source = SourceHook(nil)
+var _ SourceHandler = SourceHook(nil)
 
 type SourceProxy string
 
@@ -229,23 +198,11 @@ func (s SourceProxy) Handler() HandlerFunc {
 	}
 }
 
-func (s SourceProxy) name(ext string) string {
-	return sourceDefaultName(ext)
-}
-
-func (s SourceProxy) scriptEntry(inline bool, ts bool) resources.ScriptEntry {
-	return nil
-}
-
-func (s SourceProxy) styleEntry() resources.StyleEntry {
-	return nil
-}
-
 func (s SourceProxy) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
 	return modifySource(tag, attrs, s)
 }
 
-var _ Source = SourceProxy("")
+var _ SourceHandler = SourceProxy("")
 
 type SourceString string
 
@@ -254,10 +211,6 @@ func (s SourceString) Handler() HandlerFunc {
 		_, _ = w.Write([]byte(s))
 		return false
 	}
-}
-
-func (s SourceString) name(ext string) string {
-	return sourceDefaultName(ext)
 }
 
 func (s SourceString) StaticEntry() resources.StaticEntry {
@@ -293,32 +246,20 @@ func (s SourceString) Modify(_ context.Context, tag string, attrs gox.Attrs) err
 	return modifySource(tag, attrs, s)
 }
 
-var _ Source = SourceString("")
 var _ SourceStatic = SourceString("")
 
 type SourceExternal string
 
-func (s SourceExternal) Handler() HandlerFunc {
-	return nil
+func (s SourceExternal) Output(w io.Writer) error {
+	_, err := io.WriteString(w, string(s))
+	return err
 }
 
-func (s SourceExternal) name(ext string) string {
-	return ""
-}
-
-func (s SourceExternal) scriptEntry(inline bool, ts bool) resources.ScriptEntry {
-	return nil
-}
-
-func (s SourceExternal) styleEntry() resources.StyleEntry {
-	return nil
-}
+var _ gox.Output = SourceExternal("")
 
 func (s SourceExternal) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
 	return modifySource(tag, attrs, s)
 }
-
-var _ Source = SourceExternal("")
 
 type HandlerFunc = func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool
 type HandlerSimpleFunc = func(w http.ResponseWriter, r *http.Request)
@@ -347,24 +288,3 @@ func modifySource(tag string, attrs gox.Attrs, src any) error {
 	}
 }
 
-func sourceDefaultName(ext string) string {
-	if strings.EqualFold(ext, "css") {
-		return "style.css"
-	}
-	return "script." + ext
-}
-
-func sourceNameFromPath(path string, ext string) string {
-	base := filepath.Base(path)
-	if base == "." || base == "" {
-		return sourceDefaultName(ext)
-	}
-	oldExt := filepath.Ext(base)
-	if oldExt != "" {
-		base = strings.TrimSuffix(base, oldExt)
-	}
-	if base == "" {
-		return sourceDefaultName(ext)
-	}
-	return base + "." + ext
-}

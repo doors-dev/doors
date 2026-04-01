@@ -164,8 +164,8 @@ func serveFS(prefix string, fs http.FileSystem, cacheControl string, w http.Resp
 
 // RouteResource serves one static [ResourceStatic] at a fixed public path.
 //
-// Use it when you want a stable URL but still want Doors to prepare the
-// resource through its registry.
+// Use it when you want a stable URL but still want to serve the
+// resource through registry (cache, gzip).
 type RouteResource struct {
 	// URL path at which the file is served.
 	// Required.

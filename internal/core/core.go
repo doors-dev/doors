@@ -145,8 +145,6 @@ func (c Core) Cinema() beam.Cinema {
 	return c.door.Cinema()
 }
 
-type Done = bool
-
 func (c Core) SetStatus(status int) {
 	c.inst.SetStatus(status)
 }
@@ -187,7 +185,7 @@ func (c Core) ModuleRegistry() ModuleRegistry {
 	return c.inst.ModuleRegistry()
 }
 
-func (c Core) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, onCancel func(ctx context.Context)) (Hook, bool) {
+func (c Core) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool) {
 	return c.door.RegisterHook(onTrigger, onCancel)
 }
 

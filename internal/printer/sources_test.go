@@ -1,6 +1,7 @@
 package printer
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -84,26 +85,21 @@ func TestSourceHookAndExternalBranches(t *testing.T) {
 	if rec.Body.String() != "hook" {
 		t.Fatalf("SourceHook body = %q", rec.Body.String())
 	}
-	if hook.scriptEntry(false, false) != nil {
-		t.Fatal("SourceHook scriptEntry should be nil")
-	}
 
 	external := SourceExternal("https://example.com/app.js")
-	if external.Handler() != nil {
-		t.Fatal("SourceExternal handler should be nil")
-	}
-	if external.scriptEntry(false, false) != nil {
-		t.Fatal("SourceExternal scriptEntry should be nil")
-	}
-	if external.styleEntry() != nil {
-		t.Fatal("SourceExternal styleEntry should be nil")
-	}
 	attrs := gox.NewAttrs()
 	if err := external.Modify(context.Background(), "link", attrs); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := attrs.Find("href"); got.Value() != external {
 		t.Fatalf("SourceExternal.Modify href = %#v", got.Value())
+	}
+	var out bytes.Buffer
+	if err := external.Output(&out); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != string(external) {
+		t.Fatalf("SourceExternal.Output = %q", out.String())
 	}
 }
 
@@ -116,9 +112,6 @@ func TestSourceProxyInvalidURLAndStringStatic(t *testing.T) {
 	}
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("SourceProxy invalid status = %d", rec.Code)
-	}
-	if proxy.scriptEntry(false, false) != nil {
-		t.Fatal("SourceProxy scriptEntry should be nil")
 	}
 
 	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,17 +131,7 @@ func TestSourceProxyInvalidURLAndStringStatic(t *testing.T) {
 	}
 }
 
-func TestSourceNameAndHelpers(t *testing.T) {
-	if got := sourceNameFromPath("", "js"); got != "script.js" {
-		t.Fatalf("empty path name = %q", got)
-	}
-	if got := sourceNameFromPath(".", "css"); got != "style.css" {
-		t.Fatalf("dot path name = %q", got)
-	}
-	if got := sourceNameFromPath("/tmp/app.bundle.ts", "js"); got != "app.bundle.js" {
-		t.Fatalf("trimmed path name = %q", got)
-	}
-
+func TestModifySourceHelpers(t *testing.T) {
 	attrs := gox.NewAttrs()
 	if err := modifySource("script", attrs, "value"); err != nil {
 		t.Fatal(err)
@@ -167,10 +150,6 @@ func TestSourceNameAndHelpers(t *testing.T) {
 
 	if err := modifySource("div", gox.NewAttrs(), "value"); err == nil {
 		t.Fatal("modifySource should reject unsupported tags")
-	}
-
-	if sourceDefaultName("css") != "style.css" || sourceDefaultName("js") != "script.js" {
-		t.Fatal("sourceDefaultName mismatch")
 	}
 }
 
@@ -240,9 +219,5 @@ func TestSourceBytesAndStringScriptKinds(t *testing.T) {
 	gotSource, ok := gotAttr.Value().(SourceFS)
 	if !ok || gotSource.Entry != fsSrc.Entry {
 		t.Fatalf("SourceFS.Modify href = %#v", gotAttr.Value())
-	}
-
-	if got := sourceNameFromPath(".js", "js"); got != "script.js" {
-		t.Fatalf("hidden file default name = %q", got)
 	}
 }

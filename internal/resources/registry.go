@@ -205,6 +205,6 @@ type ResourceMode int
 
 const (
 	ModeHost ResourceMode = iota
-	ModeCache
+	ModeNoHost
 	ModeNoCache
 )

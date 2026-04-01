@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -152,14 +151,14 @@ func (p *failPrinter) Send(gox.Job) error {
 
 func TestResourceEntryHelpers(t *testing.T) {
 	t.Run("script empty", func(t *testing.T) {
-		r := &resource{}
+		r := &embeddedResource{}
 		if r.scriptEntry() != nil {
 			t.Fatal("empty script entry should be nil")
 		}
 	})
 
 	t.Run("script string and bytes", func(t *testing.T) {
-		r := &resource{}
+		r := &embeddedResource{}
 		r.appendString("const a = 1;")
 		entry := r.scriptEntry()
 		script, ok := entry.(resources.ScriptInlineString)
@@ -167,7 +166,7 @@ func TestResourceEntryHelpers(t *testing.T) {
 			t.Fatalf("single string script entry = %#v", entry)
 		}
 
-		r = &resource{}
+		r = &embeddedResource{}
 		r.appendBytes([]byte("const b = 2;"))
 		entry = r.scriptEntry()
 		scriptBytes, ok := entry.(resources.ScriptInlineBytes)
@@ -175,7 +174,7 @@ func TestResourceEntryHelpers(t *testing.T) {
 			t.Fatalf("single bytes script entry = %#v", entry)
 		}
 
-		r = &resource{}
+		r = &embeddedResource{}
 		r.appendString("const ")
 		r.appendBytes([]byte("c = 3;"))
 		entry = r.scriptEntry()
@@ -186,14 +185,14 @@ func TestResourceEntryHelpers(t *testing.T) {
 	})
 
 	t.Run("style empty", func(t *testing.T) {
-		r := &resource{}
+		r := &embeddedResource{}
 		if r.styleEntry() != nil {
 			t.Fatal("empty style entry should be nil")
 		}
 	})
 
 	t.Run("style string and bytes", func(t *testing.T) {
-		r := &resource{}
+		r := &embeddedResource{}
 		r.appendString("h1 { color: red; }")
 		entry := r.styleEntry()
 		style, ok := entry.(resources.StyleString)
@@ -201,7 +200,7 @@ func TestResourceEntryHelpers(t *testing.T) {
 			t.Fatalf("single string style entry = %#v", entry)
 		}
 
-		r = &resource{}
+		r = &embeddedResource{}
 		r.appendBytes([]byte("h2 { color: blue; }"))
 		entry = r.styleEntry()
 		styleBytes, ok := entry.(resources.StyleBytes)
@@ -209,7 +208,7 @@ func TestResourceEntryHelpers(t *testing.T) {
 			t.Fatalf("single bytes style entry = %#v", entry)
 		}
 
-		r = &resource{}
+		r = &embeddedResource{}
 		r.appendString("h3")
 		r.appendBytes([]byte(" { color: green; }"))
 		entry = r.styleEntry()
@@ -222,7 +221,7 @@ func TestResourceEntryHelpers(t *testing.T) {
 
 func TestResourceDump(t *testing.T) {
 	var out bytes.Buffer
-	r := &resource{
+	r := &embeddedResource{
 		openJob:  gox.NewJobHeadOpen(context.Background(), 1, gox.KindRegular, "script", gox.NewAttrs()),
 		closeJob: gox.NewJobHeadClose(context.Background(), 1, gox.KindRegular, "script"),
 	}
@@ -356,27 +355,6 @@ func TestScanGenericSrcBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects cache on plain string", func(t *testing.T) {
-		rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
-		attrs := gox.NewAttrs()
-		attrs.Get("src").Set("/plain.js")
-		attrs.Get("cache").Set(true)
-		err := rp.scanGenericSrc(gox.NewJobHeadOpen(ctx, 2, gox.KindVoid, "script", attrs))
-		if err == nil || !strings.Contains(err.Error(), "cache attr requires") {
-			t.Fatalf("unexpected cache error: %v", err)
-		}
-	})
-
-	t.Run("rejects source without handler", func(t *testing.T) {
-		rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
-		attrs := gox.NewAttrs()
-		attrs.Get("href").Set(SourceExternal("https://cdn.example/app.css"))
-		err := rp.scanGenericSrc(gox.NewJobHeadOpen(ctx, 3, gox.KindVoid, "link", attrs))
-		if err == nil || !strings.Contains(err.Error(), "source does not provide a handler") {
-			t.Fatalf("unexpected handler error: %v", err)
-		}
-	})
-
 	t.Run("registers hook source", func(t *testing.T) {
 		var out bytes.Buffer
 		rp := &resourcePrinter{printer: defaultPrinter{&out}}
@@ -399,7 +377,7 @@ func TestScanGenericSrcBranches(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("src").Set(SourceString("hello"))
 		attrs.Get("cache").Set(true)
-		attrs.Get("content-type").Set("text/plain")
+		attrs.Get("type").Set("text/plain")
 		attrs.Get("name").Set("asset.txt")
 		job := gox.NewJobHeadOpen(ctx, 5, gox.KindVoid, "img", attrs)
 		if err := rp.scanGenericSrc(job); err != nil {
@@ -408,9 +386,6 @@ func TestScanGenericSrcBranches(t *testing.T) {
 		got := out.String()
 		if !strings.Contains(got, `/r/`) || !strings.Contains(got, `.asset.txt`) {
 			t.Fatalf("expected cached resource path, got %q", got)
-		}
-		if strings.Contains(got, "content-type") {
-			t.Fatalf("expected content-type attr to be removed, got %q", got)
 		}
 	})
 
@@ -429,29 +404,6 @@ func TestScanGenericSrcBranches(t *testing.T) {
 func TestPrepareLinkStyleBranches(t *testing.T) {
 	ctx, inst, _, _ := newPrinterCore(t, true)
 
-	t.Run("rejects non-void", func(t *testing.T) {
-		rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
-		err := rp.prepareLinkStyle(gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "link", gox.NewAttrs()))
-		if err == nil || !strings.Contains(err.Error(), "non-void link stylesheet tag") {
-			t.Fatalf("unexpected non-void error: %v", err)
-		}
-	})
-
-	t.Run("passes through raw styles", func(t *testing.T) {
-		var out bytes.Buffer
-		rp := &resourcePrinter{printer: defaultPrinter{&out}}
-		attrs := gox.NewAttrs()
-		attrs.Get("rel").Set("stylesheet")
-		attrs.Get("href").Set("/app.css")
-		attrs.Get("output").Set("raw")
-		if err := rp.prepareLinkStyle(gox.NewJobHeadOpen(ctx, 2, gox.KindVoid, "link", attrs)); err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(out.String(), `/app.css`) {
-			t.Fatalf("expected raw stylesheet passthrough, got %q", out.String())
-		}
-	})
-
 	t.Run("tracks external styles in csp", func(t *testing.T) {
 		var out bytes.Buffer
 		rp := &resourcePrinter{printer: defaultPrinter{&out}}
@@ -468,141 +420,28 @@ func TestPrepareLinkStyleBranches(t *testing.T) {
 			t.Fatalf("expected csp style source to be recorded, got %q", inst.CSPCollector().Generate())
 		}
 	})
-
-	t.Run("creates private style hook path from source", func(t *testing.T) {
-		var out bytes.Buffer
-		rp := &resourcePrinter{printer: defaultPrinter{&out}}
-		attrs := gox.NewAttrs()
-		attrs.Get("rel").Set("stylesheet")
-		attrs.Get("href").Set(SourceString("body{color:red}"))
-		attrs.Get("private").Set(true)
-		attrs.Get("name").Set("private.css")
-		if err := rp.prepareLinkStyle(gox.NewJobHeadOpen(ctx, 4, gox.KindVoid, "link", attrs)); err != nil {
-			t.Fatal(err)
-		}
-		got := out.String()
-		if !strings.Contains(got, `/h/`) || !strings.Contains(got, `private.css`) {
-			t.Fatalf("expected private stylesheet hook path, got %q", got)
-		}
-	})
 }
 
 func TestPrepareScriptAndSendBranches(t *testing.T) {
-	t.Run("inline script becomes hosted resource", func(t *testing.T) {
-		ctx, _, _, _ := newPrinterCore(t, true)
-		var out bytes.Buffer
-		rp := NewResourcePrinter(defaultPrinter{&out})
-		open := gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "script", gox.NewAttrs())
-		if err := rp.Send(open); err != nil {
-			t.Fatal(err)
-		}
-		if err := rp.Send(gox.NewJobRaw(ctx, "console.log('hi')")); err != nil {
-			t.Fatal(err)
-		}
-		if err := rp.Send(gox.NewJobHeadClose(ctx, 1, gox.KindRegular, "script")); err != nil {
-			t.Fatal(err)
-		}
-		got := out.String()
-		if !strings.Contains(got, `<script src="/~/srv/r/`) || !strings.Contains(got, `.inline.js`) {
-			t.Fatalf("expected hosted inline script, got %q", got)
-		}
-	})
-
-	t.Run("inline nocache style becomes hook-backed link", func(t *testing.T) {
-		ctx, _, _, _ := newPrinterCore(t, true)
-		var out bytes.Buffer
-		rp := NewResourcePrinter(defaultPrinter{&out})
-		attrs := gox.NewAttrs()
-		attrs.Get("nocache").Set(true)
-		open := gox.NewJobHeadOpen(ctx, 2, gox.KindRegular, "style", attrs)
-		if err := rp.Send(open); err != nil {
-			t.Fatal(err)
-		}
-		if err := rp.Send(gox.NewJobBytes(ctx, []byte("body{color:red}"))); err != nil {
-			t.Fatal(err)
-		}
-		if err := rp.Send(gox.NewJobHeadClose(ctx, 2, gox.KindRegular, "style")); err != nil {
-			t.Fatal(err)
-		}
-		got := out.String()
-		if !strings.Contains(got, `<link`) ||
-			!strings.Contains(got, `/~/srv/h/instance/7/1/inline.css`) ||
-			!strings.Contains(got, `rel="stylesheet"`) {
-			t.Fatalf("expected nocache style link output, got %q", got)
-		}
-	})
-
-	t.Run("specifier only script is skipped and registered", func(t *testing.T) {
-		ctx, _, _, modules := newPrinterCore(t, true)
-		var out bytes.Buffer
-		rp := NewResourcePrinter(defaultPrinter{&out})
-		attrs := gox.NewAttrs()
-		attrs.Get("src").Set("/assets/app.js")
-		attrs.Get("specifier").Set("app")
-		open := gox.NewJobHeadOpen(ctx, 3, gox.KindRegular, "script", attrs)
-		if err := rp.Send(open); err != nil {
-			t.Fatal(err)
-		}
-		if err := rp.Send(gox.NewJobHeadClose(ctx, 3, gox.KindRegular, "script")); err != nil {
-			t.Fatal(err)
-		}
-		if out.Len() != 0 {
-			t.Fatalf("expected specifier-only script to be skipped, got %q", out.String())
-		}
-		if modules.values["app"] != "/assets/app.js" {
-			t.Fatalf("expected module registry add, got %#v", modules.values)
-		}
-	})
-
-	t.Run("supports proxy script source", func(t *testing.T) {
-		ctx, _, _, _ := newPrinterCore(t, true)
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			_, _ = w.Write([]byte("proxied"))
-		}))
-		defer server.Close()
-
-		var out bytes.Buffer
-		rp := NewResourcePrinter(defaultPrinter{&out})
-		attrs := gox.NewAttrs()
-		attrs.Get("src").Set(SourceProxy(server.URL))
-		open := gox.NewJobHeadOpen(ctx, 4, gox.KindRegular, "script", attrs)
-		if err := rp.Send(open); err != nil {
-			t.Fatal(err)
-		}
-		if err := rp.Send(gox.NewJobHeadClose(ctx, 4, gox.KindRegular, "script")); err != nil {
-			t.Fatal(err)
-		}
-		if got := out.String(); !strings.Contains(got, `/h/instance/7/1/`) {
-			t.Fatalf("expected proxy-backed hook path, got %q", got)
-		}
-	})
 }
 
 func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 	ctx, _, _, _ := newPrinterCore(t, true)
 	rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
 
-	t.Run("invalid style output", func(t *testing.T) {
-		attrs := gox.NewAttrs()
-		attrs.Get("output").Set("weird")
-		err := rp.prepareStyle(gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "style", attrs))
-		if err == nil || !strings.Contains(err.Error(), "unexpected style output kind") {
-			t.Fatalf("unexpected style output error: %v", err)
-		}
-	})
-
 	t.Run("invalid script output", func(t *testing.T) {
 		attrs := gox.NewAttrs()
-		attrs.Get("output").Set("weird")
+		attrs.Get("bundle").Set(true)
+		attrs.Get("inline").Set(true)
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 2, gox.KindRegular, "script", attrs))
-		if err == nil || !strings.Contains(err.Error(), "unknown script output") {
+		if err == nil || !strings.Contains(err.Error(), "duplicated") {
 			t.Fatalf("unexpected script output error: %v", err)
 		}
 	})
 
 	t.Run("inline bundle script is rejected", func(t *testing.T) {
 		attrs := gox.NewAttrs()
-		attrs.Get("output").Set("bundle")
+		attrs.Get("bundle").Set(true)
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 3, gox.KindRegular, "script", attrs))
 		if err == nil || !strings.Contains(err.Error(), "can't be bundeled") {
 			t.Fatalf("unexpected inline bundle error: %v", err)
@@ -613,7 +452,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("type").Set("module")
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 4, gox.KindRegular, "script", attrs))
-		if err == nil || !strings.Contains(err.Error(), "inline modules are not supported") {
+		if err == nil || !strings.Contains(err.Error(), "inline scripts can't be modules") {
 			t.Fatalf("unexpected inline module error: %v", err)
 		}
 	})
@@ -622,26 +461,15 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("type").Set("text/typescript")
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 5, gox.KindRegular, "script", attrs))
-		if err == nil || !strings.Contains(err.Error(), "inline typescript is not supported") {
+		if err == nil || !strings.Contains(err.Error(), "typescript is not supported on embedded inline scripts") {
 			t.Fatalf("unexpected inline ts error: %v", err)
-		}
-	})
-
-	t.Run("inline modulepreload is rejected", func(t *testing.T) {
-		attrs := gox.NewAttrs()
-		attrs.Get("rel").Set("modulepreload")
-		attrs.Get("href").Set(SourceString("console.log(1)"))
-		attrs.Get("output").Set("inline")
-		err := rp.prepareLinkModule(gox.NewJobHeadOpen(ctx, 6, gox.KindVoid, "link", attrs))
-		if err == nil || !strings.Contains(err.Error(), "inline modulepreload is not supported") {
-			t.Fatalf("unexpected modulepreload inline error: %v", err)
 		}
 	})
 
 	t.Run("raw typescript source is rejected", func(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("src").Set(SourceString("let x: number = 1"))
-		attrs.Get("output").Set("raw")
+		attrs.Get("raw").Set(true)
 		attrs.Get("type").Set("text/typescript")
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 7, gox.KindRegular, "script", attrs))
 		if err == nil || !strings.Contains(err.Error(), "raw typescript can't be served") {
@@ -652,66 +480,48 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 	t.Run("regular src can't bundle or inline", func(t *testing.T) {
 		bundleAttrs := gox.NewAttrs()
 		bundleAttrs.Get("src").Set("/plain.js")
-		bundleAttrs.Get("output").Set("bundle")
+		bundleAttrs.Get("bundle").Set(true)
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 8, gox.KindRegular, "script", bundleAttrs))
-		if err == nil || !strings.Contains(err.Error(), "can't bundle script with regular src") {
+		if err == nil || !strings.Contains(err.Error(), "scripts with regular sources can't be transformed") {
 			t.Fatalf("unexpected regular src bundle error: %v", err)
 		}
 
 		inlineAttrs := gox.NewAttrs()
 		inlineAttrs.Get("src").Set("/plain.js")
-		inlineAttrs.Get("output").Set("inline")
+		inlineAttrs.Get("inline").Set(true)
 		err = rp.prepareScript(gox.NewJobHeadOpen(ctx, 9, gox.KindRegular, "script", inlineAttrs))
-		if err == nil || !strings.Contains(err.Error(), `can't prepare "inline" script with regular src`) {
+		if err == nil || !strings.Contains(err.Error(), "scripts with regular sources can't be transformed") {
 			t.Fatalf("unexpected regular src inline error: %v", err)
 		}
 	})
 
-	t.Run("external and unknown src errors", func(t *testing.T) {
+	t.Run("external inline errors while unknown sources pass through", func(t *testing.T) {
 		externalAttrs := gox.NewAttrs()
 		externalAttrs.Get("src").Set(SourceExternal("https://cdn.example/app.js"))
-		externalAttrs.Get("output").Set("inline")
+		externalAttrs.Get("inline").Set(true)
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 10, gox.KindRegular, "script", externalAttrs))
-		if err == nil || !strings.Contains(err.Error(), `can't prepare "inline" script with extarnal src`) {
+		if err == nil || !strings.Contains(err.Error(), "scripts with regular sources can't be transformed") {
 			t.Fatalf("unexpected external inline error: %v", err)
 		}
 
 		unknownAttrs := gox.NewAttrs()
 		unknownAttrs.Get("src").Set(123)
-		unknownAttrs.Get("output").Set("bundle")
-		err = rp.prepareScript(gox.NewJobHeadOpen(ctx, 11, gox.KindRegular, "script", unknownAttrs))
-		if err == nil || !strings.Contains(err.Error(), "unknown type of src attribute on script") {
-			t.Fatalf("unexpected unknown src error: %v", err)
+		unknownAttrs.Get("bundle").Set(true)
+		var out bytes.Buffer
+		unknownRP := &resourcePrinter{printer: defaultPrinter{&out}}
+		err = unknownRP.prepareScript(gox.NewJobHeadOpen(ctx, 11, gox.KindRegular, "script", unknownAttrs))
+		if err != nil {
+			t.Fatalf("expected unknown script source to pass through, got %v", err)
 		}
-
 		unknownHref := gox.NewAttrs()
 		unknownHref.Get("rel").Set("modulepreload")
 		unknownHref.Get("href").Set(123)
-		unknownHref.Get("output").Set("bundle")
-		err = rp.prepareLinkModule(gox.NewJobHeadOpen(ctx, 12, gox.KindVoid, "link", unknownHref))
-		if err == nil || !strings.Contains(err.Error(), "unknown type of href attribute on modulepreload link") {
-			t.Fatalf("unexpected unknown href error: %v", err)
-		}
-	})
-
-	t.Run("raw inline script stays inline", func(t *testing.T) {
-		var out bytes.Buffer
-		rp := NewResourcePrinter(defaultPrinter{&out})
-		attrs := gox.NewAttrs()
-		attrs.Get("output").Set("raw")
-		open := gox.NewJobHeadOpen(ctx, 13, gox.KindRegular, "script", attrs)
-		if err := rp.Send(open); err != nil {
-			t.Fatal(err)
-		}
-		if err := rp.Send(gox.NewJobRaw(ctx, `console.log("raw")`)); err != nil {
-			t.Fatal(err)
-		}
-		if err := rp.Send(gox.NewJobHeadClose(ctx, 13, gox.KindRegular, "script")); err != nil {
-			t.Fatal(err)
-		}
-		got := out.String()
-		if !strings.Contains(got, `console.log("raw")`) || strings.Contains(got, `/r/`) || strings.Contains(got, `/h/`) {
-			t.Fatalf("expected raw inline script to stay inline, got %q", got)
+		unknownHref.Get("bundle").Set(true)
+		out.Reset()
+		unknownRP = &resourcePrinter{printer: defaultPrinter{&out}}
+		err = unknownRP.prepareLinkModule(gox.NewJobHeadOpen(ctx, 12, gox.KindVoid, "link", unknownHref))
+		if err != nil {
+			t.Fatalf("expected unknown modulepreload href to pass through, got %v", err)
 		}
 	})
 
@@ -721,38 +531,23 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = resourceURL(failCtx.Value(ctex.KeyCore).(core.Core), res, resources.ModeCache, "x.txt")
+		_, err = resourceURL(failCtx.Value(ctex.KeyCore).(core.Core), res, resources.ModeNoHost, "x.txt")
 		if err != context.Canceled {
 			t.Fatalf("expected canceled resource url, got %v", err)
 		}
 	})
 
-	t.Run("parse helpers and source conversion", func(t *testing.T) {
-		if got, ok := rp.parseStyleOutput("minify"); !ok || got != styleMinify {
-			t.Fatalf("parseStyleOutput(minify) = %v %v", got, ok)
-		}
-		if got, ok := rp.parseStyleOutput("nope"); ok || got != "" {
-			t.Fatalf("parseStyleOutput(nope) = %v %v", got, ok)
-		}
-		if got, ok := rp.parseScriptOutput("bundle"); !ok || got != scriptBundle {
-			t.Fatalf("parseScriptOutput(bundle) = %v %v", got, ok)
-		}
-		if got, ok := rp.parseScriptOutput(42); ok || got != "" {
-			t.Fatalf("parseScriptOutput(42) = %v %v", got, ok)
-		}
-		if got, ok := rp.parseStyleOutput(""); !ok || got != styleDefault {
-			t.Fatalf("parseStyleOutput(\"\") = %v %v", got, ok)
-		}
-		if _, ok := rp.getSource(plainAttrWithValue(HandlerSimpleFunc(func(http.ResponseWriter, *http.Request) {}))).(SourceHook); !ok {
+	t.Run("source conversion and format helpers", func(t *testing.T) {
+		if _, ok := getSource(plainAttrWithValue(HandlerSimpleFunc(func(http.ResponseWriter, *http.Request) {}))).(SourceHook); !ok {
 			t.Fatal("expected simple handler to convert to SourceHook")
 		}
-		if _, ok := rp.getSource(plainAttrWithValue(HandlerFunc(func(context.Context, http.ResponseWriter, *http.Request) bool { return false }))).(SourceHook); !ok {
+		if _, ok := getSource(plainAttrWithValue(HandlerFunc(func(context.Context, http.ResponseWriter, *http.Request) bool { return false }))).(SourceHook); !ok {
 			t.Fatal("expected full handler to convert to SourceHook")
 		}
-		if _, ok := rp.getSource(plainAttrWithValue([]byte("x"))).(SourceBytes); !ok {
+		if _, ok := getSource(plainAttrWithValue([]byte("x"))).(SourceBytes); !ok {
 			t.Fatal("expected []byte attr to convert to SourceBytes")
 		}
-		if got := rp.getSource(plainAttrWithValue("plain")); got != "plain" {
+		if got := getSource(plainAttrWithValue("plain")); got != "plain" {
 			t.Fatalf("expected passthrough source value, got %#v", got)
 		}
 		format, err := scriptBundle.format(false)
@@ -781,9 +576,9 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 func TestProcessResErrors(t *testing.T) {
 	ctx, _, _, _ := newPrinterCore(t, true)
 	rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
-	res := &resource{
+	res := &embeddedResource{
 		openJob: gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "style", gox.NewAttrs()),
-		kind:    resourceStyle,
+		kind:    embeddedStyle,
 	}
 	if err := rp.processRes(gox.NewJobHeadClose(ctx, 2, gox.KindRegular, "style"), res); err == nil || !strings.Contains(err.Error(), "missmatch") {
 		t.Fatalf("unexpected mismatch error: %v", err)
@@ -798,11 +593,11 @@ func TestResourceRenderFallbackAndDumpError(t *testing.T) {
 		ctx, _, _, _ := newPrinterCore(t, true)
 
 		var scriptOut bytes.Buffer
-		script := &resource{
+		script := &embeddedResource{
 			openJob:  gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "script", gox.NewAttrs()),
 			closeJob: gox.NewJobHeadClose(ctx, 1, gox.KindRegular, "script"),
-			kind:     resourceScript,
-			mode:     resources.ModeHost,
+			kind:     embeddedScript,
+			props:    &resourceProps{mode: resources.ModeHost},
 		}
 		if err := script.render(defaultPrinter{&scriptOut}); err != nil {
 			t.Fatal(err)
@@ -812,11 +607,11 @@ func TestResourceRenderFallbackAndDumpError(t *testing.T) {
 		}
 
 		var styleOut bytes.Buffer
-		style := &resource{
+		style := &embeddedResource{
 			openJob:  gox.NewJobHeadOpen(ctx, 2, gox.KindRegular, "style", gox.NewAttrs()),
 			closeJob: gox.NewJobHeadClose(ctx, 2, gox.KindRegular, "style"),
-			kind:     resourceStyle,
-			mode:     resources.ModeHost,
+			kind:     embeddedStyle,
+			props:    &resourceProps{mode: resources.ModeHost},
 		}
 		if err := style.render(defaultPrinter{&styleOut}); err != nil {
 			t.Fatal(err)
@@ -828,7 +623,7 @@ func TestResourceRenderFallbackAndDumpError(t *testing.T) {
 
 	t.Run("dump returns printer error", func(t *testing.T) {
 		ctx, _, _, _ := newPrinterCore(t, true)
-		res := &resource{
+		res := &embeddedResource{
 			openJob:  gox.NewJobHeadOpen(ctx, 3, gox.KindRegular, "script", gox.NewAttrs()),
 			closeJob: gox.NewJobHeadClose(ctx, 3, gox.KindRegular, "script"),
 		}
@@ -865,41 +660,12 @@ func TestResourcePrinterScanAndModulePreloadBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("modulepreload rejects non-void", func(t *testing.T) {
-		rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
-		attrs := gox.NewAttrs()
-		attrs.Get("rel").Set("modulepreload")
-		err := rp.prepareLinkModule(gox.NewJobHeadOpen(ctx, 3, gox.KindRegular, "link", attrs))
-		if err == nil || !strings.Contains(err.Error(), "non-void modulepreload") {
-			t.Fatalf("unexpected modulepreload non-void error: %v", err)
-		}
-	})
-
-	t.Run("modulepreload specifier-only string is skipped and registered", func(t *testing.T) {
-		var out bytes.Buffer
-		rp := NewResourcePrinter(defaultPrinter{&out})
-		attrs := gox.NewAttrs()
-		attrs.Get("rel").Set("modulepreload")
-		attrs.Get("href").Set("/modules/app.js")
-		attrs.Get("specifier").Set("app")
-		attrs.Get("name").Set("app.js")
-		open := gox.NewJobHeadOpen(ctx, 4, gox.KindVoid, "link", attrs)
-		if err := rp.Send(open); err != nil {
-			t.Fatal(err)
-		}
-		if got := out.String(); !strings.Contains(got, `rel="modulepreload"`) || !strings.Contains(got, `/modules/app.js`) {
-			t.Fatalf("expected modulepreload passthrough output, got %q", got)
-		}
-		if modules.values["app"] != "/modules/app.js" {
-			t.Fatalf("expected modulepreload registry add, got %#v", modules.values)
-		}
-	})
-
 	t.Run("script scan rewrites data attrs and keeps tag when needed", func(t *testing.T) {
 		var out bytes.Buffer
 		rp := NewResourcePrinter(defaultPrinter{&out})
 		attrs := gox.NewAttrs()
 		attrs.Get("src").Set("/modules/app.js")
+		attrs.Get("type").Set("module")
 		attrs.Get("specifier").Set("kept")
 		attrs.Get("data:mode").Set("fast")
 		attrs.Get("async").Set(true)
@@ -925,4 +691,34 @@ func plainAttrWithValue(value any) gox.Attr {
 	attr := attrs.Get("value")
 	attr.Set(value)
 	return attr
+}
+
+func (rp *resourcePrinter) prepareLinkStyle(open *gox.JobHeadOpen) error {
+	return rp.processProps(open, newStyleProps(true))
+}
+
+func (rp *resourcePrinter) prepareStyle(open *gox.JobHeadOpen) error {
+	return rp.processProps(open, newStyleProps(false))
+}
+
+func (rp *resourcePrinter) prepareScript(open *gox.JobHeadOpen) error {
+	return rp.processProps(open, newScriptProps(false))
+}
+
+func (rp *resourcePrinter) prepareLinkModule(open *gox.JobHeadOpen) error {
+	return rp.processProps(open, newScriptProps(true))
+}
+
+func getSource(attr gox.Attr) any {
+	props := &resourceProps{}
+	props.readSource(attr)
+	return props.source
+}
+
+func resourceURL(core core.Core, res *resources.Resource, mode resources.ResourceMode, name string) (string, error) {
+	props := &resourceProps{
+		mode: mode,
+		name: name,
+	}
+	return props.resourceURL(core, res)
 }

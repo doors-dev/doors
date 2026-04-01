@@ -46,20 +46,10 @@ Use plain `<style>...</style>` when the CSS belongs to one page or one component
 
 By default, **Doors** does not keep that literal `<style>` tag. It collects the CSS, creates a stylesheet resource, and emits a stylesheet link in the final HTML.
 
-Use `output="raw"` when you want a literal browser `<style>` tag:
+Use `raw` when you want a literal browser `<style>` tag:
 
 ```gox
-<style output="raw">
-	h1 {
-		color: red;
-	}
-</style>
-```
-
-Use `output="minify"` when the generated stylesheet should be minified:
-
-```gox
-<style output="minify">
+<style raw>
 	h1 {
 		color: red;
 	}
@@ -109,22 +99,21 @@ Modifier syntax is often convenient when the whole tag exists just to serve that
 Other `href` forms are:
 
 - plain string such as `"/assets/app.css"` for an already-hosted URL
-- `doors.ResourceExternal("https://cdn.example.com/app.css")` for an external URL that should also participate in CSP source collection
+- `doors.ResourceExternal("https://cdn.example.com/app.css")` for a direct browser URL that should also participate in CSP source collection
 - `doors.ResourceHandler(...)`, `doors.ResourceHook(...)`, or `doors.ResourceProxy(...)` for handler-backed and proxied stylesheet URLs
 
-On stylesheet links, `output` behaves like this:
+On stylesheet links, output behavior is:
 
-- omitted or `output="default"`: buildable sources go through the stylesheet pipeline
-- `output="minify"`: same, but minified
-- `output="raw"`: **Doors** leaves the original tag alone
+- omitted: buildable sources go through the stylesheet pipeline
+- `raw`: **Doors** leaves the original tag alone
 
-That means `output="raw"` is mainly useful when `href` is already something the browser can use directly.
+Managed stylesheet output is minified by default. `raw` is mainly useful when `href` is already something the browser can use directly, or when an embedded `<style>` must stay literal.
 
 ## Attrs
 
 These attrs control managed stylesheet behavior:
 
-- `output`: `default`, `minify`, or `raw`
+- `raw`: keep the stylesheet tag or link raw
 - `name`: readable output file name
 - `private`: serve the stylesheet through an instance-scoped hook URL while still using the stylesheet pipeline
 - `nocache`: serve through an instance-scoped hook URL without shared resource caching
@@ -139,15 +128,8 @@ Example:
 	private>
 ```
 
-Plain string URLs are passed through as-is. Handler and proxy sources already produce hook-backed URLs. `private` and `nocache` are most useful with managed stylesheet resources.
+Plain string URLs are passed through as-is. `doors.ResourceExternal(...)` keeps the browser URL direct while also adding that host to CSP. Handler and proxy sources already produce hook-backed URLs.
 
-## Choose
+Use `private` when the stylesheet should not be publicly reachable.
 
-- CSS written here for this page: plain `<style>...</style>`
-- CSS kept in a file, bytes, or string: `<link rel="stylesheet" href=(...)>`
-- Bytes already in memory: `href=(appCSS)` or `href=(doors.ResourceBytes(appCSS))`
-- Already-hosted stylesheet: plain string `href`
-- External stylesheet that should also be added to CSP: `ResourceExternal(...)`
-- Literal browser `<style>` tag: `output="raw"`
-- Minified managed stylesheet output: `output="minify"`
-- Shared public stylesheet URL is not wanted: use `private` or `nocache`
+Use `nocache` for dynamically generated styles that should not use shared resource caching.

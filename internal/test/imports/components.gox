@@ -11,12 +11,14 @@ import (
 
 elem staticFiles(_b doors.Source[test.Path]) {
 	~(fileHref())
+	~(fileRawHref())
 	~(fileSrc())
 	~(fileRawSrc())
 	~(fileHrefModify())
 	~(fileRawHrefModify())
 	~(fileSrcModify())
 	~(fileRawSrcModify())
+	~(fileImgFS())
 	~(fileCachedHref())
 	~(fileCachedHrefModify())
 	~(filePrivateHref())
@@ -25,11 +27,12 @@ elem staticFiles(_b doors.Source[test.Path]) {
 }
 
 elem fileHref() {
-	<link rel="stylesheet" href=(doors.ResourceLocalFS(modulePath + "/style.css"))/>
+	<link id="file-href" rel="stylesheet" href=(doors.ResourceLocalFS(modulePath + "/style.css"))/>
 }
 
 elem fileRawHref() {
 	<link
+		id="file-raw-href"
 		rel="stylesheet"
 		href=(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
@@ -37,22 +40,24 @@ elem fileRawHref() {
 }
 
 elem fileSrc() {
-	<script src=(doors.ResourceLocalFS(modulePath + "/index.js"))></script>
+	<script id="file-src" src=(doors.ResourceLocalFS(modulePath + "/index.js"))></script>
 }
 
 elem fileRawSrc() {
 	<script
+		id="file-raw-src"
 		src=(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(moduleBytes)
 		})></script>
 }
 
 elem fileHrefModify() {
-	<link rel="stylesheet" (doors.ResourceLocalFS(modulePath + "/style.css"))/>
+	<link id="file-href-modify" rel="stylesheet" (doors.ResourceLocalFS(modulePath + "/style.css"))/>
 }
 
 elem fileRawHrefModify() {
 	<link
+		id="file-raw-href-modify"
 		rel="stylesheet"
 		(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
@@ -60,14 +65,22 @@ elem fileRawHrefModify() {
 }
 
 elem fileSrcModify() {
-	<script (doors.ResourceLocalFS(modulePath + "/index.js"))></script>
+	<script id="file-src-modify" (doors.ResourceLocalFS(modulePath + "/index.js"))></script>
 }
 
 elem fileRawSrcModify() {
 	<script
+		id="file-raw-src-modify"
 		(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(moduleBytes)
 		}))></script>
+}
+
+elem fileImgFS() {
+	~{
+		moduleDir, _ := fs.Sub(moduleFS, "module_src")
+	}
+	<img id="file-img-fs" src=(doors.ResourceFS(moduleDir, "pixel.svg")) type="image/svg+xml"/>
 }
 
 elem fileCachedHref() {
@@ -139,7 +152,7 @@ elem styleInlineHead(_b doors.Source[test.Path]) {
 }
 
 elem styleRawHead(_b doors.Source[test.Path]) {
-	<style output="raw">
+	<style raw>
 		h1 {
 			color: red;
 		}
@@ -147,7 +160,7 @@ elem styleRawHead(_b doors.Source[test.Path]) {
 }
 
 elem styleMinifyHead(_b doors.Source[test.Path]) {
-	<style output="minify">
+	<style>
 		h1 {
 			color: red;
 		}
@@ -179,7 +192,7 @@ elem styleHostedHead(_b doors.Source[test.Path]) {
 }
 
 elem styleHostedRawHead(_b doors.Source[test.Path]) {
-	<link rel="stylesheet" href="/module/style.css" output="raw"/>
+	<link rel="stylesheet" href="/module/style.css" raw/>
 }
 
 elem styleHead(_b doors.Source[test.Path]) {
@@ -249,33 +262,37 @@ elem moduleBundleFSHead(_b doors.Source[test.Path]) {
 		moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src")
 	}
 	<script
+		id="module-bundle-fs"
 		src=(doors.ResourceFS(moduleBundleDir, "index.ts"))
 		type="module"
-		output="bundle"
+		bundle
 		specifier="module"></script>
 }
 
 elem moduleRawBytesHead(_b doors.Source[test.Path]) {
 	<script
+		id="module-raw-bytes"
 		src=(doors.ResourceBytes(moduleRawBytes))
 		type="module"
-		output="raw"
+		raw
 		specifier="module"></script>
 }
 
 elem moduleRawBytesShortHead(_b doors.Source[test.Path]) {
 	<script
+		id="module-raw-bytes-short"
 		src=(moduleRawBytes)
 		type="module"
-		output="raw"
+		raw
 		specifier="module"></script>
 }
 
 elem moduleRawBytesModifyHead(_b doors.Source[test.Path]) {
 	<script
+		id="module-raw-bytes-modify"
 		(doors.ResourceBytes(moduleRawBytes))
 		type="module"
-		output="raw"
+		raw
 		specifier="module"></script>
 }
 
@@ -288,14 +305,16 @@ elem modulePreloadBytesHead(_b doors.Source[test.Path]) {
 
 elem moduleRawHead(_b doors.Source[test.Path]) {
 	<script
+		id="module-raw"
 		src=(doors.ResourceLocalFS(modulePath + "/index.js"))
 		type="module"
-		output="raw"
+		raw
 		specifier="module"></script>
 }
 
 elem moduleBytesHead(_b doors.Source[test.Path]) {
 	<script
+		id="module-bytes"
 		src=(doors.ResourceBytes(moduleRawBytes))
 		type="module"
 		specifier="module"></script>
@@ -303,6 +322,7 @@ elem moduleBytesHead(_b doors.Source[test.Path]) {
 
 elem moduleStringHead(_b doors.Source[test.Path]) {
 	<script
+		id="module-string"
 		src=(doors.ResourceString(string(moduleRawBytes)))
 		type="module"
 		specifier="module"></script>
@@ -345,6 +365,12 @@ elem scriptInlineHead(_b doors.Source[test.Path]) {
 	</script>
 }
 
+elem scriptRawHead(_b doors.Source[test.Path]) {
+	<script id="script-raw-inline" raw>
+		window.__importsValue = "hello"
+	</script>
+}
+
 elem scriptInlineNamedExtHead(_b doors.Source[test.Path]) {
 	<script id="script-inline-ext" name="inline-script.js">
 		window.__importsValue = "hello"
@@ -353,8 +379,9 @@ elem scriptInlineNamedExtHead(_b doors.Source[test.Path]) {
 
 elem scriptInlineBytesHead(_b doors.Source[test.Path]) {
 	<script
+		id="script-inline-bytes"
 		src=(doors.ResourceBytes([]byte(`window.__importsValue = "hello"`)))
-		output="inline"></script>
+		inline></script>
 }
 
 elem scriptStringHead(_b doors.Source[test.Path]) {
@@ -379,15 +406,71 @@ elem scriptNoCacheHead(_b doors.Source[test.Path]) {
 
 elem reactHead(_b doors.Source[test.Path]) {
 	<script
+		id="preact-bundle"
 		src=(doors.ResourceLocalFS(preactPath + "/index.tsx"))
 		type="module"
-		output="bundle"
+		bundle
 		specifier="preact"></script>
 	<script
+		id="react-bundle"
 		src=(doors.ResourceLocalFS(reactPath + "/index.tsx"))
 		type="module"
-		output="bundle"
+		bundle
 		specifier="react"></script>
+}
+
+elem moduleTypeTSHead(_b doors.Source[test.Path]) {
+	<script
+		src=(doors.ResourceLocalFS(modulePath + "/index.ts"))
+		type="module/typescript"
+		specifier="module"></script>
+}
+
+elem moduleTypeJSHead(_b doors.Source[test.Path]) {
+	<script
+		src=(doors.ResourceLocalFS(modulePath + "/index.js"))
+		type="module/javascript"
+		specifier="module"></script>
+}
+
+elem fileHandlerTypeBad(_b doors.Source[test.Path]) {
+	<img
+		src=(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("bad"))
+		}))
+		type="text/plain"/>
+}
+
+elem scriptDuplicateOutputBad(_b doors.Source[test.Path]) {
+	<script src=(doors.ResourceBytes(moduleRawBytes)) raw bundle></script>
+}
+
+elem scriptHandlerBundleBad(_b doors.Source[test.Path]) {
+	<script
+		src=(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(moduleRawBytes)
+		}))
+		bundle></script>
+}
+
+elem scriptRawTSBad(_b doors.Source[test.Path]) {
+	<script
+		src=(doors.ResourceBytes(moduleBytes))
+		raw
+		type="text/typescript"></script>
+}
+
+elem modulePreloadInlineBad(_b doors.Source[test.Path]) {
+	<link rel="modulepreload" href=(doors.ResourceBytes(moduleRawBytes)) inline/>
+}
+
+elem styleHandlerPrivateBad(_b doors.Source[test.Path]) {
+	<link
+		rel="stylesheet"
+		href=(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(styleRawBytes)
+		}))
+		private/>
 }
 
 type ModuleFragment struct {
