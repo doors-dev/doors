@@ -13,6 +13,7 @@ import { requestTimeout, id, prefix } from './params'
 import { AbortTimer } from './lib'
 import action, { Action } from './calls'
 import { decodePayload } from './package'
+import controller from './controller'
 
 export type ScopeSet = [keyof typeof newScope, string, any]
 
@@ -101,6 +102,7 @@ export class Hook {
 				}
 				if (r.status === 401 || r.status === 410) {
 					runtime.hookErr(track, new HookErr(hookErrKinds.unauthorized, r))
+					controller.gone()
 				} else if (r.status === 400) {
 					runtime.hookErr(track, new HookErr(hookErrKinds.bad_request))
 				} else if (r.status === 404) {
