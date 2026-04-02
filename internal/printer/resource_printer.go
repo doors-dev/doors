@@ -105,7 +105,7 @@ func (p *resourcePrinter) scanGenericSrc(openJob *gox.JobHeadOpen) error {
 
 func (p *resourcePrinter) processMeta(openJob *gox.JobHeadOpen) error {
 	if openJob.Kind != gox.KindVoid {
-		return errors.New("encountered non-void meta tag")
+		return errors.New("<meta> must be a void element")
 	}
 	property := false
 	attr := openJob.Attrs.Get("name")
@@ -132,7 +132,7 @@ func (p *resourcePrinter) processRes(job gox.Job, res *embeddedResource) error {
 	closeJob, ok := job.(*gox.JobHeadClose)
 	if ok {
 		if closeJob.ID != res.openJob.ID {
-			return errors.New("resource head close id missmatch")
+			return errors.New("embedded resource close tag does not match the open tag")
 		}
 		res.closeJob = closeJob
 		p.resource = nil
@@ -150,19 +150,19 @@ func (p *resourcePrinter) processRes(job gox.Job, res *embeddedResource) error {
 		gox.Release(b)
 		return nil
 	}
-	return errors.New("style and script must contain only raw or byte jobs")
+	return errors.New("embedded <script> and <style> may contain only text or byte jobs")
 }
 
 func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
 	if _, ok := j.(*gox.JobHeadOpen); ok {
-		return errors.New("title can't contain other tags")
+		return errors.New("<title> cannot contain nested tags")
 	}
 	if _, ok := j.(*gox.JobComp); ok {
-		panic("components are not expected here, must pe processed via pipe")
+		panic("internal error: title content should be flattened before it reaches the resource printer")
 	}
 	if closeJob, ok := j.(*gox.JobHeadClose); ok {
 		if closeJob.ID != tit.openJob.ID {
-			return errors.New("unexpected close job")
+			return errors.New("title close tag does not match the open tag")
 		}
 		core := j.Context().Value(ctex.KeyCore).(core.Core)
 		content := tit.buf.String()
@@ -217,7 +217,7 @@ func (r *embeddedResource) render(p gox.Printer) error {
 		r.props.name = resourceFileName(r.props.name, "css")
 		return r.renderStyle(core, p)
 	default:
-		panic("unknown resource kind")
+		panic("internal error: unknown embedded resource kind")
 	}
 }
 
@@ -276,7 +276,7 @@ func (r *embeddedResource) scriptEntry() resources.ScriptEntry {
 				Kind:    resources.KindJS,
 			}
 		default:
-			panic("unexpected content kind")
+			panic("internal error: unexpected embedded content type")
 		}
 	}
 	buf := strings.Builder{}
@@ -287,7 +287,7 @@ func (r *embeddedResource) scriptEntry() resources.ScriptEntry {
 		case []byte:
 			buf.Write(c)
 		default:
-			panic("unexpected content kind")
+			panic("internal error: unexpected embedded content type")
 		}
 	}
 	return resources.ScriptInlineString{
@@ -311,7 +311,7 @@ func (r *embeddedResource) styleEntry() resources.StyleEntry {
 				Content: c,
 			}
 		default:
-			panic("unexpected content kind")
+			panic("internal error: unexpected embedded content type")
 		}
 	}
 	buf := bytes.Buffer{}
@@ -322,7 +322,7 @@ func (r *embeddedResource) styleEntry() resources.StyleEntry {
 		case []byte:
 			buf.Write(c)
 		default:
-			panic("unexpected content kind")
+			panic("internal error: unexpected embedded content type")
 		}
 	}
 	return resources.StyleBytes{

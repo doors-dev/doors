@@ -45,6 +45,9 @@ type scriptProps struct {
 func (s *scriptProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 	s.cleanAttrs()
 	s.setDefaultMode(resources.ModeHost)
+	if s.sourceKind == sourceUnset && s.output == scriptRaw {
+		return p.printer.Send(job)
+	}
 	if s.sourceKind == sourceUnset && s.output == scriptInline {
 		p.resource = &embeddedResource{
 			openJob: job,
@@ -100,7 +103,7 @@ func (s *scriptProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	default:
-		panic("unknown sources must be ingored")
+		panic("internal error: unknown script source kind should have been filtered earlier")
 	}
 
 }
@@ -111,23 +114,23 @@ func (s *scriptProps) Validate() error {
 	}
 	switch true {
 	case s.sourceKind == sourceUnset && s.output == scriptBundle:
-		return errors.New("inline scripts can't be bundeled, provide src")
+		return errors.New("inline scripts cannot be bundled; provide src")
 	case s.specifier != "" && !s.module:
-		return errors.New("only modules can have specifiers")
+		return errors.New("specifier is only supported on modules")
 	case s.sourceKind == sourceUnset && s.ts:
-		return errors.New("typescript is not supported on embedded inline scripts")
+		return errors.New("embedded scripts do not support TypeScript")
 	case s.output == scriptInline && s.module:
-		return errors.New("inline scripts can't be modules")
+		return errors.New("inline scripts do not support modules")
 	case s.sourceKind == sourceUnset && s.output == scriptInline && s.ts:
-		return errors.New("embedded script can be compiled from ts")
+		return errors.New("embedded scripts cannot be compiled from TypeScript")
 	case s.rel && s.output == scriptInline:
-		return errors.New("inline modulepreload is not supported")
+		return errors.New("modulepreload links do not support inline output")
 	case s.output == scriptRaw && s.ts:
-		return errors.New("raw typescript can't be served")
+		return errors.New("raw output does not support TypeScript sources")
 	case s.sourceKind == sourceLink && s.output != scriptRaw:
-		return errors.New("scripts with regular sources can't be transformed")
+		return errors.New("direct URL scripts only support raw output")
 	case s.sourceKind == sourceHandler && s.output != scriptRaw:
-		return errors.New("scripts with handlers sources can't be transformed")
+		return errors.New("handler-backed scripts only support raw output")
 	}
 	return nil
 }
@@ -180,9 +183,6 @@ func (s *scriptProps) Read(attrs gox.Attrs) (bool, error) {
 	if s.sourceKind == sourceUnset && s.rel {
 		return false, nil
 	}
-	if s.sourceKind == sourceUnset && s.output == scriptRaw {
-		return false, nil
-	}
 	if s.sourceKind == sourceUnset && s.output == scriptDefault {
 		s.output = scriptInline
 	}
@@ -212,7 +212,7 @@ func (r *scriptProps) readOutput(attr gox.Attr) (bool, error) {
 		return false, nil
 	}
 	if r.output != scriptDefault {
-		return true, errors.New("duplicated script output directives")
+		return true, errors.New("only one of raw, inline, or bundle may be set")
 	}
 	r.output = output
 	r.reg(attr)
@@ -315,10 +315,10 @@ func (o scriptOutput) format(module bool) (resources.ScriptFormat, error) {
 		return resources.FormatCommon{Bundle: true}, nil
 	case scriptInline:
 		if module {
-			return nil, errors.New("inline script can't be module")
+			return nil, errors.New("inline output does not support modules")
 		}
 		return resources.FormatCommon{}, nil
 	default:
-		panic("unknown format")
+		panic("internal error: unknown script output")
 	}
 }

@@ -239,7 +239,7 @@ func TestProcessTitleErrors(t *testing.T) {
 		openJob: gox.NewJobHeadOpen(context.Background(), 10, gox.KindRegular, "title", gox.NewAttrs()),
 	}
 
-	if err := rp.processTitle(gox.NewJobHeadOpen(context.Background(), 11, gox.KindRegular, "span", gox.NewAttrs()), tit); err == nil || !strings.Contains(err.Error(), "title can't contain other tags") {
+	if err := rp.processTitle(gox.NewJobHeadOpen(context.Background(), 11, gox.KindRegular, "span", gox.NewAttrs()), tit); err == nil || !strings.Contains(err.Error(), "cannot contain nested tags") {
 		t.Fatalf("unexpected nested-title error: %v", err)
 	}
 
@@ -257,7 +257,7 @@ func TestProcessTitleWrongClose(t *testing.T) {
 		openJob: gox.NewJobHeadOpen(context.Background(), 10, gox.KindRegular, "title", gox.NewAttrs()),
 	}
 	err := rp.processTitle(gox.NewJobHeadClose(context.Background(), 11, gox.KindRegular, "title"), tit)
-	if err == nil || !strings.Contains(err.Error(), "unexpected close job") {
+	if err == nil || !strings.Contains(err.Error(), "does not match the open tag") {
 		t.Fatalf("wrong close error = %v", err)
 	}
 }
@@ -297,7 +297,7 @@ func TestProcessMetaBranches(t *testing.T) {
 	rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
 
 	err := rp.processMeta(gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "meta", gox.NewAttrs()))
-	if err == nil || !strings.Contains(err.Error(), "non-void meta") {
+	if err == nil || !strings.Contains(err.Error(), "must be a void element") {
 		t.Fatalf("non-void meta error = %v", err)
 	}
 
@@ -434,7 +434,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		attrs.Get("bundle").Set(true)
 		attrs.Get("inline").Set(true)
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 2, gox.KindRegular, "script", attrs))
-		if err == nil || !strings.Contains(err.Error(), "duplicated") {
+		if err == nil || !strings.Contains(err.Error(), "only one of raw, inline, or bundle") {
 			t.Fatalf("unexpected script output error: %v", err)
 		}
 	})
@@ -443,7 +443,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("bundle").Set(true)
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 3, gox.KindRegular, "script", attrs))
-		if err == nil || !strings.Contains(err.Error(), "can't be bundeled") {
+		if err == nil || !strings.Contains(err.Error(), "cannot be bundled") {
 			t.Fatalf("unexpected inline bundle error: %v", err)
 		}
 	})
@@ -452,7 +452,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("type").Set("module")
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 4, gox.KindRegular, "script", attrs))
-		if err == nil || !strings.Contains(err.Error(), "inline scripts can't be modules") {
+		if err == nil || !strings.Contains(err.Error(), "do not support modules") {
 			t.Fatalf("unexpected inline module error: %v", err)
 		}
 	})
@@ -461,7 +461,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("type").Set("text/typescript")
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 5, gox.KindRegular, "script", attrs))
-		if err == nil || !strings.Contains(err.Error(), "typescript is not supported on embedded inline scripts") {
+		if err == nil || !strings.Contains(err.Error(), "do not support TypeScript") {
 			t.Fatalf("unexpected inline ts error: %v", err)
 		}
 	})
@@ -472,7 +472,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		attrs.Get("raw").Set(true)
 		attrs.Get("type").Set("text/typescript")
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 7, gox.KindRegular, "script", attrs))
-		if err == nil || !strings.Contains(err.Error(), "raw typescript can't be served") {
+		if err == nil || !strings.Contains(err.Error(), "raw output does not support TypeScript") {
 			t.Fatalf("unexpected raw ts error: %v", err)
 		}
 	})
@@ -482,7 +482,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		bundleAttrs.Get("src").Set("/plain.js")
 		bundleAttrs.Get("bundle").Set(true)
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 8, gox.KindRegular, "script", bundleAttrs))
-		if err == nil || !strings.Contains(err.Error(), "scripts with regular sources can't be transformed") {
+		if err == nil || !strings.Contains(err.Error(), "only support raw output") {
 			t.Fatalf("unexpected regular src bundle error: %v", err)
 		}
 
@@ -490,7 +490,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		inlineAttrs.Get("src").Set("/plain.js")
 		inlineAttrs.Get("inline").Set(true)
 		err = rp.prepareScript(gox.NewJobHeadOpen(ctx, 9, gox.KindRegular, "script", inlineAttrs))
-		if err == nil || !strings.Contains(err.Error(), "scripts with regular sources can't be transformed") {
+		if err == nil || !strings.Contains(err.Error(), "only support raw output") {
 			t.Fatalf("unexpected regular src inline error: %v", err)
 		}
 	})
@@ -500,7 +500,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		externalAttrs.Get("src").Set(SourceExternal("https://cdn.example/app.js"))
 		externalAttrs.Get("inline").Set(true)
 		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 10, gox.KindRegular, "script", externalAttrs))
-		if err == nil || !strings.Contains(err.Error(), "scripts with regular sources can't be transformed") {
+		if err == nil || !strings.Contains(err.Error(), "only support raw output") {
 			t.Fatalf("unexpected external inline error: %v", err)
 		}
 
@@ -580,10 +580,10 @@ func TestProcessResErrors(t *testing.T) {
 		openJob: gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "style", gox.NewAttrs()),
 		kind:    embeddedStyle,
 	}
-	if err := rp.processRes(gox.NewJobHeadClose(ctx, 2, gox.KindRegular, "style"), res); err == nil || !strings.Contains(err.Error(), "missmatch") {
+	if err := rp.processRes(gox.NewJobHeadClose(ctx, 2, gox.KindRegular, "style"), res); err == nil || !strings.Contains(err.Error(), "does not match the open tag") {
 		t.Fatalf("unexpected mismatch error: %v", err)
 	}
-	if err := rp.processRes(gox.NewJobText(ctx, "bad"), res); err == nil || !strings.Contains(err.Error(), "only raw or byte jobs") {
+	if err := rp.processRes(gox.NewJobText(ctx, "bad"), res); err == nil || !strings.Contains(err.Error(), "only text or byte jobs") {
 		t.Fatalf("unexpected invalid content error: %v", err)
 	}
 }

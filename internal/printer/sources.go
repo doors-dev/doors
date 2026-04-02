@@ -34,7 +34,6 @@ type SourceStatic interface {
 	styleEntry() resources.StyleEntry
 }
 
-
 type SourceFS struct {
 	FS    fs.FS
 	Entry string
@@ -46,7 +45,6 @@ func (s SourceFS) Handler() HandlerFunc {
 		return false
 	}
 }
-
 
 func (s SourceFS) StaticEntry() resources.StaticEntry {
 	return resources.StaticFS{
@@ -284,7 +282,6 @@ func modifySource(tag string, attrs gox.Attrs, src any) error {
 		attrs.Get("src").Set(src)
 		return nil
 	default:
-		return fmt.Errorf("unsupported tag %s", tag)
+		return fmt.Errorf("resource sources are not supported on <%s>", tag)
 	}
 }
-

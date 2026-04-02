@@ -37,6 +37,9 @@ type styleProps struct {
 func (s *styleProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 	s.cleanAttrs()
 	s.setDefaultMode(resources.ModeHost)
+	if !s.rel && s.output == styleRaw {
+		return p.printer.Send(job)
+	}
 	if !s.rel {
 		p.resource = &embeddedResource{
 			openJob: job,
@@ -76,7 +79,7 @@ func (s *styleProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	default:
-		panic("unknown sources must be ingored")
+		panic("internal error: unknown style source kind should have been filtered earlier")
 	}
 
 }
@@ -110,9 +113,6 @@ func (s *styleProps) Read(attrs gox.Attrs) (bool, error) {
 		}
 	}
 	if s.sourceKind == sourceUnknown {
-		return false, nil
-	}
-	if !s.rel && s.output == styleRaw {
 		return false, nil
 	}
 	if s.sourceKind == sourceLink && s.output == styleDefault {

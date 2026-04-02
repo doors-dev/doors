@@ -20,7 +20,7 @@ import (
 )
 
 type props interface {
-	Read(gox.Attrs) (bool, error) 
+	Read(gox.Attrs) (bool, error)
 	Validate() error
 	Submit(*gox.JobHeadOpen, *resourcePrinter) error
 }
@@ -61,7 +61,7 @@ func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
 	}
 	r.readSource(attr)
 	if r.sourceKind == sourceUnset {
-		panic("imposible")
+		panic("internal error: source kind is unset after reading a resource source")
 	}
 	if r.sourceKind == sourceUnknown {
 		return false, nil
@@ -93,11 +93,11 @@ func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
 func (r *resourceProps) Validate() error {
 	switch true {
 	case r.sourceKind == sourceLink && isModeSet(r.mode):
-		return errors.New("host modes are not available for regular source")
+		return errors.New("direct URL sources do not support cache, private, or nocache")
 	case r.sourceKind == sourceHandler && isModeSet(r.mode):
-		return errors.New("host modes are not available for handler sources")
+		return errors.New("handler-backed sources do not support cache, private, or nocache")
 	case r.sourceKind == sourceHandler && r.contentType != "":
-		return errors.New("handler source does not suppport content type attribute")
+		return errors.New("handler-backed sources do not support the type attribute")
 	}
 	return nil
 }
@@ -200,7 +200,7 @@ func (r *resourceProps) resourceURL(core core.Core, res *resources.Resource) (st
 		}
 		return core.PathMaker().Hook(core.InstanceID(), hook.DoorID, hook.HookID, r.name), nil
 	default:
-		panic("unexpected resource type")
+		panic("internal error: unexpected resource mode")
 	}
 }
 
@@ -250,7 +250,7 @@ func (r *resourceProps) readMode(attr gox.Attr) (bool, error) {
 		return false, nil
 	}
 	if isModeSet(r.mode) {
-		return true, errors.New("duplicated host directives")
+		return true, errors.New("only one of cache, private, or nocache may be set")
 	}
 	r.mode = mode
 	r.reg(attr)
