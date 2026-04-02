@@ -6,7 +6,6 @@
 
 # Doors
 
-
 Doors is a server-driven UI runtime for building reactive web applications in Go.
 
 In Doors, the server owns the interaction flow and the browser acts as a renderer and input layer. You build interactive UI in Go, keep state and capabilities on the server, and let the runtime synchronize updates back to the page.
