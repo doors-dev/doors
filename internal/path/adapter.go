@@ -32,7 +32,7 @@ func (as Adapters) Encode(v any) (Location, error) {
 		}
 		return l, nil
 	}
-	return Location{}, errors.New("Adepter not found for the provided model")
+	return Location{}, errors.New("adapter not found for the provided model")
 }
 
 type AnyAdapter interface {

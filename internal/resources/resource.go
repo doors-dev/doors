@@ -68,7 +68,7 @@ func (s *Resource) ServeCache(w http.ResponseWriter, r *http.Request, cache bool
 		s.once.Do(func() {
 			zipped, err := common.Zip(s.content)
 			if err != nil {
-				slog.Error("gzip error: " + err.Error())
+				slog.Error("gzip error", "error", err)
 			}
 			s.gzipped = zipped
 		})

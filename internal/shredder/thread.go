@@ -82,7 +82,7 @@ func (f *baseFrame) schedule(e executable) {
 	f.mu.Lock()
 	if f.isCompleted() {
 		f.mu.Unlock()
-		panic("can's schedule on completed frames")
+		panic("can't schedule on completed frames")
 	}
 	f.counter += 1
 	if !f.active {
@@ -371,7 +371,7 @@ func (f *AfterFrame) report(error) {
 	f.mu.Lock()
 	if f.fired {
 		f.mu.Unlock()
-		panic("Can't report after fire")
+		panic("can't report after fire")
 	}
 	f.counter -= 1
 	if f.counter != 0 || !f.activated {

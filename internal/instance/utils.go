@@ -38,7 +38,7 @@ func (t *killTimer) keepAlive() {
 		return
 	}
 	t.timer = time.AfterFunc(t.initial, func() {
-		slog.Debug("Inactive instance killed by timeout", slog.String("type", "message"), slog.String("instance_id", t.inst.ID()))
+		slog.Debug("inactive instance killed by timeout", "type", "message", "instance_id", t.inst.ID())
 		t.inst.end(common.EndCauseKilled)
 	})
 }

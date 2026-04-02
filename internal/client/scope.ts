@@ -74,7 +74,7 @@ export class Hook {
 		for (const [name, arg, payload] of actions) {
 			const [_, err] = action(name, arg, { element: this.params_.event?.target as any, payload: await decodePayload(payload) })
 			if (err) {
-				console.error("hook action err", err)
+				console.error("hook action error", err)
 			}
 		}
 	}

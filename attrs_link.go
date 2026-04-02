@@ -182,7 +182,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	link, err := core.NewLink(h.Model)
 	if err != nil {
-		slog.Error("href creation  error", slog.String("link_error", err.Error()))
+		slog.Error("href creation error", "error", err)
 		return nil
 	}
 	h.Scope = append([]Scope{linkScope{}}, h.Scope...)

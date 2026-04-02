@@ -99,7 +99,7 @@ func (b branch) encode(m reflect.Value) ([]string, error) {
 			v, ok := s.get(m)
 			if !ok {
 				if !s.optional {
-					return nil, errors.New("no value provided for non-optional fiekd")
+					return nil, errors.New("no value provided for a required field")
 				}
 				continue
 			}
@@ -113,7 +113,7 @@ func (b branch) encode(m reflect.Value) ([]string, error) {
 			v := s.get(m)
 			if len(v) == 0 {
 				if !s.optional {
-					return nil, errors.New("no value provided for non-optional fiekd")
+					return nil, errors.New("no value provided for a required field")
 				}
 			}
 			parts = append(parts, v...)

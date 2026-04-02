@@ -91,8 +91,10 @@ func (n *navigator[M]) init() {
 		if err != nil {
 			slog.Error(
 				"Path model encoding error on beam update",
-				slog.String("error", err.Error()),
-				slog.String("model", fmt.Sprintf("%+v", m)),
+				"error",
+				err,
+				"model",
+				fmt.Sprintf("%+v", m),
 			)
 			return false
 		}

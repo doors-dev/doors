@@ -44,7 +44,7 @@ func (q *Deck) firstInsert(c *Card) bool {
 		return false
 	}
 	if q.bottom != nil || q.top != nil {
-		panic("has top but no bottom or otherwixe")
+		panic("has top but no bottom or otherwise")
 	}
 	q.bottom = c
 	q.top = c
@@ -68,7 +68,7 @@ func (q *Deck) Fill(beg uint64, end uint64) {
 
 func (q *Deck) Insert(c *Card) {
 	if c.IsFiller() {
-		panic("Cannot insert filler")
+		panic("cannot insert filler")
 	}
 	c.deck = q
 	q.count += 1

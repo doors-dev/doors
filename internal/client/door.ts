@@ -233,7 +233,7 @@ class Doors {
 		}
 		const element = this.elements.get(id)
 		if (element === undefined) {
-			console.error("Unexpected behavior door [", id, "] not found for the call [" + name + "]")
+			console.error(`unexpected behavior: door [${id}] not found for call [${name}]`)
 			return undefined
 		}
 		return this.getHandler(element._d0r.parent, name)

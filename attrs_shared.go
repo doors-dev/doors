@@ -116,7 +116,7 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 			if err == nil {
 				return
 			}
-			slog.Error("Shared attribute call err " + err.Error())
+			slog.Error("shared attribute call error", "error", err)
 			a.restore(seq, prevValue, prevEnable)
 		},
 		nil,
@@ -165,7 +165,7 @@ func (a AShared) Update(ctx context.Context, value string) {
 			if err == nil {
 				return
 			}
-			slog.Error("Shared attribute call err " + err.Error())
+			slog.Error("shared attribute call error", "error", err)
 			a.restore(seq, prevValue, prevEnable)
 		},
 		nil,

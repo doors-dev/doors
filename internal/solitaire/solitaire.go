@@ -247,7 +247,7 @@ func (c *con) handleCause() {
 		c.writer.Write(suspendSignal)
 	case common.EndCauseSyncError:
 	default:
-		panic(errors.New("Unknown solitaire connection cancel cause"))
+		panic(errors.New("unknown solitaire connection cancel cause"))
 	}
 }
 

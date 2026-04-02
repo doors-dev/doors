@@ -29,7 +29,7 @@ func (r *proxyPrinter) finalize() (ProxyContainer, error) {
 	}
 	wrapper := r.wrapper.(*wrapperHead)
 	if !wrapper.isClosed() {
-		return ProxyContainer{}, errors.New("non-closed head")
+		return ProxyContainer{}, errors.New("proxy container head must be closed")
 	}
 	return wrapper.newContainer(), nil
 }
@@ -65,10 +65,10 @@ func (r *proxyPrinter) init(job gox.Job) error {
 	}
 	if openJob.Kind == gox.KindRegular {
 		if strings.EqualFold(openJob.Tag, "head") {
-			return errors.New("Door does not support <head> as a container")
+			return errors.New("door does not support <head> as a container")
 		}
 		if strings.EqualFold(openJob.Tag, "title") {
-			return errors.New("Door does not support <title> as a container")
+			return errors.New("door does not support <title> as a container")
 		}
 		if strings.EqualFold(openJob.Tag, "script") {
 			r.wrapper = wrapperContainer{}

@@ -50,17 +50,17 @@ func (a adapterBuilder[M]) build() (Adapter[M], error) {
 func (a *adapterBuilder[M]) scanFields() error {
 	t := reflect.TypeOf(a.value)
 	if t.Kind() != reflect.Struct {
-		return errors.New("Model must be struct")
+		return errors.New("path model must be a struct")
 	}
 	for i := range t.NumField() {
 		f := t.Field(i)
 		path, ok := f.Tag.Lookup("path")
 		if ok {
 			if !f.IsExported() {
-				return errors.New("Path field " + f.Name + " is not exported")
+				return errors.New("path field " + f.Name + " must be exported")
 			}
 			if f.Type.Kind() != reflect.Bool {
-				return errors.New("Path field must be of bool type")
+				return errors.New("path field " + f.Name + " must have type bool")
 			}
 			a.addPath(f, path)
 			continue
@@ -68,7 +68,7 @@ func (a *adapterBuilder[M]) scanFields() error {
 		_, ok = f.Tag.Lookup("query")
 		if ok {
 			if !f.IsExported() {
-				return errors.New("Query field " + f.Name + " is not exported")
+				return errors.New("query field " + f.Name + " must be exported")
 			}
 		}
 		a.addField(f, i)

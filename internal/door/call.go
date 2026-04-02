@@ -54,7 +54,7 @@ func (n *call) Cancel() {
 func (n *call) Result(_ json.RawMessage, err error) {
 	n.payload.Release()
 	if err != nil {
-		slog.Error("door rendering error", slog.String("error", err.Error()))
+		slog.Error("door rendering call failed", "error", err)
 	}
 	n.send(err)
 }
@@ -83,7 +83,7 @@ func (c *call) Action() (action.Action, bool) {
 			Payload: payload,
 		}, true
 	default:
-		panic("unsupporte door call type")
+		panic("unsupported door call type")
 	}
 }
 

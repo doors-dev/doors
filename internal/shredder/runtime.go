@@ -98,7 +98,7 @@ func (t task) cancel() {
 }
 
 func (r *runtime) onPanic(err error) {
-	slog.Error(err.Error())
+	slog.Error("shredder runtime panic", "error", err)
 	r.Cancel()
 }
 

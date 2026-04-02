@@ -42,7 +42,7 @@ func build(options *api.BuildOptions) ([]byte, error) {
 	result := api.Build(*options)
 	if len(result.Errors) != 0 {
 		for _, m := range result.Errors {
-			slog.Error("esbuild error", slog.String("text", m.Text))
+			slog.Error("esbuild error", "text", m.Text)
 		}
 		return nil, BuildErrors(result.Errors)
 

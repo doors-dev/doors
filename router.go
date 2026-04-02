@@ -177,7 +177,7 @@ type RouteResource struct {
 
 func (rt RouteResource) Match(r *http.Request) bool {
 	if rt.Path == "/" || rt.Path == "" {
-		slog.Error("ResourceFile cannot serve root path")
+		slog.Error("RouteResource cannot serve the root path")
 		return false
 	}
 	if !strings.HasPrefix(rt.Path, "/") {
@@ -194,14 +194,14 @@ func (rt RouteResource) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 	entry := rt.Resource.StaticEntry()
 	if entry == nil {
-		slog.Error("Static resource returned nil static entry")
+		slog.Error("RouteResource returned a nil static entry")
 		w.WriteHeader(500)
 		return
 	}
 	rr := r.Context().Value(ctex.KeyRouter).(*router.Router)
 	res, err := rr.ResourceRegistry().Static(entry, rt.ContentType)
 	if err != nil {
-		slog.Error("Resource preparing error", "error", err.Error())
+		slog.Error("RouteResource failed to prepare the resource", "error", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -223,7 +223,7 @@ type RouteFS struct {
 
 func (rt RouteFS) Match(r *http.Request) bool {
 	if rt.Prefix == "/" || rt.Prefix == "" {
-		slog.Error("RouteFS can serve root prefix!")
+		slog.Error("RouteFS cannot serve the root prefix")
 		return false
 	}
 	return strings.HasPrefix(r.URL.Path, normalizePrefix(rt.Prefix))
@@ -249,7 +249,7 @@ type RouteDir struct {
 
 func (rt RouteDir) Match(r *http.Request) bool {
 	if rt.Prefix == "/" || rt.Prefix == "" {
-		slog.Error("RouteDir cannot serve root prefix")
+		slog.Error("RouteDir cannot serve the root prefix")
 		return false
 	}
 	return strings.HasPrefix(r.URL.Path, normalizePrefix(rt.Prefix))
@@ -274,7 +274,7 @@ type RouteFile struct {
 
 func (rt RouteFile) Match(r *http.Request) bool {
 	if rt.Path == "/" || rt.Path == "" {
-		slog.Error("RouteFile cannot serve root path")
+		slog.Error("RouteFile cannot serve the root path")
 		return false
 	}
 	if !strings.HasPrefix(rt.Path, "/") {

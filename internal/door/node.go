@@ -455,7 +455,7 @@ func (n *node) Render(pip pipe.Pipe) {
 		case *proxyNode:
 			n.renderProxy(ent, pip, branch)
 		default:
-			panic("unexpected node enity to render")
+			panic("unexpected node entity to render")
 		}
 	})
 }

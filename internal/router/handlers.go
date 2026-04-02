@@ -69,7 +69,7 @@ func (rr *Router) serveModelRedirect(w http.ResponseWriter, r *http.Request, s *
 	location, err := rr.modelAdapters.Encode(model)
 	if err != nil {
 		err := errors.New("Adapter encoding error: " + err.Error())
-		slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
+		slog.Error("page routing error", "path", r.URL.Path, "error", err)
 		rr.serveError(w, r, s, l, err)
 		return
 	}
@@ -84,7 +84,7 @@ func (rr *Router) serveInstance(w http.ResponseWriter, r *http.Request, s *insta
 	w.Header().Set("Content-Type", "text/html")
 	err := inst.Serve(w, r)
 	if err != nil {
-		slog.Error("instance serve error", slog.String("path", r.URL.Path), slog.String("error", err.Error()))
+		slog.Error("instance serve error", "path", r.URL.Path, "error", err)
 		rr.serveError(w, r, s, l, err)
 	}
 }
@@ -104,7 +104,7 @@ func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
 main:
 	counter += 1
 	if counter > 64 {
-		slog.Error("page routing error", slog.String("path", r.URL.Path), slog.String("error", "reroute loop"))
+		slog.Error("page routing error", "path", r.URL.Path, "error", "reroute loop")
 		rr.serveError(w, r, ses, loc, errors.New("rerouting loop"))
 		return true
 	}

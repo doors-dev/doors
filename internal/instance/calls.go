@@ -78,7 +78,7 @@ func (c checkCall) Cancel() {
 }
 func (c *checkCall) Result(r json.RawMessage, err error) {
 	if err != nil {
-		slog.Error("Call failed", slog.String("action", c.action.Log()), slog.String("error", err.Error()))
+		slog.Error("Call failed", "action", c.action.Log(), "error", err)
 	}
 	if c.onResult == nil {
 		return
@@ -118,7 +118,7 @@ func (c ctxCall) Cancel() {
 
 func (c *ctxCall) Result(r json.RawMessage, err error) {
 	if err != nil {
-		slog.Error("Call failed", slog.String("action", c.action.Log()), slog.String("error", err.Error()))
+		slog.Error("Call failed", "action", c.action.Log(), "error", err)
 	}
 	if c.onResult == nil {
 		return

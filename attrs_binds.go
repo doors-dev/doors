@@ -67,7 +67,7 @@ func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	err := dec.Decode(&input)
 	r.Body.Close()
 	if err != nil {
-		slog.Error("Hook decoding error", slog.String("json_error", err.Error()))
+		slog.Error("Hook decoding error", "error", err)
 		w.WriteHeader(400)
 		return false
 	}
@@ -83,7 +83,7 @@ func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(&output)
 	if err != nil {
-		slog.Error("Hook output encoding error", slog.String("json_error", err.Error()))
+		slog.Error("Hook output encoding error", "error", err)
 		w.WriteHeader(500)
 	}
 	return done

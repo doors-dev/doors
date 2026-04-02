@@ -49,7 +49,7 @@ func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], cont
 	a, params, err := action.action(ctx, core, !core.Conf().SolitaireDisableGzip)
 	res := CallResult[T]{}
 	if err != nil {
-		slog.Error("Action preparation errror", slog.String("error", err.Error()))
+		slog.Error("Action preparation error", "error", err)
 		res.Err = err
 		ch <- res
 		close(ch)

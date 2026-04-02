@@ -73,7 +73,7 @@ var _ gox.Mutate = (jsonAttrs)(nil)
 
 func (j jsonAttrs) Mutate(name string, prev any) any {
 	if !strings.HasPrefix(name, "data-d0") {
-		slog.Error("Unexpected attribute name for system attribute", "name", name)
+		slog.Error("unexpected system attribute name", "name", name)
 		return prev
 	}
 	var arr jsonAttrs

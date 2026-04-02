@@ -63,7 +63,7 @@ func (rg *Registry) init() {
 	}
 	content, err := build(&opt)
 	if err != nil {
-		panic(errors.Join(errors.New("Client js build error"), err))
+		panic(errors.Join(errors.New("client JS build error"), err))
 	}
 	rg.mainScript = NewResource(content, "application/javascript", rg.defaultSettings())
 	rg.lookup.Store(rg.mainScript.id, rg.mainScript)

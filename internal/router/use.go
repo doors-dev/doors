@@ -109,7 +109,7 @@ func UseLicense(license string) Use {
 // UseServerID stores the stable server identifier used in generated paths.
 func UseServerID(id string) Use {
 	if id != url.PathEscape(id) {
-		panic("Server ID must be URL compatible without escaping")
+		panic("server ID must be URL compatible without escaping")
 	}
 	return useFunc(func(rr *Router) {
 		rr.pathMaker = path.NewPathMaker(id)

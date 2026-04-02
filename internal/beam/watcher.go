@@ -53,7 +53,7 @@ func (w *watcher) register(screen *screen) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.done {
-		panic("Can't be done before all screens are registered")
+		panic("can't be done before all screens are registered")
 	}
 	w.screens.Add(screen)
 }
@@ -80,7 +80,7 @@ func (w *watcher) init(ctx context.Context, seq uint) {
 	w.mu.Lock()
 	if w.done {
 		w.mu.Unlock()
-		panic("Can't be done before all screens are initialized")
+		panic("can't be done before all screens are initialized")
 	}
 	res := w.inner.init(w.id, ctx, seq)
 	switch res {

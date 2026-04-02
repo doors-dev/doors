@@ -362,7 +362,7 @@ func (m ScriptModule) Modify(ctx context.Context, tag string, attrs gox.Attrs) e
 		attrs.Get("rel").Set("modulepreload")
 		attrs.Get("href").Set(path)
 	default:
-		return fmt.Errorf("unsupported tag %s", tag)
+		return fmt.Errorf("unsupported <%s> tag", tag)
 	}
 	if m.Specifier != "" {
 		core.ModuleRegistry().Add(m.Specifier, path)
@@ -379,10 +379,10 @@ type ScriptInline struct {
 
 func (m ScriptInline) build(core core.Core) (string, error) {
 	if _, ok := m.Source.(SourceLocal); ok {
-		return "", errors.New("Local source is not supported for \"inline\" scripts")
+		return "", errors.New("local sources do not support inline scripts")
 	}
 	if _, ok := m.Source.(SourceExternal); ok {
-		return "", errors.New("External source is not supported for \"inline\" scripts")
+		return "", errors.New("external sources do not support inline scripts")
 	}
 	entry := m.Source.scriptEntry(true)
 	res, err := core.ResourceRegistry().Script(
@@ -429,7 +429,7 @@ func (m ScriptInline) Modify(ctx context.Context, tag string, attrs gox.Attrs) e
 		attrs.Get("type").Set(nil)
 		attrs.Get("src").Set(path)
 	default:
-		return fmt.Errorf("unsupported tag %s", tag)
+		return fmt.Errorf("unsupported <%s> tag", tag)
 	}
 	return nil
 }
@@ -495,7 +495,7 @@ func (m ScriptCommon) Modify(ctx context.Context, tag string, attrs gox.Attrs) e
 		attrs.Get("type").Set(nil)
 		attrs.Get("src").Set(path)
 	default:
-		return fmt.Errorf("unsupported tag %s", tag)
+		return fmt.Errorf("unsupported <%s> tag", tag)
 	}
 	return nil
 }
@@ -555,7 +555,7 @@ func (m Style) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
 		attrs.Get("rel").Set("stylesheet")
 		attrs.Get("href").Set(path)
 	default:
-		return fmt.Errorf("unsupported tag %s", tag)
+		return fmt.Errorf("unsupported <%s> tag", tag)
 	}
 	return nil
 }

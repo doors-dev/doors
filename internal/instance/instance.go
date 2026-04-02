@@ -96,7 +96,7 @@ type Instance[M any] struct {
 func (inst *Instance[M]) init() error {
 	ok := inst.state.CompareAndSwap(initial, active)
 	if !ok {
-		return errors.New("Instance already started or killed")
+		return errors.New("Instance already started or was killed")
 	}
 	ctx := context.WithValue(context.Background(), ctex.KeySessionStore, inst.session.store)
 	ctx = context.WithValue(ctx, ctex.KeyInstanceStore, inst.store)
@@ -224,7 +224,7 @@ func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (inst *Instance[M]) SyncError(err error) {
-	slog.Debug("Instance syncronization error", slog.String("error", err.Error()), slog.String("type", "error"), slog.String("instance_id", inst.id))
+	slog.Debug("Instance synchronization error", "error", err, "type", "error", "instance_id", inst.id)
 	inst.end(common.EndCauseSyncError)
 }
 

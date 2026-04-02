@@ -81,7 +81,7 @@ func (c *Card) setBottom() {
 
 func (c *Card) insert(n *Card, h head) {
 	if n.IsFiller() {
-		panic("Cannot insert filler")
+		panic("cannot insert filler")
 	}
 	if c.Beg <= n.Seq() && n.Seq() <= c.End {
 		panic("overlapping range")
@@ -114,7 +114,7 @@ func (c *Card) extractRestored(seq uint64, h head) (*Card, error) {
 			return nil, nil
 		}
 		if !c.IsRestored() {
-			return nil, errors.New("Attempt to extract to non restored card")
+			return nil, errors.New("cannot extract a non-restored card")
 		}
 		if c.tail != nil {
 			h.setTail(c.tail)
@@ -147,10 +147,10 @@ func (c *Card) isProbe() bool {
 
 func (c *Card) insertTail(n *Card) {
 	if n.IsFiller() && !n.isProbe() {
-		panic("Cannot insert filler tail")
+		panic("cannot insert filler tail")
 	}
 	if n.Seq() <= c.Seq() {
-		panic("Cannot insert older tail")
+		panic("cannot insert older tail")
 	}
 	c.setTail(n)
 }

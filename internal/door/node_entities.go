@@ -42,7 +42,7 @@ type mountNode struct {
 
 func (c *mountNode) initMountFrame() {
 	if c.mountFrame != nil {
-		panic("already intiialized")
+		panic("already initialized")
 	}
 	c.mountFrame = &atomic.Pointer[shredder.ValveFrame]{}
 	c.mountFrame.Store(&shredder.ValveFrame{})

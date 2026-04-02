@@ -100,7 +100,7 @@ const actions = {
 	emit: (ext: Extras, name: string, doorId: number): any => {
 		const handler = doors.getHandler(doorId, name)
 		if (!handler) {
-			throw new Error(`Handler ${name} not found`)
+			throw new Error(`handler ${name} not found`)
 		}
 		return handler(ext.payload!.any, ext.error as any)
 	},

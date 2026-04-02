@@ -41,7 +41,7 @@ export class HookErr extends Error {
 				message = `instance is stopped`
 				break
 			case hookErrKinds.other:
-				message = `Other Error: ${opt?.status}`
+				message = `other error: ${opt?.status}`
 				break
 			case hookErrKinds.network:
 				message = opt?.message
@@ -50,7 +50,7 @@ export class HookErr extends Error {
 				message = opt?.message
 				break
 			case hookErrKinds.server:
-				message = `Server Error: ${opt?.status}`
+				message = `server error: ${opt?.status}`
 				break
 			case hookErrKinds.bad_request:
 				message = `body parsing error, bad request`
@@ -128,4 +128,3 @@ export function attach(parent: Element | DocumentFragment | Document) {
 		}
 	}
 }
-

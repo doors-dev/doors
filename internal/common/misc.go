@@ -34,13 +34,13 @@ func AttrsToMap(a gox.Attrs) map[string]string {
 			continue
 		}
 		if err := attr.OutputName(b); err != nil {
-			slog.Error("Can't write attr name", "err", err)
+			slog.Error("failed to write attribute name", "error", err)
 			continue
 		}
 		name := b.String()
 		b.Reset()
 		if err := attr.OutputValue(b); err != nil {
-			slog.Error("Can't write attr value", "err", err)
+			slog.Error("failed to write attribute value", "error", err)
 			continue
 		}
 		value := b.String()

@@ -30,7 +30,7 @@ func intoActions(ctx context.Context, actions []Action) action.Actions {
 	for _, action := range actions {
 		a, _, err := action.action(ctx, core, false)
 		if err != nil {
-			slog.Error("Action preparation error", slog.String("error", err.Error()))
+			slog.Error("Action preparation error", "error", err)
 			continue
 		}
 		arr = append(arr, a)
