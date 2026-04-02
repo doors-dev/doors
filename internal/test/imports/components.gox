@@ -460,6 +460,37 @@ elem scriptRawTSBad(_b doors.Source[test.Path]) {
 		type="text/typescript"></script>
 }
 
+elem scriptSpecifierNonModuleBad(_b doors.Source[test.Path]) {
+	<script
+		src=(doors.ResourceBytes(moduleBytes))
+		specifier="module"></script>
+}
+
+elem scriptInlineModuleBad(_b doors.Source[test.Path]) {
+	<script type="module">
+		window.__importsValue = "bad"
+	</script>
+}
+
+elem scriptInlineTSBad(_b doors.Source[test.Path]) {
+	<script type="text/typescript">
+		const value: string = "bad"
+		window.__importsValue = value
+	</script>
+}
+
+elem scriptDirectBundleBad(_b doors.Source[test.Path]) {
+	<script src="/module/index.js" bundle></script>
+}
+
+elem scriptHandlerInlineBad(_b doors.Source[test.Path]) {
+	<script
+		src=(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(moduleRawBytes)
+		}))
+		inline></script>
+}
+
 elem modulePreloadInlineBad(_b doors.Source[test.Path]) {
 	<link rel="modulepreload" href=(doors.ResourceBytes(moduleRawBytes)) inline/>
 }
@@ -470,6 +501,13 @@ elem styleHandlerPrivateBad(_b doors.Source[test.Path]) {
 		href=(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
 		}))
+		private/>
+}
+
+elem styleDirectPrivateBad(_b doors.Source[test.Path]) {
+	<link
+		rel="stylesheet"
+		href="/module/style.css"
 		private/>
 }
 

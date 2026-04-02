@@ -842,10 +842,34 @@ func TestScriptRawTSBad(t *testing.T) {
 	testRenderError(t, scriptRawTSBad)
 }
 
+func TestScriptSpecifierNonModuleBad(t *testing.T) {
+	testRenderError(t, scriptSpecifierNonModuleBad)
+}
+
+func TestScriptInlineModuleBad(t *testing.T) {
+	testRenderError(t, scriptInlineModuleBad)
+}
+
+func TestScriptInlineTSBad(t *testing.T) {
+	testRenderError(t, scriptInlineTSBad)
+}
+
+func TestScriptDirectBundleBad(t *testing.T) {
+	testRenderError(t, scriptDirectBundleBad)
+}
+
+func TestScriptHandlerInlineBad(t *testing.T) {
+	testRenderError(t, scriptHandlerInlineBad)
+}
+
 func TestModulePreloadInlineBad(t *testing.T) {
 	testRenderError(t, modulePreloadInlineBad)
 }
 
 func TestStyleHandlerPrivateBad(t *testing.T) {
 	testRenderError(t, styleHandlerPrivateBad)
+}
+
+func TestStyleDirectPrivateBad(t *testing.T) {
+	testRenderError(t, styleDirectPrivateBad)
 }

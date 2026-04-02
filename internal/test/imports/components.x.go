@@ -1231,31 +1231,117 @@ func scriptRawTSBad(_b doors.Source[test.Path]) gox.Elem {
 }
 
 //line components.gox:463
+func scriptSpecifierNonModuleBad(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+//line components.gox:465
+			__e = __c.AttrSet("src", doors.ResourceBytes(moduleBytes)); if __e != nil { return }
+//line components.gox:466
+			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw(""); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line components.gox:467
+}
+
+//line components.gox:469
+func scriptInlineModuleBad(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+//line components.gox:470
+			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw("window.__importsValue = \"bad\""); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line components.gox:473
+}
+
+//line components.gox:475
+func scriptInlineTSBad(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+//line components.gox:476
+			__e = __c.AttrSet("type", "text/typescript"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw("const value: string = \"bad\"\n\t\twindow.__importsValue = value"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line components.gox:480
+}
+
+//line components.gox:482
+func scriptDirectBundleBad(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+//line components.gox:483
+			__e = __c.AttrSet("src", "/module/index.js"); if __e != nil { return }
+			__e = __c.AttrSet("bundle", true); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw(""); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line components.gox:484
+}
+
+//line components.gox:486
+func scriptHandlerInlineBad(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("script"); if __e != nil { return }
+		{
+//line components.gox:488
+			__e = __c.AttrSet("src", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(moduleRawBytes)
+		})); if __e != nil { return }
+			__e = __c.AttrSet("inline", true); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Raw(""); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line components.gox:492
+}
+
+//line components.gox:494
 func modulePreloadInlineBad(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
-//line components.gox:464
+//line components.gox:495
 			__e = __c.AttrSet("rel", "modulepreload"); if __e != nil { return }
-//line components.gox:464
+//line components.gox:495
 			__e = __c.AttrSet("href", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
 			__e = __c.AttrSet("inline", true); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
-//line components.gox:465
+//line components.gox:496
 }
 
-//line components.gox:467
+//line components.gox:498
 func styleHandlerPrivateBad(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
-//line components.gox:469
+//line components.gox:500
 			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
-//line components.gox:470
+//line components.gox:501
 			__e = __c.AttrSet("href", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
 		})); if __e != nil { return }
@@ -1263,20 +1349,37 @@ func styleHandlerPrivateBad(_b doors.Source[test.Path]) gox.Elem {
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
-//line components.gox:474
+//line components.gox:505
+}
+
+//line components.gox:507
+func styleDirectPrivateBad(_b doors.Source[test.Path]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.InitVoid("link"); if __e != nil { return }
+		{
+//line components.gox:509
+			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+//line components.gox:510
+			__e = __c.AttrSet("href", "/module/style.css"); if __e != nil { return }
+			__e = __c.AttrSet("private", true); if __e != nil { return }
+		}
+		__e = __c.Submit(); if __e != nil { return }
+	return })
+//line components.gox:512
 }
 
 type ModuleFragment struct {
 	test.NoBeam
 }
 
-//line components.gox:480
+//line components.gox:518
 func (f *ModuleFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line components.gox:481
+//line components.gox:519
 			__e = __c.AttrSet("id", "report-0"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
@@ -1288,20 +1391,20 @@ func (f *ModuleFragment) Main() gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line components.gox:486
+//line components.gox:524
 }
 
 type ReactFragment struct {
 	test.NoBeam
 }
 
-//line components.gox:492
+//line components.gox:530
 func (f *ReactFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line components.gox:493
+//line components.gox:531
 			__e = __c.AttrSet("id", "preact"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
@@ -1314,7 +1417,7 @@ func (f *ReactFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line components.gox:498
+//line components.gox:536
 			__e = __c.AttrSet("id", "react"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
@@ -1326,20 +1429,20 @@ func (f *ReactFragment) Main() gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line components.gox:503
+//line components.gox:541
 }
 
 type ValueFragment struct {
 	test.NoBeam
 }
 
-//line components.gox:509
+//line components.gox:547
 func (f *ValueFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line components.gox:510
+//line components.gox:548
 			__e = __c.AttrSet("id", "report-0"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
@@ -1351,17 +1454,17 @@ func (f *ValueFragment) Main() gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line components.gox:514
+//line components.gox:552
 }
 
 type Empty struct {
 	test.NoBeam
 }
 
-//line components.gox:520
+//line components.gox:558
 func (f *Empty) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 	return })
-//line components.gox:520
+//line components.gox:558
 }
