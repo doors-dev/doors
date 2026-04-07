@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.20-0.20260329154612-7e48b7c342d5+dirty
+// Managed by GoX v0.1.22
 
 //line components.gox:1
 package components
@@ -492,7 +492,6 @@ func (f *ProxyFragment) Main() gox.Elem {
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
-//line components.gox:193
 			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
@@ -503,7 +502,6 @@ func (f *ProxyFragment) Main() gox.Elem {
 			__e = __c.Text("proxy-literal"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line components.gox:193
 	return })); if __e != nil { return }
 		return })); if __e != nil { return }
 //line components.gox:195
@@ -514,7 +512,6 @@ func (f *ProxyFragment) Main() gox.Elem {
 		},
 	}.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
-//line components.gox:200
 			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.InitContainer(); if __e != nil { return }
@@ -529,7 +526,6 @@ func (f *ProxyFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line components.gox:202
 	return })); if __e != nil { return }
 		return })); if __e != nil { return }
 //line components.gox:204
