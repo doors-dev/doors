@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.22
+// Managed by GoX v0.1.25
 
 //line components.gox:1
 package components

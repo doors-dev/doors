@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.20-0.20260329154612-7e48b7c342d5+dirty
+// Managed by GoX v0.1.25
 
 //line page.gox:1
 package test
