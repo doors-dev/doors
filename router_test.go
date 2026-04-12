@@ -11,6 +11,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	introuter "github.com/doors-dev/doors/internal/router"
 	"github.com/doors-dev/gox"
 )
 
@@ -190,13 +191,11 @@ func TestRouteMatchRejectsRoot(t *testing.T) {
 }
 
 func TestUseLicenceAlias(t *testing.T) {
-	router := NewRouter()
+	router := introuter.NewRouter()
 	UseLicence(router, "Doors Commercial")
-
-	server := httptest.NewServer(router)
-	defer server.Close()
-
-	_, _, _ = readURL(t, server, "/missing")
+	if got := router.License(); got != "Doors Commercial" {
+		t.Fatalf("unexpected license after alias call: %q", got)
+	}
 }
 
 func TestRouterCount(t *testing.T) {

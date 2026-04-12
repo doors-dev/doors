@@ -3,6 +3,7 @@ package doors
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -50,8 +51,9 @@ func TestRequestMultipartAndCookies(t *testing.T) {
 	}
 
 	r.SetCookie(&http.Cookie{Name: "written", Value: "cookie-2"})
-	if rec.Header().Get("Set-Cookie") == "" {
-		t.Fatal("expected Set-Cookie header to be written")
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != "written" || cookies[0].Value != "cookie-2" {
+		t.Fatalf("unexpected written cookies: %#v", cookies)
 	}
 
 	parsed, err := r.ParseForm(0)
@@ -111,7 +113,37 @@ func TestRequestReaderBodyDoneAndWrappers(t *testing.T) {
 	if part.FormName() != "name" {
 		t.Fatalf("unexpected first multipart field: %q", part.FormName())
 	}
-	_ = part.Close()
+	value, err := io.ReadAll(part)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(value) != "alex" {
+		t.Fatalf("unexpected first multipart value: %q", string(value))
+	}
+	if err := part.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	filePart, err := reader.NextPart()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filePart.FormName() != "file" || filePart.FileName() != "hello.txt" {
+		t.Fatalf("unexpected file part metadata: name=%q file=%q", filePart.FormName(), filePart.FileName())
+	}
+	fileValue, err := io.ReadAll(filePart)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(fileValue) != "payload" {
+		t.Fatalf("unexpected file part body: %q", string(fileValue))
+	}
+	if err := filePart.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reader.NextPart(); !errors.Is(err, io.EOF) {
+		t.Fatalf("expected multipart reader to be exhausted, got %v", err)
+	}
 
 	rawReq := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("raw"))
 	rawRec := httptest.NewRecorder()

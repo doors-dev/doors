@@ -212,6 +212,12 @@ func TestRegistryServeAndScriptModes(t *testing.T) {
 	if okRec.Code != http.StatusOK {
 		t.Fatalf("serve existing status = %d", okRec.Code)
 	}
+	if got := okRec.Header().Get("Content-Type"); got != "application/javascript" {
+		t.Fatalf("serve existing content type = %q", got)
+	}
+	if got := okRec.Body.String(); got != string(hostRes.Content()) {
+		t.Fatalf("serve existing body = %q", got)
+	}
 
 	missRec := httptest.NewRecorder()
 	rg.Serve("missing", missRec, httptest.NewRequest(http.MethodGet, "/", nil))

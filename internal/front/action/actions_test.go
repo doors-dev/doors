@@ -183,8 +183,8 @@ func TestInvocationAndActionsJSON(t *testing.T) {
 	if err := json.Unmarshal(payloadJSON, &payloadEncoded); err != nil {
 		t.Fatal(err)
 	}
-	if len(payloadEncoded) != 3 {
-		t.Fatalf("expected invocation with payload to encode 3 fields, got %d", len(payloadEncoded))
+	if want := []any{"emit", []any{"ready", float64(3)}, []any{float64(PayloadText), "ok"}}; !reflect.DeepEqual(payloadEncoded, want) {
+		t.Fatalf("unexpected invocation with payload encoding: %#v", payloadEncoded)
 	}
 
 	withoutPayload := LocationReload{}.Invocation()
@@ -196,8 +196,8 @@ func TestInvocationAndActionsJSON(t *testing.T) {
 	if err := json.Unmarshal(plainJSON, &plainEncoded); err != nil {
 		t.Fatal(err)
 	}
-	if len(plainEncoded) != 2 {
-		t.Fatalf("expected invocation without payload to encode 2 fields, got %d", len(plainEncoded))
+	if want := []any{"location_reload", []any{}}; !reflect.DeepEqual(plainEncoded, want) {
+		t.Fatalf("unexpected invocation without payload encoding: %#v", plainEncoded)
 	}
 
 	actions := Actions{
@@ -212,16 +212,19 @@ func TestInvocationAndActionsJSON(t *testing.T) {
 	if err := json.Unmarshal(encoded, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if len(decoded) != 2 {
-		t.Fatalf("unexpected actions length: %d", len(decoded))
+	if want := [][]any{
+		{"location_reload", []any{}},
+		{"scroll", []any{"#target", map[string]any{"behavior": "smooth"}}},
+	}; !reflect.DeepEqual(decoded, want) {
+		t.Fatalf("unexpected actions encoding: %#v", decoded)
 	}
 
 	headers := http.Header{}
 	if err := actions.Set(headers); err != nil {
 		t.Fatal(err)
 	}
-	if headers.Get("D0-After") == "" {
-		t.Fatal("expected D0-After header to be set")
+	if got := headers.Get("D0-After"); got != string(encoded) {
+		t.Fatalf("unexpected D0-After header: %q", got)
 	}
 }
 

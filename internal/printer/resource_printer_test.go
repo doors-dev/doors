@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -145,6 +146,37 @@ func (p *failPrinter) Send(gox.Job) error {
 	p.calls++
 	if p.calls == p.fail {
 		return context.Canceled
+	}
+	return nil
+}
+
+type recordedOpen struct {
+	tag   string
+	attrs gox.Attrs
+}
+
+type recordingPrinter struct {
+	opens  []recordedOpen
+	closes int
+	raw    []string
+	bytes  [][]byte
+}
+
+func (p *recordingPrinter) Send(job gox.Job) error {
+	if open, ok := job.(*gox.JobHeadOpen); ok {
+		p.opens = append(p.opens, recordedOpen{
+			tag:   open.Tag,
+			attrs: open.Attrs.Clone(),
+		})
+	}
+	if _, ok := job.(*gox.JobHeadClose); ok {
+		p.closes++
+	}
+	if raw, ok := job.(*gox.JobRaw); ok {
+		p.raw = append(p.raw, raw.Text)
+	}
+	if bytesJob, ok := job.(*gox.JobBytes); ok {
+		p.bytes = append(p.bytes, append([]byte(nil), bytesJob.Bytes...))
 	}
 	return nil
 }
@@ -423,6 +455,111 @@ func TestPrepareLinkStyleBranches(t *testing.T) {
 }
 
 func TestPrepareScriptAndSendBranches(t *testing.T) {
+	ctx, inst, _, modules := newPrinterCore(t, true)
+
+	attrs := gox.NewAttrs()
+	attrs.Get("src").Set(SourceString(`window.__prepared = "ok"`))
+	attrs.Get("type").Set("module")
+	attrs.Get("specifier").Set("prepared")
+	attrs.Get("name").Set("prepared-module.js")
+	prepareRecorder := &recordingPrinter{}
+	rp := &resourcePrinter{printer: prepareRecorder}
+	if err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "script", attrs)); err != nil {
+		t.Fatal(err)
+	}
+	if len(prepareRecorder.opens) != 1 {
+		t.Fatalf("expected prepareScript to send exactly one open tag, got %#v", prepareRecorder.opens)
+	}
+	if prepareRecorder.opens[0].tag != "script" {
+		t.Fatalf("expected prepareScript to preserve the script tag, got %#v", prepareRecorder.opens[0])
+	}
+	srcAttr, ok := prepareRecorder.opens[0].attrs.Find("src")
+	if !ok {
+		t.Fatal("expected prepareScript to keep src attr")
+	}
+	src, ok := srcAttr.Value().(string)
+	if !ok {
+		t.Fatalf("expected prepareScript to rewrite src to a string path, got %#v", srcAttr.Value())
+	}
+	if !strings.Contains(src, "/r/") || !strings.HasSuffix(src, ".prepared-module.js") {
+		t.Fatalf("expected prepared script path to target a hosted resource, got %q", src)
+	}
+	if got := modules.values["prepared"]; got != src {
+		t.Fatalf("expected module registry to store rewritten src, got %#v", modules.values)
+	}
+
+	match, ok := inst.PathMaker().Match(httptest.NewRequest(http.MethodGet, src, nil))
+	if !ok {
+		t.Fatalf("expected prepared script path to match a resource route, got %q", src)
+	}
+	resourceID, ok := match.Resource()
+	if !ok {
+		t.Fatalf("expected resource id from prepared script path, got %#v", match)
+	}
+	rec := httptest.NewRecorder()
+	inst.registry.Serve(resourceID, rec, httptest.NewRequest(http.MethodGet, src, nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected prepared script resource to serve successfully, got %d", rec.Code)
+	}
+	body := strings.NewReplacer(" ", "", "\n", "", "\t", "", "\r", "").Replace(rec.Body.String())
+	if !strings.Contains(body, `window.__prepared="ok"`) {
+		t.Fatalf("expected prepared script resource to contain original source, got %q", rec.Body.String())
+	}
+	if strings.Contains(body, `_d0r(document.currentScript`) {
+		t.Fatalf("expected prepared module resource to avoid the inline wrapper, got %q", rec.Body.String())
+	}
+
+	sendRecorder := &recordingPrinter{}
+	printer := NewResourcePrinter(sendRecorder)
+	inlineAttrs := gox.NewAttrs()
+	inlineAttrs.Get("name").Set("embedded.js")
+	if err := printer.Send(gox.NewJobHeadOpen(ctx, 2, gox.KindRegular, "script", inlineAttrs)); err != nil {
+		t.Fatal(err)
+	}
+	if err := printer.Send(gox.NewJobRaw(ctx, `window.__embedded = "ok"`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := printer.Send(gox.NewJobHeadClose(ctx, 2, gox.KindRegular, "script")); err != nil {
+		t.Fatal(err)
+	}
+	if len(sendRecorder.opens) != 1 || sendRecorder.closes != 1 {
+		t.Fatalf("expected embedded script render to emit one open and one close tag, got opens=%#v closes=%d", sendRecorder.opens, sendRecorder.closes)
+	}
+	if len(sendRecorder.raw) != 0 || len(sendRecorder.bytes) != 0 {
+		t.Fatalf("expected embedded script body to be externalized, got raw=%#v bytes=%#v", sendRecorder.raw, sendRecorder.bytes)
+	}
+	inlineSrcAttr, ok := sendRecorder.opens[0].attrs.Find("src")
+	if !ok {
+		t.Fatal("expected embedded script render to add src attr")
+	}
+	inlineSrc, ok := inlineSrcAttr.Value().(string)
+	if !ok {
+		t.Fatalf("expected embedded script src to be rewritten to a string path, got %#v", inlineSrcAttr.Value())
+	}
+	if !strings.Contains(inlineSrc, "/r/") || !strings.HasSuffix(inlineSrc, ".embedded.js") {
+		t.Fatalf("expected embedded script render to use a hosted resource path, got %q", inlineSrc)
+	}
+
+	match, ok = inst.PathMaker().Match(httptest.NewRequest(http.MethodGet, inlineSrc, nil))
+	if !ok {
+		t.Fatalf("expected embedded script path to match a resource route, got %q", inlineSrc)
+	}
+	resourceID, ok = match.Resource()
+	if !ok {
+		t.Fatalf("expected resource id from embedded script path, got %#v", match)
+	}
+	rec = httptest.NewRecorder()
+	inst.registry.Serve(resourceID, rec, httptest.NewRequest(http.MethodGet, inlineSrc, nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected embedded script resource to serve successfully, got %d", rec.Code)
+	}
+	inlineBody := strings.NewReplacer(" ", "", "\n", "", "\t", "", "\r", "").Replace(rec.Body.String())
+	if !strings.Contains(inlineBody, `_d0r(document.currentScript`) {
+		t.Fatalf("expected embedded script resource to use the inline wrapper, got %q", rec.Body.String())
+	}
+	if !strings.Contains(inlineBody, `window.__embedded="ok"`) {
+		t.Fatalf("expected embedded script resource to contain original source, got %q", rec.Body.String())
+	}
 }
 
 func TestPrepareScriptErrorsAndHelpers(t *testing.T) {

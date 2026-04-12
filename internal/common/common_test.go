@@ -2,6 +2,9 @@ package common
 
 import (
 	"bytes"
+	"compress/gzip"
+	"io"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -149,8 +152,15 @@ func TestCollectionAndEncodingHelpers(t *testing.T) {
 	}
 	set.Add("x")
 	set.Add("y")
-	if len(set.Slice()) != 2 || len(set.Iter()) != 2 {
-		t.Fatal("expected slice and iter to expose current members")
+	if got := set.Slice(); len(got) != 2 || !slices.Contains(got, "x") || !slices.Contains(got, "y") {
+		t.Fatalf("expected slice to expose current members, got %#v", got)
+	}
+	if got := set.Iter(); len(got) != 2 {
+		t.Fatalf("expected iter to expose current members, got %#v", got)
+	} else if _, ok := got["x"]; !ok {
+		t.Fatalf("expected iter to contain %q, got %#v", "x", got)
+	} else if _, ok := got["y"]; !ok {
+		t.Fatalf("expected iter to contain %q, got %#v", "y", got)
 	}
 	set.Clear()
 	if !set.IsEmpty() {
@@ -191,6 +201,18 @@ func TestCollectionAndEncodingHelpers(t *testing.T) {
 	zipped, err := Zip([]byte("hello world"))
 	if err != nil || len(zipped) == 0 {
 		t.Fatal("expected zip to produce data")
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(zipped))
+	if err != nil {
+		t.Fatal(err)
+	}
+	unzipped, err := io.ReadAll(reader)
+	reader.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(unzipped) != "hello world" {
+		t.Fatalf("unexpected zipped round-trip: %q", string(unzipped))
 	}
 	minified, err := MinifyCSS([]byte("h1 { color: red; }"))
 	if err != nil {

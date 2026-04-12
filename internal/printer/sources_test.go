@@ -44,8 +44,12 @@ func TestSourceFSBranches(t *testing.T) {
 	if !ok || static.Path != "asset.txt" {
 		t.Fatalf("SourceFS.StaticEntry = %#v", entry)
 	}
-	if got := src.scriptEntry(true, false); func() bool { _, ok := got.(resources.ScriptInlineFS); return ok }() == false {
-		t.Fatalf("SourceFS inline script entry = %#v", got)
+	inline, ok := src.scriptEntry(true, false).(resources.ScriptInlineFS)
+	if !ok || inline.Path != "asset.txt" {
+		t.Fatalf("SourceFS inline script entry = %#v", inline)
+	}
+	if data, err := inline.Read(); err != nil || string(data) != "fs-content" {
+		t.Fatalf("SourceFS inline script entry read = %q %v", string(data), err)
 	}
 }
 
@@ -67,8 +71,12 @@ func TestSourceLocalFSBranches(t *testing.T) {
 	if !ok || static.Path != path {
 		t.Fatalf("SourceLocalFS.StaticEntry = %#v", entry)
 	}
-	if got := src.scriptEntry(true, false); func() bool { _, ok := got.(resources.ScriptInlinePath); return ok }() == false {
-		t.Fatalf("SourceLocalFS inline script entry = %#v", got)
+	inline, ok := src.scriptEntry(true, false).(resources.ScriptInlinePath)
+	if !ok || inline.Path != path {
+		t.Fatalf("SourceLocalFS inline script entry = %#v", inline)
+	}
+	if data, err := inline.Read(); err != nil || string(data) != "path-content" {
+		t.Fatalf("SourceLocalFS inline script entry read = %q %v", string(data), err)
 	}
 }
 
@@ -190,14 +198,14 @@ func TestSourceBytesAndStringScriptKinds(t *testing.T) {
 	bytesSrc := SourceBytes([]byte("console.log('ts')"))
 	entry := bytesSrc.scriptEntry(false, true)
 	scriptBytes, ok := entry.(resources.ScriptBytes)
-	if !ok || scriptBytes.Kind != resources.KindTS {
+	if !ok || scriptBytes.Kind != resources.KindTS || string(scriptBytes.Content) != "console.log('ts')" {
 		t.Fatalf("SourceBytes script entry = %#v", entry)
 	}
 
 	stringSrc := SourceString("console.log('inline-ts')")
 	inline := stringSrc.scriptEntry(true, true)
 	scriptInline, ok := inline.(resources.ScriptInlineString)
-	if !ok || scriptInline.Kind != resources.KindTS {
+	if !ok || scriptInline.Kind != resources.KindTS || scriptInline.Content != "console.log('inline-ts')" {
 		t.Fatalf("SourceString inline script entry = %#v", inline)
 	}
 

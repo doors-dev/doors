@@ -20,6 +20,15 @@ func noMeta() gox.Editor {
 	})
 }
 
+func indexAny(s string, parts ...string) int {
+	for _, part := range parts {
+		if idx := strings.Index(s, part); idx >= 0 {
+			return idx
+		}
+	}
+	return -1
+}
+
 type pagePrinterSettings struct {
 	conf *common.SystemConf
 }
@@ -57,18 +66,25 @@ func TestPagePrinterInsertsHeadBeforeBody(t *testing.T) {
 	}
 
 	got := out.String()
-	if !strings.Contains(got, "<head>") {
+	headPos := strings.Index(got, "<head>")
+	headClosePos := strings.Index(got, "</head>")
+	bodyPos := strings.Index(got, "<body>")
+	metaPos := indexAny(got, `meta content="inserted" name="description"`, `meta name="description" content="inserted"`)
+	importPos := strings.Index(got, `<script type="importmap">`)
+	if headPos == -1 || headClosePos == -1 || bodyPos == -1 || strings.Count(got, "<head>") != 1 || strings.Count(got, "</head>") != 1 {
 		t.Fatalf("expected inserted head, got %q", got)
 	}
-	if !strings.Contains(got, `meta content="inserted" name="description"`) &&
-		!strings.Contains(got, `meta name="description" content="inserted"`) {
+	if metaPos == -1 {
 		t.Fatalf("expected inserted meta, got %q", got)
 	}
-	if !strings.Contains(got, `<script type="importmap">`) {
+	if importPos == -1 {
 		t.Fatalf("expected importmap script, got %q", got)
 	}
 	if !strings.Contains(got, `{"imports":{"app":"/app.js"}}`) {
 		t.Fatalf("expected importmap contents, got %q", got)
+	}
+	if !(headPos < metaPos && metaPos < importPos && importPos < headClosePos && headClosePos < bodyPos) {
+		t.Fatalf("expected inserted head content before body, got %q", got)
 	}
 }
 
@@ -97,15 +113,21 @@ func TestPagePrinterInsertsIntoExplicitHead(t *testing.T) {
 	}
 
 	got := out.String()
-	if !strings.Contains(got, "<head>") || !strings.Contains(got, "</head>") {
+	headPos := strings.Index(got, "<head>")
+	headClosePos := strings.Index(got, "</head>")
+	metaPos := indexAny(got, `meta content="noindex" name="robots"`, `meta name="robots" content="noindex"`)
+	importPos := strings.Index(got, `<script type="importmap">`)
+	if headPos == -1 || headClosePos == -1 || strings.Count(got, "<head>") != 1 || strings.Count(got, "</head>") != 1 {
 		t.Fatalf("expected explicit head output, got %q", got)
 	}
-	if !strings.Contains(got, `meta content="noindex" name="robots"`) &&
-		!strings.Contains(got, `meta name="robots" content="noindex"`) {
+	if metaPos == -1 {
 		t.Fatalf("expected inserted robots meta, got %q", got)
 	}
 	if !strings.Contains(got, `{"imports":{"extra":"/extra.js"}}`) {
 		t.Fatalf("expected explicit head importmap, got %q", got)
+	}
+	if importPos == -1 || !(headPos < metaPos && metaPos < importPos && importPos < headClosePos) {
+		t.Fatalf("expected inserted content to stay inside explicit head, got %q", got)
 	}
 }
 
