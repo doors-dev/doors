@@ -1,3 +1,4 @@
+# Doors
 [![codecov](https://codecov.io/gh/doors-dev/doors/branch/main/graph/badge.svg?token=6FOBJKNHFZ)](https://codecov.io/gh/doors-dev/doors)
 [![Go Report Card](https://goreportcard.com/badge/github.com/doors-dev/doors)](https://goreportcard.com/report/github.com/doors-dev/doors)
 [![Go Reference](https://pkg.go.dev/badge/github.com/doors-dev/doors.svg)](https://pkg.go.dev/github.com/doors-dev/doors)
@@ -5,9 +6,7 @@
 
 [https://doors.dev](https://doors.dev)
 
-# Doors
-
-Doors is a server-driven UI runtime for building reactive web applications in Go.
+Doors is a server-driven UI framework + runtime for building stateful, reactive web applications in Go.
 
 In Doors, the server owns the interaction flow and the browser acts as a renderer and input layer. You build interactive UI in Go, keep state and capabilities on the server, and let the runtime synchronize updates back to the page.
 
