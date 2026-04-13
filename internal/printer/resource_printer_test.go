@@ -1,3 +1,17 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package printer
 
 import (
@@ -30,7 +44,6 @@ type titleInstance struct {
 	titleAttrs gox.Attrs
 	registry   *resources.Registry
 	conf       common.SystemConf
-	license    string
 	csp        *common.CSPCollector
 	modules    *testModuleRegistry
 	metas      []testMetaUpdate
@@ -55,7 +68,6 @@ func (t *titleInstance) Conf() *common.SystemConf              { return &t.conf 
 func (t *titleInstance) NewID() uint64                         { return 1 }
 func (t *titleInstance) NewLink(any) (core.Link, error)        { return core.Link{}, nil }
 func (t *titleInstance) Runtime() shredder.Runtime             { return nil }
-func (t *titleInstance) License() string                       { return t.license }
 func (t *titleInstance) SetStatus(int)                         {}
 func (t *titleInstance) SessionExpire(time.Duration)           {}
 func (t *titleInstance) SessionEnd()                           {}
@@ -128,7 +140,6 @@ func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstan
 	inst := &titleInstance{
 		registry: resources.NewRegistry(pagePrinterSettings{conf: &conf}),
 		conf:     conf,
-		license:  "licensed",
 		csp:      (&common.CSP{}).NewCollector(),
 		modules:  modules,
 	}

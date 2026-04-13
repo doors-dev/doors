@@ -1,3 +1,17 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package doors
 
 import (
@@ -11,7 +25,6 @@ import (
 	"testing"
 	"testing/fstest"
 
-	introuter "github.com/doors-dev/doors/internal/router"
 	"github.com/doors-dev/gox"
 )
 
@@ -147,7 +160,6 @@ func TestRouteResourceAndFallback(t *testing.T) {
 	UseESConf(router, ESOptions{JSX: JSXReact(), Minify: false})
 	UseSystemConf(router, SystemConf{})
 	UseCSP(router, CSP{})
-	UseLicense(router, "Doors Commercial")
 	UseServerID(router, "blue")
 
 	server := httptest.NewServer(router)
@@ -187,14 +199,6 @@ func TestRouteMatchRejectsRoot(t *testing.T) {
 	}
 	if (RouteFile{Path: ""}).Match(req) {
 		t.Fatal("expected file route to reject empty path")
-	}
-}
-
-func TestUseLicenceAlias(t *testing.T) {
-	router := introuter.NewRouter()
-	UseLicence(router, "Doors Commercial")
-	if got := router.License(); got != "Doors Commercial" {
-		t.Fatalf("unexpected license after alias call: %q", got)
 	}
 }
 

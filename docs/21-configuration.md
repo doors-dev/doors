@@ -39,7 +39,6 @@ Configuration is applied to the router with:
 - `doors.UseServerID(...)`
 - `doors.UseSessionCallback(...)`
 - `doors.UseErrorPage(...)`
-- `doors.UseLicense(...)`
 
 **Doors** fills in defaults automatically, so you usually set only the values you want to change.
 
@@ -192,7 +191,6 @@ Three smaller router-level helpers are worth knowing about:
 
 - `doors.UseSessionCallback(...)`: observe **Doors** session create/delete events. `Create` receives the new session ID and the headers from the request that created it.
 - `doors.UseErrorPage(...)`: render your own page for internal runtime errors. The callback receives the requested `doors.Location` and the `error`.
-- `doors.UseLicense(...)`: attach a license string to the managed client script. When omitted, the client prints `Doors AGPL3.0`.
 
 ## Rules
 

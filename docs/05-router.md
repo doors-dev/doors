@@ -178,7 +178,6 @@ Common helpers include:
 - `doors.UseCSP(...)`
 - `doors.UseServerID(...)`
 - `doors.UseESConf(...)`
-- `doors.UseLicense(...)`
 
 These configure the router itself. They are separate from path-model design and page behavior.
 

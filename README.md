@@ -127,18 +127,9 @@ Doors is in beta. It is ready for development and can be used in production with
 
 ## Licensing
 
-Doors is dual-licensed by **doors dev LLC**.
-
-- **Open-source use:** available under **AGPL-3.0-only**
-- **Commercial use:** required for proprietary / closed-source use or other use that cannot comply with AGPL-3.0-only
-- Commercial licensing details: [doors.dev/license](https://doors.dev/license)
-
-Commercial licenses are issued through an Order Form and a separate commercial agreement. The signed agreement controls.
-
-Contact: [sales@doors.dev](mailto:sales@doors.dev)
+Doors is licensed under the Apache License 2.0.
 
 See also:
 
-- [AGPL-3.0 License](./LICENSE)
-- [Licensing Terms](./LICENSING.md)
-- [Commercial License Summary](./LICENSE-COMMERCIAL)
+- [Apache License 2.0](./LICENSE)
+- [Licensing Notes](./LICENSING.md)

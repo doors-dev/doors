@@ -13,7 +13,6 @@ profile.cov
 go.work
 go.work.sum
 .env
-licenser
 .DS_Store
 **/.DS_Store
 .gocache
