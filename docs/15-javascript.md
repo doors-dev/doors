@@ -285,6 +285,7 @@ These are not a 1:1 pair. For example, `$hook(...)` can call `ARawHook`.
 For `AHook[T]`, the handler receives `doors.RequestHook[T]`, so it can:
 
 - read `r.Data()`
+- read `r.Context()` for the underlying HTTP request context
 - read or set cookies
 - schedule `r.After(...)` actions
 
@@ -306,6 +307,8 @@ Return `true` to remove it after the call.
 	})
 </script>
 ```
+
+> The handler's `ctx` parameter is the **Doors** runtime context. Use it with **Doors** APIs. `r.Context()` is the underlying HTTP request context.
 
 ### Raw Variant
 

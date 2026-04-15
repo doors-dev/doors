@@ -208,6 +208,27 @@ func TestRequestReaderBodyDoneAndWrappers(t *testing.T) {
 	}
 }
 
+func TestRequestContextReturnsHTTPContext(t *testing.T) {
+	type key string
+
+	httpKey := key("http")
+	runtimeKey := key("runtime")
+	httpCtx := context.WithValue(context.Background(), httpKey, "request-context")
+	runtimeCtx := context.WithValue(context.Background(), runtimeKey, "runtime-context")
+	req := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(httpCtx)
+	r := &request{w: httptest.NewRecorder(), r: req, ctx: runtimeCtx}
+
+	if r.Context() != httpCtx {
+		t.Fatal("expected request context to match underlying http request context")
+	}
+	if got := r.Context().Value(httpKey); got != "request-context" {
+		t.Fatalf("unexpected request context value: %v", got)
+	}
+	if got := r.Context().Value(runtimeKey); got != nil {
+		t.Fatalf("request context should not expose runtime context value, got %v", got)
+	}
+}
+
 func ptr[T any](v T) *T {
 	return &v
 }

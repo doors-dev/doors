@@ -128,7 +128,10 @@ var assets embed.FS
 </a>
 ```
 
+
 If a hook returns `true`, the resource is served only once. That is useful for one-time downloads and other short-lived links.
+
+> The `ctx` argument is the **Doors** runtime context for framework APIs. The `*http.Request` still has its normal `r.Context()` request context.
 
 ### Proxy
 

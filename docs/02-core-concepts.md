@@ -107,6 +107,7 @@ Do not swap it for `context.Background()` when calling **Doors** APIs like beam 
 
 `ctx.Done()` is also meaningful here. It closes when the related subtree or lifecycle scope goes away, which makes it the right cleanup signal for work attached to rendered UI.
 
+
 ```gox
 <>
 	~(doors.Go(func(ctx context.Context) {
@@ -114,6 +115,7 @@ Do not swap it for `context.Background()` when calling **Doors** APIs like beam 
 	}))
 </>
 ```
+> In request handlers, use the handler context with **Doors** APIs. Request values expose `Context()` for the underlying HTTP request context.
 
 ## Runtime
 

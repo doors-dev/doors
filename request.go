@@ -38,6 +38,9 @@ type Request interface {
 	SetCookie(cookie *http.Cookie)
 	// GetCookie retrieves a cookie by name.
 	GetCookie(name string) (*http.Cookie, error)
+	// Context returns the underlying HTTP request context.
+	// It is not the Doors runtime context passed to handlers.
+	Context() context.Context
 }
 
 // RequestEvent is the request context passed to event handlers.
@@ -113,6 +116,10 @@ type request struct {
 	w   http.ResponseWriter
 	r   *http.Request
 	ctx context.Context
+}
+
+func (r *request) Context() context.Context {
+	return r.r.Context()
 }
 
 func (r *request) After(action []Action) error {

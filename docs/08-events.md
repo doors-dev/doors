@@ -69,13 +69,16 @@ The proxy form walks through the following subtree until it reaches the real ren
 
 ## Handler
 
-For normal DOM events, the handler receives `doors.RequestEvent[T]`.
+For normal DOM events, the handler receives `ctx` and `doors.RequestEvent[T]`.
 
 That gives you:
 
 - `r.Event()` for the typed event payload
+- `r.Context()` for the underlying HTTP request context
 - `r.SetCookie(...)` and `r.GetCookie(...)`
 - `r.After(...)` to schedule client-side actions after the request succeeds and all triggered DOM changes are applied
+
+The `ctx` parameter is the **Doors** runtime context. Pass that `ctx` to **Doors** APIs. `r.Context()` is separate: it belongs to the HTTP request.
 
 Example:
 
