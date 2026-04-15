@@ -8,8 +8,6 @@
 
 Doors is a server-driven UI framework + runtime for building stateful, reactive web applications in Go.
 
-In Doors, the server owns the interaction flow and the browser acts as a renderer and input layer. You build interactive UI in Go, keep state and capabilities on the server, and let the runtime synchronize updates back to the page.
-
 ## Example
 
 ```gox
@@ -40,53 +38,30 @@ elem (s Search) results(input string) {
 }
 ```
 
-## What it includes
+## Some highlights
 
-- Reactive web applications written in Go
-- A stack with no public or hand-written API
-- JavaScript as an option, not a requirement
-- Asset serving and delivery that fit a single-binary deployment model
-- Real-time capabilities out of the box
-- A Go language extension with first-class HTML templating and its own language server
+- **Front-end framework capabilities in server-side Go.** Reactive state primitives, dynamic routing, composable components.
+- **No public API layer.** No endpoint design needed, private temporal transport is handled under the hood.
+- **Unified control flow.** No context switch between back-end/front-end.
+- **Integrated web stack.** Bundle assets, build scripts, serve private files, automate CSP, and ship in one binary.
 
-## Core model
+## Execution model
 
-Doors applications run on a stateful Go server. The browser acts as a remote renderer and input layer.
+Go server is UI runtime: web application runs on a stateful server, while the browser acts as a remote renderer and input layer.
 
-That means you can keep:
+## Mental model
 
-- event handling
-- permissions
-- business rules
-- data access
-- UI rendering
+Link DOM to the data it depends on.
 
-in one execution flow instead of splitting them between browser code, handlers, API contracts, and state reassembly.
+## Peculiarities
 
-### Your Go server is the UI runtime
-
-In Doors, the web app runs as a stateful Go process. The browser acts as a remote renderer and input layer, while application flow, state, and side effects stay on the server.
-
-### Less drift between UI and backend logic
-
-Because interactions are handled in Go, you do not have to split core behavior across separate frontend and backend implementations. That reduces duplication and makes changes more consistent.
-
-### Smaller exposed surface area
-
-Doors does not turn every UI action into a public API endpoint. Session-scoped communication happens internally, so the client only gets rendered output and user-specific interaction paths.
-
-### Designed as a cohesive stack
-
-From template syntax and concurrency engine to synchronization protocol — each layer was designed together to **max out**.
-
-## Key ideas
-
-- `gox` for writing HTML-like UI directly as Go expressions
-- Reactive state primitives that can be subscribed to, derived, and mutated
-- Dynamic containers that can be updated, replaced, or removed at runtime
-- Type-safe routing with URLs represented as Go structs
-- Real-time client sync without making WebSockets or SSE your app architecture
-- Secure by default — every user can interact only with what you render to them
+- Purposely build Go language extension with its own LSP, parser, and editor plugins. Adds HTML as Go expressions and `elem` primitives.
+- Reactive state primitives that can be subscribed to, derived, and mutated.
+- Dynamic containers that can be updated, replaced, or removed at runtime.
+- Type-safe routing with URLs represented as Go structs.
+- HTTP/3-ready synchronization protocol (rolling-request + streaming, events via regular post, no WebSockets/SSE).
+- Custom concurrency engine that enables non-blocking event processing, parallel rendering, and tree-aware state propagation.
+- Secure by default: every user can interact only with what you render to them. Means you check permissions when your render the button and that's is enough to be sure that related action wont be triggered by anyone else.
 
 ## Where Doors fits best
 
@@ -100,7 +75,7 @@ From template syntax and concurrency engine to synchronization protocol — each
 ## Where it is not the right fit
 
 - Static or mostly non-interactive sites
-- Client-first apps with minimal server behavior
+- Client-first apps with minimal server behavior and simple routing
 - Offline-first PWAs where the browser must be the primary runtime
 
 ## Comparisons
@@ -123,7 +98,7 @@ Typical JavaScript stacks place much of the interaction model in the browser whi
 
 ## Status
 
-Doors is in beta. It is ready for development and can be used in production with care, but the ecosystem is still maturing. Expect fixes, refinements, and some breaking changes as it evolves.
+Doors is in beta. It is ready for development and can be used in production with caution, but you should expect fixes and updates as the ecosystem matures.
 
 ## Licensing
 
@@ -132,4 +107,3 @@ Doors is licensed under the Apache License 2.0.
 See also:
 
 - [Apache License 2.0](./LICENSE)
-- [Licensing Notes](./LICENSING.md)
