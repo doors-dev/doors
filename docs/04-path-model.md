@@ -79,9 +79,9 @@ doors.UseModel(router, func(r doors.RequestModel, s doors.Source[Path]) doors.Re
 
 Use `Get()` here because this handler does not run with a **Doors** render/runtime `ctx`. The `Read(ctx)`-style methods are for places that do have that runtime context.
 
-## Location
+## Catch-All Location
 
-`doors.Location` is the special catch-all model.
+`doors.Location` is the special catch-all path model.
 
 If you register `doors.Source[doors.Location]`, that handler matches every URL:
 
@@ -91,13 +91,17 @@ doors.UseModel(router, func(r doors.RequestModel, s doors.Source[doors.Location]
 })
 ```
 
-This is useful when you want the raw path and query instead of a decoded struct model.
-
 For example, a request like `/any/deep/path?tag=hello&page=7` arrives as `doors.Location` with:
 
+- `Segments` as `[]string{"any", "deep", "path"}`
 - `Path()` as `/any/deep/path`
 - `Query.Get("tag")` as `hello`
 - `Query.Get("page")` as `7`
+
+Use `doors.Location` when you want the raw path and query instead of a decoded struct model.
+
+This is useful for bigger apps where one central route parser is easier to maintain than a very large path model struct. Keep `doors.Source[doors.Location]` as the route source, then derive page-specific values from it the same way you would derive smaller pieces of normal state.
+
 
 ## Variants
 
@@ -200,9 +204,32 @@ Examples:
 
 Query fields do not decide which path variant matches. They are decoded after a path variant has matched.
 
-Only fields tagged with `query` are encoded back into generated URLs.
+With tag-based query fields, only fields tagged with `query` are encoded back into generated URLs.
 
-For the exact query encoding and decoding rules, **Doors** uses [go-playground/form v4](https://github.com/go-playground/form/tree/v4.2.1) with the `query` tag in explicit mode.
+For the exact tag-based query encoding and decoding rules, **Doors** uses [go-playground/form v4](https://github.com/go-playground/form/tree/v4.2.1) with the `query` tag in explicit mode.
+
+### Raw Query Values
+
+When a page has many query values, it can be more convenient to keep `url.Values` directly in the path model instead of tagging each query field.
+
+```go
+import "net/url"
+
+type Path struct {
+	Search bool `path:"/search"`
+	Query  url.Values
+}
+```
+
+**Doors** stores the whole query string in the exported `url.Values` field.
+
+For `/search?q=doors&tag=go&tag=ui`, `Query.Get("q")` is `doors` and `Query["tag"]` is `[]string{"go", "ui"}`.
+
+When **Doors** builds a URL from the model, it uses that same `url.Values` field as the generated query string.
+
+This also works well when the page accepts open-ended query parameters, needs to preserve unknown parameters, or already has its own query parsing layer.
+
+Do not mix a `url.Values` field with `query` tags in the same path model. Use one query style per model.
 
 ## Response
 

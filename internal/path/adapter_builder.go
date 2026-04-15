@@ -16,6 +16,7 @@ package path
 
 import (
 	"errors"
+	"net/url"
 	"reflect"
 	"strings"
 )
@@ -26,9 +27,10 @@ type pathVariant struct {
 }
 
 type adapterBuilder[M any] struct {
-	value  M
-	path   []pathVariant
-	fields map[string]field
+	value    M
+	path     []pathVariant
+	fields   map[string]field
+	queryField int
 }
 
 func (a adapterBuilder[M]) build() (Adapter[M], error) {
@@ -50,7 +52,10 @@ func (a adapterBuilder[M]) build() (Adapter[M], error) {
 		}
 		branches = append(branches, branch)
 	}
-	return adapter[M](branches), nil
+	return adapter[M]{
+		branches: branches,
+		queryField: a.queryField,
+	}, nil
 }
 
 func (a *adapterBuilder[M]) scanFields() error {
@@ -58,6 +63,7 @@ func (a *adapterBuilder[M]) scanFields() error {
 	if t.Kind() != reflect.Struct {
 		return errors.New("path model must be a struct")
 	}
+	hasQuery := false
 	for i := range t.NumField() {
 		f := t.Field(i)
 		path, ok := f.Tag.Lookup("path")
@@ -71,13 +77,24 @@ func (a *adapterBuilder[M]) scanFields() error {
 			a.addPath(f, path)
 			continue
 		}
+		if f.Type == reflect.TypeFor[url.Values]() {
+			if !f.IsExported() {
+				return errors.New("path field " + f.Name + " must be exported")
+			}
+			a.queryField = i
+			continue
+		}
 		_, ok = f.Tag.Lookup("query")
 		if ok {
+			hasQuery = true
 			if !f.IsExported() {
 				return errors.New("query field " + f.Name + " must be exported")
 			}
 		}
 		a.addField(f, i)
+	}
+	if hasQuery && a.queryField != -1 {
+		return errors.New("path struct contains both url.Values field and `query` tagged field, you can't have both")
 	}
 	return nil
 }

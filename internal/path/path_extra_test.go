@@ -121,6 +121,45 @@ func TestGenericAdapterHelpers(t *testing.T) {
 	}
 }
 
+func TestURLValuesField(t *testing.T) {
+	type page struct {
+		View  bool `path:"/docs/:ID"`
+		ID    string
+		Query url.Values
+	}
+	adapter, err := NewAdapter[page]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	loc, err := NewLocationFromEscapedURI("/docs/intro?tag=go&tag=doors&page=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, ok := adapter.Decode(loc)
+	if !ok {
+		t.Fatal("expected adapter to decode raw query values")
+	}
+	if !decoded.View || decoded.ID != "intro" || !EqualLocation(Location{Segments: loc.Segments, Query: decoded.Query}, loc) {
+		t.Fatalf("unexpected decoded model: %#v", decoded)
+	}
+	encoded, err := adapter.Encode(decoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !EqualLocation(encoded, loc) {
+		t.Fatalf("unexpected encoded location: %#v", encoded)
+	}
+
+	type mixed struct {
+		View  bool `path:"/"`
+		Query url.Values
+		Tag   string `query:"tag"`
+	}
+	if _, err := NewAdapter[mixed](); err == nil {
+		t.Fatal("expected raw query values and query tags to conflict")
+	}
+}
+
 func TestLocationHelpers(t *testing.T) {
 	loc := Location{
 		Segments: []string{"docs", "hello world"},

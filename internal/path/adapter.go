@@ -16,6 +16,7 @@ package path
 
 import (
 	"errors"
+	"net/url"
 	"reflect"
 
 	"github.com/go-playground/form/v4"
@@ -54,11 +55,15 @@ type Adapter[M any] interface {
 
 func NewAdapter[M any]() (Adapter[M], error) {
 	return adapterBuilder[M]{
-		fields: make(map[string]field),
+		fields:   make(map[string]field),
+		queryField: -1,
 	}.build()
 }
 
-type adapter[M any] []branch
+type adapter[M any] struct {
+	branches []branch
+	queryField int
+}
 
 func (a adapter[M]) DecodeAny(v any) (any, bool) {
 	return a.Decode(v)
@@ -87,13 +92,17 @@ func (a adapter[M]) Decode(v any) (*M, bool) {
 }
 
 func (a adapter[M]) DecodeLocation(l Location) (*M, bool) {
-	for _, branch := range a {
+	for _, branch := range a.branches {
 		var model M
 		v := reflect.ValueOf(&model).Elem()
 		if branch.decode(v, l.Segments) {
 			branch.setMarker(v)
-			if err := queryDecoder.Decode(&model, l.Query); err != nil {
-				return nil, false
+			if a.queryField == -1 {
+				if err := queryDecoder.Decode(&model, l.Query); err != nil {
+					return nil, false
+				}
+			} else {
+				v.Field(a.queryField).Set(reflect.ValueOf(l.Query))
 			}
 			return &model, true
 		}
@@ -112,17 +121,22 @@ func (a adapter[M]) EncodeAny(v any) (Location, error, bool) {
 
 func (a adapter[M]) Encode(model *M) (Location, error) {
 	v := reflect.ValueOf(model).Elem()
-	for _, b := range a {
-		if len(a) != 1 && !b.getMarker(v) {
+	for _, b := range a.branches {
+		if len(a.branches) != 1 && !b.getMarker(v) {
 			continue
 		}
 		segments, err := b.encode(v)
 		if err != nil {
 			return Location{}, err
 		}
-		query, err := queryEncoder.Encode(model)
-		if err != nil {
-			return Location{}, err
+		var query url.Values
+		if a.queryField == -1 {
+			query, err = queryEncoder.Encode(model)
+			if err != nil {
+				return Location{}, err
+			}
+		} else {
+			query = v.Field(a.queryField).Interface().(url.Values)
 		}
 		return Location{
 			Segments: segments,
