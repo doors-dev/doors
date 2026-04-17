@@ -37,7 +37,7 @@ type testDoor struct {
 	thread shredder.Thread
 }
 
-func (d *testDoor) NewFrame() shredder.Frame {
+func (d *testDoor) ReadFrame() shredder.Frame {
 	return d.thread.Frame()
 }
 

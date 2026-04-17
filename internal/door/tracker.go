@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
@@ -79,8 +78,7 @@ type tracker struct {
 	id                   uint64
 	root                 *root
 	parent               *tracker
-	thread               shredder.Thread
-	readFrame            atomic.Value
+	thread               shredder.ReadWriteThread
 	ctx                  context.Context
 	cancel               context.CancelFunc
 	children             common.Set[*node]
@@ -276,19 +274,15 @@ func (t *tracker) addChild(n *node) {
 	t.mu.Unlock()
 }
 
-func (t *tracker) NewFrame() shredder.Frame {
-	f := t.readFrame.Load().(shredder.Frame)
-	return shredder.Join(false, f)
+func (t *tracker) ReadFrame() shredder.Frame {
+	return t.thread.Read()
 }
 
-func (t *tracker) newRenderFrame() shredder.Frame {
-	frame := t.thread.Frame()
-	prev := t.readFrame.Swap(t.thread.Frame())
-	if prev != nil {
-		prev := prev.(shredder.Frame)
-		prev.Release()
-	}
-	return frame
+func (t *tracker) writeFrame() shredder.Frame {
+	write := t.thread.Write()
+	join := shredder.Join(false, write, t.cinema.ReadFrame())
+	write.Release()
+	return join
 }
 
 type containerCore struct {

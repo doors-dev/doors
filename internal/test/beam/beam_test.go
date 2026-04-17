@@ -151,3 +151,50 @@ func TestEqualSubAndGo(t *testing.T) {
 	test.Click(t, page, "#get")
 	test.TestReportId(t, page, 1, "3")
 }
+
+func TestRenderBranchUpdateHoldsPropagation(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamRenderBranchUpdateFrameFragment{
+				b: doors.NewSource(0),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	<-time.After(200 * time.Millisecond)
+	test.TestContent(t, page, "#watcher-i", "1")
+	test.TestContent(t, page, "#watcher-newi", "1")
+}
+
+func TestRenderBranchInitHoldsPropagation(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamRenderBranchInitFrameFragment{
+				b: doors.NewSource(0),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	<-time.After(200 * time.Millisecond)
+	test.TestContent(t, page, "#watcher-i", "0")
+	test.TestContent(t, page, "#watcher-newi", "0")
+}
+
+func TestRenderUpdateWarningRepro(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamRenderUpdateWarningFragment{
+				b: doors.NewSource(0),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.Click(t, page, "#warning-reload")
+	<-time.After(200 * time.Millisecond)
+}

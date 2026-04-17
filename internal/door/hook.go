@@ -71,7 +71,7 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) (Do
 		close(ch)
 		return false, false
 	}
-	ctx, frame := ctex.FrameInsert(h.tracker.ctx)
+	ctx, frame := ctex.AfterFrameInsert(h.tracker.ctx)
 	defer frame.Activate()
 	if track != 0 {
 		frame.RunAfter(nil, nil, func(b bool) {

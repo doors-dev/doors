@@ -101,7 +101,7 @@ type Stack = pipe.Stack
 func (r Root) Render(requestCtx context.Context, comp gox.Comp, init func()) (Stack, error) {
 	thread := shredder.Thread{}
 	mountFrame := &shredder.ValveFrame{}
-	renderFrame := shredder.Join(true, thread.Frame(), r.tracker.newRenderFrame())
+	renderFrame := shredder.Join(true, thread.Frame(), r.tracker.writeFrame())
 	pipe := pipe.NewPipe(
 		r.tracker.ctx,
 		r.tracker.runtime(),

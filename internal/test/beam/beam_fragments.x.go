@@ -383,3 +383,163 @@ func (f *BeamEqualFragment) Main() gox.Elem {
 	return })
 //line beam_fragments.gox:276
 }
+
+type BeamRenderBranchUpdateFrameFragment struct {
+	b doors.Source[int]
+	n doors.Door
+	test.NoBeam
+}
+
+//line beam_fragments.gox:284
+func (f *BeamRenderBranchUpdateFrameFragment) content(i int) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("span"); if __e != nil { return }
+		{
+//line beam_fragments.gox:285
+			__e = __c.AttrSet("id", "watcher-i"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:285
+			__e = __c.Any(fmt.Sprint(i)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:287
+		f.b.Mutate(ctx, func(i int) int {
+			return i + 1
+		})
+		newI, _ := f.b.Read(ctx)
+
+		__e = __c.Init("span"); if __e != nil { return }
+		{
+//line beam_fragments.gox:292
+			__e = __c.AttrSet("id", "watcher-newi"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:292
+			__e = __c.Any(fmt.Sprint(newI)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:293
+}
+
+//line beam_fragments.gox:295
+func (f *BeamRenderBranchUpdateFrameFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:297
+		f.b.ReadAndSub(ctx, func(ctx context.Context, i int) bool {
+			f.n.Update(ctx, f.content(i))
+			return true
+		})
+		f.b.Mutate(ctx, func(i int) int {
+			return i + 1
+		})
+
+//line beam_fragments.gox:305
+		__e = __c.Any(&f.n); if __e != nil { return }
+	return })
+//line beam_fragments.gox:306
+}
+
+type BeamRenderBranchInitFrameFragment struct {
+	b doors.Source[int]
+	n doors.Door
+	test.NoBeam
+}
+
+//line beam_fragments.gox:314
+func (f *BeamRenderBranchInitFrameFragment) content(i int) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("span"); if __e != nil { return }
+		{
+//line beam_fragments.gox:315
+			__e = __c.AttrSet("id", "watcher-i"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:315
+			__e = __c.Any(fmt.Sprint(i)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:317
+		f.b.Mutate(ctx, func(i int) int {
+			return i + 1
+		})
+		newI, _ := f.b.Read(ctx)
+
+		__e = __c.Init("span"); if __e != nil { return }
+		{
+//line beam_fragments.gox:322
+			__e = __c.AttrSet("id", "watcher-newi"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:322
+			__e = __c.Any(fmt.Sprint(newI)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:323
+}
+
+//line beam_fragments.gox:325
+func (f *BeamRenderBranchInitFrameFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:326
+		__e = __c.Any(&f.n); if __e != nil { return }
+//line beam_fragments.gox:328
+		go func() {
+			f.b.Sub(ctx, func(ctx context.Context, i int) bool {
+				f.n.Update(ctx, f.content(i))
+				return true
+			})
+		}()
+
+	return })
+//line beam_fragments.gox:335
+}
+
+type BeamRenderUpdateWarningFragment struct {
+	b    doors.Source[int]
+	host doors.Door
+	test.NoBeam
+}
+
+//line beam_fragments.gox:343
+func (f *BeamRenderUpdateWarningFragment) content() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:345
+		n3 := doors.Door{}
+		_, _ = f.b.Read(ctx)
+		f.b.Sub(ctx, func(ctx context.Context, i int) bool {
+			n3.Update(ctx, test.ReportId(4, fmt.Sprint(i)))
+			return false
+		})
+
+//line beam_fragments.gox:352
+		__e = __c.Any(&n3); if __e != nil { return }
+	return })
+//line beam_fragments.gox:353
+}
+
+//line beam_fragments.gox:355
+func (f *BeamRenderUpdateWarningFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:356
+		__e = f.host.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.InitContainer(); if __e != nil { return }
+			{
+//line beam_fragments.gox:357
+				__e = __c.Any(f.content()); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+//line beam_fragments.gox:359
+		__e = __c.Any(test.Button("warning-reload", func(ctx context.Context) bool {
+		f.host.Reload(ctx)
+		return true
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:363
+}

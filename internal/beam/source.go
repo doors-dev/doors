@@ -209,7 +209,7 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 		close(ch)
 		return ch
 	}
-	ctxFrame := ctex.Frame(ctx)
+	ctxFrame := ctex.GetFrames(ctx).Send()
 
 	stopped := atomic.Bool{}
 

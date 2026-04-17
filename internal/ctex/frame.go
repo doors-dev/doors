@@ -20,39 +20,83 @@ import (
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-func FrameInsert(ctx context.Context) (context.Context, *shredder.AfterFrame) {
-	sh := &shredder.AfterFrame{}
-	return context.WithValue(ctx, keyFrame, sh), sh
+type Frames struct {
+	after *shredder.AfterFrame
+	sync  shredder.Frame
+}
+
+func (f Frames) Send() shredder.SimpleFrame {
+	if f.after == nil {
+		return shredder.FreeFrame{}
+	}
+	return f.after
+}
+
+func (f Frames) Render() shredder.Frame {
+	if f.sync == nil {
+		return shredder.FreeFrame{}
+	}
+	return f.sync
+}
+
+func (f Frames) JoinedFrame() shredder.Frame {
+	if f.after == nil && f.sync == nil {
+		return shredder.FreeFrame{}
+	}
+	if f.sync == nil {
+		return shredder.Join(false, f.after)
+	}
+	if f.after == nil {
+		return f.sync
+	}
+	return shredder.Join(false, f.sync, f.after)
+}
+
+func AfterFrameInsert(ctx context.Context) (context.Context, *shredder.AfterFrame) {
+	fs := Frames{
+		after: &shredder.AfterFrame{},
+	}
+	return context.WithValue(ctx, keyFrame, fs), fs.after
+}
+
+func SyncFrameInsert(ctx context.Context, frame shredder.Frame) context.Context {
+	fs, ok := ctx.Value(keyFrame).(Frames)
+	if ok {
+		fs.sync = frame
+	} else {
+		fs = Frames{
+			sync: frame,
+		}
+	}
+	return context.WithValue(ctx, keyFrame, fs)
 }
 
 func AfterFrame(ctx context.Context) (*shredder.AfterFrame, bool) {
-	f, ok := ctx.Value(keyFrame).(*shredder.AfterFrame)
+	fs, ok := ctx.Value(keyFrame).(Frames)
 	if !ok {
 		return nil, false
 	}
-	return f, true
+	return fs.after, fs.after != nil
 }
 
-func Frame(ctx context.Context) shredder.SimpleFrame {
-	f, ok := ctx.Value(keyFrame).(*shredder.AfterFrame)
-	if !ok {
-		return shredder.FreeFrame{}
-	}
+func GetFrames(ctx context.Context) Frames {
+	f, _ := ctx.Value(keyFrame).(Frames)
 	return f
 }
 
 func FrameInfect(source context.Context, target context.Context) context.Context {
-	f, ok := source.Value(keyFrame).(*shredder.AfterFrame)
+	fs, ok := source.Value(keyFrame).(Frames)
 	if !ok {
 		return target
 	}
-	return context.WithValue(target, keyFrame, f)
+	return context.WithValue(target, keyFrame, fs)
 }
 
 func FrameRemove(ctx context.Context) context.Context {
-	_, ok := ctx.Value(keyFrame).(*shredder.AfterFrame)
+	_, ok := ctx.Value(keyFrame).(Frames)
 	if !ok {
 		return ctx
 	}
 	return context.WithValue(ctx, keyFrame, nil)
 }
+

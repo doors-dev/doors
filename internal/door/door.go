@@ -71,7 +71,7 @@ func (d *Door) rebase(ctx context.Context, el gox.Elem) <-chan error {
 			elem:     el,
 		},
 	}
-	d.takeover(node, task.TaskFrame())
+	d.takeover(node, task.ContextJoinedFrame())
 	return ch
 }
 
@@ -86,7 +86,7 @@ func (d *Door) unmount(ctx context.Context) <-chan error {
 			remove:   true,
 		},
 	}
-	d.takeover(node, task.TaskFrame())
+	d.takeover(node, task.ContextJoinedFrame())
 	return ch
 }
 
@@ -101,7 +101,7 @@ func (d *Door) update(ctx context.Context, content any) <-chan error {
 			content:  content,
 		},
 	}
-	d.takeover(node, task.TaskFrame())
+	d.takeover(node, task.ContextJoinedFrame())
 	return ch
 }
 
@@ -115,7 +115,7 @@ func (d *Door) reload(ctx context.Context) <-chan error {
 			taskNode: task,
 		},
 	}
-	d.takeover(node, task.TaskFrame())
+	d.takeover(node, task.ContextJoinedFrame())
 	return ch
 }
 
@@ -130,7 +130,7 @@ func (d *Door) replace(ctx context.Context, content any) <-chan error {
 			content:  content,
 		},
 	}
-	d.takeover(node, task.TaskFrame())
+	d.takeover(node, task.ContextJoinedFrame())
 	return ch
 }
 
@@ -161,7 +161,7 @@ func (d *Door) takeoverSelf(prev *node, next *node) {
 	})
 }
 
-func (d *Door) takeover(next *node, taskFrame shredder.SimpleFrame) {
+func (d *Door) takeover(next *node, taskFrame shredder.Frame) {
 	prev := d.node.Swap(next)
 	if prev == nil {
 		prev = d.defaultNode()

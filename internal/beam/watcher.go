@@ -17,106 +17,99 @@ package beam
 import (
 	"context"
 	"fmt"
-	"sync"
+	"sync/atomic"
 
-	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-type initResult int
+type watcherResult int
 
 const (
-	initContinue initResult = iota
-	initWatch
-	initDone
+	watch watcherResult = iota
+	done
 )
 
 type innerWatcher interface {
-	init(id int, ctx context.Context, seq uint) initResult
-	sync(id int, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool
+	init(ctx context.Context, seq uint) watcherResult
+	sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) watcherResult
 	cancel()
 }
 
 func newWatcher(inner innerWatcher) *watcher {
 	return &watcher{
-		screens:   common.NewSet[*screen](),
-		inner:     inner,
-		initGuard: make(chan struct{}),
+		inner: inner,
 	}
 }
 
+const (
+	watcherInit int32 = iota
+	watcherReady
+	wathcherSync
+	watcherDone
+)
+
 type watcher struct {
-	mu        sync.Mutex
-	done      bool
+	state     atomic.Int32
 	inner     innerWatcher
-	initGuard chan struct{}
-	screens   common.Set[*screen]
-	id        int
+	initGuard shredder.ValveFrame
+	screen    *screen
 }
 
 func (w *watcher) register(screen *screen) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.done {
-		panic("can't be done before all screens are registered")
-	}
-	w.screens.Add(screen)
+	w.screen = screen
 }
 
 func (w *watcher) unregister() {
-	for s := range w.screens {
-		s.removeWatcher(w)
-	}
+	w.screen.removeWatcher(w)
 }
 
 func (w *watcher) Cancel() {
-	w.mu.Lock()
-	if w.done {
-		w.mu.Unlock()
+	prev := w.state.Swap(watcherDone)
+	if prev != watcherReady {
 		return
 	}
-	w.done = true
-	w.mu.Unlock()
 	w.unregister()
 	w.inner.cancel()
 }
 
+func (w *watcher) syncFrame() shredder.AnyFrame {
+	return &w.initGuard
+}
+
 func (w *watcher) init(ctx context.Context, seq uint) {
-	w.mu.Lock()
-	if w.done {
-		w.mu.Unlock()
-		panic("can't be done before all screens are initialized")
-	}
-	res := w.inner.init(w.id, ctx, seq)
+	res := w.inner.init(ctx, seq)
 	switch res {
-	case initContinue:
-		close(w.initGuard)
-		w.mu.Unlock()
-	case initWatch:
-		close(w.initGuard)
-		w.mu.Unlock()
-	case initDone:
-		close(w.initGuard)
-		w.done = true
-		w.mu.Unlock()
+	case watch:
+		ok := w.state.CompareAndSwap(watcherInit, watcherReady)
+		w.initGuard.Activate()
+		if ok {
+			return
+		}
+		w.unregister()
+		w.inner.cancel()
+	case done:
+		w.state.Store(watcherDone)
+		w.initGuard.Activate()
 		w.unregister()
 	}
 }
 
 func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) {
-	<-w.initGuard
-	w.mu.Lock()
-	if w.done {
-		w.mu.Unlock()
+	ok := w.state.CompareAndSwap(watcherReady, wathcherSync)
+	if !ok {
 		return
 	}
-	done := w.inner.sync(w.id, ctx, seq, cleanFrame)
-	w.done = done
-	w.mu.Unlock()
-	if done {
+	res := w.inner.sync(ctx, seq, cleanFrame)
+	if res == done {
+		w.state.Store(watcherDone)
 		w.unregister()
+		return
 	}
+	if w.state.CompareAndSwap(wathcherSync, watcherReady) {
+		return
+	}
+	w.unregister()
+	w.inner.cancel()
 }
 
 func newSingleWatcher[T any](beam Beam[T], w Watcher[T]) innerWatcher {
@@ -129,7 +122,6 @@ func newSingleWatcher[T any](beam Beam[T], w Watcher[T]) innerWatcher {
 type singleWatcher[T any] struct {
 	beam Beam[T]
 	w    Watcher[T]
-	ctx  context.Context
 	seq  uint
 }
 
@@ -137,30 +129,29 @@ func (s *singleWatcher[T]) cancel() {
 	s.w.Cancel()
 }
 
-func (s *singleWatcher[T]) init(_id int, ctx context.Context, seq uint) initResult {
-	s.ctx = ctx
+func (s *singleWatcher[T]) init(ctx context.Context, seq uint) watcherResult {
 	s.seq = seq
 	v, _ := s.beam.sync(0, seq, nil)
 	if v == nil {
 		panic("init sync logic error:" + fmt.Sprint(seq))
 	}
 	if s.w.Watch(ctx, *v) {
-		return initDone
+		return done
 	}
-	return initWatch
+	return watch
 }
 
-func (s *singleWatcher[T]) sync(_id int, ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) bool {
+func (s *singleWatcher[T]) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) watcherResult {
 	v, updated := s.beam.sync(s.seq, seq, cleanFrame)
 	s.seq = seq
 	if v == nil {
 		panic("update sync logic error:" + fmt.Sprint(seq))
 	}
 	if !updated {
-		return false
+		return watch
 	}
-	ctx = ctex.FrameInfect(ctx, s.ctx)
-	return s.w.Watch(ctx, *v)
+	if s.w.Watch(ctx, *v) {
+		return done
+	}
+	return watch
 }
-
-var _ innerWatcher = &singleWatcher[any]{}

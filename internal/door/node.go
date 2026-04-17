@@ -122,7 +122,7 @@ func (n *node) initUnmount(num *unmountNode, prev *node) {
 	if !ok || !num.remove {
 		num.Accept()
 	}
-	sendFrame := shredder.Join(true, nm.WriteFrame(), num.TaskFrame())
+	sendFrame := shredder.Join(true, nm.WriteFrame(), num.ContextSendFrame())
 	defer sendFrame.Release()
 	sendFrame.Run(nm.Tracker().parentContext(), nm.Tracker().runtime(), func(b bool) {
 		if !b {
@@ -322,9 +322,9 @@ func (n *node) initUpdate(nu *updateNode, prev *node) {
 
 func (n *node) writeReplace(nr *replaceNode, parentTracker *tracker, prevWriteFrame *shredder.ValveFrame) {
 	thread := shredder.Thread{}
-	renderFrame := shredder.Join(true, thread.Frame(), parentTracker.newRenderFrame())
+	renderFrame := shredder.Join(true, thread.Frame(), parentTracker.writeFrame(), nr.ContextRenderFrame())
 	defer renderFrame.Release()
-	sendFrame := shredder.Join(true, thread.Frame(), prevWriteFrame, nr.TaskFrame())
+	sendFrame := shredder.Join(true, thread.Frame(), prevWriteFrame, nr.ContextSendFrame())
 	defer sendFrame.Release()
 	mountFrame := &shredder.ValveFrame{}
 	pip := pipe.NewPipe(parentTracker.Context(), parentTracker.runtime(), renderFrame, mountFrame)
@@ -355,12 +355,10 @@ func (n *node) writeReplace(nr *replaceNode, parentTracker *tracker, prevWriteFr
 }
 
 func (n *node) writeUpdate(nu *updateNode) {
-
-	// 	nu.tracker.root.debug("UPDATE ", nu.tracker.id, nu.tracker.parent.id)
 	thread := shredder.Thread{}
-	renderFrame := shredder.Join(true, thread.Frame(), nu.tracker.newRenderFrame())
+	renderFrame := shredder.Join(true, thread.Frame(), nu.tracker.writeFrame(), nu.ContextRenderFrame())
 	defer renderFrame.Release()
-	sendFrame := shredder.Join(true, thread.Frame(), nu.WriteFrame(), nu.TaskFrame())
+	sendFrame := shredder.Join(true, thread.Frame(), nu.WriteFrame(), nu.ContextSendFrame())
 	defer sendFrame.Release()
 	mountFrame := &shredder.ValveFrame{}
 	pip := pipe.NewPipe(nu.tracker.ctx, nu.tracker.runtime(), renderFrame, mountFrame)
@@ -395,9 +393,9 @@ func (n *node) writeUpdate(nu *updateNode) {
 func (n *node) writeProxyReplace(pn *proxyNode) {
 	// pn.tracker.root.debug("PROXY_REPLACE ", pn.tracker.id, "-", pn.replaceId.Load(), pn.tracker.parent.id)
 	thread := shredder.Thread{}
-	renderFrame := shredder.Join(true, thread.Frame(), pn.tracker.newRenderFrame())
+	renderFrame := shredder.Join(true, thread.Frame(), pn.tracker.writeFrame(), pn.ContextRenderFrame())
 	defer renderFrame.Release()
-	sendFrame := shredder.Join(true, thread.Frame(), pn.WriteFrame(), pn.TaskFrame())
+	sendFrame := shredder.Join(true, thread.Frame(), pn.WriteFrame(), pn.ContextSendFrame())
 	defer sendFrame.Release()
 	mountFrame := &shredder.ValveFrame{}
 	pip := pipe.NewPipe(pn.tracker.Context(), pn.tracker.runtime(), renderFrame, mountFrame)
@@ -452,7 +450,9 @@ func (n *node) writeProxyReplace(pn *proxyNode) {
 
 func (n *node) Render(pip pipe.Pipe) {
 	branch := pip.Branch()
-	n.initFrame.Run(pip.Context(), pip.Runtime(), func(b bool) {
+	frame := shredder.Join(false, pip.RenderFrame(), &n.initFrame)
+	defer frame.Release()
+	frame.Run(pip.Context(), pip.Runtime(), func(b bool) {
 		switch ent := n.entity.(type) {
 		case *replaceNode:
 			n.renderReplace(ent, pip, branch)
@@ -480,7 +480,7 @@ func (n *node) renderReplace(nr *replaceNode, pip pipe.Pipe, branch pipe.Branch)
 
 func (n *node) renderUpdate(nr *updateNode, pip pipe.Pipe, branch pipe.Branch) {
 	nr.SetMountFrame(pip.FinalFrame())
-	renderFrame := shredder.Join(true, pip.RenderFrame(), nr.Tracker().newRenderFrame(), nr.contents.initializeFrame)
+	renderFrame := shredder.Join(true, pip.RenderFrame(), nr.Tracker().writeFrame(), nr.contents.initializeFrame, nr.ContextRenderFrame())
 	defer renderFrame.Release()
 	pip = pipe.NewPipe(nr.tracker.Context(), nr.tracker.runtime(), renderFrame, pip.FinalFrame())
 	renderFrame.Submit(nr.tracker.parentContext(), nr.tracker.runtime(), func(b bool) {
@@ -499,7 +499,7 @@ func (n *node) renderUpdate(nr *updateNode, pip pipe.Pipe, branch pipe.Branch) {
 
 func (n *node) renderProxy(pn *proxyNode, pip pipe.Pipe, branch pipe.Branch) {
 	pn.SetMountFrame(pip.FinalFrame())
-	renderFrame := shredder.Join(true, pip.RenderFrame(), pn.Tracker().newRenderFrame())
+	renderFrame := shredder.Join(true, pip.RenderFrame(), pn.Tracker().writeFrame(), pn.ContextRenderFrame())
 	defer renderFrame.Release()
 	pip = pipe.NewPipe(pn.tracker.Context(), pn.tracker.runtime(), renderFrame, pip.FinalFrame())
 	renderFrame.Submit(pn.tracker.parentContext(), pn.tracker.runtime(), func(b bool) {

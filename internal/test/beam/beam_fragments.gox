@@ -274,3 +274,90 @@ elem (f *BeamEqualFragment) Main() {
 		f.r,
 	)
 }
+
+type BeamRenderBranchUpdateFrameFragment struct {
+	b doors.Source[int]
+	n doors.Door
+	test.NoBeam
+}
+
+elem (f *BeamRenderBranchUpdateFrameFragment) content(i int) {
+	<span id="watcher-i">~(fmt.Sprint(i))</span>
+	~{
+		f.b.Mutate(ctx, func(i int) int {
+			return i + 1
+		})
+		newI, _ := f.b.Read(ctx)
+	}
+	<span id="watcher-newi">~(fmt.Sprint(newI))</span>
+}
+
+elem (f *BeamRenderBranchUpdateFrameFragment) Main() {
+	~{
+		f.b.ReadAndSub(ctx, func(ctx context.Context, i int) bool {
+			f.n.Update(ctx, f.content(i))
+			return true
+		})
+		f.b.Mutate(ctx, func(i int) int {
+			return i + 1
+		})
+	}
+	~(&f.n)
+}
+
+type BeamRenderBranchInitFrameFragment struct {
+	b doors.Source[int]
+	n doors.Door
+	test.NoBeam
+}
+
+elem (f *BeamRenderBranchInitFrameFragment) content(i int) {
+	<span id="watcher-i">~(fmt.Sprint(i))</span>
+	~{
+		f.b.Mutate(ctx, func(i int) int {
+			return i + 1
+		})
+		newI, _ := f.b.Read(ctx)
+	}
+	<span id="watcher-newi">~(fmt.Sprint(newI))</span>
+}
+
+elem (f *BeamRenderBranchInitFrameFragment) Main() {
+	~(&f.n)
+	~{
+		go func() {
+			f.b.Sub(ctx, func(ctx context.Context, i int) bool {
+				f.n.Update(ctx, f.content(i))
+				return true
+			})
+		}()
+	}
+}
+
+type BeamRenderUpdateWarningFragment struct {
+	b    doors.Source[int]
+	host doors.Door
+	test.NoBeam
+}
+
+elem (f *BeamRenderUpdateWarningFragment) content() {
+	~{
+		n3 := doors.Door{}
+		_, _ = f.b.Read(ctx)
+		f.b.Sub(ctx, func(ctx context.Context, i int) bool {
+			n3.Update(ctx, test.ReportId(4, fmt.Sprint(i)))
+			return false
+		})
+	}
+	~(&n3)
+}
+
+elem (f *BeamRenderUpdateWarningFragment) Main() {
+	~>(f.host) <>
+		~(f.content())
+	</>
+	~(test.Button("warning-reload", func(ctx context.Context) bool {
+		f.host.Reload(ctx)
+		return true
+	}))
+}

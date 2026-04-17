@@ -83,21 +83,34 @@ func (c *mountNode) WriteFrame() *shredder.ValveFrame {
 }
 
 func newTaskNode(ctx context.Context) (*taskNode, <-chan error) {
-	frame := ctex.Frame(ctx)
 	ch := make(chan error, 1)
-	return &taskNode{&ch, frame}, ch
+	return &taskNode{&ch, ctex.GetFrames(ctx)}, ch
 }
 
 type taskNode struct {
-	ch    *chan error
-	frame shredder.SimpleFrame
+	ch     *chan error
+	frames ctex.Frames
 }
 
-func (t *taskNode) TaskFrame() shredder.SimpleFrame {
+func (t *taskNode) ContextJoinedFrame() shredder.Frame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}
-	return t.frame
+	return t.frames.JoinedFrame()
+}
+
+func (t *taskNode) ContextSendFrame() shredder.SimpleFrame {
+	if t == nil {
+		return shredder.FreeFrame{}
+	}
+	return t.frames.Send()
+}
+
+func (t *taskNode) ContextRenderFrame() shredder.SimpleFrame {
+	if t == nil {
+		return shredder.FreeFrame{}
+	}
+	return t.frames.Render()
 }
 
 func (t *taskNode) Report(err error) {
