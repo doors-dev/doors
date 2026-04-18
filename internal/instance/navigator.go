@@ -111,11 +111,11 @@ func (n *navigator[M]) init() {
 
 func (n *navigator[M]) push(ctx context.Context, l path.Location) {
 	n.mu.Lock()
-	defer n.mu.Unlock()
 	replace := false
 	if n.first {
 		n.first = false
 		if !n.rerouted {
+			n.mu.Unlock()
 			return
 		}
 		replace = true
@@ -124,9 +124,11 @@ func (n *navigator[M]) push(ctx context.Context, l path.Location) {
 	seq := n.seq
 	after, ok := ctex.AfterFrame(ctx)
 	if !ok {
+		n.mu.Unlock()
 		n.call(l.String(), seq, replace)
 		return
 	}
+	n.mu.Unlock()
 	after.RunAfter(nil, nil, func(b bool) {
 		n.call(l.String(), seq, replace)
 	})

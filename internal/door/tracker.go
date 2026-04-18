@@ -184,11 +184,14 @@ func (t *tracker) isKilled() bool {
 
 func (t *tracker) cancelHook(hookID uint64) {
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if hook, ok := t.hooks[hookID]; ok {
-		hook.cancel()
-		delete(t.hooks, hookID)
+	hook, ok := t.hooks[hookID]
+	if !ok {
+		t.mu.Unlock()
+		return
 	}
+	delete(t.hooks, hookID)
+	t.mu.Unlock()
+	hook.cancel()
 }
 
 func (t *tracker) trigger(id uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
@@ -215,15 +218,17 @@ func (t *tracker) kill() {
 	t.root.removeTracker(t)
 	t.cinema.Cancel()
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	for _, hook := range t.hooks {
+	hooks := t.hooks
+	t.hooks = nil
+	children := t.children
+	t.children = nil
+	t.mu.Unlock()
+	for _, hook := range hooks {
 		hook.cancel()
 	}
-	clear(t.hooks)
-	for child := range t.children {
+	for child := range children {
 		child.killCascade()
 	}
-	t.children.Clear()
 }
 
 func (t *tracker) removeChild(n *node, id uint64) {

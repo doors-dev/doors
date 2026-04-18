@@ -84,6 +84,9 @@ func (s Solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 	}
 	count, err := s.deck.CollectResults(rep.Results)
 	if err != nil {
+		if err == context.Canceled {
+			return
+		}
 		s.inst.SyncError(err)
 		return
 	}
@@ -180,6 +183,9 @@ func (c *con) Run() {
 	reportGaps := len(c.gaps) != 0
 	if reportGaps {
 		if err := c.deck.FillGaps(c.gaps); err != nil {
+			if err == context.Canceled {
+				return
+			}
 			c.inst.SyncError(err)
 			return
 		}
@@ -193,10 +199,12 @@ func (c *con) Run() {
 	for c.ctx.Err() == nil {
 		result, syncErr := c.deck.WriteNext(c.writer)
 		switch result {
+		case writeContinue:
+			continue
 		case writeSyncErr:
 			c.inst.SyncError(syncErr)
 			return
-		case writeErr:
+		case writeErr, writeKilled:
 			return
 		case writeLimit:
 			c.writer.Flush()
