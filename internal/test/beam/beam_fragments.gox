@@ -335,7 +335,7 @@ elem (f *BeamRenderBranchInitFrameFragment) Main() {
 }
 
 type BeamRenderUpdateWarningFragment struct {
-	b    doors.Source[int]
+	b doors.Source[int]
 	host doors.Door
 	test.NoBeam
 }
@@ -359,5 +359,180 @@ elem (f *BeamRenderUpdateWarningFragment) Main() {
 	~(test.Button("warning-reload", func(ctx context.Context) bool {
 		f.host.Reload(ctx)
 		return true
+	}))
+}
+
+type BeamEffectSourceFragment struct {
+	b doors.Source[int]
+	frame doors.Door
+	host doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+elem (f *BeamEffectSourceFragment) innerContent() {
+	~{
+		f.innerRenders++
+		value, _ := f.b.Effect(ctx)
+	}
+	<div id="effect-source-value">~(fmt.Sprint(value))</div>
+	<div id="effect-source-inner-renders">~(fmt.Sprint(f.innerRenders))</div>
+}
+
+elem (f *BeamEffectSourceFragment) outerContent() {
+	~{
+		f.outerRenders++
+		f.host.Update(ctx, f.innerContent())
+	}
+	<div id="effect-source-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
+	~(&f.host)
+}
+
+elem (f *BeamEffectSourceFragment) Main() {
+	~{
+		f.frame.Update(ctx, f.outerContent())
+	}
+	~(&f.frame)
+	~(test.Button("effect-source-update-1", func(ctx context.Context) bool {
+		f.b.Update(ctx, 1)
+		return false
+	}))
+	~(test.Button("effect-source-update-2", func(ctx context.Context) bool {
+		f.b.Update(ctx, 2)
+		return false
+	}))
+}
+
+type BeamEffectDerivedFragment struct {
+	b doors.Source[int]
+	d doors.Beam[string]
+	frame doors.Door
+	host doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+elem (f *BeamEffectDerivedFragment) innerContent() {
+	~{
+		f.innerRenders++
+		value, _ := f.d.Effect(ctx)
+	}
+	<div id="effect-derived-value">~(value)</div>
+	<div id="effect-derived-inner-renders">~(fmt.Sprint(f.innerRenders))</div>
+}
+
+elem (f *BeamEffectDerivedFragment) outerContent() {
+	~{
+		f.outerRenders++
+		f.host.Update(ctx, f.innerContent())
+	}
+	<div id="effect-derived-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
+	~(&f.host)
+}
+
+elem (f *BeamEffectDerivedFragment) Main() {
+	~{
+		if f.d == nil {
+			f.d = doors.NewBeam(f.b, func(v int) string {
+				return fmt.Sprintf("v:%d", v)
+			})
+		}
+		f.frame.Update(ctx, f.outerContent())
+	}
+	~(&f.frame)
+	~(test.Button("effect-derived-update-1", func(ctx context.Context) bool {
+		f.b.Update(ctx, 1)
+		return false
+	}))
+	~(test.Button("effect-derived-update-2", func(ctx context.Context) bool {
+		f.b.Update(ctx, 2)
+		return false
+	}))
+}
+
+type BeamEffectMultiFragment struct {
+	left doors.Source[int]
+	right doors.Source[int]
+	frame doors.Door
+	host doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+elem (f *BeamEffectMultiFragment) innerContent() {
+	~{
+		f.innerRenders++
+		left, _ := f.left.Effect(ctx)
+		right, _ := f.right.Effect(ctx)
+	}
+	<div id="effect-multi-left">~(fmt.Sprint(left))</div>
+	<div id="effect-multi-right">~(fmt.Sprint(right))</div>
+	<div id="effect-multi-inner-renders">~(fmt.Sprint(f.innerRenders))</div>
+}
+
+elem (f *BeamEffectMultiFragment) outerContent() {
+	~{
+		f.outerRenders++
+		f.host.Update(ctx, f.innerContent())
+	}
+	<div id="effect-multi-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
+	~(&f.host)
+}
+
+elem (f *BeamEffectMultiFragment) Main() {
+	~{
+		f.frame.Update(ctx, f.outerContent())
+	}
+	~(&f.frame)
+	~(test.Button("effect-multi-left-update", func(ctx context.Context) bool {
+		f.left.Update(ctx, 1)
+		return false
+	}))
+	~(test.Button("effect-multi-right-update", func(ctx context.Context) bool {
+		f.right.Update(ctx, 1)
+		return false
+	}))
+}
+
+type BeamEffectDuplicateFragment struct {
+	b doors.Source[int]
+	frame doors.Door
+	host doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+elem (f *BeamEffectDuplicateFragment) innerContent() {
+	~{
+		f.innerRenders++
+		first, _ := f.b.Effect(ctx)
+		second, _ := f.b.Effect(ctx)
+	}
+	<div id="effect-dup-first">~(fmt.Sprint(first))</div>
+	<div id="effect-dup-second">~(fmt.Sprint(second))</div>
+	<div id="effect-dup-inner-renders">~(fmt.Sprint(f.innerRenders))</div>
+}
+
+elem (f *BeamEffectDuplicateFragment) outerContent() {
+	~{
+		f.outerRenders++
+		f.host.Update(ctx, f.innerContent())
+	}
+	<div id="effect-dup-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
+	~(&f.host)
+}
+
+elem (f *BeamEffectDuplicateFragment) Main() {
+	~{
+		f.frame.Update(ctx, f.outerContent())
+	}
+	~(&f.frame)
+	~(test.Button("effect-dup-update", func(ctx context.Context) bool {
+		f.b.Update(ctx, 1)
+		return false
 	}))
 }

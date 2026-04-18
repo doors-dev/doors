@@ -99,4 +99,3 @@ func FrameRemove(ctx context.Context) context.Context {
 	}
 	return context.WithValue(ctx, keyFrame, nil)
 }
-

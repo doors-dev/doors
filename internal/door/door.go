@@ -119,6 +119,20 @@ func (d *Door) reload(ctx context.Context) <-chan error {
 	return ch
 }
 
+func (d *Door) reloadSelf(ctx context.Context, prev *node) <-chan error {
+	ctex.LogCanceled(ctx, "Door reload")
+	task, ch := newTaskNode(ctx)
+	node := &node{
+		ctx:  ctx,
+		door: d,
+		entity: &redrawNode{
+			taskNode: task,
+		},
+	}
+	d.takeoverSelf(prev, node)
+	return ch
+}
+
 func (d *Door) replace(ctx context.Context, content any) <-chan error {
 	ctex.LogCanceled(ctx, "Door replace")
 	task, ch := newTaskNode(ctx)
@@ -153,6 +167,9 @@ func (d *Door) defaultNode() *node {
 func (d *Door) takeoverSelf(prev *node, next *node) {
 	swapped := d.node.CompareAndSwap(prev, next)
 	if !swapped {
+		if taskNode, ok := next.entity.(nodeTask); ok {
+			taskNode.Cancel()
+		}
 		return
 	}
 	prev.initFrame.Run(nil, nil, func(b bool) {

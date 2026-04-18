@@ -56,6 +56,32 @@ elem (p *Panel) Main() {
 
 This is useful when the Door was prepared earlier and you just want to place it on the page.
 
+### Frame Helper
+
+Use `doors.Frame()` when you need a fresh one-off Door inline and do not want to store it on a struct field:
+
+```gox
+elem (p *Panel) Main() {
+	~>(doors.Frame()) <div class="panel">
+		~{
+			now := time.Now().Format(time.TimeOnly)
+		}
+		<p>Updated at: ~(now)</p>
+		<button
+			(doors.AClick{
+				On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+					doors.Reload(ctx)
+					return false
+				},
+			})>
+			Reload
+		</button>
+	</div>
+}
+```
+
+This is just a shorthand for creating a new `*doors.Door` for that render site.
+
 ### Containers
 
 Every mounted Door needs a DOM container.
@@ -156,10 +182,12 @@ Do not wait on `X*` during rendering.
 If you need to wait, do it in a hook, inside `doors.Go(...)`, or in your own
 goroutine with `doors.Free(ctx)`.
 
-`doors.Free(ctx)` keeps the original context values, but switches to the root
-Doors context and extends cancellation/deadline/lifetime to the instance
-runtime. That makes it the right context for long-running goroutines and for
-waiting on `X*` completion safely.
+`doors.Free(ctx)` keeps the current dynamic ownership and lifecycle, so it is
+useful when you want to wait on `X*` safely from that same fragment.
+
+If the work should outlive the current dynamic owner, use
+`doors.FreeRoot(ctx)` instead. It switches to the root Doors context and the
+instance runtime lifecycle.
 
 Most code should use the regular methods. Reach for `X*` when completion itself matters, such as pacing a fast stream of updates.
 

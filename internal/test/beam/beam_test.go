@@ -198,3 +198,108 @@ func TestRenderUpdateWarningRepro(t *testing.T) {
 	test.Click(t, page, "#warning-reload")
 	<-time.After(200 * time.Millisecond)
 }
+
+func TestEffectSourceRerendersClosestDynamicParent(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamEffectSourceFragment{
+				b: doors.NewSource(0),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#effect-source-value", "0")
+	test.TestContent(t, page, "#effect-source-outer-renders", "1")
+	test.TestContent(t, page, "#effect-source-inner-renders", "1")
+
+	test.Click(t, page, "#effect-source-update-1")
+	test.TestContent(t, page, "#effect-source-value", "1")
+	test.TestContent(t, page, "#effect-source-outer-renders", "1")
+	test.TestContent(t, page, "#effect-source-inner-renders", "2")
+
+	test.Click(t, page, "#effect-source-update-2")
+	test.TestContent(t, page, "#effect-source-value", "2")
+	test.TestContent(t, page, "#effect-source-outer-renders", "1")
+	test.TestContent(t, page, "#effect-source-inner-renders", "3")
+}
+
+func TestEffectDerivedBeamRerendersClosestDynamicParent(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamEffectDerivedFragment{
+				b: doors.NewSource(0),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#effect-derived-value", "v:0")
+	test.TestContent(t, page, "#effect-derived-outer-renders", "1")
+	test.TestContent(t, page, "#effect-derived-inner-renders", "1")
+
+	test.Click(t, page, "#effect-derived-update-1")
+	test.TestContent(t, page, "#effect-derived-value", "v:1")
+	test.TestContent(t, page, "#effect-derived-outer-renders", "1")
+	test.TestContent(t, page, "#effect-derived-inner-renders", "2")
+
+	test.Click(t, page, "#effect-derived-update-2")
+	test.TestContent(t, page, "#effect-derived-value", "v:2")
+	test.TestContent(t, page, "#effect-derived-outer-renders", "1")
+	test.TestContent(t, page, "#effect-derived-inner-renders", "3")
+}
+
+func TestEffectMultipleDependenciesRerenderSameDynamicParent(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamEffectMultiFragment{
+				left:  doors.NewSource(0),
+				right: doors.NewSource(0),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#effect-multi-left", "0")
+	test.TestContent(t, page, "#effect-multi-right", "0")
+	test.TestContent(t, page, "#effect-multi-outer-renders", "1")
+	test.TestContent(t, page, "#effect-multi-inner-renders", "1")
+
+	test.Click(t, page, "#effect-multi-left-update")
+	test.TestContent(t, page, "#effect-multi-left", "1")
+	test.TestContent(t, page, "#effect-multi-right", "0")
+	test.TestContent(t, page, "#effect-multi-outer-renders", "1")
+	test.TestContent(t, page, "#effect-multi-inner-renders", "2")
+
+	test.Click(t, page, "#effect-multi-right-update")
+	test.TestContent(t, page, "#effect-multi-left", "1")
+	test.TestContent(t, page, "#effect-multi-right", "1")
+	test.TestContent(t, page, "#effect-multi-outer-renders", "1")
+	test.TestContent(t, page, "#effect-multi-inner-renders", "3")
+}
+
+func TestEffectDuplicateDependencyRerendersOnce(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamEffectDuplicateFragment{
+				b: doors.NewSource(0),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#effect-dup-first", "0")
+	test.TestContent(t, page, "#effect-dup-second", "0")
+	test.TestContent(t, page, "#effect-dup-outer-renders", "1")
+	test.TestContent(t, page, "#effect-dup-inner-renders", "1")
+
+	test.Click(t, page, "#effect-dup-update")
+	test.TestContent(t, page, "#effect-dup-first", "1")
+	test.TestContent(t, page, "#effect-dup-second", "1")
+	test.TestContent(t, page, "#effect-dup-outer-renders", "1")
+	test.TestContent(t, page, "#effect-dup-inner-renders", "2")
+}

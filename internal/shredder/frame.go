@@ -71,14 +71,14 @@ func (f *baseFrame) Release() {
 
 func (f *baseFrame) schedule(e executable) {
 	f.mu.Lock()
-		if f.isCompleted() {
-			f.mu.Unlock()
-			slog.Warn(
-				"attempted to schedule on completed frame; use ctx := doors.Free(ctx) for background operations and Doors API calls from goroutines",
-			)
-			e.execute(func(error) {})
-			return
-		}
+	if f.isCompleted() {
+		f.mu.Unlock()
+		slog.Warn(
+			"attempted to schedule on completed frame; use ctx := doors.Free(ctx) for background operations and Doors API calls from goroutines",
+		)
+		e.execute(func(error) {})
+		return
+	}
 	f.counter += 1
 	if !f.active {
 		f.buffer = append(f.buffer, e)

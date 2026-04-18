@@ -320,6 +320,80 @@ func TestDoorProxyReloadPreservesUpdatedContent(t *testing.T) {
 	test.TestMust(t, page, "#proxy-redraw-content")
 }
 
+func TestDoorReloadUsesClosestDynamicParent(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentClosestReload{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#outer-count", "outer-1")
+	test.TestContent(t, page, "#inner-count", "inner-1")
+
+	test.Click(t, page, "#reload-nearest")
+	test.TestContent(t, page, "#outer-count", "outer-1")
+	test.TestContent(t, page, "#inner-count", "inner-2")
+
+	test.Click(t, page, "#reload-nearest")
+	test.TestContent(t, page, "#outer-count", "outer-1")
+	test.TestContent(t, page, "#inner-count", "inner-3")
+}
+
+func TestDoorReloadUsesClosestDynamicParentInProxySyntax(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentClosestReloadProxy{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#proxy-outer-count", "outer-1")
+	test.TestContent(t, page, "#proxy-inner-count", "inner-1")
+
+	test.Click(t, page, "#reload-nearest-proxy")
+	test.TestContent(t, page, "#proxy-outer-count", "outer-1")
+	test.TestContent(t, page, "#proxy-inner-count", "inner-2")
+
+	test.Click(t, page, "#reload-nearest-proxy")
+	test.TestContent(t, page, "#proxy-outer-count", "outer-1")
+	test.TestContent(t, page, "#proxy-inner-count", "inner-3")
+}
+
+func TestDoorXReloadUsesClosestDynamicParent(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentClosestXReload{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#x-outer-count", "outer-1")
+	test.TestContent(t, page, "#x-inner-count", "inner-1")
+
+	test.Click(t, page, "#xreload-nearest")
+	test.TestReport(t, page, "ok xreload")
+	test.TestContent(t, page, "#x-outer-count", "outer-1")
+	test.TestContent(t, page, "#x-inner-count", "inner-2")
+
+	test.Click(t, page, "#xreload-nearest")
+	test.TestReport(t, page, "ok xreload")
+	test.TestContent(t, page, "#x-outer-count", "outer-1")
+	test.TestContent(t, page, "#x-inner-count", "inner-3")
+}
+
+func TestDoorXReloadFromRootReturnsError(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentRootXReload{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.Click(t, page, "#root-xreload")
+	test.TestReport(t, page, "channel err: Root can't be reloaded")
+}
+
 func TestDoorDetachedReplaceTransitions(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &FragmentDetachedReplace{}

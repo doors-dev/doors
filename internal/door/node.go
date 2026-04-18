@@ -32,6 +32,10 @@ type node struct {
 	entity    any
 }
 
+func (n *node) reload(ctx context.Context) <-chan error {
+	return n.door.reloadSelf(ctx, n)
+}
+
 func (n *node) Context() context.Context {
 	return n.ctx
 }
@@ -85,7 +89,7 @@ func (n *node) initProxy(np *proxyNode, prev *node) {
 
 	prev.killRemove()
 
-	np.tracker = newTracker(n.contextParent())
+	np.tracker = newTracker(n.contextParent(), n)
 	np.contents = &contents{
 		initializeFrame: &shredder.ValveFrame{},
 	}
@@ -148,7 +152,7 @@ func (n *node) initEditor(prev *node) {
 	case *proxyNode:
 		np := &proxyNode{
 			mountNode: mountNode{
-				tracker: newTracker(n.contextParent()),
+				tracker: newTracker(n.contextParent(), n),
 				contents: &contents{
 					initializeFrame: &shredder.ValveFrame{},
 				},
@@ -165,7 +169,7 @@ func (n *node) initEditor(prev *node) {
 		if prevEnt.wasProxy() {
 			np := &proxyNode{
 				mountNode: mountNode{
-					tracker: newTracker(n.contextParent()),
+					tracker: newTracker(n.contextParent(), n),
 					contents: &contents{
 						initializeFrame: &shredder.ValveFrame{},
 					},
@@ -181,7 +185,7 @@ func (n *node) initEditor(prev *node) {
 		} else {
 			nu := &updateNode{
 				mountNode: mountNode{
-					tracker: newTracker(n.contextParent()),
+					tracker: newTracker(n.contextParent(), n),
 					contents: &contents{
 						initializeFrame: prevEnt.contents.initializeFrame,
 						content:         prevEnt.contents.content,
@@ -197,7 +201,7 @@ func (n *node) initEditor(prev *node) {
 	case *updateNode:
 		nu := &updateNode{
 			mountNode: mountNode{
-				tracker: newTracker(n.contextParent()),
+				tracker: newTracker(n.contextParent(), n),
 				contents: &contents{
 					initializeFrame: prevEnt.contents.initializeFrame,
 					content:         prevEnt.contents.content,
@@ -226,7 +230,7 @@ func (n *node) initRedraw(nr *redrawNode, prev *node) {
 		np := &proxyNode{
 			taskNode: nr.taskNode,
 			mountNode: mountNode{
-				tracker: newTracker(prevEnt.tracker.parent),
+				tracker: newTracker(prevEnt.tracker.parent, n),
 				contents: &contents{
 					initializeFrame: &shredder.ValveFrame{},
 				},
@@ -258,7 +262,7 @@ func (n *node) initRebase(nr *rebaseNode, prev *node) {
 		np := &proxyNode{
 			taskNode: nr.taskNode,
 			mountNode: mountNode{
-				tracker: newTracker(prevEnt.Tracker().parent),
+				tracker: newTracker(prevEnt.Tracker().parent, n),
 				contents: &contents{
 					initializeFrame: &shredder.ValveFrame{},
 				},
@@ -305,7 +309,7 @@ func (n *node) initUpdate(nu *updateNode, prev *node) {
 		n.entity = num
 		nu.Accept()
 	case nodeMount:
-		nu.tracker = newTrackerFrom(prevEnt.Tracker())
+		nu.tracker = newTrackerFrom(prevEnt.Tracker(), n)
 
 		nu.contents = &contents{
 			initializeFrame: prevEnt.Contents().initializeFrame,
@@ -391,7 +395,6 @@ func (n *node) writeUpdate(nu *updateNode) {
 }
 
 func (n *node) writeProxyReplace(pn *proxyNode) {
-	// pn.tracker.root.debug("PROXY_REPLACE ", pn.tracker.id, "-", pn.replaceId.Load(), pn.tracker.parent.id)
 	thread := shredder.Thread{}
 	renderFrame := shredder.Join(true, thread.Frame(), pn.tracker.writeFrame(), pn.ContextRenderFrame())
 	defer renderFrame.Release()

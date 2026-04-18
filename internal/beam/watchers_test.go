@@ -58,21 +58,17 @@ func (s *stubSyncSource[T]) Sub(context.Context, func(context.Context, T) bool) 
 	return false
 }
 
-func (s *stubSyncSource[T]) XSub(context.Context, func(context.Context, T) bool, func()) (context.CancelFunc, bool) {
-	return none, false
-}
-
 func (s *stubSyncSource[T]) ReadAndSub(context.Context, func(context.Context, T) bool) (T, bool) {
 	var zero T
 	return zero, false
 }
 
-func (s *stubSyncSource[T]) XReadAndSub(context.Context, func(context.Context, T) bool, func()) (T, context.CancelFunc, bool) {
+func (s *stubSyncSource[T]) Read(context.Context) (T, bool) {
 	var zero T
-	return zero, none, false
+	return zero, false
 }
 
-func (s *stubSyncSource[T]) Read(context.Context) (T, bool) {
+func (s *stubSyncSource[T]) Effect(context.Context) (T, bool) {
 	var zero T
 	return zero, false
 }
@@ -160,15 +156,6 @@ func expectString(t *testing.T, ch <-chan string) string {
 	}
 }
 
-func expectSignal(t *testing.T, ch <-chan struct{}) {
-	t.Helper()
-	select {
-	case <-ch:
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for cancel signal")
-	}
-}
-
 func TestSourceXUpdateAndXMutate(t *testing.T) {
 	source := NewSourceEqual(0, nil)
 
@@ -214,15 +201,12 @@ func TestBeamWatcherExtendedAPIs(t *testing.T) {
 	}
 
 	sourceReadAndSubUpdates := make(chan int, 1)
-	sourceReadAndSubCanceled := make(chan struct{}, 1)
-	sourceInitial, sourceCancel, ok := source.XReadAndSub(ctx, func(ctx context.Context, value int) bool {
+	sourceInitial, ok := source.ReadAndSub(ctx, func(ctx context.Context, value int) bool {
 		sourceReadAndSubUpdates <- value
-		return false
-	}, func() {
-		close(sourceReadAndSubCanceled)
+		return true
 	})
 	if !ok {
-		t.Fatal("expected source XReadAndSub to subscribe")
+		t.Fatal("expected source ReadAndSub to subscribe")
 	}
 	if sourceInitial != 2 {
 		t.Fatal("unexpected initial source value:", sourceInitial)
@@ -230,81 +214,82 @@ func TestBeamWatcherExtendedAPIs(t *testing.T) {
 
 	source.Update(ctx, 3)
 	if got := expectInt(t, sourceReadAndSubUpdates); got != 3 {
-		t.Fatal("unexpected source XReadAndSub update:", got)
+		t.Fatal("unexpected source ReadAndSub update:", got)
 	}
-	sourceCancel()
-	expectSignal(t, sourceReadAndSubCanceled)
 
 	derivedReadAndSubUpdates := make(chan string, 1)
-	derivedReadAndSubCanceled := make(chan struct{}, 1)
-	derivedInitial, derivedCancel, ok := derived.XReadAndSub(ctx, func(ctx context.Context, value string) bool {
+	derivedInitial, ok := derived.ReadAndSub(ctx, func(ctx context.Context, value string) bool {
 		derivedReadAndSubUpdates <- value
-		return false
-	}, func() {
-		close(derivedReadAndSubCanceled)
+		return true
 	})
 	if !ok {
-		t.Fatal("expected derived XReadAndSub to subscribe")
+		t.Fatal("expected derived ReadAndSub to subscribe")
 	}
 	if derivedInitial != "v:3" {
-		t.Fatal("unexpected initial derived XReadAndSub value:", derivedInitial)
+		t.Fatal("unexpected initial derived ReadAndSub value:", derivedInitial)
 	}
 
 	source.Update(ctx, 4)
 	if got := expectString(t, derivedReadAndSubUpdates); got != "v:4" {
-		t.Fatal("unexpected derived XReadAndSub update:", got)
+		t.Fatal("unexpected derived ReadAndSub update:", got)
 	}
-	derivedCancel()
-	expectSignal(t, derivedReadAndSubCanceled)
 
 	sourceSubUpdates := make(chan int, 2)
 	sourceSubCanceled := make(chan struct{}, 1)
-	sourceSubCancel, ok := source.XSub(ctx, func(ctx context.Context, value int) bool {
-		sourceSubUpdates <- value
-		return false
-	}, func() {
-		close(sourceSubCanceled)
+	sourceSubCancel, ok := source.AddWatcher(ctx, &genericWatcher[int]{
+		watch: func(ctx context.Context, value int) bool {
+			sourceSubUpdates <- value
+			return false
+		},
+		cancel: func() {
+			close(sourceSubCanceled)
+		},
 	})
 	if !ok {
-		t.Fatal("expected source XSub to subscribe")
+		t.Fatal("expected source AddWatcher to subscribe")
 	}
 	if got := expectInt(t, sourceSubUpdates); got != 4 {
-		t.Fatal("unexpected initial source XSub value:", got)
+		t.Fatal("unexpected initial source AddWatcher value:", got)
 	}
 
 	derivedSubUpdates := make(chan string, 2)
 	derivedSubCanceled := make(chan struct{}, 1)
-	derivedSubCancel, ok := derived.XSub(ctx, func(ctx context.Context, value string) bool {
-		derivedSubUpdates <- value
-		return false
-	}, func() {
-		close(derivedSubCanceled)
+	derivedSubCancel, ok := derived.AddWatcher(ctx, &genericWatcher[string]{
+		watch: func(ctx context.Context, value string) bool {
+			derivedSubUpdates <- value
+			return false
+		},
+		cancel: func() {
+			close(derivedSubCanceled)
+		},
 	})
 	if !ok {
-		t.Fatal("expected derived XSub to subscribe")
+		t.Fatal("expected derived AddWatcher to subscribe")
 	}
 	if got := expectString(t, derivedSubUpdates); got != "v:4" {
-		t.Fatal("unexpected initial derived XSub value:", got)
+		t.Fatal("unexpected initial derived AddWatcher value:", got)
 	}
 
 	source.Update(ctx, 5)
 	if got := expectInt(t, sourceSubUpdates); got != 5 {
-		t.Fatal("unexpected source XSub update:", got)
+		t.Fatal("unexpected source AddWatcher update:", got)
 	}
 	if got := expectString(t, derivedSubUpdates); got != "v:5" {
-		t.Fatal("unexpected derived XSub update:", got)
+		t.Fatal("unexpected derived AddWatcher update:", got)
 	}
 
 	sourceSubCancel()
-	expectSignal(t, sourceSubCanceled)
+	<-sourceSubCanceled
 	derivedSubCancel()
-	expectSignal(t, derivedSubCanceled)
+	<-derivedSubCanceled
 
-	noCoreCancel, ok := derived.XSub(context.Background(), func(context.Context, string) bool {
-		return false
-	}, nil)
+	noCoreCancel, ok := derived.AddWatcher(context.Background(), &genericWatcher[string]{
+		watch: func(context.Context, string) bool {
+			return false
+		},
+	})
 	if ok {
-		t.Fatal("expected XSub without a Doors context to fail")
+		t.Fatal("expected AddWatcher without a Doors context to fail")
 	}
 	noCoreCancel()
 }

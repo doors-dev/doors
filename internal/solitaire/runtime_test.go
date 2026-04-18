@@ -127,11 +127,6 @@ func TestWriterHelpersAndDecoders(t *testing.T) {
 		w:         recorder,
 		f:         recorder,
 	}
-
-	flushed := 0
-	w.AfterFlush(func() {
-		flushed += 1
-	})
 	if err := w.WriteAck(); err != nil {
 		t.Fatal(err)
 	}
@@ -146,9 +141,6 @@ func TestWriterHelpersAndDecoders(t *testing.T) {
 		t.Fatal("expected size limit to request flush")
 	}
 	w.TryFlush()
-	if flushed != 1 {
-		t.Fatalf("expected after-flush hook once, got %d", flushed)
-	}
 	if recorder.flushes != 2 {
 		t.Fatalf("unexpected flush count after TryFlush: %d", recorder.flushes)
 	}

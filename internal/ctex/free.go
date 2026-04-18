@@ -48,10 +48,6 @@ func (f freeContext) Value(key any) any {
 
 var _ context.Context = freeContext{}
 
-type core interface {
-	RootCore()
-}
-
 func IsFreeCtx(ctx context.Context) bool {
 	_, ok := ctx.(freeContext)
 	return ok

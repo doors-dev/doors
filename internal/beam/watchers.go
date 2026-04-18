@@ -16,6 +16,8 @@ package beam
 
 import (
 	"context"
+
+	"github.com/doors-dev/doors/internal/ctex"
 )
 
 // Watcher receives low-level lifecycle callbacks for a [Beam].
@@ -107,20 +109,22 @@ func (s *source[T]) ReadAndSub(ctx context.Context, onValue func(context.Context
 	return *v, true
 }
 
-func (b *beam[T, T2]) XReadAndSub(ctx context.Context, onValue func(context.Context, T2) bool, onCancel func()) (T2, context.CancelFunc, bool) {
-	v, cancel, ok := readAndSub(b, ctx, onValue, onCancel)
-	if !ok {
-		return b.null, cancel, false
-	}
-	return *v, cancel, ok
+type core interface {
+	Reload(context.Context)
 }
 
-func (s *source[T]) XReadAndSub(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, context.CancelFunc, bool) {
-	v, cancel, ok := readAndSub(s, ctx, onValue, onCancel)
-	if !ok {
-		return s.null, cancel, false
-	}
-	return *v, cancel, ok
+func (s *source[T]) Effect(ctx context.Context) (T, bool) {
+	return s.ReadAndSub(ctx, func(ctx context.Context, _ T) bool {
+		ctx.Value(ctex.KeyCore).(core).Reload(ctx)
+		return true
+	})
+}
+
+func (b *beam[T1, T2]) Effect(ctx context.Context) (T2, bool) {
+	return b.ReadAndSub(ctx, func(ctx context.Context, _ T2) bool {
+		ctx.Value(ctex.KeyCore).(core).Reload(ctx)
+		return true
+	})
 }
 
 func (b *beam[T, T2]) Read(ctx context.Context) (T2, bool) {
@@ -137,14 +141,6 @@ func (s *source[T]) Read(ctx context.Context) (T, bool) {
 		return s.null, false
 	}
 	return *v, ok
-}
-
-func (b *beam[T, T2]) XSub(ctx context.Context, onValue func(context.Context, T2) bool, onCancel func()) (context.CancelFunc, bool) {
-	return sub(b, ctx, onValue, onCancel)
-}
-
-func (s *source[T]) XSub(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (context.CancelFunc, bool) {
-	return sub(s, ctx, onValue, onCancel)
 }
 
 func (b *beam[T, T2]) Sub(ctx context.Context, onValue func(context.Context, T2) bool) bool {

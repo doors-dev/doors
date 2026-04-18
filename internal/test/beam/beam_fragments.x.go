@@ -498,7 +498,7 @@ func (f *BeamRenderBranchInitFrameFragment) Main() gox.Elem {
 }
 
 type BeamRenderUpdateWarningFragment struct {
-	b    doors.Source[int]
+	b doors.Source[int]
 	host doors.Door
 	test.NoBeam
 }
@@ -542,4 +542,366 @@ func (f *BeamRenderUpdateWarningFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 	return })
 //line beam_fragments.gox:363
+}
+
+type BeamEffectSourceFragment struct {
+	b doors.Source[int]
+	frame doors.Door
+	host doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+//line beam_fragments.gox:374
+func (f *BeamEffectSourceFragment) innerContent() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:376
+		f.innerRenders++
+		value, _ := f.b.Effect(ctx)
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:379
+			__e = __c.AttrSet("id", "effect-source-value"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:379
+			__e = __c.Any(fmt.Sprint(value)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:380
+			__e = __c.AttrSet("id", "effect-source-inner-renders"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:380
+			__e = __c.Any(fmt.Sprint(f.innerRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:381
+}
+
+//line beam_fragments.gox:383
+func (f *BeamEffectSourceFragment) outerContent() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:385
+		f.outerRenders++
+		f.host.Update(ctx, f.innerContent())
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:388
+			__e = __c.AttrSet("id", "effect-source-outer-renders"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:388
+			__e = __c.Any(fmt.Sprint(f.outerRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:389
+		__e = __c.Any(&f.host); if __e != nil { return }
+	return })
+//line beam_fragments.gox:390
+}
+
+//line beam_fragments.gox:392
+func (f *BeamEffectSourceFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:394
+		f.frame.Update(ctx, f.outerContent())
+
+//line beam_fragments.gox:396
+		__e = __c.Any(&f.frame); if __e != nil { return }
+//line beam_fragments.gox:397
+		__e = __c.Any(test.Button("effect-source-update-1", func(ctx context.Context) bool {
+		f.b.Update(ctx, 1)
+		return false
+	})); if __e != nil { return }
+//line beam_fragments.gox:401
+		__e = __c.Any(test.Button("effect-source-update-2", func(ctx context.Context) bool {
+		f.b.Update(ctx, 2)
+		return false
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:405
+}
+
+type BeamEffectDerivedFragment struct {
+	b doors.Source[int]
+	d doors.Beam[string]
+	frame doors.Door
+	host doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+//line beam_fragments.gox:417
+func (f *BeamEffectDerivedFragment) innerContent() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:419
+		f.innerRenders++
+		value, _ := f.d.Effect(ctx)
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:422
+			__e = __c.AttrSet("id", "effect-derived-value"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:422
+			__e = __c.Any(value); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:423
+			__e = __c.AttrSet("id", "effect-derived-inner-renders"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:423
+			__e = __c.Any(fmt.Sprint(f.innerRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:424
+}
+
+//line beam_fragments.gox:426
+func (f *BeamEffectDerivedFragment) outerContent() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:428
+		f.outerRenders++
+		f.host.Update(ctx, f.innerContent())
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:431
+			__e = __c.AttrSet("id", "effect-derived-outer-renders"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:431
+			__e = __c.Any(fmt.Sprint(f.outerRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:432
+		__e = __c.Any(&f.host); if __e != nil { return }
+	return })
+//line beam_fragments.gox:433
+}
+
+//line beam_fragments.gox:435
+func (f *BeamEffectDerivedFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:437
+		if f.d == nil {
+			f.d = doors.NewBeam(f.b, func(v int) string {
+				return fmt.Sprintf("v:%d", v)
+			})
+		}
+		f.frame.Update(ctx, f.outerContent())
+
+//line beam_fragments.gox:444
+		__e = __c.Any(&f.frame); if __e != nil { return }
+//line beam_fragments.gox:445
+		__e = __c.Any(test.Button("effect-derived-update-1", func(ctx context.Context) bool {
+		f.b.Update(ctx, 1)
+		return false
+	})); if __e != nil { return }
+//line beam_fragments.gox:449
+		__e = __c.Any(test.Button("effect-derived-update-2", func(ctx context.Context) bool {
+		f.b.Update(ctx, 2)
+		return false
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:453
+}
+
+type BeamEffectMultiFragment struct {
+	left doors.Source[int]
+	right doors.Source[int]
+	frame doors.Door
+	host doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+//line beam_fragments.gox:465
+func (f *BeamEffectMultiFragment) innerContent() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:467
+		f.innerRenders++
+		left, _ := f.left.Effect(ctx)
+		right, _ := f.right.Effect(ctx)
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:471
+			__e = __c.AttrSet("id", "effect-multi-left"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:471
+			__e = __c.Any(fmt.Sprint(left)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:472
+			__e = __c.AttrSet("id", "effect-multi-right"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:472
+			__e = __c.Any(fmt.Sprint(right)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:473
+			__e = __c.AttrSet("id", "effect-multi-inner-renders"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:473
+			__e = __c.Any(fmt.Sprint(f.innerRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:474
+}
+
+//line beam_fragments.gox:476
+func (f *BeamEffectMultiFragment) outerContent() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:478
+		f.outerRenders++
+		f.host.Update(ctx, f.innerContent())
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:481
+			__e = __c.AttrSet("id", "effect-multi-outer-renders"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:481
+			__e = __c.Any(fmt.Sprint(f.outerRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:482
+		__e = __c.Any(&f.host); if __e != nil { return }
+	return })
+//line beam_fragments.gox:483
+}
+
+//line beam_fragments.gox:485
+func (f *BeamEffectMultiFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:487
+		f.frame.Update(ctx, f.outerContent())
+
+//line beam_fragments.gox:489
+		__e = __c.Any(&f.frame); if __e != nil { return }
+//line beam_fragments.gox:490
+		__e = __c.Any(test.Button("effect-multi-left-update", func(ctx context.Context) bool {
+		f.left.Update(ctx, 1)
+		return false
+	})); if __e != nil { return }
+//line beam_fragments.gox:494
+		__e = __c.Any(test.Button("effect-multi-right-update", func(ctx context.Context) bool {
+		f.right.Update(ctx, 1)
+		return false
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:498
+}
+
+type BeamEffectDuplicateFragment struct {
+	b doors.Source[int]
+	frame doors.Door
+	host doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+//line beam_fragments.gox:509
+func (f *BeamEffectDuplicateFragment) innerContent() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:511
+		f.innerRenders++
+		first, _ := f.b.Effect(ctx)
+		second, _ := f.b.Effect(ctx)
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:515
+			__e = __c.AttrSet("id", "effect-dup-first"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:515
+			__e = __c.Any(fmt.Sprint(first)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:516
+			__e = __c.AttrSet("id", "effect-dup-second"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:516
+			__e = __c.Any(fmt.Sprint(second)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:517
+			__e = __c.AttrSet("id", "effect-dup-inner-renders"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:517
+			__e = __c.Any(fmt.Sprint(f.innerRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:518
+}
+
+//line beam_fragments.gox:520
+func (f *BeamEffectDuplicateFragment) outerContent() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:522
+		f.outerRenders++
+		f.host.Update(ctx, f.innerContent())
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:525
+			__e = __c.AttrSet("id", "effect-dup-outer-renders"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:525
+			__e = __c.Any(fmt.Sprint(f.outerRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:526
+		__e = __c.Any(&f.host); if __e != nil { return }
+	return })
+//line beam_fragments.gox:527
+}
+
+//line beam_fragments.gox:529
+func (f *BeamEffectDuplicateFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:531
+		f.frame.Update(ctx, f.outerContent())
+
+//line beam_fragments.gox:533
+		__e = __c.Any(&f.frame); if __e != nil { return }
+//line beam_fragments.gox:534
+		__e = __c.Any(test.Button("effect-dup-update", func(ctx context.Context) bool {
+		f.b.Update(ctx, 1)
+		return false
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:538
 }

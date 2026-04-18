@@ -33,12 +33,7 @@ type writer struct {
 	total       int
 	f           http.Flusher
 	w           http.ResponseWriter
-	after       []func()
 	toFlush     bool
-}
-
-func (w *writer) AfterFlush(f func()) {
-	w.after = append(w.after, f)
 }
 
 func (w *writer) Flush() {
@@ -49,10 +44,6 @@ func (w *writer) Flush() {
 	w.f.Flush()
 	w.total = 0
 	w.lastFlushed = time.Now()
-	for _, f := range w.after {
-		f()
-	}
-	w.after = nil
 }
 
 func (w *writer) TryFlush() {
