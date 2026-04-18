@@ -108,18 +108,30 @@ func IDBytes(b []byte) string {
 	return common.EncodeId(hash[:])
 }
 
-// Free returns a context that is safe to use with extended Doors operations
-// that may wait for asynchronous completion, such as X-prefixed methods, and
-// with long-running goroutines tied to the page runtime.
+// FreeRoot returns a free context that is safe to use with extended Doors
+// operations that may wait, such as X-prefixed methods.
 //
-// The returned context keeps the original Values from ctx, but uses the root
-// Doors context for framework features such as beam reads/subscriptions and
-// uses the instance runtime for cancellation, deadline, and lifetime.
-func Free(ctx context.Context) context.Context {
+// The returned context keeps the original Values from ctx, switches framework
+// features and lifetime to the root Doors context
+//
+// Use it for long-running goroutines and work that should outlive the current
+// dynamic owner.
+func FreeRoot(ctx context.Context) context.Context {
 	core, ok := ctx.Value(ctex.KeyCore).(core.Core)
 	if !ok {
 		return ctex.NewFreeContext(ctx, ctx)
 	}
 	ctx = context.WithValue(ctx, ctex.KeyCore, core.RootCore())
 	return ctex.NewFreeContext(ctx, core.Runtime().Context())
+}
+
+// Free returns a free context that is safe to use with extended Doors
+// operations that may wait, such as X-prefixed methods.
+//
+// The returned context keeps the original Values from ctx together with the
+// current dynamic ownership and lifecycle.
+//
+// Use it when waiting should stay scoped to the current dynamic owner.
+func Free(ctx context.Context) context.Context {
+	return ctex.NewFreeContext(ctx, ctx)
 }
