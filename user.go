@@ -25,11 +25,21 @@ import (
 	"github.com/zeebo/blake3"
 )
 
+// Reload rerenders the closest dynamic parent.
+//
+// If ctx belongs to the root page render, nothing is reloaded.
 func Reload(ctx context.Context) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	core.Reload(ctx)
 }
 
+// XReload tracks completion of [Reload].
+//
+// The channel receives nil on success or an error on failure, then closes.
+// If ctx belongs to the root page render, it sends an error and closes.
+//
+// Do not wait on it during rendering. If you need to wait, do it in a hook,
+// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
 func XReload(ctx context.Context) <-chan error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	return core.XReload(ctx)

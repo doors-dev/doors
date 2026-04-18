@@ -17,4 +17,3 @@ function Counter() {
 export function init(e: Element) {
     render(<Counter />, e);
 };
-

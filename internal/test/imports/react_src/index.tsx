@@ -18,4 +18,3 @@ export function init(e: Element) {
     const root = createRoot(e);
     root.render(<Counter />);
 }
-
