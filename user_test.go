@@ -35,6 +35,10 @@ import (
 
 type helperDoor struct{}
 
+type helperShutdown struct{}
+
+func (helperShutdown) Shutdown() {}
+
 func (helperDoor) Cinema() beam.Cinema {
 	return nil
 }
@@ -47,8 +51,44 @@ func (helperDoor) ID() uint64 {
 	return 1
 }
 
+func (helperDoor) Reload(context.Context) {}
+
+func (helperDoor) XReload(context.Context) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+
 func (helperDoor) RootCore() core.Core {
 	return nil
+}
+
+type helperDoorWithRoot struct {
+	root core.Core
+}
+
+func (helperDoorWithRoot) Cinema() beam.Cinema {
+	return nil
+}
+
+func (helperDoorWithRoot) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, func(context.Context)) (core.Hook, bool) {
+	return core.Hook{}, false
+}
+
+func (helperDoorWithRoot) ID() uint64 {
+	return 1
+}
+
+func (helperDoorWithRoot) Reload(context.Context) {}
+
+func (helperDoorWithRoot) XReload(context.Context) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+
+func (h helperDoorWithRoot) RootCore() core.Core {
+	return h.root
 }
 
 type helperInstance struct {
@@ -58,6 +98,7 @@ type helperInstance struct {
 	lastCallAction action.Action
 	lastCallParams action.CallParams
 	callCheckErr   error
+	runtime        shredder.Runtime
 }
 
 func (h *helperInstance) CallCtx(_ context.Context, act action.Action, _ func(json.RawMessage, error), _ func(), params action.CallParams) context.CancelFunc {
@@ -107,7 +148,7 @@ func (h *helperInstance) NewLink(any) (core.Link, error) {
 }
 
 func (h *helperInstance) Runtime() shredder.Runtime {
-	return nil
+	return h.runtime
 }
 
 func (h *helperInstance) SetStatus(int) {}
@@ -145,6 +186,18 @@ func helperContext(t *testing.T, adapters path.Adapters) (context.Context, *help
 	t.Helper()
 	inst := &helperInstance{adapters: adapters}
 	return context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(inst, helperDoor{})), inst
+}
+
+func helperContextWithRoot(t *testing.T, adapters path.Adapters) (context.Context, *helperInstance, core.Core) {
+	t.Helper()
+	inst := &helperInstance{adapters: adapters}
+	inst.runtime = shredder.NewRuntime(context.Background(), 1, helperShutdown{})
+	t.Cleanup(func() {
+		inst.runtime.Cancel()
+	})
+	root := core.NewCore(inst, helperDoor{})
+	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(inst, helperDoorWithRoot{root: root}))
+	return ctx, inst, root
 }
 
 func TestUserHelpers(t *testing.T) {
@@ -196,8 +249,69 @@ func TestUserHelpers(t *testing.T) {
 	if ctex.IsFreeCtx(context.Background()) {
 		t.Fatal("unexpected free context by default")
 	}
-	if !ctex.IsFreeCtx(Free(context.Background())) {
+}
+
+func TestFreeKeepsOwnerAndClearsFrame(t *testing.T) {
+	ctx, _ := helperContext(t, nil)
+	ctx = context.WithValue(ctx, "value", "kept")
+	ctx, _ = ctex.AfterFrameInsert(ctx)
+	owner, _ := ctx.Value(ctex.KeyCore).(core.Core)
+	base, cancel := context.WithCancel(ctx)
+	free := Free(base)
+
+	if !ctex.IsFreeCtx(free) {
 		t.Fatal("expected Free to mark context as free")
+	}
+	if free.Value("value") != "kept" {
+		t.Fatal("expected Free to preserve context values")
+	}
+	if got, _ := free.Value(ctex.KeyCore).(core.Core); got != owner {
+		t.Fatal("expected Free to keep the current Doors owner")
+	}
+	if _, ok := ctex.AfterFrame(free); ok {
+		t.Fatal("expected Free to clear current frame binding")
+	}
+
+	cancel()
+	select {
+	case <-free.Done():
+	default:
+		t.Fatal("expected Free to keep current context lifecycle")
+	}
+}
+
+func TestFreeRootSwitchesToRootCoreAndRuntime(t *testing.T) {
+	ctx, inst, root := helperContextWithRoot(t, nil)
+	ctx = context.WithValue(ctx, "value", "kept")
+	ctx, _ = ctex.AfterFrameInsert(ctx)
+	base, cancel := context.WithCancel(ctx)
+	free := FreeRoot(base)
+
+	if !ctex.IsFreeCtx(free) {
+		t.Fatal("expected FreeRoot to mark context as free")
+	}
+	if free.Value("value") != "kept" {
+		t.Fatal("expected FreeRoot to preserve context values")
+	}
+	if got, _ := free.Value(ctex.KeyCore).(core.Core); got != root {
+		t.Fatal("expected FreeRoot to switch to root Doors context")
+	}
+	if _, ok := ctex.AfterFrame(free); ok {
+		t.Fatal("expected FreeRoot to clear current frame binding")
+	}
+
+	cancel()
+	select {
+	case <-free.Done():
+		t.Fatal("expected FreeRoot to use instance runtime lifecycle instead of current owner lifecycle")
+	default:
+	}
+
+	inst.runtime.Cancel()
+	select {
+	case <-free.Done():
+	default:
+		t.Fatal("expected FreeRoot to follow instance runtime cancellation")
 	}
 }
 

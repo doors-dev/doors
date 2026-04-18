@@ -10,16 +10,16 @@ import (
 )
 
 type screen struct {
-	mu                 sync.Mutex
-	sourceID           common.ID
-	thread             shredder.Thread
-	watcherSyncGuard   shredder.ReadBlockingWriteThread
-	cinema             *cinema
-	parent             parentScreen
-	seq                uint
-	watchers           common.Set[*watcher]
-	subs               common.Set[*screen]
-	removeScheduled    bool
+	mu               sync.Mutex
+	sourceID         common.ID
+	thread           shredder.Thread
+	watcherSyncGuard shredder.ReadBlockingWriteThread
+	cinema           *cinema
+	parent           parentScreen
+	seq              uint
+	watchers         common.Set[*watcher]
+	subs             common.Set[*screen]
+	removeScheduled  bool
 }
 
 func (s *screen) init(parent parentScreen, seq uint) {

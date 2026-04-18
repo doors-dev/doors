@@ -40,14 +40,6 @@ type Link struct {
 	On       func(context.Context)
 }
 
-/*
-func (h *Link) ClickHandler() (func(context.Context), bool) {
-	if h.On == nil {
-		return nil, false
-	}
-	return h.On, true
-} */
-
 type ModuleRegistry interface {
 	Add(specifier string, path string)
 }
@@ -79,6 +71,8 @@ type Door interface {
 	Cinema() beam.Cinema
 	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
 	ID() uint64
+	Reload(ctx context.Context)
+	XReload(ctx context.Context) <-chan error
 	RootCore() Core
 }
 
@@ -96,6 +90,14 @@ var _ beam.Core = &core{}
 type core struct {
 	door Door
 	inst Instance
+}
+
+func (c Core) Reload(ctx context.Context) {
+	c.door.Reload(ctx)
+}
+
+func (c Core) XReload(ctx context.Context) <-chan error {
+	return c.Door().XReload(ctx)
 }
 
 func (c Core) RootCore() Core {

@@ -38,6 +38,14 @@ import (
 // doors, that channel closes immediately without sending a value.
 type Door = door.Door
 
+// Frame returns a fresh Door pointer for one-off inline dynamic fragments.
+//
+// It is a shorthand for `&doors.Door{}` and is useful with proxy syntax when
+// the Door does not need to be stored on a struct field.
+func Frame() *Door {
+	return &Door{}
+}
+
 // Sub renders a dynamic fragment driven by beam.
 //
 // It subscribes to beam and re-renders the inner content whenever the value
@@ -105,7 +113,8 @@ func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 // The passed context is canceled when the dynamic owner is unmounted, which
 // makes [Go] a good fit for background loops that should stop with the page.
 // The context is also equivalent to calling [Free] on the surrounding context,
-// so it is safe to use with X* operations and other long-running runtime work.
+// so it is safe to use with X* operations that should keep the current dynamic
+// ownership.
 //
 // Example:
 //

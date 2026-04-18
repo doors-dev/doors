@@ -25,6 +25,16 @@ import (
 	"github.com/zeebo/blake3"
 )
 
+func Reload(ctx context.Context) {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core.Reload(ctx)
+}
+
+func XReload(ctx context.Context) <-chan error {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	return core.XReload(ctx)
+}
+
 // SessionExpire sets the maximum lifetime of the current session.
 func SessionExpire(ctx context.Context, d time.Duration) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)

@@ -16,6 +16,7 @@ package door
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -41,9 +42,10 @@ func newRootTracker(r *root) (*tracker, core.Core) {
 	return t, core
 }
 
-func newTrackerFrom(prev *tracker) *tracker {
+func newTrackerFrom(prev *tracker, node *node) *tracker {
 	root := prev.root
 	t := &tracker{
+		node:   node,
 		root:   root,
 		id:     prev.id,
 		parent: prev.parent,
@@ -56,8 +58,9 @@ func newTrackerFrom(prev *tracker) *tracker {
 	return t
 }
 
-func newTracker(parent *tracker) *tracker {
+func newTracker(parent *tracker, node *node) *tracker {
 	t := &tracker{
+		node:   node,
 		root:   parent.root,
 		id:     parent.root.NewID(),
 		parent: parent,
@@ -75,6 +78,7 @@ var _ beam.Door = &tracker{}
 
 type tracker struct {
 	mu                   sync.Mutex
+	node                 *node
 	id                   uint64
 	root                 *root
 	parent               *tracker
@@ -86,6 +90,24 @@ type tracker struct {
 	hooks                map[uint64]*hook
 	core                 core.Core
 	containerHooksCancel map[uint64][]context.CancelFunc
+}
+
+func (t *tracker) Reload(ctx context.Context) {
+	if t.node == nil {
+		return
+	}
+	t.node.reload(ctx)
+}
+
+func (t *tracker) XReload(ctx context.Context) <-chan error {
+	ctex.LogFreeWarning(ctx, "Door", "XReload")
+	if t.node == nil {
+		ch := make(chan error, 1)
+		ch <- errors.New("Root can't be reloaded")
+		close(ch)
+		return ch
+	}
+	return t.node.reload(ctx)
 }
 
 func (t *tracker) debug(tab string) {
@@ -119,8 +141,9 @@ func (t *tracker) parentContext() context.Context {
 
 func (t *tracker) containerContext() context.Context {
 	parentCore := core.NewCore(t.inst(), containerCore{
-		tracker: t.parent,
-		id:      t.id,
+		tracker:      t.parent,
+		childTracker: t,
+		id:           t.id,
 	})
 	return context.WithValue(t.parent.parentContext(), ctex.KeyCore, parentCore)
 }
@@ -291,8 +314,17 @@ func (t *tracker) writeFrame() shredder.Frame {
 }
 
 type containerCore struct {
-	tracker *tracker
-	id      uint64
+	tracker      *tracker
+	childTracker *tracker
+	id           uint64
+}
+
+func (h containerCore) Reload(ctx context.Context) {
+	h.childTracker.Reload(ctx)
+}
+
+func (h containerCore) XReload(ctx context.Context) <-chan error {
+	return h.childTracker.XReload(ctx)
 }
 
 func (h containerCore) Cinema() beam.Cinema {

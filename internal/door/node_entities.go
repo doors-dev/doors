@@ -92,6 +92,8 @@ type taskNode struct {
 	frames ctex.Frames
 }
 
+var _ nodeTask = &taskNode{}
+
 func (t *taskNode) ContextJoinedFrame() shredder.Frame {
 	if t == nil {
 		return shredder.FreeFrame{}
@@ -148,6 +150,12 @@ func (n *mountNode) Tracker() *tracker {
 
 func (n *mountNode) Contents() *contents {
 	return n.contents
+}
+
+type nodeTask interface {
+	Cancel()
+	Accept()
+	Report(error)
 }
 
 type replaceNode struct {

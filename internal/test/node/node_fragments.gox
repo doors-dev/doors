@@ -511,6 +511,172 @@ elem (f *FragmentProxyReloadContent) Main() {
 	</button>
 }
 
+type FragmentClosestReload struct {
+	frame doors.Door
+	node doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+elem (f *FragmentClosestReload) innerContent() {
+	~{
+		f.innerRenders++
+	}
+	<div id="inner-count">~(fmt.Sprintf("inner-%d", f.innerRenders))</div>
+	<button
+		id="reload-nearest"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				doors.Reload(ctx)
+				return false
+			},
+		})>
+		reload-nearest
+	</button>
+}
+
+elem (f *FragmentClosestReload) outerContent() {
+	~{
+		f.outerRenders++
+		f.node.Update(ctx, f.innerContent())
+	}
+	<div id="outer-count">~(fmt.Sprintf("outer-%d", f.outerRenders))</div>
+	~(&f.node)
+}
+
+elem (f *FragmentClosestReload) Main() {
+	~{
+		f.frame.Update(ctx, f.outerContent())
+	}
+	~(&f.frame)
+}
+
+type FragmentClosestReloadProxy struct {
+	frame doors.Door
+	node doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+elem (f *FragmentClosestReloadProxy) Main() {
+	~>(f.frame) <div id="outer-proxy-root">
+		~{
+			f.outerRenders++
+		}
+		<div id="proxy-outer-count">~(fmt.Sprintf("outer-%d", f.outerRenders))</div>
+		~>(f.node) <div id="inner-proxy-root">
+			~{
+				f.innerRenders++
+			}
+			<div id="proxy-inner-count">~(fmt.Sprintf("inner-%d", f.innerRenders))</div>
+			<button
+				id="reload-nearest-proxy"
+				(doors.AClick{
+					On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+						doors.Reload(ctx)
+						return false
+					},
+				})>
+				reload-nearest-proxy
+			</button>
+		</div>
+	</div>
+}
+
+type FragmentClosestXReload struct {
+	frame doors.Door
+	node doors.Door
+	report doors.Door
+	outerRenders int
+	innerRenders int
+	test.NoBeam
+}
+
+func (f *FragmentClosestXReload) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, test.Report(s))
+}
+
+func (f *FragmentClosestXReload) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+	err, ok := <-ch
+	if !ok {
+		f.rep(ctx, "channel closed")
+		return false
+	}
+	if err != nil {
+		f.rep(ctx, "channel err: " + err.Error())
+		return false
+	}
+	f.rep(ctx, okMsg)
+	return false
+}
+
+elem (f *FragmentClosestXReload) innerContent() {
+	~{
+		f.innerRenders++
+	}
+	<div id="x-inner-count">~(fmt.Sprintf("inner-%d", f.innerRenders))</div>
+	<button
+		id="xreload-nearest"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				return f.wait(ctx, doors.XReload(ctx), "ok xreload")
+			},
+		})>
+		xreload-nearest
+	</button>
+}
+
+elem (f *FragmentClosestXReload) outerContent() {
+	~{
+		f.outerRenders++
+		f.node.Update(ctx, f.innerContent())
+	}
+	<div id="x-outer-count">~(fmt.Sprintf("outer-%d", f.outerRenders))</div>
+	~(&f.node)
+}
+
+elem (f *FragmentClosestXReload) Main() {
+	~{
+		f.frame.Update(ctx, f.outerContent())
+	}
+	~(&f.frame)
+	~(&f.report)
+}
+
+type FragmentRootXReload struct {
+	report doors.Door
+	test.NoBeam
+}
+
+func (f *FragmentRootXReload) rep(ctx context.Context, s string) {
+	f.report.Update(ctx, test.Report(s))
+}
+
+elem (f *FragmentRootXReload) Main() {
+	~(&f.report)
+	<button
+		id="root-xreload"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				err, ok := <-doors.XReload(ctx)
+				if !ok {
+					f.rep(ctx, "channel closed")
+					return false
+				}
+				if err != nil {
+					f.rep(ctx, "channel err: " + err.Error())
+					return false
+				}
+				f.rep(ctx, "ok xreload")
+				return false
+			},
+		})>
+		root-xreload
+	</button>
+}
+
 type FragmentDetachedReplace struct {
 	report doors.Door
 	frame doors.Door

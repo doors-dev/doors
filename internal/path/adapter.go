@@ -55,13 +55,13 @@ type Adapter[M any] interface {
 
 func NewAdapter[M any]() (Adapter[M], error) {
 	return adapterBuilder[M]{
-		fields:   make(map[string]field),
+		fields:     make(map[string]field),
 		queryField: -1,
 	}.build()
 }
 
 type adapter[M any] struct {
-	branches []branch
+	branches   []branch
 	queryField int
 }
 

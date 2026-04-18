@@ -24,6 +24,10 @@ import (
 // Beam is a read-only reactive value that can be read, subscribed to, or
 // watched.
 type Beam[T any] interface {
+	// Effect returns the current value and rerenders the closest dynamic parent
+	// when the value changes.
+	Effect(ctx context.Context) (T, bool)
+
 	// Sub subscribes to the value stream. onValue is called immediately with the
 	// current value in the same goroutine, and again on every update.
 	// Only instance runtime context is allowed.
@@ -36,12 +40,6 @@ type Beam[T any] interface {
 	// an instance runtime.
 	Sub(ctx context.Context, onValue func(context.Context, T) bool) bool
 
-	// XSub behaves like [Beam.Sub] and also:
-	//   - accepts onCancel, called when the subscription ends because of
-	//     cancellation, and
-	//   - returns a cancel function for manual termination.
-	XSub(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (context.CancelFunc, bool)
-
 	// ReadAndSub returns the current value and then subscribes to future
 	// updates. onValue is called only for subsequent updates.
 	// Only instance runtime context is allowed.
@@ -49,12 +47,6 @@ type Beam[T any] interface {
 	// It returns false if the context was canceled or does not belong to an
 	// instance runtime.
 	ReadAndSub(ctx context.Context, onValue func(context.Context, T) bool) (T, bool)
-
-	// XReadAndSub behaves like [Beam.ReadAndSub] and also returns a cancel
-	// function plus an optional onCancel callback.
-	// If ok is false, the returned value is undefined and no subscription was
-	// established.
-	XReadAndSub(ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (T, context.CancelFunc, bool)
 
 	// Read returns the current value without creating a subscription.
 	// Only instance runtime context is allowed.

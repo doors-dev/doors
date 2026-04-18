@@ -60,98 +60,9 @@ This is one of the main ways **Doors** keeps updates small. If only `Units` chan
 
 > Sources and beams are not limited to one page instance. They can be local to one page, shared across a session, or used even more broadly.
 
-## Read
-
-Reading and subscribing need a valid **Doors** context, such as the `ctx` you get in render code, handlers, subscriptions, or `doors.Go(...)`.
-
-Updating a `Source` can be done from any context.
-
-### Read
-
-```go
-value, ok := beam.Read(ctx)
-```
-
-Use `Read(ctx)` when you want the value that is consistent with the current **Doors** render/update cycle.
-
-### Get
-
-```go
-value := source.Get()
-```
-
-`Get()` returns the latest stored value without using a render context.
-
-Use it when you want the current value directly. Do not use it when render consistency matters.
-
-### Sub
-
-```go
-ok := beam.Sub(ctx, func(ctx context.Context, value T) bool {
-	return false
-})
-```
-
-`Sub` calls the callback immediately with the current value, then again on later updates.
-
-The subscription ends when:
-
-- your callback returns `true`
-- the owning dynamic parent is unmounted
-
-### ReadAndSub
-
-```go
-value, ok := beam.ReadAndSub(ctx, func(ctx context.Context, value T) bool {
-	return false
-})
-```
-
-This returns the current value first, then subscribes to future updates. The callback is for later updates only.
-
-### XSub
-
-Use `XSub` and `XReadAndSub` when you also need:
-
-- a cancel function
-- an `onCancel` callback
-
-### Watcher
-
-`AddWatcher` is the low-level subscription API behind the helpers above. Most app code should use `Sub` or `ReadAndSub`.
-
-## Update
-
-Use `Update` when you already know the next value:
-
-```go
-settings.Update(ctx, Settings{
-	Units: "imperial",
-	Days:  7,
-})
-```
-
-Use `Mutate` when the new value naturally depends on the old one:
-
-```go
-settings.Mutate(ctx, func(s Settings) Settings {
-	s.Days += 1
-	return s
-})
-```
-
-The `XUpdate` and `XMutate` variants return a completion channel. Most code does not need them.
-
-They are useful when completion itself matters, especially for backpressure. For example, if updates arrive very quickly, waiting for `XUpdate` lets a producer send the next state only after the previous one finished propagating.
-
-Do not wait on `XUpdate` or `XMutate` during rendering.
-
-If you need to wait for propagation, do it in a hook, inside `doors.Go(...)`, or
-in your own goroutine with `doors.Free(ctx)`.
-
 ## Render
 
-You subscribe to a `Beam` and use its values to update rendered content through a `doors.Door`:
+You can subscribe to a `Beam` and use its values to update rendered content through a `doors.Door`:
 
 1. keep a `doors.Door` on the component
 2. subscribe to the beam during render
@@ -210,6 +121,140 @@ It creates a dynamic fragment that subscribes to the beam and rerenders that fra
 </>
 ```
 
+## Effect
+
+`Effect` returns the current value and rerenders the closest dynamic parent when the value changes.
+
+```gox
+type CounterView struct {
+	count doors.Source[int]
+}
+
+elem (c *CounterView) Main() {
+	~>(doors.Frame()) <div>
+		~{
+			value, _ := c.count.Effect(ctx)
+		}
+		<p>Count: ~(value)</p>
+	</div>
+}
+```
+
+That is useful when a small dynamic fragment only needs to read a value and rerender itself on changes, without writing an explicit subscription callback.
+
+You can also read multiple values this way:
+
+```gox
+type SearchView struct {
+	query doors.Beam[string]
+	page  doors.Beam[int]
+}
+
+elem (v *SearchView) Main() {
+	~>(doors.Frame()) <div>
+		~{
+			query, _ := v.query.Effect(ctx)
+			page, ok := v.page.Effect(ctx)
+		}
+		~(if ok {
+			<p>Query: ~(query)</p>
+			<p>Page: ~(page)</p>
+		})
+	</div>
+}
+```
+
+It is enough to check only the last `ok`. `Effect` fails only when the context was already canceled, so if the last call succeeds, the earlier ones did too.
+
+> Use multiple `Effect` calls when the values come from different parts of the application, such as route state and language settings. Do not split one logical state into many tiny `Source`s just to read each field with its own `Effect`. Keep one source of truth. Derive smaller `Beam`s only when you want a narrower update surface.
+
+## Update
+
+Use `Update` when you already know the next value:
+
+```go
+settings.Update(ctx, Settings{
+	Units: "imperial",
+	Days:  7,
+})
+```
+
+Use `Mutate` when the new value naturally depends on the old one:
+
+```go
+settings.Mutate(ctx, func(s Settings) Settings {
+	s.Days += 1
+	return s
+})
+```
+
+The `XUpdate` and `XMutate` variants return a completion channel. Most code does not need them.
+
+They are useful when completion itself matters, especially for backpressure. For example, if updates arrive very quickly, waiting for `XUpdate` lets a producer send the next state only after the previous one finished propagating.
+
+Do not wait on `XUpdate` or `XMutate` during rendering.
+
+If you need to wait for propagation, do it in a hook, inside `doors.Go(...)`, or
+in your own goroutine with `doors.Free(ctx)`.
+
+If that work should outlive the current dynamic owner, use
+`doors.FreeRoot(ctx)` instead.
+
+## Read
+
+Reading and subscribing need a valid **Doors** context, such as the `ctx` you get in render code, handlers, subscriptions, or `doors.Go(...)`.
+
+Updating a `Source` can be done from any context.
+
+### Read
+
+```go
+value, ok := beam.Read(ctx)
+```
+
+Use `Read(ctx)` when you want the value that is consistent with the current **Doors** render/update cycle.
+
+### Get
+
+```go
+value := source.Get()
+```
+
+`Get()` returns the latest stored value without using a render context.
+
+Use it when you want the current value directly. Do not use it when render consistency matters.
+
+### Sub
+
+```go
+ok := beam.Sub(ctx, func(ctx context.Context, value T) bool {
+	return false
+})
+```
+
+`Sub` calls the callback immediately with the current value, then again on later updates.
+
+The subscription ends when:
+
+- your callback returns `true`
+- the owning dynamic parent is unmounted
+
+### ReadAndSub
+
+```go
+value, ok := beam.ReadAndSub(ctx, func(ctx context.Context, value T) bool {
+	return false
+})
+```
+
+This returns the current value first, then subscribes to future updates. The callback is for later updates only.
+
+
+### Watcher
+
+`AddWatcher` is the low-level subscription API behind the helpers above. Most app code should use `Sub` or `ReadAndSub`.
+
+
 ## Consistency
 
 The most important state guarantee in **Doors** is consistency.
@@ -217,7 +262,6 @@ The most important state guarantee in **Doors** is consistency.
 During one render/update cycle, a Door subtree sees one coherent view of a `Source` and all `Beam`s derived from it. A parent and its children do not see different versions halfway through the same render.
 
 In practice, this means beam-driven rendering stays predictable even when several parts of the page are updating at once.
-
 
 ## Skipping
 

@@ -27,9 +27,9 @@ type pathVariant struct {
 }
 
 type adapterBuilder[M any] struct {
-	value    M
-	path     []pathVariant
-	fields   map[string]field
+	value      M
+	path       []pathVariant
+	fields     map[string]field
 	queryField int
 }
 
@@ -53,7 +53,7 @@ func (a adapterBuilder[M]) build() (Adapter[M], error) {
 		branches = append(branches, branch)
 	}
 	return adapter[M]{
-		branches: branches,
+		branches:   branches,
 		queryField: a.queryField,
 	}, nil
 }
