@@ -81,7 +81,7 @@ The fields that matter most in practice are:
 - `SessionTTL`: how long the session lives after activity. If unset or too small, **Doors** raises it to at least `InstanceTTL`.
 - `InstanceConnectTimeout`: how long a new dynamic page can wait for its first client connection. Default `RequestTimeout`.
 - `InstanceTTL`: how long an inactive instance is kept. Default `40m`, and never below `2 * RequestTimeout`.
-- `InstanceGoroutineLimit`: max goroutines per page instance for runtime work. Default `16`.
+- `InstanceGoroutineLimit`: max goroutines per page instance for runtime work. Default `8`.
 - `DisconnectHiddenTimer`: how long hidden pages stay connected before disconnecting. Default `InstanceTTL / 2`.
 - `RequestTimeout`: max duration of a client request or hook call. Default `30s`.
 - `ServerCacheControl`: cache header for **Doors**-served JS and CSS resources. Default `public, max-age=31536000, immutable`.

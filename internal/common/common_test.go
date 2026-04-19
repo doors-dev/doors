@@ -36,7 +36,7 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if conf.SessionInstanceLimit != 12 {
 		t.Fatalf("unexpected session instance limit: %d", conf.SessionInstanceLimit)
 	}
-	if conf.InstanceGoroutineLimit != 16 {
+	if conf.InstanceGoroutineLimit != 8 {
 		t.Fatalf("unexpected goroutine limit: %d", conf.InstanceGoroutineLimit)
 	}
 	if conf.InstanceConnectTimeout != conf.RequestTimeout {

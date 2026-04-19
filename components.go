@@ -16,9 +16,13 @@ package doors
 
 import (
 	"context"
+	"errors"
+	"io"
+
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/door/pipe"
 	"github.com/doors-dev/gox"
 )
 
@@ -44,6 +48,45 @@ type Door = door.Door
 // the Door does not need to be stored on a struct field.
 func Frame() *Door {
 	return &Door{}
+}
+
+// Parallel renders the following element on the instance goroutine pool.
+//
+// Use it for independent fragments that may wait on database queries,
+// external API calls, or other slow work.
+func Parallel() gox.Proxy {
+	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
+		j := parallelJob{
+			ctx: cur.Context(),
+			el:  elem,
+		}
+		return cur.Send(j)
+	})
+}
+
+type parallelJob struct {
+	ctx context.Context
+	el  gox.Elem
+}
+
+func (pj parallelJob) Render(pip pipe.Pipe) {
+	branch := pip.Branch()
+	pip = pipe.NewPipe(pj.ctx, pip.Runtime(), pip.RenderFrame(), pip.FinalFrame())
+	pip.FrameSubmit(func(b bool) {
+		if !b {
+			return
+		}
+		defer pip.Submit(branch)
+		pip.RenderComp(pj.el)
+	})
+}
+
+func (p parallelJob) Context() context.Context {
+	return p.ctx
+}
+
+func (parallelJob) Output(io.Writer) error {
+	return errors.New("Parallel is used outside doors render pipeline")
 }
 
 // Sub renders a dynamic fragment driven by beam.

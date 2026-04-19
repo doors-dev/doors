@@ -33,58 +33,6 @@ type PathParallel struct {
 	Path bool `path:"/parallel"`
 }
 
-type slowPart struct {
-	id    string
-	text  string
-	delay time.Duration
-}
-
-func (s slowPart) Main() gox.Elem {
-	<-time.After(s.delay)
-	return gox.Elem(func(cur gox.Cursor) error {
-		if err := cur.Init("div"); err != nil {
-			return err
-		}
-		if err := cur.AttrSet("id", s.id); err != nil {
-			return err
-		}
-		if err := cur.Submit(); err != nil {
-			return err
-		}
-		if err := cur.Text(s.text); err != nil {
-			return err
-		}
-		return cur.Close()
-	})
-}
-
-func pageParallel() gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		if err := cur.Init("html"); err != nil {
-			return err
-		}
-		if err := cur.Submit(); err != nil {
-			return err
-		}
-		if err := cur.Init("body"); err != nil {
-			return err
-		}
-		if err := cur.Submit(); err != nil {
-			return err
-		}
-		if err := cur.Comp(slowPart{id: "part-a", text: "part-a", delay: 500 * time.Millisecond}); err != nil {
-			return err
-		}
-		if err := cur.Comp(slowPart{id: "part-b", text: "part-b", delay: 500 * time.Millisecond}); err != nil {
-			return err
-		}
-		if err := cur.Close(); err != nil {
-			return err
-		}
-		return cur.Close()
-	})
-}
-
 func testPath(t *testing.T, page *rod.Page, path string) {
 	url := strings.Split(strings.Trim(page.MustInfo().URL, "/"), "/")
 	last := url[len(url)-1]
@@ -521,17 +469,17 @@ func TestParallelComponentRender(t *testing.T) {
 		t.Fatalf("expected status %d actual %d body %q", http.StatusOK, resp.StatusCode, string(body))
 	}
 	bodyText := string(body)
-	if !strings.Contains(bodyText, "part-a") || !strings.Contains(bodyText, "part-b") {
-		t.Fatalf("expected both slow parts in body, got %q", bodyText)
+	if !strings.Contains(bodyText, "part-a") || !strings.Contains(bodyText, "part-b") || !strings.Contains(bodyText, "part-c") {
+		t.Fatalf("expected all slow parts in body, got %q", bodyText)
 	}
 	if test.LimitMode() {
-		if elapsed < 900*time.Millisecond {
+		if elapsed < 1300*time.Millisecond {
 			t.Fatalf("expected serialized render in limit mode, got %s", elapsed)
 		}
 		return
 	}
 	if elapsed >= 900*time.Millisecond {
-		t.Fatalf("expected parallel render under %s, got %s", 900*time.Millisecond, elapsed)
+		t.Fatalf("expected explicit parallel render under %s, got %s", 900*time.Millisecond, elapsed)
 	}
 }
 

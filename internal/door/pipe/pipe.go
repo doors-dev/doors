@@ -99,15 +99,21 @@ func (p Pipe) RenderProxy(el gox.Elem) (ProxyContainer, bool) {
 
 func (p Pipe) RenderContent(content any) {
 	if comp, ok := content.(gox.Comp); ok {
-		if el := comp.Main(); el != nil {
-			if err := el(p.cursor); err != nil {
-				p.err = err
-			}
-		}
+		p.RenderComp(comp)
 	} else {
 		if err := p.cursor.Any(content); err != nil {
 			p.err = err
 		}
+	}
+}
+
+func (p Pipe) RenderComp(comp gox.Comp) {
+	el := comp.Main()
+	if el == nil {
+		return
+	}
+	if err := el(p.cursor); err != nil {
+		p.err = err
 	}
 }
 
@@ -153,6 +159,10 @@ type Renderable interface {
 	Render(p *pipe)
 }
 
+func (p Pipe) FrameSubmit(f func(bool)) {
+	p.renderFrame.Submit(p.Context(), p.runtime, f)
+}
+
 func (p *pipe) Send(j gox.Job) error {
 	switch v := j.(type) {
 	case *gox.JobHeadOpen:
@@ -168,13 +178,8 @@ func (p *pipe) Send(j gox.Job) error {
 		gox.Release(v)
 		branch := p.Branch()
 		pip := NewPipe(ctx, p.runtime, p.renderFrame, p.finalFrame)
-		p.renderFrame.Submit(ctx, p.runtime, func(b bool) {
-			if !b {
-				return
-			}
-			defer pip.Submit(branch)
-			pip.RenderContent(comp)
-		})
+		defer pip.Submit(branch)
+		pip.RenderComp(comp)
 	default:
 		return p.printBack.Send(j)
 	}

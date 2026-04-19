@@ -123,9 +123,28 @@ Rendering and state propagation happens on the **Doors** runtime.
 
 It is completely normal to query a database or call an API while rendering.
 
-The thing to avoid is blocking the runtime on work that is not really part of the current render or event flow, such as long-lived waits, background loops, timers, pubsub listeners, or waiting on completion channels from runtime-triggered work.
+Content inside dynamic containers (`doors.Door`) is rendered on the instance
+goroutine pool by default, so separate dynamic fragments can make progress in
+parallel.
 
-If work should continue independently of the current render/event flow, start your own goroutine or use `doors.Go(...)` when it should follow the lifetime of a rendered subtree.
+For ordinary render flow, wrap independent slow fragments with
+`doors.Parallel()` so they can render concurrently:
+
+```gox
+<>
+	~>(doors.Parallel()) <>
+		~{
+			user := loadUser(ctx)
+		}
+		<section>~(user.Name)</section>
+	</>
+</>
+```
+
+Keep render work tied to producing the current page. For background loops,
+timers, pubsub listeners, or other work that should continue after rendering,
+start your own goroutine or use `doors.Go(...)` when it should follow the
+lifetime of a rendered subtree.
 
 ## Security
 

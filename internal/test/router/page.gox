@@ -55,6 +55,31 @@ type PathSlow struct {
 	Path bool `path:"/slow"`
 }
 
+elem pageParallel() {
+	<html>
+		<body>
+			~>(doors.Parallel()) <>
+				~{
+					<-time.After(500 * time.Millisecond)
+				}
+				<div id="part-a">part-a</div>
+			</>
+			~>(doors.Parallel()) <>
+				~{
+					<-time.After(500 * time.Millisecond)
+				}
+				<div id="part-b">part-b</div>
+			</>
+			<>
+				~{
+					<-time.After(500 * time.Millisecond)
+				}
+				<div id="part-c">part-c</div>
+			</>
+		</body>
+	</html>
+}
+
 func values(items ...string) url.Values {
 	v := url.Values{}
 	for i := 0; i + 1 < len(items); i += 2 {
