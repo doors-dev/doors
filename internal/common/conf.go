@@ -33,7 +33,7 @@ type SystemConf struct {
 	// Default: RequestTimeout
 	InstanceConnectTimeout time.Duration
 	// InstanceGoroutineLimit is the max goroutines per page instance.
-	// Controls resource use for rendering and reactive updates. Default: 16.
+	// Controls resource use for rendering and reactive updates. Default: 8.
 	InstanceGoroutineLimit int
 	// InstanceTTL is how long an inactive instance is kept before cleanup.
 	// Active = browser connected. Default: 40minutes.
@@ -136,7 +136,7 @@ func InitDefaults(s *SystemConf) {
 		s.SessionInstanceLimit = 12
 	}
 	if s.InstanceGoroutineLimit <= 0 {
-		s.InstanceGoroutineLimit = 16
+		s.InstanceGoroutineLimit = 8
 	}
 	if s.InstanceConnectTimeout <= 0 {
 		s.InstanceConnectTimeout = s.RequestTimeout
