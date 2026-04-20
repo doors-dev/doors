@@ -155,7 +155,8 @@ func (m *proxyAttrModPrinter) printComp(mod gox.Modify, job *gox.JobComp) error 
 			mod: mod,
 			cur: cur,
 		}
-		return elem.Print(cur.Context(), printer)
+		cursor := gox.NewCursor(cur.Context(), printer)
+		return elem(cursor)
 	}))
 }
 
@@ -164,5 +165,6 @@ func proxyAddAttrMod(mod gox.Modify, cur gox.Cursor, elem gox.Elem) error {
 		mod: mod,
 		cur: cur,
 	}
-	return elem.Print(cur.Context(), printer)
+	cursor := gox.NewCursor(cur.Context(), printer)
+	return elem(cursor)
 }

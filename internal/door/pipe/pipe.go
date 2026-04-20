@@ -85,7 +85,8 @@ func (p Pipe) RenderProxy(el gox.Elem) (ProxyContainer, bool) {
 	printer := &proxyPrinter{
 		pip: p,
 	}
-	if err := el.Print(p.cursor.Context(), printer); err != nil {
+	cursor := gox.NewCursor(p.cursor.Context(), printer)
+	if err := el(cursor); err != nil {
 		p.err = err
 		return ProxyContainer{}, false
 	}
