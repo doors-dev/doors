@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.25
+// Managed by GoX v0.1.28
 
 //line input.gox:1
 package attr
@@ -24,7 +24,7 @@ func (f *inputFragment) Main() gox.Elem {
 		__e = __c.Init("button"); if __e != nil { return }
 		{
 //line input.gox:18
-			__e = __c.AttrSet("id", "unfocus"); if __e != nil { return }
+			__e = __c.Set("id", "unfocus"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("dd"); if __e != nil { return }
 		}
@@ -108,23 +108,23 @@ func (f *inputFragment) focusFields() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line input.gox:78
-			__e = __c.AttrMod(doors.A(ctx, f.focusioouter()...)); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.focusioouter()...)); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 //line input.gox:79
-				__e = __c.AttrMod(doors.A(ctx, f.focusio()...)); if __e != nil { return }
+				__e = __c.Modify(doors.A(ctx, f.focusio()...)); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
 //line input.gox:80
-					__e = __c.AttrSet("id", "focus"); if __e != nil { return }
+					__e = __c.Set("id", "focus"); if __e != nil { return }
 //line input.gox:80
-					__e = __c.AttrMod(doors.A(ctx, f.focus()...)); if __e != nil { return }
+					__e = __c.Modify(doors.A(ctx, f.focus()...)); if __e != nil { return }
 //line input.gox:80
-					__e = __c.AttrSet("type", "text"); if __e != nil { return }
+					__e = __c.Set("type", "text"); if __e != nil { return }
 //line input.gox:80
-					__e = __c.AttrSet("name", "text"); if __e != nil { return }
+					__e = __c.Set("name", "text"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 			}
@@ -134,7 +134,7 @@ func (f *inputFragment) focusFields() gox.Elem {
 		__e = __c.Init("button"); if __e != nil { return }
 		{
 //line input.gox:83
-			__e = __c.AttrSet("id", "blur"); if __e != nil { return }
+			__e = __c.Set("id", "blur"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
@@ -167,13 +167,13 @@ func (f *inputFragment) inputFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:100
-			__e = __c.AttrSet("id", "input"); if __e != nil { return }
+			__e = __c.Set("id", "input"); if __e != nil { return }
 //line input.gox:100
-			__e = __c.AttrMod(doors.A(ctx, f.inputAttr(false))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.inputAttr(false))); if __e != nil { return }
 //line input.gox:100
-			__e = __c.AttrSet("type", "text"); if __e != nil { return }
+			__e = __c.Set("type", "text"); if __e != nil { return }
 //line input.gox:100
-			__e = __c.AttrSet("name", "text"); if __e != nil { return }
+			__e = __c.Set("name", "text"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -185,13 +185,13 @@ func (f *inputFragment) inputFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:102
-			__e = __c.AttrSet("id", "input_ex"); if __e != nil { return }
+			__e = __c.Set("id", "input_ex"); if __e != nil { return }
 //line input.gox:102
-			__e = __c.AttrMod(doors.A(ctx, f.inputAttr(true))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.inputAttr(true))); if __e != nil { return }
 //line input.gox:102
-			__e = __c.AttrSet("type", "text"); if __e != nil { return }
+			__e = __c.Set("type", "text"); if __e != nil { return }
 //line input.gox:102
-			__e = __c.AttrSet("name", "text"); if __e != nil { return }
+			__e = __c.Set("name", "text"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -242,13 +242,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:138
-			__e = __c.AttrSet("id", "text"); if __e != nil { return }
+			__e = __c.Set("id", "text"); if __e != nil { return }
 //line input.gox:138
-			__e = __c.AttrMod(doors.A(ctx, f.attr("text"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("text"))); if __e != nil { return }
 //line input.gox:138
-			__e = __c.AttrSet("type", "text"); if __e != nil { return }
+			__e = __c.Set("type", "text"); if __e != nil { return }
 //line input.gox:138
-			__e = __c.AttrSet("name", "text"); if __e != nil { return }
+			__e = __c.Set("name", "text"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -260,13 +260,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:140
-			__e = __c.AttrSet("id", "password"); if __e != nil { return }
+			__e = __c.Set("id", "password"); if __e != nil { return }
 //line input.gox:140
-			__e = __c.AttrMod(doors.A(ctx, f.attr("password"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("password"))); if __e != nil { return }
 //line input.gox:140
-			__e = __c.AttrSet("type", "password"); if __e != nil { return }
+			__e = __c.Set("type", "password"); if __e != nil { return }
 //line input.gox:140
-			__e = __c.AttrSet("name", "password"); if __e != nil { return }
+			__e = __c.Set("name", "password"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -278,13 +278,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:142
-			__e = __c.AttrSet("id", "email"); if __e != nil { return }
+			__e = __c.Set("id", "email"); if __e != nil { return }
 //line input.gox:142
-			__e = __c.AttrMod(doors.A(ctx, f.attr("email"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("email"))); if __e != nil { return }
 //line input.gox:142
-			__e = __c.AttrSet("type", "email"); if __e != nil { return }
+			__e = __c.Set("type", "email"); if __e != nil { return }
 //line input.gox:142
-			__e = __c.AttrSet("name", "email"); if __e != nil { return }
+			__e = __c.Set("name", "email"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -296,13 +296,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:144
-			__e = __c.AttrSet("id", "tel"); if __e != nil { return }
+			__e = __c.Set("id", "tel"); if __e != nil { return }
 //line input.gox:144
-			__e = __c.AttrMod(doors.A(ctx, f.attr("tel"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("tel"))); if __e != nil { return }
 //line input.gox:144
-			__e = __c.AttrSet("type", "tel"); if __e != nil { return }
+			__e = __c.Set("type", "tel"); if __e != nil { return }
 //line input.gox:144
-			__e = __c.AttrSet("name", "tel"); if __e != nil { return }
+			__e = __c.Set("name", "tel"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -314,13 +314,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:146
-			__e = __c.AttrSet("id", "url"); if __e != nil { return }
+			__e = __c.Set("id", "url"); if __e != nil { return }
 //line input.gox:146
-			__e = __c.AttrMod(doors.A(ctx, f.attr("url"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("url"))); if __e != nil { return }
 //line input.gox:146
-			__e = __c.AttrSet("type", "url"); if __e != nil { return }
+			__e = __c.Set("type", "url"); if __e != nil { return }
 //line input.gox:146
-			__e = __c.AttrSet("name", "url"); if __e != nil { return }
+			__e = __c.Set("name", "url"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -332,13 +332,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:148
-			__e = __c.AttrSet("id", "search"); if __e != nil { return }
+			__e = __c.Set("id", "search"); if __e != nil { return }
 //line input.gox:148
-			__e = __c.AttrMod(doors.A(ctx, f.attr("search"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("search"))); if __e != nil { return }
 //line input.gox:148
-			__e = __c.AttrSet("type", "search"); if __e != nil { return }
+			__e = __c.Set("type", "search"); if __e != nil { return }
 //line input.gox:148
-			__e = __c.AttrSet("name", "search"); if __e != nil { return }
+			__e = __c.Set("name", "search"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -350,13 +350,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:150
-			__e = __c.AttrSet("id", "number"); if __e != nil { return }
+			__e = __c.Set("id", "number"); if __e != nil { return }
 //line input.gox:150
-			__e = __c.AttrMod(doors.A(ctx, f.attr("number"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("number"))); if __e != nil { return }
 //line input.gox:150
-			__e = __c.AttrSet("type", "number"); if __e != nil { return }
+			__e = __c.Set("type", "number"); if __e != nil { return }
 //line input.gox:150
-			__e = __c.AttrSet("name", "number"); if __e != nil { return }
+			__e = __c.Set("name", "number"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -368,13 +368,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:152
-			__e = __c.AttrSet("id", "date"); if __e != nil { return }
+			__e = __c.Set("id", "date"); if __e != nil { return }
 //line input.gox:152
-			__e = __c.AttrMod(doors.A(ctx, f.attr("date"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("date"))); if __e != nil { return }
 //line input.gox:152
-			__e = __c.AttrSet("type", "date"); if __e != nil { return }
+			__e = __c.Set("type", "date"); if __e != nil { return }
 //line input.gox:152
-			__e = __c.AttrSet("name", "date"); if __e != nil { return }
+			__e = __c.Set("name", "date"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -386,13 +386,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:154
-			__e = __c.AttrSet("id", "datetime-local"); if __e != nil { return }
+			__e = __c.Set("id", "datetime-local"); if __e != nil { return }
 //line input.gox:154
-			__e = __c.AttrMod(doors.A(ctx, f.attr("datetime-local"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("datetime-local"))); if __e != nil { return }
 //line input.gox:154
-			__e = __c.AttrSet("type", "datetime-local"); if __e != nil { return }
+			__e = __c.Set("type", "datetime-local"); if __e != nil { return }
 //line input.gox:154
-			__e = __c.AttrSet("name", "datetime-local"); if __e != nil { return }
+			__e = __c.Set("name", "datetime-local"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -404,13 +404,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:156
-			__e = __c.AttrSet("id", "month"); if __e != nil { return }
+			__e = __c.Set("id", "month"); if __e != nil { return }
 //line input.gox:156
-			__e = __c.AttrMod(doors.A(ctx, f.attr("month"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("month"))); if __e != nil { return }
 //line input.gox:156
-			__e = __c.AttrSet("type", "month"); if __e != nil { return }
+			__e = __c.Set("type", "month"); if __e != nil { return }
 //line input.gox:156
-			__e = __c.AttrSet("name", "month"); if __e != nil { return }
+			__e = __c.Set("name", "month"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -422,13 +422,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:158
-			__e = __c.AttrSet("id", "time"); if __e != nil { return }
+			__e = __c.Set("id", "time"); if __e != nil { return }
 //line input.gox:158
-			__e = __c.AttrMod(doors.A(ctx, f.attr("time"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("time"))); if __e != nil { return }
 //line input.gox:158
-			__e = __c.AttrSet("type", "time"); if __e != nil { return }
+			__e = __c.Set("type", "time"); if __e != nil { return }
 //line input.gox:158
-			__e = __c.AttrSet("name", "time"); if __e != nil { return }
+			__e = __c.Set("name", "time"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -440,13 +440,13 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:160
-			__e = __c.AttrSet("id", "color"); if __e != nil { return }
+			__e = __c.Set("id", "color"); if __e != nil { return }
 //line input.gox:160
-			__e = __c.AttrMod(doors.A(ctx, f.attr("color"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("color"))); if __e != nil { return }
 //line input.gox:160
-			__e = __c.AttrSet("type", "color"); if __e != nil { return }
+			__e = __c.Set("type", "color"); if __e != nil { return }
 //line input.gox:160
-			__e = __c.AttrSet("name", "color"); if __e != nil { return }
+			__e = __c.Set("name", "color"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -458,15 +458,15 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.InitVoid("input"); if __e != nil { return }
 		{
 //line input.gox:162
-			__e = __c.AttrSet("id", "checkbox"); if __e != nil { return }
+			__e = __c.Set("id", "checkbox"); if __e != nil { return }
 //line input.gox:162
-			__e = __c.AttrMod(doors.A(ctx, f.attr("checkbox"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("checkbox"))); if __e != nil { return }
 //line input.gox:162
-			__e = __c.AttrSet("type", "checkbox"); if __e != nil { return }
+			__e = __c.Set("type", "checkbox"); if __e != nil { return }
 //line input.gox:162
-			__e = __c.AttrSet("name", "checkbox"); if __e != nil { return }
+			__e = __c.Set("name", "checkbox"); if __e != nil { return }
 //line input.gox:162
-			__e = __c.AttrSet("value", "on"); if __e != nil { return }
+			__e = __c.Set("value", "on"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("h3"); if __e != nil { return }
@@ -479,34 +479,34 @@ func (f *inputFragment) changeFields() gox.Elem {
 		radio := doors.A(ctx, f.attr("radio"))
 
 //line input.gox:167
-		__e = radio.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (radio).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitVoid("input"); if __e != nil { return }
 			{
 //line input.gox:167
-				__e = __c.AttrSet("id", "radio-1"); if __e != nil { return }
+				__e = __c.Set("id", "radio-1"); if __e != nil { return }
 //line input.gox:167
-				__e = __c.AttrSet("type", "radio"); if __e != nil { return }
+				__e = __c.Set("type", "radio"); if __e != nil { return }
 //line input.gox:167
-				__e = __c.AttrSet("name", "radio"); if __e != nil { return }
+				__e = __c.Set("name", "radio"); if __e != nil { return }
 //line input.gox:167
-				__e = __c.AttrSet("value", "option1"); if __e != nil { return }
+				__e = __c.Set("value", "option1"); if __e != nil { return }
 			}
 			__e = __c.Submit(); if __e != nil { return }
 		return })); if __e != nil { return }
 //line input.gox:168
-		__e = radio.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (radio).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitVoid("input"); if __e != nil { return }
 			{
 //line input.gox:168
-				__e = __c.AttrSet("id", "radio-2"); if __e != nil { return }
+				__e = __c.Set("id", "radio-2"); if __e != nil { return }
 //line input.gox:168
-				__e = __c.AttrSet("type", "radio"); if __e != nil { return }
+				__e = __c.Set("type", "radio"); if __e != nil { return }
 //line input.gox:168
-				__e = __c.AttrSet("name", "radio"); if __e != nil { return }
+				__e = __c.Set("name", "radio"); if __e != nil { return }
 //line input.gox:168
-				__e = __c.AttrSet("value", "option2"); if __e != nil { return }
+				__e = __c.Set("value", "option2"); if __e != nil { return }
 			}
 			__e = __c.Submit(); if __e != nil { return }
 		return })); if __e != nil { return }
@@ -519,11 +519,11 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.Init("textarea"); if __e != nil { return }
 		{
 //line input.gox:170
-			__e = __c.AttrSet("id", "textarea"); if __e != nil { return }
+			__e = __c.Set("id", "textarea"); if __e != nil { return }
 //line input.gox:170
-			__e = __c.AttrMod(doors.A(ctx, f.attr("textarea"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("textarea"))); if __e != nil { return }
 //line input.gox:170
-			__e = __c.AttrSet("name", "textarea"); if __e != nil { return }
+			__e = __c.Set("name", "textarea"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
@@ -536,16 +536,16 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.Init("select"); if __e != nil { return }
 		{
 //line input.gox:172
-			__e = __c.AttrSet("id", "select"); if __e != nil { return }
+			__e = __c.Set("id", "select"); if __e != nil { return }
 //line input.gox:172
-			__e = __c.AttrMod(doors.A(ctx, f.attr("select"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("select"))); if __e != nil { return }
 //line input.gox:172
-			__e = __c.AttrSet("name", "select"); if __e != nil { return }
+			__e = __c.Set("name", "select"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Init("option"); if __e != nil { return }
 			{
 //line input.gox:173
-				__e = __c.AttrSet("value", "option1"); if __e != nil { return }
+				__e = __c.Set("value", "option1"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("Option 1"); if __e != nil { return }
 			}
@@ -553,7 +553,7 @@ func (f *inputFragment) changeFields() gox.Elem {
 			__e = __c.Init("option"); if __e != nil { return }
 			{
 //line input.gox:174
-				__e = __c.AttrSet("value", "option2"); if __e != nil { return }
+				__e = __c.Set("value", "option2"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("Option 2"); if __e != nil { return }
 			}
@@ -569,17 +569,17 @@ func (f *inputFragment) changeFields() gox.Elem {
 		__e = __c.Init("select"); if __e != nil { return }
 		{
 //line input.gox:177
-			__e = __c.AttrSet("id", "multiselect"); if __e != nil { return }
+			__e = __c.Set("id", "multiselect"); if __e != nil { return }
 //line input.gox:177
-			__e = __c.AttrMod(doors.A(ctx, f.attr("multiselect"))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.attr("multiselect"))); if __e != nil { return }
 //line input.gox:177
-			__e = __c.AttrSet("name", "multiselect"); if __e != nil { return }
-			__e = __c.AttrSet("multiple", true); if __e != nil { return }
+			__e = __c.Set("name", "multiselect"); if __e != nil { return }
+			__e = __c.Set("multiple", true); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Init("option"); if __e != nil { return }
 			{
 //line input.gox:178
-				__e = __c.AttrSet("value", "option1"); if __e != nil { return }
+				__e = __c.Set("value", "option1"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("Option 1"); if __e != nil { return }
 			}
@@ -587,7 +587,7 @@ func (f *inputFragment) changeFields() gox.Elem {
 			__e = __c.Init("option"); if __e != nil { return }
 			{
 //line input.gox:179
-				__e = __c.AttrSet("value", "option2"); if __e != nil { return }
+				__e = __c.Set("value", "option2"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("Option 2"); if __e != nil { return }
 			}

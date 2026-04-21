@@ -61,10 +61,10 @@ func TestPagePrinterInsertsHeadBeforeBody(t *testing.T) {
 		if err := cur.InitVoid("meta"); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("name", "description"); err != nil {
+		if err := cur.Set("name", "description"); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("content", "inserted"); err != nil {
+		if err := cur.Set("content", "inserted"); err != nil {
 			return err
 		}
 		return cur.Submit()
@@ -108,10 +108,10 @@ func TestPagePrinterInsertsIntoExplicitHead(t *testing.T) {
 		if err := cur.InitVoid("meta"); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("name", "robots"); err != nil {
+		if err := cur.Set("name", "robots"); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("content", "noindex"); err != nil {
+		if err := cur.Set("content", "noindex"); err != nil {
 			return err
 		}
 		return cur.Submit()

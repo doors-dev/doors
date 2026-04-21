@@ -131,7 +131,7 @@ type CounterView struct {
 }
 
 elem (c *CounterView) Main() {
-	~>(doors.Frame()) <div>
+	~>(&doors.Door{}) <div>
 		~{
 			value, _ := c.count.Effect(ctx)
 		}
@@ -151,7 +151,7 @@ type SearchView struct {
 }
 
 elem (v *SearchView) Main() {
-	~>(doors.Frame()) <div>
+	~>(&doors.Door{}) <div>
 		~{
 			query, _ := v.query.Effect(ctx)
 			page, ok := v.page.Effect(ctx)

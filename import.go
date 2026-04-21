@@ -336,10 +336,10 @@ func (m ScriptModule) Edit(cur gox.Cursor) error {
 		if err := cur.Init("script"); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("src", path); err != nil {
+		if err := cur.Set("src", path); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("type", "module"); err != nil {
+		if err := cur.Set("type", "module"); err != nil {
 			return err
 		}
 		if err := cur.Submit(); err != nil {
@@ -412,7 +412,7 @@ func (m ScriptInline) Edit(cur gox.Cursor) error {
 	if err := cur.Init("script"); err != nil {
 		return err
 	}
-	if err := cur.AttrSet("src", path); err != nil {
+	if err := cur.Set("src", path); err != nil {
 		return err
 	}
 	if err := cur.Submit(); err != nil {
@@ -478,7 +478,7 @@ func (m ScriptCommon) Edit(cur gox.Cursor) error {
 	if err := cur.Init("script"); err != nil {
 		return err
 	}
-	if err := cur.AttrSet("src", path); err != nil {
+	if err := cur.Set("src", path); err != nil {
 		return err
 	}
 	if err := cur.Submit(); err != nil {
@@ -541,10 +541,10 @@ func (m Style) Edit(cur gox.Cursor) error {
 	if err := cur.InitVoid("link"); err != nil {
 		return err
 	}
-	if err := cur.AttrSet("rel", "stylesheet"); err != nil {
+	if err := cur.Set("rel", "stylesheet"); err != nil {
 		return err
 	}
-	if err := cur.AttrSet("href", path); err != nil {
+	if err := cur.Set("href", path); err != nil {
 		return err
 	}
 	return cur.Submit()

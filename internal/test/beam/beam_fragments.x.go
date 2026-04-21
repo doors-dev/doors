@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.25
+// Managed by GoX v0.1.28
 
 //line beam_fragments.gox:1
 package beam
@@ -37,7 +37,7 @@ func (f *BeamSkipFragment) Main() gox.Elem {
 		})
 
 //line beam_fragments.gox:33
-		__e = f.node.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (f.node).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
@@ -79,7 +79,7 @@ func (f *BeamDeriveFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:61
-		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (f.n).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
@@ -120,7 +120,7 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 //line beam_fragments.gox:87
 		__e = __c.Any(test.ReportId(1, fmt.Sprint(r))); if __e != nil { return }
 //line beam_fragments.gox:88
-		__e = n1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (n1).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
@@ -146,7 +146,7 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 //line beam_fragments.gox:106
-		__e = n2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (n2).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
@@ -195,7 +195,7 @@ func (f *BeamConsistentFragment) content() gox.Elem {
 //line beam_fragments.gox:140
 		__e = __c.Any(test.ReportId(1, fmt.Sprint(r.Int))); if __e != nil { return }
 //line beam_fragments.gox:141
-		__e = n1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (n1).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
@@ -221,7 +221,7 @@ func (f *BeamConsistentFragment) content() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 //line beam_fragments.gox:159
-		__e = n2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (n2).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
@@ -248,7 +248,7 @@ func (f *BeamConsistentFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:173
-		__e = f.n.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (f.n).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
@@ -341,7 +341,7 @@ func (f *BeamEqualFragment) Main() gox.Elem {
 			__e = __c.Init("div"); if __e != nil { return }
 			{
 //line beam_fragments.gox:244
-				__e = __c.AttrSet("id", "parity"); if __e != nil { return }
+				__e = __c.Set("id", "parity"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:244
 				__e = __c.Any(v); if __e != nil { return }
@@ -397,7 +397,7 @@ func (f *BeamRenderBranchUpdateFrameFragment) content(i int) gox.Elem {
 		__e = __c.Init("span"); if __e != nil { return }
 		{
 //line beam_fragments.gox:285
-			__e = __c.AttrSet("id", "watcher-i"); if __e != nil { return }
+			__e = __c.Set("id", "watcher-i"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:285
 			__e = __c.Any(fmt.Sprint(i)); if __e != nil { return }
@@ -412,7 +412,7 @@ func (f *BeamRenderBranchUpdateFrameFragment) content(i int) gox.Elem {
 		__e = __c.Init("span"); if __e != nil { return }
 		{
 //line beam_fragments.gox:292
-			__e = __c.AttrSet("id", "watcher-newi"); if __e != nil { return }
+			__e = __c.Set("id", "watcher-newi"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:292
 			__e = __c.Any(fmt.Sprint(newI)); if __e != nil { return }
@@ -454,7 +454,7 @@ func (f *BeamRenderBranchInitFrameFragment) content(i int) gox.Elem {
 		__e = __c.Init("span"); if __e != nil { return }
 		{
 //line beam_fragments.gox:315
-			__e = __c.AttrSet("id", "watcher-i"); if __e != nil { return }
+			__e = __c.Set("id", "watcher-i"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:315
 			__e = __c.Any(fmt.Sprint(i)); if __e != nil { return }
@@ -469,7 +469,7 @@ func (f *BeamRenderBranchInitFrameFragment) content(i int) gox.Elem {
 		__e = __c.Init("span"); if __e != nil { return }
 		{
 //line beam_fragments.gox:322
-			__e = __c.AttrSet("id", "watcher-newi"); if __e != nil { return }
+			__e = __c.Set("id", "watcher-newi"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:322
 			__e = __c.Any(fmt.Sprint(newI)); if __e != nil { return }
@@ -526,7 +526,7 @@ func (f *BeamRenderUpdateWarningFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:356
-		__e = f.host.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (f.host).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
@@ -564,7 +564,7 @@ func (f *BeamEffectSourceFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:379
-			__e = __c.AttrSet("id", "effect-source-value"); if __e != nil { return }
+			__e = __c.Set("id", "effect-source-value"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:379
 			__e = __c.Any(fmt.Sprint(value)); if __e != nil { return }
@@ -573,7 +573,7 @@ func (f *BeamEffectSourceFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:380
-			__e = __c.AttrSet("id", "effect-source-inner-renders"); if __e != nil { return }
+			__e = __c.Set("id", "effect-source-inner-renders"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:380
 			__e = __c.Any(fmt.Sprint(f.innerRenders)); if __e != nil { return }
@@ -594,7 +594,7 @@ func (f *BeamEffectSourceFragment) outerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:388
-			__e = __c.AttrSet("id", "effect-source-outer-renders"); if __e != nil { return }
+			__e = __c.Set("id", "effect-source-outer-renders"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:388
 			__e = __c.Any(fmt.Sprint(f.outerRenders)); if __e != nil { return }
@@ -650,7 +650,7 @@ func (f *BeamEffectDerivedFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:422
-			__e = __c.AttrSet("id", "effect-derived-value"); if __e != nil { return }
+			__e = __c.Set("id", "effect-derived-value"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:422
 			__e = __c.Any(value); if __e != nil { return }
@@ -659,7 +659,7 @@ func (f *BeamEffectDerivedFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:423
-			__e = __c.AttrSet("id", "effect-derived-inner-renders"); if __e != nil { return }
+			__e = __c.Set("id", "effect-derived-inner-renders"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:423
 			__e = __c.Any(fmt.Sprint(f.innerRenders)); if __e != nil { return }
@@ -680,7 +680,7 @@ func (f *BeamEffectDerivedFragment) outerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:431
-			__e = __c.AttrSet("id", "effect-derived-outer-renders"); if __e != nil { return }
+			__e = __c.Set("id", "effect-derived-outer-renders"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:431
 			__e = __c.Any(fmt.Sprint(f.outerRenders)); if __e != nil { return }
@@ -742,7 +742,7 @@ func (f *BeamEffectMultiFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:471
-			__e = __c.AttrSet("id", "effect-multi-left"); if __e != nil { return }
+			__e = __c.Set("id", "effect-multi-left"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:471
 			__e = __c.Any(fmt.Sprint(left)); if __e != nil { return }
@@ -751,7 +751,7 @@ func (f *BeamEffectMultiFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:472
-			__e = __c.AttrSet("id", "effect-multi-right"); if __e != nil { return }
+			__e = __c.Set("id", "effect-multi-right"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:472
 			__e = __c.Any(fmt.Sprint(right)); if __e != nil { return }
@@ -760,7 +760,7 @@ func (f *BeamEffectMultiFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:473
-			__e = __c.AttrSet("id", "effect-multi-inner-renders"); if __e != nil { return }
+			__e = __c.Set("id", "effect-multi-inner-renders"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:473
 			__e = __c.Any(fmt.Sprint(f.innerRenders)); if __e != nil { return }
@@ -781,7 +781,7 @@ func (f *BeamEffectMultiFragment) outerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:481
-			__e = __c.AttrSet("id", "effect-multi-outer-renders"); if __e != nil { return }
+			__e = __c.Set("id", "effect-multi-outer-renders"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:481
 			__e = __c.Any(fmt.Sprint(f.outerRenders)); if __e != nil { return }
@@ -837,7 +837,7 @@ func (f *BeamEffectDuplicateFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:515
-			__e = __c.AttrSet("id", "effect-dup-first"); if __e != nil { return }
+			__e = __c.Set("id", "effect-dup-first"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:515
 			__e = __c.Any(fmt.Sprint(first)); if __e != nil { return }
@@ -846,7 +846,7 @@ func (f *BeamEffectDuplicateFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:516
-			__e = __c.AttrSet("id", "effect-dup-second"); if __e != nil { return }
+			__e = __c.Set("id", "effect-dup-second"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:516
 			__e = __c.Any(fmt.Sprint(second)); if __e != nil { return }
@@ -855,7 +855,7 @@ func (f *BeamEffectDuplicateFragment) innerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:517
-			__e = __c.AttrSet("id", "effect-dup-inner-renders"); if __e != nil { return }
+			__e = __c.Set("id", "effect-dup-inner-renders"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:517
 			__e = __c.Any(fmt.Sprint(f.innerRenders)); if __e != nil { return }
@@ -876,7 +876,7 @@ func (f *BeamEffectDuplicateFragment) outerContent() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line beam_fragments.gox:525
-			__e = __c.AttrSet("id", "effect-dup-outer-renders"); if __e != nil { return }
+			__e = __c.Set("id", "effect-dup-outer-renders"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line beam_fragments.gox:525
 			__e = __c.Any(fmt.Sprint(f.outerRenders)); if __e != nil { return }

@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.25
+// Managed by GoX v0.1.28
 
 //line components.gox:1
 package imports
@@ -55,11 +55,11 @@ func fileHref() gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:30
-			__e = __c.AttrSet("id", "file-href"); if __e != nil { return }
+			__e = __c.Set("id", "file-href"); if __e != nil { return }
 //line components.gox:30
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:30
-			__e = __c.AttrSet("href", doors.ResourceLocalFS(modulePath + "/style.css")); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceLocalFS(modulePath + "/style.css")); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -73,11 +73,11 @@ func fileRawHref() gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:35
-			__e = __c.AttrSet("id", "file-raw-href"); if __e != nil { return }
+			__e = __c.Set("id", "file-raw-href"); if __e != nil { return }
 //line components.gox:36
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:37
-			__e = __c.AttrSet("href", func(w http.ResponseWriter, r *http.Request) {
+			__e = __c.Set("href", func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
 		}); if __e != nil { return }
 		}
@@ -93,9 +93,9 @@ func fileSrc() gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:43
-			__e = __c.AttrSet("id", "file-src"); if __e != nil { return }
+			__e = __c.Set("id", "file-src"); if __e != nil { return }
 //line components.gox:43
-			__e = __c.AttrSet("src", doors.ResourceLocalFS(modulePath + "/index.js")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceLocalFS(modulePath + "/index.js")); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -111,9 +111,9 @@ func fileRawSrc() gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:48
-			__e = __c.AttrSet("id", "file-raw-src"); if __e != nil { return }
+			__e = __c.Set("id", "file-raw-src"); if __e != nil { return }
 //line components.gox:49
-			__e = __c.AttrSet("src", func(w http.ResponseWriter, r *http.Request) {
+			__e = __c.Set("src", func(w http.ResponseWriter, r *http.Request) {
 			w.Write(moduleBytes)
 		}); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
@@ -131,11 +131,11 @@ func fileHrefModify() gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:55
-			__e = __c.AttrSet("id", "file-href-modify"); if __e != nil { return }
+			__e = __c.Set("id", "file-href-modify"); if __e != nil { return }
 //line components.gox:55
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:55
-			__e = __c.AttrMod(doors.ResourceLocalFS(modulePath + "/style.css")); if __e != nil { return }
+			__e = __c.Modify(doors.ResourceLocalFS(modulePath + "/style.css")); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -149,11 +149,11 @@ func fileRawHrefModify() gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:60
-			__e = __c.AttrSet("id", "file-raw-href-modify"); if __e != nil { return }
+			__e = __c.Set("id", "file-raw-href-modify"); if __e != nil { return }
 //line components.gox:61
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:62
-			__e = __c.AttrMod(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			__e = __c.Modify(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
 		})); if __e != nil { return }
 		}
@@ -169,9 +169,9 @@ func fileSrcModify() gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:68
-			__e = __c.AttrSet("id", "file-src-modify"); if __e != nil { return }
+			__e = __c.Set("id", "file-src-modify"); if __e != nil { return }
 //line components.gox:68
-			__e = __c.AttrMod(doors.ResourceLocalFS(modulePath + "/index.js")); if __e != nil { return }
+			__e = __c.Modify(doors.ResourceLocalFS(modulePath + "/index.js")); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -187,9 +187,9 @@ func fileRawSrcModify() gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:73
-			__e = __c.AttrSet("id", "file-raw-src-modify"); if __e != nil { return }
+			__e = __c.Set("id", "file-raw-src-modify"); if __e != nil { return }
 //line components.gox:74
-			__e = __c.AttrMod(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			__e = __c.Modify(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(moduleBytes)
 		})); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
@@ -210,11 +210,11 @@ func fileImgFS() gox.Elem {
 		__e = __c.InitVoid("img"); if __e != nil { return }
 		{
 //line components.gox:83
-			__e = __c.AttrSet("id", "file-img-fs"); if __e != nil { return }
+			__e = __c.Set("id", "file-img-fs"); if __e != nil { return }
 //line components.gox:83
-			__e = __c.AttrSet("src", doors.ResourceFS(moduleDir, "pixel.svg")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceFS(moduleDir, "pixel.svg")); if __e != nil { return }
 //line components.gox:83
-			__e = __c.AttrSet("type", "image/svg+xml"); if __e != nil { return }
+			__e = __c.Set("type", "image/svg+xml"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -228,12 +228,12 @@ func fileCachedHref() gox.Elem {
 		__e = __c.Init("a"); if __e != nil { return }
 		{
 //line components.gox:88
-			__e = __c.AttrSet("id", "cached-href"); if __e != nil { return }
+			__e = __c.Set("id", "cached-href"); if __e != nil { return }
 //line components.gox:89
-			__e = __c.AttrSet("href", doors.ResourceBytes([]byte("hello"))); if __e != nil { return }
-			__e = __c.AttrSet("cache", true); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceBytes([]byte("hello"))); if __e != nil { return }
+			__e = __c.Set("cache", true); if __e != nil { return }
 //line components.gox:91
-			__e = __c.AttrSet("name", "hello.txt"); if __e != nil { return }
+			__e = __c.Set("name", "hello.txt"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("Download"); if __e != nil { return }
 		}
@@ -249,12 +249,12 @@ func fileCachedHrefModify() gox.Elem {
 		__e = __c.Init("a"); if __e != nil { return }
 		{
 //line components.gox:98
-			__e = __c.AttrSet("id", "cached-href-modify"); if __e != nil { return }
+			__e = __c.Set("id", "cached-href-modify"); if __e != nil { return }
 //line components.gox:99
-			__e = __c.AttrMod(doors.ResourceBytes([]byte("hello"))); if __e != nil { return }
-			__e = __c.AttrSet("cache", true); if __e != nil { return }
+			__e = __c.Modify(doors.ResourceBytes([]byte("hello"))); if __e != nil { return }
+			__e = __c.Set("cache", true); if __e != nil { return }
 //line components.gox:101
-			__e = __c.AttrSet("name", "hello-modify.txt"); if __e != nil { return }
+			__e = __c.Set("name", "hello-modify.txt"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("Download"); if __e != nil { return }
 		}
@@ -270,11 +270,11 @@ func filePrivateHref() gox.Elem {
 		__e = __c.Init("a"); if __e != nil { return }
 		{
 //line components.gox:108
-			__e = __c.AttrSet("id", "private-href"); if __e != nil { return }
+			__e = __c.Set("id", "private-href"); if __e != nil { return }
 //line components.gox:109
-			__e = __c.AttrSet("href", doors.ResourceBytes([]byte("hello"))); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceBytes([]byte("hello"))); if __e != nil { return }
 //line components.gox:110
-			__e = __c.AttrSet("name", "private.txt"); if __e != nil { return }
+			__e = __c.Set("name", "private.txt"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("Download"); if __e != nil { return }
 		}
@@ -290,11 +290,11 @@ func filePrivateHrefModify() gox.Elem {
 		__e = __c.Init("a"); if __e != nil { return }
 		{
 //line components.gox:117
-			__e = __c.AttrSet("id", "private-href-modify"); if __e != nil { return }
+			__e = __c.Set("id", "private-href-modify"); if __e != nil { return }
 //line components.gox:118
-			__e = __c.AttrMod(doors.ResourceBytes([]byte("hello"))); if __e != nil { return }
+			__e = __c.Modify(doors.ResourceBytes([]byte("hello"))); if __e != nil { return }
 //line components.gox:119
-			__e = __c.AttrSet("name", "private-modify.txt"); if __e != nil { return }
+			__e = __c.Set("name", "private-modify.txt"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("Download"); if __e != nil { return }
 		}
@@ -310,11 +310,11 @@ func framePrivateSrc() gox.Elem {
 		__e = __c.Init("iframe"); if __e != nil { return }
 		{
 //line components.gox:126
-			__e = __c.AttrSet("id", "private-frame"); if __e != nil { return }
+			__e = __c.Set("id", "private-frame"); if __e != nil { return }
 //line components.gox:127
-			__e = __c.AttrSet("src", doors.ResourceString(`<html><body>frame</body></html>`)); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceString(`<html><body>frame</body></html>`)); if __e != nil { return }
 //line components.gox:128
-			__e = __c.AttrSet("name", "frame.html"); if __e != nil { return }
+			__e = __c.Set("name", "frame.html"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
@@ -329,10 +329,10 @@ func fileCachedHrefBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("a"); if __e != nil { return }
 		{
 //line components.gox:134
-			__e = __c.AttrSet("href", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			__e = __c.Set("href", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("hello"))
 		})); if __e != nil { return }
-			__e = __c.AttrSet("cache", true); if __e != nil { return }
+			__e = __c.Set("cache", true); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("Download"); if __e != nil { return }
 		}
@@ -348,9 +348,9 @@ func styleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:143
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:143
-			__e = __c.AttrSet("href", doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -377,7 +377,7 @@ func styleRawHead(_b doors.Source[test.Path]) gox.Elem {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("style"); if __e != nil { return }
 		{
-			__e = __c.AttrSet("raw", true); if __e != nil { return }
+			__e = __c.Set("raw", true); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("h1 {\n\t\t\tcolor: red;\n\t\t}"); if __e != nil { return }
 		}
@@ -407,9 +407,9 @@ func styleBytesShortHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:171
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:171
-			__e = __c.AttrSet("href", styleRawBytes); if __e != nil { return }
+			__e = __c.Set("href", styleRawBytes); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -423,9 +423,9 @@ func styleBytesModifyHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:175
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:175
-			__e = __c.AttrMod(doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
+			__e = __c.Modify(doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -439,9 +439,9 @@ func styleStringHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:179
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:179
-			__e = __c.AttrSet("href", doors.ResourceString(string(styleRawBytes))); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceString(string(styleRawBytes))); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -455,9 +455,9 @@ func styleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:183
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:183
-			__e = __c.AttrSet("href", doors.ResourceExternal(test.Host + "/module/style.css")); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceExternal(test.Host + "/module/style.css")); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -471,9 +471,9 @@ func styleProxyHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:187
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:187
-			__e = __c.AttrSet("href", doors.ResourceProxy(test.Host + "/module/style.css")); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceProxy(test.Host + "/module/style.css")); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -487,9 +487,9 @@ func styleHostedHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:191
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:191
-			__e = __c.AttrSet("href", "/module/style.css"); if __e != nil { return }
+			__e = __c.Set("href", "/module/style.css"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -503,10 +503,10 @@ func styleHostedRawHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:195
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:195
-			__e = __c.AttrSet("href", "/module/style.css"); if __e != nil { return }
-			__e = __c.AttrSet("raw", true); if __e != nil { return }
+			__e = __c.Set("href", "/module/style.css"); if __e != nil { return }
+			__e = __c.Set("raw", true); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -520,9 +520,9 @@ func styleHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:199
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:199
-			__e = __c.AttrSet("href", doors.ResourceLocalFS(modulePath + "/style.css")); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceLocalFS(modulePath + "/style.css")); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -539,9 +539,9 @@ func styleFSHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:206
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:206
-			__e = __c.AttrSet("href", doors.ResourceFS(moduleDir, "style.css")); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceFS(moduleDir, "style.css")); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -555,11 +555,11 @@ func styleNamedHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:210
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:210
-			__e = __c.AttrSet("href", doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
 //line components.gox:210
-			__e = __c.AttrSet("name", "named.css"); if __e != nil { return }
+			__e = __c.Set("name", "named.css"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -573,12 +573,12 @@ func stylePrivateNamedHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:214
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:214
-			__e = __c.AttrSet("href", doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
-			__e = __c.AttrSet("private", true); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceBytes(styleRawBytes)); if __e != nil { return }
+			__e = __c.Set("private", true); if __e != nil { return }
 //line components.gox:214
-			__e = __c.AttrSet("name", "private.css"); if __e != nil { return }
+			__e = __c.Set("name", "private.css"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -591,9 +591,9 @@ func stylePrivateHead(_b doors.Source[test.Path]) gox.Elem {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("style"); if __e != nil { return }
 		{
-			__e = __c.AttrSet("private", true); if __e != nil { return }
+			__e = __c.Set("private", true); if __e != nil { return }
 //line components.gox:218
-			__e = __c.AttrSet("name", "private-inline"); if __e != nil { return }
+			__e = __c.Set("name", "private-inline"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("h1 {\n\t\t\tcolor: red;\n\t\t}"); if __e != nil { return }
 		}
@@ -608,9 +608,9 @@ func stylePrivateNamedExtHead(_b doors.Source[test.Path]) gox.Elem {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("style"); if __e != nil { return }
 		{
-			__e = __c.AttrSet("private", true); if __e != nil { return }
+			__e = __c.Set("private", true); if __e != nil { return }
 //line components.gox:226
-			__e = __c.AttrSet("name", "private-inline.css"); if __e != nil { return }
+			__e = __c.Set("name", "private-inline.css"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("h1 {\n\t\t\tcolor: red;\n\t\t}"); if __e != nil { return }
 		}
@@ -625,9 +625,9 @@ func styleNoCacheHead(_b doors.Source[test.Path]) gox.Elem {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("style"); if __e != nil { return }
 		{
-			__e = __c.AttrSet("nocache", true); if __e != nil { return }
+			__e = __c.Set("nocache", true); if __e != nil { return }
 //line components.gox:234
-			__e = __c.AttrSet("name", "nocache-inline"); if __e != nil { return }
+			__e = __c.Set("name", "nocache-inline"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("h1 {\n\t\t\tcolor: red;\n\t\t}"); if __e != nil { return }
 		}
@@ -655,11 +655,11 @@ func moduleExternalHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:248
-			__e = __c.AttrSet("src", doors.ResourceExternal(test.Host + "/module/index.js")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceExternal(test.Host + "/module/index.js")); if __e != nil { return }
 //line components.gox:249
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
 //line components.gox:250
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -675,11 +675,11 @@ func moduleBundleHostHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:255
-			__e = __c.AttrSet("src", "/module/index.js"); if __e != nil { return }
+			__e = __c.Set("src", "/module/index.js"); if __e != nil { return }
 //line components.gox:256
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
 //line components.gox:257
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -698,14 +698,14 @@ func moduleBundleFSHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:265
-			__e = __c.AttrSet("id", "module-bundle-fs"); if __e != nil { return }
+			__e = __c.Set("id", "module-bundle-fs"); if __e != nil { return }
 //line components.gox:266
-			__e = __c.AttrSet("src", doors.ResourceFS(moduleBundleDir, "index.ts")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceFS(moduleBundleDir, "index.ts")); if __e != nil { return }
 //line components.gox:267
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
-			__e = __c.AttrSet("bundle", true); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
+			__e = __c.Set("bundle", true); if __e != nil { return }
 //line components.gox:269
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -721,14 +721,14 @@ func moduleRawBytesHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:274
-			__e = __c.AttrSet("id", "module-raw-bytes"); if __e != nil { return }
+			__e = __c.Set("id", "module-raw-bytes"); if __e != nil { return }
 //line components.gox:275
-			__e = __c.AttrSet("src", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
 //line components.gox:276
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
-			__e = __c.AttrSet("raw", true); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
+			__e = __c.Set("raw", true); if __e != nil { return }
 //line components.gox:278
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -744,14 +744,14 @@ func moduleRawBytesShortHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:283
-			__e = __c.AttrSet("id", "module-raw-bytes-short"); if __e != nil { return }
+			__e = __c.Set("id", "module-raw-bytes-short"); if __e != nil { return }
 //line components.gox:284
-			__e = __c.AttrSet("src", moduleRawBytes); if __e != nil { return }
+			__e = __c.Set("src", moduleRawBytes); if __e != nil { return }
 //line components.gox:285
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
-			__e = __c.AttrSet("raw", true); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
+			__e = __c.Set("raw", true); if __e != nil { return }
 //line components.gox:287
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -767,14 +767,14 @@ func moduleRawBytesModifyHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:292
-			__e = __c.AttrSet("id", "module-raw-bytes-modify"); if __e != nil { return }
+			__e = __c.Set("id", "module-raw-bytes-modify"); if __e != nil { return }
 //line components.gox:293
-			__e = __c.AttrMod(doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
+			__e = __c.Modify(doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
 //line components.gox:294
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
-			__e = __c.AttrSet("raw", true); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
+			__e = __c.Set("raw", true); if __e != nil { return }
 //line components.gox:296
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -790,11 +790,11 @@ func modulePreloadBytesHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:301
-			__e = __c.AttrSet("rel", "modulepreload"); if __e != nil { return }
+			__e = __c.Set("rel", "modulepreload"); if __e != nil { return }
 //line components.gox:302
-			__e = __c.AttrSet("href", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
 //line components.gox:303
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -808,14 +808,14 @@ func moduleRawHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:308
-			__e = __c.AttrSet("id", "module-raw"); if __e != nil { return }
+			__e = __c.Set("id", "module-raw"); if __e != nil { return }
 //line components.gox:309
-			__e = __c.AttrSet("src", doors.ResourceLocalFS(modulePath + "/index.js")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceLocalFS(modulePath + "/index.js")); if __e != nil { return }
 //line components.gox:310
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
-			__e = __c.AttrSet("raw", true); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
+			__e = __c.Set("raw", true); if __e != nil { return }
 //line components.gox:312
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -831,13 +831,13 @@ func moduleBytesHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:317
-			__e = __c.AttrSet("id", "module-bytes"); if __e != nil { return }
+			__e = __c.Set("id", "module-bytes"); if __e != nil { return }
 //line components.gox:318
-			__e = __c.AttrSet("src", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
 //line components.gox:319
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
 //line components.gox:320
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -853,13 +853,13 @@ func moduleStringHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:325
-			__e = __c.AttrSet("id", "module-string"); if __e != nil { return }
+			__e = __c.Set("id", "module-string"); if __e != nil { return }
 //line components.gox:326
-			__e = __c.AttrSet("src", doors.ResourceString(string(moduleRawBytes))); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceString(string(moduleRawBytes))); if __e != nil { return }
 //line components.gox:327
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
 //line components.gox:328
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -875,11 +875,11 @@ func moduleProxyHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:333
-			__e = __c.AttrSet("src", doors.ResourceProxy(test.Host + "/module/index.js")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceProxy(test.Host + "/module/index.js")); if __e != nil { return }
 //line components.gox:334
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
 //line components.gox:335
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -895,13 +895,13 @@ func moduleHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:340
-			__e = __c.AttrSet("src", doors.ResourceLocalFS(modulePath + "/index.ts")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceLocalFS(modulePath + "/index.ts")); if __e != nil { return }
 //line components.gox:341
-			__e = __c.AttrSet("name", "module.js"); if __e != nil { return }
+			__e = __c.Set("name", "module.js"); if __e != nil { return }
 //line components.gox:342
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
 //line components.gox:343
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -917,13 +917,13 @@ func moduleVisibleHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:348
-			__e = __c.AttrSet("src", doors.ResourceLocalFS(modulePath + "/index.ts")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceLocalFS(modulePath + "/index.ts")); if __e != nil { return }
 //line components.gox:349
-			__e = __c.AttrSet("id", "module-tag"); if __e != nil { return }
+			__e = __c.Set("id", "module-tag"); if __e != nil { return }
 //line components.gox:350
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
 //line components.gox:351
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -939,13 +939,13 @@ func modulePreloadNamedHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:356
-			__e = __c.AttrSet("rel", "modulepreload"); if __e != nil { return }
+			__e = __c.Set("rel", "modulepreload"); if __e != nil { return }
 //line components.gox:357
-			__e = __c.AttrSet("href", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
 //line components.gox:358
-			__e = __c.AttrSet("name", "module-preload.js"); if __e != nil { return }
+			__e = __c.Set("name", "module-preload.js"); if __e != nil { return }
 //line components.gox:359
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -973,8 +973,8 @@ func scriptRawHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:369
-			__e = __c.AttrSet("id", "script-raw-inline"); if __e != nil { return }
-			__e = __c.AttrSet("raw", true); if __e != nil { return }
+			__e = __c.Set("id", "script-raw-inline"); if __e != nil { return }
+			__e = __c.Set("raw", true); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("window.__importsValue = \"hello\""); if __e != nil { return }
 		}
@@ -990,9 +990,9 @@ func scriptInlineNamedExtHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:375
-			__e = __c.AttrSet("id", "script-inline-ext"); if __e != nil { return }
+			__e = __c.Set("id", "script-inline-ext"); if __e != nil { return }
 //line components.gox:375
-			__e = __c.AttrSet("name", "inline-script.js"); if __e != nil { return }
+			__e = __c.Set("name", "inline-script.js"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("window.__importsValue = \"hello\""); if __e != nil { return }
 		}
@@ -1008,10 +1008,10 @@ func scriptInlineBytesHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:382
-			__e = __c.AttrSet("id", "script-inline-bytes"); if __e != nil { return }
+			__e = __c.Set("id", "script-inline-bytes"); if __e != nil { return }
 //line components.gox:383
-			__e = __c.AttrSet("src", doors.ResourceBytes([]byte(`window.__importsValue = "hello"`))); if __e != nil { return }
-			__e = __c.AttrSet("inline", true); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceBytes([]byte(`window.__importsValue = "hello"`))); if __e != nil { return }
+			__e = __c.Set("inline", true); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1027,7 +1027,7 @@ func scriptStringHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:388
-			__e = __c.AttrSet("src", doors.ResourceString(`window.__importsValue = "hello"`)); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceString(`window.__importsValue = "hello"`)); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1043,12 +1043,12 @@ func scriptPrivateHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:393
-			__e = __c.AttrSet("id", "script-private"); if __e != nil { return }
+			__e = __c.Set("id", "script-private"); if __e != nil { return }
 //line components.gox:394
-			__e = __c.AttrSet("src", doors.ResourceString(`window.__importsValue = "hello"`)); if __e != nil { return }
-			__e = __c.AttrSet("private", true); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceString(`window.__importsValue = "hello"`)); if __e != nil { return }
+			__e = __c.Set("private", true); if __e != nil { return }
 //line components.gox:396
-			__e = __c.AttrSet("name", "private-script.js"); if __e != nil { return }
+			__e = __c.Set("name", "private-script.js"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1064,12 +1064,12 @@ func scriptNoCacheHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:401
-			__e = __c.AttrSet("id", "script-nocache"); if __e != nil { return }
+			__e = __c.Set("id", "script-nocache"); if __e != nil { return }
 //line components.gox:402
-			__e = __c.AttrSet("src", doors.ResourceString(`window.__importsValue = "hello"`)); if __e != nil { return }
-			__e = __c.AttrSet("nocache", true); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceString(`window.__importsValue = "hello"`)); if __e != nil { return }
+			__e = __c.Set("nocache", true); if __e != nil { return }
 //line components.gox:404
-			__e = __c.AttrSet("name", "nocache-script.js"); if __e != nil { return }
+			__e = __c.Set("name", "nocache-script.js"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1085,14 +1085,14 @@ func reactHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:409
-			__e = __c.AttrSet("id", "preact-bundle"); if __e != nil { return }
+			__e = __c.Set("id", "preact-bundle"); if __e != nil { return }
 //line components.gox:410
-			__e = __c.AttrSet("src", doors.ResourceLocalFS(preactPath + "/index.tsx")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceLocalFS(preactPath + "/index.tsx")); if __e != nil { return }
 //line components.gox:411
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
-			__e = __c.AttrSet("bundle", true); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
+			__e = __c.Set("bundle", true); if __e != nil { return }
 //line components.gox:413
-			__e = __c.AttrSet("specifier", "preact"); if __e != nil { return }
+			__e = __c.Set("specifier", "preact"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1100,14 +1100,14 @@ func reactHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:415
-			__e = __c.AttrSet("id", "react-bundle"); if __e != nil { return }
+			__e = __c.Set("id", "react-bundle"); if __e != nil { return }
 //line components.gox:416
-			__e = __c.AttrSet("src", doors.ResourceLocalFS(reactPath + "/index.tsx")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceLocalFS(reactPath + "/index.tsx")); if __e != nil { return }
 //line components.gox:417
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
-			__e = __c.AttrSet("bundle", true); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
+			__e = __c.Set("bundle", true); if __e != nil { return }
 //line components.gox:419
-			__e = __c.AttrSet("specifier", "react"); if __e != nil { return }
+			__e = __c.Set("specifier", "react"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1123,11 +1123,11 @@ func moduleTypeTSHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:424
-			__e = __c.AttrSet("src", doors.ResourceLocalFS(modulePath + "/index.ts")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceLocalFS(modulePath + "/index.ts")); if __e != nil { return }
 //line components.gox:425
-			__e = __c.AttrSet("type", "module/typescript"); if __e != nil { return }
+			__e = __c.Set("type", "module/typescript"); if __e != nil { return }
 //line components.gox:426
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1143,11 +1143,11 @@ func moduleTypeJSHead(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:431
-			__e = __c.AttrSet("src", doors.ResourceLocalFS(modulePath + "/index.js")); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceLocalFS(modulePath + "/index.js")); if __e != nil { return }
 //line components.gox:432
-			__e = __c.AttrSet("type", "module/javascript"); if __e != nil { return }
+			__e = __c.Set("type", "module/javascript"); if __e != nil { return }
 //line components.gox:433
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1163,11 +1163,11 @@ func fileHandlerTypeBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("img"); if __e != nil { return }
 		{
 //line components.gox:438
-			__e = __c.AttrSet("src", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			__e = __c.Set("src", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("bad"))
 		})); if __e != nil { return }
 //line components.gox:441
-			__e = __c.AttrSet("type", "text/plain"); if __e != nil { return }
+			__e = __c.Set("type", "text/plain"); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -1181,9 +1181,9 @@ func scriptDuplicateOutputBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:445
-			__e = __c.AttrSet("src", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
-			__e = __c.AttrSet("raw", true); if __e != nil { return }
-			__e = __c.AttrSet("bundle", true); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
+			__e = __c.Set("raw", true); if __e != nil { return }
+			__e = __c.Set("bundle", true); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1199,10 +1199,10 @@ func scriptHandlerBundleBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:450
-			__e = __c.AttrSet("src", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			__e = __c.Set("src", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(moduleRawBytes)
 		})); if __e != nil { return }
-			__e = __c.AttrSet("bundle", true); if __e != nil { return }
+			__e = __c.Set("bundle", true); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1218,10 +1218,10 @@ func scriptRawTSBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:458
-			__e = __c.AttrSet("src", doors.ResourceBytes(moduleBytes)); if __e != nil { return }
-			__e = __c.AttrSet("raw", true); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceBytes(moduleBytes)); if __e != nil { return }
+			__e = __c.Set("raw", true); if __e != nil { return }
 //line components.gox:460
-			__e = __c.AttrSet("type", "text/typescript"); if __e != nil { return }
+			__e = __c.Set("type", "text/typescript"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1237,9 +1237,9 @@ func scriptSpecifierNonModuleBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:465
-			__e = __c.AttrSet("src", doors.ResourceBytes(moduleBytes)); if __e != nil { return }
+			__e = __c.Set("src", doors.ResourceBytes(moduleBytes)); if __e != nil { return }
 //line components.gox:466
-			__e = __c.AttrSet("specifier", "module"); if __e != nil { return }
+			__e = __c.Set("specifier", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1255,7 +1255,7 @@ func scriptInlineModuleBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:470
-			__e = __c.AttrSet("type", "module"); if __e != nil { return }
+			__e = __c.Set("type", "module"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("window.__importsValue = \"bad\""); if __e != nil { return }
 		}
@@ -1271,7 +1271,7 @@ func scriptInlineTSBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:476
-			__e = __c.AttrSet("type", "text/typescript"); if __e != nil { return }
+			__e = __c.Set("type", "text/typescript"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw("const value: string = \"bad\"\n\t\twindow.__importsValue = value"); if __e != nil { return }
 		}
@@ -1287,8 +1287,8 @@ func scriptDirectBundleBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:483
-			__e = __c.AttrSet("src", "/module/index.js"); if __e != nil { return }
-			__e = __c.AttrSet("bundle", true); if __e != nil { return }
+			__e = __c.Set("src", "/module/index.js"); if __e != nil { return }
+			__e = __c.Set("bundle", true); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1304,10 +1304,10 @@ func scriptHandlerInlineBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 //line components.gox:488
-			__e = __c.AttrSet("src", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			__e = __c.Set("src", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(moduleRawBytes)
 		})); if __e != nil { return }
-			__e = __c.AttrSet("inline", true); if __e != nil { return }
+			__e = __c.Set("inline", true); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Raw(""); if __e != nil { return }
 		}
@@ -1323,10 +1323,10 @@ func modulePreloadInlineBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:495
-			__e = __c.AttrSet("rel", "modulepreload"); if __e != nil { return }
+			__e = __c.Set("rel", "modulepreload"); if __e != nil { return }
 //line components.gox:495
-			__e = __c.AttrSet("href", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
-			__e = __c.AttrSet("inline", true); if __e != nil { return }
+			__e = __c.Set("href", doors.ResourceBytes(moduleRawBytes)); if __e != nil { return }
+			__e = __c.Set("inline", true); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -1340,12 +1340,12 @@ func styleHandlerPrivateBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:500
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:501
-			__e = __c.AttrSet("href", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			__e = __c.Set("href", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
 		})); if __e != nil { return }
-			__e = __c.AttrSet("private", true); if __e != nil { return }
+			__e = __c.Set("private", true); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -1359,10 +1359,10 @@ func styleDirectPrivateBad(_b doors.Source[test.Path]) gox.Elem {
 		__e = __c.InitVoid("link"); if __e != nil { return }
 		{
 //line components.gox:509
-			__e = __c.AttrSet("rel", "stylesheet"); if __e != nil { return }
+			__e = __c.Set("rel", "stylesheet"); if __e != nil { return }
 //line components.gox:510
-			__e = __c.AttrSet("href", "/module/style.css"); if __e != nil { return }
-			__e = __c.AttrSet("private", true); if __e != nil { return }
+			__e = __c.Set("href", "/module/style.css"); if __e != nil { return }
+			__e = __c.Set("private", true); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })
@@ -1380,7 +1380,7 @@ func (f *ModuleFragment) Main() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line components.gox:519
-			__e = __c.AttrSet("id", "report-0"); if __e != nil { return }
+			__e = __c.Set("id", "report-0"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
@@ -1405,7 +1405,7 @@ func (f *ReactFragment) Main() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line components.gox:531
-			__e = __c.AttrSet("id", "preact"); if __e != nil { return }
+			__e = __c.Set("id", "preact"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
@@ -1418,7 +1418,7 @@ func (f *ReactFragment) Main() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line components.gox:536
-			__e = __c.AttrSet("id", "react"); if __e != nil { return }
+			__e = __c.Set("id", "react"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
@@ -1443,7 +1443,7 @@ func (f *ValueFragment) Main() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line components.gox:548
-			__e = __c.AttrSet("id", "report-0"); if __e != nil { return }
+			__e = __c.Set("id", "report-0"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }

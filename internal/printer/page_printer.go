@@ -136,7 +136,7 @@ func (p *pagePrinter) insert() error {
 		if err := p.cur.Init("script"); err != nil {
 			return err
 		}
-		if err := p.cur.AttrSet("type", "importmap"); err != nil {
+		if err := p.cur.Set("type", "importmap"); err != nil {
 			return err
 		}
 		if err := p.cur.Submit(); err != nil {

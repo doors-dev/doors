@@ -61,7 +61,7 @@ elem (f *FragmentProxyWrappedSiblings) Main() {
 			if err := cur.Init("div"); err != nil {
 				return err
 			}
-			if err := cur.AttrSet("id", "proxy-wrap-first"); err != nil {
+			if err := cur.Set("id", "proxy-wrap-first"); err != nil {
 				return err
 			}
 			if err := cur.Submit(); err != nil {
@@ -77,7 +77,7 @@ elem (f *FragmentProxyWrappedSiblings) Main() {
 			if err := cur.Init("div"); err != nil {
 				return err
 			}
-			if err := cur.AttrSet("id", "proxy-wrap-second"); err != nil {
+			if err := cur.Set("id", "proxy-wrap-second"); err != nil {
 				return err
 			}
 			if err := cur.Submit(); err != nil {
@@ -582,6 +582,30 @@ elem (f *FragmentClosestReloadProxy) Main() {
 				reload-nearest-proxy
 			</button>
 		</div>
+	</div>
+}
+
+type FragmentInlineDoorPointerProxy struct {
+	renders int
+	test.NoBeam
+}
+
+elem (f *FragmentInlineDoorPointerProxy) Main() {
+	~>(&doors.Door{}) <div id="inline-door-root">
+		~{
+			f.renders++
+		}
+		<div id="inline-door-count">~(fmt.Sprintf("inline-%d", f.renders))</div>
+		<button
+			id="inline-door-reload"
+			(doors.AClick{
+				On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+					doors.Reload(ctx)
+					return false
+				},
+			})>
+			inline-door-reload
+		</button>
 	</div>
 }
 

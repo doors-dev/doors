@@ -29,10 +29,10 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		return err
 	}
 	{
-		if err := cur.AttrSet("rel", "stylesheet"); err != nil {
+		if err := cur.Set("rel", "stylesheet"); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("href", pathMaker.Resource(registry.MainStyle(), "d0r.css")); err != nil {
+		if err := cur.Set("href", pathMaker.Resource(registry.MainStyle(), "d0r.css")); err != nil {
 			return err
 		}
 	}
@@ -43,28 +43,28 @@ var Include = gox.Elem(func(cur gox.Cursor) error {
 		return err
 	}
 	{
-		if err := cur.AttrSet("src", pathMaker.Resource(registry.MainScript(), "d0r.js")); err != nil {
+		if err := cur.Set("src", pathMaker.Resource(registry.MainScript(), "d0r.js")); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("id", core.InstanceID()); err != nil {
+		if err := cur.Set("id", core.InstanceID()); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("data-prefix", pathMaker.Prefix()); err != nil {
+		if err := cur.Set("data-prefix", pathMaker.Prefix()); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("data-root", core.RootID()); err != nil {
+		if err := cur.Set("data-root", core.RootID()); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("data-ttl", conf.InstanceTTL.Milliseconds()); err != nil {
+		if err := cur.Set("data-ttl", conf.InstanceTTL.Milliseconds()); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("data-disconnect", conf.DisconnectHiddenTimer.Milliseconds()); err != nil {
+		if err := cur.Set("data-disconnect", conf.DisconnectHiddenTimer.Milliseconds()); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("data-request", conf.RequestTimeout.Milliseconds()); err != nil {
+		if err := cur.Set("data-request", conf.RequestTimeout.Milliseconds()); err != nil {
 			return err
 		}
-		if err := cur.AttrSet("data-ping", conf.SolitairePing.Milliseconds()); err != nil {
+		if err := cur.Set("data-ping", conf.SolitairePing.Milliseconds()); err != nil {
 			return err
 		}
 		if err := cur.Submit(); err != nil {

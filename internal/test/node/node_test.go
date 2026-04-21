@@ -360,6 +360,21 @@ func TestDoorReloadUsesClosestDynamicParentInProxySyntax(t *testing.T) {
 	test.TestContent(t, page, "#proxy-inner-count", "inner-3")
 }
 
+func TestInlineDoorPointerProxy(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentInlineDoorPointerProxy{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#inline-door-root")
+	test.TestContent(t, page, "#inline-door-count", "inline-1")
+
+	test.Click(t, page, "#inline-door-reload")
+	test.TestContent(t, page, "#inline-door-count", "inline-2")
+}
+
 func TestDoorXReloadUsesClosestDynamicParent(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &FragmentClosestXReload{}

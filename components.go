@@ -42,18 +42,10 @@ import (
 // doors, that channel closes immediately without sending a value.
 type Door = door.Door
 
-// Frame returns a fresh Door pointer for one-off inline dynamic fragments.
-//
-// It is a shorthand for `&doors.Door{}` and is useful with proxy syntax when
-// the Door does not need to be stored on a struct field.
-func Frame() *Door {
-	return &Door{}
-}
-
 // Parallel renders the following element on the instance goroutine pool.
 //
-// Use it for independent fragments that may wait on database queries,
-// external API calls, or other slow work.
+// Use it for fragments with db queires and external API calls to
+// improve render time.
 func Parallel() gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
 		j := parallelJob{

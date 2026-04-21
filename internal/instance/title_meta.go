@@ -41,15 +41,15 @@ func (m meta) Edit(cur gox.Cursor) error {
 		return err
 	}
 	if m.property {
-		if err := cur.AttrSet("property", m.name); err != nil {
+		if err := cur.Set("property", m.name); err != nil {
 			return err
 		}
 	} else {
-		if err := cur.AttrSet("name", m.name); err != nil {
+		if err := cur.Set("name", m.name); err != nil {
 			return err
 		}
 	}
-	if err := cur.AttrMod(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
+	if err := cur.Modify(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
 		attrs.Inherit(m.attrs)
 		return nil
 	})); err != nil {
@@ -79,7 +79,7 @@ func (t *titleMeta) Edit(cur gox.Cursor) error {
 		return err
 	}
 	if t.titleAttrs != nil {
-		if err := cur.AttrMod(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
+		if err := cur.Modify(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
 			attrs.Inherit(t.titleAttrs)
 			return nil
 		})); err != nil {

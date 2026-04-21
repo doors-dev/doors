@@ -56,32 +56,6 @@ elem (p *Panel) Main() {
 
 This is useful when the Door was prepared earlier and you just want to place it on the page.
 
-### Frame Helper
-
-Use `doors.Frame()` when you need a fresh one-off Door inline and do not want to store it on a struct field:
-
-```gox
-elem (p *Panel) Main() {
-	~>(doors.Frame()) <div class="panel">
-		~{
-			now := time.Now().Format(time.TimeOnly)
-		}
-		<p>Updated at: ~(now)</p>
-		<button
-			(doors.AClick{
-				On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Reload(ctx)
-					return false
-				},
-			})>
-			Reload
-		</button>
-	</div>
-}
-```
-
-This is just a shorthand for creating a new `*doors.Door` for that render site.
-
 ### Containers
 
 Every mounted Door needs a DOM container.
@@ -90,7 +64,7 @@ Every mounted Door needs a DOM container.
 - With `~>(door) <>...</>`, **Doors** creates its own container element.
 - With `~(&door)`, **Doors** uses the last container from the internal state, or creates its own.
 
-That generated container tag is `d0-r`, and **Doors** styles it with `display: contents`, so it usually does not affect layout.
+By default generated container tag is `d0-r`, and **Doors** styles it with `display: contents`, so it usually does not affect layout.
 
 Use an explicit tag with `~>(door)` when the exact HTML parent matters.
 

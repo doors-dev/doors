@@ -64,13 +64,13 @@ func (e Error) Main() gox.Elem {
 			return err
 		}
 		{
-			if err := cur.AttrSet("role", "alert"); err != nil {
+			if err := cur.Set("role", "alert"); err != nil {
 				return err
 			}
-			if err := cur.AttrSet("aria-live", "polite"); err != nil {
+			if err := cur.Set("aria-live", "polite"); err != nil {
 				return err
 			}
-			if err := cur.AttrSet("data-fw", "error"); err != nil {
+			if err := cur.Set("data-fw", "error"); err != nil {
 				return err
 			}
 			if err := cur.Submit(); err != nil {
@@ -83,7 +83,7 @@ func (e Error) Main() gox.Elem {
 				return err
 			}
 			{
-				if err := cur.AttrSet("data-fw", "error-id"); err != nil {
+				if err := cur.Set("data-fw", "error-id"); err != nil {
 					return err
 				}
 				if err := cur.Submit(); err != nil {

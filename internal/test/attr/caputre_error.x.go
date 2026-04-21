@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.25
+// Managed by GoX v0.1.28
 
 //line caputre_error.gox:1
 package attr
@@ -26,7 +26,7 @@ func (f *errorFragment) Main() gox.Elem {
 		__e = __c.Init("div"); if __e != nil { return }
 		{
 //line caputre_error.gox:20
-			__e = __c.AttrSet("id", "report"); if __e != nil { return }
+			__e = __c.Set("id", "report"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("initial"); if __e != nil { return }
 		}
@@ -42,7 +42,7 @@ func (f *errorFragment) Main() gox.Elem {
 //line caputre_error.gox:33
 		__e = __c.Any(f.button("err_2", doors.ActionOnlyEmit("root", "err_2"))); if __e != nil { return }
 //line caputre_error.gox:34
-		__e = f.n1.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (f.n1).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
@@ -53,7 +53,7 @@ func (f *errorFragment) Main() gox.Elem {
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line caputre_error.gox:46
-				__e = f.n2.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+				__e = (f.n2).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); _ = ctx
 					__e = __c.InitContainer(); if __e != nil { return }
 					{
@@ -66,7 +66,7 @@ func (f *errorFragment) Main() gox.Elem {
 						__e = __c.Init("div"); if __e != nil { return }
 						{
 //line caputre_error.gox:54
-							__e = __c.AttrSet("id", "indicator"); if __e != nil { return }
+							__e = __c.Set("id", "indicator"); if __e != nil { return }
 							__e = __c.Submit(); if __e != nil { return }
 							__e = __c.Text("init"); if __e != nil { return }
 						}
@@ -115,9 +115,9 @@ func (f *errorFragment) button(id string, on []doors.Action) gox.Elem {
 		__e = __c.Init("button"); if __e != nil { return }
 		{
 //line caputre_error.gox:83
-			__e = __c.AttrSet("id", id); if __e != nil { return }
+			__e = __c.Set("id", id); if __e != nil { return }
 //line caputre_error.gox:83
-			__e = __c.AttrMod(doors.A(ctx, f.handler(on))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.handler(on))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line caputre_error.gox:84
 			__e = __c.Any(id); if __e != nil { return }

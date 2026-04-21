@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.25
+// Managed by GoX v0.1.28
 
 //line scope.gox:1
 package attr
@@ -137,9 +137,9 @@ func (f *scopeFragment) button(id string, scope []doors.Scope, marker string, de
 		__e = __c.Init("button"); if __e != nil { return }
 		{
 //line scope.gox:94
-			__e = __c.AttrSet("id", id); if __e != nil { return }
+			__e = __c.Set("id", id); if __e != nil { return }
 //line scope.gox:94
-			__e = __c.AttrMod(doors.A(ctx, f.handler(scope, marker, delay))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.handler(scope, marker, delay))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line scope.gox:94
 			__e = __c.Any(id); if __e != nil { return }
@@ -156,9 +156,9 @@ func (f *scopeFragment) buttonLatest(id string, scope []doors.Scope, marker stri
 		__e = __c.Init("button"); if __e != nil { return }
 		{
 //line scope.gox:98
-			__e = __c.AttrSet("id", id); if __e != nil { return }
+			__e = __c.Set("id", id); if __e != nil { return }
 //line scope.gox:98
-			__e = __c.AttrMod(doors.A(ctx, f.handlerLatest(scope, marker))); if __e != nil { return }
+			__e = __c.Modify(doors.A(ctx, f.handlerLatest(scope, marker))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line scope.gox:98
 			__e = __c.Any(id); if __e != nil { return }

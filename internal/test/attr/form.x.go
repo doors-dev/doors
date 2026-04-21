@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.25
+// Managed by GoX v0.1.28
 
 //line form.gox:1
 package attr
@@ -86,7 +86,7 @@ func (f *formFragment) form(a doors.Attr) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line form.gox:73
-		__e = a.Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+		__e = (a).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("form"); if __e != nil { return }
 			{
@@ -94,63 +94,63 @@ func (f *formFragment) form(a doors.Attr) gox.Elem {
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
 //line form.gox:74
-					__e = __c.AttrSet("type", "text"); if __e != nil { return }
+					__e = __c.Set("type", "text"); if __e != nil { return }
 //line form.gox:74
-					__e = __c.AttrSet("id", "name"); if __e != nil { return }
+					__e = __c.Set("id", "name"); if __e != nil { return }
 //line form.gox:74
-					__e = __c.AttrSet("name", "name"); if __e != nil { return }
+					__e = __c.Set("name", "name"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
 //line form.gox:75
-					__e = __c.AttrSet("type", "email"); if __e != nil { return }
+					__e = __c.Set("type", "email"); if __e != nil { return }
 //line form.gox:75
-					__e = __c.AttrSet("id", "email"); if __e != nil { return }
+					__e = __c.Set("id", "email"); if __e != nil { return }
 //line form.gox:75
-					__e = __c.AttrSet("name", "email"); if __e != nil { return }
+					__e = __c.Set("name", "email"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
 //line form.gox:76
-					__e = __c.AttrSet("type", "number"); if __e != nil { return }
+					__e = __c.Set("type", "number"); if __e != nil { return }
 //line form.gox:76
-					__e = __c.AttrSet("id", "age"); if __e != nil { return }
+					__e = __c.Set("id", "age"); if __e != nil { return }
 //line form.gox:76
-					__e = __c.AttrSet("name", "age"); if __e != nil { return }
+					__e = __c.Set("name", "age"); if __e != nil { return }
 //line form.gox:76
-					__e = __c.AttrSet("min", "0"); if __e != nil { return }
+					__e = __c.Set("min", "0"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
 //line form.gox:77
-					__e = __c.AttrSet("type", "checkbox"); if __e != nil { return }
+					__e = __c.Set("type", "checkbox"); if __e != nil { return }
 //line form.gox:77
-					__e = __c.AttrSet("id", "subscribe"); if __e != nil { return }
+					__e = __c.Set("id", "subscribe"); if __e != nil { return }
 //line form.gox:77
-					__e = __c.AttrSet("name", "subscribe"); if __e != nil { return }
+					__e = __c.Set("name", "subscribe"); if __e != nil { return }
 //line form.gox:77
-					__e = __c.AttrSet("value", "on"); if __e != nil { return }
+					__e = __c.Set("value", "on"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.InitVoid("input"); if __e != nil { return }
 				{
 //line form.gox:78
-					__e = __c.AttrSet("type", "file"); if __e != nil { return }
+					__e = __c.Set("type", "file"); if __e != nil { return }
 //line form.gox:78
-					__e = __c.AttrSet("id", "file"); if __e != nil { return }
+					__e = __c.Set("id", "file"); if __e != nil { return }
 //line form.gox:78
-					__e = __c.AttrSet("name", "attachment"); if __e != nil { return }
+					__e = __c.Set("name", "attachment"); if __e != nil { return }
 				}
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Init("button"); if __e != nil { return }
 				{
 //line form.gox:79
-					__e = __c.AttrSet("id", "submit"); if __e != nil { return }
+					__e = __c.Set("id", "submit"); if __e != nil { return }
 //line form.gox:79
-					__e = __c.AttrSet("type", "submit"); if __e != nil { return }
+					__e = __c.Set("type", "submit"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 					__e = __c.Text("Submit"); if __e != nil { return }
 				}
