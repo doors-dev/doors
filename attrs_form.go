@@ -47,7 +47,7 @@ type ARawSubmit struct {
 }
 
 func (s ARawSubmit) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(s, cur, elem)
+	return proxyMod(s, cur, elem)
 }
 
 func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -107,7 +107,7 @@ type ASubmit[T any] struct {
 }
 
 func (s ASubmit[V]) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(s, cur, elem)
+	return proxyMod(s, cur, elem)
 }
 
 func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -187,7 +187,7 @@ type AChange struct {
 }
 
 func (p AChange) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p AChange) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -234,7 +234,7 @@ type AInput struct {
 }
 
 func (p AInput) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p AInput) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

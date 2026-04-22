@@ -31,7 +31,7 @@ type joinedAttrs struct {
 }
 
 func (j joinedAttrs) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(j, cur, elem)
+	return proxyMod(j, cur, elem)
 }
 
 func (j joinedAttrs) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -105,66 +105,4 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		},
 		e: &e,
 	})
-}
-
-type proxyAttrModPrinter struct {
-	mod gox.Modify
-	cur gox.Cursor
-}
-
-func (m *proxyAttrModPrinter) Send(job gox.Job) error {
-	if m.mod == nil {
-		return m.cur.Send(job)
-	}
-	comp, ok := job.(*gox.JobComp)
-	if ok {
-		mod := m.mod
-		m.mod = nil
-		return m.printComp(mod, comp)
-	}
-	open, ok := job.(*gox.JobHeadOpen)
-	if ok {
-		if open.Kind == gox.KindContainer {
-			return m.cur.Send(open)
-		}
-		mod := m.mod
-		m.mod = nil
-		return m.printHead(mod, open)
-	}
-	m.mod = nil
-	return errors.New("cannot attach an attribute modifier: unexpected job type")
-}
-
-func (m *proxyAttrModPrinter) printHead(mod gox.Modify, job *gox.JobHeadOpen) error {
-	if job.Tag == "d0-r" {
-		return errors.New("cannot attach an attribute modifier to a door container")
-	}
-	job.Attrs.AddMod(mod)
-	return m.cur.Send(job)
-}
-
-func (m *proxyAttrModPrinter) printComp(mod gox.Modify, job *gox.JobComp) error {
-	ctx := job.Ctx
-	comp := job.Comp
-	return m.cur.CompCtx(ctx, gox.Elem(func(cur gox.Cursor) error {
-		elem := comp.Main()
-		if elem == nil {
-			return nil
-		}
-		printer := &proxyAttrModPrinter{
-			mod: mod,
-			cur: cur,
-		}
-		cursor := gox.NewCursor(cur.Context(), printer)
-		return elem(cursor)
-	}))
-}
-
-func proxyAddAttrMod(mod gox.Modify, cur gox.Cursor, elem gox.Elem) error {
-	printer := &proxyAttrModPrinter{
-		mod: mod,
-		cur: cur,
-	}
-	cursor := gox.NewCursor(cur.Context(), printer)
-	return elem(cursor)
 }

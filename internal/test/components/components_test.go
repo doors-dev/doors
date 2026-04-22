@@ -144,3 +144,41 @@ func TestProxyAttrModifierContainerPenetration(t *testing.T) {
 	test.Click(t, page, "#proxy-container")
 	test.TestReport(t, page, "container")
 }
+
+func TestProxyModClassLiteral(t *testing.T) {
+	page := proxyPage(t)
+	test.TestClass(t, page, "#proxy-class-literal", "proxy-literal")
+}
+
+func TestProxyModDirect(t *testing.T) {
+	page := proxyPage(t)
+	test.TestAttr(t, page, "#proxy-direct-mod", "data-proxy-mod", "button:direct")
+}
+
+func TestProxyModClassContainerFirstElementOnly(t *testing.T) {
+	page := proxyPage(t)
+	test.TestClass(t, page, "#proxy-class-container", "proxy-container")
+	test.TestClassNot(t, page, "#proxy-class-container", "proxy-skip")
+	test.TestClassNot(t, page, "#proxy-class-sibling", "proxy-container")
+}
+
+func TestProxyModClassComponent(t *testing.T) {
+	page := proxyPage(t)
+	test.TestClass(t, page, "#proxy-class-component", "base-component")
+	test.TestClass(t, page, "#proxy-class-component", "proxy-component")
+}
+
+func TestProxyModClassParallel(t *testing.T) {
+	page := proxyPage(t)
+	test.TestClass(t, page, "#proxy-class-parallel", "proxy-parallel")
+}
+
+func TestClassAttributeAndModifier(t *testing.T) {
+	page := proxyPage(t)
+	test.TestClass(t, page, "#class-attr", "class-attr")
+	test.TestClass(t, page, "#class-attr", "class-added")
+	test.TestClassNot(t, page, "#class-attr", "class-skip")
+	test.TestClass(t, page, "#class-mod", "base-mod")
+	test.TestClass(t, page, "#class-mod", "class-mod")
+	test.TestClassNot(t, page, "#class-mod", "class-skip")
+}

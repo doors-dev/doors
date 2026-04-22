@@ -103,7 +103,7 @@ type AClick struct {
 }
 
 func (p AClick) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p AClick) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -142,7 +142,7 @@ type APointerDown struct {
 }
 
 func (p APointerDown) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p APointerDown) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -181,7 +181,7 @@ type APointerUp struct {
 }
 
 func (p APointerUp) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p APointerUp) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -220,7 +220,7 @@ type APointerMove struct {
 }
 
 func (p APointerMove) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p APointerMove) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -259,7 +259,7 @@ type APointerOver struct {
 }
 
 func (p APointerOver) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p APointerOver) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -298,7 +298,7 @@ type APointerOut struct {
 }
 
 func (p APointerOut) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p APointerOut) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -337,7 +337,7 @@ type APointerEnter struct {
 }
 
 func (p APointerEnter) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p APointerEnter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -376,7 +376,7 @@ type APointerLeave struct {
 }
 
 func (p APointerLeave) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p APointerLeave) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -415,7 +415,7 @@ type APointerCancel struct {
 }
 
 func (p APointerCancel) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p APointerCancel) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -454,7 +454,7 @@ type AGotPointerCapture struct {
 }
 
 func (p AGotPointerCapture) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p AGotPointerCapture) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -493,7 +493,7 @@ type ALostPointerCapture struct {
 }
 
 func (p ALostPointerCapture) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(p, cur, elem)
+	return proxyMod(p, cur, elem)
 }
 
 func (p ALostPointerCapture) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

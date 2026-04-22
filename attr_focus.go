@@ -124,7 +124,7 @@ type AFocus struct {
 }
 
 func (f AFocus) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(f, cur, elem)
+	return proxyMod(f, cur, elem)
 }
 
 func (f AFocus) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -154,7 +154,7 @@ type ABlur struct {
 }
 
 func (b ABlur) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(b, cur, elem)
+	return proxyMod(b, cur, elem)
 }
 
 func (b ABlur) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -190,7 +190,7 @@ type AFocusIn struct {
 }
 
 func (f AFocusIn) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(f, cur, elem)
+	return proxyMod(f, cur, elem)
 }
 
 func (f AFocusIn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -226,7 +226,7 @@ type AFocusOut struct {
 }
 
 func (f AFocusOut) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(f, cur, elem)
+	return proxyMod(f, cur, elem)
 }
 
 func (f AFocusOut) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

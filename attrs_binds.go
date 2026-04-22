@@ -50,7 +50,7 @@ type AHook[T any] struct {
 }
 
 func (h AHook[T]) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(h, cur, elem)
+	return proxyMod(h, cur, elem)
 }
 
 func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -118,7 +118,7 @@ type ARawHook struct {
 }
 
 func (h ARawHook) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(h, cur, elem)
+	return proxyMod(h, cur, elem)
 }
 
 func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -157,7 +157,7 @@ type AData struct {
 }
 
 func (a AData) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(a, cur, elem)
+	return proxyMod(a, cur, elem)
 }
 
 func (a AData) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

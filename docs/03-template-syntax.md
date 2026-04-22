@@ -322,6 +322,39 @@ type Proxy interface {
 
 > A proxy is a powerful tool that lets you extend tooling with custom capabilities.
 
+### Attribute proxy helpers
+
+> These helpers are not part of the base `gox` package. Outside **Doors**, use
+> the companion [`goxx`](https://github.com/doors-dev/goxx) package.
+
+Use `doors.ProxyMod(mod)` when a proxy only needs to attach an attribute
+modifier to the next real element.
+
+It follows the same behavior as the built-in `doors.A...` event attributes:
+
+- it looks through components and containers until it finds an element
+- it applies the modifier once, to that first element
+- later sibling elements are left unchanged
+- `doors.Parallel()` markers are preserved
+
+Example:
+
+```gox
+func TestId(id string) gox.Proxy {
+	return doors.ProxyMod(gox.ModifyFunc(func(_ context.Context, _ string, attrs gox.Attrs) error {
+		attrs.Get("data-testid").Set(id)
+		return nil
+	}))
+}
+
+elem Button() {
+	~>(TestId("save")) <button>Save</button>
+}
+```
+
+For class-only helpers, prefer `doors.Class(...)`; it already works as an
+attribute value, an attribute modifier, and a proxy.
+
 ## Raw
 
 To output HTML verbatim, without escaping or template processing, wrap it in the special tag: `<:>...</:>`.

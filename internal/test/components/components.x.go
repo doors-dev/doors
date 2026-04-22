@@ -480,11 +480,52 @@ type ProxyFragment struct {
 	r *test.Reporter
 }
 
-//line components.gox:187
+type ProxyClassComponent struct {
+	test.NoBeam
+}
+
+//line components.gox:191
+func (ProxyClassComponent) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+//line components.gox:192
+			__e = __c.Set("id", "proxy-class-component"); if __e != nil { return }
+//line components.gox:192
+			__e = __c.Set("class", "base-component"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("proxy-class-component"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line components.gox:193
+}
+
+func proxyContainerClass() doors.Classes {
+	return doors.Class("proxy-container", "proxy-skip").Filter("proxy-skip")
+}
+
+func classAttrValue() doors.Classes {
+	return doors.Class("class-attr", "class-skip").Filter("class-skip").Add("class-added")
+}
+
+func classModifier() doors.Classes {
+	return doors.Class("class-mod").Filter("class-skip")
+}
+
+func proxyDirectMod() gox.Modify {
+	return gox.ModifyFunc(func(_ context.Context, tag string, attrs gox.Attrs) error {
+		attrs.Get("data-proxy-mod").Set(tag + ":direct")
+		return nil
+	})
+}
+
+//line components.gox:214
 func (f *ProxyFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line components.gox:188
+//line components.gox:215
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "literal")
@@ -496,7 +537,7 @@ func (f *ProxyFragment) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-//line components.gox:193
+//line components.gox:220
 			__e = __c.Set("id", "proxy-literal"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("proxy-literal"); if __e != nil { return }
@@ -504,7 +545,7 @@ func (f *ProxyFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 	return })); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:195
+//line components.gox:222
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "container")
@@ -518,7 +559,7 @@ func (f *ProxyFragment) Main() gox.Elem {
 		{
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line components.gox:201
+//line components.gox:228
 				__e = __c.Set("id", "proxy-container"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("proxy-container"); if __e != nil { return }
@@ -528,8 +569,120 @@ func (f *ProxyFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 	return })); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:204
+//line components.gox:231
+		__e = (doors.Class("proxy-literal")).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+//line components.gox:231
+			__e = __c.Set("id", "proxy-class-literal"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("proxy-class-literal"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })); if __e != nil { return }
+		return })); if __e != nil { return }
+//line components.gox:233
+		__e = (doors.ProxyMod(proxyDirectMod())).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+//line components.gox:233
+			__e = __c.Set("id", "proxy-direct-mod"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("proxy-direct-mod"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })); if __e != nil { return }
+		return })); if __e != nil { return }
+//line components.gox:235
+		__e = (proxyContainerClass()).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.InitContainer(); if __e != nil { return }
+		{
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+//line components.gox:236
+				__e = __c.Set("id", "proxy-class-container"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("proxy-class-container"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+			__e = __c.Init("button"); if __e != nil { return }
+			{
+//line components.gox:237
+				__e = __c.Set("id", "proxy-class-sibling"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("proxy-class-sibling"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })); if __e != nil { return }
+		return })); if __e != nil { return }
+//line components.gox:240
+		__e = (doors.Class("proxy-component")).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+//line components.gox:240
+			__e = __c.Any(ProxyClassComponent{}); if __e != nil { return }
+		return })); if __e != nil { return }
+//line components.gox:242
+		__e = (doors.Class("proxy-parallel")).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.InitContainer(); if __e != nil { return }
+		{
+//line components.gox:243
+			__e = (doors.Parallel()).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+				ctx := __c.Context(); _ = ctx
+				__e = __c.InitContainer(); if __e != nil { return }
+				{
+					__e = __c.Init("button"); if __e != nil { return }
+					{
+//line components.gox:244
+						__e = __c.Set("id", "proxy-class-parallel"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Text("proxy-class-parallel"); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })); if __e != nil { return }
+		return })); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line components.gox:248
+			__e = __c.Set("id", "class-attr"); if __e != nil { return }
+//line components.gox:248
+			__e = __c.Set("class", classAttrValue()); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("class-attr"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line components.gox:249
+			__e = __c.Set("id", "class-mod"); if __e != nil { return }
+//line components.gox:249
+			__e = __c.Set("class", "base-mod class-skip"); if __e != nil { return }
+//line components.gox:249
+			__e = __c.Modify(classModifier()); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("class-mod"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line components.gox:251
 		__e = __c.Any(f.r); if __e != nil { return }
 	return })
-//line components.gox:205
+//line components.gox:252
 }

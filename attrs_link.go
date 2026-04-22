@@ -181,7 +181,7 @@ func (h *ALink) active() []any {
 }
 
 func (h ALink) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(h, cur, elem)
+	return proxyMod(h, cur, elem)
 }
 
 func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

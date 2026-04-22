@@ -180,7 +180,7 @@ func (a AShared) Update(ctx context.Context, value string) {
 }
 
 func (a AShared) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(a, cur, elem)
+	return proxyMod(a, cur, elem)
 }
 
 func (a AShared) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

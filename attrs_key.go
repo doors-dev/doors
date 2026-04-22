@@ -109,7 +109,7 @@ type AKeyDown struct {
 }
 
 func (k AKeyDown) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(k, cur, elem)
+	return proxyMod(k, cur, elem)
 }
 
 func (k AKeyDown) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
@@ -151,7 +151,7 @@ type AKeyUp struct {
 }
 
 func (k AKeyUp) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	return proxyAddAttrMod(k, cur, elem)
+	return proxyMod(k, cur, elem)
 }
 
 func (k AKeyUp) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {

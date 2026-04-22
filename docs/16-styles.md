@@ -1,10 +1,59 @@
 # Styles
 
-This page covers stylesheet resources in **Doors**.
+This page covers class helper and stylesheet resources in **Doors**.
 
 If generic resource syntax is new, start with [Resources](./14-resources.md). This page focuses on what is specific to `<style>` and `<link rel="stylesheet">`.
 
-## Start
+## Classes
+
+`doors.Class(...)` builds reusable `class` values. It is useful when a project
+has repeated utility classes, especially with Tailwind-style CSS.
+
+```gox
+var card = doors.Class(
+	"rounded-xl border p-4",
+	"bg-white shadow-sm",
+)
+
+elem ProductCard() {
+	<article (card.Add("border-cyan-500").Filter("shadow-sm"))>
+		<h2>Product</h2>
+	</article>
+}
+```
+
+`doors.Class` can be used as:
+
+- an attribute value: `<div class=(style)>...</div>`
+- an attribute modifier: `<div class="p-4" (doors.Class("rounded-lg"))>...</div>`
+- an element proxy: `~>(doors.Class("h-5 w-5")) ~(Icon())`
+
+Each argument is split like `strings.Fields`, so
+`doors.Class("px-4", "py-2 rounded")` and `doors.Class("px-4 py-2 rounded")`
+produce the same class list.
+
+Use `Add` to append classes, `Remove` to remove classes that are already in the
+current value, `Filter` to omit matching classes from final output, and `Join`
+to compose reusable groups:
+
+```gox
+var button = doors.Class("inline-flex px-4 py-2 rounded-lg")
+var primary = doors.Class("bg-cyan-600 text-white")
+
+elem SaveButton(disabled bool) {
+	<button (button.Join(primary))>Save</button>
+}
+```
+
+`Filter` is helpful when a base style is shared but one branch must suppress a
+specific utility class. This keeps the reusable style readable without forcing
+every caller to duplicate it manually.
+
+> Tailwind note: **Doors** does not run Tailwind generation for you. Keep your
+> Tailwind CLI, PostCSS, or other CSS build configured separately, and make sure
+> it scans your `.go` files or safelists classes that are assembled in Go.
+
+## CSS 
 
 Most pages start with one of these:
 
@@ -108,6 +157,7 @@ On stylesheet links, output behavior is:
 - `raw`: **Doors** leaves the original tag alone
 
 Managed stylesheet output is minified by default. `raw` is mainly useful when `href` is already something the browser can use directly, or when an embedded `<style>` must stay literal.
+
 
 ## Attrs
 

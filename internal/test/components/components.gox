@@ -184,6 +184,33 @@ type ProxyFragment struct {
 	r *test.Reporter
 }
 
+type ProxyClassComponent struct {
+	test.NoBeam
+}
+
+elem (ProxyClassComponent) Main() {
+	<button id="proxy-class-component" class="base-component">proxy-class-component</button>
+}
+
+func proxyContainerClass() doors.Classes {
+	return doors.Class("proxy-container", "proxy-skip").Filter("proxy-skip")
+}
+
+func classAttrValue() doors.Classes {
+	return doors.Class("class-attr", "class-skip").Filter("class-skip").Add("class-added")
+}
+
+func classModifier() doors.Classes {
+	return doors.Class("class-mod").Filter("class-skip")
+}
+
+func proxyDirectMod() gox.Modify {
+	return gox.ModifyFunc(func(_ context.Context, tag string, attrs gox.Attrs) error {
+		attrs.Get("data-proxy-mod").Set(tag + ":direct")
+		return nil
+	})
+}
+
 elem (f *ProxyFragment) Main() {
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
@@ -200,6 +227,26 @@ elem (f *ProxyFragment) Main() {
 	} ~(<>
 		<button id="proxy-container">proxy-container</button>
 	</>)
+	
+	~>(doors.Class("proxy-literal")) ~(<button id="proxy-class-literal">proxy-class-literal</button>)
+	
+	~>(doors.ProxyMod(proxyDirectMod())) ~(<button id="proxy-direct-mod">proxy-direct-mod</button>)
+	
+	~>(proxyContainerClass()) ~(<>
+		<button id="proxy-class-container">proxy-class-container</button>
+		<button id="proxy-class-sibling">proxy-class-sibling</button>
+	</>)
+	
+	~>(doors.Class("proxy-component")) ~ProxyClassComponent{}
+	
+	~>(doors.Class("proxy-parallel")) ~(<>
+		~>(doors.Parallel()) <>
+			<button id="proxy-class-parallel">proxy-class-parallel</button>
+		</>
+	</>)
+	
+	<div id="class-attr" class=(classAttrValue())>class-attr</div>
+	<div id="class-mod" class="base-mod class-skip" (classModifier())>class-mod</div>
 	
 	~(f.r)
 }

@@ -44,8 +44,8 @@ type Door = door.Door
 
 // Parallel renders the following element on the instance goroutine pool.
 //
-// Use it for fragments with db queires and external API calls to
-// improve render time.
+// Use it for fragments with database queries or external API calls to improve
+// render time.
 func Parallel() gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
 		j := parallelJob{
