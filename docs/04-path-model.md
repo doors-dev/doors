@@ -31,7 +31,7 @@ When a request matches this model, **Doors** decodes the URL into `Path` and pas
 
 That source becomes the route state for the current page instance. If the user navigates within the same model type, the page can react to the updated model instead of reloading.
 
-Inside the component body, subscribe to the source with `doors.Sub(...)` and render whichever view matches the current route:
+Inside the component body, bind the source and render whichever view matches the current route:
 
 ```go
 type App struct {
@@ -47,7 +47,7 @@ elem (a App) Main() {
 			<title>Hello Doors!</title>
 		</head>
 		<body>
-			~(doors.Sub(a.path, func(p Path) gox.Elem {
+			~(a.path.Bind(func(p Path) gox.Elem {
 				if p.Post {
 					return Post(p.ID)
 				}

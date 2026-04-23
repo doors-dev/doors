@@ -93,7 +93,7 @@ After that, render from your `App` fields instead of reaching back into storage 
 
 ```gox
 elem (a App) Main() {
-	~(doors.Sub(a.auth, elem(ok bool) {
+	~(a.auth.Bind(elem(ok bool) {
 		~(if !ok {
 			<p>Please log in</p>
 		} else {

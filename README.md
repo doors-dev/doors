@@ -26,7 +26,7 @@ elem (s Search) Main() {
         type="text"
         placeholder="search">
 
-    ~(doors.Sub(s.input, s.results)) // subscribe results to state changes
+    ~(s.input.Bind(s.results)) // bind results to state changes
 }
 
 elem (s Search) results(input string) {

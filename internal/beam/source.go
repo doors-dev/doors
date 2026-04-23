@@ -24,60 +24,16 @@ import (
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-// Source is a writable [Beam].
-type Source[T any] interface {
-	Beam[T]
-
-	// Update sets a new value and propagates it to subscribers and derived
-	// beams. The update is applied only if it passes the source's distinct
-	// function. Any context is allowed.
-	Update(context.Context, T)
-
-	// XUpdate behaves like [Source.Update] and returns a channel that reports
-	// when propagation has finished.
-	//
-	// The channel receives nil on successful propagation or an error if the
-	// context is invalid or the instance ends before propagation finishes. Do
-	// not wait on it during rendering. If you need to wait, do it in a hook,
-	// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
-	XUpdate(context.Context, T) <-chan error
-
-	// Mutate computes the next value from the current value and propagates it
-	// if it passes the source's distinct function. The function receives a copy
-	// of the current value and must return the next value. Returning an
-	// unchanged copy is a no-op when a distinct function is in use.
-	// Any context is allowed.
-	Mutate(context.Context, func(T) T)
-
-	// XMutate behaves like [Source.Mutate] and returns a channel that reports
-	// when propagation has finished.
-	//
-	// The channel receives nil on successful propagation or an error if the
-	// context is invalid or the instance ends before propagation finishes. Do
-	// not wait on it during rendering. If you need to wait, do it in a hook,
-	// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
-	XMutate(context.Context, func(T) T) <-chan error
-
-	// Get returns the most recently stored value without requiring a runtime
-	// context.
-	//
-	// Unlike [Beam.Read], Get does not participate in render-cycle consistency
-	// guarantees. Use Read when consistency across the component tree matters.
-	Get() T
-
-	// DisableSkipping forces every committed value to propagate, even if newer
-	// values arrive before earlier updates finish syncing. This is useful when a
-	// source is used as a communication channel and every message matters.
-	DisableSkipping()
-}
-
 type anySource interface {
 	getID() common.ID
 	addSub(s *screen)
 	removeSub(s *screen)
 }
 
-type source[T any] struct {
+var _ anySource = (*SourceBeam[any])(nil)
+var _ Beam[any] = (*SourceBeam[any])(nil)
+
+type SourceBeam[T any] struct {
 	id     common.ID
 	seq    uint
 	values map[uint]*T
@@ -88,11 +44,11 @@ type source[T any] struct {
 	null   T
 }
 
-func (s *source[T]) getID() common.ID {
+func (s *SourceBeam[T]) getID() common.ID {
 	return s.id
 }
 
-func (s *source[T]) addSub(sc *screen) {
+func (s *SourceBeam[T]) addSub(sc *screen) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.subs == nil {
@@ -102,20 +58,22 @@ func (s *source[T]) addSub(sc *screen) {
 	sc.init(s, s.seq)
 }
 
-func (s *source[T]) removeSub(sc *screen) {
+func (s *SourceBeam[T]) removeSub(sc *screen) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.subs.Remove(sc)
 }
 
-// NewSourceEqual creates a [Source] with a custom equality function.
-func NewSourceEqual[T any](init T, equal func(new T, old T) bool) Source[T] {
+func neverEqual[T any](T, T) bool {
+	return false
+}
+
+// NewSourceEqual creates a SourceBeam with a custom equality function.
+func NewSourceEqual[T any](init T, equal func(new T, old T) bool) *SourceBeam[T] {
 	if equal == nil {
-		equal = func(T, T) bool {
-			return false
-		}
+		equal = neverEqual[T]
 	}
-	return &source[T]{
+	return &SourceBeam[T]{
 		id:  common.NewID(),
 		seq: 1,
 		values: map[uint]*T{
@@ -130,24 +88,24 @@ func equal[T comparable](new T, old T) bool {
 	return new == old
 }
 
-// NewSource creates a [Source] that uses `==` to suppress equal updates.
-func NewSource[T comparable](init T) Source[T] {
+// NewSource creates a SourceBeam that uses `==` to suppress equal updates.
+func NewSource[T comparable](init T) *SourceBeam[T] {
 	return NewSourceEqual(init, equal)
 }
 
 // DisableSkipping forces every committed value to propagate.
-func (s *source[T]) DisableSkipping() {
+func (s *SourceBeam[T]) DisableSkipping() {
 	s.noSkip = true
 }
 
 // Get returns the latest committed value.
-func (s *source[T]) Get() T {
+func (s *SourceBeam[T]) Get() T {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return *s.values[s.seq]
 }
 
-func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool) {
+func (s *SourceBeam[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	value, ok := s.values[seq]
@@ -168,28 +126,28 @@ func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool)
 }
 
 // XUpdate behaves like [Source.Update] and returns a completion channel.
-func (s *source[T]) XUpdate(ctx context.Context, v T) <-chan error {
+func (s *SourceBeam[T]) XUpdate(ctx context.Context, v T) <-chan error {
 	ctex.LogFreeWarning(ctx, "SourceBeam", "XUpdate")
 	return s.mutateOrUpdate(ctx, nil, &v)
 }
 
 // Update stores v and starts propagation.
-func (s *source[T]) Update(ctx context.Context, v T) {
+func (s *SourceBeam[T]) Update(ctx context.Context, v T) {
 	s.mutateOrUpdate(ctx, nil, &v)
 }
 
 // XMutate behaves like [Source.Mutate] and returns a completion channel.
-func (s *source[T]) XMutate(ctx context.Context, m func(T) T) <-chan error {
+func (s *SourceBeam[T]) XMutate(ctx context.Context, m func(T) T) <-chan error {
 	ctex.LogFreeWarning(ctx, "SourceBeam", "XMutate")
 	return s.mutateOrUpdate(ctx, m, nil)
 }
 
 // Mutate updates the value by applying m to the current value.
-func (s *source[T]) Mutate(ctx context.Context, m func(T) T) {
+func (s *SourceBeam[T]) Mutate(ctx context.Context, m func(T) T) {
 	s.mutateOrUpdate(ctx, m, nil)
 }
 
-func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T) <-chan error {
+func (s *SourceBeam[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T) <-chan error {
 	s.mu.Lock()
 	ch := make(chan error, 1)
 	ctex.LogCanceled(ctx, "SourceBeam mutation")
@@ -262,7 +220,7 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 	return ch
 }
 
-func (s *source[T]) commit(mut func(T) T, value *T) (uint, bool) {
+func (s *SourceBeam[T]) commit(mut func(T) T, value *T) (uint, bool) {
 	prev := s.values[s.seq]
 	var next *T
 	switch true {
@@ -283,7 +241,7 @@ func (s *source[T]) commit(mut func(T) T, value *T) (uint, bool) {
 	return seq, true
 }
 
-func (s *source[T]) cleanBefore(seq uint) {
+func (s *SourceBeam[T]) cleanBefore(seq uint) {
 	for oldSeq := range s.values {
 		if oldSeq < seq {
 			delete(s.values, oldSeq)
@@ -296,7 +254,7 @@ type Core interface {
 	Cinema() Cinema
 }
 
-func (s *source[T]) addWatcher(ctx context.Context, w *watcher) bool {
+func (s *SourceBeam[T]) addWatcher(ctx context.Context, w *watcher) bool {
 	core, ok := ctx.Value(ctex.KeyCore).(Core)
 	if !ok {
 		return false

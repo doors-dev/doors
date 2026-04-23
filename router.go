@@ -99,7 +99,7 @@ func ResponseReroute(m any) Response {
 //		return doors.ResponseComp(Page(s))
 //	})
 func UseModel[M any](r Router, handler func(r RequestModel, s Source[M]) Response) {
-	r.Use(router.UseModel(func(w http.ResponseWriter, r *http.Request, source beam.Source[M], store ctex.Store) model.Res {
+	r.Use(router.UseModel(func(w http.ResponseWriter, r *http.Request, source *beam.SourceBeam[M], store ctex.Store) model.Res {
 		req := modelRequest{
 			request: request{
 				r: r,
@@ -107,7 +107,7 @@ func UseModel[M any](r Router, handler func(r RequestModel, s Source[M]) Respons
 			},
 			store: store,
 		}
-		return handler(&req, source)
+		return handler(&req, sourceBeam[M]{source})
 	}))
 }
 

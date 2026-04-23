@@ -47,12 +47,12 @@ type AnyInstance interface {
 }
 
 type App[M any] interface {
-	Main(path beam.Source[M]) gox.Elem
+	Main(path *beam.SourceBeam[M]) gox.Elem
 }
 
 type setup[M any] struct {
 	adapter  path.Adapter[M]
-	beam     beam.Source[M]
+	beam     *beam.SourceBeam[M]
 	comp     gox.Comp
 	rerouted bool
 }
@@ -61,7 +61,7 @@ type Options struct {
 	Rerouted bool
 }
 
-func NewInstance[M any](sess *Session, adapter path.Adapter[M], beam beam.Source[M], comp gox.Comp, opt Options) (AnyInstance, bool) {
+func NewInstance[M any](sess *Session, adapter path.Adapter[M], beam *beam.SourceBeam[M], comp gox.Comp, opt Options) (AnyInstance, bool) {
 	inst := &Instance[M]{
 		id: common.RandId(),
 		setup: &setup[M]{

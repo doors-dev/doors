@@ -31,7 +31,7 @@ func newNavigator[M any](
 	inst *Instance[M],
 	adapter path.Adapter[M],
 	adapters path.Adapters,
-	beam beam.Source[M],
+	beam *beam.SourceBeam[M],
 	ctx context.Context,
 	rerouted bool,
 ) *navigator[M] {
@@ -50,7 +50,7 @@ type navigator[M any] struct {
 	inst     *Instance[M]
 	adapter  path.Adapter[M]
 	adapters path.Adapters
-	model    beam.Source[M]
+	model    *beam.SourceBeam[M]
 	mu       sync.Mutex
 	ctx      context.Context
 	seq      int

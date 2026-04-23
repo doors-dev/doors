@@ -122,7 +122,7 @@ func TestUseModelAndRoute(t *testing.T) {
 	}
 
 	router := NewRouter()
-	router.Use(UseModel(func(w http.ResponseWriter, r *http.Request, source beam.Source[page], store ctex.Store) model.Res {
+	router.Use(UseModel(func(w http.ResponseWriter, r *http.Request, source *beam.SourceBeam[page], store ctex.Store) model.Res {
 		return model.Res{}
 	}))
 	if len(router.modelRoutes) != 1 {

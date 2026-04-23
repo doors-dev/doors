@@ -92,16 +92,18 @@ elem pageQuery(b doors.Source[PathQuery]) {
 	<html>
 		<body>
 			<div id="instance-id">~(doors.InstanceId(ctx))</div>
-			~>(doors.Inject(0, b)) <div id="tag">
-				~(if ctx.Value(0).(PathQuery).Tag != nil {
-					~(*ctx.Value(0).(PathQuery).Tag)
-				})
-			</div>
-			~>(doors.Inject(0, b)) <div id="page-value">
-				~(if ctx.Value(0).(PathQuery).Page != nil {
-					~(fmt.Sprint(*ctx.Value(0).(PathQuery).Page))
-				})
-			</div>
+			~(b.Bind(elem(path PathQuery) {
+				<div id="tag">
+					~(if path.Tag != nil {
+						~(*path.Tag)
+					})
+				</div>
+				<div id="page-value">
+					~(if path.Page != nil {
+						~(fmt.Sprint(*path.Page))
+					})
+				</div>
+			}))
 			
 			~{
 				tag := "next"
@@ -122,18 +124,20 @@ elem pageLocation(b doors.Source[doors.Location]) {
 	<html>
 		<body>
 			<div id="instance-id">~(doors.InstanceId(ctx))</div>
-			~>(doors.Inject(0, b)) <div id="location-string">
-				~(ctx.Value(0).(doors.Location).String())
-			</div>
-			~>(doors.Inject(0, b)) <div id="location-path">
-				~(ctx.Value(0).(doors.Location).Path())
-			</div>
-			~>(doors.Inject(0, b)) <div id="tag-value">
-				~(ctx.Value(0).(doors.Location).Query.Get("tag"))
-			</div>
-			~>(doors.Inject(0, b)) <div id="page-query-value">
-				~(ctx.Value(0).(doors.Location).Query.Get("page"))
-			</div>
+			~(b.Bind(elem(location doors.Location) {
+				<div id="location-string">
+					~(location.String())
+				</div>
+				<div id="location-path">
+					~(location.Path())
+				</div>
+				<div id="tag-value">
+					~(location.Query.Get("tag"))
+				</div>
+				<div id="page-query-value">
+					~(location.Query.Get("page"))
+				</div>
+			}))
 		</body>
 	</html>
 }
@@ -142,9 +146,11 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 	<html>
 		<body>
 			<div id="instance-id">~(doors.InstanceId(ctx))</div>
-			~>(doors.Inject(0, b)) <div id="location-string">
-				~(ctx.Value(0).(doors.Location).String())
-			</div>
+			~(b.Bind(elem(location doors.Location) {
+				<div id="location-string">
+					~(location.String())
+				</div>
+			}))
 			<div hidden id="active-links">
 				~>doors.ALink{
 					Model: doors.Location{
@@ -315,9 +321,11 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 elem pageEscaped(b doors.Source[PathEscaped]) {
 	<html>
 		<body>
-			~>(doors.Inject(0, b)) <div id="name-value">
-				~(ctx.Value(0).(PathEscaped).Name)
-			</div>
+			~(b.Bind(elem(path PathEscaped) {
+				<div id="name-value">
+					~(path.Name)
+				</div>
+			}))
 			~{
 				name := "next value/again"
 			}
@@ -395,11 +403,13 @@ type PathC struct {
 elem pageC(b doors.Source[PathC]) {
 	<html>
 		<body>
-			~>(doors.Inject(0, b)) ~(if ctx.Value(0).(PathC).PathC1 {
-				<div id="path">c1</div>
-			} else {
-				<div id="path">c2</div>
-			})
+			~(b.Bind(elem(path PathC) {
+				~(if path.PathC1 {
+					<div id="path">c1</div>
+				} else {
+					<div id="path">c2</div>
+				})
+			}))
 			
 			~>doors.ALink{
 				Model: PathC{

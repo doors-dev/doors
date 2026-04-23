@@ -89,15 +89,15 @@ elem (c *CounterView) Main() {
 
 That is the core pattern: the subscription drives updates into a `Door`, and the `Door` keeps that fragment in sync.
 
-For most app code, the helper components are easier.
+For most app code, [Beam.Bind] is easier.
 
-### Sub
+### Bind
 
-`doors.Sub` wraps that pattern for the common case:
+`Bind` wraps that pattern for the common case:
 
 ```gox
 <>
-	~(doors.Sub(counter, elem(v int) {
+	~(counter.Bind(elem(v int) {
 		<span>~(v)</span>
 	}))
 </>
@@ -106,43 +106,29 @@ It creates a dynamic fragment that subscribes to the beam and rerenders that fra
 
 > Unmounting/updating a dynamic parent also cancels old subscriptions inside it automatically.
 
-### Inject
+### Effect
 
-`doors.Inject` subscribes to a beam, places the current value into the child context, and makes the following tag the dynamic container:
+`Effect` is another render style: read the beam directly inside a dynamic
+subtree and let that subtree rerender when the value changes. It can feel more
+React-like than passing the value through a `Bind` callback.
 
 ```gox
 <>
-	~>(doors.Inject("settings", settings)) <section>
+	~>(new(doors.Door)) <section>
 		~{
-			s := ctx.Value("settings").(Settings)
+			settings, _ := settingsBeam.Effect(ctx)
 		}
-		<span>Days: ~(s.Days)</span>
+		<span>Days: ~(settings.Days)</span>
 	</section>
 </>
 ```
 
-## Effect
+It returns the current value and rerenders the closest dynamic parent when the
+value changes. 
 
-`Effect` returns the current value and rerenders the closest dynamic parent when the value changes.
+This is especially useful when the same DOM subtree depends on
+multiple state values:
 
-```gox
-type CounterView struct {
-	count doors.Source[int]
-}
-
-elem (c *CounterView) Main() {
-	~>(&doors.Door{}) <div>
-		~{
-			value, _ := c.count.Effect(ctx)
-		}
-		<p>Count: ~(value)</p>
-	</div>
-}
-```
-
-That is useful when a small dynamic fragment only needs to read a value and rerender itself on changes, without writing an explicit subscription callback.
-
-You can also read multiple values this way:
 
 ```gox
 type SearchView struct {
@@ -151,7 +137,7 @@ type SearchView struct {
 }
 
 elem (v *SearchView) Main() {
-	~>(&doors.Door{}) <div>
+	~>(new(doors.Door)) <div>
 		~{
 			query, _ := v.query.Effect(ctx)
 			page, ok := v.page.Effect(ctx)
@@ -252,7 +238,7 @@ This returns the current value first, then subscribes to future updates. The cal
 
 ### Watcher
 
-`AddWatcher` is the low-level subscription API behind the helpers above. Most app code should use `Sub` or `ReadAndSub`.
+`Watch` is the low-level subscription API behind the helpers above. Most app code should use `Sub` or `ReadAndSub`.
 
 
 ## Consistency
@@ -324,11 +310,11 @@ elem (s *Search) Main() {
 			},
 		})/>
 
-	~(doors.Sub(s.query, elem(q string) {
+	~(s.query.Bind(elem(q string) {
 		<p>Query: ~(q)</p>
 	}))
 
-	~(doors.Sub(s.page, elem(page int) {
+	~(s.page.Bind(elem(page int) {
 		<p>Page: ~(page)</p>
 	}))
 }

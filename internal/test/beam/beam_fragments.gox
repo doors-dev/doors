@@ -240,7 +240,7 @@ elem (f *BeamEqualFragment) Main() {
 			return false
 		})
 	}
-	~(doors.Sub(f.p, elem(v string) {
+	~(f.p.Bind(elem(v string) {
 		<div id="parity">~(v)</div>
 	}))
 	~(doors.Go(func(ctx context.Context) {

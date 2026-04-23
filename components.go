@@ -86,10 +86,12 @@ func (parallelJob) Output(io.Writer) error {
 // It subscribes to beam and re-renders the inner content whenever the value
 // changes. Returning nil from el clears the fragment.
 //
+// Deprecated: use Beam.Bind instead.
+//
 // Example:
 //
 //	elem demo(beam Beam[int]) {
-//		~(doors.Sub(beam, elem(v int) {
+//		~(beam.Bind(elem(v int) {
 //			<span>~(v)</span>
 //		}))
 //	}
@@ -117,11 +119,13 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.EditorComp {
 // Inject renders el with the latest beam value stored in the child context
 // under key.
 //
+// Deprecated: use Beam.Effect in the rendered subtree instead.
+//
 // Example:
 //
-//	~>doors.Inject("user", userBeam) <section>
+//	~>(&doors.Door{}) <section>
 //		~{
-//			user := ctx.Value("user").(User)
+//			user, _ := userBeam.Effect(ctx)
 //		}
 //		<span>~(user.Name)</span>
 //	</section>

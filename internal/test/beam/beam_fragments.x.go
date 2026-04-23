@@ -335,7 +335,7 @@ func (f *BeamEqualFragment) Main() gox.Elem {
 		})
 
 //line beam_fragments.gox:243
-		__e = __c.Any(doors.Sub(f.p, func(v string) gox.Elem {
+		__e = __c.Any(f.p.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }

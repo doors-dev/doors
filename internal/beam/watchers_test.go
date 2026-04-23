@@ -68,12 +68,7 @@ func (s *stubSyncSource[T]) Read(context.Context) (T, bool) {
 	return zero, false
 }
 
-func (s *stubSyncSource[T]) Effect(context.Context) (T, bool) {
-	var zero T
-	return zero, false
-}
-
-func (s *stubSyncSource[T]) AddWatcher(context.Context, Watcher[T]) (context.CancelFunc, bool) {
+func (s *stubSyncSource[T]) Watch(context.Context, Watcher[T]) (context.CancelFunc, bool) {
 	return none, false
 }
 
@@ -236,7 +231,7 @@ func TestBeamWatcherExtendedAPIs(t *testing.T) {
 
 	sourceSubUpdates := make(chan int, 2)
 	sourceSubCanceled := make(chan struct{}, 1)
-	sourceSubCancel, ok := source.AddWatcher(ctx, &genericWatcher[int]{
+	sourceSubCancel, ok := source.Watch(ctx, &genericWatcher[int]{
 		watch: func(ctx context.Context, value int) bool {
 			sourceSubUpdates <- value
 			return false
@@ -246,15 +241,15 @@ func TestBeamWatcherExtendedAPIs(t *testing.T) {
 		},
 	})
 	if !ok {
-		t.Fatal("expected source AddWatcher to subscribe")
+		t.Fatal("expected source Watch to subscribe")
 	}
 	if got := expectInt(t, sourceSubUpdates); got != 4 {
-		t.Fatal("unexpected initial source AddWatcher value:", got)
+		t.Fatal("unexpected initial source Watch value:", got)
 	}
 
 	derivedSubUpdates := make(chan string, 2)
 	derivedSubCanceled := make(chan struct{}, 1)
-	derivedSubCancel, ok := derived.AddWatcher(ctx, &genericWatcher[string]{
+	derivedSubCancel, ok := derived.Watch(ctx, &genericWatcher[string]{
 		watch: func(ctx context.Context, value string) bool {
 			derivedSubUpdates <- value
 			return false
@@ -264,18 +259,18 @@ func TestBeamWatcherExtendedAPIs(t *testing.T) {
 		},
 	})
 	if !ok {
-		t.Fatal("expected derived AddWatcher to subscribe")
+		t.Fatal("expected derived Watch to subscribe")
 	}
 	if got := expectString(t, derivedSubUpdates); got != "v:4" {
-		t.Fatal("unexpected initial derived AddWatcher value:", got)
+		t.Fatal("unexpected initial derived Watch value:", got)
 	}
 
 	source.Update(ctx, 5)
 	if got := expectInt(t, sourceSubUpdates); got != 5 {
-		t.Fatal("unexpected source AddWatcher update:", got)
+		t.Fatal("unexpected source Watch update:", got)
 	}
 	if got := expectString(t, derivedSubUpdates); got != "v:5" {
-		t.Fatal("unexpected derived AddWatcher update:", got)
+		t.Fatal("unexpected derived Watch update:", got)
 	}
 
 	sourceSubCancel()
@@ -283,13 +278,13 @@ func TestBeamWatcherExtendedAPIs(t *testing.T) {
 	derivedSubCancel()
 	<-derivedSubCanceled
 
-	noCoreCancel, ok := derived.AddWatcher(context.Background(), &genericWatcher[string]{
+	noCoreCancel, ok := derived.Watch(context.Background(), &genericWatcher[string]{
 		watch: func(context.Context, string) bool {
 			return false
 		},
 	})
 	if ok {
-		t.Fatal("expected AddWatcher without a Doors context to fail")
+		t.Fatal("expected Watch without a Doors context to fail")
 	}
 	noCoreCancel()
 }
@@ -300,14 +295,10 @@ func TestNewBeamEqualDefaultsNilComparator(t *testing.T) {
 		return fmt.Sprintf("v:%d", v)
 	}, nil)
 
-	typed, ok := derived.(*beam[int, string])
-	if !ok {
-		t.Fatal("expected NewBeamEqual to return internal beam implementation")
-	}
-	if typed.equal == nil {
+	if derived.equal == nil {
 		t.Fatal("expected nil comparator to be replaced with a default implementation")
 	}
-	if typed.equal("same", "same") {
+	if derived.equal("same", "same") {
 		t.Fatal("expected default comparator to treat equal values as changed")
 	}
 }
@@ -382,7 +373,7 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 	t.Run("prev zero reuses cached value as updated", func(t *testing.T) {
 		source := &stubSyncSource[int]{}
 		value := 11
-		b := &beam[int, int]{
+		b := &DerivedBeam[int, int]{
 			source: source,
 			values: map[uint]entry[int]{
 				7: {
@@ -411,7 +402,7 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 	t.Run("same prev returns cached updated flag", func(t *testing.T) {
 		source := &stubSyncSource[int]{}
 		value := 17
-		b := &beam[int, int]{
+		b := &DerivedBeam[int, int]{
 			source: source,
 			values: map[uint]entry[int]{
 				9: {
@@ -440,7 +431,7 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 	t.Run("missing prev entry falls back to cached value as updated", func(t *testing.T) {
 		source := &stubSyncSource[int]{}
 		value := 23
-		b := &beam[int, int]{
+		b := &DerivedBeam[int, int]{
 			source: source,
 			values: map[uint]entry[int]{
 				11: {
@@ -470,7 +461,7 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 		source := &stubSyncSource[int]{}
 		prevValue := 0
 		value := 1
-		b := &beam[int, int]{
+		b := &DerivedBeam[int, int]{
 			source: source,
 			values: map[uint]entry[int]{
 				1: {
@@ -516,7 +507,7 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 		}
 
 		prevValue := "cached"
-		b := &beam[int, string]{
+		b := &DerivedBeam[int, string]{
 			source: source,
 			values: map[uint]entry[string]{
 				2: {
@@ -557,7 +548,7 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 			},
 		}
 
-		b := &beam[int, string]{
+		b := &DerivedBeam[int, string]{
 			source: source,
 			values: map[uint]entry[string]{},
 			cast: func(v int) string {
@@ -595,7 +586,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 				return nil, false
 			},
 		}
-		b := &beam[int, string]{
+		b := &DerivedBeam[int, string]{
 			source: source,
 			values: map[uint]entry[string]{},
 			cast: func(v int) string {
@@ -626,7 +617,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 				return &sourceValue, true
 			},
 		}
-		b := &beam[int, string]{
+		b := &DerivedBeam[int, string]{
 			source: source,
 			values: map[uint]entry[string]{},
 			cast: func(v int) string {
@@ -664,7 +655,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 			},
 		}
 		prevValue := "v:12"
-		b := &beam[int, string]{
+		b := &DerivedBeam[int, string]{
 			source: source,
 			values: map[uint]entry[string]{
 				3: {
@@ -705,7 +696,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 			},
 		}
 		prevValue := "v:12"
-		b := &beam[int, string]{
+		b := &DerivedBeam[int, string]{
 			source: source,
 			values: map[uint]entry[string]{
 				4: {
@@ -755,10 +746,7 @@ func TestBeamSyncEntryRecomputesCachedPrevAcrossDoorTree(t *testing.T) {
 	}, func(new int, old int) bool {
 		return new == old
 	})
-	typed, ok := derived.(*beam[int, int])
-	if !ok {
-		t.Fatal("expected internal beam implementation")
-	}
+	typed := derived
 
 	parentUpdates := make(chan int, 4)
 	childUpdates := make(chan int, 4)

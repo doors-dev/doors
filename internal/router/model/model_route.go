@@ -37,7 +37,7 @@ type AnyModelRoute interface {
 	Handle(w http.ResponseWriter, r *http.Request, a any, sess *instance.Session, opt instance.Options) (Res, bool)
 }
 
-type Handler[M any] = func(w http.ResponseWriter, r *http.Request, source beam.Source[M], store ctex.Store) Res
+type Handler[M any] = func(w http.ResponseWriter, r *http.Request, source *beam.SourceBeam[M], store ctex.Store) Res
 
 // NewModelRoute creates a model-backed route from a path adapter and handler.
 func NewModelRoute[M any](a path.Adapter[M], h Handler[M]) AnyModelRoute {

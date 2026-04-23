@@ -10,21 +10,24 @@ import (
 )
 
 elem head(b doors.Source[test.Path]) {
-	~>(doors.Inject(0, b)) <div hidden id="head-anchor">
-		~(if ctx.Value(0).(test.Path).Vh {
+	~>(new(doors.Door)) <div hidden id="head-anchor">
+		~{
+			path, _ := b.Effect(ctx)
+		}
+		~(if path.Vh {
 			<title>home</title>
 			<meta name="description" content="Welcome to the home page">
 			<meta name="keywords" content="home, main, index">
 			<meta property="og:title" content="Home Page">
-		} else if ctx.Value(0).(test.Path).Vs {
+		} else if path.Vs {
 			<title>s</title>
 			<meta name="description" content="String page description">
 			<meta name="category" content="text-content">
 		} else {
-			<title>~(ctx.Value(0).(test.Path).P)</title>
-			<meta name="description" content=("Page for parameter: " + ctx.Value(0).(test.Path).P)>
-			<meta name="keywords" content=("param, " + ctx.Value(0).(test.Path).P)>
-			<meta property="og:title" content=("Param: " + ctx.Value(0).(test.Path).P)>
+			<title>~(path.P)</title>
+			<meta name="description" content=("Page for parameter: " + path.P)>
+			<meta name="keywords" content=("param, " + path.P)>
+			<meta property="og:title" content=("Param: " + path.P)>
 			<meta name="author" content="Parameter Author">
 		})
 	</div>
