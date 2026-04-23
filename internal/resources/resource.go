@@ -21,7 +21,7 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/zeebo/blake3"
+	"github.com/zeebo/xxh3"
 )
 
 type resourceSettings struct {
@@ -30,7 +30,7 @@ type resourceSettings struct {
 }
 
 func NewResource(content []byte, contentType string, s resourceSettings) *Resource {
-	hash := blake3.Sum256(content)
+	hash := xxh3.Hash128(content).Bytes()
 	return &Resource{
 		id:          common.EncodeId(hash[:]),
 		settings:    s,
@@ -51,11 +51,6 @@ type Resource struct {
 func (s *Resource) ID() string {
 	return s.id
 }
-
-/*
-func (s *Resource) HashString() string {
-	return s.hashString
-} */
 
 func (s *Resource) Content() []byte {
 	return s.content

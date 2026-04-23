@@ -10,7 +10,7 @@ require (
 	github.com/go-rod/rod v0.116.2
 	github.com/mr-tron/base58 v1.2.0
 	github.com/tdewolff/minify/v2 v2.24.0
-	github.com/zeebo/blake3 v0.2.4
+	github.com/zeebo/xxh3 v1.1.0
 )
 
 require (

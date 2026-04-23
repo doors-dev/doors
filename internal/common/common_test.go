@@ -235,21 +235,6 @@ func TestCollectionAndEncodingHelpers(t *testing.T) {
 	if !strings.Contains(string(minified), "h1{color:red}") && !strings.Contains(string(minified), "h1{color:red;}") {
 		t.Fatalf("unexpected minified css: %q", string(minified))
 	}
-	if Hash([]byte("hello")) == Hash([]byte("world")) {
-		t.Fatal("expected different hashes for different inputs")
-	}
-
-	if err := Catch(func() { panic("boom") }); err == nil || !strings.Contains(err.Error(), "boom") {
-		t.Fatalf("expected panic to be caught, got %v", err)
-	}
-	value, err := CatchValue(func() string { return "ok" })
-	if err != nil || value != "ok" {
-		t.Fatalf("unexpected catch value result: %q %v", value, err)
-	}
-	_, err = CatchValue(func() string { panic("bad") })
-	if err == nil || !strings.Contains(err.Error(), "bad") {
-		t.Fatalf("expected catch value panic to be caught, got %v", err)
-	}
 }
 
 func TestPrimeIDAndEndCause(t *testing.T) {

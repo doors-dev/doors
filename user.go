@@ -22,7 +22,7 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/path"
-	"github.com/zeebo/blake3"
+	"github.com/zeebo/xxh3"
 )
 
 // Reload rerenders the closest dynamic parent.
@@ -116,16 +116,18 @@ func IDRand() string {
 
 // IDString returns a stable URL-safe identifier derived from string.
 func IDString(string string) string {
-	hasher := blake3.New()
-	hasher.WriteString(string)
-	hash := hasher.Sum(nil)
-	return common.EncodeId(hash)
+	h := xxh3.New()
+	h.WriteString(string)
+	s := h.Sum128().Bytes()
+	return common.EncodeId(s[:])
 }
 
 // IDBytes returns a stable URL-safe identifier derived from b.
 func IDBytes(b []byte) string {
-	hash := blake3.Sum256(b)
-	return common.EncodeId(hash[:])
+	h := xxh3.New()
+	h.Write(b)
+	s := h.Sum128().Bytes()
+	return common.EncodeId(s[:])
 }
 
 // FreeRoot returns a free context that is safe to use with extended Doors

@@ -17,13 +17,9 @@ package common
 import (
 	"bytes"
 	"compress/gzip"
-	"crypto"
 	"crypto/rand"
-	"fmt"
 	"log"
 	"log/slog"
-	"runtime/debug"
-	"time"
 	"unsafe"
 
 	"github.com/doors-dev/gox"
@@ -56,24 +52,6 @@ func AttrsToMap(a gox.Attrs) map[string]string {
 	return attrs
 }
 
-var bytesNull = []byte("null")
-
-/*
-func MarshalJSON(value any) ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := json.NewEncoder(buf)
-	enc.SetEscapeHTML(false)
-	err := enc.Encode(value)
-	if err != nil {
-		return bytesNull, err
-	}
-	b := StripN(buf.Bytes())
-	return b, nil
-} */
-
-func Ts() {
-	fmt.Println(time.Now().UnixNano() / int64(time.Millisecond))
-}
 func AsString(buf *[]byte) string {
 	return *(*string)(unsafe.Pointer(buf))
 }
@@ -83,7 +61,7 @@ func AsBytes(s string) []byte {
 }
 
 func RandId() string {
-	randomBytes := make([]byte, 32)
+	randomBytes := make([]byte, 16)
 	_, err := rand.Read(randomBytes)
 	if err != nil {
 		log.Fatalf("failed to generate random bytes: %v", err)
@@ -91,45 +69,18 @@ func RandId() string {
 	return EncodeId(randomBytes)
 }
 
-const idLen = 22
+const digitToLetter = "zotrfisven"
 
 func EncodeId(b []byte) string {
 	s := base58.Encode(b)
 	if len(s) == 0 {
+		return ""
+	}
+	c := s[0]
+	if c < '0' || c > '9' {
 		return s
 	}
-	i := 0
-	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
-		if len(s)-i <= idLen {
-			rest := s[i:]
-			if len(rest) > idLen {
-				rest = rest[:idLen]
-			}
-			out := make([]byte, len(rest))
-			copy(out, rest)
-			out[0] = digitToLetter[out[0]-'0']
-			return string(out)
-		}
-		i++
-	}
-	rest := s[i:]
-	if len(rest) > idLen {
-		rest = rest[:idLen]
-	}
-	return rest
-}
-
-var digitToLetter = [10]byte{
-	'z', // '0'
-	'o', // '1'
-	't', // '2'
-	'r', // '3'
-	'f', // '4'
-	'i', // '5'
-	's', // '6'
-	'v', // '7'
-	'e', // '8'
-	'n', // '9'
+	return digitToLetter[c-'0':c-'0'+1] + s[1:]
 }
 
 func Zip(input []byte) ([]byte, error) {
@@ -150,30 +101,4 @@ func MinifyCSS(input []byte) ([]byte, error) {
 	m := minify.New()
 	m.AddFunc("text/css", css.Minify)
 	return m.Bytes("text/css", input)
-}
-
-func Hash(input []byte) string {
-	hash := crypto.SHA3_224.New()
-	hash.Write(input)
-	return base58.Encode(hash.Sum(nil)[0:12])
-}
-
-func Catch(f func()) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v\n%s", r, debug.Stack())
-		}
-	}()
-	f()
-	return
-}
-
-func CatchValue[V any](f func() V) (value V, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v\n%s", r, debug.Stack())
-		}
-	}()
-	value = f()
-	return
 }

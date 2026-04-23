@@ -16,12 +16,13 @@ package resources
 
 import (
 	"errors"
+	"net/http"
+	"sync"
+
 	"github.com/doors-dev/doors/internal"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/evanw/esbuild/pkg/api"
-	"github.com/zeebo/blake3"
-	"net/http"
-	"sync"
+	"github.com/zeebo/xxh3"
 )
 
 type BuildProfiles interface {
@@ -46,10 +47,6 @@ type Registry struct {
 	lookup     sync.Map
 	mainScript *Resource
 	mainStyle  *Resource
-}
-
-func (rg *Registry) key32(b []byte) [32]byte {
-	return *(*[32]byte)(b)
 }
 
 func (rg *Registry) init() {
@@ -103,9 +100,9 @@ func (rg *Registry) Serve(id string, w http.ResponseWriter, r *http.Request) {
 	s.(*Resource).Serve(w, r)
 }
 
-func (r *Registry) create(key []byte, content []byte, lookup bool, contentType string) *Resource {
+func (r *Registry) create(key [16]byte, content []byte, lookup bool, contentType string) *Resource {
 	s := NewResource(content, contentType, r.defaultSettings())
-	existing, existed := r.cache.LoadOrStore(r.key32(key), s)
+	existing, existed := r.cache.LoadOrStore(key, s)
 	if existed {
 		s = existing.(*Resource)
 	}
@@ -115,8 +112,8 @@ func (r *Registry) create(key []byte, content []byte, lookup bool, contentType s
 	return s
 }
 
-func (r *Registry) get(key []byte) *Resource {
-	entry, ok := r.cache.Load(r.key32(key))
+func (r *Registry) get(key [16]byte) *Resource {
+	entry, ok := r.cache.Load(key)
 	if !ok {
 		return nil
 	}
@@ -124,10 +121,10 @@ func (r *Registry) get(key []byte) *Resource {
 }
 
 func (r *Registry) Static(entry StaticEntry, contentType string) (*Resource, error) {
-	h := blake3.New()
+	h := xxh3.New()
 	h.WriteString("resource")
 	entry.entryID(h)
-	key := h.Sum(nil)
+	key := h.Sum128().Bytes()
 	res := r.get(key)
 	if res != nil {
 		return res, nil
@@ -142,14 +139,14 @@ func (r *Registry) Static(entry StaticEntry, contentType string) (*Resource, err
 
 func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string, mode ResourceMode) (*Resource, error) {
 	var res *Resource
-	var key []byte
+	var key [16]byte
 	if mode != ModeNoCache {
-		h := blake3.New()
+		h := xxh3.New()
 		h.WriteString("script")
 		h.WriteString(profile)
 		entry.entryID(h)
 		format.formatID(h)
-		key = h.Sum(nil)
+		key = h.Sum128().Bytes()
 		res = r.get(key)
 	}
 	if res != nil {
@@ -171,7 +168,7 @@ func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 	if err != nil {
 		return nil, err
 	}
-	if key != nil {
+	if mode != ModeNoCache {
 		res = r.create(key, content, mode == ModeHost, "application/javascript")
 	} else {
 		res = NewResource(content, "application/javascript", r.defaultSettings())
@@ -181,12 +178,12 @@ func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 
 func (r *Registry) Style(entry StyleEntry, minify bool, mode ResourceMode) (*Resource, error) {
 	var res *Resource
-	var key []byte
+	var key [16]byte
 	if mode != ModeNoCache {
-		h := blake3.New()
+		h := xxh3.New()
 		h.WriteString("style")
 		entry.entryID(h)
-		key = h.Sum(nil)
+		key = h.Sum128().Bytes()
 		res = r.get(key)
 	}
 	if res != nil {
@@ -199,7 +196,7 @@ func (r *Registry) Style(entry StyleEntry, minify bool, mode ResourceMode) (*Res
 	if err != nil {
 		return nil, err
 	}
-	if key != nil {
+	if mode != ModeNoCache {
 		res = r.create(key, content, mode == ModeHost, "text/css")
 	} else {
 		res = NewResource(content, "text/css", r.defaultSettings())
