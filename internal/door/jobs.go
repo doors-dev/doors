@@ -12,23 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pipe
+package door
 
-import "github.com/doors-dev/doors/internal/front/action"
+import (
+	"context"
+	"errors"
+	"io"
 
-type Payload interface {
-	Payload() action.Payload
-	Release()
+	"github.com/doors-dev/gox"
+)
+
+type fakeJob struct{}
+
+func (d fakeJob) Context() context.Context {
+	return context.Background()
 }
 
-func EmptyPayload() Payload {
-	return emptyPayload{}
+func (d fakeJob) Output(w io.Writer) error {
+	return errors.New("door used outside the Doors rendering pipeline")
 }
 
-type emptyPayload struct{}
-
-func (e emptyPayload) Payload() action.Payload {
-	return action.NewText("")
+type renderJob struct {
+	door *Door
+	fakeJob
 }
 
-func (e emptyPayload) Release() {}
+func (d renderJob) Render(p *pipe) {
+	d.door.render(p)
+}
+
+type proxyJob struct {
+	door *Door
+	el   gox.Elem
+	fakeJob
+}
+
+func (d proxyJob) Render(p *pipe) {
+	d.door.proxy(p, d.el)
+}

@@ -167,7 +167,7 @@ func (s *SourceBeam[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value
 		close(ch)
 		return ch
 	}
-	ctxFrame := ctex.GetFrames(ctx).Send()
+	ctxFrame := ctex.GetFrames(ctx).Call()
 
 	stopped := atomic.Bool{}
 

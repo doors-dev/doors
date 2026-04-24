@@ -205,7 +205,7 @@ func (f *callFragment) Main() gox.Elem {
 		Name: "myHook",
 		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
 			f.r.Update(ctx, 0, r.Data())
-			ch, _ := doors.XCall[string](ctx, doors.ActionEmit{Name: "myCall", Arg: len(r.Data())})
+			ch := doors.XCall[string](ctx, doors.ActionEmit{Name: "myCall", Arg: len(r.Data())})
 			res := <-ch
 			f.r.Update(ctx, 1, res.Ok)
 			return len(r.Data()), true

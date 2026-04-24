@@ -303,3 +303,33 @@ func TestEffectDuplicateDependencyRerendersOnce(t *testing.T) {
 	test.TestContent(t, page, "#effect-dup-outer-renders", "1")
 	test.TestContent(t, page, "#effect-dup-inner-renders", "2")
 }
+
+func TestBeamReadAndSubSequentialRegistration(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamReadAndSubFragment{
+				source: doors.NewSource(1),
+				r:      test.NewReporter(6),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestReportId(t, page, 0, "v:1")
+
+	test.Click(t, page, "#beam-read-sub-update-2")
+	test.TestReportId(t, page, 1, "v:2")
+
+	test.Click(t, page, "#beam-read-sub-register-source")
+	test.TestReportId(t, page, 2, "2")
+
+	test.Click(t, page, "#beam-read-sub-update-3")
+	test.TestReportId(t, page, 3, "3")
+
+	test.Click(t, page, "#beam-read-sub-register-derived-2")
+	test.TestReportId(t, page, 4, "v:3")
+
+	test.Click(t, page, "#beam-read-sub-update-4")
+	test.TestReportId(t, page, 5, "v:4")
+}

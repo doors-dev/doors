@@ -30,6 +30,6 @@ type Hook struct {
 }
 
 func (h Hook) MarshalJSON() ([]byte, error) {
-	a := []any{h.DoorID, h.HookID, h.Scope, h.Indicate, h.Before, h.OnError}
+	a := []any{h.HookID, h.Scope, h.Indicate, h.Before, h.OnError}
 	return json.Marshal(a)
 }

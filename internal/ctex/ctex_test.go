@@ -77,7 +77,7 @@ func TestFrameHelpers(t *testing.T) {
 	if _, ok := AfterFrame(base); ok {
 		t.Fatal("expected no frame in base context")
 	}
-	if typ := reflect.TypeOf(GetFrames(base).Send()); typ != reflect.TypeOf(shredder.FreeFrame{}) {
+	if typ := reflect.TypeOf(GetFrames(base).Call()); typ != reflect.TypeOf(shredder.FreeFrame{}) {
 		t.Fatalf("expected free frame without injected context, got %v", typ)
 	}
 
@@ -86,7 +86,7 @@ func TestFrameHelpers(t *testing.T) {
 	if !ok || got != after {
 		t.Fatal("expected inserted frame to be retrievable")
 	}
-	if GetFrames(ctx).Send() != after {
+	if GetFrames(ctx).Call() != after {
 		t.Fatal("expected frame helper to expose inserted frame")
 	}
 

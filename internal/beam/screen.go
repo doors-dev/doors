@@ -101,7 +101,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 	if init {
 		schedule = syncFrame.Submit
 	}
-	schedule(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
+	schedule(s.cinema.ctx(), s.cinema.runtime(), func(ok bool) {
 		if !ok {
 			return
 		}
@@ -114,7 +114,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 		watchersFrame := shredder.Join(true, syncFrame, syncThread.Frame(), readFrame)
 		childerenFrame := shredder.Join(true, syncFrame, syncThread.Frame())
 
-		commitFrame.Run(s.cinema.ctx(), s.cinema.runtime, func(b bool) {
+		commitFrame.Run(s.cinema.ctx(), s.cinema.runtime(), func(b bool) {
 			if !b {
 				return
 			}
@@ -122,7 +122,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 		})
 		commitFrame.Release()
 
-		watchersFrame.Run(s.cinema.ctx(), s.cinema.runtime, func(b bool) {
+		watchersFrame.Run(s.cinema.ctx(), s.cinema.runtime(), func(b bool) {
 			if !b {
 				return
 			}
@@ -130,7 +130,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 				watcherCtx := ctex.FrameInfect(ctx, s.cinema.ctx())
 				watcherCtx = ctex.SyncFrameInsert(watcherCtx, readFrame)
 				watcherFrame := shredder.Join(false, watchersFrame, watcher.syncFrame())
-				watcherFrame.Submit(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
+				watcherFrame.Submit(s.cinema.ctx(), s.cinema.runtime(), func(ok bool) {
 					if !ok {
 						return
 					}
@@ -141,7 +141,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 		})
 		watchersFrame.Release()
 
-		childerenFrame.Run(s.cinema.ctx(), s.cinema.runtime, func(ok bool) {
+		childerenFrame.Run(s.cinema.ctx(), s.cinema.runtime(), func(ok bool) {
 			if !ok {
 				return
 			}
@@ -161,7 +161,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 func (s *screen) scheduleRemove() {
 	frame := s.cinema.writeFrame()
 	defer frame.Release()
-	frame.Run(s.cinema.ctx(), s.cinema.runtime, func(bool) {
+	frame.Run(s.cinema.ctx(), s.cinema.runtime(), func(bool) {
 		s.cinema.tryRemove(s.sourceID)
 	})
 }

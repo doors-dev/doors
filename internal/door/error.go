@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pipe
+package door
 
 import (
 	"bytes"
@@ -25,7 +25,7 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-func NewError(err error) Error {
+func newError(err error) Error {
 	if e, ok := err.(Error); ok {
 		return e
 	}

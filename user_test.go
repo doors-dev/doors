@@ -33,7 +33,13 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-type helperDoor struct{}
+type helperDoor struct {
+	inst *helperInstance
+}
+
+func (h helperDoor) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+	h.inst.UserCall(ctx, check, action, onResult, onCancel, params)
+}
 
 type helperShutdown struct{}
 
@@ -65,6 +71,11 @@ func (helperDoor) RootCore() core.Core {
 
 type helperDoorWithRoot struct {
 	root core.Core
+}
+
+// UserCall implements [core.Door].
+func (h helperDoorWithRoot) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+	panic("unimplemented")
 }
 
 func (helperDoorWithRoot) Cinema() beam.Cinema {
@@ -108,6 +119,14 @@ func (h *helperInstance) CallCtx(_ context.Context, act action.Action, _ func(js
 }
 
 func (h *helperInstance) CallCheck(_ func() bool, act action.Action, onResult func(json.RawMessage, error), _ func(), params action.CallParams) {
+	h.lastCallAction = act
+	h.lastCallParams = params
+	if onResult != nil && h.callCheckErr != nil {
+		onResult(nil, h.callCheckErr)
+	}
+}
+
+func (h *helperInstance) UserCall(_ context.Context, _ func() bool, act action.Action, onResult func(json.RawMessage, error), _ func(), params action.CallParams) {
 	h.lastCallAction = act
 	h.lastCallParams = params
 	if onResult != nil && h.callCheckErr != nil {
@@ -185,7 +204,7 @@ type helperLocation struct {
 func helperContext(t *testing.T, adapters path.Adapters) (context.Context, *helperInstance) {
 	t.Helper()
 	inst := &helperInstance{adapters: adapters}
-	return context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(inst, helperDoor{})), inst
+	return context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(inst, helperDoor{inst: inst})), inst
 }
 
 func helperContextWithRoot(t *testing.T, adapters path.Adapters) (context.Context, *helperInstance, core.Core) {
@@ -195,7 +214,7 @@ func helperContextWithRoot(t *testing.T, adapters path.Adapters) (context.Contex
 	t.Cleanup(func() {
 		inst.runtime.Cancel()
 	})
-	root := core.NewCore(inst, helperDoor{})
+	root := core.NewCore(inst, helperDoor{inst: inst})
 	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(inst, helperDoorWithRoot{root: root}))
 	return ctx, inst, root
 }

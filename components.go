@@ -22,7 +22,6 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
-	"github.com/doors-dev/doors/internal/door/pipe"
 	"github.com/doors-dev/gox"
 )
 
@@ -52,7 +51,7 @@ func Parallel() gox.Proxy {
 			ctx: cur.Context(),
 			el:  elem,
 		}
-		return cur.Send(j)
+		return cur.Printer().Send(j)
 	})
 }
 
@@ -61,15 +60,9 @@ type parallelJob struct {
 	el  gox.Elem
 }
 
-func (pj parallelJob) Render(pip pipe.Pipe) {
-	branch := pip.Branch()
-	pip = pipe.NewPipe(pj.ctx, pip.Runtime(), pip.RenderFrame(), pip.FinalFrame())
-	pip.FrameSubmit(func(b bool) {
-		if !b {
-			return
-		}
-		defer pip.Submit(branch)
-		pip.RenderComp(pj.el)
+func (pj parallelJob) Render(pip door.Pipe) {
+	pip.Submit(func(cur gox.Cursor) error {
+		return cur.CompCtx(pj.ctx, pj.el)
 	})
 }
 
@@ -78,7 +71,7 @@ func (p parallelJob) Context() context.Context {
 }
 
 func (parallelJob) Output(io.Writer) error {
-	return errors.New("Parallel is used outside doors render pipeline")
+	return errors.New("Parallel can only be used during a Doors render")
 }
 
 // Sub renders a dynamic fragment driven by beam.
@@ -99,10 +92,9 @@ func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.EditorComp {
 	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		door := &Door{}
 		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
-			door.Update(ctx, gox.Elem(func(cur gox.Cursor) error {
+			door.Outer(ctx, gox.Elem(func(cur gox.Cursor) error {
 				el := el(v)
 				if el == nil {
-					door.Clear(ctx)
 					return nil
 				}
 				return el(cur)
@@ -133,7 +125,7 @@ func Inject[T any](key any, beam Beam[T]) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
 		door := &Door{}
 		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
-			door.Rebase(ctx, func(cur gox.Cursor) error {
+			door.Outer(ctx, func(cur gox.Cursor) error {
 				ctx := context.WithValue(cur.Context(), key, v)
 				cur = gox.NewCursor(ctx, cur)
 				return el(cur)

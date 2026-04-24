@@ -16,8 +16,8 @@ package door
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"sync"
 
@@ -25,71 +25,249 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-func newRootTracker(r *root) (*tracker, core.Core) {
+func trackerRoot(r *root) (*tracker, core.Core) {
+	sh := &shredder.ValveFrame{}
 	t := &tracker{
-		id:     r.NewID(),
-		root:   r,
-		parent: nil,
-		cancel: r.runtime().Cancel,
+		id:             r.NewID(),
+		root:           r,
+		cancel:         func() {},
+		ctx:            r.runtime.Context(),
+		innerCallGuard: sh,
+		outerCallGuard: sh,
 	}
-	t.cinema = beam.NewCinema(nil, t, r.runtime())
+	t.cinema = beam.NewCinema(nil, t)
 	core := core.NewCore(r.inst, t)
-	t.ctx = context.WithValue(r.runtime().Context(), ctex.KeyCore, core)
-	t.cancel = func() {}
+	t.contentCtx = context.WithValue(r.runtime.Context(), ctex.KeyCore, core)
 	return t, core
 }
 
-func newTrackerFrom(prev *tracker, node *node) *tracker {
-	root := prev.root
+func trackerShutdown(prev *tracker) {
+	prev.clean(false)
+	prev.container.clean()
+}
+
+func trackerRemove(prev *tracker, task *userTask) {
+	prev.clean(false)
+	prev.container.clean()
+	prev.outerCallGuard.Submit(prev.parent.ctx, prev.root.runtime, func(b bool) {
+		if !b {
+			task.Cancel()
+			return
+		}
+		prev.root.inst.Call(&call{
+			ctx:     prev.parent.ctx,
+			kind:    callReplace,
+			id:      prev.id,
+			payload: emptyPayload{},
+			task:    task,
+		})
+	})
+}
+
+func trackerInherit(n *node, prev *tracker, preserveFrame bool) *tracker {
+	ctx, cancel := context.WithCancel(prev.parent.ctx)
 	t := &tracker{
-		node:   node,
-		root:   root,
-		id:     prev.id,
-		parent: prev.parent,
+		id:             prev.id,
+		node:           n,
+		root:           prev.root,
+		parent:         prev.parent,
+		ctx:            ctx,
+		cancel:         cancel,
+		innerCallGuard: &shredder.ValveFrame{},
+		outerCallGuard: prev.outerCallGuard,
 	}
-	t.cinema = beam.NewCinema(t.parent.cinema, t, root.runtime())
-	t.core = core.NewCore(root.inst, t)
-	ctx := context.WithValue(prev.parent.ctx, ctex.KeyCore, t.core)
-	t.ctx, t.cancel = context.WithCancel(ctx)
-	root.addTracker(t)
+	t.cinema = beam.NewCinema(t.parent.cinema, t)
+	if preserveFrame {
+		t.container = prev.container
+		t.container.update(t)
+	} else {
+		t.container = newContainerTracker(t)
+		prev.container.clean()
+	}
+	prev.clean(false)
+	core := core.NewCore(t.root.inst, t)
+	t.contentCtx = context.WithValue(ctx, ctex.KeyCore, core)
+	t.parent.addChild(t)
 	return t
 }
 
-func newTracker(parent *tracker, node *node) *tracker {
+func trackerCreate(n *node, p *pipe) *tracker {
+	ctx, cancel := context.WithCancel(p.tracker.ctx)
 	t := &tracker{
-		node:   node,
-		root:   parent.root,
-		id:     parent.root.NewID(),
-		parent: parent,
+		id:             p.tracker.root.NewID(),
+		node:           n,
+		root:           p.tracker.root,
+		parent:         p.tracker,
+		ctx:            ctx,
+		cancel:         cancel,
+		innerCallGuard: p.callGuard,
+		outerCallGuard: p.callGuard,
 	}
-	t.cinema = beam.NewCinema(t.parent.cinema, t, t.root.runtime())
-	t.core = core.NewCore(t.root.inst, t)
-	ctx := context.WithValue(parent.ctx, ctex.KeyCore, t.core)
-	t.ctx, t.cancel = context.WithCancel(ctx)
-	t.root.addTracker(t)
+	t.cinema = beam.NewCinema(t.parent.cinema, t)
+	t.container = newContainerTracker(t)
+	core := core.NewCore(t.root.inst, t)
+	t.contentCtx = context.WithValue(ctx, ctex.KeyCore, core)
+	t.parent.addChild(t)
 	return t
 }
-
-var _ core.Door = &tracker{}
-var _ beam.Door = &tracker{}
 
 type tracker struct {
-	mu                   sync.Mutex
-	node                 *node
-	id                   uint64
-	root                 *root
-	parent               *tracker
-	thread               shredder.ReadWriteThread
-	ctx                  context.Context
-	cancel               context.CancelFunc
-	children             common.Set[*node]
-	cinema               beam.Cinema
-	hooks                map[uint64]*hook
-	core                 core.Core
-	containerHooksCancel map[uint64][]context.CancelFunc
+	id             uint64
+	mu             sync.Mutex
+	node           *node
+	root           *root
+	parent         *tracker
+	thread         shredder.ReadWriteThread
+	cinema         beam.Cinema
+	ctx            context.Context
+	contentCtx     context.Context
+	cancel         context.CancelFunc
+	outerCallGuard *shredder.ValveFrame
+	innerCallGuard *shredder.ValveFrame
+	container      *containerTracker
+	hooks          common.Set[uint64]
+	children       common.Set[*tracker]
+}
+
+func (t *tracker) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+	frames := ctex.GetFrames(ctx)
+	callFrame := shredder.Join(true, frames.Call(), t.innerCallGuard)
+	defer callFrame.Release()
+	callFrame.Run(ctx, t.root.runtime, func(b bool) {
+		if !b {
+			if onCancel != nil {
+				onCancel()
+			}
+			return
+		}
+		t.inst().UserCall(ctx, check, action, onResult, onCancel, params)
+	})
+}
+
+func (t *tracker) isEmpty() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.children) == 0
+}
+
+func (t *tracker) inst() Instance {
+	return t.root.inst
+}
+
+func (t *tracker) Runtime() shredder.Runtime {
+	return t.root.runtime
+}
+
+func (t *tracker) ID() uint64 {
+	return t.id
+}
+
+func (t *tracker) addChild(child *tracker) {
+	t.mu.Lock()
+	if t.ctx.Err() != nil {
+		t.mu.Unlock()
+		child.clean(true)
+		return
+	}
+	defer t.mu.Unlock()
+	if t.children == nil {
+		t.children = common.NewSet[*tracker]()
+	}
+	t.children.Add(child)
+}
+
+func (t *tracker) removeChild(child *tracker) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.ctx.Err() != nil {
+		return
+	}
+	t.children.Remove(child)
+}
+
+func (t *tracker) clean(cascade bool) {
+	t.cancel()
+	if !cascade && t.parent != nil {
+		t.parent.removeChild(t)
+	}
+	if cascade {
+		t.container.clean()
+		t.node.unmountedSelf()
+	}
+	t.mu.Lock()
+	hooks := t.hooks
+	children := t.children
+	t.hooks = nil
+	t.children = nil
+	t.mu.Unlock()
+	for child := range children {
+		child.clean(true)
+	}
+	for hook := range hooks {
+		t.root.cancelHook(hook)
+	}
+}
+
+func (t *tracker) ReadFrame() shredder.Frame {
+	return t.thread.Read()
+}
+
+func (t *tracker) containerCinemaFrame() shredder.AnyFrame {
+	if t.container == nil {
+		return shredder.FreeFrame{}
+	}
+	return t.container.cinema.ReadFrame()
+}
+
+func (t *tracker) writeFrame() shredder.Frame {
+	write := t.thread.Write()
+	frame := shredder.Join(false, write, t.cinema.ReadFrame(), t.containerCinemaFrame())
+	write.Release()
+	return frame
+}
+
+func (t *tracker) isCanceled() bool {
+	return t.ctx.Err() != nil
+}
+
+func (t *tracker) Context() context.Context {
+	return t.contentCtx
+}
+
+func (t *tracker) Cinema() beam.Cinema {
+	return t.cinema
+}
+
+func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.ctx.Err() != nil {
+		return core.Hook{}, false
+	}
+	if t.hooks == nil {
+		t.hooks = common.NewSet[uint64]()
+	}
+	h := newHook(t.root.NewID(), t, onTrigger, onCancel)
+	t.hooks.Add(h.id)
+	t.root.addHook(h)
+	return core.Hook{
+		HookID: h.id,
+		Cancel: h.cancel,
+	}, true
+}
+
+func (t *tracker) removeHook(id uint64) {
+	t.root.removeHook(id)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.ctx.Err() != nil {
+		return
+	}
+	t.hooks.Remove(id)
 }
 
 func (t *tracker) Reload(ctx context.Context) {
@@ -103,244 +281,127 @@ func (t *tracker) XReload(ctx context.Context) <-chan error {
 	ctex.LogFreeWarning(ctx, "Door", "XReload")
 	if t.node == nil {
 		ch := make(chan error, 1)
-		ch <- errors.New("Root can't be reloaded")
+		ch <- errors.New("root door cannot be reloaded")
 		close(ch)
 		return ch
 	}
 	return t.node.reload(ctx)
 }
 
-func (t *tracker) debug(tab string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	fmt.Printf("%s%d\n", tab, t.id)
-	for node := range t.children {
-		mu := node.entity.(nodeMount)
-		mu.Tracker().debug(tab + "-")
-	}
-}
-
-func (t *tracker) inst() Instance {
-	return t.root.inst
-}
-
 func (t *tracker) RootCore() core.Core {
 	return t.root.core
 }
 
-func (t *tracker) runtime() shredder.Runtime {
-	return t.root.runtime()
-}
-
-func (t *tracker) parentContext() context.Context {
-	if t.parent == nil {
-		return t.root.runtime().Context()
+func newContainerTracker(t *tracker) *containerTracker {
+	ctx, cancel := context.WithCancel(t.parent.ctx)
+	ft := &containerTracker{
+		tracker: t,
+		cancel:  cancel,
 	}
-	return t.parent.ctx
+	ft.cinema = beam.NewCinema(t.parent.Cinema(), ft)
+	core := core.NewCore(t.root.inst, ft)
+	ft.ctx = context.WithValue(ctx, ctex.KeyCore, core)
+	return ft
 }
 
-func (t *tracker) containerContext() context.Context {
-	parentCore := core.NewCore(t.inst(), containerCore{
-		tracker:      t.parent,
-		childTracker: t,
-		id:           t.id,
-	})
-	return context.WithValue(t.parent.parentContext(), ctex.KeyCore, parentCore)
+type containerTracker struct {
+	mu      sync.Mutex
+	tracker *tracker
+	cinema  beam.Cinema
+	hooks   common.Set[uint64]
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
-func (t *tracker) Context() context.Context {
+func (t *containerTracker) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+	t.tracker.UserCall(ctx, check, action, onResult, onCancel, params)
+}
+
+func (t *containerTracker) getTracker() *tracker {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.tracker
+}
+
+func (t *containerTracker) inst() Instance {
+	return t.getTracker().inst()
+}
+
+func (t *containerTracker) Runtime() shredder.Runtime {
+	return t.getTracker().Runtime()
+}
+
+func (t *containerTracker) ID() uint64 {
+	return t.getTracker().ID()
+}
+
+func (t *containerTracker) removeHook(id uint64) {
+	t.getTracker().root.removeHook(id)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.hooks == nil {
+		return
+	}
+	t.hooks.Remove(id)
+
+}
+
+func (f *containerTracker) update(t *tracker) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.tracker = t
+}
+
+func (t *containerTracker) Context() context.Context {
 	return t.ctx
 }
 
-func (t *tracker) ID() uint64 {
-	return t.id
+func (t *containerTracker) ReadFrame() shredder.Frame {
+	return t.tracker.ReadFrame()
 }
 
-func (t *tracker) Cinema() beam.Cinema {
-	return t.cinema
-}
-
-func (t *tracker) registerContainerHook(childId uint64, onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	hook, ok := t.registerHook(onTrigger, onCancel)
-	if !ok {
-		return hook, false
-	}
-	if t.containerHooksCancel == nil {
-		t.containerHooksCancel = make(map[uint64][]context.CancelFunc)
-	}
-	t.containerHooksCancel[childId] = append(t.containerHooksCancel[childId], hook.Cancel)
-	return hook, true
-}
-
-func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.registerHook(onTrigger, onCancel)
-
-}
-
-func (t *tracker) registerHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
-	if t.isKilled() {
-		return core.Hook{}, false
-	}
-	h := newHook(t, onTrigger, onCancel)
-	id := t.root.NewID()
-	if t.hooks == nil {
-		t.hooks = make(map[uint64]*hook)
-	}
-	t.hooks[id] = h
-	return core.Hook{
-		DoorID: t.id,
-		HookID: id,
-		Cancel: func() {
-			t.cancelHook(id)
-		},
-	}, true
-
-}
-
-func (t *tracker) isKilled() bool {
-	return t.ctx.Err() != nil
-}
-
-func (t *tracker) cancelHook(hookID uint64) {
-	t.mu.Lock()
-	hook, ok := t.hooks[hookID]
-	if !ok {
-		t.mu.Unlock()
-		return
-	}
-	delete(t.hooks, hookID)
-	t.mu.Unlock()
-	hook.cancel()
-}
-
-func (t *tracker) trigger(id uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
-	t.mu.Lock()
-	hook, ok := t.hooks[id]
-	t.mu.Unlock()
-	if !ok {
-		return false
-	}
-	done, ok := hook.trigger(w, r, track)
-	if !ok {
-		return false
-	}
-	if done {
-		t.mu.Lock()
-		delete(t.hooks, id)
-		t.mu.Unlock()
-	}
-	return true
-}
-
-func (t *tracker) kill() {
+func (t *containerTracker) clean() {
 	t.cancel()
-	t.root.removeTracker(t)
-	t.cinema.Cancel()
 	t.mu.Lock()
 	hooks := t.hooks
 	t.hooks = nil
-	children := t.children
-	t.children = nil
 	t.mu.Unlock()
-	for _, hook := range hooks {
-		hook.cancel()
-	}
-	for child := range children {
-		child.killCascade()
+	t.cinema.Cancel()
+	for hook := range hooks {
+		t.tracker.root.cancelHook(hook)
 	}
 }
 
-func (t *tracker) removeChild(n *node, id uint64) {
+func (t *containerTracker) Cinema() beam.Cinema {
+	return t.cinema
+}
+
+func (t *containerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
 	t.mu.Lock()
-	if !t.children.Remove(n) {
-		defer t.mu.Unlock()
-		return
+	defer t.mu.Unlock()
+	if t.ctx.Err() != nil {
+		return core.Hook{}, false
 	}
-	if t.containerHooksCancel == nil {
-		defer t.mu.Unlock()
-		return
+	if t.hooks == nil {
+		t.hooks = common.NewSet[uint64]()
 	}
-	cancels, ok := t.containerHooksCancel[id]
-	if !ok {
-		defer t.mu.Unlock()
-		return
-	}
-	delete(t.containerHooksCancel, id)
-	t.mu.Unlock()
-	for _, cancel := range cancels {
-		cancel()
-	}
+	h := newHook(t.tracker.root.NewID(), t, onTrigger, onCancel)
+	t.hooks.Add(h.id)
+	t.tracker.root.addHook(h)
+	return core.Hook{
+		HookID: h.id,
+		Cancel: h.cancel,
+	}, true
 }
 
-func (t *tracker) replaceChild(prev *node, next *node) {
-	t.mu.Lock()
-	if t.isKilled() {
-		t.mu.Unlock()
-		next.killCascade()
-		return
-	}
-	t.children.Remove(prev)
-	t.children.Add(next)
-	t.mu.Unlock()
+func (t *containerTracker) Reload(ctx context.Context) {
+	t.getTracker().Reload(ctx)
 }
 
-func (t *tracker) addChild(n *node) {
-	t.mu.Lock()
-	if t.isKilled() {
-		t.mu.Unlock()
-		n.killCascade()
-		return
-	}
-	if t.children == nil {
-		t.children = common.NewSet[*node]()
-	}
-	t.children.Add(n)
-	t.mu.Unlock()
+func (t *containerTracker) RootCore() core.Core {
+	return t.getTracker().RootCore()
 }
 
-func (t *tracker) ReadFrame() shredder.Frame {
-	return t.thread.Read()
+func (t *containerTracker) XReload(ctx context.Context) <-chan error {
+	return t.getTracker().XReload(ctx)
 }
-
-func (t *tracker) writeFrame() shredder.Frame {
-	write := t.thread.Write()
-	join := shredder.Join(false, write, t.cinema.ReadFrame())
-	write.Release()
-	return join
-}
-
-type containerCore struct {
-	tracker      *tracker
-	childTracker *tracker
-	id           uint64
-}
-
-func (h containerCore) Reload(ctx context.Context) {
-	h.childTracker.Reload(ctx)
-}
-
-func (h containerCore) XReload(ctx context.Context) <-chan error {
-	return h.childTracker.XReload(ctx)
-}
-
-func (h containerCore) Cinema() beam.Cinema {
-	return h.tracker.Cinema()
-}
-
-func (h containerCore) ID() uint64 {
-	return h.tracker.id
-}
-
-func (h containerCore) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
-	return h.tracker.registerContainerHook(h.id, onTrigger, onCancel)
-}
-
-func (h containerCore) RootCore() core.Core {
-	return h.tracker.RootCore()
-}
-
-var _ core.Door = &containerCore{}

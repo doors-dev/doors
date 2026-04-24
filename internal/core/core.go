@@ -30,7 +30,6 @@ import (
 )
 
 type Hook struct {
-	DoorID uint64
 	HookID uint64
 	Cancel context.CancelFunc
 }
@@ -45,8 +44,6 @@ type ModuleRegistry interface {
 }
 
 type Instance interface {
-	CallCtx(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc
-	CallCheck(check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
 	CSPCollector() *common.CSPCollector
 	ModuleRegistry() ModuleRegistry
 	ResourceRegistry() *resources.Registry
@@ -65,15 +62,17 @@ type Instance interface {
 	PathMaker() path.PathMaker
 	UpdateTitle(content string, attrs gox.Attrs)
 	UpdateMeta(name string, property bool, attrs gox.Attrs)
+	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
 }
 
 type Door interface {
 	Cinema() beam.Cinema
-	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
 	ID() uint64
+	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
 	Reload(ctx context.Context)
 	XReload(ctx context.Context) <-chan error
 	RootCore() Core
+	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
 }
 
 func NewCore(inst Instance, door Door) Core {
@@ -120,6 +119,10 @@ func (c Core) Door() Door {
 	return c.door
 }
 
+func (c Core) DoorID() uint64 {
+	return c.door.ID()
+}
+
 func (c Core) Instance() Instance {
 	return c.inst
 }
@@ -156,10 +159,6 @@ func (c Core) SetStatus(status int) {
 	c.inst.SetStatus(status)
 }
 
-func (c Core) DoorID() uint64 {
-	return c.door.ID()
-}
-
 func (c Core) NewLink(m any) (Link, error) {
 	return c.inst.NewLink(m)
 }
@@ -192,12 +191,8 @@ func (c Core) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWr
 	return c.door.RegisterHook(onTrigger, onCancel)
 }
 
-func (c Core) CallCtx(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc {
-	return c.inst.CallCtx(ctx, action, onResult, onCancel, params)
-}
-
-func (c Core) CallCheck(check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
-	c.inst.CallCheck(check, action, onResult, onCancel, params)
+func (c Core) Call(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+	c.door.UserCall(ctx, check, action, onResult, onCancel, params)
 }
 
 func (c Core) CSPCollector() *common.CSPCollector {

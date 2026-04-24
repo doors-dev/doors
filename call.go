@@ -23,33 +23,36 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 )
 
-// CallResult holds the outcome of an XCall.
+// CallResult holds the outcome of [XCall].
 // Either Ok is set with the result, or Err is non-nil.
 type CallResult[T any] struct {
 	Ok  T     // Result value
 	Err error // Error if the call failed
 }
 
-// Call dispatches action to the client and returns a best-effort cancel
-// function.
-func Call(ctx context.Context, action Action) context.CancelFunc {
-	_, cancel := call[json.RawMessage](ctx, action)
-	return cancel
+// Call dispatches action to the client without waiting for a result.
+//
+// Canceling ctx requests best-effort cancellation of the call.
+func Call(ctx context.Context, action Action) {
+	call[json.RawMessage](ctx, action)
 }
 
 // XCall dispatches action to the client and returns a result channel.
 //
-// The channel closes without a value if the call is canceled. Do not wait on
-// it during rendering. If you need to wait, do it in a hook, inside [Go], or
-// in your own goroutine with [Free]. T is the expected decoded payload type.
-// For actions other than [ActionEmit], [json.RawMessage] is usually the right
+// The channel receives a [CallResult] when the client returns a result, then
+// closes. Canceling ctx requests best-effort cancellation; if the call is
+// canceled, the channel closes without a value.
+//
+// Do not wait on it during rendering. If you need to wait, use [Go] or your
+// own goroutine with [Free]. T is the expected decoded payload type. For
+// actions other than [ActionEmit], [json.RawMessage] is usually the right
 // choice.
-func XCall[T any](ctx context.Context, action Action) (<-chan CallResult[T], context.CancelFunc) {
+func XCall[T any](ctx context.Context, action Action) <-chan CallResult[T] {
 	ctex.LogFreeWarning(ctx, "action", "XCall")
 	return call[T](ctx, action)
 }
 
-func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], context.CancelFunc) {
+func call[T any](ctx context.Context, action Action) <-chan CallResult[T] {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	ch := make(chan CallResult[T], 1)
 	a, params, err := action.action(ctx, core, !core.Conf().SolitaireDisableGzip)
@@ -59,13 +62,14 @@ func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], cont
 		res.Err = err
 		ch <- res
 		close(ch)
-		return ch, func() {}
+		return ch
 	}
 	if ctx.Err() != nil {
 		ctex.LogCanceled(ctx, "call "+a.Log())
 	}
-	cancel := core.CallCtx(
+	core.Call(
 		ctx,
+		nil,
 		a,
 		func(rm json.RawMessage, err error) {
 			if err != nil {
@@ -81,5 +85,5 @@ func call[T any](ctx context.Context, action Action) (<-chan CallResult[T], cont
 		},
 		params,
 	)
-	return ch, cancel
+	return ch
 }

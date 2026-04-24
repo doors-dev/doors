@@ -157,7 +157,7 @@ elem (c *Counter) Main() {
 		(doors.AClick{
 			On: func(ctx context.Context, _ doors.RequestPointer) bool {
 				c.count += 1
-				c.door.Update(ctx, c.count)
+				c.door.Inner(ctx, c.count)
 				return false
 			},
 		})>

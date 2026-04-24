@@ -64,19 +64,19 @@ elem (f *dynaFragment) Main() {
 	} <button id="reset">reset</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			f.n.Clear(ctx)
+			f.n.Inner(ctx, nil)
 			return false
 		},
 	} <button id="clear">clear</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			f.n.Update(ctx, f.content(da1, da2))
+			f.n.Inner(ctx, f.content(da1, da2))
 			return false
 		},
 	} <button id="show">show</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			f.n.Replace(ctx, f.content(da1, da2))
+			f.n.Static(ctx, f.content(da1, da2))
 			return true
 		},
 	} <button id="replace">replace</button>

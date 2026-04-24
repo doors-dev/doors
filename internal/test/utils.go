@@ -86,7 +86,7 @@ func (s *Bro) PageStatus(t *testing.T, path string, status int) *rod.Page {
 			return true
 		},
 	)
-	page.MustNavigate(url)
+	_ = page.Navigate(url)
 	wait()
 	if err != "" {
 		t.Fatal(err)

@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/shredder"
 )
 
 type Done = bool
@@ -33,18 +34,27 @@ const (
 )
 
 type hook struct {
+	id          uint64
 	triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done
 	cancelFunc  func(ctx context.Context)
 	state       atomic.Int32
 	ch          atomic.Pointer[chan struct{}]
-	tracker     *tracker
+	tracker     hookTracker
 }
 
-func newHook(t *tracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, cancelFunc func(ctx context.Context)) *hook {
+type hookTracker interface {
+	Runtime() shredder.Runtime
+	inst() Instance
+	removeHook(id uint64)
+	Context() context.Context
+}
+
+func newHook(id uint64, tracker hookTracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, cancelFunc func(ctx context.Context)) *hook {
 	return &hook{
+		id:          id,
 		triggerFunc: triggerFunc,
 		cancelFunc:  cancelFunc,
-		tracker:     t,
+		tracker:     tracker,
 	}
 }
 
@@ -65,20 +75,24 @@ func (h *hook) wait() chan struct{} {
 	return ch
 }
 
-func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) (Done, bool) {
+func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) bool {
 	ch := h.wait()
+	if h.tracker.Context().Err() != nil {
+		close(ch)
+		return false
+	}
 	if !h.state.CompareAndSwap(hookActive, hookProgress) {
 		close(ch)
-		return false, false
+		return false
 	}
-	ctx, frame := ctex.AfterFrameInsert(h.tracker.ctx)
+	ctx, frame := ctex.AfterFrameInsert(h.tracker.Context())
 	defer frame.Activate()
 	if track != 0 {
 		frame.RunAfter(nil, nil, func(b bool) {
 			h.tracker.inst().Call(reportHook(track))
 		})
 	}
-	done, err := h.tracker.root.runtime().SafeHook(ctx, w, r, h.triggerFunc)
+	done, err := h.tracker.Runtime().SafeHook(ctx, w, r, h.triggerFunc)
 	ok := false
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -92,12 +106,16 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) (Do
 		h.performCancel()
 	}
 	close(ch)
-	return done, true
+	if done {
+		h.tracker.removeHook(h.id)
+	}
+	return true
 }
 
 func (h *hook) performCancel() {
+	h.tracker.removeHook(h.id)
 	if h.cancelFunc == nil {
 		return
 	}
-	h.tracker.root.runtime().SafeCtxFun(h.tracker.ctx, h.cancelFunc)
+	h.tracker.Runtime().SafeCtxFun(h.tracker.Context(), h.cancelFunc)
 }

@@ -72,9 +72,9 @@ func (h HostMode) src(core core.Core, res *resources.Resource, name string) (str
 		if !ok {
 			return "", context.Canceled
 		}
-		return core.PathMaker().Hook(core.InstanceID(), hook.DoorID, hook.HookID, name), nil
+		return core.PathMaker().Hook(core.InstanceID(), hook.HookID, name), nil
 	default:
-		panic("wrong host mode")
+		panic("unsupported host mode")
 	}
 }
 
@@ -87,7 +87,7 @@ func (h HostMode) resourceMode() resources.ResourceMode {
 	case HostModeNoCache:
 		return resources.ModeNoCache
 	default:
-		panic("wrong host mode")
+		panic("unsupported host mode")
 	}
 }
 
@@ -241,11 +241,11 @@ func (s SourceExternal) name(ext string) string {
 }
 
 func (s SourceExternal) scriptEntry(inline bool) resources.ScriptEntry {
-	panic("external source can't provide script entry")
+	panic("external source cannot provide a script entry")
 }
 
 func (s SourceExternal) styleEntry() resources.StyleEntry {
-	panic("external source can't provide style entry")
+	panic("external source cannot provide a style entry")
 }
 
 // SourceLocal bypasses Doors hosting and uses a browser-visible local path as
@@ -257,11 +257,11 @@ func (s SourceLocal) name(ext string) string {
 }
 
 func (s SourceLocal) scriptEntry(inline bool) resources.ScriptEntry {
-	panic("local source can't provide script entry")
+	panic("local source cannot provide a script entry")
 }
 
 func (s SourceLocal) styleEntry() resources.StyleEntry {
-	panic("local source can't provide style entry")
+	panic("local source cannot provide a style entry")
 }
 
 // ScriptOutput controls how Doors builds JavaScript sources before serving

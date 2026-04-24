@@ -21,6 +21,87 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// Edit renders door through the gox editor pipeline.
+//
+// It is a system method used by gox to support direct Door rendering, for
+// example:
+//
+//	~(&doors.Door{})
+func (d *Door) Edit(cur gox.Cursor) error {
+	return cur.Printer().Send(renderJob{door: d})
+}
+
+// Proxy renders door through the gox proxy pipeline.
+//
+// It is a system method used by gox to support Door proxy syntax, for example:
+//
+//	~>(&doors.Door{}) <div>content</div>
+func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
+	return cur.Printer().Send(proxyJob{door: d, el: el})
+}
+
+// Inner replaces the door's current children while keeping the same door
+// container mounted. If the door is not currently mounted, the content change
+// is stored and will be applied when the door is rendered.
+func (d *Door) Inner(ctx context.Context, content any) {
+	d.inner(ctx, content)
+}
+
+// XInner tracks completion of [Door.Inner].
+// The channel receives nil on success or an error on failure, then closes.
+// It receives context.Canceled if the operation is overwritten by a newer
+// update, unmount, or other door operation.
+// If the door is not mounted, it closes immediately without sending a value.
+//
+// Do not wait on it during rendering. If you need to wait, use doors.Go(...),
+// or your own goroutine with doors.Free(ctx).
+func (d *Door) XInner(ctx context.Context, content any) <-chan error {
+	ctex.LogFreeWarning(ctx, "Door", "XInner")
+	return d.inner(ctx, content)
+}
+
+// Outer replaces the rendered door with outer while keeping the same Go [Door]
+// handle alive for later updates. Unlike [Door.Static], the result remains a
+// live door that can be updated further. If the door is not currently mounted,
+// the change is stored and will be applied when the door is rendered.
+func (d *Door) Outer(ctx context.Context, outer gox.Elem) {
+	d.outer(ctx, outer)
+}
+
+// XOuter tracks completion of [Door.Outer].
+// The channel receives nil on success or an error on failure, then closes.
+// It receives context.Canceled if the operation is overwritten by a newer
+// update, unmount, or other door operation.
+// If the door is not mounted, it closes immediately without sending a value.
+//
+// Do not wait on it during rendering. If you need to wait, use doors.Go(...),
+// or your own goroutine with doors.Free(ctx).
+func (d *Door) XOuter(ctx context.Context, outer gox.Elem) <-chan error {
+	ctex.LogFreeWarning(ctx, "Door", "XOuter")
+	return d.outer(ctx, outer)
+}
+
+// Static removes the current door container and replaces it with static content.
+// Unlike [Door.Outer], this removes the door's DOM element entirely. If the
+// door is not currently mounted, the change is stored and will be applied when
+// the door is rendered.
+func (d *Door) Static(ctx context.Context, content any) {
+	d.static(ctx, content)
+}
+
+// XStatic tracks completion of [Door.Static].
+// The channel receives nil on success or an error on failure, then closes.
+// It receives context.Canceled if the operation is overwritten by a newer
+// update, unmount, or other door operation.
+// If the door is not mounted, it closes immediately without sending a value.
+//
+// Do not wait on it during rendering. If you need to wait, use doors.Go(...),
+// or your own goroutine with doors.Free(ctx).
+func (d *Door) XStatic(ctx context.Context, content any) <-chan error {
+	ctex.LogFreeWarning(ctx, "Door", "XStatic")
+	return d.static(ctx, content)
+}
+
 // Reload re-renders the door with its current content.
 // If the door is not currently mounted, the operation completes immediately
 // without a visual effect.
@@ -28,116 +109,34 @@ func (d *Door) Reload(ctx context.Context) {
 	d.reload(ctx)
 }
 
-// Update replaces the door's current children while keeping the same door
-// container mounted. If the door is not currently mounted, the content change
-// is stored and will be applied when the door is rendered.
-func (d *Door) Update(ctx context.Context, content any) {
-	d.update(ctx, content)
-}
-
-// Rebase replaces the rendered door with el while keeping the same Go [Door]
-// handle alive for later updates. Unlike [Door.Replace], the result remains a
-// live door that can be updated further. If the door is not currently mounted,
-// the change is stored and will be applied when the door is rendered.
-func (d *Door) Rebase(ctx context.Context, el gox.Elem) {
-	d.rebase(ctx, el)
-}
-
-// Replace removes the current door container and replaces it with content.
-// Unlike [Door.Update], this removes the door's DOM element entirely. If the
-// door is not currently mounted, the change is stored and will be applied when
-// the door is rendered.
-func (d *Door) Replace(ctx context.Context, content any) {
-	ctx = ctex.ClearFreeCtx(ctx)
-	d.replace(ctx, content)
-}
-
-// Delete removes the door and forgets its current content. If the door is not
-// currently mounted, it is marked as removed and will not render later.
-func (d *Door) Delete(ctx context.Context) {
-	ctx = ctex.ClearFreeCtx(ctx)
-	d.replace(ctx, nil)
+// XReload tracks completion of [Door.Reload].
+// The channel receives nil on success or an error on failure, then closes.
+// It receives context.Canceled if the operation is overwritten by a newer
+// update, unmount, or other door operation.
+// If the door is not mounted, it closes immediately without sending a value.
+//
+// Do not wait on it during rendering. If you need to wait, use doors.Go(...),
+// or your own goroutine with doors.Free(ctx).
+func (d *Door) XReload(ctx context.Context) <-chan error {
+	ctex.LogFreeWarning(ctx, "Door", "XReload")
+	return d.reload(ctx)
 }
 
 // Unmount removes the door from the page but keeps its current content for a
 // future mount.
 func (d *Door) Unmount(ctx context.Context) {
-	ctx = ctex.ClearFreeCtx(ctx)
 	d.unmount(ctx)
-}
-
-// Clear removes all door content while keeping the container mounted.
-// It is equivalent to Update(ctx, nil).
-func (d *Door) Clear(ctx context.Context) {
-	d.update(ctx, nil)
-}
-
-// XReload tracks completion of [Door.Reload].
-// The channel receives nil on success or an error on failure, then closes.
-// If the door is not mounted, it closes immediately without sending a value.
-// Do not wait on it during rendering. If you need to wait, do it in a hook,
-// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
-func (d *Door) XReload(ctx context.Context) <-chan error {
-	ctex.LogFreeWarning(ctx, "Door", "XUpdate")
-	return d.reload(ctx)
-}
-
-// XUpdate tracks completion of [Door.Update].
-// The channel receives nil on success or an error on failure, then closes.
-// If the door is not mounted, it closes immediately without sending a value.
-// Do not wait on it during rendering. If you need to wait, do it in a hook,
-// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
-func (d *Door) XUpdate(ctx context.Context, content any) <-chan error {
-	ctex.LogFreeWarning(ctx, "Door", "XUpdate")
-	return d.update(ctx, content)
-}
-
-// XRebase tracks completion of [Door.Rebase].
-// The channel receives nil on success or an error on failure, then closes.
-// If the door is not mounted, it closes immediately without sending a value.
-// Do not wait on it during rendering. If you need to wait, do it in a hook,
-// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
-func (d *Door) XRebase(ctx context.Context, el gox.Elem) <-chan error {
-	ctex.LogFreeWarning(ctx, "Door", "XRebase")
-	return d.rebase(ctx, el)
-}
-
-// XReplace tracks completion of [Door.Replace].
-// The channel receives nil on success or an error on failure, then closes.
-// If the door is not mounted, it closes immediately without sending a value.
-// Do not wait on it during rendering. If you need to wait, do it in a hook,
-// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
-func (d *Door) XReplace(ctx context.Context, content any) <-chan error {
-	ctex.LogFreeWarning(ctx, "Door", "XReplace")
-	return d.replace(ctx, content)
-}
-
-// XDelete tracks completion of [Door.Delete].
-// The channel receives nil on success or an error on failure, then closes.
-// If the door is not mounted, it closes immediately without sending a value.
-// Do not wait on it during rendering. If you need to wait, do it in a hook,
-// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
-func (d *Door) XDelete(ctx context.Context) <-chan error {
-	ctex.LogFreeWarning(ctx, "Door", "XDelete")
-	return d.replace(ctx, nil)
 }
 
 // XUnmount tracks completion of [Door.Unmount].
 // The channel receives nil on success or an error on failure, then closes.
+// It receives context.Canceled if the operation is overwritten by a newer
+// update, unmount, or other door operation.
 // If the door is not mounted, it closes immediately without sending a value.
-// Do not wait on it during rendering. If you need to wait, do it in a hook,
-// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
+//
+// Do not wait on it during rendering. If you need to wait, use doors.Go(...),
+// or your own goroutine with doors.Free(ctx).
 func (d *Door) XUnmount(ctx context.Context) <-chan error {
 	ctex.LogFreeWarning(ctx, "Door", "XUnmount")
 	return d.unmount(ctx)
-}
-
-// XClear tracks completion of [Door.Clear].
-// The channel receives nil on success or an error on failure, then closes.
-// If the door is not mounted, it closes immediately without sending a value.
-// Do not wait on it during rendering. If you need to wait, do it in a hook,
-// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
-func (d *Door) XClear(ctx context.Context) <-chan error {
-	ctex.LogFreeWarning(ctx, "Door", "XClear")
-	return d.update(ctx, nil)
 }

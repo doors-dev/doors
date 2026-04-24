@@ -110,8 +110,9 @@ func (t *titleMeta) updateTitle(content string, attrs gox.Attrs) {
 	t.mu.Lock()
 	if t.rendered {
 		t.mu.Unlock()
-		t.inst.CallCtx(
+		t.inst.UserCall(
 			context.Background(),
+			nil,
 			action.UpdateTitle{
 				Content: content,
 				Attrs:   common.AttrsToMap(attrs),
@@ -131,8 +132,9 @@ func (t *titleMeta) updateMeta(m meta) {
 	t.mu.Lock()
 	if t.rendered {
 		t.mu.Unlock()
-		t.inst.CallCtx(
+		t.inst.UserCall(
 			context.Background(),
+			nil,
 			action.UpdateMeta{
 				Name:     m.name,
 				Property: m.property,

@@ -125,7 +125,7 @@ func (r *resourceProps) Submit(openJob *gox.JobHeadOpen, p *resourcePrinter) err
 		if !ok {
 			return context.Canceled
 		}
-		path := core.PathMaker().Hook(core.InstanceID(), hook.DoorID, hook.HookID, r.name)
+		path := core.PathMaker().Hook(core.InstanceID(), hook.HookID, r.name)
 		r.sourceAttr.Set(path)
 		return p.printer.Send(openJob)
 	}
@@ -204,7 +204,7 @@ func (r *resourceProps) resourceURL(core core.Core, res *resources.Resource) (st
 		if !ok {
 			return "", context.Canceled
 		}
-		return core.PathMaker().Hook(core.InstanceID(), hook.DoorID, hook.HookID, r.name), nil
+		return core.PathMaker().Hook(core.InstanceID(), hook.HookID, r.name), nil
 	default:
 		panic("internal error: unexpected resource mode")
 	}

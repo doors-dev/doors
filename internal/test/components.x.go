@@ -137,7 +137,7 @@ type Reporter struct {
 }
 
 func (r *Reporter) Update(ctx context.Context, i int, content string) {
-	r.reports[i].Update(ctx, ReportId(i, content))
+	r.reports[i].Inner(ctx, ReportId(i, content))
 }
 
 //line components.gox:67

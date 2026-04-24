@@ -78,7 +78,7 @@ type CounterView struct {
 elem (c *CounterView) Main() {
 	~{
 		c.counter.Sub(ctx, func(ctx context.Context, v int) bool {
-			c.body.Update(ctx, v)
+			c.body.Inner(ctx, v)
 			return false
 		})
 	}

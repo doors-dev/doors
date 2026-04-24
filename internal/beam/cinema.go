@@ -24,6 +24,7 @@ import (
 )
 
 type Door interface {
+	Runtime() shredder.Runtime
 	ReadFrame() shredder.Frame
 	Context() context.Context
 }
@@ -34,11 +35,10 @@ type parentScreen interface {
 
 type Cinema = *cinema
 
-func NewCinema(parent Cinema, door Door, runtime shredder.Runtime) Cinema {
+func NewCinema(parent Cinema, door Door) Cinema {
 	return &cinema{
-		parent:  parent,
-		door:    door,
-		runtime: runtime,
+		parent: parent,
+		door:   door,
 	}
 }
 
@@ -46,9 +46,12 @@ type cinema struct {
 	mu          sync.Mutex
 	parent      *cinema
 	door        Door
-	runtime     shredder.Runtime
 	screens     map[common.ID]*screen
 	removeGuard shredder.ReadStarveWriteThread
+}
+
+func (c Cinema) runtime() shredder.Runtime {
+	return c.door.Runtime()
 }
 
 func (c Cinema) ReadFrame() shredder.Frame {

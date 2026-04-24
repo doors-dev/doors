@@ -19,8 +19,8 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/doors-dev/doors/internal/door/pipe"
 	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/printer"
 )
 
 type reportHook uint64
@@ -46,10 +46,10 @@ const (
 
 type call struct {
 	ctx     context.Context
-	task    *taskNode
+	task    *userTask
 	kind    callKind
 	id      uint64
-	payload pipe.Payload
+	payload printer.Payload
 }
 
 func (n *call) Cancel() {
@@ -66,9 +66,6 @@ func (n *call) Result(_ json.RawMessage, err error) {
 }
 
 func (n *call) send(err error) {
-	if n.task == nil {
-		return
-	}
 	n.task.Report(err)
 }
 

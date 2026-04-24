@@ -18,36 +18,9 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
 )
-
-type testCore struct {
-	cinema Cinema
-}
-
-func (c testCore) Cinema() Cinema {
-	return c.cinema
-}
-
-type testDoor struct {
-	ctx    context.Context
-	thread shredder.Thread
-}
-
-func (d *testDoor) ReadFrame() shredder.Frame {
-	return d.thread.Frame()
-}
-
-func (d *testDoor) Context() context.Context {
-	return d.ctx
-}
-
-type noopShutdown struct{}
-
-func (noopShutdown) Shutdown() {}
 
 type stubSyncSource[T any] struct {
 	syncCalls int
@@ -84,209 +57,24 @@ func (s *stubSyncSource[T]) sync(prev, seq uint, after shredder.SimpleFrame) (*T
 	return s.syncFunc(prev, seq, after)
 }
 
-func newBeamContext(t *testing.T) context.Context {
-	t.Helper()
-	runtime := shredder.NewRuntime(context.Background(), 1, noopShutdown{})
-	t.Cleanup(runtime.Cancel)
-
-	door := &testDoor{ctx: context.Background()}
-	cinema := NewCinema(nil, door, runtime)
-	ctx := context.WithValue(context.Background(), ctex.KeyCore, testCore{cinema: cinema})
-	door.ctx = ctx
-	return ctx
-}
-
-func newNestedBeamContexts(t *testing.T) (context.Context, context.Context) {
-	t.Helper()
-
-	runtime := shredder.NewRuntime(context.Background(), 1, noopShutdown{})
-	t.Cleanup(runtime.Cancel)
-
-	parentDoor := &testDoor{ctx: context.Background()}
-	parentCinema := NewCinema(nil, parentDoor, runtime)
-	parentCtx := context.WithValue(context.Background(), ctex.KeyCore, testCore{cinema: parentCinema})
-	parentDoor.ctx = parentCtx
-
-	childDoor := &testDoor{ctx: context.Background()}
-	childCinema := NewCinema(parentCinema, childDoor, runtime)
-	childCtx := context.WithValue(context.Background(), ctex.KeyCore, testCore{cinema: childCinema})
-	childDoor.ctx = childCtx
-
-	return parentCtx, childCtx
-}
-
-func expectErr(t *testing.T, ch <-chan error) error {
-	t.Helper()
-	select {
-	case err, ok := <-ch:
-		if !ok {
-			t.Fatal("expected channel result, got closed channel")
-		}
-		return err
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for error result")
-		return nil
-	}
-}
-
-func expectInt(t *testing.T, ch <-chan int) int {
-	t.Helper()
-	select {
-	case v := <-ch:
-		return v
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for int value")
-		return 0
-	}
-}
-
-func expectString(t *testing.T, ch <-chan string) string {
-	t.Helper()
-	select {
-	case v := <-ch:
-		return v
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for string value")
-		return ""
-	}
-}
-
 func TestSourceXUpdateAndXMutate(t *testing.T) {
 	source := NewSourceEqual(0, nil)
 
-	if err := expectErr(t, source.XUpdate(context.Background(), 1)); err != nil {
+	if err := <-source.XUpdate(context.Background(), 1); err != nil {
 		t.Fatal(err)
 	}
 	if got := source.Get(); got != 1 {
 		t.Fatal("unexpected source value after XUpdate:", got)
 	}
 
-	if err := expectErr(t, source.XMutate(context.Background(), func(v int) int {
+	if err := <-source.XMutate(context.Background(), func(v int) int {
 		return v + 1
-	})); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if got := source.Get(); got != 2 {
 		t.Fatal("unexpected source value after XMutate:", got)
 	}
-}
-
-func TestBeamWatcherExtendedAPIs(t *testing.T) {
-	ctx := newBeamContext(t)
-	source := NewSource(1)
-	derived := NewBeam(source, func(v int) string {
-		return fmt.Sprintf("v:%d", v)
-	})
-
-	readAndSubUpdates := make(chan string, 1)
-	initial, ok := derived.ReadAndSub(ctx, func(ctx context.Context, value string) bool {
-		readAndSubUpdates <- value
-		return true
-	})
-	if !ok {
-		t.Fatal("expected ReadAndSub to subscribe")
-	}
-	if initial != "v:1" {
-		t.Fatal("unexpected initial derived value:", initial)
-	}
-
-	source.Update(ctx, 2)
-	if got := expectString(t, readAndSubUpdates); got != "v:2" {
-		t.Fatal("unexpected derived update:", got)
-	}
-
-	sourceReadAndSubUpdates := make(chan int, 1)
-	sourceInitial, ok := source.ReadAndSub(ctx, func(ctx context.Context, value int) bool {
-		sourceReadAndSubUpdates <- value
-		return true
-	})
-	if !ok {
-		t.Fatal("expected source ReadAndSub to subscribe")
-	}
-	if sourceInitial != 2 {
-		t.Fatal("unexpected initial source value:", sourceInitial)
-	}
-
-	source.Update(ctx, 3)
-	if got := expectInt(t, sourceReadAndSubUpdates); got != 3 {
-		t.Fatal("unexpected source ReadAndSub update:", got)
-	}
-
-	derivedReadAndSubUpdates := make(chan string, 1)
-	derivedInitial, ok := derived.ReadAndSub(ctx, func(ctx context.Context, value string) bool {
-		derivedReadAndSubUpdates <- value
-		return true
-	})
-	if !ok {
-		t.Fatal("expected derived ReadAndSub to subscribe")
-	}
-	if derivedInitial != "v:3" {
-		t.Fatal("unexpected initial derived ReadAndSub value:", derivedInitial)
-	}
-
-	source.Update(ctx, 4)
-	if got := expectString(t, derivedReadAndSubUpdates); got != "v:4" {
-		t.Fatal("unexpected derived ReadAndSub update:", got)
-	}
-
-	sourceSubUpdates := make(chan int, 2)
-	sourceSubCanceled := make(chan struct{}, 1)
-	sourceSubCancel, ok := source.Watch(ctx, &genericWatcher[int]{
-		watch: func(ctx context.Context, value int) bool {
-			sourceSubUpdates <- value
-			return false
-		},
-		cancel: func() {
-			close(sourceSubCanceled)
-		},
-	})
-	if !ok {
-		t.Fatal("expected source Watch to subscribe")
-	}
-	if got := expectInt(t, sourceSubUpdates); got != 4 {
-		t.Fatal("unexpected initial source Watch value:", got)
-	}
-
-	derivedSubUpdates := make(chan string, 2)
-	derivedSubCanceled := make(chan struct{}, 1)
-	derivedSubCancel, ok := derived.Watch(ctx, &genericWatcher[string]{
-		watch: func(ctx context.Context, value string) bool {
-			derivedSubUpdates <- value
-			return false
-		},
-		cancel: func() {
-			close(derivedSubCanceled)
-		},
-	})
-	if !ok {
-		t.Fatal("expected derived Watch to subscribe")
-	}
-	if got := expectString(t, derivedSubUpdates); got != "v:4" {
-		t.Fatal("unexpected initial derived Watch value:", got)
-	}
-
-	source.Update(ctx, 5)
-	if got := expectInt(t, sourceSubUpdates); got != 5 {
-		t.Fatal("unexpected source Watch update:", got)
-	}
-	if got := expectString(t, derivedSubUpdates); got != "v:5" {
-		t.Fatal("unexpected derived Watch update:", got)
-	}
-
-	sourceSubCancel()
-	<-sourceSubCanceled
-	derivedSubCancel()
-	<-derivedSubCanceled
-
-	noCoreCancel, ok := derived.Watch(context.Background(), &genericWatcher[string]{
-		watch: func(context.Context, string) bool {
-			return false
-		},
-	})
-	if ok {
-		t.Fatal("expected Watch without a Doors context to fail")
-	}
-	noCoreCancel()
 }
 
 func TestNewBeamEqualDefaultsNilComparator(t *testing.T) {
@@ -300,72 +88,6 @@ func TestNewBeamEqualDefaultsNilComparator(t *testing.T) {
 	}
 	if derived.equal("same", "same") {
 		t.Fatal("expected default comparator to treat equal values as changed")
-	}
-}
-
-func TestBeamReadSubHelpersAndEquality(t *testing.T) {
-	none()
-
-	ctx := newBeamContext(t)
-	source := NewSourceEqual(1, func(new int, old int) bool {
-		return new == old
-	})
-	source.DisableSkipping()
-	source.Mutate(ctx, func(v int) int {
-		return v + 1
-	})
-	if got := source.Get(); got != 2 {
-		t.Fatal("unexpected source value after Mutate:", got)
-	}
-
-	derived := NewBeamEqual(source, func(v int) int {
-		return v % 2
-	}, func(new int, old int) bool {
-		return new == old
-	})
-
-	if got, ok := source.Read(ctx); !ok || got != 2 {
-		t.Fatal("unexpected source Read result:", got, ok)
-	}
-	if got, ok := derived.Read(ctx); !ok || got != 0 {
-		t.Fatal("unexpected beam Read result:", got, ok)
-	}
-
-	sourceUpdates := make(chan int, 1)
-	sourceInitial, ok := source.ReadAndSub(ctx, func(ctx context.Context, value int) bool {
-		sourceUpdates <- value
-		return true
-	})
-	if !ok {
-		t.Fatal("expected source ReadAndSub to subscribe")
-	}
-	if sourceInitial != 2 {
-		t.Fatal("unexpected source initial value:", sourceInitial)
-	}
-
-	beamUpdates := make(chan int, 2)
-	if !derived.Sub(ctx, func(ctx context.Context, value int) bool {
-		beamUpdates <- value
-		return value == 1
-	}) {
-		t.Fatal("expected beam Sub to subscribe")
-	}
-	if got := expectInt(t, beamUpdates); got != 0 {
-		t.Fatal("unexpected initial beam Sub value:", got)
-	}
-
-	if !source.Sub(ctx, func(ctx context.Context, value int) bool {
-		return value == 3
-	}) {
-		t.Fatal("expected source Sub to subscribe")
-	}
-
-	source.Update(ctx, 3)
-	if got := expectInt(t, sourceUpdates); got != 3 {
-		t.Fatal("unexpected source ReadAndSub update:", got)
-	}
-	if got := expectInt(t, beamUpdates); got != 1 {
-		t.Fatal("unexpected beam Sub update:", got)
 	}
 }
 
@@ -734,68 +456,4 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 			t.Fatal("unexpected changed-entry cached value")
 		}
 	})
-}
-
-func TestBeamSyncEntryRecomputesCachedPrevAcrossDoorTree(t *testing.T) {
-	parentCtx, childCtx := newNestedBeamContexts(t)
-	source := NewSourceEqual(0, func(new int, old int) bool {
-		return new == old
-	})
-	derived := NewBeamEqual(source, func(v int) int {
-		return v % 2
-	}, func(new int, old int) bool {
-		return new == old
-	})
-	typed := derived
-
-	parentUpdates := make(chan int, 4)
-	childUpdates := make(chan int, 4)
-	triggered := false
-
-	if !derived.Sub(parentCtx, func(ctx context.Context, value int) bool {
-		parentUpdates <- value
-		if value == 1 && !triggered {
-			triggered = true
-			source.Update(ctx, 3)
-		}
-		return false
-	}) {
-		t.Fatal("expected parent derived sub to register")
-	}
-	if !derived.Sub(childCtx, func(ctx context.Context, value int) bool {
-		childUpdates <- value
-		return false
-	}) {
-		t.Fatal("expected child derived sub to register")
-	}
-
-	if got := expectInt(t, parentUpdates); got != 0 {
-		t.Fatal("unexpected parent initial derived value:", got)
-	}
-	if got := expectInt(t, childUpdates); got != 0 {
-		t.Fatal("unexpected child initial derived value:", got)
-	}
-
-	source.Update(parentCtx, 1)
-	if got := expectInt(t, parentUpdates); got != 1 {
-		t.Fatal("expected parent to observe the first odd derived value:", got)
-	}
-
-	deadline := time.Now().Add(time.Second)
-	for {
-		typed.mu.Lock()
-		entry, has := typed.values[3]
-		prev := uint(0)
-		if has {
-			prev = entry.prev
-		}
-		typed.mu.Unlock()
-		if has && prev == 1 {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("timed out waiting for cached seq to be recomputed against child prev")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 }

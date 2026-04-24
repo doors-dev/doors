@@ -251,13 +251,26 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.Click(t, page, "#updateEmpty")
 	test.TestMustNot(t, page, "#presist")
 	test.TestMust(t, page, "#new")
+	test.Click(t, page, "#updateInner")
+	test.TestMust(t, page, "#new")
+	test.TestMust(t, page, "#inner-maintained")
+	test.Click(t, page, "#updateEditor")
+	test.TestMust(t, page, "#new")
+	test.TestMust(t, page, "#inner-maintained")
+	test.Click(t, page, "#updateEmptyAlt")
+	test.TestMustNot(t, page, "#new")
+	test.TestMust(t, page, "#new-alt")
+	test.TestMust(t, page, "#inner-maintained")
 	test.Click(t, page, "#updateContent")
+	test.TestMustNot(t, page, "#inner-maintained")
+	test.TestMustNot(t, page, "#new-alt")
 	test.TestMustNot(t, page, "#new")
 	test.TestMustNot(t, page, "#presist")
 	test.TestMust(t, page, "#presist2")
 	test.TestMust(t, page, "#new2")
 
 	test.Click(t, page, "#updateEditor")
+	test.TestMustNot(t, page, "#inner-maintained")
 	test.TestMust(t, page, "#presist2")
 	test.TestMust(t, page, "#new2")
 
@@ -292,6 +305,28 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.TestMustNot(t, page, "#presist2")
 
 	test.Click(t, page, "#updateEditor")
+	test.TestMust(t, page, "#new2")
+	test.TestMust(t, page, "#presist2")
+
+	test.Click(t, page, "#updateOuter")
+	test.TestMustNot(t, page, "#new2")
+	test.TestMustNot(t, page, "#presist2")
+	test.TestMust(t, page, "#outer-root")
+	test.TestMust(t, page, "#outer-presist")
+
+	test.Click(t, page, "#updateEditor")
+	test.TestMust(t, page, "#outer-root")
+	test.TestMust(t, page, "#outer-presist")
+
+	test.Click(t, page, "#replaceStatic")
+	test.TestMustNot(t, page, "#outer-root")
+	test.TestMust(t, page, "#static-presist")
+
+	test.Click(t, page, "#updateEditor")
+	test.TestMust(t, page, "#static-presist")
+
+	test.Click(t, page, "#updateContent")
+	test.TestMustNot(t, page, "#static-presist")
 	test.TestMust(t, page, "#new2")
 	test.TestMust(t, page, "#presist2")
 }
@@ -406,7 +441,7 @@ func TestDoorXReloadFromRootReturnsError(t *testing.T) {
 	defer page.Close()
 
 	test.Click(t, page, "#root-xreload")
-	test.TestReport(t, page, "channel err: Root can't be reloaded")
+	test.TestReport(t, page, "channel err: root door cannot be reloaded")
 }
 
 func TestDoorDetachedReplaceTransitions(t *testing.T) {
@@ -424,7 +459,7 @@ func TestDoorDetachedReplaceTransitions(t *testing.T) {
 	test.TestMust(t, page, "#replace-detached")
 
 	test.Click(t, page, "#reload-after-replace")
-	test.TestReport(t, page, "channel err: replaced door can't be reloaded")
+	test.TestReport(t, page, "channel closed")
 
 	test.Click(t, page, "#update-after-replace")
 	test.TestReport(t, page, "channel closed")
@@ -449,7 +484,7 @@ func TestDoorDetachedUnmountRebaseTransitions(t *testing.T) {
 	test.TestMustNot(t, page, "#rebase-base")
 
 	test.Click(t, page, "#reload-after-unmount")
-	test.TestReport(t, page, "channel err: unmounted door can't be reloaded")
+	test.TestReport(t, page, "channel closed")
 
 	test.Click(t, page, "#rebase-after-unmount")
 	test.TestReport(t, page, "channel closed")

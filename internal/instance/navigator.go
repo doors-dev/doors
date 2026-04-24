@@ -135,7 +135,8 @@ func (n *navigator[M]) push(ctx context.Context, l path.Location) {
 }
 
 func (n *navigator[M]) call(path string, seq int, replace bool) {
-	n.inst.CallCheck(
+	n.inst.UserCall(
+		context.Background(),
 		func() bool {
 			n.mu.Lock()
 			defer n.mu.Unlock()

@@ -85,9 +85,8 @@ export class HookErr extends Error {
 	badRequest() { return this.kind === hookErrKinds.bad_request; }
 }
 export function capture(name: string, opt: any, arg: any, event: Event | undefined, hook: any): Promise<Response> {
-	const [doorId, hookId, scopeQueue, indicator, before] = hook
+	const [hookId, scopeQueue, indicator, before, onErr] = hook
 	const h = new Hook({
-		doorId,
 		hookId,
 		event: event,
 		scopeQueue,
@@ -107,6 +106,7 @@ export function attach(parent: Element | DocumentFragment | Document) {
 				try {
 					await capture(name, opt, e, e, hook)
 				} catch (error: any) {
+					const onErr = hook[4] as Array<Action>
 					if (!(error instanceof HookErr)) {
 						console.error("unknown error in capture:", error)
 						return
@@ -118,7 +118,6 @@ export function attach(parent: Element | DocumentFragment | Document) {
 						ctrl.gone()
 						return
 					}
-					const onErr = hook[5] as Array<Action>
 					if (!onErr || onErr.length == 0) {
 						console.error("capture execution error", error)
 						return

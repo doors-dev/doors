@@ -35,11 +35,18 @@ func (s *sliceWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+type Payload interface {
+	Payload() action.Payload
+	Release()
+}
+
 type PayloadPrinter struct {
 	buf     sliceWriter
 	gzip    *gzip.Writer
 	printer gox.Printer
 }
+
+var _ Payload = (*PayloadPrinter)(nil)
 
 func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
 	b := &PayloadPrinter{

@@ -62,7 +62,7 @@ elem (f *BeamDeriveFragment) Main() {
 		~(f.content())
 	</>
 	~(test.Button("reload", func(ctx context.Context) bool {
-		f.n.Update(ctx, f.content())
+		f.n.Inner(ctx, f.content())
 		return true
 	}))
 }
@@ -97,7 +97,7 @@ elem (f *BeamDeriveFragment) content() {
 		~{
 			n3 := doors.Door{}
 			d.Sub(ctx, func(ctx context.Context, s int) bool {
-				n3.Update(ctx, test.ReportId(4, fmt.Sprint(s)))
+				n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s)))
 				return false
 			})
 		}
@@ -150,7 +150,7 @@ elem (f *BeamConsistentFragment) content() {
 		~{
 			n3 := doors.Door{}
 			f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-				n3.Update(ctx, test.ReportId(4, fmt.Sprint(s.Int)))
+				n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s.Int)))
 				return false
 			})
 		}
@@ -293,16 +293,16 @@ elem (f *BeamRenderBranchUpdateFrameFragment) content(i int) {
 }
 
 elem (f *BeamRenderBranchUpdateFrameFragment) Main() {
+	~(&f.n)
 	~{
 		f.b.ReadAndSub(ctx, func(ctx context.Context, i int) bool {
-			f.n.Update(ctx, f.content(i))
+			f.n.Inner(ctx, f.content(i))
 			return true
 		})
 		f.b.Mutate(ctx, func(i int) int {
 			return i + 1
 		})
 	}
-	~(&f.n)
 }
 
 type BeamRenderBranchInitFrameFragment struct {
@@ -327,7 +327,7 @@ elem (f *BeamRenderBranchInitFrameFragment) Main() {
 	~{
 		go func() {
 			f.b.Sub(ctx, func(ctx context.Context, i int) bool {
-				f.n.Update(ctx, f.content(i))
+				f.n.Inner(ctx, f.content(i))
 				return true
 			})
 		}()
@@ -345,7 +345,7 @@ elem (f *BeamRenderUpdateWarningFragment) content() {
 		n3 := doors.Door{}
 		_, _ = f.b.Read(ctx)
 		f.b.Sub(ctx, func(ctx context.Context, i int) bool {
-			n3.Update(ctx, test.ReportId(4, fmt.Sprint(i)))
+			n3.Inner(ctx, test.ReportId(4, fmt.Sprint(i)))
 			return false
 		})
 	}
@@ -383,7 +383,7 @@ elem (f *BeamEffectSourceFragment) innerContent() {
 elem (f *BeamEffectSourceFragment) outerContent() {
 	~{
 		f.outerRenders++
-		f.host.Update(ctx, f.innerContent())
+		f.host.Inner(ctx, f.innerContent())
 	}
 	<div id="effect-source-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
 	~(&f.host)
@@ -391,7 +391,7 @@ elem (f *BeamEffectSourceFragment) outerContent() {
 
 elem (f *BeamEffectSourceFragment) Main() {
 	~{
-		f.frame.Update(ctx, f.outerContent())
+		f.frame.Inner(ctx, f.outerContent())
 	}
 	~(&f.frame)
 	~(test.Button("effect-source-update-1", func(ctx context.Context) bool {
@@ -426,7 +426,7 @@ elem (f *BeamEffectDerivedFragment) innerContent() {
 elem (f *BeamEffectDerivedFragment) outerContent() {
 	~{
 		f.outerRenders++
-		f.host.Update(ctx, f.innerContent())
+		f.host.Inner(ctx, f.innerContent())
 	}
 	<div id="effect-derived-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
 	~(&f.host)
@@ -439,7 +439,7 @@ elem (f *BeamEffectDerivedFragment) Main() {
 				return fmt.Sprintf("v:%d", v)
 			})
 		}
-		f.frame.Update(ctx, f.outerContent())
+		f.frame.Inner(ctx, f.outerContent())
 	}
 	~(&f.frame)
 	~(test.Button("effect-derived-update-1", func(ctx context.Context) bool {
@@ -476,7 +476,7 @@ elem (f *BeamEffectMultiFragment) innerContent() {
 elem (f *BeamEffectMultiFragment) outerContent() {
 	~{
 		f.outerRenders++
-		f.host.Update(ctx, f.innerContent())
+		f.host.Inner(ctx, f.innerContent())
 	}
 	<div id="effect-multi-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
 	~(&f.host)
@@ -484,7 +484,7 @@ elem (f *BeamEffectMultiFragment) outerContent() {
 
 elem (f *BeamEffectMultiFragment) Main() {
 	~{
-		f.frame.Update(ctx, f.outerContent())
+		f.frame.Inner(ctx, f.outerContent())
 	}
 	~(&f.frame)
 	~(test.Button("effect-multi-left-update", func(ctx context.Context) bool {
@@ -520,7 +520,7 @@ elem (f *BeamEffectDuplicateFragment) innerContent() {
 elem (f *BeamEffectDuplicateFragment) outerContent() {
 	~{
 		f.outerRenders++
-		f.host.Update(ctx, f.innerContent())
+		f.host.Inner(ctx, f.innerContent())
 	}
 	<div id="effect-dup-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
 	~(&f.host)
@@ -528,11 +528,82 @@ elem (f *BeamEffectDuplicateFragment) outerContent() {
 
 elem (f *BeamEffectDuplicateFragment) Main() {
 	~{
-		f.frame.Update(ctx, f.outerContent())
+		f.frame.Inner(ctx, f.outerContent())
 	}
 	~(&f.frame)
 	~(test.Button("effect-dup-update", func(ctx context.Context) bool {
 		f.b.Update(ctx, 1)
 		return false
 	}))
+}
+
+type BeamReadAndSubFragment struct {
+	source doors.Source[int]
+	derived doors.Beam[string]
+	r *test.Reporter
+	derivedRegistered bool
+	sourceRegistered bool
+	derived2Registered bool
+	test.NoBeam
+}
+
+elem (f *BeamReadAndSubFragment) Main() {
+	~{
+		if f.derived == nil {
+			f.derived = doors.NewBeam(f.source, func(v int) string {
+				return fmt.Sprintf("v:%d", v)
+			})
+		}
+		if !f.derivedRegistered {
+			initial, ok := f.derived.ReadAndSub(ctx, func(ctx context.Context, value string) bool {
+				f.r.Update(ctx, 1, value)
+				return true
+			})
+			if ok {
+				f.r.Update(ctx, 0, initial)
+				f.derivedRegistered = true
+			}
+		}
+	}
+	~(test.Button("beam-read-sub-update-2", func(ctx context.Context) bool {
+		f.source.Update(ctx, 2)
+		return false
+	}))
+	~(test.Button("beam-read-sub-register-source", func(ctx context.Context) bool {
+		if f.sourceRegistered {
+			return false
+		}
+		initial, ok := f.source.ReadAndSub(ctx, func(ctx context.Context, value int) bool {
+			f.r.Update(ctx, 3, fmt.Sprint(value))
+			return true
+		})
+		if ok {
+			f.r.Update(ctx, 2, fmt.Sprint(initial))
+			f.sourceRegistered = true
+		}
+		return false
+	}))
+	~(test.Button("beam-read-sub-update-3", func(ctx context.Context) bool {
+		f.source.Update(ctx, 3)
+		return false
+	}))
+	~(test.Button("beam-read-sub-register-derived-2", func(ctx context.Context) bool {
+		if f.derived2Registered {
+			return false
+		}
+		initial, ok := f.derived.ReadAndSub(ctx, func(ctx context.Context, value string) bool {
+			f.r.Update(ctx, 5, value)
+			return true
+		})
+		if ok {
+			f.r.Update(ctx, 4, initial)
+			f.derived2Registered = true
+		}
+		return false
+	}))
+	~(test.Button("beam-read-sub-update-4", func(ctx context.Context) bool {
+		f.source.Update(ctx, 4)
+		return false
+	}))
+	~(f.r)
 }

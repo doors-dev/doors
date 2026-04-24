@@ -25,7 +25,7 @@ type Frames struct {
 	sync  shredder.Frame
 }
 
-func (f Frames) Send() shredder.SimpleFrame {
+func (f Frames) Call() shredder.SimpleFrame {
 	if f.after == nil {
 		return shredder.FreeFrame{}
 	}

@@ -34,7 +34,6 @@ export class Hook {
 	private indicatorId_: number | undefined = undefined
 	private track_: number | undefined = undefined
 	constructor(private params_: {
-		doorId: number,
 		hookId: number,
 		event?: Event,
 		scopeQueue: Array<ScopeSet>,
@@ -96,7 +95,7 @@ export class Hook {
 		this.track_ = runtime.hookRegister(this)
 		const track = this.track_
 		this.actions(this.params_.before).then(() => {
-			fetch(`${prefix}/h/${id}/${this.params_.doorId}/${this.params_.hookId}?t=${track}`, {
+			fetch(`${prefix}/h/${id}/${this.params_.hookId}?t=${track}`, {
 				method: "POST",
 				signal: this.abortTimer_!.signal,
 				...this.fetch_,

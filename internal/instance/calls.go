@@ -23,29 +23,11 @@ import (
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
-func (c *Instance[M]) CallCtx(ctx context.Context, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) context.CancelFunc {
-	if ctx.Err() != nil {
-		if onCancel != nil {
-			onCancel()
-		}
-		return func() {}
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	call := &ctxCall{
+func (c *Instance[M]) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+	call := &call{
 		ctx:      ctx,
 		action:   action,
-		onResult: onResult,
-		onCancel: onCancel,
-		params:   params,
-	}
-	c.solitaire.Call(call)
-	return cancel
-}
-
-func (c *Instance[M]) CallCheck(check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
-	call := &checkCall{
 		check:    check,
-		action:   action,
 		onResult: onResult,
 		onCancel: onCancel,
 		params:   params,
@@ -96,33 +78,41 @@ func (c *checkCall) Result(r json.RawMessage, err error) {
 	c.onResult(r, err)
 }
 
-type ctxCall struct {
+type call struct {
 	ctx      context.Context
+	check    func() bool
 	action   action.Action
 	onResult func(json.RawMessage, error)
 	onCancel func()
 	params   action.CallParams
 }
 
-func (c *ctxCall) Params() action.CallParams {
+func (c *call) Params() action.CallParams {
 	return c.params
 }
 
-func (c *ctxCall) Action() (action.Action, bool) {
-	if c.ctx.Err() != nil {
+func (c *call) canceled() bool {
+	if c.check != nil {
+		return !c.check()
+	}
+	return c.ctx.Err() != nil
+}
+
+func (c *call) Action() (action.Action, bool) {
+	if c.canceled() {
 		return nil, false
 	}
 	return c.action, true
 }
 
-func (c ctxCall) Cancel() {
+func (c call) Cancel() {
 	if c.onCancel == nil {
 		return
 	}
 	c.onCancel()
 }
 
-func (c *ctxCall) Result(r json.RawMessage, err error) {
+func (c *call) Result(r json.RawMessage, err error) {
 	if err != nil {
 		slog.Error("Call failed", "action", c.action.Log(), "error", err)
 	}

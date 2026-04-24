@@ -4,7 +4,7 @@ Actions are client-side effects triggered from Go.
 
 Use them when the browser should do something imperative instead of just rendering different HTML.
 
-For example call a JavaScript handler, registered with `$on(...)`
+For example, call a JavaScript handler registered with `$on(...)`.
 
 > If the UI should simply render different content, prefer normal rendering.
 > If one attribute should stay shared across existing elements, `AShared` from [Shared Attr](./17-shared-attr.md) is often a better fit than an action.
@@ -36,11 +36,10 @@ doors.Call(ctx, doors.ActionLocationReload{})
 Use `doors.XCall[T]` when the client handler should return a value to Go.
 
 ```go
-ch, cancel := doors.XCall[string](ctx, doors.ActionEmit{
+ch := doors.XCall[string](ctx, doors.ActionEmit{
 	Name: "pick",
 	Arg:  "hello",
 })
-defer cancel()
 
 res, ok := <-ch
 if ok && res.Err == nil {
@@ -58,9 +57,7 @@ in your own goroutine with `doors.Free(ctx)`.
 If the work should outlive that owner, use `doors.FreeRoot(ctx)` instead. It
 switches to the root Doors context and the instance runtime lifecycle.
 
-Cancellation is best-effort.
-
-If a direct `XCall` is canceled, its channel closes without a value.
+Canceling `ctx` requests best-effort cancellation. If a direct `XCall` is canceled, its channel closes without a value.
 
 For most actions, use `json.RawMessage` as `T`.
 

@@ -39,7 +39,7 @@ type AnyInstance interface {
 	ID() string
 	Serve(http.ResponseWriter, *http.Request) error
 	RestorePath(path.Location) bool
-	TriggerHook(uint64, uint64, http.ResponseWriter, *http.Request, uint64) bool
+	TriggerHook(uint64, http.ResponseWriter, *http.Request, uint64) bool
 	Connect(w http.ResponseWriter, r *http.Request)
 	SetStatus(int)
 	InstanceEnd()
@@ -102,7 +102,7 @@ type Instance[M any] struct {
 func (inst *Instance[M]) init() error {
 	ok := inst.state.CompareAndSwap(initial, active)
 	if !ok {
-		return errors.New("Instance already started or was killed")
+		return errors.New("instance has already started or stopped")
 	}
 	ctx := context.WithValue(context.Background(), ctex.KeySessionStore, inst.session.store)
 	ctx = context.WithValue(ctx, ctex.KeyInstanceStore, inst.store)
@@ -204,16 +204,16 @@ func (inst *Instance[M]) Runtime() shredder.Runtime {
 	return inst.runtime
 }
 
-func (inst *Instance[M]) TriggerHook(doorID uint64, hookID uint64, w http.ResponseWriter, r *http.Request, track uint64) (ok bool) {
-	defer func() {
-		if ok {
-			inst.Touch()
-		}
-	}()
+func (inst *Instance[M]) TriggerHook(hookID uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
 	if inst.state.Load() != active {
 		return false
 	}
-	return inst.root.TriggerHook(doorID, hookID, w, r, track)
+	ok := inst.root.TriggerHook(hookID, w, r, track)
+	if ok {
+		inst.Touch()
+	}
+	return ok
+
 }
 
 func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {

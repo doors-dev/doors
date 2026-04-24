@@ -54,6 +54,8 @@ func (t *titleInstance) CallCtx(context.Context, action.Action, func(json.RawMes
 }
 func (t *titleInstance) CallCheck(func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
 }
+func (t *titleInstance) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+}
 func (t *titleInstance) CSPCollector() *common.CSPCollector {
 	if t.csp != nil {
 		return t.csp
@@ -99,6 +101,8 @@ func (titleDoor) XReload(context.Context) <-chan error {
 func (titleDoor) RootCore() core.Core {
 	return nil
 }
+func (titleDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+}
 
 type testMetaUpdate struct {
 	name     string
@@ -130,7 +134,7 @@ func (d *hookDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http
 		return core.Hook{}, false
 	}
 	d.nextHook++
-	return core.Hook{DoorID: d.id, HookID: d.nextHook}, true
+	return core.Hook{HookID: d.nextHook}, true
 }
 
 func (d *hookDoor) ID() uint64             { return d.id }
@@ -142,6 +146,8 @@ func (d *hookDoor) XReload(context.Context) <-chan error {
 }
 func (d *hookDoor) RootCore() core.Core {
 	return nil
+}
+func (d *hookDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
 }
 
 func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstance, *hookDoor, *testModuleRegistry) {
@@ -421,7 +427,7 @@ func TestScanGenericSrcBranches(t *testing.T) {
 		if err := rp.scanGenericSrc(job); err != nil {
 			t.Fatal(err)
 		}
-		if got := out.String(); !strings.Contains(got, `/h/instance/7/1`) {
+		if got := out.String(); !strings.Contains(got, `/h/instance/1`) {
 			t.Fatalf("expected hook path, got %q", got)
 		}
 	})
@@ -815,7 +821,7 @@ func TestResourcePrinterScanAndModulePreloadBranches(t *testing.T) {
 		if err := rp.scan(gox.NewJobHeadOpen(ctx, 2, gox.KindVoid, "link", attrs)); err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(out.String(), `/h/instance/7/1`) {
+		if !strings.Contains(out.String(), `/h/instance/1`) {
 			t.Fatalf("expected generic link hook path, got %q", out.String())
 		}
 	})

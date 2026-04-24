@@ -81,7 +81,7 @@ func (s *styleProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 		if !ok {
 			return context.Canceled
 		}
-		path := core.PathMaker().Hook(core.InstanceID(), hook.DoorID, hook.HookID, s.name)
+		path := core.PathMaker().Hook(core.InstanceID(), hook.HookID, s.name)
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	default:

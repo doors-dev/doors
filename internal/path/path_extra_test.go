@@ -203,14 +203,14 @@ func TestPathMakerAndMatch(t *testing.T) {
 		t.Fatalf("expected empty server id to normalize to 0, got %q", zero.ID())
 	}
 
-	hookPath := pm.Hook("inst1", 10, 20, "file.txt")
+	hookPath := pm.Hook("inst1", 20, "file.txt")
 	req := httptest.NewRequest("GET", hookPath+"?t=7", nil)
 	match, ok := pm.Match(req)
 	if !ok {
 		t.Fatal("expected hook path to match")
 	}
 	hook, ok := match.Hook()
-	if !ok || hook.Instance != "inst1" || hook.Door != 10 || hook.Hook != 20 || hook.Track != 7 {
+	if !ok || hook.Instance != "inst1" || hook.Hook != 20 || hook.Track != 7 {
 		t.Fatalf("unexpected hook match: %#v", hook)
 	}
 

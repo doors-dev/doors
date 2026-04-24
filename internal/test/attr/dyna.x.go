@@ -181,7 +181,7 @@ func (f *dynaFragment) Main() gox.Elem {
 //line dyna.gox:65
 		__e = (doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			f.n.Clear(ctx)
+			f.n.Inner(ctx, nil)
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -198,7 +198,7 @@ func (f *dynaFragment) Main() gox.Elem {
 //line dyna.gox:71
 		__e = (doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			f.n.Update(ctx, f.content(da1, da2))
+			f.n.Inner(ctx, f.content(da1, da2))
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -215,7 +215,7 @@ func (f *dynaFragment) Main() gox.Elem {
 //line dyna.gox:77
 		__e = (doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			f.n.Replace(ctx, f.content(da1, da2))
+			f.n.Static(ctx, f.content(da1, da2))
 			return true
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {

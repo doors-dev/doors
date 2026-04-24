@@ -308,8 +308,22 @@ func testScriptFetchExact(t *testing.T, h func(doors.Source[test.Path]) gox.Elem
 
 func testRenderError(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	t.Helper()
-	page := emptyPage(t, h)
-	test.TestMust(t, page, `[data-fw="error"]`)
+	bro := test.NewBro(browser,
+		func(r doors.Router) {
+			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
+				return doors.ResponseComp(&test.Page{
+					Source: r,
+					Header: "Testing Imports",
+					H:      h,
+					F:      &Empty{},
+				})
+			})
+			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
+		},
+	)
+	t.Cleanup(func() { bro.Close() })
+	page := bro.PageStatus(t, "/", http.StatusInternalServerError)
+	t.Cleanup(func() { page.Close() })
 }
 
 func fetchPageCSPHeader(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, csp doors.CSP) string {
@@ -835,9 +849,8 @@ func TestFileCachedBad(t *testing.T) {
 		},
 	)
 	defer bro.Close()
-	page := bro.Page(t, "/")
+	page := bro.PageStatus(t, "/", http.StatusInternalServerError)
 	defer page.Close()
-	test.TestMust(t, page, `[data-fw="error"]`)
 }
 
 func TestFileHandlerTypeBad(t *testing.T) {

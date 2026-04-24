@@ -113,7 +113,8 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 	if !initialized {
 		return
 	}
-	core.CallCheck(
+	core.Call(
+		ctx,
 		func() bool {
 			return a.check(seq)
 		},
@@ -159,7 +160,8 @@ func (a AShared) Update(ctx context.Context, value string) {
 		return
 	}
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	core.CallCheck(
+	core.Call(
+		ctx,
 		func() bool {
 			return a.check(seq)
 		},

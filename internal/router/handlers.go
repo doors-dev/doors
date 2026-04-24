@@ -27,7 +27,7 @@ import (
 	"github.com/doors-dev/doors/internal/router/model"
 )
 
-func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceID string, doorID uint64, hookID uint64, track uint64) {
+func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceID string, hookID uint64, track uint64) {
 	ses := rr.getSession(w, r)
 	if ses == nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -38,7 +38,7 @@ func (rr *Router) serveHook(w http.ResponseWriter, r *http.Request, instanceID s
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	found = inst.TriggerHook(doorID, hookID, w, r, track)
+	found = inst.TriggerHook(hookID, w, r, track)
 	if !found {
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -74,7 +74,7 @@ func (rr *Router) restoreLocation(w http.ResponseWriter, r *http.Request, instId
 func (rr *Router) serveModelRedirect(w http.ResponseWriter, r *http.Request, s *instance.Session, l path.Location, model any, status int) {
 	location, err := rr.modelAdapters.Encode(model)
 	if err != nil {
-		err := errors.New("Adapter encoding error: " + err.Error())
+		err := errors.New("adapter encoding failed: " + err.Error())
 		slog.Error("page routing error", "path", r.URL.Path, "error", err)
 		rr.serveError(w, r, s, l, err)
 		return
@@ -110,8 +110,8 @@ func (rr *Router) tryServePage(w http.ResponseWriter, r *http.Request) bool {
 main:
 	counter += 1
 	if counter > 64 {
-		slog.Error("page routing error", "path", r.URL.Path, "error", "reroute loop")
-		rr.serveError(w, r, ses, loc, errors.New("rerouting loop"))
+		slog.Error("page routing error", "path", r.URL.Path, "error", "routing loop detected")
+		rr.serveError(w, r, ses, loc, errors.New("routing loop detected"))
 		return true
 	}
 	for _, route := range rr.modelRoutes {
@@ -196,7 +196,7 @@ func (rr *Router) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	if hook, ok := match.Hook(); ok {
-		rr.serveHook(w, r, hook.Instance, hook.Door, hook.Hook, hook.Track)
+		rr.serveHook(w, r, hook.Instance, hook.Hook, hook.Track)
 		return true
 	}
 

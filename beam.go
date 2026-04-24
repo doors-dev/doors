@@ -36,7 +36,7 @@ type Beam[T any] interface {
 	// when the value changes.
 	Effect(ctx context.Context) (T, bool)
 
-	Bind(func(T) gox.Elem) gox.Editor
+	Bind(func(T) gox.Elem) gox.EditorComp
 
 	// Sub subscribes to the value stream. onValue is called immediately with the
 	// current value in the same goroutine, and again on every update.
@@ -153,7 +153,7 @@ func (s sourceBeam[T]) Effect(ctx context.Context) (T, bool) {
 	return effect(s, ctx)
 }
 
-func (s sourceBeam[T]) Bind(f func(T) gox.Elem) gox.Editor {
+func (s sourceBeam[T]) Bind(f func(T) gox.Elem) gox.EditorComp {
 	return bind(s, f)
 }
 
@@ -189,7 +189,7 @@ type derivedBeam[T1, T2 any] struct {
 	*beam.DerivedBeam[T1, T2]
 }
 
-func (b derivedBeam[T1, T2]) Bind(f func(T2) gox.Elem) gox.Editor {
+func (b derivedBeam[T1, T2]) Bind(f func(T2) gox.Elem) gox.EditorComp {
 	return bind(b, f)
 }
 
@@ -208,14 +208,13 @@ func effect[T any](b Beam[T], ctx context.Context) (T, bool) {
 	})
 }
 
-func bind[T any](b Beam[T], f func(T) gox.Elem) gox.Editor {
+func bind[T any](b Beam[T], f func(T) gox.Elem) gox.EditorComp {
 	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		door := &Door{}
 		ok := b.Sub(cur.Context(), func(ctx context.Context, v T) bool {
-			door.Update(ctx, gox.Elem(func(cur gox.Cursor) error {
+			door.Outer(ctx, gox.Elem(func(cur gox.Cursor) error {
 				el := f(v)
 				if el == nil {
-					door.Clear(ctx)
 					return nil
 				}
 				return el(cur)

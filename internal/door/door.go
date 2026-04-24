@@ -23,170 +23,139 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// Door is a dynamic fragment placeholder that can be rendered and then updated
-// over time.
 type Door struct {
 	node atomic.Pointer[node]
 }
 
-// Proxy renders d as a proxy around elem.
-func (d *Door) Proxy(cur gox.Cursor, elem gox.Elem) error {
-	node := &node{
-		ctx:  cur.Context(),
-		door: d,
-		entity: &proxyNode{
-			elem: elem,
-		},
+func (d *Door) proxy(p *pipe, el gox.Elem) {
+	task := nodeProxy{
+		pipe:   p,
+		buffer: p.branch(),
+		el:     el,
 	}
-	d.takeover(node, shredder.FreeFrame{})
-	return cur.Send(node)
+	d.schedule(task, p.renderFrame)
 }
 
-// Edit renders d as an editable dynamic container.
-func (d *Door) Edit(cur gox.Cursor) error {
-	node := &node{
-		ctx:    cur.Context(),
-		door:   d,
-		entity: &editorNode{},
+func (d *Door) render(p *pipe) {
+	task := nodeRender{
+		pipe:   p,
+		buffer: p.branch(),
 	}
-	d.takeover(node, shredder.FreeFrame{})
-	return cur.Send(node)
+	d.schedule(task, p.renderFrame)
 }
 
-// Main returns d as a [gox.Elem].
-func (d *Door) Main() gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		return d.Edit(cur)
-	})
+func (d *Door) outer(ctx context.Context, outer gox.Elem) <-chan error {
+	ctex.LogCanceled(ctx, "Door outer")
+	userTask, ch := newUserTask(ctx)
+	task := nodeOuter{
+		userTask: userTask,
+		outer:    outer,
+	}
+	d.schedule(task, userTask.JoinedFrame())
+	return ch
 }
 
-func (d *Door) rebase(ctx context.Context, el gox.Elem) <-chan error {
-	ctex.LogCanceled(ctx, "Door rebase")
-	task, ch := newTaskNode(ctx)
-	node := &node{
-		ctx:  ctx,
-		door: d,
-		entity: &rebaseNode{
-			taskNode: task,
-			elem:     el,
-		},
+func (d *Door) inner(ctx context.Context, content any) <-chan error {
+	ctex.LogCanceled(ctx, "Door inner")
+	userTask, ch := newUserTask(ctx)
+	task := nodeInner{
+		userTask: userTask,
+		content:  content,
 	}
-	d.takeover(node, task.ContextJoinedFrame())
+	d.schedule(task, userTask.JoinedFrame())
+	return ch
+}
+
+func (d *Door) static(ctx context.Context, content any) <-chan error {
+	ctex.LogCanceled(ctx, "Door static")
+	userTask, ch := newUserTask(ctx)
+	task := nodeStatic{
+		userTask: userTask,
+		content:  content,
+	}
+	d.schedule(task, userTask.JoinedFrame())
 	return ch
 }
 
 func (d *Door) unmount(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door unmount")
-	task, ch := newTaskNode(ctx)
-	node := &node{
-		ctx:  ctx,
-		door: d,
-		entity: &unmountNode{
-			taskNode: task,
-			remove:   true,
-		},
+	userTask, ch := newUserTask(ctx)
+	task := nodeUnmount{
+		userTask: userTask,
 	}
-	d.takeover(node, task.ContextJoinedFrame())
-	return ch
-}
-
-func (d *Door) update(ctx context.Context, content any) <-chan error {
-	ctex.LogCanceled(ctx, "Door update")
-	task, ch := newTaskNode(ctx)
-	node := &node{
-		ctx:  ctx,
-		door: d,
-		entity: &updateNode{
-			taskNode: task,
-			content:  content,
-		},
-	}
-	d.takeover(node, task.ContextJoinedFrame())
+	d.schedule(task, userTask.JoinedFrame())
 	return ch
 }
 
 func (d *Door) reload(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door reload")
-	task, ch := newTaskNode(ctx)
-	node := &node{
-		ctx:  ctx,
-		door: d,
-		entity: &redrawNode{
-			taskNode: task,
-		},
+	userTask, ch := newUserTask(ctx)
+	task := nodeReload{
+		userTask: userTask,
 	}
-	d.takeover(node, task.ContextJoinedFrame())
+	d.schedule(task, userTask.JoinedFrame())
 	return ch
 }
 
 func (d *Door) reloadSelf(ctx context.Context, prev *node) <-chan error {
 	ctex.LogCanceled(ctx, "Door reload")
-	task, ch := newTaskNode(ctx)
-	node := &node{
-		ctx:  ctx,
-		door: d,
-		entity: &redrawNode{
-			taskNode: task,
-		},
+	userTask, ch := newUserTask(ctx)
+	task := nodeReload{
+		userTask: userTask,
 	}
-	d.takeoverSelf(prev, node)
+	if !d.atomicSchedule(prev, task, userTask.JoinedFrame()) {
+		userTask.Cancel()
+	}
 	return ch
 }
 
-func (d *Door) replace(ctx context.Context, content any) <-chan error {
-	ctex.LogCanceled(ctx, "Door replace")
-	task, ch := newTaskNode(ctx)
+func (d *Door) unmountedSelf(prev *node) {
 	node := &node{
-		ctx:  ctx,
+		door:    d,
+		mode:    prev.mode,
+		outer:   prev.outer,
+		content: prev.content,
+	}
+	node.guard.Activate()
+	d.node.CompareAndSwap(prev, node)
+}
+
+func (d *Door) schedule(task nodeTask, externalFrame shredder.Frame) {
+	next := &node{
 		door: d,
-		entity: &replaceNode{
-			taskNode: task,
-			content:  content,
-		},
 	}
-	d.takeover(node, task.ContextJoinedFrame())
-	return ch
-}
-
-func (d *Door) defaultNode() *node {
-	contents := &contents{
-		initializeFrame: &shredder.ValveFrame{},
-		container:       &Container{},
-	}
-	contents.initializeFrame.Activate()
-	n := &node{
-		door: d,
-		entity: &unmountNode{
-			contents: contents,
-		},
-	}
-	n.initFrame.Activate()
-	return n
-}
-
-func (d *Door) takeoverSelf(prev *node, next *node) {
-	swapped := d.node.CompareAndSwap(prev, next)
-	if !swapped {
-		if taskNode, ok := next.entity.(nodeTask); ok {
-			taskNode.Cancel()
-		}
-		return
-	}
-	prev.initFrame.Run(nil, nil, func(b bool) {
-		defer next.initFrame.Activate()
-		next.init(prev)
-	})
-}
-
-func (d *Door) takeover(next *node, taskFrame shredder.Frame) {
 	prev := d.node.Swap(next)
 	if prev == nil {
-		prev = d.defaultNode()
+		prev = &node{
+			door: d,
+			mode: modeOuter,
+		}
+		prev.guard.Activate()
 	}
-	initFrame := shredder.Join(true, &prev.initFrame, taskFrame)
+	initFrame := shredder.Join(true, &prev.guard, externalFrame)
 	defer initFrame.Release()
 	initFrame.Run(nil, nil, func(b bool) {
-		defer next.initFrame.Activate()
-		next.init(prev)
+		defer next.guard.Activate()
+		task.apply(next, prev)
 	})
 }
+
+func (d *Door) atomicSchedule(prev *node, task nodeTask, externalFrame shredder.Frame) bool {
+	next := &node{
+		door: d,
+	}
+	ok := d.node.CompareAndSwap(prev, next)
+	if !ok {
+		return false
+	}
+	initFrame := shredder.Join(true, &prev.guard, externalFrame)
+	defer initFrame.Release()
+	initFrame.Run(nil, nil, func(b bool) {
+		defer next.guard.Activate()
+		task.apply(next, prev)
+	})
+	return true
+}
+
+var _ gox.Proxy = &Door{}
+var _ gox.Editor = &Door{}

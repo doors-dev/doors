@@ -41,7 +41,6 @@ type PathMaker struct {
 
 type HookMatch struct {
 	Instance string
-	Door     uint64
 	Hook     uint64
 	Track    uint64
 }
@@ -79,7 +78,7 @@ func (m Match) Undo() (UndoPath, bool) {
 	return e, ok
 }
 
-var hookRegexp = regexp.MustCompile(`^/h/([0-9a-zA-Z]+)/(\d+)/(\d+)(\?.*|/.*)?$`)
+var hookRegexp = regexp.MustCompile(`^/h/([0-9a-zA-Z]+)/(\d+)(\?.*|/.*)?$`)
 var resourceRegexp = regexp.MustCompile(`^/r/([0-9a-zA-Z]+)(\.[^/]+)?$`)
 var syncPath = regexp.MustCompile(`^/s/([0-9a-zA-Z]+)(/)?$`)
 var undoPath = regexp.MustCompile(`^/u/([0-9a-zA-Z]+)(/.*)$`)
@@ -100,11 +99,7 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 	matches := hookRegexp.FindStringSubmatch(path)
 	if len(matches) != 0 {
 		instanceID := matches[1]
-		doorID, err := strconv.ParseUint(matches[2], 10, 64)
-		if err != nil {
-			return Match{}, false
-		}
-		hookID, err := strconv.ParseUint(matches[3], 10, 64)
+		hookID, err := strconv.ParseUint(matches[2], 10, 64)
 		if err != nil {
 			return Match{}, false
 		}
@@ -119,7 +114,6 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 		return Match{
 			entity: HookMatch{
 				Instance: instanceID,
-				Door:     doorID,
 				Hook:     hookID,
 				Track:    track,
 			},
@@ -157,9 +151,9 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 	return Match{}, false
 }
 
-func (pm PathMaker) Hook(instanceId string, doorId uint64, hookId uint64, name string) string {
+func (pm PathMaker) Hook(instanceId string, hookId uint64, name string) string {
 	builder := &strings.Builder{}
-	fmt.Fprintf(builder, "%s/h/%s/%d/%d", pm.Prefix(), instanceId, doorId, hookId)
+	fmt.Fprintf(builder, "%s/h/%s/%d", pm.Prefix(), instanceId, hookId)
 	if name != "" {
 		builder.WriteByte('/')
 		builder.WriteString(name)

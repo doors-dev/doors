@@ -84,7 +84,7 @@ Example:
 
 ```go
 On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-	r.After(doors.ActionOnlyScroll("#top", true))
+	r.After(doors.ActionOnlyScroll("#top"))
 	return false
 }
 ```
