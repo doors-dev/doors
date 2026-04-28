@@ -48,7 +48,7 @@ type pagePrinter struct {
 func (p *pagePrinter) Send(j gox.Job) error {
 	switch p.state {
 	case pageDone:
-		return p.cur.Send(j)
+		return p.cur.Printer().Send(j)
 	case pageScan:
 		return p.scan(j)
 	case pageHead:
@@ -61,28 +61,28 @@ func (p *pagePrinter) Send(j gox.Job) error {
 func (p *pagePrinter) scan(j gox.Job) error {
 	openJob, ok := j.(*gox.JobHeadOpen)
 	if !ok {
-		return p.cur.Send(j)
+		return p.cur.Printer().Send(j)
 	}
 	if strings.EqualFold(openJob.Tag, "head") {
 		p.headID = openJob.ID
 		p.state = pageHead
-		return p.cur.Send(j)
+		return p.cur.Printer().Send(j)
 	}
 	if strings.EqualFold(openJob.Tag, "script") {
 		p.state = pageDone
 		if err := p.insert(); err != nil {
 			return err
 		}
-		return p.cur.Send(j)
+		return p.cur.Printer().Send(j)
 	}
 	if strings.EqualFold(openJob.Tag, "body") {
 		p.state = pageDone
 		if err := p.insertHead(); err != nil {
 			return err
 		}
-		return p.cur.Send(j)
+		return p.cur.Printer().Send(j)
 	}
-	return p.cur.Send(j)
+	return p.cur.Printer().Send(j)
 }
 
 func (p *pagePrinter) head(j gox.Job) error {
@@ -93,7 +93,7 @@ func (p *pagePrinter) head(j gox.Job) error {
 				return err
 			}
 		}
-		return p.cur.Send(j)
+		return p.cur.Printer().Send(j)
 	}
 	if closeJob, ok := j.(*gox.JobHeadClose); ok {
 		if closeJob.ID == p.headID {
@@ -102,9 +102,9 @@ func (p *pagePrinter) head(j gox.Job) error {
 				return err
 			}
 		}
-		return p.cur.Send(j)
+		return p.cur.Printer().Send(j)
 	}
-	return p.cur.Send(j)
+	return p.cur.Printer().Send(j)
 }
 
 func (p *pagePrinter) insertHead() error {

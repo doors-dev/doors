@@ -23,8 +23,8 @@ import (
 func ProxyMod(mod gox.Modify) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
 		printer := &modPrinter{
-			mod: mod,
-			cur: cur,
+			mod:     mod,
+			printer: cur.Printer(),
 		}
 		cursor := gox.NewCursor(cur.Context(), printer)
 		return el(cursor)
@@ -37,13 +37,13 @@ func proxyMod(mod gox.Modify, cur gox.Cursor, elem gox.Elem) error {
 }
 
 type modPrinter struct {
-	mod gox.Modify
-	cur gox.Cursor
+	mod     gox.Modify
+	printer gox.Printer
 }
 
 func (m *modPrinter) Send(j gox.Job) error {
 	if m.mod == nil {
-		return m.cur.Send(j)
+		return m.printer.Send(j)
 	}
 	if par, ok := j.(parallelJob); ok {
 		mod := m.mod
@@ -59,7 +59,7 @@ func (m *modPrinter) Send(j gox.Job) error {
 	open, ok := j.(*gox.JobHeadOpen)
 	if ok {
 		if open.Kind == gox.KindContainer {
-			return m.cur.Send(open)
+			return m.printer.Send(open)
 		}
 		mod := m.mod
 		m.mod = nil
@@ -72,11 +72,11 @@ func (m *modPrinter) Send(j gox.Job) error {
 func (m *modPrinter) printParallel(mod gox.Modify, job parallelJob) error {
 	el := job.el
 	job.el = gox.Elem(func(cur gox.Cursor) error {
-		p := &modPrinter{mod: mod, cur: cur}
+		p := &modPrinter{mod: mod, printer: cur.Printer()}
 		cur = gox.NewCursor(cur.Context(), p)
 		return el(cur)
 	})
-	return m.cur.Send(job)
+	return m.printer.Send(job)
 }
 
 func (m *modPrinter) printComp(mod gox.Modify, job *gox.JobComp) error {
@@ -87,15 +87,15 @@ func (m *modPrinter) printComp(mod gox.Modify, job *gox.JobComp) error {
 }
 
 func (m *modPrinter) submitComp(mod gox.Modify, ctx context.Context, comp gox.Comp) error {
-	return m.cur.CompCtx(ctx, gox.Elem(func(cur gox.Cursor) error {
+	return m.printer.Send(gox.NewJobComp(ctx, gox.Elem(func(cur gox.Cursor) error {
 		el := comp.Main()
 		if el == nil {
 			return nil
 		}
-		p := &modPrinter{mod: mod, cur: cur}
+		p := &modPrinter{mod: mod, printer: cur.Printer()}
 		cur = gox.NewCursor(cur.Context(), p)
 		return el(cur)
-	}))
+	})))
 }
 
 func (m *modPrinter) printHead(mod gox.Modify, job *gox.JobHeadOpen) error {
@@ -103,5 +103,5 @@ func (m *modPrinter) printHead(mod gox.Modify, job *gox.JobHeadOpen) error {
 		return errors.New("cannot attach an attribute modifier to a door container")
 	}
 	job.Attrs.AddMod(mod)
-	return m.cur.Send(job)
+	return m.printer.Send(job)
 }
