@@ -46,13 +46,13 @@ func trackerRoot(r *root) (*tracker, core.Core) {
 }
 
 func trackerShutdown(prev *tracker) {
-	prev.clean(false)
 	prev.container.clean()
+	prev.clean(false)
 }
 
 func trackerRemove(prev *tracker, task *userTask) {
-	prev.clean(false)
 	prev.container.clean()
+	prev.clean(false)
 	prev.outerCallGuard.Submit(prev.parent.ctx, prev.root.runtime, func(b bool) {
 		if !b {
 			task.Cancel()
@@ -191,6 +191,7 @@ func (t *tracker) removeChild(child *tracker) {
 
 func (t *tracker) clean(cascade bool) {
 	t.cancel()
+	t.cinema.Cancel()
 	if !cascade && t.parent != nil {
 		t.parent.removeChild(t)
 	}
