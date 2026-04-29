@@ -17,6 +17,8 @@ package door
 import (
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
+	"github.com/go-rod/rod"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -408,6 +410,226 @@ func TestInlineDoorPointerProxy(t *testing.T) {
 
 	test.Click(t, page, "#inline-door-reload")
 	test.TestContent(t, page, "#inline-door-count", "inline-2")
+}
+
+func TestDoorContainerHookSurvivesInner(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentContainerInnerLifecycle{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#container-inner-value", "initial")
+
+	test.Click(t, page, "#container-inner-root")
+	test.TestContent(t, page, "#container-inner-value", "click-1")
+
+	test.Click(t, page, "#container-inner-root")
+	test.TestContent(t, page, "#container-inner-value", "click-2")
+}
+
+func TestDoorContainerEffectSurvivesInner(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentContainerEffectLifecycle{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestAttr(t, page, "#container-effect-root", "data-container-effect", "0")
+	test.TestContent(t, page, "#container-effect-value", "initial-0")
+
+	test.Click(t, page, "#container-effect-inner")
+	test.TestContent(t, page, "#container-effect-value", "inner-0")
+
+	test.Click(t, page, "#container-effect-update")
+	test.TestContent(t, page, "#container-effect-value", "inner-1")
+}
+
+func TestDoorContainerOuterCleansContainerTracker(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentContainerOuterLifecycle{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#container-outer-value", "initial")
+
+	test.Click(t, page, "#container-outer-root")
+	test.TestMustNot(t, page, "#container-outer-root")
+	test.TestMust(t, page, "#container-outer-new-root")
+	test.TestContent(t, page, "#container-outer-value", "outer")
+
+	test.Click(t, page, "#container-outer-report")
+	test.TestReport(t, page, "cancels-1 watches-1")
+
+	test.Click(t, page, "#container-outer-new-root")
+	test.TestContent(t, page, "#container-outer-value", "outer-click-1")
+}
+
+func TestDoorContainerReloadCleansAndRebindsContainer(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentContainerReloadLifecycle{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#container-reload-value", "initial")
+
+	test.Click(t, page, "#container-reload-root")
+	test.TestContent(t, page, "#container-reload-value", "click-1")
+
+	test.Click(t, page, "#container-reload-report")
+	test.TestReport(t, page, "cancels-1 watches-2")
+
+	test.Click(t, page, "#container-reload-root")
+	test.TestContent(t, page, "#container-reload-value", "click-2")
+
+	test.Click(t, page, "#container-reload-report")
+	test.TestReport(t, page, "cancels-2 watches-3")
+}
+
+func TestDoorContainerHookStateSurvivesInner(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentContainerHookStateLifecycle{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#container-hook-state-value", "initial-0")
+
+	test.Click(t, page, "#container-hook-state-root")
+	test.TestContent(t, page, "#container-hook-state-value", "registered-0")
+
+	test.Click(t, page, "#container-hook-state-report")
+	test.TestReport(t, page, "state read-0-true derived-derived-0-true initial-0-true watch-true value-0 sub-0 watches-1 cancels-0")
+
+	test.Click(t, page, "#container-hook-state-update")
+	test.Click(t, page, "#container-hook-state-report")
+	test.TestReport(t, page, "state read-0-true derived-derived-0-true initial-0-true watch-true value-1 sub-1 watches-2 cancels-0")
+
+	test.Click(t, page, "#container-hook-state-root")
+	test.TestContent(t, page, "#container-hook-state-value", "mutated-2")
+
+	test.Click(t, page, "#container-hook-state-report")
+	test.TestReport(t, page, "state read-0-true derived-derived-0-true initial-0-true watch-true value-2 sub-2 watches-3 cancels-0")
+}
+
+func TestDoorContainerHookStateCanceledByOuter(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentContainerHookStateOuterLifecycle{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#container-hook-outer-value", "initial")
+
+	test.Click(t, page, "#container-hook-outer-root")
+	test.TestMustNot(t, page, "#container-hook-outer-root")
+	test.TestContent(t, page, "#container-hook-outer-value", "outer")
+
+	test.Click(t, page, "#container-hook-outer-report")
+	test.TestReport(t, page, "state read-0-true derived-derived-0-true initial-0-true watch-true value-0 sub-0 watches-1 cancels-1")
+
+	test.Click(t, page, "#container-hook-outer-update")
+	test.Click(t, page, "#container-hook-outer-report")
+	test.TestReport(t, page, "state read-0-true derived-derived-0-true initial-0-true watch-true value-1 sub-0 watches-1 cancels-1")
+
+	test.Click(t, page, "#container-hook-outer-new-root")
+	test.TestContent(t, page, "#container-hook-outer-value", "outer-click-1")
+
+	test.Click(t, page, "#container-hook-outer-report")
+	test.TestReport(t, page, "state read-1-true derived-derived-1-true initial-1-true watch-true value-2 sub-1 watches-3 cancels-1")
+}
+
+func triggerBrowserKey(t *testing.T, page *rod.Page, selector string) {
+	t.Helper()
+	page.MustEval(`() => {
+		const el = document.querySelector(` + strconv.Quote(selector) + `)
+		if (!(el instanceof HTMLElement)) {
+			throw new Error("event target not found: " + ` + strconv.Quote(selector) + `)
+		}
+		el.dispatchEvent(new KeyboardEvent("keydown", {
+			key: "ContainerEffect",
+			code: "KeyE",
+			bubbles: true,
+			cancelable: true,
+		}))
+	}`)
+	<-time.After(200 * time.Millisecond)
+}
+
+func TestDoorContainerHookEffectReloadsContainer(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentContainerHookEffectLifecycle{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#container-hook-effect-renders", "1")
+	test.TestContent(t, page, "#container-hook-effect-value", "outer-0")
+
+	triggerBrowserKey(t, page, "#container-hook-effect-root")
+	test.TestContent(t, page, "#container-hook-effect-renders", "2")
+	test.TestContent(t, page, "#container-hook-effect-value", "registered-0")
+
+	test.Click(t, page, "#container-hook-effect-report")
+	test.TestReport(t, page, "state effect-0-true value-0 renders-2 registrations-1")
+
+	test.Click(t, page, "#container-hook-effect-update")
+	test.TestContent(t, page, "#container-hook-effect-renders", "3")
+	test.TestContent(t, page, "#container-hook-effect-value", "registered-1")
+
+	test.Click(t, page, "#container-hook-effect-report")
+	test.TestReport(t, page, "state effect-0-true value-1 renders-3 registrations-1")
+
+	test.Click(t, page, "#container-hook-effect-update")
+	test.TestContent(t, page, "#container-hook-effect-renders", "3")
+	test.TestContent(t, page, "#container-hook-effect-value", "registered-1")
+
+	test.Click(t, page, "#container-hook-effect-report")
+	test.TestReport(t, page, "state effect-0-true value-2 renders-3 registrations-1")
+
+	triggerBrowserKey(t, page, "#container-hook-effect-root")
+	test.TestContent(t, page, "#container-hook-effect-renders", "4")
+	test.TestContent(t, page, "#container-hook-effect-value", "registered-2")
+
+	test.Click(t, page, "#container-hook-effect-update")
+	test.TestContent(t, page, "#container-hook-effect-renders", "5")
+	test.TestContent(t, page, "#container-hook-effect-value", "registered-3")
+}
+
+func TestDoorContainerHookStateCanceledAndReboundByReload(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentContainerHookStateReloadLifecycle{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#container-hook-reload-value", "initial")
+
+	test.Click(t, page, "#container-hook-reload-root")
+	test.TestContent(t, page, "#container-hook-reload-value", "reload-1")
+
+	test.Click(t, page, "#container-hook-reload-report")
+	test.TestReport(t, page, "state read-0-true derived-derived-0-true initial-0-true watch-true value-0 sub-0 watches-1 cancels-1")
+
+	test.Click(t, page, "#container-hook-reload-update")
+	test.Click(t, page, "#container-hook-reload-report")
+	test.TestReport(t, page, "state read-0-true derived-derived-0-true initial-0-true watch-true value-1 sub-0 watches-1 cancels-1")
+
+	test.Click(t, page, "#container-hook-reload-root")
+	test.TestContent(t, page, "#container-hook-reload-value", "reload-2")
+
+	test.Click(t, page, "#container-hook-reload-report")
+	test.TestReport(t, page, "state read-1-true derived-derived-1-true initial-1-true watch-true value-1 sub-0 watches-2 cancels-2")
 }
 
 func TestDoorXReloadUsesClosestDynamicParent(t *testing.T) {

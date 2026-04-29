@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
@@ -660,6 +661,611 @@ elem (f *FragmentInlineDoorPointerProxy) Main() {
 			inline-door-reload
 		</button>
 	</div>
+}
+
+type containerEffectAttr struct {
+	source doors.Source[int]
+}
+
+func (a containerEffectAttr) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
+	value, ok := a.source.Effect(ctx)
+	if !ok {
+		attrs.Get("data-container-effect").Set("canceled")
+		return nil
+	}
+	attrs.Get("data-container-effect").Set(fmt.Sprint(value))
+	return nil
+}
+
+type containerWatchAttr struct {
+	source doors.Source[int]
+	cancels *atomic.Int64
+	watches *atomic.Int64
+}
+
+func (a containerWatchAttr) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
+	_, _ = a.source.Watch(ctx, &containerLifecycleWatcher{
+		cancels: a.cancels,
+		watches: a.watches,
+	})
+	attrs.Get("data-container-watch").Set("on")
+	return nil
+}
+
+type containerLifecycleWatcher struct {
+	cancels *atomic.Int64
+	watches *atomic.Int64
+}
+
+func (w *containerLifecycleWatcher) Watch(context.Context, int) bool {
+	w.watches.Add(1)
+	return false
+}
+
+func (w *containerLifecycleWatcher) Cancel() {
+	w.cancels.Add(1)
+}
+
+type FragmentContainerInnerLifecycle struct {
+	node doors.Door
+	clicks int
+	test.NoBeam
+}
+
+elem (f *FragmentContainerInnerLifecycle) content() {
+	<span id="container-inner-value">~(fmt.Sprintf("click-%d", f.clicks))</span>
+}
+
+elem (f *FragmentContainerInnerLifecycle) Main() {
+	~>(f.node) <div
+		id="container-inner-root"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.clicks++
+				f.node.Inner(ctx, f.content())
+				return false
+			},
+		})>
+		<span id="container-inner-value">initial</span>
+	</div>
+}
+
+type FragmentContainerEffectLifecycle struct {
+	node doors.Door
+	source doors.Source[int]
+	test.NoBeam
+}
+
+func (f *FragmentContainerEffectLifecycle) init() {
+	if f.source == nil {
+		f.source = doors.NewSource(0)
+	}
+}
+
+elem (f *FragmentContainerEffectLifecycle) content(label string) {
+	<span id="container-effect-value">~(fmt.Sprintf("%s-%d", label, f.source.Get()))</span>
+}
+
+elem (f *FragmentContainerEffectLifecycle) Main() {
+	~{
+		f.init()
+	}
+	~>(f.node) <div
+		id="container-effect-root"
+		(containerEffectAttr{source: f.source})>
+		~(f.content("initial"))
+	</div>
+	~(test.Button("container-effect-inner", func(ctx context.Context) bool {
+		f.node.Inner(ctx, f.content("inner"))
+		return false
+	}))
+	~(test.Button("container-effect-update", func(ctx context.Context) bool {
+		f.source.Update(ctx, f.source.Get() + 1)
+		return false
+	}))
+}
+
+type FragmentContainerOuterLifecycle struct {
+	node doors.Door
+	report doors.Door
+	source doors.Source[int]
+	cancels atomic.Int64
+	watches atomic.Int64
+	outerClicks int
+	test.NoBeam
+}
+
+func (f *FragmentContainerOuterLifecycle) init() {
+	if f.source == nil {
+		f.source = doors.NewSource(0)
+	}
+}
+
+func (f *FragmentContainerOuterLifecycle) reportState(ctx context.Context) {
+	f.report.Inner(ctx, test.Report(fmt.Sprintf("cancels-%d watches-%d", f.cancels.Load(), f.watches.Load())))
+}
+
+elem (f *FragmentContainerOuterLifecycle) outerInner() {
+	<span id="container-outer-value">~(fmt.Sprintf("outer-click-%d", f.outerClicks))</span>
+}
+
+elem (f *FragmentContainerOuterLifecycle) outer() {
+	<section
+		id="container-outer-new-root"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.outerClicks++
+				f.node.Inner(ctx, f.outerInner())
+				return false
+			},
+		})>
+		<span id="container-outer-value">outer</span>
+	</section>
+}
+
+elem (f *FragmentContainerOuterLifecycle) Main() {
+	~{
+		f.init()
+	}
+	~>(f.node) <div
+		id="container-outer-root"
+		(containerWatchAttr{source: f.source, cancels: &f.cancels, watches: &f.watches})
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.node.Outer(ctx, f.outer())
+				return false
+			},
+		})>
+		<span id="container-outer-value">initial</span>
+	</div>
+	~(&f.report)
+	~(test.Button("container-outer-report", func(ctx context.Context) bool {
+		f.reportState(ctx)
+		return false
+	}))
+}
+
+type FragmentContainerReloadLifecycle struct {
+	node doors.Door
+	report doors.Door
+	source doors.Source[int]
+	cancels atomic.Int64
+	watches atomic.Int64
+	clicks int
+	test.NoBeam
+}
+
+func (f *FragmentContainerReloadLifecycle) init() {
+	if f.source == nil {
+		f.source = doors.NewSource(0)
+	}
+}
+
+func (f *FragmentContainerReloadLifecycle) reportState(ctx context.Context) {
+	f.report.Inner(ctx, test.Report(fmt.Sprintf("cancels-%d watches-%d", f.cancels.Load(), f.watches.Load())))
+}
+
+func (f *FragmentContainerReloadLifecycle) value() string {
+	if f.clicks == 0 {
+		return "initial"
+	}
+	return fmt.Sprintf("click-%d", f.clicks)
+}
+
+elem (f *FragmentContainerReloadLifecycle) Main() {
+	~{
+		f.init()
+	}
+	~>(f.node) <div
+		id="container-reload-root"
+		(containerWatchAttr{source: f.source, cancels: &f.cancels, watches: &f.watches})
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.clicks++
+				f.node.Reload(ctx)
+				return false
+			},
+		})>
+		<span id="container-reload-value">~(f.value())</span>
+	</div>
+	~(&f.report)
+	~(test.Button("container-reload-report", func(ctx context.Context) bool {
+		f.reportState(ctx)
+		return false
+	}))
+}
+
+type FragmentContainerHookStateLifecycle struct {
+	node doors.Door
+	report doors.Door
+	source doors.Source[int]
+	derived doors.Beam[string]
+	last atomic.Value
+	registered bool
+	subEvents atomic.Int64
+	watches atomic.Int64
+	cancels atomic.Int64
+	test.NoBeam
+}
+
+func (f *FragmentContainerHookStateLifecycle) init() {
+	if f.source != nil {
+		return
+	}
+	f.source = doors.NewSource(0)
+	f.derived = doors.NewBeam(f.source, func(v int) string {
+		return fmt.Sprintf("derived-%d", v)
+	})
+}
+
+func (f *FragmentContainerHookStateLifecycle) reportText(prefix string) string {
+	last, _ := f.last.Load().(string)
+	if last == "" {
+		last = "none"
+	}
+	return fmt.Sprintf(
+		"%s %s value-%d sub-%d watches-%d cancels-%d",
+		prefix,
+		last,
+		f.source.Get(),
+		f.subEvents.Load(),
+		f.watches.Load(),
+		f.cancels.Load(),
+	)
+}
+
+func (f *FragmentContainerHookStateLifecycle) reportState(ctx context.Context, prefix string) {
+	f.report.Inner(ctx, test.Report(f.reportText(prefix)))
+}
+
+func (f *FragmentContainerHookStateLifecycle) registerState(ctx context.Context) {
+	current, readOK := f.source.Read(ctx)
+	derived, derivedOK := f.derived.Read(ctx)
+	initial, subOK := f.source.ReadAndSub(ctx, func(ctx context.Context, v int) bool {
+		seq := f.subEvents.Add(1)
+		f.report.Inner(ctx, test.Report(fmt.Sprintf("sub-%d-%d", seq, v)))
+		return false
+	})
+	_, watchOK := f.source.Watch(ctx, &containerLifecycleWatcher{
+		cancels: &f.cancels,
+		watches: &f.watches,
+	})
+	f.last.Store(fmt.Sprintf(
+		"read-%d-%t derived-%s-%t initial-%d-%t watch-%t",
+		current,
+		readOK,
+		derived,
+		derivedOK,
+		initial,
+		subOK,
+		watchOK,
+	))
+}
+
+elem (f *FragmentContainerHookStateLifecycle) content(label string) {
+	<span id="container-hook-state-value">~(fmt.Sprintf("%s-%d", label, f.source.Get()))</span>
+}
+
+elem (f *FragmentContainerHookStateLifecycle) Main() {
+	~{
+		f.init()
+	}
+	~>(f.node) <div
+		id="container-hook-state-root"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				if !f.registered {
+					f.registered = true
+					f.registerState(ctx)
+					f.node.Inner(ctx, f.content("registered"))
+					return false
+				}
+				f.source.Mutate(ctx, func(v int) int {
+					return v + 1
+				})
+				f.node.Inner(ctx, f.content("mutated"))
+				return false
+			},
+		})>
+		~(f.content("initial"))
+	</div>
+	~(&f.report)
+	~(test.Button("container-hook-state-update", func(ctx context.Context) bool {
+		f.source.Update(ctx, f.source.Get() + 1)
+		return false
+	}))
+	~(test.Button("container-hook-state-report", func(ctx context.Context) bool {
+		f.reportState(ctx, "state")
+		return false
+	}))
+}
+
+type FragmentContainerHookStateOuterLifecycle struct {
+	node doors.Door
+	report doors.Door
+	source doors.Source[int]
+	derived doors.Beam[string]
+	last atomic.Value
+	subEvents atomic.Int64
+	watches atomic.Int64
+	cancels atomic.Int64
+	outerClicks int
+	test.NoBeam
+}
+
+func (f *FragmentContainerHookStateOuterLifecycle) init() {
+	if f.source != nil {
+		return
+	}
+	f.source = doors.NewSource(0)
+	f.derived = doors.NewBeam(f.source, func(v int) string {
+		return fmt.Sprintf("derived-%d", v)
+	})
+}
+
+func (f *FragmentContainerHookStateOuterLifecycle) reportText(prefix string) string {
+	last, _ := f.last.Load().(string)
+	if last == "" {
+		last = "none"
+	}
+	return fmt.Sprintf(
+		"%s %s value-%d sub-%d watches-%d cancels-%d",
+		prefix,
+		last,
+		f.source.Get(),
+		f.subEvents.Load(),
+		f.watches.Load(),
+		f.cancels.Load(),
+	)
+}
+
+func (f *FragmentContainerHookStateOuterLifecycle) reportState(ctx context.Context, prefix string) {
+	f.report.Inner(ctx, test.Report(f.reportText(prefix)))
+}
+
+func (f *FragmentContainerHookStateOuterLifecycle) registerState(ctx context.Context) {
+	current, readOK := f.source.Read(ctx)
+	derived, derivedOK := f.derived.Read(ctx)
+	initial, subOK := f.source.ReadAndSub(ctx, func(ctx context.Context, v int) bool {
+		seq := f.subEvents.Add(1)
+		f.report.Inner(ctx, test.Report(fmt.Sprintf("outer-sub-%d-%d", seq, v)))
+		return false
+	})
+	_, watchOK := f.source.Watch(ctx, &containerLifecycleWatcher{
+		cancels: &f.cancels,
+		watches: &f.watches,
+	})
+	f.last.Store(fmt.Sprintf(
+		"read-%d-%t derived-%s-%t initial-%d-%t watch-%t",
+		current,
+		readOK,
+		derived,
+		derivedOK,
+		initial,
+		subOK,
+		watchOK,
+	))
+}
+
+elem (f *FragmentContainerHookStateOuterLifecycle) outerContent() {
+	<span id="container-hook-outer-value">~(fmt.Sprintf("outer-click-%d", f.outerClicks))</span>
+}
+
+elem (f *FragmentContainerHookStateOuterLifecycle) outer() {
+	<section
+		id="container-hook-outer-new-root"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.registerState(ctx)
+				f.outerClicks++
+				f.source.Mutate(ctx, func(v int) int {
+					return v + 1
+				})
+				f.node.Inner(ctx, f.outerContent())
+				return false
+			},
+		})>
+		<span id="container-hook-outer-value">outer</span>
+	</section>
+}
+
+elem (f *FragmentContainerHookStateOuterLifecycle) Main() {
+	~{
+		f.init()
+	}
+	~>(f.node) <div
+		id="container-hook-outer-root"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.registerState(ctx)
+				f.node.Outer(ctx, f.outer())
+				return false
+			},
+		})>
+		<span id="container-hook-outer-value">initial</span>
+	</div>
+	~(&f.report)
+	~(test.Button("container-hook-outer-update", func(ctx context.Context) bool {
+		f.source.Update(ctx, f.source.Get() + 1)
+		return false
+	}))
+	~(test.Button("container-hook-outer-report", func(ctx context.Context) bool {
+		f.reportState(ctx, "state")
+		return false
+	}))
+}
+
+type FragmentContainerHookEffectLifecycle struct {
+	node doors.Door
+	report doors.Door
+	source doors.Source[int]
+	last atomic.Value
+	renders atomic.Int64
+	registrations atomic.Int64
+	test.NoBeam
+}
+
+func (f *FragmentContainerHookEffectLifecycle) init() {
+	if f.source == nil {
+		f.source = doors.NewSource(0)
+	}
+}
+
+func (f *FragmentContainerHookEffectLifecycle) reportText(prefix string) string {
+	last, _ := f.last.Load().(string)
+	if last == "" {
+		last = "none"
+	}
+	return fmt.Sprintf(
+		"%s %s value-%d renders-%d registrations-%d",
+		prefix,
+		last,
+		f.source.Get(),
+		f.renders.Load(),
+		f.registrations.Load(),
+	)
+}
+
+func (f *FragmentContainerHookEffectLifecycle) reportState(ctx context.Context, prefix string) {
+	f.report.Inner(ctx, test.Report(f.reportText(prefix)))
+}
+
+elem (f *FragmentContainerHookEffectLifecycle) content(label string) {
+	~{
+		f.renders.Add(1)
+	}
+	<span id="container-hook-effect-renders">~(fmt.Sprint(f.renders.Load()))</span>
+	<span id="container-hook-effect-value">~(fmt.Sprintf("%s-%d", label, f.source.Get()))</span>
+}
+
+elem (f *FragmentContainerHookEffectLifecycle) Main() {
+	~{
+		f.init()
+	}
+	~>(f.node) <div
+		id="container-hook-effect-root"
+		(doors.AKeyDown{
+			Filter: []string{"ContainerEffect"},
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.KeyboardEvent]) bool {
+				value, ok := f.source.Effect(ctx)
+				f.registrations.Add(1)
+				f.last.Store(fmt.Sprintf("effect-%d-%t", value, ok))
+				f.node.Inner(ctx, f.content("registered"))
+				return false
+			},
+		})>
+		~(f.content("outer"))
+	</div>
+	~(&f.report)
+	~(test.Button("container-hook-effect-update", func(ctx context.Context) bool {
+		f.source.Update(ctx, f.source.Get() + 1)
+		return false
+	}))
+	~(test.Button("container-hook-effect-report", func(ctx context.Context) bool {
+		f.reportState(ctx, "state")
+		return false
+	}))
+}
+
+type FragmentContainerHookStateReloadLifecycle struct {
+	node doors.Door
+	report doors.Door
+	source doors.Source[int]
+	derived doors.Beam[string]
+	last atomic.Value
+	reloads int
+	subEvents atomic.Int64
+	watches atomic.Int64
+	cancels atomic.Int64
+	test.NoBeam
+}
+
+func (f *FragmentContainerHookStateReloadLifecycle) init() {
+	if f.source != nil {
+		return
+	}
+	f.source = doors.NewSource(0)
+	f.derived = doors.NewBeam(f.source, func(v int) string {
+		return fmt.Sprintf("derived-%d", v)
+	})
+}
+
+func (f *FragmentContainerHookStateReloadLifecycle) reportText(prefix string) string {
+	last, _ := f.last.Load().(string)
+	if last == "" {
+		last = "none"
+	}
+	return fmt.Sprintf(
+		"%s %s value-%d sub-%d watches-%d cancels-%d",
+		prefix,
+		last,
+		f.source.Get(),
+		f.subEvents.Load(),
+		f.watches.Load(),
+		f.cancels.Load(),
+	)
+}
+
+func (f *FragmentContainerHookStateReloadLifecycle) reportState(ctx context.Context, prefix string) {
+	f.report.Inner(ctx, test.Report(f.reportText(prefix)))
+}
+
+func (f *FragmentContainerHookStateReloadLifecycle) registerState(ctx context.Context) {
+	current, readOK := f.source.Read(ctx)
+	derived, derivedOK := f.derived.Read(ctx)
+	initial, subOK := f.source.ReadAndSub(ctx, func(ctx context.Context, v int) bool {
+		seq := f.subEvents.Add(1)
+		f.report.Inner(ctx, test.Report(fmt.Sprintf("reload-sub-%d-%d", seq, v)))
+		return false
+	})
+	_, watchOK := f.source.Watch(ctx, &containerLifecycleWatcher{
+		cancels: &f.cancels,
+		watches: &f.watches,
+	})
+	f.last.Store(fmt.Sprintf(
+		"read-%d-%t derived-%s-%t initial-%d-%t watch-%t",
+		current,
+		readOK,
+		derived,
+		derivedOK,
+		initial,
+		subOK,
+		watchOK,
+	))
+}
+
+func (f *FragmentContainerHookStateReloadLifecycle) value() string {
+	if f.reloads == 0 {
+		return "initial"
+	}
+	return fmt.Sprintf("reload-%d", f.reloads)
+}
+
+elem (f *FragmentContainerHookStateReloadLifecycle) Main() {
+	~{
+		f.init()
+	}
+	~>(f.node) <div
+		id="container-hook-reload-root"
+		(doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.registerState(ctx)
+				f.reloads++
+				f.node.Reload(ctx)
+				return false
+			},
+		})>
+		<span id="container-hook-reload-value">~(f.value())</span>
+	</div>
+	~(&f.report)
+	~(test.Button("container-hook-reload-update", func(ctx context.Context) bool {
+		f.source.Update(ctx, f.source.Get() + 1)
+		return false
+	}))
+	~(test.Button("container-hook-reload-report", func(ctx context.Context) bool {
+		f.reportState(ctx, "state")
+		return false
+	}))
 }
 
 type FragmentClosestXReload struct {
