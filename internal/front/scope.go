@@ -23,27 +23,31 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 )
 
-func IntoScopeSet(inst core.Core, scope []Scope) []ScopeSet {
-	a := make([]ScopeSet, len(scope))
-	for i, s := range scope {
-		a[i] = s.Scope(inst)
-	}
-	return a
+type scopeKind string
+
+const (
+	debounceScope   scopeKind = "debounce"
+	blockingScope   scopeKind = "blocking"
+	serialScope     scopeKind = "serial"
+	concurrentScope scopeKind = "concurrent"
+	latestScope     scopeKind = "latest"
+	frameScope      scopeKind = "frame"
+	freeScope       scopeKind = "free"
+)
+
+type Scoper interface {
+	Scopes() []Scope
 }
 
-type ScopeSet struct {
-	Type string
+type Scope struct {
+	Kind scopeKind
 	Id   string
 	Opt  any
 }
 
-func (s ScopeSet) MarshalJSON() ([]byte, error) {
-	a := []any{s.Type, s.Id, s.Opt}
+func (s Scope) MarshalJSON() ([]byte, error) {
+	a := []any{s.Kind, s.Id, s.Opt}
 	return json.Marshal(a)
-}
-
-type Scope interface {
-	Scope(core core.Core) ScopeSet
 }
 
 type AutoId struct {
@@ -59,52 +63,52 @@ func (s *AutoId) Id(inst core.Core) string {
 	return s.id
 }
 
-func DebounceScope(id string, duration time.Duration, limit time.Duration) ScopeSet {
-	return ScopeSet{
+func DebounceScope(id string, duration time.Duration, limit time.Duration) Scope {
+	return Scope{
 		Id:   id,
-		Type: "debounce",
+		Kind: debounceScope,
 		Opt:  []any{duration.Milliseconds(), limit.Milliseconds()},
 	}
 }
 
-func BlockingScope(id string) ScopeSet {
-	return ScopeSet{
+func BlockingScope(id string) Scope {
+	return Scope{
 		Id:   id,
-		Type: "blocking",
+		Kind: blockingScope,
 	}
 }
-func SerialScope(id string) ScopeSet {
-	return ScopeSet{
+func SerialScope(id string) Scope {
+	return Scope{
 		Id:   id,
-		Type: "serial",
+		Kind: serialScope,
 	}
 }
-func FrameScope(id string, frame bool) ScopeSet {
-	return ScopeSet{
+func FrameScope(id string, frame bool) Scope {
+	return Scope{
 		Id:   id,
-		Type: "frame",
+		Kind: frameScope,
 		Opt:  frame,
 	}
 }
 
-func ConcurrentScope(id string, groupId int) ScopeSet {
-	return ScopeSet{
+func ConcurrentScope(id string, groupId int) Scope {
+	return Scope{
 		Id:   id,
-		Type: "concurrent",
+		Kind: concurrentScope,
 		Opt:  groupId,
 	}
 }
 
-func LatestScope(id string) ScopeSet {
-	return ScopeSet{
+func LatestScope(id string) Scope {
+	return Scope{
 		Id:   id,
-		Type: "latest",
+		Kind: latestScope,
 	}
 }
 
-func FreeScope(id string) ScopeSet {
-	return ScopeSet{
+func FreeScope(id string) Scope {
+	return Scope{
 		Id:   id,
-		Type: "free",
+		Kind: freeScope,
 	}
 }

@@ -14,56 +14,87 @@
 
 package doors
 
-import "github.com/doors-dev/doors/internal/front"
+import (
+	"github.com/doors-dev/doors/internal/front"
+)
 
-// Indicator is a temporary DOM change applied on the client.
-//
-// Indicators are commonly used for pending states such as "Loading..." text,
-// temporary classes, or transient attributes while a request is in flight.
 type Indicator = front.Indicator
 
-type indicate = front.Indicate
-
-// Selector chooses which DOM nodes an [Indicator] should target.
-type Selector interface {
-	selector() front.Selector
+// Indicators is a temporary DOM change applied on the client.
+//
+// Indicators are commonly used for pending UI such as "Loading..." text,
+// temporary classes, or transient attributes while a request is in flight.
+type Indicators interface {
+	Indicators() []Indicator
+	Joiner[Indicators]
 }
 
-type selector front.Selector
-
-func (s selector) selector() front.Selector {
-	return (front.Selector)(s)
+func indicatorsOrNil(indicators Indicators) []Indicator {
+	if indicators == nil {
+		return nil
+	}
+	return indicators.Indicators()
 }
 
-// SelectorTarget selects the element that triggered the event.
-func SelectorTarget() Selector {
-	return (selector)(front.SelectTarget())
+type indication []Indicators
+
+func (is indication) And(i Indicators) Indicators {
+	c := make(indication, len(is), len(is)+1)
+	copy(c, is)
+	c = append(c, i)
+	return c
 }
 
-// SelectorQuery selects the first element matching query.
-func SelectorQuery(query string) Selector {
-	return (selector)(front.SelectQuery(query))
+func (is indication) Indicators() []Indicator {
+	output := make([]Indicator, 0)
+	for _, ind := range is {
+		if ind == nil {
+			continue
+		}
+		output = append(output, ind.Indicators()...)
+	}
+	return output
 }
 
-// SelectorQueryAll selects every element matching query.
-func SelectorQueryAll(query string) Selector {
-	return (selector)(front.SelectQueryAll(query))
-}
+var _ Indicators = indication(nil)
 
-// SelectorQueryParent selects the closest ancestor matching query.
-func SelectorQueryParent(query string) Selector {
-	return (selector)(front.SelectQueryParent(query))
-}
-
-// IndicatorContent temporarily replaces the selected element's inner HTML.
 type IndicatorContent struct {
 	Selector Selector // Target element
 	Content  string   // Replacement content
 }
 
-func (c IndicatorContent) Indicate() indicate {
-	return front.IndicateContent(c.Selector.selector(), c.Content)
+// IndicateContent builds an [IndicatorContent] that targets the event element.
+func IndicateContent(content string) IndicatorContent {
+	return IndicatorContent{Selector: SelectorTarget(), Content: content}
 }
+
+// IndicateContentQuery builds an [IndicatorContent] that targets the first
+// element matching query.
+func IndicateContentQuery(query, content string) IndicatorContent {
+	return IndicatorContent{Selector: SelectorQuery(query), Content: content}
+}
+
+// IndicateContentQueryAll builds an [IndicatorContent] that targets every
+// element matching query.
+func IndicateContentQueryAll(query, content string) IndicatorContent {
+	return IndicatorContent{Selector: SelectorQueryAll(query), Content: content}
+}
+
+// IndicateContentQueryParent builds an [IndicatorContent] that targets the
+// closest ancestor matching query.
+func IndicateContentQueryParent(query, content string) IndicatorContent {
+	return IndicatorContent{Selector: SelectorQueryParent(query), Content: content}
+}
+
+func (ic IndicatorContent) And(i Indicators) Indicators {
+	return indication([]Indicators{ic, i})
+}
+
+func (ic IndicatorContent) Indicators() []Indicator {
+	return []Indicator{front.IndicatorContent(ic.Selector, ic.Content)}
+}
+
+var _ Indicators = IndicatorContent{}
 
 // IndicatorAttr temporarily sets an attribute on the selected element.
 type IndicatorAttr struct {
@@ -72,9 +103,38 @@ type IndicatorAttr struct {
 	Value    string   // Attribute value
 }
 
-func (c IndicatorAttr) Indicate() indicate {
-	return front.IndicateAttr(c.Selector.selector(), c.Name, c.Value)
+// IndicateAttr builds an [IndicatorAttr] that targets the event element.
+func IndicateAttr(name, value string) IndicatorAttr {
+	return IndicatorAttr{Selector: SelectorTarget(), Name: name, Value: value}
 }
+
+// IndicateAttrQuery builds an [IndicatorAttr] that targets the first
+// element matching query.
+func IndicateAttrQuery(query, name, value string) IndicatorAttr {
+	return IndicatorAttr{Selector: SelectorQuery(query), Name: name, Value: value}
+}
+
+// IndicateAttrQueryAll builds an [IndicatorAttr] that targets every
+// element matching query.
+func IndicateAttrQueryAll(query, name, value string) IndicatorAttr {
+	return IndicatorAttr{Selector: SelectorQueryAll(query), Name: name, Value: value}
+}
+
+// IndicateAttrQueryParent builds an [IndicatorAttr] that targets the
+// closest ancestor matching query.
+func IndicateAttrQueryParent(query, name, value string) IndicatorAttr {
+	return IndicatorAttr{Selector: SelectorQueryParent(query), Name: name, Value: value}
+}
+
+func (ia IndicatorAttr) And(i Indicators) Indicators {
+	return indication([]Indicators{ia, i})
+}
+
+func (ia IndicatorAttr) Indicators() []Indicator {
+	return []Indicator{front.IndicatorAttr(ia.Selector, ia.Name, ia.Value)}
+}
+
+var _ Indicators = IndicatorAttr{}
 
 // IndicatorClass temporarily adds CSS classes to the selected element.
 type IndicatorClass struct {
@@ -82,9 +142,38 @@ type IndicatorClass struct {
 	Class    string   // Space-separated classes
 }
 
-func (c IndicatorClass) Indicate() indicate {
-	return front.IndicateClass(c.Selector.selector(), c.Class)
+// IndicateClass builds an [IndicatorClass] that targets the event element.
+func IndicateClass(class string) IndicatorClass {
+	return IndicatorClass{Selector: SelectorTarget(), Class: class}
 }
+
+// IndicateClassQuery builds an [IndicatorClass] that targets the first
+// element matching query.
+func IndicateClassQuery(query, class string) IndicatorClass {
+	return IndicatorClass{Selector: SelectorQuery(query), Class: class}
+}
+
+// IndicateClassQueryAll builds an [IndicatorClass] that targets every
+// element matching query.
+func IndicateClassQueryAll(query, class string) IndicatorClass {
+	return IndicatorClass{Selector: SelectorQueryAll(query), Class: class}
+}
+
+// IndicateClassQueryParent builds an [IndicatorClass] that targets the
+// closest ancestor matching query.
+func IndicateClassQueryParent(query, class string) IndicatorClass {
+	return IndicatorClass{Selector: SelectorQueryParent(query), Class: class}
+}
+
+func (ic IndicatorClass) And(i Indicators) Indicators {
+	return indication([]Indicators{ic, i})
+}
+
+func (ic IndicatorClass) Indicators() []Indicator {
+	return []Indicator{front.IndicatorClass(ic.Selector, ic.Class)}
+}
+
+var _ Indicators = IndicatorClass{}
 
 // IndicatorClassRemove temporarily removes CSS classes from the selected element.
 type IndicatorClassRemove struct {
@@ -92,141 +181,35 @@ type IndicatorClassRemove struct {
 	Class    string   // Space-separated classes
 }
 
-func (c IndicatorClassRemove) Indicate() indicate {
-	return front.IndicateClassRemove(c.Selector.selector(), c.Class)
+// IndicateClassRemove builds an [IndicatorClassRemove] that targets the event element.
+func IndicateClassRemove(class string) IndicatorClassRemove {
+	return IndicatorClassRemove{Selector: SelectorTarget(), Class: class}
 }
 
-// The `IndicatorOnly...` helpers build one-element indicator slices for the
-// most common targeting patterns.
-
-// IndicatorOnlyContent sets content on the event target element.
-func IndicatorOnlyContent(content string) []Indicator {
-	return []Indicator{IndicatorContent{
-		Selector: SelectorTarget(),
-		Content:  content,
-	}}
+// IndicateClassRemoveQuery builds an [IndicatorClassRemove] that targets the
+// first element matching query.
+func IndicateClassRemoveQuery(query, class string) IndicatorClassRemove {
+	return IndicatorClassRemove{Selector: SelectorQuery(query), Class: class}
 }
 
-// IndicatorOnlyAttr sets an attribute on the event target element.
-func IndicatorOnlyAttr(attr string, value string) []Indicator {
-	return []Indicator{IndicatorAttr{
-		Selector: SelectorTarget(),
-		Name:     attr,
-		Value:    value,
-	}}
+// IndicateClassRemoveQueryAll builds an [IndicatorClassRemove] that targets
+// every element matching query.
+func IndicateClassRemoveQueryAll(query, class string) IndicatorClassRemove {
+	return IndicatorClassRemove{Selector: SelectorQueryAll(query), Class: class}
 }
 
-// IndicatorOnlyClassRemove removes classes from the event target element.
-func IndicatorOnlyClassRemove(class string) []Indicator {
-	return []Indicator{IndicatorClassRemove{
-		Selector: SelectorTarget(),
-		Class:    class,
-	}}
+// IndicateClassRemoveQueryParent builds an [IndicatorClassRemove] that
+// targets the closest ancestor matching query.
+func IndicateClassRemoveQueryParent(query, class string) IndicatorClassRemove {
+	return IndicatorClassRemove{Selector: SelectorQueryParent(query), Class: class}
 }
 
-// IndicatorOnlyClass adds classes to the event target element.
-func IndicatorOnlyClass(class string) []Indicator {
-	return []Indicator{IndicatorClass{
-		Selector: SelectorTarget(),
-		Class:    class,
-	}}
+func (irc IndicatorClassRemove) And(i Indicators) Indicators {
+	return indication([]Indicators{irc, i})
 }
 
-// IndicatorOnlyContentQuery sets content on the first element matching a CSS query.
-func IndicatorOnlyContentQuery(query string, content string) []Indicator {
-	return []Indicator{IndicatorContent{
-		Selector: SelectorQuery(query),
-		Content:  content,
-	}}
+func (irc IndicatorClassRemove) Indicators() []Indicator {
+	return []Indicator{front.IndicatorClassRemove(irc.Selector, irc.Class)}
 }
 
-// IndicatorOnlyAttrQuery sets an attribute on the first element matching a CSS query.
-func IndicatorOnlyAttrQuery(query string, attr string, value string) []Indicator {
-	return []Indicator{IndicatorAttr{
-		Selector: SelectorQuery(query),
-		Name:     attr,
-		Value:    value,
-	}}
-}
-
-// IndicatorOnlyClassQuery adds classes to the first element matching a CSS query.
-func IndicatorOnlyClassQuery(query string, class string) []Indicator {
-	return []Indicator{IndicatorClass{
-		Selector: SelectorQuery(query),
-		Class:    class,
-	}}
-}
-
-// IndicatorOnlyClassRemoveQuery removes classes from the first element matching a CSS query.
-func IndicatorOnlyClassRemoveQuery(query string, class string) []Indicator {
-	return []Indicator{IndicatorClassRemove{
-		Selector: SelectorQuery(query),
-		Class:    class,
-	}}
-}
-
-// IndicatorOnlyContentQueryAll sets content on all elements matching a CSS query.
-func IndicatorOnlyContentQueryAll(query string, content string) []Indicator {
-	return []Indicator{IndicatorContent{
-		Selector: SelectorQueryAll(query),
-		Content:  content,
-	}}
-}
-
-// IndicatorOnlyAttrQueryAll sets an attribute on all elements matching a CSS query.
-func IndicatorOnlyAttrQueryAll(query string, attr string, value string) []Indicator {
-	return []Indicator{IndicatorAttr{
-		Selector: SelectorQueryAll(query),
-		Name:     attr,
-		Value:    value,
-	}}
-}
-
-// IndicatorOnlyClassQueryAll adds classes to all elements matching a CSS query.
-func IndicatorOnlyClassQueryAll(query string, class string) []Indicator {
-	return []Indicator{IndicatorClass{
-		Selector: SelectorQueryAll(query),
-		Class:    class,
-	}}
-}
-
-// IndicatorOnlyClassRemoveQueryAll removes classes from all elements matching a CSS query.
-func IndicatorOnlyClassRemoveQueryAll(query string, class string) []Indicator {
-	return []Indicator{IndicatorClassRemove{
-		Selector: SelectorQueryAll(query),
-		Class:    class,
-	}}
-}
-
-// IndicatorOnlyContentQueryParent sets content on the closest ancestor matching a CSS query.
-func IndicatorOnlyContentQueryParent(query string, content string) []Indicator {
-	return []Indicator{IndicatorContent{
-		Selector: SelectorQueryParent(query),
-		Content:  content,
-	}}
-}
-
-// IndicatorOnlyAttrQueryParent sets an attribute on the closest ancestor matching a CSS query.
-func IndicatorOnlyAttrQueryParent(query string, attr string, value string) []Indicator {
-	return []Indicator{IndicatorAttr{
-		Selector: SelectorQueryParent(query),
-		Name:     attr,
-		Value:    value,
-	}}
-}
-
-// IndicatorOnlyClassQueryParent adds classes to the closest ancestor matching a CSS query.
-func IndicatorOnlyClassQueryParent(query string, class string) []Indicator {
-	return []Indicator{IndicatorClass{
-		Selector: SelectorQueryParent(query),
-		Class:    class,
-	}}
-}
-
-// IndicatorOnlyClassRemoveQueryParent removes classes from the closest ancestor matching a CSS query.
-func IndicatorOnlyClassRemoveQueryParent(query string, class string) []Indicator {
-	return []Indicator{IndicatorClassRemove{
-		Selector: SelectorQueryParent(query),
-		Class:    class,
-	}}
-}
+var _ Indicators = IndicatorClassRemove{}

@@ -27,7 +27,7 @@ import (
 )
 
 func TestInitDefaultsAndSolitaireConf(t *testing.T) {
-	conf := &SystemConf{}
+	conf := &Conf{}
 	InitDefaults(conf)
 
 	if conf.RequestTimeout != 30*time.Second {
@@ -66,7 +66,7 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 		t.Fatal("expected solitaire gzip setting to mirror system config")
 	}
 
-	custom := &SystemConf{
+	custom := &Conf{
 		RequestTimeout:          2 * time.Second,
 		InstanceTTL:             3 * time.Second,
 		SessionTTL:              1 * time.Second,

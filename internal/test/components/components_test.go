@@ -18,23 +18,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
 )
 
 func TestTitle(t *testing.T) {
 	p := common.RandId()
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-			return doors.ResponseComp(&test.Page{
-				Source: r,
-				F: &LinksFragment{
-					Param: p,
-				},
-			})
-		})
+	bro := test.NewPathBro(browser, func(r test.PathLens) gox.Comp {
+		return &test.Page{
+			Source: r,
+			F: &LinksFragment{
+				Param: p,
+			},
+		}
 	})
 	page := bro.Page(t, "/")
 	<-time.After(200 * time.Millisecond)
@@ -74,15 +72,13 @@ func TestTitle(t *testing.T) {
 
 func TestActionHelpers(t *testing.T) {
 	p := common.RandId()
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-			return doors.ResponseComp(&test.Page{
-				Source: r,
-				F: &LinksFragment{
-					Param: p,
-				},
-			})
-		})
+	bro := test.NewPathBro(browser, func(r test.PathLens) gox.Comp {
+		return &test.Page{
+			Source: r,
+			F: &LinksFragment{
+				Param: p,
+			},
+		}
 	})
 	defer bro.Close()
 	page := bro.Page(t, "/")
@@ -102,7 +98,7 @@ func TestActionHelpers(t *testing.T) {
 	test.ClickNow(t, page, "#action-scroll")
 	<-time.After(200 * time.Millisecond)
 	if page.MustEval("() => window.scrollY").Num() <= 0 {
-		t.Fatal("expected ActionOnlyScroll to move the page")
+		t.Fatal("expected ActionScroll to move the page")
 	}
 
 	test.ClickNow(t, page, "#raw-assign")
@@ -112,15 +108,13 @@ func TestActionHelpers(t *testing.T) {
 
 func proxyPage(t *testing.T) *rod.Page {
 	t.Helper()
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-			return doors.ResponseComp(&test.Page{
-				Source: r,
-				F: &ProxyFragment{
-					r: test.NewReporter(1),
-				},
-			})
-		})
+	bro := test.NewPathBro(browser, func(r test.PathLens) gox.Comp {
+		return &test.Page{
+			Source: r,
+			F: &ProxyFragment{
+				r: test.NewReporter(1),
+			},
+		}
 	})
 	t.Cleanup(func() {
 		bro.Close()

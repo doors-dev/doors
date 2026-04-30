@@ -21,13 +21,26 @@ import (
 
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
 // Action performs a client-side operation.
 type Action interface {
 	action(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error)
+}
+
+// Actions is a composable list of client-side operations.
+type Actions interface {
+	// Actions returns the flattened action list.
+	Actions() []Action
+	Joiner[Actions]
+}
+
+func actionsOrNil(actions Actions) []Action {
+	if actions == nil {
+		return nil
+	}
+	return actions.Actions()
 }
 
 func intoActions(ctx context.Context, actions []Action) action.Actions {
@@ -44,6 +57,28 @@ func intoActions(ctx context.Context, actions []Action) action.Actions {
 	return arr
 }
 
+type actions []Actions
+
+func (s actions) Actions() []Action {
+	output := make([]Action, 0)
+	for _, a := range s {
+		if a == nil {
+			continue
+		}
+		output = append(output, a.Actions()...)
+	}
+	return output
+}
+
+func (s actions) And(a Actions) Actions {
+	c := make(actions, len(s), len(s)+1)
+	copy(c, s)
+	c = append(c, a)
+	return c
+}
+
+var _ Actions = actions(nil)
+
 // ActionEmit invokes a client-side handler registered with
 // `$on(name, handler)`.
 type ActionEmit struct {
@@ -51,33 +86,41 @@ type ActionEmit struct {
 	Arg  any
 }
 
-// ActionOnlyEmit returns a single ActionEmit.
-func ActionOnlyEmit(name string, arg any) []Action {
-	return []Action{ActionEmit{Name: name, Arg: arg}}
+func (ae ActionEmit) Actions() []Action {
+	return []Action{ae}
 }
 
-func (a ActionEmit) action(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error) {
-	payload, err := action.IntoPayload(a.Arg, gz)
+func (ae ActionEmit) And(a Actions) Actions {
+	return actions([]Actions{ae, a})
+}
+
+func (ae ActionEmit) action(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error) {
+	payload, err := action.IntoPayload(ae.Arg, gz)
 	if err != nil {
 		return nil, action.CallParams{}, err
 	}
 	act := action.Emit{
-		Name:    a.Name,
+		Name:    ae.Name,
 		DoorID:  core.DoorID(),
 		Payload: payload,
 	}
 	return act, action.CallParams{}, nil
 }
 
+var _ Actions = ActionEmit{}
+
 // ActionLocationReload reloads the current page.
 type ActionLocationReload struct{}
 
-// ActionOnlyLocationReload returns a single ActionLocationReload.
-func ActionOnlyLocationReload() []Action {
-	return []Action{ActionLocationReload{}}
+func (ar ActionLocationReload) Actions() []Action {
+	return []Action{ar}
 }
 
-func (a ActionLocationReload) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
+func (ar ActionLocationReload) And(a Actions) Actions {
+	return actions([]Actions{ar, a})
+}
+
+func (ar ActionLocationReload) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	return &action.LocationReload{}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
 }
 
@@ -87,13 +130,16 @@ type ActionLocationReplace struct {
 	Model any
 }
 
-// ActionOnlyLocationReplace returns a single ActionLocationReplace.
-func ActionOnlyLocationReplace(model any) []Action {
-	return []Action{ActionLocationReplace{Model: model}}
+func (ar ActionLocationReplace) Actions() []Action {
+	return []Action{ar}
+}
+
+func (ar ActionLocationReplace) And(a Actions) Actions {
+	return actions([]Actions{ar, a})
 }
 
 func (a ActionLocationReplace) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
-	l, err := NewLocation(ctx, a.Model)
+	l, err := NewLocation(a.Model)
 	if err != nil {
 		return nil, action.CallParams{}, err
 	}
@@ -108,13 +154,16 @@ type ActionLocationAssign struct {
 	Model any
 }
 
-// ActionOnlyLocationAssign returns a single ActionLocationAssign.
-func ActionOnlyLocationAssign(model any) []Action {
-	return []Action{ActionLocationAssign{Model: model}}
+func (aa ActionLocationAssign) Actions() []Action {
+	return []Action{aa}
 }
 
-func (a ActionLocationAssign) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
-	l, err := NewLocation(ctx, a.Model)
+func (aa ActionLocationAssign) And(a Actions) Actions {
+	return actions([]Actions{aa, a})
+}
+
+func (aa ActionLocationAssign) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
+	l, err := NewLocation(aa.Model)
 	if err != nil {
 		return nil, action.CallParams{}, err
 	}
@@ -129,9 +178,12 @@ type ActionLocationRawAssign struct {
 	URL string
 }
 
-// ActionOnlyLocationRawAssign returns a single [ActionLocationRawAssign].
-func ActionOnlyLocationRawAssign(url string) []Action {
-	return []Action{ActionLocationRawAssign{URL: url}}
+func (aa ActionLocationRawAssign) Actions() []Action {
+	return []Action{aa}
+}
+
+func (aa ActionLocationRawAssign) And(a Actions) Actions {
+	return actions([]Actions{aa, a})
 }
 
 func (a ActionLocationRawAssign) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
@@ -153,10 +205,12 @@ type ActionScroll struct {
 	Options any
 }
 
-// ActionOnlyScroll returns a single ActionScroll with default scroll
-// behavior.
-func ActionOnlyScroll(selector string) []Action {
-	return []Action{ActionScroll{Selector: selector}}
+func (aa ActionScroll) Actions() []Action {
+	return []Action{aa}
+}
+
+func (aa ActionScroll) And(a Actions) Actions {
+	return actions([]Actions{aa, a})
 }
 
 func (a ActionScroll) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
@@ -168,18 +222,21 @@ func (a ActionScroll) action(ctx context.Context, core core.Core, _ bool) (actio
 
 // ActionIndicate applies indicators for Duration.
 type ActionIndicate struct {
-	Indicator []Indicator
+	Indicator Indicators
 	Duration  time.Duration
 }
 
-// ActionOnlyIndicate returns a single ActionIndicate.
-func ActionOnlyIndicate(indicator []Indicator, duration time.Duration) []Action {
-	return []Action{ActionIndicate{Indicator: indicator, Duration: duration}}
+func (ai ActionIndicate) Actions() []Action {
+	return []Action{ai}
 }
 
-func (a ActionIndicate) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
+func (ai ActionIndicate) And(a Actions) Actions {
+	return actions([]Actions{ai, a})
+}
+
+func (ai ActionIndicate) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
 	return action.Indicate{
-		Indicate: front.IntoIndicate(a.Indicator),
-		Duration: a.Duration,
+		Indicate: indicatorsOrNil(ai.Indicator),
+		Duration: ai.Duration,
 	}, action.CallParams{}, nil
 }

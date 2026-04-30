@@ -1,58 +1,45 @@
 # Core Concepts
 
-**Doors** is easiest to understand as a UI runtime. Stop thinking in terms of "request in, HTML out" and instead think of each interactive page as a live server-side object.
+**Doors** runs each interactive page as a live server-side instance, with the current URL exposed as a reactive state value.
 
-When a user opens a page, **Doors** decodes the URL into your path model, creates a page instance, renders HTML, and keeps that instance around as long as the page needs to stay interactive. Events, state changes, and partial updates all happen through that same live instance.
+Event handlers and dynamic fragments registered while rendering belong to that instance and are cleaned up when their part of the rendered tree goes away.
 
-If your page is fully static, **Doors** can serve it and be done. As soon as you use dynamic features, the page becomes a long-lived part of the app.
+> If your page is fully static, **Doors** can serve it and be done. As soon as you use dynamic features, the page becomes a long-lived part of the app.
 
 ## Mental Model
 
 Most apps in **Doors** are built from a few ideas working together:
 
-- the URL becomes a typed path model
-- the path model and your page state drive rendering
+- the current URL is a reactive source
+- routing can turn that source into typed path models
+- route values and your page state drive rendering
 - rendering creates a dynamic tree of updatable parts
-- browser events route back to handlers on the same live page
-- only the changed parts of the page are updated
+- registered browser events call handlers on the same live page
+- handlers update state or dynamic DOM containers
+- the runtime synchronizes those changes with the client
 
 ## Session
 
 The most useful distinction to learn early is this:
 
-- a **session** is usually the whole browser session
-- an **instance** is usually one live page, often one tab
+- a **session** represents one browser session
+- an **instance** represents one live page
 
-Multiple tabs usually share one session cookie, so they can also share session-level data such as authentication and permissions. Each tab still has its own page instance and its own local UI state.
-
-This is a good default way to think about it:
-
-- put login state, current user, and other browser-wide concerns at the session level, often as a `Source` stored in session storage
-- put form state, selected rows, expanded panels, and other page-local concerns at the instance level
-
-Useful lifecycle controls:
-
-- `doors.SessionEnd(ctx)` force-ends the whole **Doors** session and all related instances
-- `doors.SessionExpire(ctx, d)` sets the session lifetime cap
-- `doors.InstanceEnd(ctx)` ends only the current page instance
-
-Changing the URL within the same model type usually updates the current instance. Switching to a different model type usually creates a different instance.
-
-Instances are not meant to live forever. **Doors** can suspend older or less active instances based on configuration.
+Multiple live pages can belong to the same session. They share the session boundary, but each one has its own instance boundary: its own render tree, handlers, subscriptions, and lifecycle.
 
 ## Path Model
 
-In **Doors**, routing starts from a struct, not a stringly-typed route table.
+A path model is a Go struct that describes a URL shape.
 
-Your path model describes:
+The current URL is always available as `Source[Location]`. When a route is easier to work with as a typed Go value, **Doors** can decode that location into a path model.
+
+A path model describes:
 
 - which page variants exist
 - which path segments should be decoded
 - which query parameters matter
 
-That gives you one typed value that can be used for matching, rendering, navigation, and redirects.
-
-This is why the path model often becomes part of your page state instead of being treated as a separate concern. If the URL changes, your page can react to it the same way it reacts to any other state change.
+The same model is also used for navigation. Links, redirects, and programmatic updates encode the struct back into a `Location`, so reading and changing the URL share one typed shape.
 
 ## Doors And Hooks
 
@@ -73,8 +60,10 @@ That keeps behavior aligned with what is actually on screen.
 
 **Doors** has built-in reactive state primitives:
 
-- a `Source` is an original piece of state you can update
-- a `Beam` is a value derived from state or observed from it
+- a `Source` is a writable reactive value, either original state or a derived view
+- a `Beam` is a read-only value derived from state or observed from it
+
+A `Source` is also a `Beam`, so you can read, subscribe, and route from both writable and read-only values. The current URL is a `Source[Location]` — that is why `doors.RouterSource(...)` and `doors.RouteModelSource(...)` give the matched view a typed `Source` you can write back to.
 
 The important user-facing behavior is consistency. During a render/update pass, a whole rendered branch will observe the same state.
 
@@ -85,7 +74,7 @@ A good default pattern is to keep identifiers and UI state in **Doors** state, t
 For example:
 
 - keep `ProductID`, filters, pagination, and selection in sources
-- derive smaller beams from those values
+- derive smaller sources or beams from those values
 - query backing data when producing output
 
 This keeps live instances lightweight and avoids turning page memory into an accidental cache of large database records.
@@ -148,16 +137,18 @@ lifetime of a rendered subtree.
 
 ## Security
 
-**Doors** gives you the right session and instance scope automatically, but your application still needs to enforce its own rules.
+**Doors** scopes handlers to the UI that produced them. A user can trigger only the handlers that were rendered for that user's live page instance, and only while the owning dynamic tree is still mounted.
+
+That means rendering is the main permission boundary for UI actions. If a user is not allowed to delete a record, do not render the delete button for that user. The handler attached to that button cannot be triggered by a different user or by another page instance.
+
+The URL is different. It is client-owned input: any path, query, or decoded path-model value is whatever the user sent. A successful path-model match means "this URL parses", not "this user is allowed to see what it points at".
 
 In practice:
 
-- check authentication in the model handler and keep track via shared session state
-- check authorization while rendering protected content
-- keep a real server-side session store behind the cookie, and initialize shared auth state from it
-- re-check write permissions if they could change before the actual mutation happens, usually at the database transaction level
-
-Handlers already run inside the correct page/session context. That means a specific handler can be triggered only by the user you rendered it for, and only while the target component is mounted and tracked by its closest dynamic parent.
+- check authentication before rendering protected UI
+- check authorization while deciding which content and actions to render
+- keep trust-bearing values in server-owned state, not in the route
+- re-check permissions at the final mutation boundary if they can change independently, such as inside a database transaction
 
 See [Storage & Auth](./18-storage-auth.md).
 

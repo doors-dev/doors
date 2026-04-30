@@ -16,7 +16,7 @@ package doors
 
 import "embed"
 
-// DocsFS is the embedded documentation tree for internal purposes.
+// DocsFS is the embedded documentation tree.
 //
 //go:embed docs/**
 var DocsFS embed.FS

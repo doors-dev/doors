@@ -3,6 +3,7 @@ package beam
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 	
 	"github.com/doors-dev/doors"
@@ -69,7 +70,7 @@ elem (f *BeamDeriveFragment) Main() {
 
 elem (f *BeamDeriveFragment) content() {
 	~{
-		d := doors.NewBeam(f.b, func(s state) int {
+		d := doors.DeriveBeam(f.b, func(s state) int {
 			return s.Int
 		})
 		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
@@ -226,7 +227,7 @@ type BeamEqualFragment struct {
 elem (f *BeamEqualFragment) Main() {
 	~{
 		if f.p == nil {
-			f.p = doors.NewBeamEqual(f.b, func(s state) string {
+			f.p = doors.DeriveBeamEqual(f.b, func(s state) string {
 				if s.Int % 2 == 0 {
 					return "even"
 				}
@@ -435,7 +436,7 @@ elem (f *BeamEffectDerivedFragment) outerContent() {
 elem (f *BeamEffectDerivedFragment) Main() {
 	~{
 		if f.d == nil {
-			f.d = doors.NewBeam(f.b, func(v int) string {
+			f.d = doors.DeriveBeam(f.b, func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			})
 		}
@@ -550,7 +551,7 @@ type BeamReadAndSubFragment struct {
 elem (f *BeamReadAndSubFragment) Main() {
 	~{
 		if f.derived == nil {
-			f.derived = doors.NewBeam(f.source, func(v int) string {
+			f.derived = doors.DeriveBeam(f.source, func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			})
 		}
@@ -606,4 +607,516 @@ elem (f *BeamReadAndSubFragment) Main() {
 		return false
 	}))
 	~(f.r)
+}
+
+type BeamLensRoundTripFragment struct {
+	source doors.Source[state]
+	intLens doors.Source[int]
+	strLens doors.Source[string]
+	evenLens doors.Source[bool]
+	parityLens doors.Source[string]
+	label doors.Beam[string]
+	sourceRenders int
+	intRenders int
+	strRenders int
+	evenRenders int
+	labelRenders int
+	parityRenders int
+	r *test.Reporter
+	test.NoBeam
+}
+
+func (f *BeamLensRoundTripFragment) init() {
+	if f.source != nil {
+		return
+	}
+	f.source = doors.NewSource(state{
+		Int: 1,
+		Str: "a",
+	})
+	f.intLens = doors.DeriveSource(f.source, func(s state) int {
+		return s.Int
+	}, func(s state, v int) state {
+		s.Int = v
+		return s
+	})
+	f.strLens = doors.DeriveSource(f.source, func(s state) string {
+		return s.Str
+	}, func(s state, v string) state {
+		s.Str = v
+		return s
+	})
+	f.evenLens = doors.DeriveSource(f.intLens, func(v int) bool {
+		return v % 2 == 0
+	}, func(v int, even bool) int {
+		if even == (v % 2 == 0) {
+			return v
+		}
+		return v + 1
+	})
+	f.parityLens = doors.DeriveSourceEqual(f.source, func(s state) string {
+		if s.Int % 2 == 0 {
+			return "even"
+		}
+		return "odd"
+	}, func(s state, _ string) state {
+		return s
+	}, func(new string, old string) bool {
+		return new == old
+	})
+	f.label = doors.DeriveBeam(f.intLens, func(v int) string {
+		return fmt.Sprintf("label:%d", v)
+	})
+}
+
+func (f *BeamLensRoundTripFragment) reportState(ctx context.Context, prefix string) {
+	source, sourceOK := f.source.Read(ctx)
+	intValue, intOK := f.intLens.Read(ctx)
+	strValue, strOK := f.strLens.Read(ctx)
+	evenValue, evenOK := f.evenLens.Read(ctx)
+	label, labelOK := f.label.Read(ctx)
+	f.r.Update(ctx, 0, fmt.Sprintf(
+		"%s source-%d-%s-%t int-%d-%t str-%s-%t even-%t-%t label-%s-%t",
+		prefix,
+		source.Int,
+		source.Str,
+		sourceOK,
+		intValue,
+		intOK,
+		strValue,
+		strOK,
+		evenValue,
+		evenOK,
+		label,
+		labelOK,
+	))
+}
+
+elem (f *BeamLensRoundTripFragment) Main() {
+	~{
+		f.init()
+	}
+	~(f.source.Bind(elem(v state) {
+		~{
+			f.sourceRenders++
+		}
+		<div id="lens-source">~(fmt.Sprintf("%d:%s:%d", v.Int, v.Str, f.sourceRenders))</div>
+	}))
+	~(f.intLens.Bind(elem(v int) {
+		~{
+			f.intRenders++
+		}
+		<div id="lens-int">~(fmt.Sprintf("%d:%d", v, f.intRenders))</div>
+	}))
+	~(f.strLens.Bind(elem(v string) {
+		~{
+			f.strRenders++
+		}
+		<div id="lens-str">~(fmt.Sprintf("%s:%d", v, f.strRenders))</div>
+	}))
+	~(f.evenLens.Bind(elem(v bool) {
+		~{
+			f.evenRenders++
+		}
+		<div id="lens-even">~(fmt.Sprintf("%t:%d", v, f.evenRenders))</div>
+	}))
+	~(f.label.Bind(elem(v string) {
+		~{
+			f.labelRenders++
+		}
+		<div id="lens-label">~(fmt.Sprintf("%s:%d", v, f.labelRenders))</div>
+	}))
+	~(f.parityLens.Bind(elem(v string) {
+		~{
+			f.parityRenders++
+		}
+		<div id="lens-parity">~(fmt.Sprintf("%s:%d", v, f.parityRenders))</div>
+	}))
+	~(test.Button("lens-source-update", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 2, Str: "b"})
+		return false
+	}))
+	~(test.Button("lens-int-update", func(ctx context.Context) bool {
+		f.intLens.Update(ctx, 5)
+		return false
+	}))
+	~(test.Button("lens-int-mutate", func(ctx context.Context) bool {
+		f.intLens.Mutate(ctx, func(v int) int {
+			return v + 1
+		})
+		return false
+	}))
+	~(test.Button("lens-str-update", func(ctx context.Context) bool {
+		f.strLens.Update(ctx, "lens")
+		return false
+	}))
+	~(test.Button("lens-even-false", func(ctx context.Context) bool {
+		f.evenLens.Update(ctx, false)
+		return false
+	}))
+	~(test.Button("lens-even-true", func(ctx context.Context) bool {
+		f.evenLens.Update(ctx, true)
+		return false
+	}))
+	~(test.Button("lens-xupdate", func(ctx context.Context) bool {
+		err, ok := <-f.intLens.XUpdate(doors.Free(ctx), 9)
+		if !ok {
+			f.r.Update(ctx, 1, "x-closed")
+			return false
+		}
+		if err != nil {
+			f.r.Update(ctx, 1, "x-err:" + err.Error())
+			return false
+		}
+		f.r.Update(ctx, 1, "x-ok")
+		return false
+	}))
+	~(test.Button("lens-report", func(ctx context.Context) bool {
+		f.reportState(ctx, "report")
+		return false
+	}))
+	~(f.r)
+}
+
+type BeamRouteStateFragment struct {
+	source doors.Source[state]
+	sourceRenders int
+	lensRouteRenders int
+	lensListRenders int
+	defaultLensRenders int
+	beamRouteRenders int
+	beamListRenders int
+	defaultBeamRenders int
+	test.NoBeam
+}
+
+func (f *BeamRouteStateFragment) init() {
+	if f.source != nil {
+		return
+	}
+	f.source = doors.NewSource(state{
+		Int: 1,
+	})
+}
+
+func (f *BeamRouteStateFragment) matchString(s state) (string, bool) {
+	return s.Str, s.Str != ""
+}
+
+func (f *BeamRouteStateFragment) setString(s state, v string) state {
+	s.Str = v
+	return s
+}
+
+func (f *BeamRouteStateFragment) matchList(s state) ([]string, bool) {
+	if s.Str == "" {
+		return nil, false
+	}
+	return []string{s.Str, fmt.Sprint(s.Int)}, true
+}
+
+func (f *BeamRouteStateFragment) setList(s state, v []string) state {
+	if len(v) == 0 {
+		s.Str = ""
+		return s
+	}
+	s.Str = v[0]
+	return s
+}
+
+func (f *BeamRouteStateFragment) equalList(a []string, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+elem (f *BeamRouteStateFragment) lensRoute(l doors.Source[string]) {
+	~{
+		f.lensRouteRenders++
+	}
+	<div id="route-lens-render">~(fmt.Sprint(f.lensRouteRenders))</div>
+	~(l.Bind(elem(v string) {
+		<div id="route-lens-value">~("lens:" + v)</div>
+	}))
+	~(test.Button("route-lens-update", func(ctx context.Context) bool {
+		l.Update(ctx, "child")
+		return false
+	}))
+	~(test.Button("route-lens-clear", func(ctx context.Context) bool {
+		l.Update(ctx, "")
+		return false
+	}))
+}
+
+elem (f *BeamRouteStateFragment) lensListRoute(l doors.Source[[]string]) {
+	~{
+		f.lensListRenders++
+	}
+	<div id="route-lens-list-render">~(fmt.Sprint(f.lensListRenders))</div>
+	~(l.Bind(elem(v []string) {
+		<div id="route-lens-list-value">~(strings.Join(v, ","))</div>
+	}))
+}
+
+elem (f *BeamRouteStateFragment) lensDefault(b doors.Beam[state]) {
+	~{
+		f.defaultLensRenders++
+	}
+	<div id="route-lens-default-render">~(fmt.Sprint(f.defaultLensRenders))</div>
+	~(b.Bind(elem(v state) {
+		<div id="route-lens-default-value">~(fmt.Sprintf("default:%d:%s", v.Int, v.Str))</div>
+	}))
+}
+
+elem (f *BeamRouteStateFragment) beamRoute(b doors.Beam[string]) {
+	~{
+		f.beamRouteRenders++
+	}
+	<div id="route-beam-render">~(fmt.Sprint(f.beamRouteRenders))</div>
+	~(b.Bind(elem(v string) {
+		<div id="route-beam-value">~("beam:" + v)</div>
+	}))
+}
+
+elem (f *BeamRouteStateFragment) beamListRoute(b doors.Beam[[]string]) {
+	~{
+		f.beamListRenders++
+	}
+	<div id="route-beam-list-render">~(fmt.Sprint(f.beamListRenders))</div>
+	~(b.Bind(elem(v []string) {
+		<div id="route-beam-list-value">~(strings.Join(v, ","))</div>
+	}))
+}
+
+elem (f *BeamRouteStateFragment) beamDefault(b doors.Beam[state]) {
+	~{
+		f.defaultBeamRenders++
+	}
+	<div id="route-beam-default-render">~(fmt.Sprint(f.defaultBeamRenders))</div>
+	~(b.Bind(elem(v state) {
+		<div id="route-beam-default-value">~(fmt.Sprintf("beam-default:%d:%s", v.Int, v.Str))</div>
+	}))
+}
+
+elem (f *BeamRouteStateFragment) Main() {
+	~{
+		f.init()
+	}
+	~(f.source.Bind(elem(v state) {
+		~{
+			f.sourceRenders++
+		}
+		<div id="route-source">~(fmt.Sprintf("%d:%s:%d", v.Int, v.Str, f.sourceRenders))</div>
+	}))
+	~(f.source.RouteSource(
+		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
+		doors.RouteDefaultBeam(f.lensDefault),
+	))
+	~(f.source.RouteBeam(
+		doors.RouteDerive(f.matchString).Beam(f.beamRoute),
+		doors.RouteDefaultBeam(f.beamDefault),
+	))
+	~(f.source.RouteSource(
+		doors.RouteDeriveEqual(f.matchList, f.equalList).Source(f.setList, f.lensListRoute),
+	))
+	~(f.source.RouteBeam(
+		doors.RouteDeriveEqual(f.matchList, f.equalList).Beam(f.beamListRoute),
+	))
+	~(test.Button("route-source-lens", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 2, Str: "doc"})
+		return false
+	}))
+	~(test.Button("route-source-next", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 2, Str: "next"})
+		return false
+	}))
+	~(test.Button("route-source-default-int", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 4})
+		return false
+	}))
+}
+
+type BeamRouteNoDefaultBurstFragment struct {
+	source doors.Source[state]
+	test.NoBeam
+}
+
+func (f *BeamRouteNoDefaultBurstFragment) init() {
+	if f.source != nil {
+		return
+	}
+	f.source = doors.NewSource(state{})
+}
+
+func (f *BeamRouteNoDefaultBurstFragment) matchString(s state) (string, bool) {
+	return s.Str, s.Str != ""
+}
+
+func (f *BeamRouteNoDefaultBurstFragment) setString(s state, v string) state {
+	s.Str = v
+	return s
+}
+
+elem (f *BeamRouteNoDefaultBurstFragment) lensRoute(l doors.Source[string]) {
+	~(l.Bind(elem(v string) {
+		<div id="route-burst-lens">~("lens:" + v)</div>
+	}))
+}
+
+elem (f *BeamRouteNoDefaultBurstFragment) beamRoute(b doors.Beam[string]) {
+	~(b.Bind(elem(v string) {
+		<div id="route-burst-beam">~("beam:" + v)</div>
+	}))
+}
+
+elem (f *BeamRouteNoDefaultBurstFragment) Main() {
+	~{
+		f.init()
+	}
+	~(f.source.Bind(elem(v state) {
+		<div id="route-burst-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
+	}))
+	~(f.source.RouteSource(
+		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
+	))
+	~(f.source.RouteBeam(
+		doors.RouteDerive(f.matchString).Beam(f.beamRoute),
+	))
+	~(test.Button("route-burst-none", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 1, Str: "queued"})
+		f.source.Update(ctx, state{Int: 2})
+		return false
+	}))
+	~(test.Button("route-burst-hit", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 3, Str: "after"})
+		return false
+	}))
+}
+
+type BeamRouteEntrypointsFragment struct {
+	source doors.Source[state]
+	str doors.Source[string]
+	parity doors.Beam[string]
+	test.NoBeam
+}
+
+func (f *BeamRouteEntrypointsFragment) init() {
+	if f.source != nil {
+		return
+	}
+	f.source = doors.NewSource(state{
+		Int: 1,
+		Str: "a",
+	})
+	f.str = doors.DeriveSource(f.source, func(s state) string {
+		return s.Str
+	}, func(s state, v string) state {
+		s.Str = v
+		return s
+	})
+	f.parity = doors.DeriveBeam(f.source, func(s state) string {
+		if s.Int % 2 == 0 {
+			return "even"
+		}
+		return "odd"
+	})
+}
+
+func (f *BeamRouteEntrypointsFragment) matchNonEmpty(v string) (string, bool) {
+	return v, v != ""
+}
+
+func (f *BeamRouteEntrypointsFragment) matchOdd(v string) (string, bool) {
+	return v, v == "odd"
+}
+
+func (f *BeamRouteEntrypointsFragment) setString(_ string, v string) string {
+	return v
+}
+
+elem (f *BeamRouteEntrypointsFragment) lensRoute(l doors.Source[string]) {
+	~(l.Bind(elem(v string) {
+		<div id="route-entry-lens">~("lens:" + v)</div>
+	}))
+	~(test.Button("route-entry-lens-update", func(ctx context.Context) bool {
+		l.Update(ctx, "b")
+		return false
+	}))
+}
+
+elem (f *BeamRouteEntrypointsFragment) lensBeamRoute(b doors.Beam[string]) {
+	~(b.Bind(elem(v string) {
+		<div id="route-entry-lens-beam">~("beam:" + v)</div>
+	}))
+}
+
+elem (f *BeamRouteEntrypointsFragment) derivedRoute(b doors.Beam[string]) {
+	~(b.Bind(elem(v string) {
+		<div id="route-entry-derived">~("derived:" + v)</div>
+	}))
+}
+
+elem (f *BeamRouteEntrypointsFragment) derivedDefault(b doors.Beam[string]) {
+	~(b.Bind(elem(v string) {
+		<div id="route-entry-derived-default">~("derived-default:" + v)</div>
+	}))
+}
+
+elem (f *BeamRouteEntrypointsFragment) simpleLensRoute(l doors.Source[string]) {
+	~(l.Bind(elem(v string) {
+		<div id="route-entry-simple-lens">~("simple-lens:" + v)</div>
+	}))
+	~(test.Button("route-entry-simple-lens-update", func(ctx context.Context) bool {
+		l.Update(ctx, "simple-lens")
+		return false
+	}))
+}
+
+elem (f *BeamRouteEntrypointsFragment) simpleBeamRoute(b doors.Beam[string]) {
+	~(b.Bind(elem(v string) {
+		<div id="route-entry-simple-beam">~("simple-beam:" + v)</div>
+	}))
+}
+
+elem (f *BeamRouteEntrypointsFragment) Main() {
+	~{
+		f.init()
+	}
+	~(f.source.Bind(elem(v state) {
+		<div id="route-entry-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
+	}))
+	~(f.str.RouteSource(
+		doors.RouteDerive(f.matchNonEmpty).Source(f.setString, f.lensRoute),
+	))
+	~(f.str.RouteBeam(
+		doors.RouteDerive(f.matchNonEmpty).Beam(f.lensBeamRoute),
+	))
+	~(f.parity.RouteBeam(
+		doors.RouteDerive(f.matchOdd).Beam(f.derivedRoute),
+		doors.RouteDefaultBeam(f.derivedDefault),
+	))
+	~(f.str.RouteSource(
+		doors.RouteMatch(func(v string) bool {
+			return strings.HasPrefix(v, "simple")
+		}).Source(f.simpleLensRoute),
+	))
+	~(f.str.RouteBeam(
+		doors.RouteMatch(func(v string) bool {
+			return strings.HasPrefix(v, "simple")
+		}).Beam(f.simpleBeamRoute),
+	))
+	~(test.Button("route-entry-set-simple", func(ctx context.Context) bool {
+		f.str.Update(ctx, "simple")
+		return false
+	}))
+	~(test.Button("route-entry-even", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 2, Str: f.str.Get()})
+		return false
+	}))
 }

@@ -32,28 +32,28 @@ import (
 func trackerRoot(r *root) (*tracker, core.Core) {
 	sh := &shredder.ValveFrame{}
 	t := &tracker{
-		id:             r.NewID(),
+		id:             r.inst.NewID(),
 		root:           r,
 		cancel:         func() {},
-		ctx:            r.runtime.Context(),
+		ctx:            r.runtime().Context(),
 		innerCallGuard: sh,
 		outerCallGuard: sh,
 	}
 	t.cinema = beam.NewCinema(nil, t)
-	core := core.NewCore(r.inst, t)
-	t.contentCtx = context.WithValue(r.runtime.Context(), ctex.KeyCore, core)
+	core := core.NewCore(t)
+	t.contentCtx = context.WithValue(r.runtime().Context(), ctex.KeyCore, core)
 	return t, core
 }
 
 func trackerShutdown(prev *tracker) {
-	prev.container.clean()
-	prev.clean(false)
+	prev.container.clean(shredder.FreeFrame{})
+	prev.clean(false, shredder.FreeFrame{})
 }
 
 func trackerRemove(prev *tracker, task *userTask) {
-	prev.container.clean()
-	prev.clean(false)
-	prev.outerCallGuard.Submit(prev.parent.ctx, prev.root.runtime, func(b bool) {
+	prev.container.clean(shredder.FreeFrame{})
+	prev.clean(false, shredder.FreeFrame{})
+	prev.outerCallGuard.Submit(prev.parent.ctx, prev.root.runtime(), func(b bool) {
 		if !b {
 			task.Cancel()
 			return
@@ -86,10 +86,10 @@ func trackerInherit(n *node, prev *tracker, preserveFrame bool) *tracker {
 		t.container.update(t)
 	} else {
 		t.container = newContainerTracker(t)
-		prev.container.clean()
+		prev.container.clean(t.innerCallGuard)
 	}
-	prev.clean(false)
-	core := core.NewCore(t.root.inst, t)
+	prev.clean(false, t.innerCallGuard)
+	core := core.NewCore(t)
 	t.contentCtx = context.WithValue(ctx, ctex.KeyCore, core)
 	t.parent.addChild(t)
 	return t
@@ -98,7 +98,7 @@ func trackerInherit(n *node, prev *tracker, preserveFrame bool) *tracker {
 func trackerCreate(n *node, p *pipe) *tracker {
 	ctx, cancel := context.WithCancel(p.tracker.ctx)
 	t := &tracker{
-		id:             p.tracker.root.NewID(),
+		id:             p.tracker.Instance().NewID(),
 		node:           n,
 		root:           p.tracker.root,
 		parent:         p.tracker,
@@ -109,7 +109,7 @@ func trackerCreate(n *node, p *pipe) *tracker {
 	}
 	t.cinema = beam.NewCinema(t.parent.cinema, t)
 	t.container = newContainerTracker(t)
-	core := core.NewCore(t.root.inst, t)
+	core := core.NewCore(t)
 	t.contentCtx = context.WithValue(ctx, ctex.KeyCore, core)
 	t.parent.addChild(t)
 	return t
@@ -131,13 +131,18 @@ type tracker struct {
 	container      *containerTracker
 	hooks          common.Set[uint64]
 	children       common.Set[*tracker]
+	onClean        []func()
+}
+
+func (t *tracker) Instance() core.Instance {
+	return t.root.instance()
 }
 
 func (t *tracker) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
 	frames := ctex.GetFrames(ctx)
 	callFrame := shredder.Join(true, frames.Call(), t.innerCallGuard)
 	defer callFrame.Release()
-	callFrame.Run(ctx, t.root.runtime, func(b bool) {
+	callFrame.Run(ctx, t.root.runtime(), func(b bool) {
 		if !b {
 			if onCancel != nil {
 				onCancel()
@@ -159,7 +164,7 @@ func (t *tracker) inst() Instance {
 }
 
 func (t *tracker) Runtime() shredder.Runtime {
-	return t.root.runtime
+	return t.root.runtime()
 }
 
 func (t *tracker) ID() uint64 {
@@ -170,7 +175,7 @@ func (t *tracker) addChild(child *tracker) {
 	t.mu.Lock()
 	if t.ctx.Err() != nil {
 		t.mu.Unlock()
-		child.clean(true)
+		child.clean(true, shredder.FreeFrame{})
 		return
 	}
 	defer t.mu.Unlock()
@@ -189,28 +194,46 @@ func (t *tracker) removeChild(child *tracker) {
 	t.children.Remove(child)
 }
 
-func (t *tracker) clean(cascade bool) {
+func (t *tracker) clean(cascade bool, cleanGuard shredder.SimpleFrame) {
 	t.cancel()
 	t.cinema.Cancel()
 	if !cascade && t.parent != nil {
 		t.parent.removeChild(t)
 	}
 	if cascade {
-		t.container.clean()
+		t.container.clean(cleanGuard)
 		t.node.unmountedSelf()
 	}
 	t.mu.Lock()
 	hooks := t.hooks
 	children := t.children
+	clean := t.onClean
+	t.onClean = nil
 	t.hooks = nil
 	t.children = nil
 	t.mu.Unlock()
 	for child := range children {
-		child.clean(true)
+		child.clean(true, cleanGuard)
 	}
 	for hook := range hooks {
 		t.root.cancelHook(hook)
 	}
+	cleanGuard.Run(context.Background(), nil, func(b bool) {
+		for _, clean := range clean {
+			clean()
+		}
+	})
+}
+
+func (t *tracker) Clean(f func()) {
+	t.mu.Lock()
+	if t.ctx.Err() != nil {
+		t.mu.Unlock()
+		f()
+		return
+	}
+	defer t.mu.Unlock()
+	t.onClean = append(t.onClean, f)
 }
 
 func (t *tracker) ReadFrame() shredder.Frame {
@@ -252,7 +275,7 @@ func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.Respon
 	if t.hooks == nil {
 		t.hooks = common.NewSet[uint64]()
 	}
-	h := newHook(t.root.NewID(), t, onTrigger, onCancel)
+	h := newHook(t.root.instance().NewID(), t, onTrigger, onCancel)
 	t.hooks.Add(h.id)
 	t.root.addHook(h)
 	return core.Hook{
@@ -300,7 +323,7 @@ func newContainerTracker(t *tracker) *containerTracker {
 		cancel:  cancel,
 	}
 	ft.cinema = beam.NewCinema(t.parent.Cinema(), ft)
-	core := core.NewCore(t.root.inst, ft)
+	core := core.NewCore(ft)
 	ft.ctx = context.WithValue(ctx, ctex.KeyCore, core)
 	return ft
 }
@@ -312,6 +335,22 @@ type containerTracker struct {
 	hooks   common.Set[uint64]
 	ctx     context.Context
 	cancel  context.CancelFunc
+	onClean []func()
+}
+
+func (t *containerTracker) Clean(f func()) {
+	t.mu.Lock()
+	if t.ctx.Err() != nil {
+		t.mu.Unlock()
+		f()
+		return
+	}
+	defer t.mu.Unlock()
+	t.onClean = append(t.onClean, f)
+}
+
+func (t *containerTracker) Instance() core.Instance {
+	return t.tracker.Instance()
 }
 
 func (t *containerTracker) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
@@ -361,16 +400,23 @@ func (t *containerTracker) ReadFrame() shredder.Frame {
 	return t.tracker.ReadFrame()
 }
 
-func (t *containerTracker) clean() {
+func (t *containerTracker) clean(cleanGuard shredder.SimpleFrame) {
 	t.cancel()
 	t.mu.Lock()
 	hooks := t.hooks
+	clean := t.onClean
+	t.onClean = nil
 	t.hooks = nil
 	t.mu.Unlock()
 	t.cinema.Cancel()
 	for hook := range hooks {
 		t.tracker.root.cancelHook(hook)
 	}
+	cleanGuard.Run(context.Background(), nil, func(b bool) {
+		for _, clean := range clean {
+			clean()
+		}
+	})
 }
 
 func (t *containerTracker) Cinema() beam.Cinema {
@@ -386,7 +432,7 @@ func (t *containerTracker) RegisterHook(onTrigger func(ctx context.Context, w ht
 	if t.hooks == nil {
 		t.hooks = common.NewSet[uint64]()
 	}
-	h := newHook(t.tracker.root.NewID(), t, onTrigger, onCancel)
+	h := newHook(t.tracker.Instance().NewID(), t, onTrigger, onCancel)
 	t.hooks.Add(h.id)
 	t.tracker.root.addHook(h)
 	return core.Hook{

@@ -126,16 +126,18 @@ func newCollectedCSP() *collectedCSP {
 	}
 }
 
+type CSPCollector = *cspCollector
+
 // CSPCollector accumulates hashes and dynamic sources that should be added to a
 // [CSP] during one response.
-type CSPCollector struct {
+type cspCollector struct {
 	csp     *CSP
 	styles  *collectedCSP
 	scripts *collectedCSP
 }
 
 // StyleSource records a dynamic stylesheet source for the final CSP header.
-func (c *CSPCollector) StyleSource(source string) {
+func (c CSPCollector) StyleSource(source string) {
 	if c == nil {
 		return
 	}
@@ -143,7 +145,7 @@ func (c *CSPCollector) StyleSource(source string) {
 }
 
 // ScriptSource records a dynamic script source for the final CSP header.
-func (c *CSPCollector) ScriptSource(source string) {
+func (c CSPCollector) ScriptSource(source string) {
 	if c == nil {
 		return
 	}
@@ -151,7 +153,7 @@ func (c *CSPCollector) ScriptSource(source string) {
 }
 
 // StyleHash records an inline stylesheet hash for the final CSP header.
-func (c *CSPCollector) StyleHash(hash []byte) {
+func (c CSPCollector) StyleHash(hash []byte) {
 	if c == nil {
 		return
 	}
@@ -159,7 +161,7 @@ func (c *CSPCollector) StyleHash(hash []byte) {
 }
 
 // ScriptHash records an inline script hash for the final CSP header.
-func (c *CSPCollector) ScriptHash(hash []byte) {
+func (c CSPCollector) ScriptHash(hash []byte) {
 	if c == nil {
 		return
 	}
@@ -167,16 +169,16 @@ func (c *CSPCollector) ScriptHash(hash []byte) {
 }
 
 // Generate returns the final Content-Security-Policy header value.
-func (c *CSPCollector) Generate() string {
+func (c CSPCollector) Generate() string {
 	return c.csp.generate(c.styles, c.scripts)
 }
 
 // NewCollector creates a per-response collector for c.
-func (c *CSP) NewCollector() *CSPCollector {
+func (c *CSP) NewCollector() CSPCollector {
 	if c == nil {
 		return nil
 	}
-	return &CSPCollector{
+	return &cspCollector{
 		csp:     c,
 		styles:  newCollectedCSP(),
 		scripts: newCollectedCSP(),

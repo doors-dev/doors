@@ -15,10 +15,12 @@
 package imports
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/doors-dev/doors"
@@ -38,27 +40,26 @@ func checkColor(t *testing.T, page *rod.Page) {
 	}
 }
 
-func testStyle(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      h,
-					F:      &ModuleFragment{},
-				})
-			})
-			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
-		},
-	)
+func importsBro(h func(test.PathLens) gox.Elem, f test.Fragment, options ...doors.With) *test.Bro {
+	return test.NewPathBroOptions(browser, func(r test.PathLens) gox.Comp {
+		return &test.Page{
+			Source: r,
+			Header: "Testing Imports",
+			H:      h,
+			F:      f,
+		}
+	}, options, doors.UseDir("module", modulePath, doors.CacheControlStatic))
+}
+
+func testStyle(t *testing.T, h func(test.PathLens) gox.Elem) {
+	bro := importsBro(h, &ModuleFragment{})
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
 	<-time.After(100 * time.Millisecond)
 	checkColor(t, page)
 }
-func testModule(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
+func testModule(t *testing.T, h func(test.PathLens) gox.Elem) {
 	page := modulePage(t, h)
 	defer page.Close()
 
@@ -66,21 +67,9 @@ func testModule(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
 	test.TestReport(t, page, "hello")
 }
 
-func modulePage(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) *rod.Page {
+func modulePage(t *testing.T, h func(test.PathLens) gox.Elem) *rod.Page {
 	t.Helper()
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      h,
-					F:      &ModuleFragment{},
-				})
-			})
-			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
-		},
-	)
+	bro := importsBro(h, &ModuleFragment{})
 	t.Cleanup(func() {
 		bro.Close()
 	})
@@ -93,27 +82,15 @@ func modulePage(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) *rod.Pag
 	return page
 }
 
-func testValue(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
+func testValue(t *testing.T, h func(test.PathLens) gox.Elem) {
 	page := valuePage(t, h)
 	<-time.After(100 * time.Millisecond)
 	test.TestReport(t, page, "hello")
 }
 
-func valuePage(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) *rod.Page {
+func valuePage(t *testing.T, h func(test.PathLens) gox.Elem) *rod.Page {
 	t.Helper()
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      h,
-					F:      &ValueFragment{},
-				})
-			})
-			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
-		},
-	)
+	bro := importsBro(h, &ValueFragment{})
 	t.Cleanup(func() {
 		bro.Close()
 	})
@@ -124,21 +101,9 @@ func valuePage(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) *rod.Page
 	return page
 }
 
-func testValueAttr(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, selector string, name string, check func(t *testing.T, value string)) {
+func testValueAttr(t *testing.T, h func(test.PathLens) gox.Elem, selector string, name string, check func(t *testing.T, value string)) {
 	t.Helper()
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      h,
-					F:      &ValueFragment{},
-				})
-			})
-			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
-		},
-	)
+	bro := importsBro(h, &ValueFragment{})
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
@@ -147,21 +112,9 @@ func testValueAttr(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, selec
 	check(t, getAttr(t, page, selector, name))
 }
 
-func emptyPage(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) *rod.Page {
+func emptyPage(t *testing.T, h func(test.PathLens) gox.Elem) *rod.Page {
 	t.Helper()
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      h,
-					F:      &Empty{},
-				})
-			})
-			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
-		},
-	)
+	bro := importsBro(h, &Empty{})
 	t.Cleanup(func() {
 		bro.Close()
 	})
@@ -201,21 +154,9 @@ func getTextContent(t *testing.T, page *rod.Page, selector string) string {
 	return value.Value.Str()
 }
 
-func testStyleAttr(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, check func(t *testing.T, href string)) {
+func testStyleAttr(t *testing.T, h func(test.PathLens) gox.Elem, check func(t *testing.T, href string)) {
 	t.Helper()
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      h,
-					F:      &ModuleFragment{},
-				})
-			})
-			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
-		},
-	)
+	bro := importsBro(h, &ModuleFragment{})
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
@@ -293,7 +234,7 @@ func fetchTextAndContentTypeFromPage(t *testing.T, page *rod.Page, url string) (
 	return value.Value.Get("body").Str(), value.Value.Get("contentType").Str()
 }
 
-func testScriptFetchExact(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, selector string, expected string) {
+func testScriptFetchExact(t *testing.T, h func(test.PathLens) gox.Elem, selector string, expected string) {
 	t.Helper()
 	page := modulePage(t, h)
 	src := getAttr(t, page, selector, "src")
@@ -306,40 +247,17 @@ func testScriptFetchExact(t *testing.T, h func(doors.Source[test.Path]) gox.Elem
 	}
 }
 
-func testRenderError(t *testing.T, h func(doors.Source[test.Path]) gox.Elem) {
+func testRenderError(t *testing.T, h func(test.PathLens) gox.Elem) {
 	t.Helper()
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      h,
-					F:      &Empty{},
-				})
-			})
-			doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
-		},
-	)
+	bro := importsBro(h, &Empty{})
 	t.Cleanup(func() { bro.Close() })
 	page := bro.PageStatus(t, "/", http.StatusInternalServerError)
 	t.Cleanup(func() { page.Close() })
 }
 
-func fetchPageCSPHeader(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, csp doors.CSP) string {
+func fetchPageCSPHeader(t *testing.T, h func(test.PathLens) gox.Elem, csp doors.CSP) string {
 	t.Helper()
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseCSP(r, csp)
-		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-			return doors.ResponseComp(&test.Page{
-				Source: r,
-				Header: "Testing Imports",
-				H:      h,
-				F:      &Empty{},
-			})
-		})
-		doors.UseRoute(r, doors.RouteDir{Prefix: "module", DirPath: modulePath})
-	})
+	bro := importsBro(h, &Empty{}, doors.WithCSP(csp))
 	defer bro.Close()
 
 	resp, err := http.Get(test.Host + "/")
@@ -355,6 +273,39 @@ func fetchPageCSPHeader(t *testing.T, h func(doors.Source[test.Path]) gox.Elem, 
 		t.Fatal("expected Content-Security-Policy header")
 	}
 	return header
+}
+
+func TestAppStaticMiddlewares(t *testing.T) {
+	bro := test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return &test.Page{
+			Source: doors.NewSource(test.Path{Vh: true}),
+			Header: "Static Middleware",
+		}
+	},
+		doors.UseResource("asset.txt", doors.ResourceString("resource body"), "text/plain"),
+		doors.UseFS("fs", fstest.MapFS{
+			"hello.txt": {
+				Data: []byte("fs body"),
+			},
+		}, doors.CacheControlStaticShort),
+	)
+	defer bro.Close()
+
+	body, headers := fetchTextAndHeaders(t, "/asset.txt")
+	if body != "resource body" {
+		t.Fatalf("unexpected UseResource body %q", body)
+	}
+	if contentType := headers.Get("Content-Type"); !strings.Contains(contentType, "text/plain") {
+		t.Fatalf("expected UseResource content type text/plain, got %q", contentType)
+	}
+
+	body, headers = fetchTextAndHeaders(t, "/fs/hello.txt")
+	if body != "fs body" {
+		t.Fatalf("unexpected UseFS body %q", body)
+	}
+	if cacheControl := headers.Get("Cache-Control"); cacheControl != doors.CacheControlStaticShort {
+		t.Fatalf("expected UseFS cache control %q, got %q", doors.CacheControlStaticShort, cacheControl)
+	}
 }
 
 func TestModule(t *testing.T) {
@@ -687,18 +638,7 @@ func TestCSPHeader(t *testing.T) {
 }
 
 func TestReact(t *testing.T) {
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      reactHead,
-					F:      &ReactFragment{},
-				})
-			})
-		},
-	)
+	bro := importsBro(reactHead, &ReactFragment{})
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
@@ -718,18 +658,7 @@ func TestReact(t *testing.T) {
 }
 
 func TestFiles(t *testing.T) {
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      staticFiles,
-					F:      &Empty{},
-				})
-			})
-		},
-	)
+	bro := importsBro(staticFiles, &Empty{})
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
@@ -836,18 +765,7 @@ func TestFiles(t *testing.T) {
 }
 
 func TestFileCachedBad(t *testing.T) {
-	bro := test.NewBro(browser,
-		func(r doors.Router) {
-			doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-				return doors.ResponseComp(&test.Page{
-					Source: r,
-					Header: "Testing Imports",
-					H:      fileCachedHrefBad,
-					F:      &Empty{},
-				})
-			})
-		},
-	)
+	bro := importsBro(fileCachedHrefBad, &Empty{})
 	defer bro.Close()
 	page := bro.PageStatus(t, "/", http.StatusInternalServerError)
 	defer page.Close()

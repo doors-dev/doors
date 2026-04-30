@@ -24,11 +24,11 @@ import (
 )
 
 func TestNotStruct(t *testing.T) {
-	_, err := NewAdapter[string]()
+	_, err := GetModelAdapter[string]()
 	if err == nil {
 		t.Error("Adapeter must accept only struct")
 	}
-	_, err = NewAdapter[chan int]()
+	_, err = GetModelAdapter[chan int]()
 	if err == nil {
 		t.Error("Adapeter must accept only struct")
 	}
@@ -39,27 +39,24 @@ func TestNoPath(t *testing.T) {
 		V  bool
 		Id string
 	}
-	_, err := NewAdapter[noPath]()
+	_, err := GetModelAdapter[noPath]()
 	if err == nil {
 		t.Error("There must be path tag")
 	}
 }
 
-func testPath[V any](t *testing.T, path string, expected bool) (*V, Adapter[V]) {
-	a, err := NewAdapter[V]()
+func testPath[V any](t *testing.T, path string, expected bool) (*V, ModelAdapter[V]) {
+	a, err := GetModelAdapter[V]()
 	if err != nil {
 		t.Error("Can't create adapter", err)
 	}
-	li, err := NewLocationFromEscapedURI(path)
-	if err != nil {
-		panic(err)
-	}
+	li := NewLocationFromEscapedURI(path)
 	p, ok := a.Decode(li)
 	if !expected {
 		if ok {
 			t.Error("encoded wrong path")
 		}
-		return nil, nil
+		return nil, ModelAdapter[V]{}
 	}
 	if !ok {
 		t.Error("could not encode correct path")
@@ -103,6 +100,98 @@ func TestSimplePath(t *testing.T) {
 	testPath[path](t, "/a/", false)
 	testPath[path](t, "/abc/2/", false)
 	testPath[path](t, "/abc/1/a/", false)
+}
+
+func TestEnumPathVariants(t *testing.T) {
+	type Section int
+	const (
+		SectionHome Section = iota
+		SectionDocs
+		SectionTutorial
+		SectionRecepies
+		SectionLicense
+	)
+	type path struct {
+		Section Section `path:"/ | docs/:ID? | /tutorial/:ID? | /recepies/:ID? | /license"`
+		ID      *string
+		Mode    *string `query:"mode"`
+	}
+
+	v, a := testPath[path](t, "/", true)
+	if v.Section != SectionHome || v.ID != nil {
+		t.Fatalf("unexpected home variant: %#v", v)
+	}
+	v, _ = testPath[path](t, "/docs", true)
+	if v.Section != SectionDocs || v.ID != nil {
+		t.Fatalf("unexpected docs variant without id: %#v", v)
+	}
+	v, _ = testPath[path](t, "/docs/intro?mode=full", true)
+	if v.Section != SectionDocs || v.ID == nil || *v.ID != "intro" || v.Mode == nil || *v.Mode != "full" {
+		t.Fatalf("unexpected docs variant with id/query: %#v", v)
+	}
+	v, _ = testPath[path](t, "/tutorial/start", true)
+	if v.Section != SectionTutorial || v.ID == nil || *v.ID != "start" {
+		t.Fatalf("unexpected tutorial variant: %#v", v)
+	}
+	v, _ = testPath[path](t, "/recepies/soup", true)
+	if v.Section != SectionRecepies || v.ID == nil || *v.ID != "soup" {
+		t.Fatalf("unexpected recepies variant: %#v", v)
+	}
+	v, _ = testPath[path](t, "/license", true)
+	if v.Section != SectionLicense || v.ID != nil {
+		t.Fatalf("unexpected license variant: %#v", v)
+	}
+	testPath[path](t, "/missing", false)
+
+	id := "advanced"
+	mode := "deep"
+	encoded, err := a.Encode(&path{
+		Section: SectionTutorial,
+		ID:      &id,
+		Mode:    &mode,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/tutorial/advanced?mode=deep" {
+		t.Fatalf("unexpected encoded tutorial location: %q", encoded.String())
+	}
+	encoded, err = a.Encode(&path{Section: SectionDocs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/docs" {
+		t.Fatalf("unexpected encoded optional docs location: %q", encoded.String())
+	}
+	encoded, err = a.Encode(&path{Section: SectionLicense, ID: &id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/license" {
+		t.Fatalf("unexpected encoded license location: %q", encoded.String())
+	}
+	if _, err := a.Encode(&path{Section: Section(99)}); err == nil {
+		t.Fatal("expected invalid enum variant to fail encoding")
+	}
+}
+
+func TestRawIntPathVariants(t *testing.T) {
+	type path struct {
+		Variant int `path:"/ | /one | /two/:ID"`
+		ID      string
+	}
+
+	v, a := testPath[path](t, "/two/value", true)
+	if v.Variant != 2 || v.ID != "value" {
+		t.Fatalf("unexpected int variant decode: %#v", v)
+	}
+	encoded, err := a.Encode(&path{Variant: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/one" {
+		t.Fatalf("unexpected int variant encode: %q", encoded.String())
+	}
 }
 
 func TestCapture(t *testing.T) {

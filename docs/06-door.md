@@ -16,7 +16,6 @@ type Panel struct {
 
 There are two common ways to render a Door.
 
-
 ### Proxy
 
 Use `~>(door)` when you want a real element in the template to become the Door container:
@@ -64,7 +63,7 @@ Every mounted Door needs a DOM container.
 - With `~>(door) <>...</>`, **Doors** creates its own container element.
 - With `~(&door)`, **Doors** uses the last container from the internal state, or creates its own.
 
-By default generated container tag is `d0-r`, and **Doors** styles it with `display: contents`, so it usually does not affect layout.
+By default, the generated container tag is `d0-r`, and **Doors** styles it with `display: contents`, so it usually does not affect layout.
 
 Use an explicit tag with `~>(door)` when the exact HTML parent matters.
 
@@ -153,7 +152,7 @@ If the work should outlive the current dynamic owner, use
 `doors.FreeRoot(ctx)` instead. It switches to the root Doors context and the
 instance runtime lifecycle.
 
-Most code should use the regular methods. Reach for `X*` when completion itself matters, such as pacing a fast stream of updates.
+> Most code should use the regular methods. Reach for `X*` when completion itself matters, such as pacing a fast stream of updates.
 
 ## Lifecycle
 
@@ -185,6 +184,7 @@ After a Door has been made static or unmounted, later calls still update the Doo
 - Use `Inner` when the Door should stay in place and only its contents should change.
 - Use `Inner(ctx, nil)` when the Door should stay alive but become empty.
 - Use `Outer` when you need a new root element but want to keep the same Door handle.
+- Use `Outer(ctx, nil)` when you need mounted placeholder that does not affect layout (`d0-r`)
 - Use `Static` when the current region should become plain rendered content.
 - Use `Static(ctx, nil)` when the Door should disappear without replacement content.
 - Use `Reload` when you want to redraw the current content.

@@ -42,11 +42,13 @@ func (testComp) Main() gox.Elem { return nil }
 type titleInstance struct {
 	title      string
 	titleAttrs gox.Attrs
-	registry   *resources.Registry
-	conf       common.SystemConf
-	csp        *common.CSPCollector
+	registry   resources.Registry
+	conf       common.Conf
+	csp        common.CSPCollector
 	modules    *testModuleRegistry
 	metas      []testMetaUpdate
+	session    *titleSession
+	location   beam.Source[path.Location]
 }
 
 func (t *titleInstance) CallCtx(context.Context, action.Action, func(json.RawMessage, error), func(), action.CallParams) context.CancelFunc {
@@ -56,38 +58,69 @@ func (t *titleInstance) CallCheck(func() bool, action.Action, func(json.RawMessa
 }
 func (t *titleInstance) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
 }
-func (t *titleInstance) CSPCollector() *common.CSPCollector {
+func (t *titleInstance) CSPCollector() common.CSPCollector {
 	if t.csp != nil {
 		return t.csp
 	}
 	return (&common.CSP{}).NewCollector()
 }
 func (t *titleInstance) ModuleRegistry() core.ModuleRegistry   { return t.modules }
-func (t *titleInstance) ResourceRegistry() *resources.Registry { return t.registry }
 func (t *titleInstance) ID() string                            { return "instance" }
 func (t *titleInstance) RootID() uint64                        { return 1 }
-func (t *titleInstance) Conf() *common.SystemConf              { return &t.conf }
 func (t *titleInstance) NewID() uint64                         { return 1 }
-func (t *titleInstance) NewLink(any) (core.Link, error)        { return core.Link{}, nil }
 func (t *titleInstance) Runtime() shredder.Runtime             { return nil }
 func (t *titleInstance) SetStatus(int)                         {}
-func (t *titleInstance) SessionExpire(time.Duration)           {}
-func (t *titleInstance) SessionEnd()                           {}
-func (t *titleInstance) InstanceEnd()                          {}
-func (t *titleInstance) SessionID() string                     { return "session" }
-func (t *titleInstance) Adapters() path.Adapters               { return nil }
-func (t *titleInstance) PathMaker() path.PathMaker             { return path.NewPathMaker("srv") }
-func (t *titleInstance) UpdateTitle(content string, attrs gox.Attrs) {
+func (t *titleInstance) Session() core.Session                 { return t.session }
+func (t *titleInstance) Store() ctex.Store                     { return ctex.NewStore() }
+func (t *titleInstance) Location() beam.Source[path.Location] { return t.location }
+func (t *titleInstance) Kill()                                 {}
+func (t *titleInstance) TitleMeta() core.TitleMeta             { return t }
+func (t *titleInstance) PathMaker() path.PathMaker             { return t.session.app.PathMaker() }
+func (t *titleInstance) Edit(cur gox.Cursor) error             { return nil }
+func (t *titleInstance) Main() gox.Elem                        { return nil }
+func (t *titleInstance) UpdateTitle(content string, attrs gox.Attrs) context.CancelFunc {
 	t.title = content
 	t.titleAttrs = attrs
+	return func() {}
 }
-func (t *titleInstance) UpdateMeta(name string, property bool, attrs gox.Attrs) {
+func (t *titleInstance) UpdateMeta(property bool, name string, attrs gox.Attrs) context.CancelFunc {
 	t.metas = append(t.metas, testMetaUpdate{name: name, property: property, attrs: attrs})
+	return func() {}
 }
 
-type titleDoor struct{}
+type titleApp struct {
+	conf     *common.Conf
+	registry resources.Registry
+}
 
-func (titleDoor) Cinema() beam.Cinema { return nil }
+func (a titleApp) PathMaker() path.PathMaker {
+	return path.NewPathMaker("srv")
+}
+
+func (a titleApp) ResourceRegistry() resources.Registry {
+	return a.registry
+}
+
+func (a titleApp) Conf() *common.Conf {
+	return a.conf
+}
+
+type titleSession struct {
+	app titleApp
+}
+
+func (s titleSession) App() core.App        { return s.app }
+func (s titleSession) Store() ctex.Store    { return ctex.NewStore() }
+func (s titleSession) ID() string           { return "session" }
+func (s titleSession) Expire(time.Duration) {}
+func (s titleSession) Kill()                {}
+
+type titleDoor struct {
+	inst *titleInstance
+}
+
+func (d titleDoor) Instance() core.Instance { return d.inst }
+func (titleDoor) Cinema() beam.Cinema       { return nil }
 func (titleDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, func(context.Context)) (core.Hook, bool) {
 	return core.Hook{}, false
 }
@@ -103,6 +136,7 @@ func (titleDoor) RootCore() core.Core {
 }
 func (titleDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
 }
+func (titleDoor) Clean(func()) {}
 
 type testMetaUpdate struct {
 	name     string
@@ -125,9 +159,11 @@ type hookDoor struct {
 	id        uint64
 	allowHook bool
 	nextHook  uint64
+	inst      *titleInstance
 }
 
-func (d *hookDoor) Cinema() beam.Cinema { return nil }
+func (d *hookDoor) Instance() core.Instance { return d.inst }
+func (d *hookDoor) Cinema() beam.Cinema     { return nil }
 
 func (d *hookDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, func(context.Context)) (core.Hook, bool) {
 	if !d.allowHook {
@@ -149,20 +185,24 @@ func (d *hookDoor) RootCore() core.Core {
 }
 func (d *hookDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
 }
+func (d *hookDoor) Clean(func()) {}
 
 func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstance, *hookDoor, *testModuleRegistry) {
 	t.Helper()
-	conf := common.SystemConf{}
+	conf := common.Conf{}
 	common.InitDefaults(&conf)
 	modules := &testModuleRegistry{}
+	registry := resources.NewRegistry(pagePrinterSettings{conf: &conf})
 	inst := &titleInstance{
-		registry: resources.NewRegistry(pagePrinterSettings{conf: &conf}),
+		registry: registry,
 		conf:     conf,
 		csp:      (&common.CSP{}).NewCollector(),
 		modules:  modules,
+		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
 	}
-	door := &hookDoor{id: 7, allowHook: allowHook}
-	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(inst, door))
+	inst.session = &titleSession{app: titleApp{conf: &inst.conf, registry: registry}}
+	door := &hookDoor{id: 7, allowHook: allowHook, inst: inst}
+	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(door))
 	return ctx, inst, door, modules
 }
 
@@ -325,7 +365,8 @@ func TestProcessTitleWrongClose(t *testing.T) {
 
 func TestProcessTitleSuccess(t *testing.T) {
 	inst := &titleInstance{}
-	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(inst, titleDoor{}))
+	inst.session = &titleSession{app: titleApp{conf: &inst.conf}}
+	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(titleDoor{inst: inst}))
 	open := gox.NewJobHeadOpen(ctx, 10, gox.KindRegular, "title", gox.NewAttrs())
 	open.Attrs.Get("data-id").Set("hero")
 
@@ -693,7 +734,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 
 	t.Run("resource url cancellation", func(t *testing.T) {
 		failCtx, _, _, _ := newPrinterCore(t, false)
-		res, err := resources.NewRegistry(pagePrinterSettings{conf: (&common.SystemConf{})}).Static(resources.StaticString{Content: "x"}, "text/plain")
+		res, err := resources.NewRegistry(pagePrinterSettings{conf: (&common.Conf{})}).Static(resources.StaticString{Content: "x"}, "text/plain")
 		if err != nil {
 			t.Fatal(err)
 		}

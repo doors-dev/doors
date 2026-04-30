@@ -16,63 +16,63 @@ package front
 
 import (
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/gox"
 )
 
-var Include = gox.Elem(func(cur gox.Cursor) error {
-	core := cur.Context().Value(ctex.KeyCore).(core.Core)
-	conf := core.Conf()
-	registry := core.ResourceRegistry()
-	pathMaker := core.PathMaker()
-	if err := cur.InitVoid("link"); err != nil {
-		return err
-	}
-	{
-		if err := cur.Set("rel", "stylesheet"); err != nil {
+func Include(inst core.Instance) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		conf := inst.Session().App().Conf()
+		registry := inst.Session().App().ResourceRegistry()
+		pathMaker := inst.Session().App().PathMaker()
+		if err := cur.InitVoid("link"); err != nil {
 			return err
 		}
-		if err := cur.Set("href", pathMaker.Resource(registry.MainStyle(), "d0r.css")); err != nil {
-			return err
-		}
-	}
-	if err := cur.Submit(); err != nil {
-		return err
-	}
-	if err := cur.Init("script"); err != nil {
-		return err
-	}
-	{
-		if err := cur.Set("src", pathMaker.Resource(registry.MainScript(), "d0r.js")); err != nil {
-			return err
-		}
-		if err := cur.Set("id", core.InstanceID()); err != nil {
-			return err
-		}
-		if err := cur.Set("data-prefix", pathMaker.Prefix()); err != nil {
-			return err
-		}
-		if err := cur.Set("data-root", core.RootID()); err != nil {
-			return err
-		}
-		if err := cur.Set("data-ttl", conf.InstanceTTL.Milliseconds()); err != nil {
-			return err
-		}
-		if err := cur.Set("data-disconnect", conf.DisconnectHiddenTimer.Milliseconds()); err != nil {
-			return err
-		}
-		if err := cur.Set("data-request", conf.RequestTimeout.Milliseconds()); err != nil {
-			return err
-		}
-		if err := cur.Set("data-ping", conf.SolitairePing.Milliseconds()); err != nil {
-			return err
+		{
+			if err := cur.Set("rel", "stylesheet"); err != nil {
+				return err
+			}
+			if err := cur.Set("href", pathMaker.Resource(registry.MainStyle(), "d0r.css")); err != nil {
+				return err
+			}
 		}
 		if err := cur.Submit(); err != nil {
 			return err
 		}
-	}
-	if err := cur.Close(); err != nil {
-		return err
-	}
-	return nil
-})
+		if err := cur.Init("script"); err != nil {
+			return err
+		}
+		{
+			if err := cur.Set("src", pathMaker.Resource(registry.MainScript(), "d0r.js")); err != nil {
+				return err
+			}
+			if err := cur.Set("id", inst.ID()); err != nil {
+				return err
+			}
+			if err := cur.Set("data-prefix", pathMaker.Prefix()); err != nil {
+				return err
+			}
+			if err := cur.Set("data-root", inst.RootID()); err != nil {
+				return err
+			}
+			if err := cur.Set("data-ttl", conf.InstanceTTL.Milliseconds()); err != nil {
+				return err
+			}
+			if err := cur.Set("data-disconnect", conf.DisconnectHiddenTimer.Milliseconds()); err != nil {
+				return err
+			}
+			if err := cur.Set("data-request", conf.RequestTimeout.Milliseconds()); err != nil {
+				return err
+			}
+			if err := cur.Set("data-ping", conf.SolitairePing.Milliseconds()); err != nil {
+				return err
+			}
+			if err := cur.Submit(); err != nil {
+				return err
+			}
+		}
+		if err := cur.Close(); err != nil {
+			return err
+		}
+		return nil
+	})
+}

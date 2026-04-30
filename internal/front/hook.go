@@ -24,8 +24,8 @@ import (
 type Hook struct {
 	Before   action.Actions
 	OnError  action.Actions
-	Scope    []ScopeSet
-	Indicate []Indicate
+	Scope    []Scope
+	Indicate []Indicator
 	core.Hook
 }
 

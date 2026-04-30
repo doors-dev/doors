@@ -22,6 +22,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
@@ -34,38 +35,48 @@ type Hook struct {
 	Cancel context.CancelFunc
 }
 
-type Link struct {
-	Location path.Location
-	On       func(context.Context)
-}
-
 type ModuleRegistry interface {
 	Add(specifier string, path string)
 }
 
+type App interface {
+	PathMaker() path.PathMaker
+	ResourceRegistry() resources.Registry
+	Conf() *common.Conf
+}
+
+type Session interface {
+	App() App
+	Store() ctex.Store
+	ID() string
+	Expire(time.Duration)
+	Kill()
+}
+
+type TitleMeta interface {
+	gox.Editor
+	UpdateTitle(value string, attrs gox.Attrs) context.CancelFunc
+	UpdateMeta(prop bool, name string, attrs gox.Attrs) context.CancelFunc
+}
+
 type Instance interface {
-	CSPCollector() *common.CSPCollector
+	Session() Session
+	Store() ctex.Store
+	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
+	CSPCollector() common.CSPCollector
 	ModuleRegistry() ModuleRegistry
-	ResourceRegistry() *resources.Registry
 	ID() string
 	RootID() uint64
-	Conf() *common.SystemConf
 	NewID() uint64
-	NewLink(any) (Link, error)
 	Runtime() shredder.Runtime
 	SetStatus(int)
-	SessionExpire(time.Duration)
-	SessionEnd()
-	InstanceEnd()
-	SessionID() string
-	Adapters() path.Adapters
-	PathMaker() path.PathMaker
-	UpdateTitle(content string, attrs gox.Attrs)
-	UpdateMeta(name string, property bool, attrs gox.Attrs)
-	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
+	Location() beam.Source[path.Location]
+	Kill()
+	TitleMeta() TitleMeta
 }
 
 type Door interface {
+	Instance() Instance
 	Cinema() beam.Cinema
 	ID() uint64
 	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
@@ -73,12 +84,12 @@ type Door interface {
 	XReload(ctx context.Context) <-chan error
 	RootCore() Core
 	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
+	Clean(func())
 }
 
-func NewCore(inst Instance, door Door) Core {
+func NewCore(door Door) Core {
 	return &core{
 		door: door,
-		inst: inst,
 	}
 }
 
@@ -88,7 +99,10 @@ var _ beam.Core = &core{}
 
 type core struct {
 	door Door
-	inst Instance
+}
+
+func (c Core) Location() beam.Source[path.Location] {
+	return c.Instance().Location()
 }
 
 func (c Core) Reload(ctx context.Context) {
@@ -103,16 +117,16 @@ func (c Core) RootCore() Core {
 	return c.door.RootCore()
 }
 
-func (c Core) UpdateMeta(name string, property bool, attrs gox.Attrs) {
-	c.inst.UpdateMeta(name, property, attrs)
+func (c Core) Clean(f func()) {
+	c.door.Clean(f)
 }
 
-func (c Core) UpdateTitle(content string, attrs gox.Attrs) {
-	c.inst.UpdateTitle(content, attrs)
+func (c Core) TitleMeta() TitleMeta {
+	return c.Instance().TitleMeta()
 }
 
 func (c Core) PathMaker() path.PathMaker {
-	return c.inst.PathMaker()
+	return c.Instance().Session().App().PathMaker()
 }
 
 func (c Core) Door() Door {
@@ -124,31 +138,27 @@ func (c Core) DoorID() uint64 {
 }
 
 func (c Core) Instance() Instance {
-	return c.inst
-}
-
-func (c Core) Adapters() path.Adapters {
-	return c.inst.Adapters()
+	return c.door.Instance()
 }
 
 func (c Core) SessionExpire(d time.Duration) {
-	c.inst.SessionExpire(d)
+	c.Instance().Session().Expire(d)
 }
 
 func (c Core) SessionEnd() {
-	c.inst.SessionEnd()
+	c.Instance().Session().Kill()
 }
 
 func (c Core) InstanceEnd() {
-	c.inst.InstanceEnd()
+	c.Instance().Kill()
 }
 
 func (c Core) SessionID() string {
-	return c.inst.SessionID()
+	return c.Instance().Session().ID()
 }
 
 func (c Core) Runtime() shredder.Runtime {
-	return c.inst.Runtime()
+	return c.Instance().Runtime()
 }
 
 func (c Core) Cinema() beam.Cinema {
@@ -156,35 +166,31 @@ func (c Core) Cinema() beam.Cinema {
 }
 
 func (c Core) SetStatus(status int) {
-	c.inst.SetStatus(status)
-}
-
-func (c Core) NewLink(m any) (Link, error) {
-	return c.inst.NewLink(m)
+	c.Instance().SetStatus(status)
 }
 
 func (c Core) InstanceID() string {
-	return c.inst.ID()
+	return c.Instance().ID()
 }
 
 func (c Core) RootID() uint64 {
-	return c.inst.RootID()
+	return c.Instance().RootID()
 }
 
 func (c Core) NewID() uint64 {
-	return c.inst.NewID()
+	return c.Instance().NewID()
 }
 
-func (c Core) Conf() *common.SystemConf {
-	return c.inst.Conf()
+func (c Core) Conf() *common.Conf {
+	return c.Instance().Session().App().Conf()
 }
 
-func (c Core) ResourceRegistry() *resources.Registry {
-	return c.inst.ResourceRegistry()
+func (c Core) ResourceRegistry() resources.Registry {
+	return c.Instance().Session().App().ResourceRegistry()
 }
 
 func (c Core) ModuleRegistry() ModuleRegistry {
-	return c.inst.ModuleRegistry()
+	return c.Instance().ModuleRegistry()
 }
 
 func (c Core) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool) {
@@ -195,6 +201,6 @@ func (c Core) Call(ctx context.Context, check func() bool, action action.Action,
 	c.door.UserCall(ctx, check, action, onResult, onCancel, params)
 }
 
-func (c Core) CSPCollector() *common.CSPCollector {
-	return c.inst.CSPCollector()
+func (c Core) CSPCollector() common.CSPCollector {
+	return c.Instance().CSPCollector()
 }

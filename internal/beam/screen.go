@@ -127,9 +127,9 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 				return
 			}
 			for _, watcher := range watchers {
-				watcherCtx := ctex.FrameInfect(ctx, s.cinema.ctx())
-				watcherCtx = ctex.SyncFrameInsert(watcherCtx, readFrame)
 				watcherFrame := shredder.Join(false, watchersFrame, watcher.syncFrame())
+				watcherCtx := ctex.FrameInfect(ctx, s.cinema.ctx())
+				watcherCtx = ctex.SyncFrameInsert(watcherCtx, readFrame, watcherFrame)
 				watcherFrame.Submit(s.cinema.ctx(), s.cinema.runtime(), func(ok bool) {
 					if !ok {
 						return

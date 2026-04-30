@@ -19,40 +19,41 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/doors-dev/doors/internal/app"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/router"
+	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/gox"
 )
 
-// HrefActiveMatch describes a path matching strategy for active links.
-type HrefActiveMatch int
+type queryMatch [][]any
 
-const (
-	// MatchFull requires the entire path to match.
-	MatchFull HrefActiveMatch = iota
-	// MatchPath requires the same path but ignores the query.
-	MatchPath
-	// MatchStarts requires the current path to start with the target path.
-	MatchStarts
-)
-
-type queryMatch []any
-type pathMatch []any
+func (qm queryMatch) And(q QueryMatcher) QueryMatcher {
+	qm2 := q.queryMatch()
+	out := make(queryMatch, len(qm)+len(qm2))
+	copy(out, qm)
+	copy(out[len(qm):], qm2)
+	return out
+}
 
 func (q queryMatch) queryMatch() queryMatch {
 	return q
 }
+
+var _ QueryMatcher = queryMatch(nil)
+
+type pathMatch []any
 
 func (q pathMatch) pathMatch() pathMatch {
 	return q
 }
 
 // QueryMatcher customizes how query parameters participate in active-link
-// matching.
+// matching. Matchers can be chained with [QueryMatcher.And].
 type QueryMatcher interface {
 	queryMatch() queryMatch
+	Joiner[QueryMatcher]
 }
 
 // PathMatcher customizes how the path participates in active-link matching.
@@ -83,61 +84,45 @@ func QueryMatcherIgnoreSome(params ...string) QueryMatcher {
 	if params == nil {
 		params = []string{}
 	}
-	return queryMatch([]any{"ignore_some", params})
-}
-
-// QueryMatcherOnlyIgnoreSome ignores the given parameters and matches all remaining.
-func QueryMatcherOnlyIgnoreSome(params ...string) []QueryMatcher {
-	return []QueryMatcher{QueryMatcherIgnoreSome(params...)}
+	return queryMatch([][]any{{"ignore_some", params}})
 }
 
 // QueryMatcherIgnoreAll excludes all remaining query parameters from comparison.
 func QueryMatcherIgnoreAll() QueryMatcher {
-	return queryMatch([]any{"ignore_all"})
+	return queryMatch([][]any{{"ignore_all"}})
 }
 
-// QueryMatcherOnlyIgnoreAll ignores all query parameters.
-func QueryMatcherOnlyIgnoreAll() []QueryMatcher {
-	return []QueryMatcher{QueryMatcherIgnoreAll()}
-}
-
-// QueryMatcherSome matches only the provided query parameters.
+// QueryMatcherSome compares only the provided query parameters at this step.
 func QueryMatcherSome(params ...string) QueryMatcher {
 	if params == nil {
 		params = []string{}
 	}
-	return queryMatch([]any{"some", params})
-}
-
-// QueryMatcherOnlySome matches the provided query parameters and ignores all others.
-func QueryMatcherOnlySome(params ...string) []QueryMatcher {
-	return []QueryMatcher{QueryMatcherSome(params...), QueryMatcherIgnoreAll()}
+	return queryMatch([][]any{{"some", params}})
 }
 
 // QueryMatcherIfPresent matches the given parameters only if they are present.
 func QueryMatcherIfPresent(params ...string) QueryMatcher {
-	return queryMatch([]any{"if", params})
-}
-
-// QueryMatcherOnlyIfPresent matches the given parameters if present and ignores all others.
-func QueryMatcherOnlyIfPresent(params ...string) []QueryMatcher {
-	return []QueryMatcher{QueryMatcherIfPresent(params...), QueryMatcherIgnoreAll()}
+	return queryMatch([][]any{{"if", params}})
 }
 
 // Active configures how [ALink] marks itself as active.
 type Active struct {
-	// Path match strategy
+	// PathMatcher controls path matching. Defaults to [PathMatcherFull].
 	PathMatcher PathMatcher
-	// Query param match strategy, applied sequentially.
-	QueryMatcher []QueryMatcher
-	// Match fragment, false by default
+	// QueryMatcher controls query matching. Matchers are applied sequentially;
+	// any remaining parameters are compared after the configured matcher chain.
+	QueryMatcher QueryMatcher
+	// FragmentMatch includes the URL fragment in active matching.
 	FragmentMatch bool
-	// Indicators to apply when active
-	Indicator []Indicator
+	// Indicator is applied to the link while it matches the current location.
+	Indicator Indicators
 }
 
-// ALink builds a real `href` from Model and, when possible, upgrades the link
-// to same-model client navigation.
+// ALink builds a real href from Model and adds Doors navigation behavior.
+//
+// A normal click updates the current instance location source and reroutes the
+// page dynamically. The href remains valid for browser features such as opening
+// in a new tab, copying the link, or navigation without client-side runtime.
 //
 // Example:
 //
@@ -147,8 +132,7 @@ type Active struct {
 type ALink struct {
 	// Target path model value. Required.
 	Model any
-	// Fragment identifier
-	// Optional
+	// Fragment identifier. Optional.
 	Fragment string
 	// Active link indicator configuration. Optional.
 	Active Active
@@ -156,28 +140,31 @@ type ALink struct {
 	StopPropagation bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
-	// Visual indicators while the hook is running
-	// (for dynamic links). Optional.
-	Indicator []Indicator
-	// Actions to run before the hook request (for dynamic links). Optional.
-	Before []Action
-	// Actions to run after the hook request (for dynamic links). Optional.
-	After []Action
-	// Actions to run on error (for dynamic links).
+	Scope Scopes
+	// Visual indicators while the hook is running. Optional.
+	Indicator Indicators
+	// Actions to run before the hook request. Optional.
+	Before Actions
+	// Actions to run after the hook request. Optional.
+	After Actions
+	// Actions to run on error.
 	// Default (nil) triggers a location reload.
-	OnError []Action
+	OnError Actions
 }
 
 func (h *ALink) active() []any {
-	if len(h.Active.Indicator) == 0 {
+	indicators := indicatorsOrNil(h.Active.Indicator)
+	if len(indicators) == 0 {
 		return nil
 	}
-	h.Active.QueryMatcher = append(h.Active.QueryMatcher, queryMatch([]any{"all"}))
+	if h.Active.QueryMatcher == nil {
+		h.Active.QueryMatcher = make(queryMatch, 0)
+	}
+	h.Active.QueryMatcher = h.Active.QueryMatcher.And(queryMatch([][]any{{"all"}}))
 	if h.Active.PathMatcher == nil {
 		h.Active.PathMatcher = PathMatcherFull()
 	}
-	return []any{h.Active.PathMatcher, h.Active.QueryMatcher, h.Active.FragmentMatch, front.IntoIndicate(h.Active.Indicator)}
+	return []any{h.Active.PathMatcher, h.Active.QueryMatcher.queryMatch(), h.Active.FragmentMatch, indicators}
 }
 
 func (h ALink) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -186,52 +173,54 @@ func (h ALink) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	link, err := core.NewLink(h.Model)
+	loc, err := path.Encode(h.Model)
 	if err != nil {
 		slog.Error("href creation error", "error", err)
 		return nil
 	}
-	h.Scope = append([]Scope{linkScope{}}, h.Scope...)
-	if link.On != nil {
-		handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-			if r.Header.Get(router.ZombieHeader) != "" {
-				req := &request{w: w, r: r, ctx: ctx}
-				req.After(ActionOnlyLocationReload())
-				InstanceEnd(ctx)
-				return false
-			}
-			if h.Fragment != "" {
-				h.After = append(h.After, ActionScroll{Selector: "#" + h.Fragment})
-			}
-			if len(h.After) != 0 {
-				req := &request{w: w, r: r, ctx: ctx}
-				req.After(h.After)
-			}
-			link.On(ctx)
+	h.Scope = linkScope{}.And(h.Scope)
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		if r.Header.Get(app.ZombieHeader) != "" {
+			req := &request{w: w, r: r, ctx: ctx}
+			req.After(ActionLocationReload{})
+			InstanceEnd(ctx)
 			return false
 		}
-		hook, ok := core.RegisterHook(handler, nil)
-		if !ok {
-			return nil
+		if h.Fragment != "" {
+			if h.After == nil {
+				h.After = ActionScroll{Selector: "#" + h.Fragment}
+			} else {
+				h.After = h.After.And(ActionScroll{Selector: "#" + h.Fragment})
+			}
 		}
-		if h.OnError == nil {
-			h.OnError = ActionOnlyLocationReload()
+		if h.After != nil {
+			req := request{w: w, r: r, ctx: ctx}
+			req.After(h.After)
 		}
-		front.AttrsAppendCapture(attrs, front.LinkCapture{
-			StopPropagation: h.StopPropagation,
-		}, front.Hook{
-			Indicate: front.IntoIndicate(h.Indicator),
-			Scope:    front.IntoScopeSet(core, h.Scope),
-			Before:   intoActions(ctx, h.Before),
-			OnError:  intoActions(ctx, h.OnError),
-			Hook:     hook,
-		})
+		core.Location().Update(ctx, loc)
+		return false
 	}
-	fragment := ""
+	hook, ok := core.RegisterHook(handler, nil)
+	if !ok {
+		return nil
+	}
+	if h.OnError == nil {
+		h.OnError = ActionLocationReload{}
+	}
+	front.AttrsAppendCapture(attrs, front.LinkCapture{
+		StopPropagation: h.StopPropagation,
+	}, front.Hook{
+		Indicate: indicatorsOrNil(h.Indicator),
+		Scope:    scopesOrNil(core, h.Scope),
+		Before:   intoActions(ctx, actionsOrNil(h.Before)),
+		OnError:  intoActions(ctx, actionsOrNil(h.OnError)),
+		Hook:     hook,
+	})
+	href := loc.String()
 	if h.Fragment != "" {
-		fragment = "#" + h.Fragment
+		href += "#" + h.Fragment
 	}
-	attrs.Get("href").Set(link.Location.String() + fragment)
+	attrs.Get("href").Set(href)
 	active := h.active()
 	if active != nil {
 		front.AttrsSetParent(attrs, core.DoorID())

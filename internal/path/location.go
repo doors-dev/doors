@@ -23,18 +23,21 @@ import (
 
 // Location is a parsed or generated URL path plus query string.
 type Location struct {
-	// Query holds the decoded query parameters.
-	Query url.Values
 	// Segments holds the decoded path segments without leading or trailing
 	// slashes.
 	Segments []string
+	// Query holds the decoded query parameters.
+	Query url.Values
 }
 
 // Path returns the escaped path portion of l without the query string.
 func (l Location) Path() string {
 	b := strings.Builder{}
-	for _, part := range l.Segments {
-		b.WriteByte('/')
+	b.WriteByte('/')
+	for i, part := range l.Segments {
+		if i != 0 {
+			b.WriteByte('/')
+		}
 		b.WriteString(url.PathEscape(part))
 	}
 	return b.String()
@@ -43,8 +46,11 @@ func (l Location) Path() string {
 // String returns l encoded as `/<segments>?<query>`.
 func (l Location) String() string {
 	b := strings.Builder{}
-	for _, part := range l.Segments {
-		b.WriteByte('/')
+	b.WriteByte('/')
+	for i, part := range l.Segments {
+		if i != 0 {
+			b.WriteByte('/')
+		}
 		b.WriteString(url.PathEscape(part))
 	}
 	if len(l.Query) != 0 {
@@ -60,64 +66,34 @@ func EqualLocation(a, b Location) bool {
 }
 
 // NewLocationFromEscapedURI parses s into a [Location].
-func NewLocationFromEscapedURI(s string) (Location, error) {
+func NewLocationFromEscapedURI(s string) Location {
 	u, err := url.Parse(s)
 	if err != nil {
-		return Location{}, err
+		return Location{}
 	}
 	return NewLocationFromURL(u)
 }
 
 // NewLocationFromURL decodes u into a [Location].
-func NewLocationFromURL(u *url.URL) (Location, error) {
+func NewLocationFromURL(u *url.URL) Location {
 	parts := make([]string, 0)
 	trimmed := strings.Trim(u.EscapedPath(), "/")
+	if trimmed == "" {
+		return Location{
+			Segments: parts,
+			Query:    u.Query(),
+		}
+	}
 	for part := range strings.SplitSeq(trimmed, "/") {
 		decoded, err := url.PathUnescape(part)
 		if err != nil {
-			return Location{}, err
+			parts = append(parts, part)
+			continue
 		}
 		parts = append(parts, decoded)
 	}
 	return Location{
 		Segments: parts,
 		Query:    u.Query(),
-	}, nil
-}
-
-// NewLocationAdapter returns an adapter that treats [Location] as a path
-// model.
-func NewLocationAdapter() Adapter[Location] {
-	return locationAdapter{}
-}
-
-type locationAdapter struct{}
-
-func (l locationAdapter) Assert(a any) (*Location, bool) {
-	switch v := a.(type) {
-	case Location:
-		return &v, true
-	case *Location:
-		return v, true
-	default:
-		return nil, false
 	}
 }
-
-func (l locationAdapter) Decode(a any) (*Location, bool) {
-	return l.Assert(a)
-}
-
-func (l locationAdapter) Encode(model *Location) (Location, error) {
-	return *model, nil
-}
-
-func (l locationAdapter) EncodeAny(a any) (Location, error, bool) {
-	loc, ok := l.Assert(a)
-	if !ok {
-		return Location{}, nil, false
-	}
-	return *loc, nil, true
-}
-
-var _ Adapter[Location] = locationAdapter{}

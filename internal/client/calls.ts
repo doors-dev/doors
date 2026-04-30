@@ -60,6 +60,14 @@ const actions = {
 		title.textContent = content
 		syncAttributes(title, attrs)
 	},
+	remove_meta: (_: Extras, name: string, property: boolean) => {
+		const key = property ? "property" : "name"
+		let meta = document.head.querySelector(`meta[${key}=${JSON.stringify(name)}]`)
+		if(!meta) {
+			return
+		}
+		meta.remove()
+	},
 	update_meta: (_: Extras, name: string, property: boolean, attrs: {[key:string]:string}) => {
 		const key = property ? "property" : "name"
 		const targetAttrs = {

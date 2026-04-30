@@ -32,23 +32,20 @@ func (stubProfiles) Options(string) api.BuildOptions {
 
 type stubSettings struct{}
 
-func (stubSettings) Conf() *common.SystemConf {
-	return &common.SystemConf{ServerCacheControl: common.DefaultCacheControl}
+func (stubSettings) Conf() *common.Conf {
+	return &common.Conf{ServerCacheControl: common.DefaultCacheControl}
 }
 
-func (stubSettings) BuildProfiles() resources.BuildProfiles {
-	return stubProfiles{}
+func (stubSettings) ESProfile(string) api.BuildOptions {
+	return api.BuildOptions{}
 }
 
-func TestAdaptersAndLocationAdapter(t *testing.T) {
-	var adapters Adapters
-	adapters.Add(NewLocationAdapter())
-
+func TestEncodeLocationValues(t *testing.T) {
 	loc := Location{
 		Segments: []string{"a b", "c"},
 		Query:    url.Values{"tag": {"x"}},
 	}
-	got, err := adapters.Encode(loc)
+	got, err := Encode(loc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,28 +53,8 @@ func TestAdaptersAndLocationAdapter(t *testing.T) {
 		t.Fatalf("unexpected encoded location: %#v", got)
 	}
 
-	if _, err := (Adapters{}).Encode(loc); err == nil {
-		t.Fatal("expected missing adapter error")
-	}
-
-	adapter := NewLocationAdapter()
-	if decoded, ok := adapter.Decode(loc); !ok || !EqualLocation(*decoded, loc) {
-		t.Fatal("expected location adapter to decode location values")
-	}
-	if decoded, ok := adapter.Decode(&loc); !ok || !EqualLocation(*decoded, loc) {
-		t.Fatal("expected location adapter to decode location pointers")
-	}
-	if _, ok := adapter.Decode(123); ok {
-		t.Fatal("expected location adapter to reject wrong type")
-	}
-	if out, err, ok := adapter.EncodeAny(loc); !ok || err != nil || !EqualLocation(out, loc) {
-		t.Fatal("expected location adapter to encode location values")
-	}
-	if _, _, ok := adapter.EncodeAny(123); ok {
-		t.Fatal("expected location adapter to reject wrong type in EncodeAny")
-	}
-	if out, err := adapter.Encode(&loc); err != nil || !EqualLocation(out, loc) {
-		t.Fatal("expected location adapter Encode to return same location")
+	if _, err = Encode(&loc); err == nil {
+		t.Fatal("expected pointer location to use struct adapter path and fail")
 	}
 }
 
@@ -89,35 +66,20 @@ func TestGenericAdapterHelpers(t *testing.T) {
 		Tag  *string `query:"tag"`
 	}
 
-	adapter, err := NewAdapter[page]()
+	adapter, err := GetModelAdapter[page]()
 	if err != nil {
 		t.Fatal(err)
 	}
 	tag := "go"
 	model := page{Post: true, ID: 42, Tag: &tag}
 
-	if asserted, ok := adapter.Assert(model); !ok || asserted.ID != 42 {
-		t.Fatal("expected adapter to assert model values")
+	loc, err := adapter.Encode(&model)
+	if err != nil || loc.String() != "/posts/42?tag=go" {
+		t.Fatalf("unexpected Encode result: %#v %v", loc, err)
 	}
-	if asserted, ok := adapter.Assert(&model); !ok || asserted.ID != 42 {
-		t.Fatal("expected adapter to assert model pointers")
-	}
-	if _, ok := adapter.Assert("bad"); ok {
-		t.Fatal("expected adapter assert to reject wrong type")
-	}
-
-	loc, err, ok := adapter.EncodeAny(model)
-	if !ok || err != nil || loc.String() != "/posts/42?tag=go" {
-		t.Fatalf("unexpected generic EncodeAny result: %#v %v %v", loc, err, ok)
-	}
-	if _, _, ok := adapter.EncodeAny("bad"); ok {
-		t.Fatal("expected generic EncodeAny to reject wrong type")
-	}
-	decodeAny := any(adapter).(interface {
-		DecodeAny(any) (any, bool)
-	})
-	if decoded, ok := decodeAny.DecodeAny(loc); !ok || decoded.(*page).ID != 42 {
-		t.Fatal("expected generic DecodeAny to decode locations")
+	decoded, ok := adapter.Decode(loc)
+	if !ok || decoded.ID != 42 {
+		t.Fatalf("expected adapter to decode locations, got %#v %v", decoded, ok)
 	}
 }
 
@@ -127,14 +89,11 @@ func TestURLValuesField(t *testing.T) {
 		ID    string
 		Query url.Values
 	}
-	adapter, err := NewAdapter[page]()
+	adapter, err := GetModelAdapter[page]()
 	if err != nil {
 		t.Fatal(err)
 	}
-	loc, err := NewLocationFromEscapedURI("/docs/intro?tag=go&tag=doors&page=1")
-	if err != nil {
-		t.Fatal(err)
-	}
+	loc := NewLocationFromEscapedURI("/docs/intro?tag=go&tag=doors&page=1")
 	decoded, ok := adapter.Decode(loc)
 	if !ok {
 		t.Fatal("expected adapter to decode raw query values")
@@ -155,7 +114,7 @@ func TestURLValuesField(t *testing.T) {
 		Query url.Values
 		Tag   string `query:"tag"`
 	}
-	if _, err := NewAdapter[mixed](); err == nil {
+	if _, err := GetModelAdapter[mixed](); err == nil {
 		t.Fatal("expected raw query values and query tags to conflict")
 	}
 }
@@ -178,16 +137,14 @@ func TestLocationHelpers(t *testing.T) {
 		t.Fatal("expected different locations to compare false")
 	}
 
-	decoded, err := NewLocationFromEscapedURI("/docs/hello%20world?tag=x")
-	if err != nil {
-		t.Fatal(err)
-	}
+	decoded := NewLocationFromEscapedURI("/docs/hello%20world?tag=x")
 	if decoded.Segments[1] != "hello world" || decoded.Query.Get("tag") != "x" {
 		t.Fatalf("unexpected decoded location: %#v", decoded)
 	}
 
-	if _, err := NewLocationFromEscapedURI("/%zz"); err == nil {
-		t.Fatal("expected invalid escaped path to fail")
+	invalid := NewLocationFromEscapedURI("/%zz")
+	if len(invalid.Segments) != 0 {
+		t.Fatalf("expected invalid URI parse to return empty location, got %#v", invalid)
 	}
 }
 
@@ -263,11 +220,34 @@ func TestPathMakerAndMatch(t *testing.T) {
 }
 
 func TestPathValidationErrors(t *testing.T) {
+	type boolThenEnum struct {
+		Home    bool `path:"/"`
+		Section int  `path:"/docs | /license"`
+	}
+	if _, err := GetModelAdapter[boolThenEnum](); err == nil {
+		t.Fatal("expected bool path plus multipattern path to fail")
+	}
+
+	type enumThenBool struct {
+		Section int  `path:"/docs | /license"`
+		Home    bool `path:"/"`
+	}
+	if _, err := GetModelAdapter[enumThenBool](); err == nil {
+		t.Fatal("expected multipattern path plus bool path to fail")
+	}
+
+	type stringPath struct {
+		Section string `path:"/docs | /license"`
+	}
+	if _, err := GetModelAdapter[stringPath](); err == nil {
+		t.Fatal("expected non-bool non-int path field to fail")
+	}
+
 	type optionalNotLast struct {
 		V  bool `path:"/docs/:ID?/tail"`
 		ID *string
 	}
-	if _, err := NewAdapter[optionalNotLast](); err == nil {
+	if _, err := GetModelAdapter[optionalNotLast](); err == nil {
 		t.Fatal("expected optional non-last segment error")
 	}
 
@@ -275,7 +255,7 @@ func TestPathValidationErrors(t *testing.T) {
 		V    bool `path:"/docs/:Rest+/tail"`
 		Rest []string
 	}
-	if _, err := NewAdapter[multiNotLast](); err == nil {
+	if _, err := GetModelAdapter[multiNotLast](); err == nil {
 		t.Fatal("expected multi non-last segment error")
 	}
 
@@ -283,7 +263,7 @@ func TestPathValidationErrors(t *testing.T) {
 		V  bool `path:"/docs/:ID?"`
 		ID string
 	}
-	if _, err := NewAdapter[optionalNonPtr](); err == nil {
+	if _, err := GetModelAdapter[optionalNonPtr](); err == nil {
 		t.Fatal("expected optional non-pointer error")
 	}
 
@@ -291,7 +271,7 @@ func TestPathValidationErrors(t *testing.T) {
 		V  bool `path:"/docs/:ID"`
 		ID *string
 	}
-	if _, err := NewAdapter[requiredPtr](); err == nil {
+	if _, err := GetModelAdapter[requiredPtr](); err == nil {
 		t.Fatal("expected required pointer error")
 	}
 

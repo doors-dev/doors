@@ -25,32 +25,30 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-type BuildProfiles interface {
-	Options(profile string) api.BuildOptions
+type App interface {
+	Conf() *common.Conf
+	ESProfile(profile string) api.BuildOptions
 }
 
-type settings interface {
-	Conf() *common.SystemConf
-	BuildProfiles() BuildProfiles
-}
+type Registry = *registry
 
-func NewRegistry(s settings) *Registry {
-	return &Registry{
+func NewRegistry(s App) Registry {
+	return &registry{
 		settings: s,
 	}
 }
 
-type Registry struct {
+type registry struct {
 	initGuard  sync.Once
-	settings   settings
+	settings   App
 	cache      sync.Map
 	lookup     sync.Map
 	mainScript *Resource
 	mainStyle  *Resource
 }
 
-func (rg *Registry) init() {
-	opt := rg.settings.BuildProfiles().Options("")
+func (rs *registry) init() {
+	opt := rs.settings.ESProfile("")
 	ScriptFS{
 		FS:   internal.ClientSrc,
 		Path: "index.ts",
@@ -68,31 +66,31 @@ func (rg *Registry) init() {
 	if err != nil {
 		panic(errors.Join(errors.New("client JS build error"), err))
 	}
-	rg.mainScript = NewResource(content, "application/javascript", rg.defaultSettings())
-	rg.lookup.Store(rg.mainScript.id, rg.mainScript)
-	rg.mainStyle = NewResource(internal.ClientStyles, "text/css", rg.defaultSettings())
-	rg.lookup.Store(rg.mainStyle.id, rg.mainStyle)
+	rs.mainScript = NewResource(content, "application/javascript", rs.defaultSettings())
+	rs.lookup.Store(rs.mainScript.id, rs.mainScript)
+	rs.mainStyle = NewResource(internal.ClientStyles, "text/css", rs.defaultSettings())
+	rs.lookup.Store(rs.mainStyle.id, rs.mainStyle)
 }
 
-func (rg *Registry) defaultSettings() resourceSettings {
+func (rs *registry) defaultSettings() resourceSettings {
 	return resourceSettings{
-		cacheControl: rg.settings.Conf().ServerCacheControl,
-		disableGzip:  rg.settings.Conf().ServerDisableGzip,
+		cacheControl: rs.settings.Conf().ServerCacheControl,
+		disableGzip:  rs.settings.Conf().ServerDisableGzip,
 	}
 }
 
-func (rg *Registry) MainStyle() *Resource {
-	rg.initGuard.Do(rg.init)
-	return rg.mainStyle
+func (rs Registry) MainStyle() *Resource {
+	rs.initGuard.Do(rs.init)
+	return rs.mainStyle
 }
 
-func (rg *Registry) MainScript() *Resource {
-	rg.initGuard.Do(rg.init)
-	return rg.mainScript
+func (rs Registry) MainScript() *Resource {
+	rs.initGuard.Do(rs.init)
+	return rs.mainScript
 }
 
-func (rg *Registry) Serve(id string, w http.ResponseWriter, r *http.Request) {
-	s, ok := rg.lookup.Load(id)
+func (rs Registry) Serve(id string, w http.ResponseWriter, r *http.Request) {
+	s, ok := rs.lookup.Load(id)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -100,32 +98,32 @@ func (rg *Registry) Serve(id string, w http.ResponseWriter, r *http.Request) {
 	s.(*Resource).Serve(w, r)
 }
 
-func (r *Registry) create(key [16]byte, content []byte, lookup bool, contentType string) *Resource {
-	s := NewResource(content, contentType, r.defaultSettings())
-	existing, existed := r.cache.LoadOrStore(key, s)
+func (rs *registry) create(key [16]byte, content []byte, lookup bool, contentType string) *Resource {
+	s := NewResource(content, contentType, rs.defaultSettings())
+	existing, existed := rs.cache.LoadOrStore(key, s)
 	if existed {
 		s = existing.(*Resource)
 	}
 	if lookup {
-		r.lookup.Store(s.id, s)
+		rs.lookup.Store(s.id, s)
 	}
 	return s
 }
 
-func (r *Registry) get(key [16]byte) *Resource {
-	entry, ok := r.cache.Load(key)
+func (rs *registry) get(key [16]byte) *Resource {
+	entry, ok := rs.cache.Load(key)
 	if !ok {
 		return nil
 	}
 	return entry.(*Resource)
 }
 
-func (r *Registry) Static(entry StaticEntry, contentType string) (*Resource, error) {
+func (rs Registry) Static(entry StaticEntry, contentType string) (*Resource, error) {
 	h := xxh3.New()
 	h.WriteString("resource")
 	entry.entryID(h)
 	key := h.Sum128().Bytes()
-	res := r.get(key)
+	res := rs.get(key)
 	if res != nil {
 		return res, nil
 	}
@@ -133,11 +131,11 @@ func (r *Registry) Static(entry StaticEntry, contentType string) (*Resource, err
 	if err != nil {
 		return nil, err
 	}
-	res = r.create(key, content, true, contentType)
+	res = rs.create(key, content, true, contentType)
 	return res, nil
 }
 
-func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string, mode ResourceMode) (*Resource, error) {
+func (rs Registry) Script(entry ScriptEntry, format ScriptFormat, profile string, mode ResourceMode) (*Resource, error) {
 	var res *Resource
 	var key [16]byte
 	if mode != ModeNoCache {
@@ -147,7 +145,7 @@ func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 		entry.entryID(h)
 		format.formatID(h)
 		key = h.Sum128().Bytes()
-		res = r.get(key)
+		res = rs.get(key)
 	}
 	if res != nil {
 		return res, nil
@@ -157,7 +155,7 @@ func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 	if _, ok := format.(FormatRaw); ok {
 		content, err = entry.Read()
 	} else {
-		opt := r.settings.BuildProfiles().Options(profile)
+		opt := rs.settings.ESProfile(profile)
 		err := entry.Apply(&opt)
 		if err != nil {
 			return nil, err
@@ -169,14 +167,14 @@ func (r *Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 		return nil, err
 	}
 	if mode != ModeNoCache {
-		res = r.create(key, content, mode == ModeHost, "application/javascript")
+		res = rs.create(key, content, mode == ModeHost, "application/javascript")
 	} else {
-		res = NewResource(content, "application/javascript", r.defaultSettings())
+		res = NewResource(content, "application/javascript", rs.defaultSettings())
 	}
 	return res, nil
 }
 
-func (r *Registry) Style(entry StyleEntry, minify bool, mode ResourceMode) (*Resource, error) {
+func (rs Registry) Style(entry StyleEntry, minify bool, mode ResourceMode) (*Resource, error) {
 	var res *Resource
 	var key [16]byte
 	if mode != ModeNoCache {
@@ -184,7 +182,7 @@ func (r *Registry) Style(entry StyleEntry, minify bool, mode ResourceMode) (*Res
 		h.WriteString("style")
 		entry.entryID(h)
 		key = h.Sum128().Bytes()
-		res = r.get(key)
+		res = rs.get(key)
 	}
 	if res != nil {
 		return res, nil
@@ -197,9 +195,9 @@ func (r *Registry) Style(entry StyleEntry, minify bool, mode ResourceMode) (*Res
 		return nil, err
 	}
 	if mode != ModeNoCache {
-		res = r.create(key, content, mode == ModeHost, "text/css")
+		res = rs.create(key, content, mode == ModeHost, "text/css")
 	} else {
-		res = NewResource(content, "text/css", r.defaultSettings())
+		res = NewResource(content, "text/css", rs.defaultSettings())
 	}
 	return res, nil
 }

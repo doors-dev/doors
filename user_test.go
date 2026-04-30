@@ -43,7 +43,13 @@ func (h helperDoor) UserCall(ctx context.Context, check func() bool, action acti
 
 type helperShutdown struct{}
 
-func (helperShutdown) Shutdown() {}
+func (helperShutdown) Kill() {}
+
+func (h helperDoor) Instance() core.Instance {
+	return h.inst
+}
+
+func (helperDoor) Clean(func()) {}
 
 func (helperDoor) Cinema() beam.Cinema {
 	return nil
@@ -70,8 +76,15 @@ func (helperDoor) RootCore() core.Core {
 }
 
 type helperDoorWithRoot struct {
+	inst *helperInstance
 	root core.Core
 }
+
+func (h helperDoorWithRoot) Instance() core.Instance {
+	return h.inst
+}
+
+func (helperDoorWithRoot) Clean(func()) {}
 
 // UserCall implements [core.Door].
 func (h helperDoorWithRoot) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
@@ -104,12 +117,13 @@ func (h helperDoorWithRoot) RootCore() core.Core {
 
 type helperInstance struct {
 	expire         time.Duration
-	adapters       path.Adapters
-	conf           common.SystemConf
+	conf           common.Conf
 	lastCallAction action.Action
 	lastCallParams action.CallParams
 	callCheckErr   error
 	runtime        shredder.Runtime
+	session        *helperSession
+	location       beam.Source[path.Location]
 }
 
 func (h *helperInstance) CallCtx(_ context.Context, act action.Action, _ func(json.RawMessage, error), _ func(), params action.CallParams) context.CancelFunc {
@@ -134,15 +148,11 @@ func (h *helperInstance) UserCall(_ context.Context, _ func() bool, act action.A
 	}
 }
 
-func (h *helperInstance) CSPCollector() *common.CSPCollector {
-	return nil
+func (h *helperInstance) CSPCollector() common.CSPCollector {
+	return (&common.CSP{}).NewCollector()
 }
 
 func (h *helperInstance) ModuleRegistry() core.ModuleRegistry {
-	return nil
-}
-
-func (h *helperInstance) ResourceRegistry() *resources.Registry {
 	return nil
 }
 
@@ -154,16 +164,12 @@ func (h *helperInstance) RootID() uint64 {
 	return 0
 }
 
-func (h *helperInstance) Conf() *common.SystemConf {
+func (h *helperInstance) Conf() *common.Conf {
 	return &h.conf
 }
 
 func (h *helperInstance) NewID() uint64 {
 	return 2
-}
-
-func (h *helperInstance) NewLink(any) (core.Link, error) {
-	return core.Link{}, nil
 }
 
 func (h *helperInstance) Runtime() shredder.Runtime {
@@ -172,78 +178,105 @@ func (h *helperInstance) Runtime() shredder.Runtime {
 
 func (h *helperInstance) SetStatus(int) {}
 
-func (h *helperInstance) SessionExpire(d time.Duration) {
-	h.expire = d
+func (h *helperInstance) Session() core.Session {
+	return h.session
 }
 
-func (h *helperInstance) SessionEnd() {}
-
-func (h *helperInstance) InstanceEnd() {}
-
-func (h *helperInstance) SessionID() string {
-	return "session-1"
+func (h *helperInstance) Store() ctex.Store {
+	return ctex.NewStore()
 }
 
-func (h *helperInstance) Adapters() path.Adapters {
-	return h.adapters
+func (h *helperInstance) Location() beam.Source[path.Location] {
+	return h.location
 }
 
-func (h *helperInstance) PathMaker() path.PathMaker {
+func (h *helperInstance) Kill() {}
+
+func (h *helperInstance) TitleMeta() core.TitleMeta {
+	return nil
+}
+
+type helperApp struct {
+	conf *common.Conf
+}
+
+func (h *helperApp) PathMaker() path.PathMaker {
 	return path.NewPathMaker("")
 }
 
-func (h *helperInstance) UpdateTitle(string, gox.Attrs) {}
+func (h *helperApp) ResourceRegistry() resources.Registry {
+	return nil
+}
 
-func (h *helperInstance) UpdateMeta(string, bool, gox.Attrs) {}
+func (h *helperApp) Conf() *common.Conf {
+	return h.conf
+}
+
+type helperSession struct {
+	inst *helperInstance
+	app  *helperApp
+}
+
+func (h *helperSession) App() core.App {
+	return h.app
+}
+
+func (h *helperSession) Store() ctex.Store {
+	return ctex.NewStore()
+}
+
+func (h *helperSession) ID() string {
+	return "session-1"
+}
+
+func (h *helperSession) Expire(d time.Duration) {
+	h.inst.expire = d
+}
+
+func (h *helperSession) Kill() {}
 
 type helperLocation struct {
 	Home bool   `path:"/home"`
 	Tag  string `query:"tag"`
 }
 
-func helperContext(t *testing.T, adapters path.Adapters) (context.Context, *helperInstance) {
+func helperContext(t *testing.T) (context.Context, *helperInstance) {
 	t.Helper()
-	inst := &helperInstance{adapters: adapters}
-	return context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(inst, helperDoor{inst: inst})), inst
+	conf := common.Conf{}
+	common.InitDefaults(&conf)
+	inst := &helperInstance{
+		conf:     conf,
+		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
+	}
+	inst.session = &helperSession{inst: inst, app: &helperApp{conf: &inst.conf}}
+	return context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(helperDoor{inst: inst})), inst
 }
 
-func helperContextWithRoot(t *testing.T, adapters path.Adapters) (context.Context, *helperInstance, core.Core) {
+func helperContextWithRoot(t *testing.T) (context.Context, *helperInstance, core.Core) {
 	t.Helper()
-	inst := &helperInstance{adapters: adapters}
-	inst.runtime = shredder.NewRuntime(context.Background(), 1, helperShutdown{})
+	ctx, inst := helperContext(t)
+	inst.runtime = shredder.NewRuntime(1, helperShutdown{})
 	t.Cleanup(func() {
 		inst.runtime.Cancel()
 	})
-	root := core.NewCore(inst, helperDoor{inst: inst})
-	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(inst, helperDoorWithRoot{root: root}))
+	root := core.NewCore(helperDoor{inst: inst})
+	ctx = context.WithValue(ctx, ctex.KeyCore, core.NewCore(helperDoorWithRoot{inst: inst, root: root}))
 	return ctx, inst, root
 }
 
 func TestUserHelpers(t *testing.T) {
-	adapter, err := path.NewAdapter[helperLocation]()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var adapters path.Adapters
-	adapters.Add(adapter)
-
-	ctx, inst := helperContext(t, adapters)
+	ctx, inst := helperContext(t)
 	SessionExpire(ctx, time.Hour)
 	if inst.expire != time.Hour {
 		t.Fatalf("unexpected session expire duration: %v", inst.expire)
 	}
 
-	location, err := NewLocation(ctx, helperLocation{Home: true, Tag: "x"})
+	location, err := NewLocation(helperLocation{Home: true, Tag: "x"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if location.String() != "/home?tag=x" {
 		t.Fatalf("unexpected location: %q", location.String())
-	}
-
-	emptyCtx, _ := helperContext(t, nil)
-	if _, err := NewLocation(emptyCtx, helperLocation{Home: true}); err == nil {
-		t.Fatal("expected missing adapter to fail")
 	}
 
 	if IDRand() == "" {
@@ -271,7 +304,7 @@ func TestUserHelpers(t *testing.T) {
 }
 
 func TestFreeKeepsOwnerAndClearsFrame(t *testing.T) {
-	ctx, _ := helperContext(t, nil)
+	ctx, _ := helperContext(t)
 	ctx = context.WithValue(ctx, "value", "kept")
 	ctx, _ = ctex.AfterFrameInsert(ctx)
 	owner, _ := ctx.Value(ctex.KeyCore).(core.Core)
@@ -300,7 +333,7 @@ func TestFreeKeepsOwnerAndClearsFrame(t *testing.T) {
 }
 
 func TestFreeRootSwitchesToRootCoreAndRuntime(t *testing.T) {
-	ctx, inst, root := helperContextWithRoot(t, nil)
+	ctx, inst, root := helperContextWithRoot(t)
 	ctx = context.WithValue(ctx, "value", "kept")
 	ctx, _ = ctex.AfterFrameInsert(ctx)
 	base, cancel := context.WithCancel(ctx)
@@ -335,7 +368,7 @@ func TestFreeRootSwitchesToRootCoreAndRuntime(t *testing.T) {
 }
 
 func TestCallUsesSolitaireDisableGzip(t *testing.T) {
-	ctx, inst := helperContext(t, nil)
+	ctx, inst := helperContext(t)
 
 	Call(ctx, ActionEmit{Name: "plain", Arg: "hello"})
 	emit, ok := inst.lastCallAction.(action.Emit)
@@ -358,7 +391,7 @@ func TestCallUsesSolitaireDisableGzip(t *testing.T) {
 }
 
 func TestCallUsesCanceledContext(t *testing.T) {
-	ctx, inst := helperContext(t, nil)
+	ctx, inst := helperContext(t)
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
 
@@ -374,7 +407,7 @@ func TestCallUsesCanceledContext(t *testing.T) {
 }
 
 func TestSharedAttrRestoreOnUpdateError(t *testing.T) {
-	ctx, inst := helperContext(t, nil)
+	ctx, inst := helperContext(t)
 	shared := NewAShared("data-shared", "start")
 	attrs := gox.NewAttrs()
 	if err := shared.Modify(ctx, "div", attrs); err != nil {
@@ -403,7 +436,7 @@ func TestSharedAttrRestoreOnUpdateError(t *testing.T) {
 }
 
 func TestSharedAttrRestoreOnDisableError(t *testing.T) {
-	ctx, inst := helperContext(t, nil)
+	ctx, inst := helperContext(t)
 	shared := NewAShared("data-shared", "start")
 	attrs := gox.NewAttrs()
 	if err := shared.Modify(ctx, "div", attrs); err != nil {

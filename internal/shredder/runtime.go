@@ -24,14 +24,14 @@ import (
 	"github.com/gammazero/deque"
 )
 
-type Shutdown interface {
-	Shutdown()
+type Killer interface {
+	Kill()
 }
 
 type Runtime = *runtime
 
-func NewRuntime(ctx context.Context, workerLimit int, shutdown Shutdown) Runtime {
-	ctx, cancel := context.WithCancel(ctx)
+func NewRuntime(workerLimit int, killer Killer) Runtime {
+	ctx, cancel := context.WithCancel(context.Background())
 	s := &runtime{
 		ctx:         ctx,
 		cancel:      cancel,
@@ -39,7 +39,7 @@ func NewRuntime(ctx context.Context, workerLimit int, shutdown Shutdown) Runtime
 		pool:        make([]chan task, workerLimit),
 		cold:        make(chan task),
 		hot:         make(chan int, workerLimit),
-		shutdown:    shutdown,
+		killer:      killer,
 	}
 	go s.loop()
 	return s
@@ -48,7 +48,7 @@ func NewRuntime(ctx context.Context, workerLimit int, shutdown Shutdown) Runtime
 type runtime struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
-	shutdown    Shutdown
+	killer      Killer
 	workerLimit int
 	pool        []chan task
 	cold        chan task
@@ -206,7 +206,7 @@ func (r *runtime) loop() {
 			}
 			select {
 			case <-r.ctx.Done():
-				r.shutdown.Shutdown()
+				r.killer.Kill()
 				done = true
 			case f := <-r.cold:
 				ok := r.submitHot(f)
@@ -243,7 +243,7 @@ func (r *runtime) loop() {
 		}
 		select {
 		case <-r.ctx.Done():
-			r.shutdown.Shutdown()
+			r.killer.Kill()
 			done = true
 		case f := <-r.cold:
 			queue.PushBack(f)
@@ -251,7 +251,7 @@ func (r *runtime) loop() {
 			r.pool[num] <- queue.PopFront()
 		}
 	}
-	for range len(r.pool) {
+	for range workerCount {
 		num := <-r.hot
 		close(r.pool[num])
 	}

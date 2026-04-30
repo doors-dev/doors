@@ -30,6 +30,9 @@ import (
 
 func AttrsToMap(a gox.Attrs) map[string]string {
 	attrs := make(map[string]string)
+	if a == nil {
+		return attrs
+	}
 	b := &bytes.Buffer{}
 	for _, attr := range a.List() {
 		if !attr.IsSet() {

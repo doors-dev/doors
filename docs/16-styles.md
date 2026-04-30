@@ -53,7 +53,7 @@ every caller to duplicate it manually.
 > Tailwind CLI, PostCSS, or other CSS build configured separately, and make sure
 > it scans your `.go` files or safelists classes that are assembled in Go.
 
-## CSS 
+## CSS
 
 Most pages start with one of these:
 
@@ -125,7 +125,7 @@ Use `<link rel="stylesheet">` when the CSS comes from a file, bytes, a string, a
 	href=(doors.ResourceLocalFS("web/app.css"))>
 ```
 
-Buildable stylesheet sources are:
+Buildable stylesheet inputs are:
 
 - `doors.ResourceLocalFS("web/app.css")`
 - `doors.ResourceFS(webFS, "app.css")`

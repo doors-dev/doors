@@ -41,21 +41,21 @@ type keyEventHook struct {
 	Filter []string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Backend event handler.
-	// Receives a typed REvent[KeyboardEvent].
+	// Receives a typed RequestEvent[KeyboardEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestKeyboard) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 }
 
 func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
@@ -91,21 +91,21 @@ type AKeyDown struct {
 	Filter []string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Backend event handler.
-	// Receives a typed REvent[KeyboardEvent].
+	// Receives a typed RequestEvent[KeyboardEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestKeyboard) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 }
 
 func (k AKeyDown) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -133,21 +133,21 @@ type AKeyUp struct {
 	Filter []string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Backend event handler.
-	// Receives a typed REvent[KeyboardEvent].
+	// Receives a typed RequestEvent[KeyboardEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestKeyboard) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 }
 
 func (k AKeyUp) Proxy(cur gox.Cursor, elem gox.Elem) error {

@@ -23,8 +23,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/doors-dev/doors/internal/ctex"
 )
 
 func newMultipartRequest(t *testing.T) (*http.Request, string) {
@@ -106,7 +104,7 @@ func TestRequestMultipartAndCookies(t *testing.T) {
 		t.Fatalf("unexpected uploaded file content: %q", string(content))
 	}
 
-	if r.W() != rec {
+	if r.ResponseWriter() != rec {
 		t.Fatal("expected request writer to match recorder")
 	}
 }
@@ -190,21 +188,14 @@ func TestRequestReaderBodyDoneAndWrappers(t *testing.T) {
 		t.Fatal("expected form hook wrapper to expose data")
 	}
 
-	store := ctex.NewStore()
-	modelReq := &modelRequest{
-		request: request{w: rec, r: httptest.NewRequest(http.MethodGet, "/", nil)},
-		store:   store,
-	}
-	modelReq.RequestHeader().Set("X-Test", "1")
-	if modelReq.RequestHeader().Get("X-Test") != "1" {
+	baseReq := &request{w: rec, r: httptest.NewRequest(http.MethodGet, "/", nil)}
+	baseReq.RequestHeader().Set("X-Test", "1")
+	if baseReq.RequestHeader().Get("X-Test") != "1" {
 		t.Fatal("expected request header to be writable")
 	}
-	modelReq.ResponseHeader().Set("X-Response", "2")
+	baseReq.ResponseHeader().Set("X-Response", "2")
 	if rec.Header().Get("X-Response") != "2" {
 		t.Fatal("expected response header to be writable")
-	}
-	if modelReq.SessionStore() != store {
-		t.Fatal("expected session store to match model store")
 	}
 }
 

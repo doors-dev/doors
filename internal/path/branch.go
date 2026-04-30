@@ -20,14 +20,21 @@ import (
 	"strings"
 )
 
-func newBranch(index int, path string, fields map[string]field) (branch, error) {
+func newBranch(index int, patternIndex int, path string, fields map[string]field) (branch, error) {
+	b := branch{
+		fieldIndex:   index,
+		patternIndex: patternIndex,
+	}
+	if path == "" {
+		return b, nil
+	}
 	parts := strings.Split(path, "/")
-	segments := make([]segment, 0, len(parts))
+	b.segments = make([]segment, 0, len(parts))
 	for i, part := range parts {
 		last := i == len(parts)-1
 		name, ok := strings.CutPrefix(part, ":")
 		if !ok {
-			segments = append(segments, newLiteralSegment(part))
+			b.segments = append(b.segments, newLiteralSegment(part))
 			continue
 		}
 		var optional bool
@@ -61,7 +68,7 @@ func newBranch(index int, path string, fields map[string]field) (branch, error) 
 			if !ok {
 				return branch{}, errors.New("multi-segment path parameter field " + name + " must have type []string")
 			}
-			segments = append(segments, newMultiSegment(multiField, optional))
+			b.segments = append(b.segments, newMultiSegment(multiField, optional))
 		} else {
 			singleField, ok := field.single()
 			if !ok {
@@ -76,18 +83,16 @@ func newBranch(index int, path string, fields map[string]field) (branch, error) 
 					return branch{}, errors.New("required single-segment path parameter field " + name + " must not be a pointer")
 				}
 			}
-			segments = append(segments, newSingleSegment(singleField, optional))
+			b.segments = append(b.segments, newSingleSegment(singleField, optional))
 		}
 	}
-	return branch{
-		segments:    segments,
-		markerIndex: index,
-	}, nil
+	return b, nil
 }
 
 type branch struct {
-	markerIndex int
-	segments    []segment
+	fieldIndex   int
+	patternIndex int
+	segments     []segment
 }
 
 func (b branch) encode(m reflect.Value) ([]string, error) {
@@ -188,9 +193,16 @@ func (b branch) decode(m reflect.Value, parts []string) bool {
 }
 
 func (b branch) getMarker(m reflect.Value) bool {
-	return m.Field(b.markerIndex).Bool()
+	if b.patternIndex == -1 {
+		return m.Field(b.fieldIndex).Bool()
+	}
+	return m.Field(b.fieldIndex).Int() == int64(b.patternIndex)
 }
 
 func (b branch) setMarker(m reflect.Value) {
-	m.Field(b.markerIndex).SetBool(true)
+	if b.patternIndex == -1 {
+		m.Field(b.fieldIndex).SetBool(true)
+		return
+	}
+	m.Field(b.fieldIndex).SetInt(int64(b.patternIndex))
 }

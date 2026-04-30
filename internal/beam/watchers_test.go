@@ -45,6 +45,11 @@ func (s *stubSyncSource[T]) Watch(context.Context, Watcher[T]) (context.CancelFu
 	return none, false
 }
 
+func (s *stubSyncSource[T]) Get() T {
+	var zero T
+	return zero
+}
+
 func (s *stubSyncSource[T]) addWatcher(context.Context, *watcher) bool {
 	return false
 }
@@ -58,7 +63,7 @@ func (s *stubSyncSource[T]) sync(prev, seq uint, after shredder.SimpleFrame) (*T
 }
 
 func TestSourceXUpdateAndXMutate(t *testing.T) {
-	source := NewSourceEqual(0, nil)
+	source := NewSource(0, nil, false)
 
 	if err := <-source.XUpdate(context.Background(), 1); err != nil {
 		t.Fatal(err)
@@ -77,9 +82,9 @@ func TestSourceXUpdateAndXMutate(t *testing.T) {
 	}
 }
 
-func TestNewBeamEqualDefaultsNilComparator(t *testing.T) {
+func TestNewBeamDefaultsNilComparator(t *testing.T) {
 	source := &stubSyncSource[int]{}
-	derived := NewBeamEqual(source, func(v int) string {
+	derived := NewBeam(source, func(v int) string {
 		return fmt.Sprintf("v:%d", v)
 	}, nil)
 
@@ -95,8 +100,8 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 	t.Run("prev zero reuses cached value as updated", func(t *testing.T) {
 		source := &stubSyncSource[int]{}
 		value := 11
-		b := &DerivedBeam[int, int]{
-			source: source,
+		b := &beam[int, int]{
+			beam: source,
 			values: map[uint]entry[int]{
 				7: {
 					value:   &value,
@@ -124,8 +129,8 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 	t.Run("same prev returns cached updated flag", func(t *testing.T) {
 		source := &stubSyncSource[int]{}
 		value := 17
-		b := &DerivedBeam[int, int]{
-			source: source,
+		b := &beam[int, int]{
+			beam: source,
 			values: map[uint]entry[int]{
 				9: {
 					value:   &value,
@@ -153,8 +158,8 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 	t.Run("missing prev entry falls back to cached value as updated", func(t *testing.T) {
 		source := &stubSyncSource[int]{}
 		value := 23
-		b := &DerivedBeam[int, int]{
-			source: source,
+		b := &beam[int, int]{
+			beam: source,
 			values: map[uint]entry[int]{
 				11: {
 					value:   &value,
@@ -183,8 +188,8 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 		source := &stubSyncSource[int]{}
 		prevValue := 0
 		value := 1
-		b := &DerivedBeam[int, int]{
-			source: source,
+		b := &beam[int, int]{
+			beam: source,
 			values: map[uint]entry[int]{
 				1: {
 					value:   &prevValue,
@@ -229,8 +234,8 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 		}
 
 		prevValue := "cached"
-		b := &DerivedBeam[int, string]{
-			source: source,
+		b := &beam[int, string]{
+			beam: source,
 			values: map[uint]entry[string]{
 				2: {
 					value:   &prevValue,
@@ -238,7 +243,7 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 					updated: true,
 				},
 			},
-			cast: func(v int) string {
+			get: func(v int) string {
 				t.Fatal("cast should not run when previous beam value is still cached")
 				return ""
 			},
@@ -270,10 +275,10 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 			},
 		}
 
-		b := &DerivedBeam[int, string]{
-			source: source,
+		b := &beam[int, string]{
+			beam:   source,
 			values: map[uint]entry[string]{},
-			cast: func(v int) string {
+			get: func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			},
 			equal: func(new string, old string) bool {
@@ -308,10 +313,10 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 				return nil, false
 			},
 		}
-		b := &DerivedBeam[int, string]{
-			source: source,
+		b := &beam[int, string]{
+			beam:   source,
 			values: map[uint]entry[string]{},
-			cast: func(v int) string {
+			get: func(v int) string {
 				t.Fatal("cast should not run when source value is missing")
 				return ""
 			},
@@ -339,10 +344,10 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 				return &sourceValue, true
 			},
 		}
-		b := &DerivedBeam[int, string]{
-			source: source,
+		b := &beam[int, string]{
+			beam:   source,
 			values: map[uint]entry[string]{},
-			cast: func(v int) string {
+			get: func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			},
 			equal: func(new string, old string) bool {
@@ -377,8 +382,8 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 			},
 		}
 		prevValue := "v:12"
-		b := &DerivedBeam[int, string]{
-			source: source,
+		b := &beam[int, string]{
+			beam: source,
 			values: map[uint]entry[string]{
 				3: {
 					value:   &prevValue,
@@ -386,7 +391,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 					updated: true,
 				},
 			},
-			cast: func(v int) string {
+			get: func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			},
 			equal: func(new string, old string) bool {
@@ -418,8 +423,8 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 			},
 		}
 		prevValue := "v:12"
-		b := &DerivedBeam[int, string]{
-			source: source,
+		b := &beam[int, string]{
+			beam: source,
 			values: map[uint]entry[string]{
 				4: {
 					value:   &prevValue,
@@ -427,7 +432,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 					updated: false,
 				},
 			},
-			cast: func(v int) string {
+			get: func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			},
 			equal: func(new string, old string) bool {

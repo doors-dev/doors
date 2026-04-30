@@ -31,7 +31,7 @@ type Resource = printer.SourceHandler
 // ResourceStatic is a [Resource] whose content is known up front.
 //
 // Static resources can be shared through cached public URLs and mounted at
-// fixed public routes such as [RouteResource].
+// fixed public routes with [UseResource].
 type ResourceStatic = printer.SourceStatic
 
 // ResourceExternal is a direct external URL.

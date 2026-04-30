@@ -30,15 +30,15 @@ import (
 )
 
 type resourceTestSettings struct {
-	conf *common.SystemConf
+	conf *common.Conf
 }
 
-func (s resourceTestSettings) Conf() *common.SystemConf {
+func (s resourceTestSettings) Conf() *common.Conf {
 	return s.conf
 }
 
-func (s resourceTestSettings) BuildProfiles() BuildProfiles {
-	return BaseProfile{}
+func (s resourceTestSettings) ESProfile(string) api.BuildOptions {
+	return api.BuildOptions{}
 }
 
 type errStaticEntry struct{}
@@ -189,7 +189,7 @@ func TestDetectLoader(t *testing.T) {
 }
 
 func TestRegistryServeAndScriptModes(t *testing.T) {
-	conf := common.SystemConf{}
+	conf := common.Conf{}
 	common.InitDefaults(&conf)
 	rg := NewRegistry(resourceTestSettings{conf: &conf})
 
@@ -241,7 +241,7 @@ func TestRegistryServeAndScriptModes(t *testing.T) {
 }
 
 func TestRegistryErrorBranches(t *testing.T) {
-	conf := common.SystemConf{}
+	conf := common.Conf{}
 	common.InitDefaults(&conf)
 	rg := NewRegistry(resourceTestSettings{conf: &conf})
 

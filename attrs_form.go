@@ -30,20 +30,20 @@ import (
 type ARawSubmit struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend form handler.
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestRawForm) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (s ARawSubmit) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -57,17 +57,17 @@ func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 		return errors.New("door: hook registration failed")
 	}
 	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
-		OnError:  intoActions(ctx, s.OnError),
-		Before:   intoActions(ctx, s.Before),
-		Scope:    front.IntoScopeSet(core, s.Scope),
-		Indicate: front.IntoIndicate(s.Indicator),
+		OnError:  intoActions(ctx, actionsOrNil(s.OnError)),
+		Before:   intoActions(ctx, actionsOrNil(s.Before)),
+		Scope:    scopesOrNil(core, s.Scope),
+		Indicate: indicatorsOrNil(s.Indicator),
 		Hook:     hook,
 	})
 	return nil
 }
 
 func (s *ARawSubmit) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	done := s.On(ctx, &request{
+	done := s.On(ctx, request{
 		w:   w,
 		r:   r,
 		ctx: ctx,
@@ -90,20 +90,20 @@ type ASubmit[T any] struct {
 	MaxMemory int
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend form handler.
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestForm[T]) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (s ASubmit[V]) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -117,10 +117,10 @@ func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 		return errors.New("door: hook registration failed")
 	}
 	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
-		OnError:  intoActions(ctx, s.OnError),
-		Before:   intoActions(ctx, s.Before),
-		Scope:    front.IntoScopeSet(core, s.Scope),
-		Indicate: front.IntoIndicate(s.Indicator),
+		OnError:  intoActions(ctx, actionsOrNil(s.OnError)),
+		Before:   intoActions(ctx, actionsOrNil(s.Before)),
+		Scope:    scopesOrNil(core, s.Scope),
+		Indicate: indicatorsOrNil(s.Indicator),
 		Hook:     hook,
 	})
 	return nil
@@ -146,7 +146,7 @@ func (s *ASubmit[V]) handle(ctx context.Context, w http.ResponseWriter, r *http.
 		w.WriteHeader(400)
 		return false
 	}
-	return s.On(ctx, &formHookRequest[V]{
+	return s.On(ctx, formHookRequest[V]{
 		data: &v,
 		request: request{
 			w:   w,
@@ -169,21 +169,21 @@ type RequestChange = RequestEvent[ChangeEvent]
 type AChange struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[ChangeEvent].
+	// Receives a typed RequestEvent[ChangeEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestChange) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p AChange) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -213,15 +213,15 @@ type RequestInput = RequestEvent[InputEvent]
 type AInput struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[InputEvent].
+	// Receives a typed RequestEvent[InputEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestInput) bool
@@ -230,7 +230,7 @@ type AInput struct {
 	ExcludeValue bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p AInput) Proxy(cur gox.Cursor, elem gox.Elem) error {

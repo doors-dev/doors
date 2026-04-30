@@ -127,7 +127,7 @@ export const fetchOpt = (data: any) => {
 }
 
 export const scrollInto = (selector: string, options?: any): boolean => {
-	if(!options && options !== false) {
+	if (!options && options !== false) {
 		options = {}
 	}
 	if (selector.startsWith("#")) {
@@ -159,25 +159,26 @@ export const splitClass = (str: string | undefined): Array<string> => {
 const delayReset = 1000
 const maxDelay = 12_000
 const zeroThreshold = 300
+const growth = 1.25
 const step = 200
 const jitterMult = 0.4
 
 export class ProgressiveDelay {
 	private marker_ = 0
-	private fee = 0
+	private fee_ = 0
 	private limited_ = false
 	private resetMarker() {
 		this.marker_ = Date.now()
 	}
 	private resetFee() {
-		this.fee = 0
+		this.fee_ = 0
 		this.limited_ = false
 	}
 	private increaseFee() {
 		if (this.limited_) {
 			return
 		}
-		this.fee++
+		this.fee_++
 	}
 	private diff() {
 		const diff = Date.now() - this.marker_
@@ -187,7 +188,7 @@ export class ProgressiveDelay {
 		return diff
 	}
 	private delay(): number {
-		let delay = step * Math.pow(2, this.fee)
+		let delay = step * Math.pow(growth, this.fee_)
 		if (delay > maxDelay) {
 			this.limited_ = true
 			delay = maxDelay
@@ -211,51 +212,51 @@ export class ProgressiveDelay {
 			if (diff == 0) {
 				this.increaseFee()
 			}
-			setTimeout(() => {
+			new ReliableTimer(this.delay(), () => {
 				this.resetMarker()
 				res()
-			}, this.delay())
+			})
 		})
 	}
 }
 
 export class ReliableTimer {
 	private interval_: number
-	private done: boolean = false
+	private done_: boolean = false
 	private deadline_: number
-	private tick: number
+	private tick_: number
 	constructor(private timeout_: number, handler: Function) {
 		this.timeout_ = timeout_
-		this.tick = 0.05 * this.timeout_
+		this.tick_ = Math.max(0.05 * this.timeout_, 20)
 		this.reset()
 		this.interval_ = setInterval(() => {
 			if (Date.now() < this.deadline_) {
 				return
 			}
-			this.done = true
+			this.done_ = true
 			clearInterval(this.interval_)
 			handler()
-		}, this.tick)
+		}, this.tick_)
 	}
 	reset() {
-		this.deadline_ = Date.now() + this.timeout_ - this.tick / 2
+		this.deadline_ = Date.now() + this.timeout_ - this.tick_ / 2
 	}
 	cancel() {
 		clearInterval(this.interval_)
-		return !this.done
+		return !this.done_
 	}
 }
 
 export class AbortTimer {
 	private abortController_ = new AbortController()
 	private timer_: ReliableTimer
-	private _expired = false
+	private expired_ = false
 	constructor(timeout: number) {
 		this.timer_ = new ReliableTimer(timeout, () => {
 			if (this.signal.aborted) {
 				return
 			}
-			this._expired = true
+			this.expired_ = true
 			this.abortController_.abort("timeout")
 		})
 	}
@@ -263,7 +264,7 @@ export class AbortTimer {
 		if (!this.signal.aborted) {
 			return "running"
 		}
-		if (this._expired) {
+		if (this.expired_) {
 			return "expired"
 		}
 		return "aborted"

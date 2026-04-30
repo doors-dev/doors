@@ -16,16 +16,14 @@ package printer
 
 import (
 	"context"
+	"github.com/doors-dev/gox"
 	"io"
 	"strings"
-
-	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/gox"
 )
 
-func NewPagePrinter(w io.Writer, ctx context.Context, static bool, importMap []byte, meta gox.Editor) gox.Printer {
-	cur := gox.NewCursor(ctx, defaultPrinter{w})
-	return &pagePrinter{cur: cur, static: static, importMap: importMap, meta: meta}
+func NewPagePrinter(w io.Writer, static bool, include gox.Elem, importMap []byte, meta gox.Editor) gox.Printer {
+	cur := gox.NewCursor(context.Background(), defaultPrinter{w})
+	return &pagePrinter{cur: cur, static: static, include: include, importMap: importMap, meta: meta}
 }
 
 type pagePrinterState int
@@ -39,6 +37,7 @@ const (
 type pagePrinter struct {
 	cur       gox.Cursor
 	static    bool
+	include   gox.Elem
 	importMap []byte
 	state     pagePrinterState
 	meta      gox.Editor
@@ -125,7 +124,7 @@ func (p *pagePrinter) insertHead() error {
 
 func (p *pagePrinter) insert() error {
 	if !p.static {
-		if err := p.cur.Comp(front.Include); err != nil {
+		if err := p.cur.Comp(p.include); err != nil {
 			return err
 		}
 	}

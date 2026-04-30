@@ -16,6 +16,15 @@ package front
 
 import "encoding/json"
 
+type indicatorKind string
+
+const (
+	indicatorAttr        indicatorKind = "attr"
+	indicatorClass       indicatorKind = "class"
+	indicatorRemoveClass indicatorKind = "remove_class"
+	indicatorContent     indicatorKind = "content"
+)
+
 type SelectorMode string
 
 const (
@@ -28,14 +37,6 @@ const (
 type Selector struct {
 	mode  SelectorMode
 	query string
-}
-
-func IntoIndicate(indicator []Indicator) []Indicate {
-	a := make([]Indicate, len(indicator))
-	for i, s := range indicator {
-		a[i] = s.Indicate()
-	}
-	return a
 }
 
 func SelectTarget() Selector {
@@ -66,50 +67,46 @@ func (s Selector) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]string{string(s.mode), s.query})
 }
 
-type Indicator interface {
-	Indicate() Indicate
-}
-
-type Indicate struct {
+type Indicator struct {
 	selector Selector
-	kind     string
+	kind     indicatorKind
 	param1   string
 	param2   string
 }
 
-func IndicateAttr(s Selector, name string, value string) Indicate {
-	return Indicate{
+func IndicatorAttr(s Selector, name string, value string) Indicator {
+	return Indicator{
 		selector: s,
-		kind:     "attr",
+		kind:     indicatorAttr,
 		param1:   name,
 		param2:   value,
 	}
 }
 
-func IndicateClass(s Selector, class string) Indicate {
-	return Indicate{
+func IndicatorClass(s Selector, class string) Indicator {
+	return Indicator{
 		selector: s,
-		kind:     "class",
+		kind:     indicatorClass,
 		param1:   class,
 	}
 }
 
-func IndicateClassRemove(s Selector, class string) Indicate {
-	return Indicate{
+func IndicatorClassRemove(s Selector, class string) Indicator {
+	return Indicator{
 		selector: s,
-		kind:     "remove_class",
+		kind:     indicatorRemoveClass,
 		param1:   class,
 	}
 }
 
-func IndicateContent(s Selector, content string) Indicate {
-	return Indicate{
+func IndicatorContent(s Selector, content string) Indicator {
+	return Indicator{
 		selector: s,
-		kind:     "content",
+		kind:     indicatorContent,
 		param1:   content,
 	}
 }
 
-func (i Indicate) MarshalJSON() ([]byte, error) {
+func (i Indicator) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]any{i.selector, i.kind, i.param1, i.param2})
 }

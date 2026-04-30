@@ -46,7 +46,7 @@ elem (f *LinksFragment) Main() {
 				Vh: true,
 			},
 			Active: doors.Active{
-				Indicator: doors.IndicatorOnlyAttr("aria-current", "page"),
+				Indicator: doors.IndicateAttr("aria-current", "page"),
 			},
 		} <a id="active-default">active-default</a>
 		~>doors.ALink{
@@ -56,7 +56,7 @@ elem (f *LinksFragment) Main() {
 			},
 			Active: doors.Active{
 				PathMatcher: doors.PathMatcherStarts(),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "starts"),
+				Indicator: doors.IndicateAttr("data-active", "starts"),
 			},
 		} <a id="active-starts">active-starts</a>
 		~>doors.ALink{
@@ -66,7 +66,7 @@ elem (f *LinksFragment) Main() {
 			},
 			Active: doors.Active{
 				PathMatcher: doors.PathMatcherSegments(0),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "segments"),
+				Indicator: doors.IndicateAttr("data-active", "segments"),
 			},
 		} <a id="active-segments">active-segments</a>
 		~>doors.ALink{
@@ -75,9 +75,9 @@ elem (f *LinksFragment) Main() {
 			},
 			Fragment: "details",
 			Active: doors.Active{
-				QueryMatcher: doors.QueryMatcherOnlyIgnoreAll(),
+				QueryMatcher: doors.QueryMatcherIgnoreAll(),
 				FragmentMatch: true,
-				Indicator: doors.IndicatorOnlyAttr("data-active", "fragment"),
+				Indicator: doors.IndicateAttr("data-active", "fragment"),
 			},
 		} <a id="active-fragment">active-fragment</a>
 		~>doors.ALink{
@@ -85,12 +85,8 @@ elem (f *LinksFragment) Main() {
 				Vh: true,
 			},
 			Active: doors.Active{
-				QueryMatcher: []doors.QueryMatcher{
-					doors.QueryMatcherIgnoreSome("page"),
-					doors.QueryMatcherSome("mode"),
-					doors.QueryMatcherIfPresent("optional"),
-				},
-				Indicator: doors.IndicatorOnlyAttr("data-active", "query"),
+				QueryMatcher: doors.QueryMatcherIgnoreSome("page").And(doors.QueryMatcherSome("mode")).And(doors.QueryMatcherIfPresent("optional")),
+				Indicator: doors.IndicateAttr("data-active", "query"),
 			},
 		} <a id="active-query">active-query</a>
 		~>doors.ALink{
@@ -98,8 +94,8 @@ elem (f *LinksFragment) Main() {
 				Vh: true,
 			},
 			Active: doors.Active{
-				QueryMatcher: doors.QueryMatcherOnlyIgnoreSome("page"),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "only-ignore-some"),
+				QueryMatcher: doors.QueryMatcherIgnoreSome("page"),
+				Indicator: doors.IndicateAttr("data-active", "only-ignore-some"),
 			},
 		} <a id="active-query-only-ignore-some">active-query-only-ignore-some</a>
 		~>doors.ALink{
@@ -107,8 +103,8 @@ elem (f *LinksFragment) Main() {
 				Vh: true,
 			},
 			Active: doors.Active{
-				QueryMatcher: doors.QueryMatcherOnlySome("mode"),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "only-some"),
+				QueryMatcher: doors.QueryMatcherSome("mode").And(doors.QueryMatcherIgnoreAll()),
+				Indicator: doors.IndicateAttr("data-active", "only-some"),
 			},
 		} <a id="active-query-only-some">active-query-only-some</a>
 		~>doors.ALink{
@@ -116,8 +112,8 @@ elem (f *LinksFragment) Main() {
 				Vh: true,
 			},
 			Active: doors.Active{
-				QueryMatcher: doors.QueryMatcherOnlyIfPresent("optional"),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "only-if-present"),
+				QueryMatcher: doors.QueryMatcherIfPresent("optional").And(doors.QueryMatcherIgnoreAll()),
+				Indicator: doors.IndicateAttr("data-active", "only-if-present"),
 			},
 		} <a id="active-query-only-if-present">active-query-only-if-present</a>
 	</div>
@@ -146,28 +142,28 @@ elem (f *LinksFragment) Main() {
 	<div id="action-target">action-target</div>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyLocationRawAssign(test.Host + "/s"))
+			r.After(doors.ActionLocationRawAssign{URL: test.Host + "/s"})
 			return false
 		},
 	} <button id="raw-assign">raw-assign</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyIndicate(
-				doors.IndicatorOnlyAttrQuery("#action-target", "data-indicated", "true"),
-				200 * time.Millisecond,
-			))
+			r.After(doors.ActionIndicate{
+				Indicator: doors.IndicateAttrQuery("#action-target", "data-indicated", "true"),
+				Duration: 200 * time.Millisecond,
+			})
 			return false
 		},
 	} <button id="action-indicate">action-indicate</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyScroll("#scroll-target"))
+			r.After(doors.ActionScroll{Selector: "#scroll-target"})
 			return false
 		},
 	} <button id="action-scroll">action-scroll</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyEmit("alert", "Hello!"))
+			r.After(doors.ActionEmit{Name: "alert", Arg: "Hello!"})
 			return false
 		},
 	} <button>

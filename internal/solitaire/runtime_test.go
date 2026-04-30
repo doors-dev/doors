@@ -114,7 +114,7 @@ func (s *stubInstance) Touch() {
 }
 
 func testSolitaireConf() *common.SolitaireConf {
-	conf := &common.SystemConf{}
+	conf := &common.Conf{}
 	common.InitDefaults(conf)
 	return common.GetSolitaireConf(conf)
 }

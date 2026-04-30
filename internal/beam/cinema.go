@@ -106,7 +106,7 @@ func (c *cinema) addWatcher(src anySource, w *watcher) bool {
 	c.mu.Unlock()
 	seq, frame := s.addWatcher(w)
 	defer frame.Release()
-	ctx := ctex.SyncFrameInsert(c.ctx(), frame)
+	ctx := ctex.SyncFrameInsert(c.ctx(), frame, nil)
 	w.init(ctx, seq)
 	return true
 }

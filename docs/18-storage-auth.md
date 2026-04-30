@@ -8,9 +8,8 @@ That pattern is especially useful for authentication. The same idea also works f
 
 You usually access storage in one of three places:
 
-- `r.SessionStore()` in a model handler
-- `doors.SessionStore(ctx)` when you already have a **Doors** `ctx`
-- `doors.InstanceStore(ctx)` for page-instance-local storage
+- `doors.SessionStore(ctx)` for instance-scoped storage
+- `doors.InstanceStore(ctx)` for instance-scoped storage
 
 The store API is:
 
@@ -21,7 +20,7 @@ The store API is:
 
 For reactive session state, the usual pattern is:
 
-- `Init` in the model handler
+- `Init` in the page function
 - `Load` later in event or hook handlers
 
 `Save` and `Remove` are more useful when you want to replace or clear the stored object itself.
@@ -47,9 +46,9 @@ Use it for page-local state that should survive rerenders in that page but shoul
 
 If the state should affect the whole logged-in browser session, use session storage instead.
 
-## Model
+## App Page
 
-The model handler is the usual place to bootstrap shared session state from cookies or headers.
+The page function passed to `doors.NewApp(...)` is the usual place to bootstrap shared session state from cookies or headers.
 
 For auth, a good pattern is:
 
@@ -65,8 +64,8 @@ type App struct {
 	auth doors.Source[bool]
 }
 
-doors.UseModel(router, func(r doors.RequestModel, _ doors.Source[Path]) doors.Response {
-	auth := r.SessionStore().Init(authKey{}, func() any {
+app := doors.NewApp(func(ctx context.Context, r doors.Request) gox.Comp {
+	auth := doors.SessionStore(ctx).Init(authKey{}, func() any {
 		c, err := r.GetCookie("session")
 		if err != nil {
 			return doors.NewSource(false)
@@ -75,9 +74,9 @@ doors.UseModel(router, func(r doors.RequestModel, _ doors.Source[Path]) doors.Re
 		return doors.NewSource(ok)
 	}).(doors.Source[bool])
 
-	return doors.ResponseComp(App{
+	return App{
 		auth: auth,
-	})
+	}
 })
 ```
 
@@ -85,7 +84,7 @@ doors.UseModel(router, func(r doors.RequestModel, _ doors.Source[Path]) doors.Re
 
 That means later requests do not create a new auth source. They get the same shared one back.
 
-Do not treat the cookie by itself as proof of authentication. Keep the real session in your own database, Redis, or other server storage, usually by session ID from the cookie.
+> Do not treat the cookie by itself as proof of authentication. Keep the real session in your own database, Redis, or other server storage, usually by session ID from the cookie.
 
 ## Render
 
@@ -166,7 +165,7 @@ This is the main benefit of shared reactive session state in **Doors**: open pag
 
 - If the UI should react, store a `Source` in the store.
 - Put auth in session storage, not instance storage.
-- Initialize shared state in the model handler, then keep it on your `App`.
+- Initialize shared state in the page function, then keep it on your `App`.
 - Validate the cookie against your real session storage, not against the cookie alone.
 - If auth has a fixed lifetime, usually cap the **Doors** session to that same lifetime on login.
 - Use `doors.SessionEnd(ctx)` only when you intentionally want to force-close the whole **Doors** session.

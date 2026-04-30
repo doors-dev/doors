@@ -15,9 +15,9 @@
 package doors
 
 import (
+	"context"
 	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -27,12 +27,6 @@ import (
 
 	"github.com/doors-dev/gox"
 )
-
-type testSessionCallback struct{}
-
-func (testSessionCallback) Create(string, http.Header) {}
-
-func (testSessionCallback) Delete(string) {}
 
 func readURL(t *testing.T, server *httptest.Server, path string) (int, http.Header, string) {
 	t.Helper()
@@ -48,15 +42,7 @@ func readURL(t *testing.T, server *httptest.Server, path string) (int, http.Head
 	return resp.StatusCode, resp.Header, string(body)
 }
 
-type countPathA struct {
-	Path bool `path:"/count-a"`
-}
-
-type countPathB struct {
-	Path bool `path:"/count-b"`
-}
-
-func countPage(label string) gox.Comp {
+func testPage(label string) gox.Comp {
 	return gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.Init("html"); err != nil {
 			return err
@@ -80,7 +66,7 @@ func countPage(label string) gox.Comp {
 	})
 }
 
-func TestRouteFileServing(t *testing.T) {
+func TestAppStaticMiddlewareServing(t *testing.T) {
 	dir := t.TempDir()
 	dirFile := filepath.Join(dir, "hello.txt")
 	if err := os.WriteFile(dirFile, []byte("dir"), 0o644); err != nil {
@@ -91,171 +77,48 @@ func TestRouteFileServing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	router := NewRouter()
-	UseRoute(router, RouteFS{
-		Prefix:       "assets",
-		FS:           fstest.MapFS{"hello.txt": &fstest.MapFile{Data: []byte("asset")}},
-		CacheControl: "public, max-age=60",
+	app := NewApp(func(context.Context, Request) gox.Comp {
+		return testPage("fallback")
 	})
-	UseRoute(router, RouteDir{
-		Prefix:       "public",
-		DirPath:      dir,
-		CacheControl: "no-cache",
-	})
-	UseRoute(router, RouteFile{
-		Path:         "robots.txt",
-		FilePath:     singleFile,
-		CacheControl: "max-age=120",
-	})
+	app.Use(
+		UseResource("asset.txt", ResourceBytes([]byte("asset")), "text/plain"),
+		UseFS("fs", fstest.MapFS{"hello.txt": &fstest.MapFile{Data: []byte("fs")}}, "public, max-age=60"),
+		UseDir("public", dir, "no-cache"),
+		UseFile("robots.txt", singleFile, "max-age=120"),
+	)
 
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(app)
 	defer server.Close()
 
-	status, headers, body := readURL(t, server, "/assets/hello.txt")
-	if status != http.StatusOK {
-		t.Fatalf("unexpected assets status: %d", status)
+	status, headers, body := readURL(t, server, "/asset.txt")
+	if status != http.StatusOK || body != "asset" {
+		t.Fatalf("unexpected resource response: status=%d body=%q", status, body)
 	}
-	if body != "asset" {
-		t.Fatalf("unexpected assets body: %q", body)
+	if !strings.HasPrefix(headers.Get("Content-Type"), "text/plain") {
+		t.Fatalf("unexpected resource content-type: %q", headers.Get("Content-Type"))
+	}
+
+	status, headers, body = readURL(t, server, "/fs/hello.txt")
+	if status != http.StatusOK || body != "fs" {
+		t.Fatalf("unexpected fs response: status=%d body=%q", status, body)
 	}
 	if headers.Get("Cache-Control") != "public, max-age=60" {
-		t.Fatalf("unexpected assets cache-control: %q", headers.Get("Cache-Control"))
+		t.Fatalf("unexpected fs cache-control: %q", headers.Get("Cache-Control"))
 	}
 
 	status, headers, body = readURL(t, server, "/public/hello.txt")
-	if status != http.StatusOK {
-		t.Fatalf("unexpected dir status: %d", status)
-	}
-	if body != "dir" {
-		t.Fatalf("unexpected dir body: %q", body)
+	if status != http.StatusOK || body != "dir" {
+		t.Fatalf("unexpected dir response: status=%d body=%q", status, body)
 	}
 	if headers.Get("Cache-Control") != "no-cache" {
 		t.Fatalf("unexpected dir cache-control: %q", headers.Get("Cache-Control"))
 	}
 
 	status, headers, body = readURL(t, server, "/robots.txt")
-	if status != http.StatusOK {
-		t.Fatalf("unexpected file status: %d", status)
-	}
-	if body != "file" {
-		t.Fatalf("unexpected file body: %q", body)
+	if status != http.StatusOK || body != "file" {
+		t.Fatalf("unexpected file response: status=%d body=%q", status, body)
 	}
 	if headers.Get("Cache-Control") != "max-age=120" {
 		t.Fatalf("unexpected file cache-control: %q", headers.Get("Cache-Control"))
-	}
-}
-
-func TestRouteResourceAndFallback(t *testing.T) {
-	router := NewRouter()
-	UseRoute(router, RouteResource{
-		Path:        "/hello.txt",
-		Resource:    ResourceBytes([]byte("hello")),
-		ContentType: "text/plain",
-	})
-	UseFallback(router, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusTeapot)
-		_, _ = w.Write([]byte("fallback"))
-	}))
-	UseSessionCallback(router, testSessionCallback{})
-	UseESConf(router, ESOptions{JSX: JSXReact(), Minify: false})
-	UseSystemConf(router, SystemConf{})
-	UseCSP(router, CSP{})
-	UseServerID(router, "blue")
-
-	server := httptest.NewServer(router)
-	defer server.Close()
-
-	status, headers, body := readURL(t, server, "/hello.txt")
-	if status != http.StatusOK {
-		t.Fatalf("unexpected resource status: %d", status)
-	}
-	if body != "hello" {
-		t.Fatalf("unexpected resource body: %q", body)
-	}
-	if !strings.HasPrefix(headers.Get("Content-Type"), "text/plain") {
-		t.Fatalf("unexpected resource content-type: %q", headers.Get("Content-Type"))
-	}
-
-	status, _, body = readURL(t, server, "/missing")
-	if status != http.StatusTeapot {
-		t.Fatalf("unexpected fallback status: %d", status)
-	}
-	if body != "fallback" {
-		t.Fatalf("unexpected fallback body: %q", body)
-	}
-}
-
-func TestRouteMatchRejectsRoot(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-
-	if (RouteResource{Path: "/"}).Match(req) {
-		t.Fatal("expected resource route to reject root path")
-	}
-	if (RouteFS{Prefix: "/"}).Match(req) {
-		t.Fatal("expected fs route to reject root prefix")
-	}
-	if (RouteDir{Prefix: ""}).Match(req) {
-		t.Fatal("expected dir route to reject empty prefix")
-	}
-	if (RouteFile{Path: ""}).Match(req) {
-		t.Fatal("expected file route to reject empty path")
-	}
-}
-
-func TestRouterCount(t *testing.T) {
-	router := NewRouter()
-	UseModel(router, func(r RequestModel, s Source[countPathA]) Response {
-		return ResponseComp(countPage("a"))
-	})
-	UseModel(router, func(r RequestModel, s Source[countPathB]) Response {
-		return ResponseComp(countPage("b"))
-	})
-
-	sessions, instances := router.Count()
-	if sessions != 0 || instances != 0 {
-		t.Fatalf("expected empty router count, got sessions=%d instances=%d", sessions, instances)
-	}
-
-	server := httptest.NewServer(router)
-	defer server.Close()
-
-	jar1, err := cookiejar.New(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client1 := &http.Client{Jar: jar1}
-
-	resp, err := client1.Get(server.URL + "/count-a")
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
-
-	sessions, instances = router.Count()
-	if sessions != 1 || instances != 1 {
-		t.Fatalf("expected one session and one instance, got sessions=%d instances=%d", sessions, instances)
-	}
-
-	resp, err = client1.Get(server.URL + "/count-b")
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
-
-	sessions, instances = router.Count()
-	if sessions != 1 || instances != 2 {
-		t.Fatalf("expected one session and two instances, got sessions=%d instances=%d", sessions, instances)
-	}
-
-	client2 := &http.Client{}
-	resp, err = client2.Get(server.URL + "/count-a")
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
-
-	sessions, instances = router.Count()
-	if sessions != 2 || instances != 3 {
-		t.Fatalf("expected two sessions and three instances, got sessions=%d instances=%d", sessions, instances)
 	}
 }

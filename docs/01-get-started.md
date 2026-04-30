@@ -70,33 +70,29 @@ elem (a App) Main() {
 
 Components in **Doors** (and **GoX**) must have a `Main()` method that returns `gox.Elem`. The `elem` keyword lets you write an HTML template directly in the function body.
 
-> GoX language server compiles it and manages `.x.go` files automatically.
+> The GoX language server generates and manages `.x.go` files automatically.
 
 ## Serve The App
 
-Declare path, create router, attach handler and serve in `main.go`:
+Create the app, hand it to Go's HTTP server, and run it. Put this in `main.go`:
 
 ```go
 package main
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/doors-dev/doors"
+	"github.com/doors-dev/gox"
 )
 
-type Path struct {
-	Home bool `path:"/"` 
-}
-
 func main() {
-	r := doors.NewRouter()
-
-	doors.UseModel(r, func(doors.RequestModel, doors.Source[Path]) doors.Response {
-		return doors.ResponseComp(App{})
+	app := doors.NewApp(func(ctx context.Context, r doors.Request) gox.Comp {
+		return App{}
 	})
 
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	if err := http.ListenAndServe(":8080", app); err != nil {
 		panic(err)
 	}
 }
@@ -106,30 +102,23 @@ Start the program with `go run .` and open [http://localhost:8080](http://localh
 
 #### What Just Happened?
 
-We declared a **model**. **Doors** uses a struct with tagged fields to match, decode, and encode a path:
+`doors.NewApp(...)` builds the **Doors** application. It takes a single page function that, for every request, returns the root component **Doors** should render:
 
 ```go
-type Path struct {
-	Home    bool `path:"/"` // first path pattern
-	Catalog bool `path:"/catalog/:ID?"` // second path pattern with optional ID param
-	ID      *string
-}
-```
-
-Next, we added a model handler to the router and served our `App` component:
-
-```go
-doors.UseModel(r, func(r doors.RequestModel, s doors.Source[Path]) doors.Response {
-	return doors.ResponseComp(App{})
+app := doors.NewApp(func(ctx context.Context, r doors.Request) gox.Comp {
+	return App{}
 })
 ```
-> `doors.RequestModel` provides access to HTTP data such as cookies and headers, while `doors.Source[Path]` is the reactive state primitive that holds the current model value. Usually you store that `Source` on the component so you can use it during rendering.
 
-Finally, the **Doors** router plugs straight into Go's standard HTTP server:
+> `doors.Request` exposes request and response headers, cookies, and the underlying HTTP context. The `ctx` is the **Doors** runtime context for the new page instance — use it for **Doors** APIs.
+
+The returned `app` is an `http.Handler`, so it plugs straight into the standard Go server:
 
 ```go
-http.ListenAndServe(":8080", r)
+http.ListenAndServe(":8080", app)
 ```
+
+Configuration options (CSP, request timeouts, error pages, etc.) and middleware for static files live on the same `app` value. See [App](./04-app.md) and [Configuration](./21-configuration.md).
 
 ## Dynamic Update
 
@@ -164,9 +153,7 @@ elem (c *Counter) Main() {
 		Click Me
 	</button>
 
-	~>(c.door) <span> ~// turn span into door
-		 ← Click 
-	</span>
+	~>(c.door) <span>0</span>
 }
 ```
 
@@ -197,5 +184,5 @@ Now the browser click is sent back to Go, the handler updates the counter state,
 
 - [Core Concepts](./02-core-concepts.md) explains the runtime model behind sessions, instances, doors, hooks, and state.
 - [Template Syntax](./03-template-syntax.md) covers the GoX syntax used throughout the docs.
-- [Path Model](./04-path-model.md) and [Router](./05-router.md) take the next step into URL design and request handling.
-- [State](./07-state.md) to learn about reactive state
+- [App](./04-app.md) and [Routing](./05-routing.md) take the next step into request handling and URL design.
+- [State](./07-state.md) covers reactive state.

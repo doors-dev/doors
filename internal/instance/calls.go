@@ -23,7 +23,7 @@ import (
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
-func (c *Instance[M]) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+func (c Instance) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
 	call := &call{
 		ctx:      ctx,
 		action:   action,

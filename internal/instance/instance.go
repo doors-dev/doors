@@ -1,253 +1,264 @@
-// Copyright 2026 doors dev LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package instance
 
 import (
+	"compress/gzip"
 	"context"
-	"errors"
+	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync/atomic"
-	"time"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/instance/utils"
 	"github.com/doors-dev/doors/internal/path"
-	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/doors/internal/solitaire"
 	"github.com/doors-dev/gox"
 )
 
-type AnyInstance interface {
-	ID() string
-	Serve(http.ResponseWriter, *http.Request) error
-	RestorePath(path.Location) bool
-	TriggerHook(uint64, http.ResponseWriter, *http.Request, uint64) bool
-	Connect(w http.ResponseWriter, r *http.Request)
-	SetStatus(int)
-	InstanceEnd()
-	end(common.EndCause)
-}
+type Instance = *instance
 
-type App[M any] interface {
-	Main(path *beam.SourceBeam[M]) gox.Elem
-}
-
-type setup[M any] struct {
-	adapter  path.Adapter[M]
-	beam     *beam.SourceBeam[M]
-	comp     gox.Comp
-	rerouted bool
-}
-
-type Options struct {
-	Rerouted bool
-}
-
-func NewInstance[M any](sess *Session, adapter path.Adapter[M], beam *beam.SourceBeam[M], comp gox.Comp, opt Options) (AnyInstance, bool) {
-	inst := &Instance[M]{
-		id: common.RandId(),
-		setup: &setup[M]{
-			adapter:  adapter,
-			beam:     beam,
-			comp:     comp,
-			rerouted: opt.Rerouted,
-		},
-		session: sess,
-		store:   ctex.NewStore(),
+func newInstance(sess *session, loc path.Location) Instance {
+	return &instance{
+		id:       common.RandId(),
+		session:  sess,
+		store:    ctex.NewStore(),
+		location: beam.NewSource(loc, path.EqualLocation, false),
+		prime:    common.NewPrime(),
 	}
-	return inst, sess.AddInstance(inst)
 }
 
 const (
-	initial int32 = iota
+	zero int32 = iota
+	initializing
 	active
 	killed
 )
 
-type Instance[M any] struct {
-	id         string
+type instance struct {
 	state      atomic.Int32
-	setup      *setup[M]
-	session    *Session
-	navigator  *navigator[M]
+	id         string
+	session    *session
+	store      ctex.Store
+	location   beam.Source[path.Location]
+	prime      common.Prime
 	runtime    shredder.Runtime
 	solitaire  solitaire.Solitaire
 	root       door.Root
-	killTimer  *killTimer
-	store      ctex.Store
-	csp        *common.CSPCollector
-	importMap  *importMap
+	navigator  utils.Navigator
+	killTimer  utils.KillTimer
+	csp        common.CSPCollector
+	importMap  utils.ImportMap
 	pageStatus atomic.Int32
-	meta       *titleMeta
+	titleMeta  core.TitleMeta
 }
 
-func (inst *Instance[M]) init() error {
-	ok := inst.state.CompareAndSwap(initial, active)
-	if !ok {
-		return errors.New("instance has already started or stopped")
+func (inst Instance) UpdateLocation(l path.Location) bool {
+	return inst.navigator.Update(l)
+}
+
+func (inst Instance) TriggerHook(hookID uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
+	if inst.state.Load() != active {
+		return false
 	}
-	ctx := context.WithValue(context.Background(), ctex.KeySessionStore, inst.session.store)
-	ctx = context.WithValue(ctx, ctex.KeyInstanceStore, inst.store)
-	inst.runtime = shredder.NewRuntime(ctx, inst.Conf().InstanceGoroutineLimit, inst)
+	ok := inst.root.TriggerHook(hookID, w, r, track)
+	if ok {
+		inst.session.limiter.TouchHeavy(inst.id)
+	}
+	return ok
+
+}
+
+func (inst Instance) Connect(w http.ResponseWriter, r *http.Request) {
+	if inst.state.Load() != active {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+	inst.killTimer.KeepAlive()
+	inst.solitaire.Connect(w, r)
+}
+
+func (inst Instance) CSPCollector() common.CSPCollector {
+	return inst.csp
+}
+
+func (inst *instance) Call(call action.Call) {
+	inst.solitaire.Call(call)
+}
+
+func (inst *instance) Kill() {
+	inst.end(common.EndCauseKilled)
+}
+
+func (inst *instance) ModuleRegistry() core.ModuleRegistry {
+	return inst.importMap
+}
+
+func (inst *instance) NewID() uint64 {
+	return inst.prime.Gen()
+}
+
+func (inst *instance) RootID() uint64 {
+	return inst.root.ID()
+}
+
+func (inst *instance) Runtime() shredder.Runtime {
+	return inst.runtime
+}
+
+func (inst *instance) SetStatus(s int) {
+	inst.pageStatus.Store(int32(s))
+}
+
+func (inst *instance) SyncError(err error) {
+	slog.Debug("Instance synchronization error", "error", err, "type", "error", "instance_id", inst.id)
+	inst.end(common.EndCauseSyncError)
+}
+
+func (inst *instance) Touch() {
+	inst.session.limiter.TouchLight(inst.id)
+}
+
+func (inst Instance) Session() core.Session {
+	return inst.session
+}
+
+func (inst Instance) Location() beam.Source[path.Location] {
+	return inst.location
+}
+
+func (inst Instance) ID() string {
+	return inst.id
+}
+
+func (inst Instance) Store() ctex.Store {
+	return inst.store
+}
+
+func (inst Instance) TitleMeta() core.TitleMeta {
+	return inst.titleMeta
+}
+
+type Page = func(ctx context.Context, w http.ResponseWriter, r *http.Request) gox.Comp
+
+type instanceComp struct {
+	w    http.ResponseWriter
+	r    *http.Request
+	page Page
+	inst *instance
+}
+
+func (i instanceComp) Main() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		ctx := cur.Context()
+		i.inst.navigator = utils.NewNavigator(i.inst, ctx)
+		comp := i.page(ctx, i.w, i.r)
+		i.inst.navigator.NoReplace()
+		el := comp.Main()
+		if el == nil {
+			return nil
+		}
+		return el(cur)
+	})
+}
+
+func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (err error, handeled bool) {
+	if !inst.state.CompareAndSwap(zero, initializing) {
+		return nil, false
+	}
+	inst.runtime = shredder.NewRuntime(inst.Session().App().Conf().InstanceGoroutineLimit, inst)
+	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Session().App().Conf()))
 	inst.root = door.NewRoot(inst)
-	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Conf()))
-	inst.navigator = newNavigator(
-		inst,
-		inst.setup.adapter,
-		inst.session.router.Adapters(),
-		inst.setup.beam,
-		inst.root.Context(),
-		inst.setup.rerouted,
-	)
-	inst.killTimer = &killTimer{
-		initial: inst.Conf().InstanceConnectTimeout,
-		regular: inst.Conf().InstanceTTL,
-		inst:    inst,
+	inst.killTimer = utils.NewKillTimer(inst)
+	inst.csp = inst.session.app.CSP().NewCollector()
+	inst.importMap = utils.NewImportMap()
+	inst.titleMeta = utils.NewTitleMeta(inst)
+	stack, err := inst.root.Render(r.Context(), instanceComp{
+		w:    w,
+		r:    r,
+		page: page,
+		inst: inst,
+	})
+	if err != nil {
+		ok := inst.state.CompareAndSwap(initializing, killed)
+		inst.clean(common.EndCauseKilled)
+		return err, ok
 	}
-	inst.csp = inst.session.router.CSP().NewCollector()
-	inst.importMap = newImportMap()
-	inst.meta = newTitleMeta(inst)
-	inst.killTimer.keepAlive()
-	return nil
+	if !inst.state.CompareAndSwap(initializing, active) {
+		inst.clean(common.EndCauseSuspend)
+		return nil, false
+	}
+	static := inst.root.IsStatic()
+	if !static {
+		inst.killTimer.KeepAlive()
+	}
+	if err := inst.render(w, r, stack, static); err != nil {
+		inst.end(common.EndCauseKilled)
+		return nil, true
+	}
+	if static {
+		inst.end(common.EndCauseKilled)
+		return nil, true
+	}
+	return nil, true
 }
 
-func (i *Instance[M]) PathMaker() path.PathMaker {
-	return i.session.router.PathMaker()
+func (inst *instance) render(w http.ResponseWriter, r *http.Request, pipe door.Stack, static bool) error {
+	gz := !inst.session.App().Conf().ServerDisableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
+	importMap, importHash := inst.importMap.Generate()
+	inst.renderHeaders(w, gz, importHash)
+	var writer io.Writer = w
+	if gz {
+		wgz := gzip.NewWriter(w)
+		defer wgz.Close()
+		writer = wgz
+	}
+	pr := printer.NewPagePrinter(writer, static, front.Include(inst), importMap, inst.titleMeta)
+	return pipe.Print(pr)
 }
 
-func (i *Instance[M]) Adapters() path.Adapters {
-	return i.session.router.Adapters()
+func (inst *instance) renderHeaders(w http.ResponseWriter, gz bool, importHash []byte) {
+	if inst.csp != nil {
+		if importHash != nil {
+			inst.csp.ScriptHash(importHash)
+		}
+		header := inst.csp.Generate()
+		w.Header().Add("Content-Security-Policy", header)
+		inst.csp = nil
+	}
+	if gz {
+		w.Header().Set("Content-Encoding", "gzip")
+	}
+	w.WriteHeader(inst.getStatus())
 }
 
-func (i *Instance[M]) SessionExpire(d time.Duration) {
-	i.session.SetExpiration(d)
-}
-
-func (i *Instance[M]) SessionEnd() {
-	i.session.Kill()
-}
-
-func (i *Instance[M]) InstanceEnd() {
-	i.end(common.EndCauseKilled)
-}
-
-func (i *Instance[M]) SessionID() string {
-	return i.session.ID()
-}
-
-func (d *Instance[M]) SetStatus(status int) {
-	d.pageStatus.Store(int32(status))
-}
-
-func (inst *Instance[M]) getStatus() int {
+func (inst *instance) getStatus() int {
 	if s := inst.pageStatus.Load(); s > 0 {
 		return int(s)
 	}
 	return http.StatusOK
 }
 
-func (c *Instance[M]) NewLink(m any) (core.Link, error) {
-	return c.navigator.newLink(m)
-}
-
-func (c *Instance[M]) NewID() uint64 {
-	return c.root.NewID()
-}
-
-func (c *Instance[M]) RootID() uint64 {
-	return c.root.ID()
-}
-
-func (c *Instance[M]) ResourceRegistry() *resources.Registry {
-	return c.session.router.ResourceRegistry()
-}
-
-func (c *Instance[M]) ModuleRegistry() core.ModuleRegistry {
-	return c.importMap
-}
-
-func (c *Instance[M]) CSPCollector() *common.CSPCollector {
-	return c.csp
-}
-
-func (c *Instance[M]) Call(call action.Call) {
-	c.solitaire.Call(call)
-}
-
-func (inst *Instance[M]) Conf() *common.SystemConf {
-	return inst.session.router.Conf()
-}
-
-func (inst *Instance[M]) Touch() {
-	inst.session.limiter.touch(inst.id)
-}
-
-func (inst *Instance[M]) Runtime() shredder.Runtime {
-	return inst.runtime
-}
-
-func (inst *Instance[M]) TriggerHook(hookID uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
-	if inst.state.Load() != active {
-		return false
-	}
-	ok := inst.root.TriggerHook(hookID, w, r, track)
-	if ok {
-		inst.Touch()
-	}
-	return ok
-
-}
-
-func (inst *Instance[M]) Connect(w http.ResponseWriter, r *http.Request) {
-	if inst.state.Load() != active {
-		w.WriteHeader(http.StatusGone)
+func (inst *instance) end(cause common.EndCause) {
+	prev := inst.state.Swap(killed)
+	if prev != active {
 		return
 	}
-	inst.killTimer.keepAlive()
-	inst.solitaire.Connect(w, r)
+	inst.clean(cause)
 }
 
-func (inst *Instance[M]) SyncError(err error) {
-	slog.Debug("Instance synchronization error", "error", err, "type", "error", "instance_id", inst.id)
-	inst.end(common.EndCauseSyncError)
-}
-
-func (inst *Instance[M]) Shutdown() {
-	inst.end(common.EndCauseKilled)
-}
-
-func (inst *Instance[M]) ID() string {
-	return inst.id
-}
-
-func (inst *Instance[M]) end(cause common.EndCause) {
-	if !inst.state.CompareAndSwap(active, killed) {
-		return
-	}
+func (inst Instance) clean(cause common.EndCause) {
 	inst.session.removeInstance(inst.id)
 	inst.runtime.Cancel()
 	inst.solitaire.End(cause)
+	inst.killTimer.Stop()
 	inst.root.Kill()
-}
-
-func (inst *Instance[M]) RestorePath(l path.Location) bool {
-	return inst.navigator.restore(l)
 }

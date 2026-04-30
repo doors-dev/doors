@@ -11,6 +11,8 @@ They are special because they do not behave like ordinary local DOM content:
 
 It is a little unusual structurally, but convenient when the page content depends on state or path and the matching title/meta should be updated in the same rendering branch.
 
+For each title or meta key, the latest mounted render wins. When that dynamic owner unmounts, **Doors** removes its title/meta contribution and restores the previous mounted value if there is one. That means an app-level `<title>` can act as the default while a route-specific title overrides it only for as long as that route branch is mounted.
+
 ## Head
 
 You can render `<title>` and `<meta>` tags anywhere in the HTML tree, including inside content that is otherwise in the body.

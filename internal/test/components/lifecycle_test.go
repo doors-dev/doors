@@ -18,21 +18,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
 )
 
 func lifecyclePage(t *testing.T) *rod.Page {
 	t.Helper()
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-			return doors.ResponseComp(&test.Page{
-				Source: r,
-				Header: "Lifecycle",
-				F:      &LifecycleFragment{},
-			})
-		})
+	bro := test.NewPathBro(browser, func(r test.PathLens) gox.Comp {
+		return &test.Page{
+			Source: r,
+			Header: "Lifecycle",
+			F:      &LifecycleFragment{},
+		}
 	})
 	t.Cleanup(func() {
 		bro.Close()

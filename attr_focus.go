@@ -36,21 +36,21 @@ type focusIOEventHook struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[FocusEvent].
+	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p *focusIOEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
@@ -71,21 +71,21 @@ func (p *focusIOEventHook) apply(event string, ctx context.Context, attrs gox.At
 type focusEventHook struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[FocusEvent].
+	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestEvent[FocusEvent]) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p *focusEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
@@ -106,21 +106,21 @@ func (p *focusEventHook) apply(event string, ctx context.Context, attrs gox.Attr
 type AFocus struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[FocusEvent].
+	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (f AFocus) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -136,21 +136,21 @@ func (f AFocus) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 type ABlur struct {
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[FocusEvent].
+	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (b ABlur) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -172,21 +172,21 @@ type AFocusIn struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[FocusEvent].
+	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (f AFocusIn) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -208,21 +208,21 @@ type AFocusOut struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[FocusEvent].
+	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (f AFocusOut) Proxy(cur gox.Cursor, elem gox.Elem) error {

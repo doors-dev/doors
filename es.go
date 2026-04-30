@@ -15,12 +15,9 @@
 package doors
 
 import (
-	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/doors/internal/app"
 	"github.com/evanw/esbuild/pkg/api"
 )
-
-// ESConf provides named esbuild profiles for script and style processing.
-type ESConf = resources.BuildProfiles
 
 // JSX configures how esbuild should transform JSX input.
 type JSX struct {
@@ -47,15 +44,24 @@ func JSXReact() JSX {
 	}
 }
 
-// ESOptions is a simple [ESConf] implementation for one build profile.
-type ESOptions struct {
+// ESProfile is a simple [WithESProfiles] option.
+type ESProfile struct {
+	// External lists module specifiers that esbuild should leave external.
 	External []string
-	Minify   bool
-	JSX      JSX
+	// Minify enables esbuild syntax, whitespace, and identifier minification.
+	Minify bool
+	// JSX configures JSX transformation.
+	JSX JSX
 }
 
-// Options implements [ESConf].
-func (opt ESOptions) Options(_profile string) api.BuildOptions {
+func (opt ESProfile) apply(o *app.Options) {
+	WithESProfiles(opt.Profile).apply(o)
+}
+
+var _ With = ESProfile{}
+
+// Profile returns esbuild options for a named profile.
+func (opt ESProfile) Profile(string) api.BuildOptions {
 	return api.BuildOptions{
 		Target:            api.ES2022,
 		External:          opt.External,

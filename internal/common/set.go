@@ -14,6 +14,12 @@
 
 package common
 
+import (
+	"cmp"
+	"iter"
+	"slices"
+)
+
 func NewSet[T comparable]() Set[T] {
 	return Set[T](make(map[T]struct{}))
 }
@@ -65,4 +71,57 @@ func (s Set[T]) Remove(v T) bool {
 
 func (s Set[T]) Clear() {
 	clear(s)
+}
+
+type orderedMapEntry[K cmp.Ordered, V any] struct {
+	key   K
+	value V
+}
+
+type OrderedMap[K cmp.Ordered, V any] []orderedMapEntry[K, V]
+
+func (s *OrderedMap[K, V]) Get(k K) (V, bool) {
+	index, ok := slices.BinarySearchFunc(*s, k, func(e orderedMapEntry[K, V], k K) int {
+		return cmp.Compare(e.key, k)
+	})
+	if !ok {
+		return *new(V), false
+	}
+	return (*s)[index].value, true
+}
+
+func (s *OrderedMap[K, V]) Set(k K, v V) {
+	index, ok := slices.BinarySearchFunc(*s, k, func(e orderedMapEntry[K, V], k K) int {
+		return cmp.Compare(e.key, k)
+	})
+	if ok {
+		(*s)[index] = orderedMapEntry[K, V]{k, v}
+	} else {
+		*s = slices.Insert(*s, index, orderedMapEntry[K, V]{k, v})
+	}
+}
+
+func (s OrderedMap[K, V]) Iter() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		for _, e := range s {
+			if !yield(e.key, e.value) {
+				return
+			}
+		}
+	}
+}
+
+func (s *OrderedMap[K, V]) Delete(k K) bool {
+	index, ok := slices.BinarySearchFunc(*s, k, func(e orderedMapEntry[K, V], k K) int {
+		return cmp.Compare(e.key, k)
+	})
+	if !ok {
+		return false
+	}
+	*s = slices.Delete(*s, index, index+1)
+	return true
+}
+
+func (s OrderedMap[K, V]) Len() int {
+	return len(s)
 }

@@ -116,7 +116,7 @@ They go through the browser location API and load the target page again.
 
 That makes them useful when you intentionally want a full page load.
 
-For normal in-app navigation, prefer [Navigation](./09-navigation.md), especially `ALink` and path model mutation.
+For normal in-app navigation, prefer [Navigation](./09-navigation.md), especially `ALink` or updating the `Source` from `RouteModelSource`.
 
 Built-ins:
 
@@ -161,19 +161,28 @@ When it runs from direct `Call` or `XCall`, there is no event target, so use exp
 
 Indication details are covered in [Indication](./11-indication.md).
 
-## Helpers
+## Combining
 
-The `ActionOnly...` helpers return a single-item `[]Action`.
+`Before`, `OnError`, and `r.After(...)` accept a single `doors.Actions` value. Each action struct (`ActionEmit`, `ActionLocationReload`, `ActionLocationAssign`, `ActionScroll`, `ActionIndicate`, …) is itself a `doors.Actions`, so a single action passes directly. To run several in order, chain them with `.And(...)` or `doors.JoinActions(...)`:
 
-They are mostly there for `Before`, `OnError`, and `r.After(...)`.
+```go
+Before: doors.ActionScroll{Selector: "#top"}.
+	And(doors.ActionIndicate{
+		Indicator: doors.IndicateClass("pending"),
+		Duration:  300 * time.Millisecond,
+	})
 
-- `doors.ActionOnlyEmit(...)`
-- `doors.ActionOnlyLocationReload()`
-- `doors.ActionOnlyLocationReplace(...)`
-- `doors.ActionOnlyLocationAssign(...)`
-- `doors.ActionOnlyLocationRawAssign(...)`
-- `doors.ActionOnlyScroll(...)`
-- `doors.ActionOnlyIndicate(...)`
+// or
+Before: doors.JoinActions(
+	doors.ActionScroll{Selector: "#top"},
+	doors.ActionIndicate{
+		Indicator: doors.IndicateClass("pending"),
+		Duration:  300 * time.Millisecond,
+	},
+)
+```
+
+The same shape works for `r.After(...)` and `OnError`.
 
 ## Rules
 
@@ -182,6 +191,6 @@ They are mostly there for `Before`, `OnError`, and `r.After(...)`.
 - Use `doors.Call` when the result does not matter.
 - Use `doors.XCall` mainly with `ActionEmit`.
 - Keep `$on(...)` handlers synchronous and scoped intentionally.
-- Prefer path model mutation or `ALink` for in-app navigation.
+- Prefer `ALink` or updating the `Source` from `RouteModelSource` for in-app navigation.
 - Use location actions when you intentionally want a full page load.
 - Use `r.After(...)` for success-only follow-up and `OnError` for fallback or recovery behavior.

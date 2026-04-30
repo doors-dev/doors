@@ -21,7 +21,8 @@ import (
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
-type Beam[T any] interface {
+type Beamer[T any] interface {
+	Get() T
 	Watch(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool)
 	addWatcher(ctx context.Context, w *watcher) bool
 	sync(uint, uint, shredder.SimpleFrame) (*T, bool)
@@ -33,48 +34,40 @@ type entry[T any] struct {
 	updated bool
 }
 
-func NewBeamEqual[T1 any, T2 any](source Beam[T1], cast func(T1) T2, equal func(new T2, old T2) bool) *DerivedBeam[T1, T2] {
+type Beam[T1, T2 any] = *beam[T1, T2]
+
+func NewBeam[T1 any, T2 any](source Beamer[T1], get func(T1) T2, equal func(new T2, old T2) bool) Beam[T1, T2] {
 	if equal == nil {
-		equal = neverEqual[T2]
+		equal = NeverEqual
 	}
-	return &DerivedBeam[T1, T2]{
-		source: source,
+	return &beam[T1, T2]{
+		beam:   source,
 		values: make(map[uint]entry[T2]),
-		mu:     sync.Mutex{},
-		cast:   cast,
+		get:    get,
 		equal:  equal,
 	}
 }
 
-func NewBeam[T1 any, T2 comparable](source Beam[T1], cast func(T1) T2) *DerivedBeam[T1, T2] {
-	equal := func(new T2, old T2) bool {
-		return new == old
-	}
-	return &DerivedBeam[T1, T2]{
-		source: source,
-		values: make(map[uint]entry[T2]),
-		mu:     sync.Mutex{},
-		cast:   cast,
-		equal:  equal,
-	}
-}
+var _ Beamer[any] = (*beam[any, any])(nil)
 
-var _ Beam[any] = (*DerivedBeam[any, any])(nil)
-
-type DerivedBeam[T1 any, T2 any] struct {
-	source Beam[T1]
+type beam[T1 any, T2 any] struct {
+	beam   Beamer[T1]
 	values map[uint]entry[T2]
 	mu     sync.Mutex
-	cast   func(T1) T2
+	get    func(T1) T2
 	equal  func(new T2, old T2) bool
 	null   T2
 }
 
-func (b *DerivedBeam[T1, T2]) addWatcher(ctx context.Context, w *watcher) bool {
-	return b.source.addWatcher(ctx, w)
+func (b *beam[T1, T2]) Get() T2 {
+	return b.get(b.beam.Get())
 }
 
-func (b *DerivedBeam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (v *T2, u bool) {
+func (b *beam[T1, T2]) addWatcher(ctx context.Context, w *watcher) bool {
+	return b.beam.addWatcher(ctx, w)
+}
+
+func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (v *T2, u bool) {
 	e, has := b.values[seq]
 	if has {
 		if prev == 0 {
@@ -103,7 +96,7 @@ func (b *DerivedBeam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFra
 			}
 		})
 	}
-	sourceVal, updated := b.source.sync(prev, seq, after)
+	sourceVal, updated := b.beam.sync(prev, seq, after)
 	if sourceVal == nil {
 		return nil, false
 	}
@@ -112,7 +105,7 @@ func (b *DerivedBeam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFra
 		if has {
 			return prevValue.value, false
 		}
-		value := b.cast(*sourceVal)
+		value := b.get(*sourceVal)
 		b.values[seq] = entry[T2]{
 			value:   &value,
 			prev:    prev,
@@ -120,7 +113,7 @@ func (b *DerivedBeam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFra
 		}
 		return &value, false
 	}
-	newValue := b.cast(*sourceVal)
+	newValue := b.get(*sourceVal)
 	prevValue, has := b.values[prev]
 	if !has {
 		b.values[seq] = entry[T2]{
@@ -147,7 +140,7 @@ func (b *DerivedBeam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFra
 	return &newValue, true
 }
 
-func (b *DerivedBeam[T1, T2]) sync(prev uint, seq uint, after shredder.SimpleFrame) (*T2, bool) {
+func (b *beam[T1, T2]) sync(prev uint, seq uint, after shredder.SimpleFrame) (*T2, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.syncEntry(prev, seq, after)

@@ -31,7 +31,7 @@ import (
 // Doors start inactive and become active when rendered. Operations on an
 // inactive door are stored virtually and applied when the door becomes active.
 // If a door is removed or replaced, it becomes inactive again, but operations
-// continue to update that virtual state for future rendering.
+// continue to update that virtual content for future rendering.
 //
 // The context used while rendering a door's content follows the door's
 // lifecycle, which makes `ctx.Done()` safe to use in background goroutines
@@ -72,71 +72,6 @@ func (p parallelJob) Context() context.Context {
 
 func (parallelJob) Output(io.Writer) error {
 	return errors.New("Parallel can only be used during a Doors render")
-}
-
-// Sub renders a dynamic fragment driven by beam.
-//
-// It subscribes to beam and re-renders the inner content whenever the value
-// changes. Returning nil from el clears the fragment.
-//
-// Deprecated: use Beam.Bind instead.
-//
-// Example:
-//
-//	elem demo(beam Beam[int]) {
-//		~(beam.Bind(elem(v int) {
-//			<span>~(v)</span>
-//		}))
-//	}
-func Sub[T any](beam Beam[T], el func(T) gox.Elem) gox.EditorComp {
-	return gox.EditorCompFunc(func(cur gox.Cursor) error {
-		door := &Door{}
-		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
-			door.Outer(ctx, gox.Elem(func(cur gox.Cursor) error {
-				el := el(v)
-				if el == nil {
-					return nil
-				}
-				return el(cur)
-			}))
-			return false
-		})
-		if !ok {
-			return nil
-		}
-		return cur.Editor(door)
-	})
-}
-
-// Inject renders el with the latest beam value stored in the child context
-// under key.
-//
-// Deprecated: use Beam.Effect in the rendered subtree instead.
-//
-// Example:
-//
-//	~>(&doors.Door{}) <section>
-//		~{
-//			user, _ := userBeam.Effect(ctx)
-//		}
-//		<span>~(user.Name)</span>
-//	</section>
-func Inject[T any](key any, beam Beam[T]) gox.Proxy {
-	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
-		door := &Door{}
-		ok := beam.Sub(cur.Context(), func(ctx context.Context, v T) bool {
-			door.Outer(ctx, func(cur gox.Cursor) error {
-				ctx := context.WithValue(cur.Context(), key, v)
-				cur = gox.NewCursor(ctx, cur)
-				return el(cur)
-			})
-			return false
-		})
-		if !ok {
-			return nil
-		}
-		return cur.Editor(door)
-	})
 }
 
 // Go starts f when the surrounding component is rendered.

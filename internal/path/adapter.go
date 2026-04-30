@@ -18,109 +18,126 @@ import (
 	"errors"
 	"net/url"
 	"reflect"
+	"sync"
 
 	"github.com/go-playground/form/v4"
 )
 
-type Adapters []AnyAdapter
+type modelAdapters sync.Map
 
-func (as *Adapters) Add(a AnyAdapter) {
-	*as = append(*as, a)
-}
+var adapters modelAdapters
 
-func (as Adapters) Encode(v any) (Location, error) {
-	for _, a := range as {
-		l, err, match := a.EncodeAny(v)
-		if !match {
-			continue
-		}
-		if err != nil {
-			return Location{}, err
-		}
-		return l, nil
+func (a *modelAdapters) get(t reflect.Type) (adapter, bool) {
+	entry, ok := (*sync.Map)(a).Load(t)
+	if !ok {
+		return adapter{}, false
 	}
-	return Location{}, errors.New("adapter not found for the provided model")
+	return entry.(adapter), true
 }
 
-type AnyAdapter interface {
-	EncodeAny(any) (Location, error, bool)
+func (a *modelAdapters) set(t reflect.Type, ad adapter) {
+	(*sync.Map)(a).Store(t, ad)
 }
 
-type Adapter[M any] interface {
-	AnyAdapter
-	Decode(any) (*M, bool)
-	Encode(model *M) (Location, error)
-	Assert(any) (*M, bool)
+func Encode(m any) (Location, error) {
+	switch m := (any)(m).(type) {
+	case Location:
+		return m, nil
+	case Encoder:
+		return m.Encode()
+	}
+	adapter, err := get(m)
+	if err != nil {
+		return Location{}, err
+	}
+	return adapter.encode(m)
 }
 
-func NewAdapter[M any]() (Adapter[M], error) {
-	return adapterBuilder[M]{
+func GetModelAdapter[M any]() (ModelAdapter[M], error) {
+	adapter, err := get(new(M))
+	if err != nil {
+		return ModelAdapter[M]{}, err
+	}
+	return (ModelAdapter[M])(adapter), nil
+}
+
+func get(sample any) (adapter, error) {
+	t := reflect.TypeOf(sample)
+	if t == nil {
+		return adapter{}, errors.New("model must be struct")
+	}
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return adapter{}, errors.New("model must be struct")
+	}
+	adapter, ok := adapters.get(t)
+	if ok {
+		return adapter, nil
+	}
+	adapter, err := adapterBuilder{
+		sample:     sample,
 		fields:     make(map[string]field),
 		queryField: -1,
 	}.build()
+	if err != nil {
+		return adapter, err
+	}
+	adapters.set(t, adapter)
+	return adapter, nil
 }
 
-type adapter[M any] struct {
+type Encoder interface {
+	Encode() (Location, error)
+}
+
+type AnyModelAdapter interface {
+	EncodeAny(any) (Location, error, bool)
+}
+
+type ModelAdapter[M any] adapter
+
+func (ma ModelAdapter[M]) Decode(l Location) (*M, bool) {
+	m := new(M)
+	if (adapter)(ma).decode(l, m) {
+		return m, true
+	}
+	return nil, false
+}
+
+func (ma ModelAdapter[M]) Encode(m *M) (Location, error) {
+	return (adapter)(ma).encode(m)
+}
+
+type adapter struct {
 	branches   []branch
 	queryField int
 }
 
-func (a adapter[M]) DecodeAny(v any) (any, bool) {
-	return a.Decode(v)
-}
-
-func (a adapter[M]) Assert(v any) (*M, bool) {
-	switch v := v.(type) {
-	case M:
-		return &v, true
-	case *M:
-		return v, true
-	default:
-		return nil, false
-	}
-}
-
-func (a adapter[M]) Decode(v any) (*M, bool) {
-	m, ok := a.Assert(v)
-	if ok {
-		return m, true
-	}
-	if loc, ok := v.(Location); ok {
-		return a.DecodeLocation(loc)
-	}
-	return nil, false
-}
-
-func (a adapter[M]) DecodeLocation(l Location) (*M, bool) {
+func (a adapter) decode(l Location, ref any) bool {
 	for _, branch := range a.branches {
-		var model M
-		v := reflect.ValueOf(&model).Elem()
+		v := reflect.ValueOf(ref).Elem()
 		if branch.decode(v, l.Segments) {
 			branch.setMarker(v)
 			if a.queryField == -1 {
-				if err := queryDecoder.Decode(&model, l.Query); err != nil {
-					return nil, false
+				if err := queryDecoder.Decode(ref, l.Query); err != nil {
+					return false
 				}
 			} else {
 				v.Field(a.queryField).Set(reflect.ValueOf(l.Query))
 			}
-			return &model, true
+			return true
 		}
 	}
-	return nil, false
+	return false
 }
 
-func (a adapter[M]) EncodeAny(v any) (Location, error, bool) {
-	m, ok := a.Assert(v)
-	if !ok {
-		return Location{}, nil, false
+func (a adapter) encode(m any) (Location, error) {
+	v := reflect.ValueOf(m)
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
 	}
-	l, err := a.Encode(m)
-	return l, err, true
-}
-
-func (a adapter[M]) Encode(model *M) (Location, error) {
-	v := reflect.ValueOf(model).Elem()
 	for _, b := range a.branches {
 		if len(a.branches) != 1 && !b.getMarker(v) {
 			continue
@@ -131,7 +148,7 @@ func (a adapter[M]) Encode(model *M) (Location, error) {
 		}
 		var query url.Values
 		if a.queryField == -1 {
-			query, err = queryEncoder.Encode(model)
+			query, err = queryEncoder.Encode(m)
 			if err != nil {
 				return Location{}, err
 			}

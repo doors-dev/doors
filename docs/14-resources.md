@@ -220,7 +220,7 @@ Use it for stable public content such as:
 
 Do not use it for large files. Cached entries are stored in RAM.
 
-`cache` only works with static resource sources:
+`cache` only works with static resource inputs:
 
 - `doors.ResourceFS(...)`
 - `doors.ResourceLocalFS(...)`
@@ -228,7 +228,7 @@ Do not use it for large files. Cached entries are stored in RAM.
 - `doors.ResourceString(...)`
 - raw `[]byte`
 
-Handler, hook, proxy, and plain string sources cannot use `cache`.
+Handler, hook, proxy, and plain string inputs cannot use `cache`.
 
 Without `cache`, managed resources stay private to the current Door instance and can get a different URL on another render.
 

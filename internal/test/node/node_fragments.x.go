@@ -1638,7 +1638,7 @@ func (f *FragmentContainerHookStateLifecycle) init() {
 		return
 	}
 	f.source = doors.NewSource(0)
-	f.derived = doors.NewBeam(f.source, func(v int) string {
+	f.derived = doors.DeriveBeam(f.source, func(v int) string {
 		return fmt.Sprintf("derived-%d", v)
 	})
 }
@@ -1774,7 +1774,7 @@ func (f *FragmentContainerHookStateOuterLifecycle) init() {
 		return
 	}
 	f.source = doors.NewSource(0)
-	f.derived = doors.NewBeam(f.source, func(v int) string {
+	f.derived = doors.DeriveBeam(f.source, func(v int) string {
 		return fmt.Sprintf("derived-%d", v)
 	})
 }
@@ -2054,7 +2054,7 @@ func (f *FragmentContainerHookStateReloadLifecycle) init() {
 		return
 	}
 	f.source = doors.NewSource(0)
-	f.derived = doors.NewBeam(f.source, func(v int) string {
+	f.derived = doors.DeriveBeam(f.source, func(v int) string {
 		return fmt.Sprintf("derived-%d", v)
 	})
 }

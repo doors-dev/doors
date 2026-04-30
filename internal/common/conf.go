@@ -18,9 +18,9 @@ import "time"
 
 const DefaultCacheControl string = "public, max-age=31536000, immutable"
 
-// SystemConf defines global configuration for sessions, instances,
+// Conf defines global configuration for sessions, instances,
 // client-server communication, and performance. Defaults are auto-initialized.
-type SystemConf struct {
+type Conf struct {
 	// SessionInstanceLimit is the max number of page instances per session.
 	// When exceeded, the oldest inactive ones are suspended.
 	// Default: 12.
@@ -87,7 +87,7 @@ type SolitaireConf struct {
 	SyncTimeout  time.Duration
 }
 
-func GetSolitaireConf(s *SystemConf) *SolitaireConf {
+func GetSolitaireConf(s *Conf) *SolitaireConf {
 	return &SolitaireConf{
 		SyncTimeout:  s.SolitaireSyncTimeout,
 		Ping:         s.SolitairePing,
@@ -100,7 +100,7 @@ func GetSolitaireConf(s *SystemConf) *SolitaireConf {
 	}
 }
 
-func (s *SystemConf) solitaireDefaults() {
+func (s *Conf) solitaireDefaults() {
 	if s.SolitaireFlushSizeLimit <= 0 {
 		s.SolitaireFlushSizeLimit = 32 * 1024
 	}
@@ -128,7 +128,7 @@ func (s *SystemConf) solitaireDefaults() {
 }
 
 // InitDefaults fills zero or invalid values in s with Doors defaults.
-func InitDefaults(s *SystemConf) {
+func InitDefaults(s *Conf) {
 	if s.RequestTimeout <= 0 {
 		s.RequestTimeout = 30 * time.Second
 	}

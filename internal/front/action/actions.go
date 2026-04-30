@@ -213,6 +213,22 @@ func (u UpdateTitle) Invocation() Invocation {
 	}
 }
 
+type RemoveMeta struct {
+	Name     string
+	Property bool
+}
+
+func (u RemoveMeta) Log() string {
+	return "remove_meta"
+}
+
+func (u RemoveMeta) Invocation() Invocation {
+	return Invocation{
+		name: "remove_meta",
+		arg:  []any{u.Name, u.Property},
+	}
+}
+
 type UpdateMeta struct {
 	Name     string
 	Property bool

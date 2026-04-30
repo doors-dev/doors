@@ -1,53 +1,53 @@
 # Configuration
 
-Most **Doors** apps can start with the router defaults.
+Most **Doors** apps can start with the defaults.
 
-Reach for configuration when you need to change a few router-level things:
+Reach for configuration when you need to change a few app-level things:
 
 - session or instance lifetime and runtime limits
 - Content Security Policy
 - esbuild behavior for scripts, modules, and stylesheets
 - the server ID used in **Doors** runtime URLs and session cookie naming
+- error pages, session tracking, ...
 
-All of these are router-level settings:
+All of these are passed to `doors.NewApp(...)` as app options:
 
 ```go
-r := doors.NewRouter()
-
-doors.UseSystemConf(r, doors.SystemConf{
-	RequestTimeout: 20 * time.Second,
-	InstanceTTL:    30 * time.Minute,
-})
-
-doors.UseCSP(r, doors.CSP{
-	ConnectSources: []string{"https://api.example.com"},
-})
-
-doors.UseESConf(r, doors.ESOptions{
-	JSX:    doors.JSXReact(),
-	Minify: true,
-})
+app := doors.NewApp(page,
+	doors.WithConf(doors.Conf{
+		RequestTimeout: 20 * time.Second,
+		InstanceTTL:    30 * time.Minute,
+	}),
+	doors.WithCSP(doors.CSP{
+		ConnectSources: []string{"https://api.example.com"},
+	}),
+	doors.ESProfile{
+		Minify: true,
+		JSX:    doors.JSXReact(),
+	},
+)
 ```
 
-## Start
+## Options
 
-Configuration is applied to the router with:
+Common app options are:
 
-- `doors.UseSystemConf(...)`
-- `doors.UseCSP(...)`
-- `doors.UseESConf(...)`
-- `doors.UseServerID(...)`
-- `doors.UseSessionCallback(...)`
-- `doors.UseErrorPage(...)`
+- `doors.WithConf(...)` — runtime, session, and serving behavior
+- `doors.WithCSP(...)` — Content Security Policy
+- `doors.ESProfile{...}` — simple esbuild profile settings
+- `doors.WithESProfiles(...)` — esbuild profile selection
+- `doors.WithID(...)` — server ID for runtime URLs and cookie names
+- `doors.WithSessionTracker(...)` — observe session create/delete
+- `doors.WithErrorPage(...)` — custom error page
 
 **Doors** fills in defaults automatically, so you usually set only the values you want to change.
 
 ## Server ID
 
-Use `doors.UseServerID(...)` when this router should have its own **Doors** runtime URL prefix and session cookie namespace.
+Use `doors.WithID(...)` when this app should have its own **Doors** runtime URL prefix and session cookie namespace.
 
 ```go
-doors.UseServerID(r, "blue")
+app := doors.NewApp(page, doors.WithID("blue"))
 ```
 
 This value is used in two places:
@@ -65,10 +65,10 @@ The ID must already be URL-safe. If it needs escaping, **Doors** will panic duri
 
 ## System
 
-Use `doors.UseSystemConf(...)` for runtime and serving behavior.
+Use `doors.WithConf(...)` for runtime and serving behavior. The value is `doors.Conf`.
 
 ```go
-doors.UseSystemConf(r, doors.SystemConf{
+doors.WithConf(doors.Conf{
 	SessionInstanceLimit: 6,
 	RequestTimeout:       20 * time.Second,
 	InstanceTTL:          30 * time.Minute,
@@ -98,10 +98,10 @@ Most apps should leave the `Solitaire*` settings alone unless they are debugging
 
 ## CSP
 
-CSP is off until you call `doors.UseCSP(...)`.
+CSP is off until you call `doors.WithCSP(...)`.
 
 ```go
-doors.UseCSP(r, doors.CSP{
+doors.WithCSP(doors.CSP{
 	ConnectSources:      []string{"https://api.example.com"},
 	ScriptStrictDynamic: true,
 })
@@ -130,7 +130,7 @@ The field groups behave like this:
 
 ## Esbuild
 
-**Doors** already has a default esbuild profile. The router starts with a base profile that targets `ES2022` and minifies output.
+**Doors** already has a default esbuild profile. The base profile targets `ES2022` and minifies output.
 
 This is used for:
 
@@ -139,62 +139,57 @@ This is used for:
 - buildable `<script src=(...)>` resources
 - buildable `<link rel="stylesheet" href=(...)>` and `<style>...</style>` resources
 
-Use `doors.UseESConf(...)` when you want different esbuild options.
-
-The simplest option is `doors.ESOptions`:
+Use `doors.ESProfile{...}` for simple esbuild settings:
 
 ```go
-doors.UseESConf(r, doors.ESOptions{
-	Minify: false,
-	JSX:    doors.JSXPreact(),
-})
-```
-
-`doors.ESOptions` is one profile applied the same way for every profile name.
-
-Its fields are:
-
-- `Minify`: turns esbuild minification on or off for this profile object
-- `External`: package names that should stay external instead of being bundled
-- `JSX`: JSX transform settings
-
-Use the JSX helpers when you need them:
-
-- `doors.JSXReact()`
-- `doors.JSXPreact()`
-
-If the presets are not enough, build `doors.JSX` yourself:
-
-- `JSX`: the esbuild JSX mode
-- `Factory` and `Fragment`: names for classic JSX runtimes
-- `ImportSource`: package used by automatic JSX runtime
-- `Dev`: enables development JSX output
-- `SideEffects`: preserves JSX side effects
-
-If you need named profiles, implement `doors.ESConf` yourself:
-
-```go
-type ESConf interface {
-	Options(profile string) api.BuildOptions
+doors.ESProfile{
+	Minify: true,
+	JSX:    doors.JSXReact(),
 }
 ```
 
-The `profile` value comes from the `profile` attribute on script resources.
+Use `doors.WithESProfiles(...)` when you need named profiles or full esbuild options. The argument is `func(profile string) api.BuildOptions` — return the `esbuild` options that should apply to that named profile.
 
-Your implementation must support the default profile `""`, because **Doors** uses it for its own main client build too.
+The `profile` value comes from the `profile` attribute on script resources. Your function must support the default profile `""`, because **Doors** uses it for its own main client build too.
 
 One important rule: resource types still apply the entry-point and output settings they require, so your esbuild options can be supplemented or overridden to make that resource type work.
 
-## Other
+## Error Page
 
-Three smaller router-level helpers are worth knowing about:
+Use `doors.WithErrorPage(...)` to render your own page for internal runtime errors:
 
-- `doors.UseSessionCallback(...)`: observe **Doors** session create/delete events. `Create` receives the new session ID and the headers from the request that created it.
-- `doors.UseErrorPage(...)`: render your own page for internal runtime errors. The callback receives the requested `doors.Location` and the `error`.
+```go
+doors.WithErrorPage(func(r *http.Request, err error) gox.Elem {
+	return ErrorPage{Err: err}.Main()
+})
+```
+
+The callback receives the original `*http.Request` and the runtime error.
+
+## Session Tracker
+
+Use `doors.WithSessionTracker(...)` to observe **Doors** session create/delete events:
+
+```go
+type tracker struct{}
+
+func (tracker) Create(id string, r *http.Request) {
+	// e.g. seed a server-side store
+}
+
+func (tracker) Delete(id string) {
+	// e.g. clean up the server-side store
+}
+
+doors.WithSessionTracker(tracker{})
+```
+
+`Create` receives the new session ID and the request that triggered creation. The request must not be retained beyond the call, and its body must not be read.
 
 ## Rules
 
 - Start with defaults and change only the settings you actually need.
-- Use `SystemConf` for lifetime, timeout, sync, and serving behavior.
-- Turn on CSP when you want browser-enforced loading rules, then add only the extra sources your app really needs.
-- Use `ESOptions` first; move to custom named profiles only when one set of build options is not enough.
+- Use `WithConf` for lifetime, timeout, sync, and serving behavior.
+- Turn on CSP with `WithCSP` when you want browser-enforced loading rules, then add only the extra sources your app really needs.
+- Use `ESProfile` for simple esbuild settings.
+- Use `WithESProfiles` only when one esbuild profile is not enough or the defaults don't fit.

@@ -23,6 +23,7 @@ import (
 type Frames struct {
 	after *shredder.AfterFrame
 	sync  shredder.Frame
+	init  shredder.AnyFrame
 }
 
 func (f Frames) Call() shredder.SimpleFrame {
@@ -39,17 +40,26 @@ func (f Frames) Render() shredder.Frame {
 	return f.sync
 }
 
-func (f Frames) JoinedFrame() shredder.Frame {
-	if f.after == nil && f.sync == nil {
-		return shredder.FreeFrame{}
+func (f Frames) InitFrame() shredder.Frame {
+	var after shredder.AnyFrame = nil
+	var sync shredder.Frame = nil
+	var init shredder.AnyFrame = nil
+	if f.after == nil {
+		after = shredder.FreeFrame{}
+	} else {
+		after = f.after
 	}
 	if f.sync == nil {
-		return shredder.Join(false, f.after)
+		sync = shredder.FreeFrame{}
+	} else {
+		sync = f.sync
 	}
-	if f.after == nil {
-		return f.sync
+	if f.init == nil {
+		init = shredder.FreeFrame{}
+	} else {
+		init = f.init
 	}
-	return shredder.Join(false, f.sync, f.after)
+	return shredder.Join(false, init, sync, after)
 }
 
 func AfterFrameInsert(ctx context.Context) (context.Context, *shredder.AfterFrame) {
@@ -59,13 +69,15 @@ func AfterFrameInsert(ctx context.Context) (context.Context, *shredder.AfterFram
 	return context.WithValue(ctx, keyFrame, fs), fs.after
 }
 
-func SyncFrameInsert(ctx context.Context, frame shredder.Frame) context.Context {
+func SyncFrameInsert(ctx context.Context, sync shredder.Frame, init shredder.Frame) context.Context {
 	fs, ok := ctx.Value(keyFrame).(Frames)
 	if ok {
-		fs.sync = frame
+		fs.sync = sync
+		fs.init = init
 	} else {
 		fs = Frames{
-			sync: frame,
+			sync: sync,
+			init: init,
 		}
 	}
 	return context.WithValue(ctx, keyFrame, fs)

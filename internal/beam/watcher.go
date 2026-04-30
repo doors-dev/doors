@@ -112,7 +112,7 @@ func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame shredder.Simple
 	w.inner.cancel()
 }
 
-func newSingleWatcher[T any](beam Beam[T], w Watcher[T]) innerWatcher {
+func newSingleWatcher[T any](beam Beamer[T], w Watcher[T]) innerWatcher {
 	return &singleWatcher[T]{
 		beam: beam,
 		w:    w,
@@ -120,7 +120,7 @@ func newSingleWatcher[T any](beam Beam[T], w Watcher[T]) innerWatcher {
 }
 
 type singleWatcher[T any] struct {
-	beam Beam[T]
+	beam Beamer[T]
 	w    Watcher[T]
 	seq  uint
 }

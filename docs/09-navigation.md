@@ -1,51 +1,73 @@
 # Navigation
 
-In **Doors**, navigation usually happens in one of two ways:
+In **Doors**, in-app navigation happens in one of two ways:
 
 - declaratively with `doors.ALink`
-- programmatically by updating the current page's path `doors.Source[Path]`
+- programmatically by updating the `Source` received from `RouteModelSource`
 
-Both use the same path model rules described in [Path Model](./04-path-model.md).
+Both update the current page instance's location source. The router (see [Routing](./05-routing.md)) reacts by re-matching routes and updating the view in place. No full reload is involved.
 
 ## ALink
 
-Use `doors.ALink` for normal links.
-
-It does two things:
-
-- builds a real `href` from a path model
-- adds **Doors** navigation behavior on top
+`doors.ALink` is a real anchor with **Doors** behavior on top.
 
 ```gox
 <>
 	~>doors.ALink{
 		Model: Path{
-			Home: true,
+			Section: SectionHome,
 		},
 	} <a>Home</a>
 </>
 ```
 
-`Model` is required.
+`Model` is required. It accepts:
+
+- a path-model struct
+- a `doors.Location` value
+- a custom type implementing `doors.LocationEncoder`
+
+The same three forms work in `ActionLocationAssign`, `ActionLocationReplace`, and `doors.NewLocation`.
+
+## LocationEncoder
+
+`doors.LocationEncoder` is a one-method interface for custom navigation models:
+
+```go
+type LocationEncoder interface {
+	Encode() (doors.Location, error)
+}
+```
+
+Implement it on a domain type when you have one-off URL shapes that don't justify a full path-model struct, or when an existing type already knows its own URL form. It pairs naturally with `RouteDerive` on `Location` for the matching side — together they round-trip a custom value through the URL.
+
+```go
+type CustomRoute struct {
+	ID  string
+	Tab string
+}
+
+func (r CustomRoute) Encode() (doors.Location, error) {
+	q := url.Values{}
+	if r.Tab != "" {
+		q.Set("tab", r.Tab)
+	}
+	return doors.Location{
+		Segments: []string{"custom", r.ID},
+		Query:    q,
+	}, nil
+}
+```
+
+`CustomRoute{ID: "a", Tab: "info"}` now works wherever a model is accepted.
 
 ## Link Behavior
 
-`ALink` automatically chooses between same-page navigation and a normal page load.
+ALink always navigates dynamically. A normal click is intercepted, a hook updates the current instance's location source, and the page re-routes in place. `RouterSource` / `RouterBeam` matches the new `Location` — the active route swaps if a different route now matches; otherwise the existing fragment stays and reacts to the new value via its `Source` or `Beam`.
 
-If the target model has the same registered model type as the current page:
+The element is also a real anchor — `href` is set from the encoded model. That's there for browser features (middle-click, Cmd-click, "open in new tab", "copy link"), not as a fallback for clicks. Each of those opens the URL in a fresh browser context, handled like any other initial request.
 
-- the current page path source is updated
-- the URL is updated
-- the page rerenders without a full reload
-
-If the target model belongs to a different registered model type:
-
-- the generated `href` still works
-- the browser performs a normal page load
-
-That means you can usually write links in terms of models and let **Doors** decide how to navigate.
-
-`ALink` always sets a real `href`, so the link remains a valid browser link even without the dynamic behavior.
+On a normal dynamic click, the client updates the browser URL to the link `href` before the hook request runs. If that request then fails (for example, the instance has expired), `OnError` runs. The default is `ActionLocationReload{}`, so the browser loads the URL now in the address bar, which is the link target.
 
 ## Fragment
 
@@ -54,7 +76,7 @@ Use `Fragment` to append `#...` to the generated URL:
 ```gox
 <>
 	~>doors.ALink{
-		Model: Path{Docs: true},
+		Model: Path{Section: SectionDocs},
 		Fragment: "api",
 	} <a>API</a>
 </>
@@ -68,17 +90,17 @@ Use `Active` when a link should reflect the current location.
 <>
 	~>doors.ALink{
 		Model: Path{
-			Dashboard: true,
-			ID:        f.id,
+			Section: SectionDashboard,
+			ID:      f.id,
 		},
 		Active: doors.Active{
-			Indicator: doors.IndicatorOnlyAttr("aria-current", "page"),
+			Indicator: doors.IndicateAttr("aria-current", "page"),
 		},
 	} <a>Current page</a>
 </>
 ```
 
-When the current location matches, **Doors** applies the given indicators to the link element.
+When the current location matches, **Doors** applies the indicator to the link element.
 
 If `Active.Indicator` is empty, there is no active-link behavior.
 
@@ -86,65 +108,68 @@ If `Active.Indicator` is empty, there is no active-link behavior.
 
 `Active.PathMatcher` controls how the path is compared.
 
-Options:
-
-- `doors.PathMatcherFull()`
-- `doors.PathMatcherStarts()`
-- `doors.PathMatcherSegments(i...)`
-
-If you do not set one, **Doors** defaults to full-path matching.
+- `doors.PathMatcherFull()` — full path (default)
+- `doors.PathMatcherStarts()` — current path starts with the link path
+- `doors.PathMatcherSegments(i...)` — only listed segment indexes (zero-based)
 
 ### Query
 
-`Active.QueryMatcher` controls query-string matching.
+`Active.QueryMatcher` controls query-string matching. The matchers are applied in order, then **Doors** compares any remaining query parameters.
 
-Available matchers:
+- `doors.QueryMatcherIgnoreSome(params...)` — drop the listed keys from comparison
+- `doors.QueryMatcherIgnoreAll()` — drop all remaining keys
+- `doors.QueryMatcherSome(params...)` — compare only the listed keys at this step
+- `doors.QueryMatcherIfPresent(params...)` — compare the listed keys only when present
 
-- `doors.QueryMatcherIgnoreSome(params...)`
-- `doors.QueryMatcherIgnoreAll()`
-- `doors.QueryMatcherSome(params...)`
-- `doors.QueryMatcherIfPresent(params...)`
+Chain matchers with `.And(...)` when several steps are needed:
 
-The query matchers are applied in order, then **Doors** compares any remaining query parameters.
+```gox
+Active: doors.Active{
+	QueryMatcher: doors.QueryMatcherSome("mode").And(doors.QueryMatcherIgnoreAll()),
+	Indicator:    doors.IndicateClass("active"),
+}
+```
 
-In practice:
-
-- `IgnoreSome` removes some keys from comparison
-- `IgnoreAll` ignores all remaining query parameters
-- `Some` compares only the listed keys at that step
-- `IfPresent` compares listed keys only when they exist
-
-Helpers:
-
-- `doors.QueryMatcherOnlyIgnoreSome(params...)`
-- `doors.QueryMatcherOnlyIgnoreAll()`
-- `doors.QueryMatcherOnlySome(params...)`
-- `doors.QueryMatcherOnlyIfPresent(params...)`
-
+This example compares only `mode` and ignores every other query parameter.
 
 ### Fragment Match
 
-Set `Active.FragmentMatch` when `#...` should also be part of active matching.
+`Active.FragmentMatch` includes `#...` in matching. Off by default.
 
-By default, fragments are ignored for active-link matching.
+## Hook Fields
 
-## Path Source
+ALink is a dynamic hook, so it supports the same request-lifecycle fields as event attrs:
 
-For programmatic navigation, update the current page's path source directly.
+- `Scope` — request scheduling and de-duplication. See [Scopes](./10-scopes.md).
+- `Indicator` — UI feedback while the request is in flight. See [Indication](./11-indication.md).
+- `Before` — actions to run before the request.
+- `After` — actions to run after a successful request.
+- `OnError` — actions to run on failure. Defaults to `ActionLocationReload{}` if nil.
 
-The `doors.Source[Path]` passed into your page is not just state. It is also the current route model for that page.
+For action types, see [Actions](./12-actions.md).
 
-When you update or mutate that source:
+## Programmatic
 
-- **Doors** re-encodes the path model
-- the browser location is updated
-- the page reacts as if the user navigated there
+For navigation that doesn't fit an anchor (button, wizard step, form flow), update that `Source` directly.
 
-This is the right approach when navigation belongs to a button, wizard step, form flow, or other interaction that is not naturally an anchor tag.
+The source you get from `doors.RouteModelSource(...)` is a typed view of the current URL. Updating it encodes the new path model back into the URL, like an `ALink` click.
+
+For raw locations, update `doors.Router(ctx)` directly.
+
+### Update
+
+When you already know the full target model:
+
+```go
+a.path.Update(ctx, Path{
+	Section: SectionDashboard,
+	ID:      cityID,
+})
+```
 
 ### Mutate
 
-Use `Mutate` when you want to preserve part of the current path and change the rest:
+When you want to preserve part of the current path and change the rest:
 
 ```gox
 type App struct {
@@ -156,8 +181,7 @@ elem (a *App) goToCity(cityID int) {
 		(doors.AClick{
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				a.path.Mutate(ctx, func(p Path) Path {
-					p.Selector = false
-					p.Dashboard = true
+					p.Section = SectionDashboard
 					p.ID = cityID
 					return p
 				})
@@ -168,32 +192,3 @@ elem (a *App) goToCity(cityID int) {
 	</button>
 }
 ```
-
-### Update
-
-Use `Update` when you already know the full target model:
-
-```go
-a.path.Update(ctx, Path{
-	Dashboard: true,
-	ID:        cityID,
-})
-```
-
-## Lifecycle Actions
-
-When an `ALink` upgrades to same-model dynamic navigation, it participates in
-the same request pipeline as other **Doors** attributes.
-
-That is why it supports:
-
-- `Scope`
-- `Indicator`
-- `Before`
-- `After`
-- `OnError`
-
-One useful special case: if `OnError` is left `nil` on a dynamic `ALink`,
-**Doors** falls back to a location reload.
-
-For the action types themselves, see [Actions](./12-actions.md).

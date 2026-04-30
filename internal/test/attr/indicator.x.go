@@ -48,7 +48,7 @@ func (f *indicatorFragment) queue() gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line indicator.gox:25
-		__e = __c.Many(f.button("queue-1", []doors.Indicator{
+		__e = __c.Many(f.button("queue-1", doors.Join[doors.Indicators](
 		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#q-target"),
 			Name: "data-a",
@@ -62,7 +62,7 @@ func (f *indicatorFragment) queue() gox.Elem {
 			Selector: doors.SelectorQuery("#q-target"),
 			Content: "first",
 		},
-	}), f.button("queue-2", []doors.Indicator{
+	)), f.button("queue-2", doors.Join[doors.Indicators](
 		// Partial update: does NOT touch data-a, so when this applies
 		// data-a should restore to original (A0).
 		doors.IndicatorAttr{
@@ -78,7 +78,7 @@ func (f *indicatorFragment) queue() gox.Elem {
 			Selector: doors.SelectorQuery("#q-target"),
 			Content: "second",
 		},
-	}), f.button("queue-3", []doors.Indicator{
+	)), f.button("queue-3", doors.Join[doors.Indicators](
 		// Partial update: does NOT touch data-a, so when this applies
 		// data-a should restore to original (A0).
 		doors.IndicatorAttr{
@@ -103,7 +103,7 @@ func (f *indicatorFragment) queue() gox.Elem {
 			Selector: doors.SelectorQuery("#q-target"),
 			Content: "second",
 		},
-	})); if __e != nil { return }
+	))); if __e != nil { return }
 	return })
 //line indicator.gox:81
 }
@@ -125,7 +125,7 @@ func (f *indicatorFragment) restore() gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line indicator.gox:85
-		__e = __c.Any(f.button("action-1", []doors.Indicator{
+		__e = __c.Any(f.button("action-1", doors.Join[doors.Indicators](
 		doors.IndicatorAttr{
 			Selector: doors.SelectorQuery("#indicator-1"),
 			Name: "data-attr1",
@@ -156,7 +156,7 @@ func (f *indicatorFragment) restore() gox.Elem {
 			Selector: doors.SelectorQuery("#indicator-1"),
 			Content: "indication",
 		},
-	})); if __e != nil { return }
+	))); if __e != nil { return }
 	return })
 //line indicator.gox:117
 }
@@ -202,16 +202,16 @@ func (f *indicatorFragment) selectors() gox.Elem {
 			__e = __c.Set("class", "block"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line indicator.gox:124
-			__e = __c.Any(f.button("indicate-parent", doors.IndicatorOnlyAttrQueryParent(".block", "data-check", "true"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-parent", doors.IndicateAttrQueryParent(".block", "data-check", "true"))); if __e != nil { return }
 //line indicator.gox:125
-			__e = __c.Any(f.button("indicate-self", doors.IndicatorOnlyContent("indication"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-self", doors.IndicateContent("indication"))); if __e != nil { return }
 //line indicator.gox:126
-			__e = __c.Any(f.button("indicate-selector", doors.IndicatorOnlyAttrQuery("#next", "data-check", "true"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-selector", doors.IndicateAttrQuery("#next", "data-check", "true"))); if __e != nil { return }
 //line indicator.gox:127
-			__e = __c.Any(f.button("indicate-self-attr", doors.IndicatorOnlyAttr("data-self", "true"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-self-attr", doors.IndicateAttr("data-self", "true"))); if __e != nil { return }
 //line indicator.gox:128
 			__e = (doors.AClick{
-			Indicator: doors.IndicatorOnlyClass("self-active"),
+			Indicator: doors.IndicateClass("self-active"),
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				<-time.After(500 * time.Millisecond)
 				return false
@@ -229,7 +229,7 @@ func (f *indicatorFragment) selectors() gox.Elem {
 			return })); if __e != nil { return }
 //line indicator.gox:135
 			__e = (doors.AClick{
-			Indicator: doors.IndicatorOnlyClassRemove("remove-me"),
+			Indicator: doors.IndicateClassRemove("remove-me"),
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				<-time.After(500 * time.Millisecond)
 				return false
@@ -248,25 +248,25 @@ func (f *indicatorFragment) selectors() gox.Elem {
 				__e = __c.Close(); if __e != nil { return }
 			return })); if __e != nil { return }
 //line indicator.gox:142
-			__e = __c.Any(f.button("indicate-query-content", doors.IndicatorOnlyContentQuery("#next", "content"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-query-content", doors.IndicateContentQuery("#next", "content"))); if __e != nil { return }
 //line indicator.gox:143
-			__e = __c.Any(f.button("indicate-query-class", doors.IndicatorOnlyClassQuery("#next", "query-class"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-query-class", doors.IndicateClassQuery("#next", "query-class"))); if __e != nil { return }
 //line indicator.gox:144
-			__e = __c.Any(f.button("indicate-query-class-remove", doors.IndicatorOnlyClassRemoveQuery("#next", "block"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-query-class-remove", doors.IndicateClassRemoveQuery("#next", "block"))); if __e != nil { return }
 //line indicator.gox:145
-			__e = __c.Any(f.button("indicate-all-content", doors.IndicatorOnlyContentQueryAll(".multi", "all"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-all-content", doors.IndicateContentQueryAll(".multi", "all"))); if __e != nil { return }
 //line indicator.gox:146
-			__e = __c.Any(f.button("indicate-all-attr", doors.IndicatorOnlyAttrQueryAll(".multi", "data-all", "true"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-all-attr", doors.IndicateAttrQueryAll(".multi", "data-all", "true"))); if __e != nil { return }
 //line indicator.gox:147
-			__e = __c.Any(f.button("indicate-all-class", doors.IndicatorOnlyClassQueryAll(".multi", "all-class"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-all-class", doors.IndicateClassQueryAll(".multi", "all-class"))); if __e != nil { return }
 //line indicator.gox:148
-			__e = __c.Any(f.button("indicate-all-class-remove", doors.IndicatorOnlyClassRemoveQueryAll(".multi", "keep"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-all-class-remove", doors.IndicateClassRemoveQueryAll(".multi", "keep"))); if __e != nil { return }
 //line indicator.gox:149
-			__e = __c.Any(f.button("indicate-parent-content", doors.IndicatorOnlyContentQueryParent(".block", "parent-content"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-parent-content", doors.IndicateContentQueryParent(".block", "parent-content"))); if __e != nil { return }
 //line indicator.gox:150
-			__e = __c.Any(f.button("indicate-parent-class", doors.IndicatorOnlyClassQueryParent(".block", "parent-class"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-parent-class", doors.IndicateClassQueryParent(".block", "parent-class"))); if __e != nil { return }
 //line indicator.gox:151
-			__e = __c.Any(f.button("indicate-parent-class-remove", doors.IndicatorOnlyClassRemoveQueryParent(".block", "block"))); if __e != nil { return }
+			__e = __c.Any(f.button("indicate-parent-class-remove", doors.IndicateClassRemoveQueryParent(".block", "block"))); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
@@ -274,7 +274,7 @@ func (f *indicatorFragment) selectors() gox.Elem {
 }
 
 //line indicator.gox:155
-func (f *indicatorFragment) button(id string, indicator []doors.Indicator) gox.Elem {
+func (f *indicatorFragment) button(id string, indicator doors.Indicators) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
@@ -292,7 +292,7 @@ func (f *indicatorFragment) button(id string, indicator []doors.Indicator) gox.E
 //line indicator.gox:157
 }
 
-func (f *indicatorFragment) handler(indicator []doors.Indicator) doors.Attr {
+func (f *indicatorFragment) handler(indicator doors.Indicators) doors.Attr {
 	return doors.AClick{
 		Indicator: indicator,
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {

@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -28,7 +27,6 @@ import (
 )
 
 type Instance interface {
-	Conf() *common.SystemConf
 	Call(call action.Call)
 	core.Instance
 }
@@ -37,37 +35,29 @@ type Root = *root
 
 func NewRoot(inst Instance) Root {
 	r := &root{
-		inst:    inst,
-		runtime: inst.Runtime(),
-		prime:   common.NewPrime(),
+		inst: inst,
 	}
 	r.tracker, r.core = trackerRoot(r)
 	return r
 }
 
 type root struct {
-	runtime shredder.Runtime
 	core    core.Core
 	tracker *tracker
-	prime   common.Prime
-	inst    Instance
 	hooks   sync.Map
+	inst    Instance
 }
 
 func (r Root) Kill() {
-	r.tracker.clean(false)
+	r.tracker.clean(false, shredder.FreeFrame{})
 }
 
 func (r Root) ID() uint64 {
 	return r.tracker.id
 }
 
-func (r Root) Context() context.Context {
-	return r.tracker.Context()
-}
-
-func (r *root) NewID() uint64 {
-	return r.prime.Gen()
+func (r Root) instance() Instance {
+	return r.inst
 }
 
 func (r *root) cancelHook(id uint64) {
@@ -77,6 +67,10 @@ func (r *root) cancelHook(id uint64) {
 	}
 	hook := entry.(*hook)
 	hook.cancel()
+}
+
+func (r *root) runtime() shredder.Runtime {
+	return r.inst.Runtime()
 }
 
 func (r *root) addHook(h *hook) {
@@ -111,7 +105,7 @@ func (r Root) IsStatic() bool {
 	return static
 }
 
-func (r Root) Render(requestCtx context.Context, comp gox.Comp, init func()) (Stack, error) {
+func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 	thread := shredder.Thread{}
 	renderFrame := shredder.Join(true, thread.Frame(), r.tracker.writeFrame())
 	pipe := newPipe(
@@ -122,13 +116,12 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp, init func()) (St
 	)
 	ch := make(chan struct{})
 	var err error
-	renderFrame.Submit(r.tracker.ctx, r.runtime, func(b bool) {
-		init()
+	renderFrame.Submit(r.tracker.ctx, r.runtime(), func(b bool) {
 		cur := gox.NewCursor(r.tracker.Context(), pipe)
 		err = cur.Comp(comp)
 	})
 	renderFrame.Release()
-	thread.Frame().Run(r.tracker.ctx, r.runtime, func(b bool) {
+	thread.Frame().Run(r.tracker.ctx, r.runtime(), func(b bool) {
 		r.tracker.innerCallGuard.Activate()
 		close(ch)
 	})

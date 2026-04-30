@@ -124,10 +124,10 @@ func (t nodeProxy) apply(next *node, prev *node) {
 	next.mode = modeBlend
 	next.outer = t.el
 	next.content = prev.content
+	next.tracker = trackerCreate(next, t.pipe)
 	if prev.isMounted() {
 		trackerRemove(prev.tracker, nil)
 	}
-	next.tracker = trackerCreate(next, t.pipe)
 	next.render(t.pipe, t.buffer)
 }
 
@@ -167,11 +167,11 @@ type userTask struct {
 	frames ctex.Frames
 }
 
-func (t *userTask) JoinedFrame() shredder.Frame {
+func (t *userTask) InitFrame() shredder.Frame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}
-	return t.frames.JoinedFrame()
+	return t.frames.InitFrame()
 }
 
 func (t *userTask) CallFrame() shredder.SimpleFrame {

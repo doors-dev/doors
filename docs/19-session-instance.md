@@ -2,8 +2,8 @@
 
 In **Doors**, a session and an instance are different lifetimes:
 
-- a session is the shared browser-level scope
-- an instance is one live page, usually one tab
+- a session is the shared scope for one browser session
+- an instance is one live page in that session
 
 Most app code does not need to control them directly. **Doors** manages them for you.
 

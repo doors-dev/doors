@@ -21,113 +21,153 @@ import (
 	"github.com/doors-dev/doors/internal/front"
 )
 
-// Scope controls how overlapping client-side events coordinate before the
-// backend request starts.
+// Scope is the low-level client scheduling scope used by event hooks.
 type Scope = front.Scope
 
-// ScopeSet is the serialized form of a [Scope].
-type ScopeSet = front.ScopeSet
-
-type scopeFunc func(core core.Core) ScopeSet
-
-func (s scopeFunc) Scope(core core.Core) ScopeSet {
-	return s(core)
+// Scopes configures how hook requests are scheduled and deduplicated.
+type Scopes interface {
+	// Scopes returns the low-level client scopes for this app core.
+	Scopes(core core.Core) []Scope
+	Joiner[Scopes]
 }
 
-// ScopeBlocking rejects a new event while another event in the same shared
-// scope is still running.
+func scopesOrNil(core core.Core, scopes Scopes) []Scope {
+	if scopes == nil {
+		return nil
+	}
+	return scopes.Scopes(core)
+}
+
+type scopes []Scopes
+
+func (ss scopes) And(s Scopes) Scopes {
+	c := make(scopes, len(ss), len(ss)+1)
+	copy(c, ss)
+	c = append(c, s)
+	return c
+}
+
+func (ss scopes) Scopes(core core.Core) []Scope {
+	output := make([]Scope, 0)
+	for _, ind := range ss {
+		if ind == nil {
+			continue
+		}
+		output = append(output, ind.Scopes(core)...)
+	}
+	return output
+}
+
+// ScopeBlocking allows only one request in this scope to run at a time.
+//
+// Later requests are rejected while an earlier request is active.
 type ScopeBlocking struct {
 	id front.AutoId
 }
 
-func (b *ScopeBlocking) Scope(core core.Core) ScopeSet {
-	return front.BlockingScope(b.id.Id(core))
+func (sb *ScopeBlocking) And(s Scopes) Scopes {
+	return scopes([]Scopes{sb, s})
 }
 
-// ScopeOnlyBlocking returns a single [ScopeBlocking].
-func ScopeOnlyBlocking() []Scope {
-	return []Scope{&ScopeBlocking{}}
+func (sb *ScopeBlocking) Scopes(core core.Core) []Scope {
+	return []Scope{front.BlockingScope(sb.id.Id(core))}
 }
 
-// ScopeSerial queues accepted events and runs them in arrival order.
+var _ Scopes = (*ScopeBlocking)(nil)
+
+// ScopeSerial queues requests in this scope and runs them one after another.
 type ScopeSerial struct {
 	id front.AutoId
 }
 
-func (b *ScopeSerial) Scope(core core.Core) ScopeSet {
-	return front.SerialScope(b.id.Id(core))
+func (ss *ScopeSerial) And(s Scopes) Scopes {
+	return scopes([]Scopes{ss, s})
 }
 
-// ScopeOnlySerial returns a single [ScopeSerial].
-func ScopeOnlySerial() []Scope {
-	return []Scope{&ScopeSerial{}}
+func (ss *ScopeSerial) Scopes(core core.Core) []Scope {
+	return []Scope{front.SerialScope(ss.id.Id(core))}
 }
 
-// ScopeDebounce delays a burst of events and keeps the latest pending one.
+var _ Scopes = (*ScopeSerial)(nil)
+
+// ScopeDebounce delays requests until input settles.
 type ScopeDebounce struct {
-	id front.AutoId
+	// Duration is the quiet period before a request is sent.
+	Duration time.Duration
+	// Limit is the maximum delay before a pending request must be sent.
+	Limit time.Duration
+	id    front.AutoId
 }
 
-// Scope returns a debounced [Scope].
-//
-// duration is the resettable delay. limit is the maximum total wait; 0 means
-// no maximum.
-func (d *ScopeDebounce) Scope(duration, limit time.Duration) Scope {
-	return scopeFunc(func(core core.Core) ScopeSet {
-		return front.DebounceScope(d.id.Id(core), duration, limit)
-	})
+func (sd *ScopeDebounce) And(s Scopes) Scopes {
+	return scopes([]Scopes{sd, s})
 }
 
-// ScopeOnlyDebounce returns one debounced [Scope].
-func ScopeOnlyDebounce(duration, limit time.Duration) []Scope {
-	return []Scope{(&ScopeDebounce{}).Scope(duration, limit)}
+func (s *ScopeDebounce) Scopes(core core.Core) []Scope {
+	return []Scope{front.DebounceScope(s.id.Id(core), s.Duration, s.Limit)}
 }
 
-// ScopeFrame coordinates normal events with a barrier event.
-//
-// Normal members use Scope(false). The barrier member uses Scope(true), waits
-// for earlier members to finish, and then runs exclusively.
+var _ Scopes = (*ScopeDebounce)(nil)
+
+// ScopeFrame groups requests by frame lifecycle.
 type ScopeFrame struct {
 	id front.AutoId
 }
 
-// Scope returns a frame member or a frame barrier depending on frame.
-func (d *ScopeFrame) Scope(frame bool) Scope {
-	return scopeFunc(func(core core.Core) ScopeSet {
-		return front.FrameScope(d.id.Id(core), frame)
+// Scope returns a scope for either the frame or non-frame group.
+func (d *ScopeFrame) Scope(frame bool) Scopes {
+	return scopeFunc(func(core core.Core) []Scope {
+		return []Scope{front.FrameScope(d.id.Id(core), frame)}
 	})
 }
 
-// ScopeConcurrent allows overlap only for events that use the same group id.
+// ScopeConcurrent allows one request per group to run concurrently.
 type ScopeConcurrent struct {
 	id front.AutoId
 }
 
-// Scope returns a concurrent [Scope] for groupId.
-func (d *ScopeConcurrent) Scope(groupId int) Scope {
-	return scopeFunc(func(core core.Core) ScopeSet {
-		return front.ConcurrentScope(d.id.Id(core), groupId)
+// Scope returns a concurrent scheduling group.
+func (d *ScopeConcurrent) Scope(groupID int) Scopes {
+	return scopeFunc(func(core core.Core) []Scope {
+		return []Scope{front.ConcurrentScope(d.id.Id(core), groupID)}
 	})
 }
 
-// ScopeLatest keeps only the newest event in a shared scope.
-// When a new event arrives, any currently processing event is canceled and the
-// new event takes priority.
+// ScopeLatest keeps only the latest request in this scope.
 type ScopeLatest struct {
 	id front.AutoId
 }
 
-func (b *ScopeLatest) Scope(core core.Core) ScopeSet {
-	return front.LatestScope(b.id.Id(core))
+func (sl *ScopeLatest) And(s Scopes) Scopes {
+	return scopes([]Scopes{sl, s})
 }
 
-// ScopeOnlyLatest returns a single [ScopeLatest].
-func ScopeOnlyLatest() []Scope {
-	return []Scope{&ScopeLatest{}}
+func (s *ScopeLatest) Scopes(core core.Core) []Scope {
+	return []Scope{front.LatestScope(s.id.Id(core))}
 }
+
+var _ Scopes = (*ScopeLatest)(nil)
+
+type scopeFunc func(core core.Core) []Scope
+
+func (sf scopeFunc) And(s Scopes) Scopes {
+	return scopes([]Scopes{sf, s})
+}
+
+func (sf scopeFunc) Scopes(core core.Core) []Scope {
+	return sf(core)
+}
+
+var _ Scopes = scopeFunc(nil)
 
 type linkScope struct{}
 
-func (b linkScope) Scope(core core.Core) ScopeSet {
-	return front.LatestScope("link")
+func (ls linkScope) And(s Scopes) Scopes {
+	return scopes([]Scopes{ls, s})
 }
+
+func (ls linkScope) Scopes(core core.Core) []Scope {
+	return []Scope{front.LatestScope("link")}
+}
+
+var _ Scopes = linkScope{}

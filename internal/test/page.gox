@@ -7,13 +7,15 @@ import (
 
 type NoBeam struct{}
 
-func (f NoBeam) setBeam(_ doors.Source[Path]) {}
+type PathLens = doors.Source[Path]
+
+func (f NoBeam) setBeam(_ PathLens) {}
 
 type Beam struct {
-	B doors.Source[Path]
+	B PathLens
 }
 
-func (f *Beam) setBeam(b doors.Source[Path]) {
+func (f *Beam) setBeam(b PathLens) {
 	f.B = b
 }
 
@@ -25,14 +27,14 @@ type Path struct {
 }
 
 type Fragment interface {
-	setBeam(b doors.Source[Path])
+	setBeam(b PathLens)
 	gox.Comp
 }
 
 type Page struct {
-	Source doors.Source[Path]
+	Source PathLens
 	F Fragment
-	H elem(doors.Source[Path])
+	H elem(PathLens)
 	Header string
 }
 

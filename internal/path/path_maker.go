@@ -31,12 +31,14 @@ func NewPathMaker(serverID string) PathMaker {
 		panic("server id can't contain \"/\"")
 	}
 	return PathMaker{
-		serverID: serverID,
+		sessionCookie: "d0r-" + serverID,
+		serverID:      serverID,
 	}
 }
 
 type PathMaker struct {
-	serverID string
+	serverID      string
+	sessionCookie string
 }
 
 type HookMatch struct {
@@ -50,9 +52,9 @@ type UndoPath struct {
 	Location Location
 }
 
-type resource string
+type resourceEnt string
 
-type sync string
+type syncEnt string
 
 type Match struct {
 	entity any
@@ -64,12 +66,12 @@ func (m Match) Hook() (HookMatch, bool) {
 }
 
 func (m Match) Resource() (id string, ok bool) {
-	e, ok := m.entity.(resource)
+	e, ok := m.entity.(resourceEnt)
 	return string(e), ok
 }
 
 func (m Match) Sync() (instanceID string, ok bool) {
-	e, ok := m.entity.(sync)
+	e, ok := m.entity.(syncEnt)
 	return string(e), ok
 }
 
@@ -85,6 +87,10 @@ var undoPath = regexp.MustCompile(`^/u/([0-9a-zA-Z]+)(/.*)$`)
 
 func (pm PathMaker) ID() string {
 	return pm.serverID
+}
+
+func (pm PathMaker) SessionCookie() string {
+	return pm.sessionCookie
 }
 
 func (pm PathMaker) Prefix() string {
@@ -123,24 +129,21 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 	if len(matches) != 0 {
 		id := matches[1]
 		return Match{
-			entity: resource(id),
+			entity: resourceEnt(id),
 		}, true
 	}
 	matches = syncPath.FindStringSubmatch(path)
 	if len(matches) != 0 {
 		instanceID := matches[1]
 		return Match{
-			entity: sync(instanceID),
+			entity: syncEnt(instanceID),
 		}, true
 	}
 	matches = undoPath.FindStringSubmatch(path)
 	if len(matches) != 0 {
 		instanceID := matches[1]
 		path := matches[2]
-		l, err := NewLocationFromEscapedURI(path)
-		if err != nil {
-			return Match{}, false
-		}
+		l := NewLocationFromEscapedURI(path)
 		return Match{
 			entity: UndoPath{
 				Instance: instanceID,

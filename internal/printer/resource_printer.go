@@ -129,9 +129,34 @@ func (p *resourcePrinter) processMeta(openJob *gox.JobHeadOpen) error {
 	attr.Unset()
 	name := b.String()
 	core := openJob.Context().Value(ctex.KeyCore).(core.Core)
-	core.UpdateMeta(name, property, openJob.Attrs.Clone())
+	cancel := core.TitleMeta().UpdateMeta(property, name, openJob.Attrs.Clone())
+	core.Clean(cancel)
 	gox.Release(openJob)
 	return nil
+}
+
+func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
+	if _, ok := j.(*gox.JobHeadOpen); ok {
+		return errors.New("<title> cannot contain nested tags")
+	}
+	if _, ok := j.(*gox.JobComp); ok {
+		panic("internal error: title content should be flattened before it reaches the resource printer")
+	}
+	if closeJob, ok := j.(*gox.JobHeadClose); ok {
+		if closeJob.ID != tit.openJob.ID {
+			return errors.New("title close tag does not match the open tag")
+		}
+		core := j.Context().Value(ctex.KeyCore).(core.Core)
+		content := tit.buf.String()
+		attrs := tit.openJob.Attrs.Clone()
+		cancel := core.TitleMeta().UpdateTitle(content, attrs)
+		core.Clean(cancel)
+		gox.Release(tit.openJob)
+		gox.Release(closeJob)
+		r.resource = nil
+		return nil
+	}
+	return j.Output(&tit.buf)
 }
 
 func (p *resourcePrinter) processRes(job gox.Job, res *embeddedResource) error {
@@ -157,29 +182,6 @@ func (p *resourcePrinter) processRes(job gox.Job, res *embeddedResource) error {
 		return nil
 	}
 	return errors.New("embedded <script> and <style> may contain only text or byte jobs")
-}
-
-func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
-	if _, ok := j.(*gox.JobHeadOpen); ok {
-		return errors.New("<title> cannot contain nested tags")
-	}
-	if _, ok := j.(*gox.JobComp); ok {
-		panic("internal error: title content should be flattened before it reaches the resource printer")
-	}
-	if closeJob, ok := j.(*gox.JobHeadClose); ok {
-		if closeJob.ID != tit.openJob.ID {
-			return errors.New("title close tag does not match the open tag")
-		}
-		core := j.Context().Value(ctex.KeyCore).(core.Core)
-		content := tit.buf.String()
-		attrs := tit.openJob.Attrs.Clone()
-		core.UpdateTitle(content, attrs)
-		gox.Release(tit.openJob)
-		gox.Release(closeJob)
-		r.resource = nil
-		return nil
-	}
-	return j.Output(&tit.buf)
 }
 
 type title struct {

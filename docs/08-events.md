@@ -21,7 +21,7 @@ The smallest useful example is:
 </button>
 ```
 
-The core shape is still the same: an event attr has an `On` handler and that handler returns `bool`.
+The core shape is: an event attr has an `On` handler, and that handler returns `bool`.
 
 Return:
 
@@ -84,7 +84,7 @@ Example:
 
 ```go
 On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-	r.After(doors.ActionOnlyScroll("#top"))
+	r.After(doors.ActionScroll{Selector: "#top"})
 	return false
 }
 ```

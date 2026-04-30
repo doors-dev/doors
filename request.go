@@ -20,20 +20,18 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-
-	"github.com/doors-dev/doors/internal/ctex"
 )
 
 // RequestAfter schedules client-side actions to run after a successful
 // request.
 type RequestAfter interface {
 	// After appends client-side actions to the successful response.
-	After([]Action) error
+	After(a Actions) error
 }
 
-// Request exposes the common server-side request helpers available to Doors
+// RequestCommon exposes the common server-side request helpers available to Doors
 // handlers.
-type Request interface {
+type RequestCommon interface {
 	// SetCookie adds a cookie to the response.
 	SetCookie(cookie *http.Cookie)
 	// GetCookie retrieves a cookie by name.
@@ -45,7 +43,7 @@ type Request interface {
 
 // RequestEvent is the request context passed to event handlers.
 type RequestEvent[E any] interface {
-	Request
+	RequestCommon
 	RequestAfter
 	// Event returns the event payload.
 	Event() E
@@ -53,7 +51,7 @@ type RequestEvent[E any] interface {
 
 // RequestForm is the request context passed to decoded form handlers.
 type RequestForm[D any] interface {
-	Request
+	RequestCommon
 	RequestAfter
 	// Data returns the parsed form payload.
 	Data() D
@@ -61,10 +59,10 @@ type RequestForm[D any] interface {
 
 // RequestRawForm is the request context passed to raw multipart form handlers.
 type RequestRawForm interface {
-	Request
+	RequestCommon
 	RequestAfter
-	// W returns the HTTP response writer.
-	W() http.ResponseWriter
+	// ResponseWriter returns the HTTP response writer.
+	ResponseWriter() http.ResponseWriter
 	// Reader returns a multipart reader for streaming form parts.
 	Reader() (*multipart.Reader, error)
 	// ParseForm parses the form data with a memory limit.
@@ -85,7 +83,7 @@ type ParsedForm interface {
 
 // RequestHook is the request context passed to typed JavaScript hook handlers.
 type RequestHook[D any] interface {
-	Request
+	RequestCommon
 	RequestAfter
 	// Data returns the parsed hook payload.
 	Data() D
@@ -98,14 +96,11 @@ type RequestRawHook interface {
 	Body() io.ReadCloser
 }
 
-// RequestModel is the request context passed to [UseModel] handlers.
+// Request is the request context passed to main app handler.
 //
-// Use it for cookies, request and response headers, and session-scoped state
-// while deciding which [Response] to return.
-type RequestModel interface {
-	Request
-	// SessionStore returns session-scoped storage.
-	SessionStore() Store
+// Use it for cookies, request headers, and response headers.
+type Request interface {
+	RequestCommon
 	// RequestHeader returns the incoming request headers.
 	RequestHeader() http.Header
 	// ResponseHeader returns the outgoing response headers.
@@ -118,12 +113,12 @@ type request struct {
 	ctx context.Context
 }
 
-func (r *request) Context() context.Context {
+func (r request) Context() context.Context {
 	return r.r.Context()
 }
 
-func (r *request) After(action []Action) error {
-	actions := intoActions(r.ctx, action)
+func (r request) After(a Actions) error {
+	actions := intoActions(r.ctx, a.Actions())
 	err := actions.Set(r.w.Header())
 	if err != nil {
 		panic(err)
@@ -131,51 +126,59 @@ func (r *request) After(action []Action) error {
 	return nil
 }
 
-func (r *request) Body() io.ReadCloser {
+func (r request) Body() io.ReadCloser {
 	return r.r.Body
 }
 
-func (r *request) SetCookie(cookie *http.Cookie) {
+func (r request) SetCookie(cookie *http.Cookie) {
 	http.SetCookie(r.w, cookie)
 }
 
-func (r *request) GetCookie(name string) (*http.Cookie, error) {
+func (r request) GetCookie(name string) (*http.Cookie, error) {
 	return r.r.Cookie(name)
 }
 
-func (r *request) ParseForm(maxMemory int) (ParsedForm, error) {
+func (r request) ParseForm(maxMemory int) (ParsedForm, error) {
 	if maxMemory <= 0 {
 		maxMemory = defaultMaxMemory
 	}
 	return r, r.r.ParseMultipartForm(int64(maxMemory))
 }
 
-func (r *request) Reader() (*multipart.Reader, error) {
+func (r request) Reader() (*multipart.Reader, error) {
 	return r.r.MultipartReader()
 }
 
-func (r *request) FormValues() url.Values {
+func (r request) FormValues() url.Values {
 	return r.r.Form
 }
 
-func (r *request) Done() <-chan struct{} {
+func (r request) Done() <-chan struct{} {
 	return r.r.Context().Done()
 }
 
-func (r *request) Form() *multipart.Form {
+func (r request) Form() *multipart.Form {
 	return r.r.MultipartForm
 }
 
-func (r *request) FormValue(key string) string {
+func (r request) FormValue(key string) string {
 	return r.r.FormValue(key)
 }
 
-func (r *request) FormFile(key string) (multipart.File, *multipart.FileHeader, error) {
+func (r request) FormFile(key string) (multipart.File, *multipart.FileHeader, error) {
 	return r.r.FormFile(key)
 }
 
-func (r *request) W() http.ResponseWriter {
+func (r request) ResponseWriter() http.ResponseWriter {
 	return r.w
+}
+
+func (r request) RequestHeader() http.Header {
+	return r.r.Header
+}
+
+func (r request) ResponseHeader() http.Header {
+	return r.w.Header()
 }
 
 type eventRequest[E any] struct {
@@ -183,7 +186,7 @@ type eventRequest[E any] struct {
 	e *E
 }
 
-func (e *eventRequest[E]) Event() E {
+func (e eventRequest[E]) Event() E {
 	return *e.e
 }
 
@@ -192,23 +195,6 @@ type formHookRequest[D any] struct {
 	data *D
 }
 
-func (d *formHookRequest[D]) Data() D {
+func (d formHookRequest[D]) Data() D {
 	return *d.data
-}
-
-type modelRequest struct {
-	request
-	store ctex.Store
-}
-
-func (r *modelRequest) RequestHeader() http.Header {
-	return r.request.r.Header
-}
-
-func (r *modelRequest) ResponseHeader() http.Header {
-	return r.request.w.Header()
-}
-
-func (r *modelRequest) SessionStore() Store {
-	return r.store
 }

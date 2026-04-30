@@ -10,13 +10,15 @@ import (
 
 type NoBeam struct{}
 
-func (f NoBeam) setBeam(_ doors.Source[Path]) {}
+type PathLens = doors.Source[Path]
+
+func (f NoBeam) setBeam(_ PathLens) {}
 
 type Beam struct {
-	B doors.Source[Path]
+	B PathLens
 }
 
-func (f *Beam) setBeam(b doors.Source[Path]) {
+func (f *Beam) setBeam(b PathLens) {
 	f.B = b
 }
 
@@ -28,14 +30,14 @@ type Path struct {
 }
 
 type Fragment interface {
-	setBeam(b doors.Source[Path])
+	setBeam(b PathLens)
 	gox.Comp
 }
 
 type Page struct {
-	Source doors.Source[Path]
+	Source PathLens
 	F Fragment
-	H func(doors.Source[Path]) gox.Elem
+	H func(PathLens) gox.Elem
 	Header string
 }
 
@@ -50,28 +52,28 @@ func (p *Page) head() gox.Elem {
 	return p.H(p.Source)
 }
 
-//line page.gox:50
+//line page.gox:52
 func (p *Page) content() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line page.gox:51
-		if p.F != nil {
 //line page.gox:53
+		if p.F != nil {
+//line page.gox:55
 			p.F.setBeam(p.Source)
 
-//line page.gox:55
+//line page.gox:57
 			__e = __c.Any(p.F); if __e != nil { return }
 		}
 	return })
-//line page.gox:57
+//line page.gox:59
 }
 
-//line page.gox:59
+//line page.gox:61
 func (p *Page) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line page.gox:60
+//line page.gox:62
 		__e = __c.Any(Document(p)); if __e != nil { return }
 	return })
-//line page.gox:61
+//line page.gox:63
 }

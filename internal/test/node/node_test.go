@@ -15,8 +15,8 @@
 package door
 
 import (
-	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
 	"strconv"
 	"testing"
@@ -24,13 +24,11 @@ import (
 )
 
 func TestDoorLoadPage(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(pr doors.RequestModel, r doors.Source[test.Path]) doors.Response {
-			return doors.ResponseComp(&test.Page{
-				Source: r,
-				Header: "Page Door",
-			})
-		})
+	bro := test.NewPathBro(browser, func(r test.PathLens) gox.Comp {
+		return &test.Page{
+			Source: r,
+			Header: "Page Door",
+		}
 	})
 	page := bro.Page(t, "/")
 	defer bro.Close()

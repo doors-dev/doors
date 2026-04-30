@@ -82,7 +82,7 @@ func (n *node) sync(task *userTask) {
 	)
 	var err error
 	var callKind callKind
-	pip.renderFrame.Submit(ownerTracker.ctx, ownerTracker.root.runtime, func(b bool) {
+	pip.renderFrame.Submit(ownerTracker.ctx, ownerTracker.root.runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -105,7 +105,7 @@ func (n *node) sync(task *userTask) {
 	})
 	callFrame := shredder.Join(true, thread.Frame(), n.tracker.outerCallGuard, task.CallFrame())
 	defer callFrame.Release()
-	callFrame.Run(ownerTracker.ctx, ownerTracker.root.runtime, func(b bool) {
+	callFrame.Run(ownerTracker.ctx, ownerTracker.root.runtime(), func(b bool) {
 		defer callGuard.Activate()
 		if !b {
 			task.Cancel()
@@ -113,7 +113,7 @@ func (n *node) sync(task *userTask) {
 		}
 		var payload printer.Payload
 		if err == nil {
-			payload, err = pip.Render(ownerTracker.root.inst.Conf().ServerDisableGzip)
+			payload, err = pip.Render(ownerTracker.Instance().Session().App().Conf().ServerDisableGzip)
 		}
 		callCtx := ownerTracker.ctx
 		if err != nil {
@@ -148,7 +148,7 @@ func (n *node) render(parentPipe *pipe, buffer *deque.Deque[any]) {
 		parentPipe.callGuard,
 	)
 	var err error
-	pip.renderFrame.Submit(parentPipe.tracker.ctx, ownerTracker.root.runtime, func(b bool) {
+	pip.renderFrame.Submit(parentPipe.tracker.ctx, ownerTracker.root.runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -167,7 +167,7 @@ func (n *node) render(parentPipe *pipe, buffer *deque.Deque[any]) {
 	})
 	finalFrame := shredder.Join(true, parentPipe.renderFrame, thread.Frame())
 	defer finalFrame.Release()
-	finalFrame.Run(parentPipe.tracker.ctx, ownerTracker.root.runtime, func(b bool) {
+	finalFrame.Run(parentPipe.tracker.ctx, ownerTracker.root.runtime(), func(b bool) {
 		if !b {
 			return
 		}

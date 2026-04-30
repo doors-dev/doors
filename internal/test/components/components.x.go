@@ -155,7 +155,7 @@ func (f *LinksFragment) Main() gox.Elem {
 				Vh: true,
 			},
 			Active: doors.Active{
-				Indicator: doors.IndicatorOnlyAttr("aria-current", "page"),
+				Indicator: doors.IndicateAttr("aria-current", "page"),
 			},
 		}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
@@ -176,7 +176,7 @@ func (f *LinksFragment) Main() gox.Elem {
 			},
 			Active: doors.Active{
 				PathMatcher: doors.PathMatcherStarts(),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "starts"),
+				Indicator: doors.IndicateAttr("data-active", "starts"),
 			},
 		}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
@@ -197,7 +197,7 @@ func (f *LinksFragment) Main() gox.Elem {
 			},
 			Active: doors.Active{
 				PathMatcher: doors.PathMatcherSegments(0),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "segments"),
+				Indicator: doors.IndicateAttr("data-active", "segments"),
 			},
 		}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
@@ -217,9 +217,9 @@ func (f *LinksFragment) Main() gox.Elem {
 			},
 			Fragment: "details",
 			Active: doors.Active{
-				QueryMatcher: doors.QueryMatcherOnlyIgnoreAll(),
+				QueryMatcher: doors.QueryMatcherIgnoreAll(),
 				FragmentMatch: true,
-				Indicator: doors.IndicatorOnlyAttr("data-active", "fragment"),
+				Indicator: doors.IndicateAttr("data-active", "fragment"),
 			},
 		}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
@@ -238,78 +238,74 @@ func (f *LinksFragment) Main() gox.Elem {
 				Vh: true,
 			},
 			Active: doors.Active{
-				QueryMatcher: []doors.QueryMatcher{
-					doors.QueryMatcherIgnoreSome("page"),
-					doors.QueryMatcherSome("mode"),
-					doors.QueryMatcherIfPresent("optional"),
-				},
-				Indicator: doors.IndicatorOnlyAttr("data-active", "query"),
+				QueryMatcher: doors.QueryMatcherIgnoreSome("page").And(doors.QueryMatcherSome("mode")).And(doors.QueryMatcherIfPresent("optional")),
+				Indicator: doors.IndicateAttr("data-active", "query"),
 			},
 		}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
 				__e = __c.Init("a"); if __e != nil { return }
 				{
-//line components.gox:95
+//line components.gox:91
 					__e = __c.Set("id", "active-query"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 					__e = __c.Text("active-query"); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 			return })); if __e != nil { return }
-//line components.gox:96
+//line components.gox:92
 			__e = (doors.ALink{
 			Model: test.Path{
 				Vh: true,
 			},
 			Active: doors.Active{
-				QueryMatcher: doors.QueryMatcherOnlyIgnoreSome("page"),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "only-ignore-some"),
+				QueryMatcher: doors.QueryMatcherIgnoreSome("page"),
+				Indicator: doors.IndicateAttr("data-active", "only-ignore-some"),
 			},
 		}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
 				__e = __c.Init("a"); if __e != nil { return }
 				{
-//line components.gox:104
+//line components.gox:100
 					__e = __c.Set("id", "active-query-only-ignore-some"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 					__e = __c.Text("active-query-only-ignore-some"); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 			return })); if __e != nil { return }
-//line components.gox:105
+//line components.gox:101
 			__e = (doors.ALink{
 			Model: test.Path{
 				Vh: true,
 			},
 			Active: doors.Active{
-				QueryMatcher: doors.QueryMatcherOnlySome("mode"),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "only-some"),
+				QueryMatcher: doors.QueryMatcherSome("mode").And(doors.QueryMatcherIgnoreAll()),
+				Indicator: doors.IndicateAttr("data-active", "only-some"),
 			},
 		}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
 				__e = __c.Init("a"); if __e != nil { return }
 				{
-//line components.gox:113
+//line components.gox:109
 					__e = __c.Set("id", "active-query-only-some"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 					__e = __c.Text("active-query-only-some"); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 			return })); if __e != nil { return }
-//line components.gox:114
+//line components.gox:110
 			__e = (doors.ALink{
 			Model: test.Path{
 				Vh: true,
 			},
 			Active: doors.Active{
-				QueryMatcher: doors.QueryMatcherOnlyIfPresent("optional"),
-				Indicator: doors.IndicatorOnlyAttr("data-active", "only-if-present"),
+				QueryMatcher: doors.QueryMatcherIfPresent("optional").And(doors.QueryMatcherIgnoreAll()),
+				Indicator: doors.IndicateAttr("data-active", "only-if-present"),
 			},
 		}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
 				__e = __c.Init("a"); if __e != nil { return }
 				{
-//line components.gox:122
+//line components.gox:118
 					__e = __c.Set("id", "active-query-only-if-present"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 					__e = __c.Text("active-query-only-if-present"); if __e != nil { return }
@@ -318,7 +314,7 @@ func (f *LinksFragment) Main() gox.Elem {
 			return })); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line components.gox:125
+//line components.gox:121
 		__e = (doors.ALink{
 		Model: test.Path{
 			Vh: true,
@@ -327,14 +323,14 @@ func (f *LinksFragment) Main() gox.Elem {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("a"); if __e != nil { return }
 			{
-//line components.gox:129
+//line components.gox:125
 				__e = __c.Set("id", "home"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("home"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:131
+//line components.gox:127
 		__e = (doors.ALink{
 		Model: test.Path{
 			Vp: true,
@@ -344,14 +340,14 @@ func (f *LinksFragment) Main() gox.Elem {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("a"); if __e != nil { return }
 			{
-//line components.gox:136
+//line components.gox:132
 				__e = __c.Set("id", "param"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("param"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:138
+//line components.gox:134
 		__e = (doors.ALink{
 		Model: test.Path{
 			Vs: true,
@@ -361,7 +357,7 @@ func (f *LinksFragment) Main() gox.Elem {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("a"); if __e != nil { return }
 			{
-//line components.gox:143
+//line components.gox:139
 				__e = __c.Set("id", "string"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("string"); if __e != nil { return }
@@ -378,70 +374,70 @@ func (f *LinksFragment) Main() gox.Elem {
 		__e = __c.Submit(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line components.gox:146
+//line components.gox:142
 			__e = __c.Set("id", "action-target"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("action-target"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line components.gox:147
+//line components.gox:143
 		__e = (doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyLocationRawAssign(test.Host + "/s"))
+			r.After(doors.ActionLocationRawAssign{URL: test.Host + "/s"})
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line components.gox:152
+//line components.gox:148
 				__e = __c.Set("id", "raw-assign"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("raw-assign"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:153
+//line components.gox:149
 		__e = (doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyIndicate(
-				doors.IndicatorOnlyAttrQuery("#action-target", "data-indicated", "true"),
-				200 * time.Millisecond,
-			))
+			r.After(doors.ActionIndicate{
+				Indicator: doors.IndicateAttrQuery("#action-target", "data-indicated", "true"),
+				Duration: 200 * time.Millisecond,
+			})
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line components.gox:161
+//line components.gox:157
 				__e = __c.Set("id", "action-indicate"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("action-indicate"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:162
+//line components.gox:158
 		__e = (doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyScroll("#scroll-target"))
+			r.After(doors.ActionScroll{Selector: "#scroll-target"})
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line components.gox:167
+//line components.gox:163
 				__e = __c.Set("id", "action-scroll"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("action-scroll"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:168
+//line components.gox:164
 		__e = (doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionOnlyEmit("alert", "Hello!"))
+			r.After(doors.ActionEmit{Name: "alert", Arg: "Hello!"})
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -461,21 +457,21 @@ func (f *LinksFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line components.gox:181
+//line components.gox:177
 			__e = __c.Set("style", "height: 1800px"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line components.gox:182
+//line components.gox:178
 			__e = __c.Set("id", "scroll-target"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("scroll-target"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line components.gox:183
+//line components.gox:179
 }
 
 type ProxyFragment struct {
@@ -487,22 +483,22 @@ type ProxyClassComponent struct {
 	test.NoBeam
 }
 
-//line components.gox:194
+//line components.gox:190
 func (ProxyClassComponent) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-//line components.gox:195
+//line components.gox:191
 			__e = __c.Set("id", "proxy-class-component"); if __e != nil { return }
-//line components.gox:195
+//line components.gox:191
 			__e = __c.Set("class", "base-component"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("proxy-class-component"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line components.gox:196
+//line components.gox:192
 }
 
 func proxyContainerClass() doors.Classes {
@@ -524,11 +520,11 @@ func proxyDirectMod() gox.Modify {
 	})
 }
 
-//line components.gox:217
+//line components.gox:213
 func (f *ProxyFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line components.gox:218
+//line components.gox:214
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "literal")
@@ -540,7 +536,7 @@ func (f *ProxyFragment) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-//line components.gox:223
+//line components.gox:219
 			__e = __c.Set("id", "proxy-literal"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("proxy-literal"); if __e != nil { return }
@@ -548,7 +544,7 @@ func (f *ProxyFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 	return })); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:225
+//line components.gox:221
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "container")
@@ -562,7 +558,7 @@ func (f *ProxyFragment) Main() gox.Elem {
 		{
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line components.gox:231
+//line components.gox:227
 				__e = __c.Set("id", "proxy-container"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("proxy-container"); if __e != nil { return }
@@ -572,14 +568,14 @@ func (f *ProxyFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 	return })); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:234
+//line components.gox:230
 		__e = (doors.Class("proxy-literal")).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-//line components.gox:234
+//line components.gox:230
 			__e = __c.Set("id", "proxy-class-literal"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("proxy-class-literal"); if __e != nil { return }
@@ -587,14 +583,14 @@ func (f *ProxyFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 	return })); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:236
+//line components.gox:232
 		__e = (doors.ProxyMod(proxyDirectMod())).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-//line components.gox:236
+//line components.gox:232
 			__e = __c.Set("id", "proxy-direct-mod"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("proxy-direct-mod"); if __e != nil { return }
@@ -602,7 +598,7 @@ func (f *ProxyFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 	return })); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:238
+//line components.gox:234
 		__e = (proxyContainerClass()).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -611,7 +607,7 @@ func (f *ProxyFragment) Main() gox.Elem {
 		{
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line components.gox:239
+//line components.gox:235
 				__e = __c.Set("id", "proxy-class-container"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("proxy-class-container"); if __e != nil { return }
@@ -619,7 +615,7 @@ func (f *ProxyFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line components.gox:240
+//line components.gox:236
 				__e = __c.Set("id", "proxy-class-sibling"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("proxy-class-sibling"); if __e != nil { return }
@@ -629,27 +625,27 @@ func (f *ProxyFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 	return })); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:243
+//line components.gox:239
 		__e = (doors.Class("proxy-component")).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
-//line components.gox:243
+//line components.gox:239
 			__e = __c.Any(ProxyClassComponent{}); if __e != nil { return }
 		return })); if __e != nil { return }
-//line components.gox:245
+//line components.gox:241
 		__e = (doors.Class("proxy-parallel")).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Any(gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.InitContainer(); if __e != nil { return }
 		{
-//line components.gox:246
+//line components.gox:242
 			__e = (doors.Parallel()).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
 				__e = __c.InitContainer(); if __e != nil { return }
 				{
 					__e = __c.Init("button"); if __e != nil { return }
 					{
-//line components.gox:247
+//line components.gox:243
 						__e = __c.Set("id", "proxy-class-parallel"); if __e != nil { return }
 						__e = __c.Submit(); if __e != nil { return }
 						__e = __c.Text("proxy-class-parallel"); if __e != nil { return }
@@ -664,9 +660,9 @@ func (f *ProxyFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line components.gox:251
+//line components.gox:247
 			__e = __c.Set("id", "class-attr"); if __e != nil { return }
-//line components.gox:251
+//line components.gox:247
 			__e = __c.Set("class", classAttrValue()); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("class-attr"); if __e != nil { return }
@@ -674,18 +670,18 @@ func (f *ProxyFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line components.gox:252
+//line components.gox:248
 			__e = __c.Set("id", "class-mod"); if __e != nil { return }
-//line components.gox:252
+//line components.gox:248
 			__e = __c.Set("class", "base-mod class-skip"); if __e != nil { return }
-//line components.gox:252
+//line components.gox:248
 			__e = __c.Modify(classModifier()); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("class-mod"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line components.gox:254
+//line components.gox:250
 		__e = __c.Any(f.r); if __e != nil { return }
 	return })
-//line components.gox:255
+//line components.gox:251
 }

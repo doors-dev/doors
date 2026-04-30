@@ -21,7 +21,6 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/path"
 	"github.com/zeebo/xxh3"
 )
 
@@ -38,8 +37,8 @@ func Reload(ctx context.Context) {
 // The channel receives nil on success or an error on failure, then closes.
 // If ctx belongs to the root page render, it sends an error and closes.
 //
-// Do not wait on it during rendering. If you need to wait, do it in a hook,
-// inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
+// Do not wait on it during rendering. If you need to wait, use [Go] or your
+// own goroutine with [Free].
 func XReload(ctx context.Context) <-chan error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	return core.XReload(ctx)
@@ -80,33 +79,19 @@ func SessionId(ctx context.Context) string {
 }
 
 // Store is goroutine-safe key-value storage used for session and instance
-// state.
+// data.
 type Store = ctex.Store
 
 // SessionStore returns storage shared by all instances in the current session.
 func SessionStore(ctx context.Context) Store {
-	return ctx.Value(ctex.KeySessionStore).(Store)
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	return core.Instance().Session().Store()
 }
 
 // InstanceStore returns storage scoped to the current instance only.
 func InstanceStore(ctx context.Context) Store {
-	return ctx.Value(ctex.KeyInstanceStore).(Store)
-}
-
-// Location is a parsed or generated URL path plus query string.
-type Location = path.Location
-
-// NewLocation encodes model into a [Location] using the registered adapter for
-// the model's type. It returns an error if no adapter is registered or
-// encoding fails.
-func NewLocation(ctx context.Context, model any) (Location, error) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	location, err := core.Adapters().Encode(model)
-	if err != nil {
-		var l Location
-		return l, err
-	}
-	return location, nil
+	return core.Instance().Store()
 }
 
 // IDRand returns a cryptographically secure, URL-safe identifier.
@@ -134,7 +119,7 @@ func IDBytes(b []byte) string {
 // operations that may wait, such as X-prefixed methods.
 //
 // The returned context keeps the original Values from ctx, switches framework
-// features and lifetime to the root Doors context
+// features and lifetime to the root Doors context.
 //
 // Use it for long-running goroutines and work that should outlive the current
 // dynamic owner.

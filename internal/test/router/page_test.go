@@ -15,6 +15,7 @@
 package router
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -23,17 +24,43 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors"
-	introuter "github.com/doors-dev/doors/internal/router"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
 )
 
+const zombieHeader = "X-Zombie"
+
 type PathParallel struct {
 	Path bool `path:"/parallel"`
 }
 
+func routeBro(routes ...doors.RouteSource[doors.Location]) *test.Bro {
+	return test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return doors.RouterSource(routes...)
+	})
+}
+
+func routeBroOptions(options []doors.With, routes ...doors.RouteSource[doors.Location]) *test.Bro {
+	return test.NewBroOptions(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return doors.RouterSource(routes...)
+	}, options)
+}
+
+func locationBro[C gox.Comp](render func(doors.Source[doors.Location]) C) *test.Bro {
+	return test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return render(doors.Router(ctx))
+	})
+}
+
+func locationBroWrap[C gox.Comp](render func(doors.Source[doors.Location]) C, wrap func(http.Handler) http.Handler) *test.Bro {
+	return test.NewBroWrap(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return render(doors.Router(ctx))
+	}, wrap)
+}
+
 func testPath(t *testing.T, page *rod.Page, path string) {
+	t.Helper()
 	url := strings.Split(strings.Trim(page.MustInfo().URL, "/"), "/")
 	last := url[len(url)-1]
 	if last != path {
@@ -89,6 +116,25 @@ func waitNoQueryValue(t *testing.T, page *rod.Page, key string) {
 	testNoQueryValue(t, page, key)
 }
 
+func waitEscapedPath(t *testing.T, page *rod.Page, path string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		info, err := url.Parse(page.MustInfo().URL)
+		if err == nil && info.EscapedPath() == path {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	info, err := url.Parse(page.MustInfo().URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.EscapedPath(); got != path {
+		t.Fatalf("escaped path expected %q actual %q", path, got)
+	}
+}
+
 func waitContent(t *testing.T, page *rod.Page, selector string, content string) {
 	t.Helper()
 	deadline := time.Now().Add(time.Second)
@@ -138,11 +184,9 @@ func waitClassNot(t *testing.T, page *rod.Page, selector string, className strin
 }
 
 func TestPageStatic(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(req doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseComp(static("a", 0))
-		})
-	})
+	bro := routeBro(doors.RouteModelSource(func(_ doors.Source[PathA]) gox.Elem {
+		return static("a", 0)
+	}))
 	defer bro.Close()
 	page := bro.Page(t, "/a")
 	defer page.Close()
@@ -150,132 +194,211 @@ func TestPageStatic(t *testing.T) {
 }
 
 func TestPageStaticCode(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseComp(static("a", 404))
-		})
-	})
+	bro := routeBro(doors.RouteModelSource(func(_ doors.Source[PathA]) gox.Elem {
+		return static("a", 404)
+	}))
 	defer bro.Close()
-	page := bro.PageStatus(t, "/a", 404)
+	page := bro.PageStatus(t, "/a", http.StatusNotFound)
 	defer page.Close()
 	test.TestContent(t, page, "#path", "a")
 }
 
-func TestPageRedirect(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseRedirect(PathB{}, 0)
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
-			return doors.ResponseComp(static("b", 0))
-		})
+func TestRouterBeamModelTransitionsAndDefault404(t *testing.T) {
+	bro := test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return routerBeamDocument()
 	})
 	defer bro.Close()
-	page := bro.Page(t, "/a")
+
+	page := bro.Page(t, "/cross-a")
 	defer page.Close()
-	test.TestContent(t, page, "#path", "b")
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	test.TestContent(t, page, "#route-name", "cross-a")
+	test.TestContent(t, page, "#route-model", "true")
+
+	test.Click(t, page, "#beam-cross-next")
+	waitContent(t, page, "#page-name", "cross-b")
+	testPath(t, page, "cross-b")
+	test.TestContent(t, page, "#route-model", "true")
+
+	nextInstance := test.GetContent(t, page, "#instance-id")
+	if nextInstance != initialInstance {
+		t.Fatalf("expected RouterBeam ALink route switch to keep instance, got %q then %q", initialInstance, nextInstance)
+	}
+
+	test.Click(t, page, "#beam-cross-prev")
+	waitContent(t, page, "#route-name", "cross-a")
+	testPath(t, page, "cross-a")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	defaultPage := bro.PageStatus(t, "/missing", http.StatusNotFound)
+	defer defaultPage.Close()
+
+	test.TestContent(t, defaultPage, "#route-name", "default")
 }
 
-func TestPageReroute(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseReroute(PathC{PathC1: true})
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponseComp(pageC(r))
-		})
+func TestRouterSourceCrossRouteKeepsInstance(t *testing.T) {
+	bro := test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return routerLensCrossDocument()
 	})
 	defer bro.Close()
-	page := bro.Page(t, "/a")
+
+	page := bro.Page(t, "/cross-a")
 	defer page.Close()
-	test.TestContent(t, page, "#path", "c1")
-	testPath(t, page, "c1")
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	test.Click(t, page, "#cross-next")
+	waitContent(t, page, "#page-name", "cross-b")
+	testPath(t, page, "cross-b")
+
+	nextInstance := test.GetContent(t, page, "#instance-id")
+	if nextInstance != initialInstance {
+		t.Fatalf("expected RouterSource ALink route switch to keep instance, got %q then %q", initialInstance, nextInstance)
+	}
+
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "cross-a")
+	waitContent(t, page, "#instance-id", initialInstance)
+	if _, err := page.Timeout(time.Second).Element("#cross-next"); err != nil {
+		t.Fatalf("expected browser back to restore cross-a route content: %v", err)
+	}
+
+	defaultPage := bro.PageStatus(t, "/missing", http.StatusNotFound)
+	defer defaultPage.Close()
+
+	test.TestContent(t, defaultPage, "#route-name", "default")
 }
 
-/*ac // removed
-func TestPageRerouteDetached(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathA]) doors.Res {
-			return doors.ResReroute(PathC{PathC1: true}, true)
-		})
-		doors.UseModel(r, func(p doors.ReqModel, r doors.Source[PathC]) doors.Res {
-			return doors.ResPage(pageC(r))
-		})
+func TestRouterSourceCombinedPathModelCustomAndRawRoutes(t *testing.T) {
+	bro := test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return routerCombinedLensDocument()
 	})
 	defer bro.Close()
-	page := bro.Page(t, "/a")
-	defer page.Close()
-	test.TestContent(t, page, "#path", "c1")
-	testPath(t, page, "a")
-	test.Click(t, page, "#c2")
-	test.TestContent(t, page, "#path", "c2")
-	testPath(t, page, "a")
-} */
 
-func TestPageError(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseRedirect(PathC{}, 0)
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponseComp(pageC(r))
-		})
-		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
-			return static("error", -1)
-		})
-	})
-	defer bro.Close()
-	page := bro.PageStatus(t, "/a", 500)
+	page := bro.Page(t, "/cross-a")
 	defer page.Close()
-	test.TestContent(t, page, "#path", "error")
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	test.TestContent(t, page, "#route-name", "model-a")
+
+	href := page.MustElement("#model-to-custom").MustAttribute("href")
+	if href == nil || *href != "/custom/hello%20world%2Fone?tab=details" {
+		t.Fatalf("expected custom encoder href %q actual %v", "/custom/hello%20world%2Fone?tab=details", href)
+	}
+
+	test.Click(t, page, "#model-to-custom")
+	waitContent(t, page, "#route-name", "custom")
+	waitContent(t, page, "#custom-id", "hello world/one")
+	waitContent(t, page, "#custom-tab", "details")
+	waitEscapedPath(t, page, "/custom/hello%20world%2Fone")
+	waitQueryValue(t, page, "tab", "details")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	href = page.MustElement("#custom-next").MustAttribute("href")
+	if href == nil || *href != "/custom/next%2Fchild?tab=again" {
+		t.Fatalf("expected same custom branch href %q actual %v", "/custom/next%2Fchild?tab=again", href)
+	}
+
+	test.Click(t, page, "#custom-next")
+	waitContent(t, page, "#custom-id", "next/child")
+	waitContent(t, page, "#custom-tab", "again")
+	waitEscapedPath(t, page, "/custom/next%2Fchild")
+	waitQueryValue(t, page, "tab", "again")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#custom-lens-write")
+	waitContent(t, page, "#custom-id", "lens write/value")
+	waitContent(t, page, "#custom-tab", "written")
+	waitEscapedPath(t, page, "/custom/lens%20write%2Fvalue")
+	waitQueryValue(t, page, "tab", "written")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#custom-to-query")
+	waitContent(t, page, "#route-name", "query")
+	waitContent(t, page, "#tag", "from-custom")
+	waitContent(t, page, "#page-value", "5")
+	waitEscapedPath(t, page, "/q")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#query-to-raw")
+	waitContent(t, page, "#route-name", "raw")
+	waitContent(t, page, "#raw-from", "query")
+	waitEscapedPath(t, page, "/raw")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#raw-to-model")
+	waitContent(t, page, "#route-name", "model-a")
+	testPath(t, page, "cross-a")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	defaultPage := bro.PageStatus(t, "/missing", http.StatusNotFound)
+	defer defaultPage.Close()
+	test.TestContent(t, defaultPage, "#route-name", "default")
 }
 
-func TestPageInfiniteReroute(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseReroute(PathC{})
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponseReroute(PathA{})
-		})
-		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
-			return static("error", -1)
-		})
+func TestRouterBeamCombinedCustomEncoderRoute(t *testing.T) {
+	bro := test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return routerCombinedBeamDocument()
 	})
 	defer bro.Close()
-	page := bro.PageStatus(t, "/a", 500)
+
+	page := bro.Page(t, "/custom/beam%2Fid?tab=start")
 	defer page.Close()
-	test.TestContent(t, page, "#path", "error")
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	test.TestContent(t, page, "#route-name", "custom-beam")
+	test.TestContent(t, page, "#custom-id", "beam/id")
+	test.TestContent(t, page, "#custom-tab", "start")
+
+	href := page.MustElement("#beam-custom-next").MustAttribute("href")
+	if href == nil || *href != "/custom/beam%20next?tab=read" {
+		t.Fatalf("expected beam custom href %q actual %v", "/custom/beam%20next?tab=read", href)
+	}
+
+	test.Click(t, page, "#beam-custom-next")
+	waitContent(t, page, "#custom-id", "beam next")
+	waitContent(t, page, "#custom-tab", "read")
+	waitEscapedPath(t, page, "/custom/beam%20next")
+	waitQueryValue(t, page, "tab", "read")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#beam-custom-to-model")
+	waitContent(t, page, "#route-name", "cross-a")
+	testPath(t, page, "cross-a")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	defaultPage := bro.PageStatus(t, "/missing", http.StatusNotFound)
+	defer defaultPage.Close()
+	test.TestContent(t, defaultPage, "#route-name", "default")
 }
 
 func TestLocations(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseComp(pageA(r))
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponseComp(pageC(r))
-		})
-		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
-			return static("error", -1)
-		})
-	})
+	bro := routeBro(
+		doors.RouteModelSource(pageA),
+		doors.RouteModelSource(pageC),
+		doors.RouteModelSource(func(_ doors.Source[PathB]) gox.Elem {
+			return static("b", 0)
+		}),
+	)
 	defer bro.Close()
 	page := bro.Page(t, "/a")
-	testPath(t, page, "a")
 	defer page.Close()
+
+	testPath(t, page, "a")
 	test.Click(t, page, "#assign")
 	testPath(t, page, "c1")
 	page.NavigateBack()
 	<-time.After(100 * time.Millisecond)
 	testPath(t, page, "a")
+
 	test.Click(t, page, "#assign")
-	testPath(t, page, "c1")
 	test.Click(t, page, "#replace")
 	testPath(t, page, "c2")
 	page.NavigateBack()
 	<-time.After(100 * time.Millisecond)
 	testPath(t, page, "a")
+
 	test.Click(t, page, "#assign")
 	marker := test.GetContent(t, page, "#marker")
 	test.Click(t, page, "#reload")
@@ -289,11 +412,7 @@ func TestLocations(t *testing.T) {
 }
 
 func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathQuery]) doors.Response {
-			return doors.ResponseComp(pageQuery(s))
-		})
-	})
+	bro := routeBro(doors.RouteModelSource(pageQuery))
 	defer bro.Close()
 
 	page := bro.Page(t, "/q")
@@ -313,13 +432,12 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 
 	nextInstance := test.GetContent(t, page, "#instance-id")
 	if nextInstance != initialInstance {
-		t.Fatalf("expected same instance after same-model navigation, got %q then %q", initialInstance, nextInstance)
+		t.Fatalf("expected same instance after location navigation, got %q then %q", initialInstance, nextInstance)
 	}
 
 	page.NavigateBack()
 	waitNoQueryValue(t, page, "tag")
 	waitNoQueryValue(t, page, "page")
-
 	waitContent(t, page, "#tag", "")
 	waitContent(t, page, "#page-value", "")
 
@@ -330,14 +448,12 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 }
 
 func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
-	bro := test.NewBroWrap(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathQuery]) doors.Response {
-			return doors.ResponseComp(pageQuery(s))
-		})
+	bro := locationBroWrap(func(l doors.Source[doors.Location]) gox.Comp {
+		return doors.RouterSource(doors.RouteModelSource(pageQuery))
 	}, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r.Header.Set(introuter.ZombieHeader, "1")
-			w.Header().Set(introuter.ZombieHeader, "1")
+			r.Header.Set(zombieHeader, "1")
+			w.Header().Set(zombieHeader, "1")
 			next.ServeHTTP(w, r)
 		})
 	})
@@ -347,11 +463,6 @@ func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
 	defer page.Close()
 
 	initialInstance := test.GetContent(t, page, "#instance-id")
-	testNoQueryValue(t, page, "tag")
-	testNoQueryValue(t, page, "page")
-	test.TestContent(t, page, "#tag", "")
-	test.TestContent(t, page, "#page-value", "")
-
 	test.Click(t, page, "#query-next")
 	waitQueryValue(t, page, "tag", "next")
 	waitQueryValue(t, page, "page", "2")
@@ -360,7 +471,7 @@ func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
 
 	nextInstance := test.GetContent(t, page, "#instance-id")
 	if nextInstance == initialInstance {
-		t.Fatalf("expected zombie same-model navigation to full-reload, got same instance %q", nextInstance)
+		t.Fatalf("expected zombie navigation to full-reload, got same instance %q", nextInstance)
 	}
 
 	page.NavigateBack()
@@ -373,56 +484,17 @@ func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
 	if restoredInstance == nextInstance {
 		t.Fatalf("expected zombie browser back to full-reload, got same instance %q", restoredInstance)
 	}
-	if restoredInstance == initialInstance {
-		t.Fatalf("expected zombie browser back to create a new instance, got initial instance %q", restoredInstance)
-	}
-}
-
-func TestBrowserBackRestoresPreviousInstanceAcrossModels(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathCrossA]) doors.Response {
-			return doors.ResponseComp(pageCrossA())
-		})
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathCrossB]) doors.Response {
-			return doors.ResponseComp(pageCrossB())
-		})
-	})
-	defer bro.Close()
-
-	page := bro.Page(t, "/cross-a")
-	defer page.Close()
-
-	initialInstance := test.GetContent(t, page, "#instance-id")
-
-	test.Click(t, page, "#cross-next")
-	waitContent(t, page, "#page-name", "cross-b")
-
-	nextInstance := test.GetContent(t, page, "#instance-id")
-	if nextInstance == initialInstance {
-		t.Fatalf("expected different instance after cross-model ALink navigation, got %q", nextInstance)
-	}
-
-	page.NavigateBack()
-	waitContent(t, page, "#cross-next", "cross-next")
-
-	restoredInstance := test.GetContent(t, page, "#instance-id")
-	if restoredInstance != initialInstance {
-		t.Fatalf("expected browser back to restore previous instance %q, got %q", initialInstance, restoredInstance)
-	}
 }
 
 func TestPageLoadTimeout(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseSystemConf(r, doors.SystemConf{
-			RequestTimeout: time.Second,
-		})
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathSlow]) doors.Response {
-			return doors.ResponseComp(pageSlow())
-		})
-		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
-			return pageError(err)
-		})
-	})
+	bro := routeBroOptions([]doors.With{
+		doors.WithConf(doors.Conf{RequestTimeout: time.Second}),
+		doors.WithErrorPage(func(_ *http.Request, err error) gox.Elem {
+			return plainErrorPage(err)
+		}),
+	}, doors.RouteModelSource(func(_ doors.Source[PathSlow]) gox.Elem {
+		return pageSlow()
+	}))
 	defer bro.Close()
 
 	resp, err := http.Get(test.Host + "/slow")
@@ -435,8 +507,11 @@ func TestPageLoadTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 	bodyText := string(body)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("expected timeout status %d actual %d body %q", http.StatusInternalServerError, resp.StatusCode, bodyText)
+	}
 	if !strings.Contains(bodyText, "context deadline exceeded") {
-		t.Fatalf("expected timeout error page body, got %q", bodyText)
+		t.Fatalf("expected custom error page body, got %q", bodyText)
 	}
 	if strings.Contains(bodyText, "slow-page") {
 		t.Fatalf("expected timeout to prevent slow page render, got %q", bodyText)
@@ -444,14 +519,11 @@ func TestPageLoadTimeout(t *testing.T) {
 }
 
 func TestParallelComponentRender(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseSystemConf(r, doors.SystemConf{
-			RequestTimeout: 2 * time.Second,
-		})
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathParallel]) doors.Response {
-			return doors.ResponseComp(pageParallel())
-		})
-	})
+	bro := routeBroOptions([]doors.With{
+		doors.WithConf(doors.Conf{RequestTimeout: 2 * time.Second}),
+	}, doors.RouteModelSource(func(_ doors.Source[PathParallel]) gox.Elem {
+		return pageParallel()
+	}))
 	defer bro.Close()
 
 	start := time.Now()
@@ -484,11 +556,7 @@ func TestParallelComponentRender(t *testing.T) {
 }
 
 func TestLocationModelMatchesAnyURL(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[doors.Location]) doors.Response {
-			return doors.ResponseComp(pageLocation(s))
-		})
-	})
+	bro := locationBro(pageLocation)
 	defer bro.Close()
 
 	page := bro.Page(t, "/any/deep/path?tag=hello&page=7")
@@ -501,11 +569,7 @@ func TestLocationModelMatchesAnyURL(t *testing.T) {
 }
 
 func TestActiveLinkMatchersOnLoad(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[doors.Location]) doors.Response {
-			return doors.ResponseComp(pageLocationActive(s))
-		})
-	})
+	bro := locationBro(pageLocationActive)
 	defer bro.Close()
 
 	page := bro.Page(t, "/active?mode=view&optional=yes&page=9#details")
@@ -522,11 +586,7 @@ func TestActiveLinkMatchersOnLoad(t *testing.T) {
 }
 
 func TestActiveLinkMatchersByClick(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[doors.Location]) doors.Response {
-			return doors.ResponseComp(pageLocationActive(s))
-		})
-	})
+	bro := locationBro(pageLocationActive)
 	defer bro.Close()
 
 	page := bro.Page(t, "/active")
@@ -582,16 +642,12 @@ func TestActiveLinkMatchersByClick(t *testing.T) {
 
 	finalInstance := test.GetContent(t, page, "#instance-id")
 	if finalInstance != initialInstance {
-		t.Fatalf("expected same instance for same-model active-link navigation, got %q then %q", initialInstance, finalInstance)
+		t.Fatalf("expected same instance for location navigation, got %q then %q", initialInstance, finalInstance)
 	}
 }
 
 func TestPathModelEscapedSegmentDecodeAndEncode(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, s doors.Source[PathEscaped]) doors.Response {
-			return doors.ResponseComp(pageEscaped(s))
-		})
-	})
+	bro := routeBro(doors.RouteModelSource(pageEscaped))
 	defer bro.Close()
 
 	page := bro.Page(t, "/escaped/hello%20world%2Fagain")
@@ -609,20 +665,13 @@ func TestPathModelEscapedSegmentDecodeAndEncode(t *testing.T) {
 }
 
 func TestAfterAssign(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseComp(pageA(r))
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponseComp(pageC(r))
-		})
-		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
-			return static("error", 0)
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
-			return doors.ResponseComp(static("b", 0))
-		})
-	})
+	bro := routeBro(
+		doors.RouteModelSource(pageA),
+		doors.RouteModelSource(pageC),
+		doors.RouteModelSource(func(_ doors.Source[PathB]) gox.Elem {
+			return static("b", 0)
+		}),
+	)
 	defer bro.Close()
 	page := bro.Page(t, "/a")
 	defer page.Close()
@@ -635,20 +684,13 @@ func TestAfterAssign(t *testing.T) {
 }
 
 func TestAfterReplace(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseComp(pageA(r))
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponseComp(pageC(r))
-		})
-		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
-			return static("error", -1)
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
-			return doors.ResponseComp(static("b", 0))
-		})
-	})
+	bro := routeBro(
+		doors.RouteModelSource(pageA),
+		doors.RouteModelSource(pageC),
+		doors.RouteModelSource(func(_ doors.Source[PathB]) gox.Elem {
+			return static("b", 0)
+		}),
+	)
 	defer bro.Close()
 	page := bro.Page(t, "/a")
 	defer page.Close()
@@ -661,20 +703,13 @@ func TestAfterReplace(t *testing.T) {
 }
 
 func TestAfterReload(t *testing.T) {
-	bro := test.NewBro(browser, func(r doors.Router) {
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathA]) doors.Response {
-			return doors.ResponseComp(pageA(r))
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathC]) doors.Response {
-			return doors.ResponseComp(pageC(r))
-		})
-		doors.UseErrorPage(r, func(l doors.Location, err error) gox.Comp {
-			return static("error", -1)
-		})
-		doors.UseModel(r, func(p doors.RequestModel, r doors.Source[PathB]) doors.Response {
-			return doors.ResponseComp(static("b", 0))
-		})
-	})
+	bro := routeBro(
+		doors.RouteModelSource(pageA),
+		doors.RouteModelSource(pageC),
+		doors.RouteModelSource(func(_ doors.Source[PathB]) gox.Elem {
+			return static("b", 0)
+		}),
+	)
 	defer bro.Close()
 	page := bro.Page(t, "/a")
 	defer page.Close()
@@ -688,5 +723,4 @@ func TestAfterReload(t *testing.T) {
 	page.NavigateBack()
 	<-time.After(100 * time.Millisecond)
 	testPath(t, page, "a")
-
 }

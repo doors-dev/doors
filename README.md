@@ -8,6 +8,14 @@
 
 Doors is a server-driven UI framework + runtime for building stateful, reactive web applications in Go.
 
+## Recent Version
+
+Doors `0.12` is a broad release with migration-impacting changes compared with `0.8.x`-`0.10.x`.
+
+Read the [release notes](./RELEASE_NOTES.md) for the overview.
+
+If you are upgrading existing code or asking an agent to migrate it, start with the [migration guide](./MIGRATION.md).
+
 ## Example
 
 ```gox

@@ -22,44 +22,45 @@ import (
 )
 
 type pathVariant struct {
-	index   int
-	pattern string
+	fieldIndex   int
+	patternIndex int
+	pattern      string
 }
 
-type adapterBuilder[M any] struct {
-	value      M
-	path       []pathVariant
-	fields     map[string]field
-	queryField int
+type adapterBuilder struct {
+	sample       any
+	path         []pathVariant
+	fields       map[string]field
+	multiPattern bool
+	queryField   int
 }
 
-func (a adapterBuilder[M]) build() (Adapter[M], error) {
-	var zero M
-	if _, ok := any(zero).(Location); ok {
-		return any(locationAdapter{}).(Adapter[M]), nil
-	}
+func (a adapterBuilder) build() (adapter, error) {
 	if err := a.scanFields(); err != nil {
-		return nil, err
+		return adapter{}, err
 	}
 	if len(a.path) == 0 {
-		return nil, errors.New("no path patterns provided in the path model struct")
+		return adapter{}, errors.New("no path patterns provided in the path model struct")
 	}
 	branches := make([]branch, 0, len(a.path))
 	for _, path := range a.path {
-		branch, err := newBranch(path.index, path.pattern, a.fields)
+		branch, err := newBranch(path.fieldIndex, path.patternIndex, path.pattern, a.fields)
 		if err != nil {
-			return nil, err
+			return adapter{}, err
 		}
 		branches = append(branches, branch)
 	}
-	return adapter[M]{
+	return adapter{
 		branches:   branches,
 		queryField: a.queryField,
 	}, nil
 }
 
-func (a *adapterBuilder[M]) scanFields() error {
-	t := reflect.TypeOf(a.value)
+func (a *adapterBuilder) scanFields() error {
+	t := reflect.TypeOf(a.sample)
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
 	if t.Kind() != reflect.Struct {
 		return errors.New("path model must be a struct")
 	}
@@ -68,14 +69,25 @@ func (a *adapterBuilder[M]) scanFields() error {
 		f := t.Field(i)
 		path, ok := f.Tag.Lookup("path")
 		if ok {
+			if a.multiPattern {
+				return errors.New("only single multipattern is allowed")
+			}
 			if !f.IsExported() {
 				return errors.New("path field " + f.Name + " must be exported")
 			}
-			if f.Type.Kind() != reflect.Bool {
-				return errors.New("path field " + f.Name + " must have type bool")
+			if f.Type.Kind() == reflect.Bool {
+				a.addPath(f, path, false)
+				continue
 			}
-			a.addPath(f, path)
-			continue
+			if f.Type.Kind() == reflect.Int {
+				if len(a.path) != 0 {
+					return errors.New("only single multipattern is allowed")
+				}
+				a.multiPattern = true
+				a.addPath(f, path, true)
+				continue
+			}
+			return errors.New("path field " + f.Name + " must have type bool or int")
 		}
 		if f.Type == reflect.TypeFor[url.Values]() {
 			if !f.IsExported() {
@@ -99,7 +111,7 @@ func (a *adapterBuilder[M]) scanFields() error {
 	return nil
 }
 
-func (a *adapterBuilder[M]) addField(f reflect.StructField, index int) {
+func (a *adapterBuilder) addField(f reflect.StructField, index int) {
 	if !f.IsExported() {
 		return
 	}
@@ -111,7 +123,7 @@ func (a *adapterBuilder[M]) addField(f reflect.StructField, index int) {
 		}
 		a.fields[f.Name] = newMultiField(index)
 		return
-	case reflect.Ptr:
+	case reflect.Pointer:
 		switch f.Type.Elem().Kind() {
 		case reflect.String:
 			kind = kindStringPtr
@@ -138,11 +150,26 @@ func (a *adapterBuilder[M]) addField(f reflect.StructField, index int) {
 	a.fields[f.Name] = newSingleField(index, kind)
 }
 
-func (a *adapterBuilder[M]) addPath(f reflect.StructField, path string) {
-	path = strings.TrimSpace(path)
-	path = strings.Trim(path, "/")
-	a.path = append(a.path, pathVariant{
-		index:   f.Index[0],
-		pattern: path,
-	})
+func (a *adapterBuilder) addPath(f reflect.StructField, path string, multi bool) {
+	if !multi {
+		path = strings.TrimSpace(path)
+		path = strings.Trim(path, "/")
+		a.path = append(a.path, pathVariant{
+			fieldIndex:   f.Index[0],
+			patternIndex: -1,
+			pattern:      path,
+		})
+		return
+	}
+	index := 0
+	for variant := range strings.SplitSeq(path, "|") {
+		variant = strings.TrimSpace(variant)
+		variant = strings.Trim(variant, "/")
+		a.path = append(a.path, pathVariant{
+			fieldIndex:   f.Index[0],
+			patternIndex: index,
+			pattern:      variant,
+		})
+		index += 1
+	}
 }

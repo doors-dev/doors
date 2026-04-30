@@ -38,9 +38,9 @@ func (f *errorFragment) Main() gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line caputre_error.gox:32
-		__e = __c.Any(f.button("err_1", doors.ActionOnlyEmit("error", "err_1"))); if __e != nil { return }
+		__e = __c.Any(f.button("err_1", doors.ActionEmit{Name: "error", Arg: "err_1"})); if __e != nil { return }
 //line caputre_error.gox:33
-		__e = __c.Any(f.button("err_2", doors.ActionOnlyEmit("root", "err_2"))); if __e != nil { return }
+		__e = __c.Any(f.button("err_2", doors.ActionEmit{Name: "root", Arg: "err_2"})); if __e != nil { return }
 //line caputre_error.gox:34
 		__e = (f.n1).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -72,14 +72,14 @@ func (f *errorFragment) Main() gox.Elem {
 						}
 						__e = __c.Close(); if __e != nil { return }
 //line caputre_error.gox:55
-						__e = __c.Any(f.button("err_5", []doors.Action{
+						__e = __c.Any(f.button("err_5", doors.Join[doors.Actions](
 				doors.ActionEmit{
 					Name: "n2",
 					Arg: "err_5",
 				},
 				doors.ActionIndicate{
 					Duration: 500 * time.Millisecond,
-					Indicator: []doors.Indicator{
+					Indicator: doors.Join[doors.Indicators](
 						doors.IndicatorAttr{
 							Selector: doors.SelectorQuery("#indicator"),
 							Name: "data-indicator",
@@ -89,18 +89,18 @@ func (f *errorFragment) Main() gox.Elem {
 							Selector: doors.SelectorQuery("#indicator"),
 							Content: "indicator",
 						},
-					},
+					),
 				},
-			})); if __e != nil { return }
+			))); if __e != nil { return }
 //line caputre_error.gox:75
-						__e = __c.Any(f.button("err_6", doors.ActionOnlyEmit("error", "err_6"))); if __e != nil { return }
+						__e = __c.Any(f.button("err_6", doors.ActionEmit{Name: "error", Arg: "err_6"})); if __e != nil { return }
 					}
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 //line caputre_error.gox:77
-				__e = __c.Any(f.button("err_3", doors.ActionOnlyEmit("error", "err_3"))); if __e != nil { return }
+				__e = __c.Any(f.button("err_3", doors.ActionEmit{Name: "error", Arg: "err_3"})); if __e != nil { return }
 //line caputre_error.gox:78
-				__e = __c.Any(f.button("err_4", doors.ActionOnlyEmit("n1", "err_4"))); if __e != nil { return }
+				__e = __c.Any(f.button("err_4", doors.ActionEmit{Name: "n1", Arg: "err_4"})); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
@@ -109,7 +109,7 @@ func (f *errorFragment) Main() gox.Elem {
 }
 
 //line caputre_error.gox:82
-func (f *errorFragment) button(id string, on []doors.Action) gox.Elem {
+func (f *errorFragment) button(id string, on doors.Actions) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
@@ -127,17 +127,17 @@ func (f *errorFragment) button(id string, on []doors.Action) gox.Elem {
 //line caputre_error.gox:86
 }
 
-func (f *errorFragment) handler(on []doors.Action) doors.Attr {
+func (f *errorFragment) handler(on doors.Actions) doors.Attr {
 	return doors.AClick{
 		OnError: on,
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			w := r.(R)
-			w.W().WriteHeader(http.StatusBadGateway)
+			w.ResponseWriter().WriteHeader(http.StatusBadGateway)
 			return false
 		},
 	}
 }
 
 type R interface {
-	W() http.ResponseWriter
+	ResponseWriter() http.ResponseWriter
 }

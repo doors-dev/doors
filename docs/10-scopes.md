@@ -26,27 +26,27 @@ Scopes exist to express those rules directly in the event attribute instead of r
 
 ## Basics
 
-Scopes are attached through the `Scope` field on event attributes.
+Scopes are attached through the `Scope` field on event attributes. The field type is `doors.Scopes` — a single value that may carry one or several scopes.
 
-For one simple scope, use a helper:
-
-- `doors.ScopeOnlyBlocking()`
-- `doors.ScopeOnlySerial()`
-- `doors.ScopeOnlyDebounce(duration, limit)`
-- `doors.ScopeOnlyLatest()`
-
-For shared or more advanced use, keep a reusable scope value:
+The reusable scope types are:
 
 - `doors.ScopeBlocking`
 - `doors.ScopeSerial`
 - `doors.ScopeDebounce`
-- `doors.ScopeFrame`
-- `doors.ScopeConcurrent`
 - `doors.ScopeLatest`
+- `doors.ScopeFrame`      (use `.Scope(frame bool)` to get a `Scopes`)
+- `doors.ScopeConcurrent` (use `.Scope(groupID int)` to get a `Scopes`)
 
-Use the helper form when one handler just needs one scope.
+Each one is a `Scopes` value on its own — you can pass `&doors.ScopeBlocking{}` directly to `Scope`. Combine several with `.And(...)` or `doors.JoinScopes(...)`:
 
-Use the reusable form when several handlers should participate in the same coordination rule.
+```go
+Scope: blocking.And(debounce).And(serial)
+
+// or
+Scope: doors.JoinScopes(blocking, debounce, serial)
+```
+
+Use a fresh instance when one handler just needs one rule. Reuse a scope instance across handlers when they should coordinate with each other.
 
 ## Sharing
 
@@ -60,7 +60,7 @@ Sharing a scope instance means the handlers coordinate with each other instead o
 
 	<button
 		(doors.AClick{
-			Scope: []doors.Scope{block},
+			Scope: block,
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				return false
 			},
@@ -70,7 +70,7 @@ Sharing a scope instance means the handlers coordinate with each other instead o
 
 	<button
 		(doors.AClick{
-			Scope: []doors.Scope{block},
+			Scope: block,
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				return false
 			},
@@ -94,17 +94,15 @@ Use it for:
 
 This is the simplest "prevent double-submit" scope.
 
+`ScopeBlocking` is client-side interaction policy, not a backend permission or one-shot guarantee. Calls to the same hook instance are already serialized on the backend. If a hook should run once and then disappear, return `true` from its handler.
+
 ## Serial
 
-`ScopeSerial` queues events and runs them in arrival order.
+`ScopeSerial` queues accepted events and starts them in arrival order. The first hook starts immediately; each later hook starts only after the previous one reports completion.
 
 Use it when every accepted event should still run, just not at the same time.
 
-Typical cases:
-
-- ordered mutations
-- append-style workflows
-- repeated actions that must preserve order
+Typical case - repeated actions that must preserve order.
 
 Unlike blocking, serial does not drop later events. It holds them and runs them one by one.
 
@@ -115,14 +113,15 @@ Unlike blocking, serial does not drop later events. It holds them and runs them 
 ```gox
 <>
 	~{
-		debounce := &doors.ScopeDebounce{}
+		debounce := &doors.ScopeDebounce{
+			Duration: 300 * time.Millisecond,
+			Limit:    600 * time.Millisecond,
+		}
 	}
 
 	<input
 		(doors.AInput{
-			Scope: []doors.Scope{
-				debounce.Scope(300 * time.Millisecond, 600 * time.Millisecond),
-			},
+			Scope: debounce,
 			On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
 				return false
 			},
@@ -130,10 +129,10 @@ Unlike blocking, serial does not drop later events. It holds them and runs them 
 </>
 ```
 
-Parameters:
+Fields:
 
-- `duration`: the resettable wait time
-- `limit`: the maximum total wait; `0` means no limit
+- `Duration`: the resettable wait time
+- `Limit`: the maximum total wait; `0` means no limit
 
 Use it for:
 
@@ -162,15 +161,15 @@ Example:
 <>
 	~{
 		frame := &doors.ScopeFrame{}
-		debounce := &doors.ScopeDebounce{}
+		debounce := &doors.ScopeDebounce{
+			Duration: 300 * time.Millisecond,
+			Limit:    600 * time.Millisecond,
+		}
 	}
 
 	<input
 		(doors.AInput{
-			Scope: []doors.Scope{
-				frame.Scope(false),
-				debounce.Scope(300 * time.Millisecond, 600 * time.Millisecond),
-			},
+			Scope: frame.Scope(false).And(debounce),
 			On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
 				return false
 			},
@@ -178,7 +177,7 @@ Example:
 
 	<button
 		(doors.AClick{
-			Scope: []doors.Scope{frame.Scope(true)},
+			Scope: frame.Scope(true),
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				return false
 			},
@@ -208,7 +207,7 @@ Example:
 
 	<button
 		(doors.AClick{
-			Scope: []doors.Scope{scope.Scope(1)},
+			Scope: scope.Scope(1),
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				return false
 			},
@@ -218,7 +217,7 @@ Example:
 
 	<button
 		(doors.AClick{
-			Scope: []doors.Scope{scope.Scope(1)},
+			Scope: scope.Scope(1),
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				return false
 			},
@@ -228,7 +227,7 @@ Example:
 
 	<button
 		(doors.AClick{
-			Scope: []doors.Scope{scope.Scope(0)},
+			Scope: scope.Scope(0),
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				return false
 			},
@@ -260,25 +259,25 @@ Compared to debounce:
 - debounce waits before sending anything
 - latest can replace work that is already in progress
 
+Canceling an in-flight hook is a client-side effect. The request may already have reached the server, so do not rely on `ScopeLatest` to prevent handler execution or protect writes. It is most useful for ending previous indication, ignoring stale results, and keeping the newest interaction in control of the UI.
+
 ## Pipelines
 
-The `Scope` field accepts a slice, so scopes can be combined into a pipeline.
+Scopes are joinable, so they can be chained into a pipeline with `.And(...)` (or `doors.JoinScopes(...)`).
 
 ```gox
 <>
 	~{
 		frame := &doors.ScopeFrame{}
-		debounce := &doors.ScopeDebounce{}
+		debounce := &doors.ScopeDebounce{
+			Duration: 150 * time.Millisecond,
+		}
 		serial := &doors.ScopeSerial{}
 	}
 
 	<button
 		(doors.AClick{
-			Scope: []doors.Scope{
-				frame.Scope(false),
-				debounce.Scope(150 * time.Millisecond, 0),
-				serial,
-			},
+			Scope: frame.Scope(false).And(debounce).And(serial),
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 				return false
 			},

@@ -38,21 +38,21 @@ type pointerEventHook struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p *pointerEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
@@ -85,21 +85,21 @@ type AClick struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p AClick) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -124,21 +124,21 @@ type APointerDown struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p APointerDown) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -163,21 +163,21 @@ type APointerUp struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p APointerUp) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -202,21 +202,21 @@ type APointerMove struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p APointerMove) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -241,21 +241,21 @@ type APointerOver struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p APointerOver) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -280,21 +280,21 @@ type APointerOut struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p APointerOut) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -319,21 +319,21 @@ type APointerEnter struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p APointerEnter) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -358,21 +358,21 @@ type APointerLeave struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p APointerLeave) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -397,21 +397,21 @@ type APointerCancel struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p APointerCancel) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -436,21 +436,21 @@ type AGotPointerCapture struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p AGotPointerCapture) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -475,21 +475,21 @@ type ALostPointerCapture struct {
 	ExactTarget bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Actions to run before the hook request.
 	// Optional.
-	Before []Action
+	Before Actions
 	// Backend event handler.
-	// Receives a typed REvent[PointerEvent].
+	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
 	// Required.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
-	OnError []Action
+	OnError Actions
 }
 
 func (p ALostPointerCapture) Proxy(cur gox.Cursor, elem gox.Elem) error {

@@ -16,7 +16,6 @@ package doors
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 )
 
@@ -26,17 +25,20 @@ type examplePath struct {
 	ID   int
 }
 
-func ExampleNewRouter() {
-	router := NewRouter()
+func ExampleNewLocation() {
+	loc, err := NewLocation(examplePath{Post: true, ID: 42})
+	if err != nil {
+		panic(err)
+	}
 
-	UseModel(router, func(r RequestModel, s Source[examplePath]) Response {
-		return ResponseRedirect(examplePath{Post: true, ID: 42}, http.StatusFound)
-	})
+	fmt.Println(loc.String())
+	// Output:
+	// /posts/42
 }
 
 func ExampleNewSource() {
 	count := NewSource(1)
-	label := NewBeam(count, func(v int) string {
+	label := DeriveBeam(count, func(v int) string {
 		return fmt.Sprintf("count:%d", v)
 	})
 

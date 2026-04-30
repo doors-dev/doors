@@ -15,6 +15,7 @@
 package test
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -24,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -31,7 +33,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors"
-	drouter "github.com/doors-dev/doors/internal/router"
+	dpath "github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/gox"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
@@ -47,7 +49,7 @@ func Float(f float64) string {
 type Bro struct {
 	p       int
 	b       *rod.Browser
-	r       doors.Router
+	a       doors.App
 	s       *http.Server
 	closeCh chan struct{}
 	l       net.Listener
@@ -126,31 +128,74 @@ func (s *Bro) url(path string) string {
 }
 
 func NewFragmentBro(b *rod.Browser, f func() Fragment) *Bro {
-	return NewBro(
+	return NewPathBro(b, func(s doors.Source[Path]) gox.Comp {
+		return &Page{
+			Source: s,
+			F:      f(),
+		}
+	})
+}
+
+func NewPathBro(b *rod.Browser, page func(PathLens) gox.Comp, middleware ...doors.Use) *Bro {
+	return NewPathBroOptions(
 		b,
-		func(r doors.Router) {
-			doors.UseModel(r, func(req doors.RequestModel, s doors.Source[Path]) doors.Response {
-				return doors.ResponseComp(&Page{
-					Source: s,
-					F:      f(),
-				})
-			})
-		},
+		page,
+		nil,
+		middleware...,
 	)
 }
 
-func NewBro(browser *rod.Browser, mod func(r doors.Router)) *Bro {
-	return NewBroWrap(browser, mod, nil)
+func NewPathBroOptions(b *rod.Browser, page func(PathLens) gox.Comp, options []doors.With, middleware ...doors.Use) *Bro {
+	adapter, err := dpath.GetModelAdapter[Path]()
+	if err != nil {
+		panic(err)
+	}
+	return NewBroOptions(
+		b,
+		func(ctx context.Context, req doors.Request) gox.Comp {
+			pathLens := doors.DeriveSourceEqual(doors.Router(ctx), func(l doors.Location) Path {
+				m, ok := adapter.Decode(l)
+				if !ok {
+					return Path{}
+				}
+				return *m
+			}, func(prev doors.Location, m Path) doors.Location {
+				loc, err := adapter.Encode(&m)
+				if err != nil {
+					return prev
+				}
+				return loc
+			}, func(new Path, old Path) bool {
+				return reflect.DeepEqual(new, old)
+			})
+			return page(pathLens)
+		},
+		options,
+		middleware...,
+	)
 }
 
-func NewBroWrap(browser *rod.Browser, mod func(r doors.Router), wrap func(http.Handler) http.Handler) *Bro {
-	r := doors.NewRouter()
-	mod(r)
+func NewBro(browser *rod.Browser, page func(context.Context, doors.Request) gox.Comp, middleware ...doors.Use) *Bro {
+	return NewBroOptions(browser, page, nil, middleware...)
+}
+
+func NewBroOptions(browser *rod.Browser, page func(context.Context, doors.Request) gox.Comp, options []doors.With, middleware ...doors.Use) *Bro {
+	return NewBroWrapOptions(browser, page, nil, options, middleware...)
+}
+
+func NewBroWrap(browser *rod.Browser, page func(context.Context, doors.Request) gox.Comp, wrap func(http.Handler) http.Handler, middleware ...doors.Use) *Bro {
+	return NewBroWrapOptions(browser, page, wrap, nil, middleware...)
+}
+
+func NewBroWrapOptions(browser *rod.Browser, page func(context.Context, doors.Request) gox.Comp, wrap func(http.Handler) http.Handler, options []doors.With, middleware ...doors.Use) *Bro {
 	if LimitMode() {
-		rr := r.(*drouter.Router)
-		conf := *rr.Conf()
+		conf := doors.Conf{}
 		conf.InstanceGoroutineLimit = 1
-		doors.UseSystemConf(r, conf)
+		options = append(options, doors.WithConf(conf))
+	}
+	a := doors.NewApp(page, options...)
+	if len(middleware) != 0 {
+		a.Use(middleware...)
 	}
 
 	listener, err := net.Listen("tcp", ":0")
@@ -160,7 +205,7 @@ func NewBroWrap(browser *rod.Browser, mod func(r doors.Router), wrap func(http.H
 	port := listener.Addr().(*net.TCPAddr).Port
 	Host = fmt.Sprintf("http://localhost:%d", port)
 	println("Started on port", port)
-	handler := http.Handler(r)
+	handler := http.Handler(a)
 	if wrap != nil {
 		handler = wrap(handler)
 	}
@@ -178,7 +223,7 @@ func NewBroWrap(browser *rod.Browser, mod func(r doors.Router), wrap func(http.H
 		p:       port,
 		l:       listener,
 		b:       browser,
-		r:       r,
+		a:       a,
 		s:       s,
 		closeCh: ch,
 	}

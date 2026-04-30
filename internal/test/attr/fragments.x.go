@@ -255,7 +255,7 @@ func (d *hookFragment) attr() []gox.Modify {
 				var str string
 				json.Unmarshal(body, &str)
 				d.r.Update(ctx, 1, str)
-				fmt.Fprint(r.W(), len(str))
+				fmt.Fprint(r.ResponseWriter(), len(str))
 				return true
 			},
 		},

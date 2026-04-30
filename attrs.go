@@ -65,10 +65,10 @@ func A(ctx context.Context, a ...Attr) Attr {
 
 type eventAttr[E any] struct {
 	capture   front.Capture
-	onError   []Action
-	before    []Action
-	scope     []Scope
-	indicator []Indicator
+	onError   Actions
+	before    Actions
+	scope     Scopes
+	indicator Indicators
 	on        func(context.Context, RequestEvent[E]) bool
 }
 
@@ -79,10 +79,10 @@ func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 		return errors.New("door: hook registration failed")
 	}
 	front.AttrsAppendCapture(attrs, p.capture, front.Hook{
-		OnError:  intoActions(ctx, p.onError),
-		Before:   intoActions(ctx, p.before),
-		Scope:    front.IntoScopeSet(c, p.scope),
-		Indicate: front.IntoIndicate(p.indicator),
+		OnError:  intoActions(ctx, actionsOrNil(p.onError)),
+		Before:   intoActions(ctx, actionsOrNil(p.before)),
+		Scope:    scopesOrNil(c, p.scope),
+		Indicate: indicatorsOrNil(p.indicator),
 		Hook:     hook,
 	})
 	return nil
@@ -97,7 +97,7 @@ func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		w.WriteHeader(400)
 		return false
 	}
-	return p.on(ctx, &eventRequest[E]{
+	return p.on(ctx, eventRequest[E]{
 		request: request{
 			r:   r,
 			w:   w,

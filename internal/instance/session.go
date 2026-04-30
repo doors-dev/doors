@@ -15,80 +15,121 @@
 package instance
 
 import (
+	//	"net/http"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/instance/utils"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 )
 
-type ScriptOptions struct {
-	Minify bool
-	Gzip   bool
-}
-
-type router interface {
-	SessionCookie() string
-	ResourceRegistry() *resources.Registry
+type App interface {
 	CSP() *common.CSP
-	Adapters() path.Adapters
-	RemoveSession(string)
-	Conf() *common.SystemConf
+	Conf() *common.Conf
 	PathMaker() path.PathMaker
+	RemoveSession(id string)
+	ResourceRegistry() resources.Registry
 }
 
-func NewSession(r router) *Session {
-	sess := &Session{
-		store:     ctex.NewStore(),
-		id:        common.RandId(),
-		instances: make(map[string]AnyInstance),
-		mu:        sync.Mutex{},
-		router:    r,
-		limiter:   newLimiter(r.Conf().SessionInstanceLimit),
+type Session = *session
+
+func NewSession(a App) Session {
+	sess := &session{
+		store:   ctex.NewStore(),
+		id:      common.RandId(),
+		app:     a,
+		limiter: utils.NewLimiter(a.Conf().SessionInstanceLimit),
 	}
 	return sess
 }
 
-type Session struct {
+type session struct {
+	instances  sync.Map
+	killed     atomic.Bool
 	mu         sync.Mutex
 	store      ctex.Store
-	killed     bool
 	id         string
-	instances  map[string]AnyInstance
-	router     router
-	limiter    *limiter
+	app        App
+	limiter    utils.Limiter
 	expireTime time.Time
 	ttlTime    time.Time
 	killTimer  *time.Timer
 }
 
-func (sess *Session) InstanceCount() int {
-	sess.mu.Lock()
-	defer sess.mu.Unlock()
-	return len(sess.instances)
+func (sess *session) App() core.App {
+	return sess.app
 }
 
-func (sess *Session) Store() ctex.Store {
+func (sess *session) Expire(d time.Duration) {
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	if sess.killed.Load() {
+		return
+	}
+	if d == 0 {
+		sess.expireTime = time.Time{}
+	} else {
+		sess.expireTime = time.Now().Add(d)
+	}
+	sess.resetKillTimer()
+}
+
+func (sess Session) ID() string {
+	return sess.id
+}
+
+func (sess Session) Store() ctex.Store {
 	return sess.store
 }
 
-func (sess *Session) Renew(w http.ResponseWriter) bool {
+func (sess Session) Instance(loc path.Location) (Instance, bool) {
+	if sess.killed.Load() {
+		return nil, false
+	}
+	inst := newInstance(sess, loc)
+	sess.instances.Store(inst.ID(), inst)
+	toSuspend := sess.limiter.Add(inst.ID())
+	if toSuspend == "" {
+		return inst, !sess.killed.Load()
+	}
+	instToSuspend, loaded := sess.instances.LoadAndDelete(toSuspend)
+	if !loaded {
+		return inst, !sess.killed.Load()
+	}
+	instToSuspend.(Instance).end(common.EndCauseSuspend)
+	return inst, !sess.killed.Load()
+}
+
+/*
+func (sess *session) InstanceCount() int {
 	sess.mu.Lock()
 	defer sess.mu.Unlock()
-	ttl := sess.router.Conf().SessionTTL
+	return len(sess.instances)
+} */
+
+func (sess *session) Renew(w http.ResponseWriter) bool {
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	if sess.killed.Load() {
+		return false
+	}
+	ttl := sess.app.Conf().SessionTTL
 	sess.ttlTime = time.Now().Add(ttl)
 	if !sess.resetKillTimer() {
 		return false
 	}
 	maxAge := sess.untillKill()
-	if maxAge < sess.router.Conf().RequestTimeout {
+	if maxAge < sess.app.Conf().RequestTimeout {
 		return false
 	}
 	cookie := &http.Cookie{
-		Name:     sess.router.SessionCookie(),
+		Name:     sess.app.PathMaker().SessionCookie(),
 		Value:    sess.id,
 		HttpOnly: true,
 		Path:     "/",
@@ -96,10 +137,10 @@ func (sess *Session) Renew(w http.ResponseWriter) bool {
 		MaxAge:   int(maxAge.Seconds()),
 	}
 	http.SetCookie(w, cookie)
-	return true
+	return !sess.killed.Load()
 }
 
-func (sess *Session) resetKillTimer() bool {
+func (sess *session) resetKillTimer() bool {
 	if sess.killTimer != nil {
 		if !sess.killTimer.Stop() {
 			return false
@@ -119,7 +160,7 @@ func (sess *Session) resetKillTimer() bool {
 	return true
 }
 
-func (sess *Session) killTime() time.Time {
+func (sess *session) killTime() time.Time {
 	if sess.expireTime.IsZero() {
 		return sess.ttlTime
 	}
@@ -129,80 +170,39 @@ func (sess *Session) killTime() time.Time {
 	return sess.expireTime
 }
 
-func (sess *Session) untillKill() time.Duration {
+func (sess *session) untillKill() time.Duration {
 	return time.Until(sess.killTime())
 }
 
-func (sess *Session) AddInstance(inst AnyInstance) bool {
-	sess.mu.Lock()
-	if sess.killed {
-		sess.mu.Unlock()
-		return false
-	}
-	sess.instances[inst.ID()] = inst
-	toSuspend := sess.limiter.add(inst.ID())
-	sess.mu.Unlock()
-	if toSuspend != "" {
-		sess.instances[toSuspend].end(common.EndCauseSuspend)
-	}
-	return true
+func (sess *session) removeInstance(id string) {
+	sess.limiter.Delete(id)
+	sess.instances.Delete(id)
 }
 
-func (sess *Session) removeInstance(id string) {
-	sess.mu.Lock()
-	defer sess.mu.Unlock()
-	if sess.killed {
-		return
-	}
-	sess.limiter.delete(id)
-	delete(sess.instances, id)
-}
-
-func (sess *Session) ID() string {
-	return sess.id
-}
-
-func (sess *Session) GetInstance(id string) (AnyInstance, bool) {
-	sess.mu.Lock()
-	defer sess.mu.Unlock()
-	if sess.killed {
+func (sess *session) GetInstance(id string) (Instance, bool) {
+	if sess.killed.Load() {
 		return nil, false
 	}
-	inst, ok := sess.instances[id]
-	return inst, ok
+	inst, ok := sess.instances.Load(id)
+	if !ok {
+		return nil, false
+	}
+	return inst.(Instance), !sess.killed.Load()
 }
 
-func (sess *Session) Kill() {
-	sess.mu.Lock()
-	if sess.killed {
-		sess.mu.Unlock()
+func (sess *session) Kill() {
+	if !sess.killed.CompareAndSwap(false, true) {
 		return
 	}
-	sess.killed = true
-	sess.mu.Unlock()
-	sess.cleanup()
-}
-
-func (sess *Session) SetExpiration(d time.Duration) {
 	sess.mu.Lock()
-	defer sess.mu.Unlock()
-	if sess.killed {
-		return
-	}
-	if d == 0 {
-		sess.expireTime = time.Time{}
-	} else {
-		sess.expireTime = time.Now().Add(d)
-	}
-	sess.resetKillTimer()
-}
-
-func (sess *Session) cleanup() {
-	sess.router.RemoveSession(sess.id)
 	if sess.killTimer != nil {
 		sess.killTimer.Stop()
 	}
-	for id := range sess.instances {
-		sess.instances[id].end(common.EndCauseKilled)
-	}
+	sess.mu.Unlock()
+	sess.app.RemoveSession(sess.id)
+	sess.instances.Range(func(key, value any) bool {
+		sess.instances.Delete(key)
+		value.(Instance).end(common.EndCauseKilled)
+		return true
+	})
 }

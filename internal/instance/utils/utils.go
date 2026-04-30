@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package instance
+package utils
 
 import (
 	"crypto/sha256"
@@ -21,20 +21,49 @@ import (
 	"sync"
 	"time"
 
-	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
 )
+
+type KillTimer = *killTimer
+
+func NewKillTimer(inst core.Instance) KillTimer {
+	conf := inst.Session().App().Conf()
+	t := &killTimer{
+		initial: conf.InstanceConnectTimeout,
+		regular: conf.InstanceTTL,
+		inst:    inst,
+	}
+	return t
+}
 
 type killTimer struct {
 	mu      sync.Mutex
+	stopped bool
 	initial time.Duration
 	regular time.Duration
 	timer   *time.Timer
-	inst    AnyInstance
+	inst    core.Instance
 }
 
-func (t *killTimer) keepAlive() {
+func (t *killTimer) Stop() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.stopped {
+		return
+	}
+	t.stopped = true
+	if t.timer == nil {
+		return
+	}
+	t.timer.Stop()
+}
+
+func (t *killTimer) KeepAlive() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.stopped {
+		return
+	}
 	if t.timer != nil {
 		stopped := t.timer.Stop()
 		if !stopped {
@@ -45,11 +74,13 @@ func (t *killTimer) keepAlive() {
 	}
 	t.timer = time.AfterFunc(t.initial, func() {
 		slog.Debug("inactive instance killed by timeout", "type", "message", "instance_id", t.inst.ID())
-		t.inst.end(common.EndCauseKilled)
+		t.inst.Kill()
 	})
 }
 
-func newImportMap() *importMap {
+type ImportMap = *importMap
+
+func NewImportMap() *importMap {
 	return &importMap{
 		Imports: make(map[string]string),
 	}
@@ -60,13 +91,13 @@ type importMap struct {
 	Imports map[string]string `json:"imports"`
 }
 
-func (i *importMap) Add(specifier string, path string) {
+func (i ImportMap) Add(specifier string, path string) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	i.Imports[specifier] = path
 }
 
-func (i *importMap) generate() (content []byte, hash []byte) {
+func (i ImportMap) Generate() (content []byte, hash []byte) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if len(i.Imports) == 0 {

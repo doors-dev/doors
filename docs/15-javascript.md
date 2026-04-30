@@ -81,6 +81,16 @@ In practice:
 - `bundle` is for modules with dependencies
 - `raw` is for exact browser behavior
 
+For debugging built scripts, disable minification in app configuration:
+
+```go
+app := doors.NewApp(page,
+	doors.ESProfile{Minify: false},
+)
+```
+
+That keeps **Doors** transformations active while making the generated JavaScript easier to read in browser devtools.
+
 ### Managed Scripts
 
 A script is managed when it is:
@@ -141,8 +151,8 @@ Common `src` shapes are:
 - buildable app content: `ResourceLocalFS`, `ResourceFS`, `ResourceBytes`, `ResourceString`
 - already-hosted local URL: plain string such as `"/assets/app.js"`
 - external URL: `doors.ResourceExternal("https://cdn.example.com/app.js")` for a direct browser URL that also participates in CSP source collection
-- handler-backed source: `doors.ResourceHook(...)`, `doors.ResourceHandler(...)`
-- proxy-backed source: `doors.ResourceProxy(...)`
+- handler-backed resource: `doors.ResourceHook(...)`, `doors.ResourceHandler(...)`
+- proxy-backed resource: `doors.ResourceProxy(...)`
 
 Buildable `src` scripts go through the JS pipeline unless `raw` is used. Plain strings are just direct URLs.
 

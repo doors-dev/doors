@@ -37,12 +37,12 @@ type AHook[T any] struct {
 	Name string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Backend handler for the hook.
-	// Receives typed input (T, unmarshaled from JSON) through RHook,
+	// Receives typed input (T, unmarshaled from JSON) through RequestHook,
 	// and returns any output which will be marshaled to JSON.
 	// Should return true when the hook is complete and can be removed.
 	// Required.
@@ -60,8 +60,8 @@ func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		return errors.New("door: hook registration failed")
 	}
 	front.AttrsSetHook(attrs, h.Name, front.Hook{
-		Scope:    front.IntoScopeSet(core, h.Scope),
-		Indicate: front.IntoIndicate(h.Indicator),
+		Scope:    scopesOrNil(core, h.Scope),
+		Indicate: indicatorsOrNil(h.Indicator),
 		Hook:     hook,
 	})
 	return nil
@@ -106,10 +106,10 @@ type ARawHook struct {
 	Name string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
-	Scope []Scope
+	Scope Scopes
 	// Visual indicators while the hook is running.
 	// Optional.
-	Indicator []Indicator
+	Indicator Indicators
 	// Backend handler for the hook.
 	// Provides raw access via RRawHook (body reader, multipart parser).
 	// Should return true when the hook is complete and can be removed.
@@ -128,15 +128,15 @@ func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		return errors.New("door: hook registration failed")
 	}
 	front.AttrsSetHook(attrs, h.Name, front.Hook{
-		Scope:    front.IntoScopeSet(core, h.Scope),
-		Indicate: front.IntoIndicate(h.Indicator),
+		Scope:    scopesOrNil(core, h.Scope),
+		Indicate: indicatorsOrNil(h.Indicator),
 		Hook:     hook,
 	})
 	return nil
 }
 
 func (h *ARawHook) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	return h.On(ctx, &request{
+	return h.On(ctx, request{
 		r:   r,
 		w:   w,
 		ctx: ctx,

@@ -157,7 +157,7 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 						Segments: []string{"active"},
 					},
 					Active: doors.Active{
-						Indicator: doors.IndicatorOnlyClass("active"),
+						Indicator: doors.IndicateClass("active"),
 					},
 				} <a id="active-full">active-full</a>
 				~>doors.ALink{
@@ -166,7 +166,7 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 					},
 					Active: doors.Active{
 						PathMatcher: doors.PathMatcherStarts(),
-						Indicator: doors.IndicatorOnlyClass("active"),
+						Indicator: doors.IndicateClass("active"),
 					},
 				} <a id="active-starts">active-starts</a>
 				~>doors.ALink{
@@ -175,7 +175,7 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 					},
 					Active: doors.Active{
 						PathMatcher: doors.PathMatcherSegments(0),
-						Indicator: doors.IndicatorOnlyClass("active"),
+						Indicator: doors.IndicateClass("active"),
 					},
 				} <a id="active-segments">active-segments</a>
 				~>doors.ALink{
@@ -186,10 +186,8 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 						),
 					},
 					Active: doors.Active{
-						QueryMatcher: []doors.QueryMatcher{
-							doors.QueryMatcherIgnoreAll(),
-						},
-						Indicator: doors.IndicatorOnlyClass("active"),
+						QueryMatcher: doors.QueryMatcherIgnoreAll(),
+						Indicator: doors.IndicateClass("active"),
 					},
 				} <a id="active-ignore-all">active-ignore-all</a>
 				~>doors.ALink{
@@ -202,12 +200,8 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 						),
 					},
 					Active: doors.Active{
-						QueryMatcher: []doors.QueryMatcher{
-							doors.QueryMatcherIgnoreSome("page"),
-							doors.QueryMatcherSome("mode"),
-							doors.QueryMatcherIfPresent("optional"),
-						},
-						Indicator: doors.IndicatorOnlyClass("active"),
+						QueryMatcher: doors.QueryMatcherIgnoreSome("page").And(doors.QueryMatcherSome("mode")).And(doors.QueryMatcherIfPresent("optional")),
+						Indicator: doors.IndicateClass("active"),
 					},
 				} <a id="active-query">active-query</a>
 				~>doors.ALink{
@@ -220,8 +214,8 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 						),
 					},
 					Active: doors.Active{
-						QueryMatcher: doors.QueryMatcherOnlyIgnoreSome("page"),
-						Indicator: doors.IndicatorOnlyClass("active"),
+						QueryMatcher: doors.QueryMatcherIgnoreSome("page"),
+						Indicator: doors.IndicateClass("active"),
 					},
 				} <a id="active-only-ignore-some">active-only-ignore-some</a>
 				~>doors.ALink{
@@ -233,8 +227,8 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 						),
 					},
 					Active: doors.Active{
-						QueryMatcher: doors.QueryMatcherOnlySome("mode"),
-						Indicator: doors.IndicatorOnlyClass("active"),
+						QueryMatcher: doors.QueryMatcherSome("mode").And(doors.QueryMatcherIgnoreAll()),
+						Indicator: doors.IndicateClass("active"),
 					},
 				} <a id="active-only-some">active-only-some</a>
 				~>doors.ALink{
@@ -246,8 +240,8 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 						),
 					},
 					Active: doors.Active{
-						QueryMatcher: doors.QueryMatcherOnlyIfPresent("optional"),
-						Indicator: doors.IndicatorOnlyClass("active"),
+						QueryMatcher: doors.QueryMatcherIfPresent("optional").And(doors.QueryMatcherIgnoreAll()),
+						Indicator: doors.IndicateClass("active"),
 					},
 				} <a id="active-only-if-present">active-only-if-present</a>
 				~>doors.ALink{
@@ -256,9 +250,9 @@ elem pageLocationActive(b doors.Source[doors.Location]) {
 					},
 					Fragment: "details",
 					Active: doors.Active{
-						QueryMatcher: doors.QueryMatcherOnlyIgnoreAll(),
+						QueryMatcher: doors.QueryMatcherIgnoreAll(),
 						FragmentMatch: true,
-						Indicator: doors.IndicatorOnlyClass("active"),
+						Indicator: doors.IndicateClass("active"),
 					},
 				} <a id="active-fragment">active-fragment</a>
 			</div>
@@ -383,6 +377,15 @@ elem pageError(err error) {
 	</html>
 }
 
+elem plainErrorPage(err error) {
+	<html>
+		<body>
+			<div id="path">error</div>
+			<div id="error-message">~(err.Error())</div>
+		</body>
+	</html>
+}
+
 elem static(path string, code int) {
 	<html>
 		<head></head>
@@ -440,24 +443,287 @@ elem pageC(b doors.Source[PathC]) {
 			
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					r.After(doors.ActionOnlyLocationAssign(PathB{}))
+					r.After(doors.ActionLocationAssign{Model: PathB{}})
 					return false
 				},
 			} <button id="assign_after">assign_after</button>
 			
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					r.After(doors.ActionOnlyLocationReplace(PathB{}))
+					r.After(doors.ActionLocationReplace{Model: PathB{}})
 					return false
 				},
 			} <button id="replace_after">replace_after</button>
 			
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					r.After(doors.ActionOnlyLocationReload())
+					r.After(doors.ActionLocationReload{})
 					return false
 				},
 			} <button id="reload_after">reload_after</button>
 		</body>
 	</html>
+}
+
+elem routerBeamDocument() {
+	<html>
+		<body>
+			~(doors.RouterBeam(
+				doors.RouteModelBeam(beamCrossAContent),
+				doors.RouteModelBeam(beamCrossBContent),
+				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+			))
+		</body>
+	</html>
+}
+
+elem beamCrossAContent(b doors.Beam[PathCrossA]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	~(b.Bind(elem(path PathCrossA) {
+		<div id="route-name">cross-a</div>
+		<div id="route-model">~(fmt.Sprint(path.Path))</div>
+	}))
+	~>doors.ALink{
+		Model: PathCrossB{
+			Path: true,
+		},
+	} <a id="beam-cross-next">beam-cross-next</a>
+}
+
+elem beamCrossBContent(b doors.Beam[PathCrossB]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	~(b.Bind(elem(path PathCrossB) {
+		<div id="page-name">cross-b</div>
+		<div id="route-model">~(fmt.Sprint(path.Path))</div>
+	}))
+	~>doors.ALink{
+		Model: PathCrossA{
+			Path: true,
+		},
+	} <a id="beam-cross-prev">beam-cross-prev</a>
+}
+
+elem routeDefault404() {
+	~(doors.Status(404))
+	<div id="route-name">default</div>
+}
+
+elem routerLensCrossDocument() {
+	<html>
+		<body>
+			~(doors.RouterSource(
+				doors.RouteModelSource(crossAContent),
+				doors.RouteModelSource(crossBContent),
+				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+			))
+		</body>
+	</html>
+}
+
+elem crossAContent(l doors.Source[PathCrossA]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	~>doors.ALink{
+		Model: PathCrossB{
+			Path: true,
+		},
+	} <a id="cross-next">cross-next</a>
+}
+
+elem crossBContent(l doors.Source[PathCrossB]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="page-name">cross-b</div>
+}
+
+type CustomRoute struct {
+	ID string
+	Tab string
+}
+
+func (r CustomRoute) Encode() (doors.Location, error) {
+	query := url.Values{}
+	if r.Tab != "" {
+		query.Set("tab", r.Tab)
+	}
+	return doors.Location{
+		Segments: []string{"custom", r.ID},
+		Query: query,
+	}, nil
+}
+
+func deriveCustomRoute(l doors.Location) (CustomRoute, bool) {
+	if len(l.Segments) != 2 || l.Segments[0] != "custom" {
+		return CustomRoute{}, false
+	}
+	return CustomRoute{
+		ID: l.Segments[1],
+		Tab: l.Query.Get("tab"),
+	}, true
+}
+
+func setCustomRoute(l doors.Location, r CustomRoute) doors.Location {
+	next, err := r.Encode()
+	if err != nil {
+		return l
+	}
+	return next
+}
+
+elem routerCombinedLensDocument() {
+	<html>
+		<body>
+			~(doors.RouterSource(
+				doors.RouteModelSource(combinedAContent),
+				doors.RouteDerive(deriveCustomRoute).Source(setCustomRoute, combinedCustomContent),
+				doors.RouteModelSource(combinedQueryContent),
+				doors.RouteMatch(func(l doors.Location) bool {
+					return len(l.Segments) == 1 && l.Segments[0] == "raw"
+				}).Source(combinedRawContent),
+				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+			))
+		</body>
+	</html>
+}
+
+elem combinedAContent(l doors.Source[PathCrossA]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="route-name">model-a</div>
+	~>doors.ALink{
+		Model: CustomRoute{
+			ID: "hello world/one",
+			Tab: "details",
+		},
+	} <a id="model-to-custom">model-to-custom</a>
+	~{
+		tag := "from-model"
+		page := 3
+	}
+	~>doors.ALink{
+		Model: PathQuery{
+			Path: true,
+			Tag: &tag,
+			Page: &page,
+		},
+	} <a id="model-to-query">model-to-query</a>
+	~>doors.ALink{
+		Model: doors.Location{
+			Segments: []string{"raw"},
+			Query: values("from", "model"),
+		},
+	} <a id="model-to-raw">model-to-raw</a>
+}
+
+elem combinedCustomContent(l doors.Source[CustomRoute]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	~(l.Bind(elem(route CustomRoute) {
+		<div id="route-name">custom</div>
+		<div id="custom-id">~(route.ID)</div>
+		<div id="custom-tab">~(route.Tab)</div>
+	}))
+	~>doors.ALink{
+		Model: CustomRoute{
+			ID: "next/child",
+			Tab: "again",
+		},
+	} <a id="custom-next">custom-next</a>
+	~{
+		tag := "from-custom"
+		page := 5
+	}
+	~>doors.ALink{
+		Model: PathQuery{
+			Path: true,
+			Tag: &tag,
+			Page: &page,
+		},
+	} <a id="custom-to-query">custom-to-query</a>
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			l.Update(ctx, CustomRoute{
+				ID: "lens write/value",
+				Tab: "written",
+			})
+			return false
+		},
+	} <button id="custom-lens-write">custom-lens-write</button>
+}
+
+elem combinedQueryContent(l doors.Source[PathQuery]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	~(l.Bind(elem(path PathQuery) {
+		<div id="route-name">query</div>
+		<div id="tag">
+			~(if path.Tag != nil {
+				~(*path.Tag)
+			})
+		</div>
+		<div id="page-value">
+			~(if path.Page != nil {
+				~(fmt.Sprint(*path.Page))
+			})
+		</div>
+	}))
+	~>doors.ALink{
+		Model: doors.Location{
+			Segments: []string{"raw"},
+			Query: values("from", "query"),
+		},
+	} <a id="query-to-raw">query-to-raw</a>
+}
+
+elem combinedRawContent(l doors.Source[doors.Location]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	~(l.Bind(elem(location doors.Location) {
+		<div id="route-name">raw</div>
+		<div id="raw-from">~(location.Query.Get("from"))</div>
+	}))
+	~>doors.ALink{
+		Model: PathCrossA{
+			Path: true,
+		},
+	} <a id="raw-to-model">raw-to-model</a>
+}
+
+elem routerCombinedBeamDocument() {
+	<html>
+		<body>
+			~(doors.RouterBeam(
+				doors.RouteModelBeam(beamCrossAContent),
+				doors.RouteDerive(deriveCustomRoute).Beam(combinedCustomBeamContent),
+				doors.RouteModelBeam(combinedQueryBeamContent),
+				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+			))
+		</body>
+	</html>
+}
+
+elem combinedCustomBeamContent(b doors.Beam[CustomRoute]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	~(b.Bind(elem(route CustomRoute) {
+		<div id="route-name">custom-beam</div>
+		<div id="custom-id">~(route.ID)</div>
+		<div id="custom-tab">~(route.Tab)</div>
+	}))
+	~>doors.ALink{
+		Model: CustomRoute{
+			ID: "beam next",
+			Tab: "read",
+		},
+	} <a id="beam-custom-next">beam-custom-next</a>
+	~>doors.ALink{
+		Model: PathCrossA{
+			Path: true,
+		},
+	} <a id="beam-custom-to-model">beam-custom-to-model</a>
+}
+
+elem combinedQueryBeamContent(b doors.Beam[PathQuery]) {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	~(b.Bind(elem(path PathQuery) {
+		<div id="route-name">query-beam</div>
+		<div id="tag">
+			~(if path.Tag != nil {
+				~(*path.Tag)
+			})
+		</div>
+	}))
 }
