@@ -251,7 +251,7 @@ func (r *runtime) loop() {
 			r.pool[num] <- queue.PopFront()
 		}
 	}
-	for range len(r.pool) {
+	for range workerCount {
 		num := <-r.hot
 		close(r.pool[num])
 	}
