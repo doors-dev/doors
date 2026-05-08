@@ -82,7 +82,7 @@ See [Configuration](./21-configuration.md) for the full list.
 
 ## Middleware
 
-`app.Use(...)` adds standard `func(http.Handler) http.Handler` middleware in front of the page handler. Middleware sees every request *before* **Doors** renders, so it can short-circuit static files, set headers, gate access, log, or hand off to another mux.
+`app.Use(...)` adds standard `func(http.Handler) http.Handler` middleware in front of the page handler. It can short-circuit static files, set headers, gate access, log, or hand off to another mux before **Doors** renders a page. **Doors** system endpoints under `/~/...` are handled by the app itself; wrap the app in outer middleware if those requests must also be intercepted.
 
 ### UseFS
 

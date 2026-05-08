@@ -53,7 +53,7 @@ app := doors.NewApp(page, doors.WithID("blue"))
 This value is used in two places:
 
 - **Doors** runtime URLs are built under a prefix like `/~/blue/...`
-- the **Doors** session cookie name becomes `d0rblue`
+- the **Doors** session cookie name becomes `d0r-blue`
 
 That separation is especially useful when you run multiple **Doors** deployments side by side, for example:
 

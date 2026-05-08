@@ -25,11 +25,6 @@ import (
 )
 
 func NewPathMaker(serverID string) PathMaker {
-	if serverID == "" {
-		serverID = "0"
-	} else if strings.Contains(serverID, "/") {
-		panic("server id can't contain \"/\"")
-	}
 	return PathMaker{
 		sessionCookie: "d0r-" + serverID,
 		serverID:      serverID,

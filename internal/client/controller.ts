@@ -82,9 +82,6 @@ class Solitaire {
 		}
 		this.top.collect(a, this)
 		const tail = a[a.length - 1]
-		if (tail.end < this.cursor_) {
-			debugger;
-		}
 		this.cursor_ = tail.end + 1
 		return a.filter(p => !p.isFiller)
 	}
@@ -461,20 +458,23 @@ class Controller {
 		this.ready = new Promise((res) => {
 			ready = res
 		})
-		window.addEventListener("pagehide", () => {
-			this.sleep()
-		})
-		document.addEventListener("visibilitychange", () => {
-			if (!document.hidden) {
-				this.showed()
-			} else {
-				this.hidden()
-			}
-		})
 		document.addEventListener("DOMContentLoaded", () => {
 			this.onReady()
 			ready()
 		})
+		const syncVisibility = () => {
+			if (document.hidden) {
+				this.hidden()
+			} else {
+				this.showed()
+			}
+		}
+		window.addEventListener("pagehide", () => this.sleep())
+		window.addEventListener("pageshow", syncVisibility)
+		document.addEventListener("visibilitychange", syncVisibility)
+		if (document.hidden) {
+			this.hidden()
+		}
 		this.roll()
 	}
 	private ttlTimer = new ReliableTimer(ttl, () => this.suspend())
@@ -515,6 +515,9 @@ class Controller {
 			this.rolling_ = true
 			this.delay_.wait().then(() => {
 				this.rolling_ = false
+				if (this.state_ != state.active) {
+					return
+				}
 				this.connect_()
 			})
 			return

@@ -156,9 +156,6 @@ func TestPathMakerAndMatch(t *testing.T) {
 	if pm.Prefix() != "/~/blue" {
 		t.Fatalf("unexpected prefix: %q", pm.Prefix())
 	}
-	if zero := NewPathMaker(""); zero.ID() != "0" {
-		t.Fatalf("expected empty server id to normalize to 0, got %q", zero.ID())
-	}
 
 	hookPath := pm.Hook("inst1", 20, "file.txt")
 	req := httptest.NewRequest("GET", hookPath+"?t=7", nil)
@@ -210,13 +207,6 @@ func TestPathMakerAndMatch(t *testing.T) {
 	if _, ok := pm.Match(httptest.NewRequest("GET", "/~/other/h/x/1/2", nil)); ok {
 		t.Fatal("expected wrong prefix to fail matching")
 	}
-
-	defer func() {
-		if recover() == nil {
-			t.Fatal("expected slash in server id to panic")
-		}
-	}()
-	_ = NewPathMaker("bad/id")
 }
 
 func TestPathValidationErrors(t *testing.T) {

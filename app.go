@@ -3,6 +3,7 @@ package doors
 import (
 	"context"
 	"net/http"
+	"net/url"
 
 	"github.com/doors-dev/doors/internal/app"
 	"github.com/doors-dev/doors/internal/common"
@@ -43,6 +44,9 @@ func WithCSP(csp CSP) With {
 
 // WithID sets the stable app id used for generated names and session cookies.
 func WithID(id string) With {
+	if id == url.PathEscape(id) {
+		panic("server ID must be URL compatible without escaping")
+	}
 	return optionFunc(func(o *app.Options) {
 		o.ID = id
 	})

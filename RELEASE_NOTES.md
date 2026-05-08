@@ -24,7 +24,7 @@ See [App](./docs/04-app.md).
 
 ### Middleware and static files
 
-Static files and request pre-processing now use app middleware:
+Static files and page request pre-processing now use app middleware:
 
 ```go
 app.Use(

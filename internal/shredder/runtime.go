@@ -72,7 +72,7 @@ type task struct {
 func (t task) runUnsafe() {
 	canceled := t.ctx.Err() != nil
 	if canceled {
-		t.cancel()
+		t.cancel(nil)
 		return
 	}
 	defer t.callback(nil)
@@ -82,7 +82,7 @@ func (t task) runUnsafe() {
 func (t task) run(r *runtime) {
 	canceled := t.ctx.Err() != nil || r.ctx.Err() != nil
 	if canceled {
-		t.cancel()
+		t.cancel(r)
 		return
 	}
 	err := catch(t.fun, true)
@@ -95,8 +95,18 @@ func (t task) run(r *runtime) {
 	t.callback(err)
 }
 
-func (t task) cancel() {
-	t.fun(false)
+func (t task) cancel(r *runtime) {
+	if r == nil {
+		t.fun(false)
+		if t.callback != nil {
+			t.callback(context.Canceled)
+		}
+		return
+	}
+	err := catch(t.fun, false)
+	if err != nil {
+		r.onPanic(err)
+	}
 	if t.callback == nil {
 		return
 	}
@@ -157,7 +167,7 @@ func (r Runtime) Submit(ctx context.Context, fun func(bool), callback func(error
 	}
 	t := task{ctx, fun, callback}
 	if r.ctx.Err() != nil {
-		t.cancel()
+		t.cancel(r)
 		return
 	}
 	ok := r.submitHot(t)
@@ -170,9 +180,9 @@ func (r Runtime) Submit(ctx context.Context, fun func(bool), callback func(error
 func (r *runtime) submitCold(t task) {
 	select {
 	case <-t.ctx.Done():
-		t.cancel()
+		t.cancel(r)
 	case <-r.ctx.Done():
-		t.cancel()
+		t.cancel(r)
 	case r.cold <- t:
 	}
 }

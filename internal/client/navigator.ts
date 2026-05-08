@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { id, prefix } from "./params"
-import { arraysEqual, scrollInto } from "./lib"
+import { id, prefix, requestTimeout } from "./params"
+import { AbortTimer, arraysEqual, scrollInto } from "./lib"
 import indicator from "./indicator"
 import doors from "./door";
 
@@ -199,15 +199,19 @@ export class Navigator {
 	}
 
 	private async pop(): Promise<void> {
+		const abortTimer = new AbortTimer(requestTimeout)
 		try {
 			const r = await fetch(`${prefix}/u/${id}${this.urlCurrentString()}`, {
 				method: "GET",
+				signal: abortTimer.signal,
 			});
 			if (!r.ok) {
 				throw new Error("code " + r.status);
 			}
 		} catch (e) {
 			location.reload()
+		} finally {
+			abortTimer.cancel()
 		}
 	}
 
