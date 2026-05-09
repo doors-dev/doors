@@ -24,12 +24,12 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// RouteModelSource creates a URL route for path model M and renders a writable
+// RouteModel creates a URL route for path model M and renders a writable
 // source for the decoded model.
 //
 // The route matches when the current [Location] decodes into M. Updating the
 // source re-encodes M back into the current location.
-func RouteModelSource[M any, C gox.Comp](render func(Source[M]) C) RouteSource[Location] {
+func RouteModel[M any, C gox.Comp](render func(Source[M]) C) RouteSource[Location] {
 	a, err := path.GetModelAdapter[M]()
 	if err != nil {
 		slog.Error("Model adapter error", "error", err)
@@ -39,6 +39,11 @@ func RouteModelSource[M any, C gox.Comp](render func(Source[M]) C) RouteSource[L
 		adapter: a,
 		render:  render,
 	}
+}
+
+// Deprecated: Use RouteModel
+func RouteModelSource[M any, C gox.Comp](render func(Source[M]) C) RouteSource[Location] {
+	return RouteModel(render)
 }
 
 type modelSource[M any, C gox.Comp] struct {

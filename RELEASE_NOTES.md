@@ -43,7 +43,7 @@ The current URL is now exposed as `doors.Source[doors.Location]`, and path-model
 
 ```gox
 ~(doors.Route(
-	doors.RouteModelSource(func(p doors.Source[Path]) gox.Comp {
+	doors.RouteModel(func(p doors.Source[Path]) gox.Comp {
 		return Page{path: p}
 	}),
 	doors.RouteLocationDefaultComp(NotFound{}),
@@ -110,7 +110,7 @@ Page factories now return `gox.Comp` directly. The old `doors.Response*` types a
 
 The old common request interface was renamed to `doors.RequestCommon`, while the new `doors.Request` is the page-function request type for cookies, headers, and response headers.
 
-HTTP-level redirects now belong in middleware before the app handler. In-instance reroutes are normal state updates through the location source, such as `doors.Router(ctx)` or a `Source[Path]` received from `RouteModelSource`.
+HTTP-level redirects now belong in middleware before the app handler. In-instance reroutes are normal state updates through the location source, such as `doors.Router(ctx)` or a `Source[Path]` received from `RouteModel`.
 
 ### Door method names
 

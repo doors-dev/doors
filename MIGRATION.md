@@ -35,7 +35,7 @@ The router went away. **Doors** apps now have one page function that returns the
 | Old | New |
 | --- | --- |
 | `doors.NewRouter()` | `doors.NewApp(page, opts...)` |
-| `doors.UseModel(router, h)` | inside the page component: `doors.Route(doors.RouteModelSource(render), …)` |
+| `doors.UseModel(router, h)` | inside the page component: `doors.Route(doors.RouteModel(render), …)` |
 | `doors.UseRoute(router, route)` / `RouteFS` / `RouteDir` / `RouteFile` / `RouteResource` | `app.Use(doors.UseFS(…))` / `UseDir` / `UseFile` / `UseResource` |
 | `doors.UseFallback(router, h)` | mount the app inside a parent mux, or use `app.Use(...)` middleware |
 
@@ -80,7 +80,7 @@ elem (a App) Main() {
     <html>
         <body>
             ~(doors.Route(
-                doors.RouteModelSource(func(p doors.Source[Path]) gox.Comp {
+                doors.RouteModel(func(p doors.Source[Path]) gox.Comp {
                     return Page{path: p}
                 }),
                 doors.RouteLocationDefaultComp(NotFound{}),
@@ -90,7 +90,7 @@ elem (a App) Main() {
 }
 ```
 
-For each old `UseModel(...)` registration, add a route branch such as `RouteModelSource` inside one `Route(...)` call. The renderer receives the same `doors.Source[Path]` it used to — only the wiring moves.
+For each old `UseModel(...)` registration, add a route branch such as `RouteModel` inside one `Route(...)` call. The renderer receives the same `doors.Source[Path]` it used to — only the wiring moves.
 
 ### Per-request setup before rendering
 
@@ -208,11 +208,11 @@ func InitFromRequest(store doors.Store, r doors.RequestCommon) { … }
 
 ## 4. Path Source Wiring
 
-`doors.Source[Path]` is still the type a route renderer receives — that didn't change. What changed is *where* the renderer receives it: as a parameter to a `RouteModelSource(render)` callback inside the page component, instead of as an argument to a `UseModel` handler.
+`doors.Source[Path]` is still the type a route renderer receives — that didn't change. What changed is *where* the renderer receives it: as a parameter to a `RouteModel(render)` callback inside the page component, instead of as an argument to a `UseModel` handler.
 
 | Old | New |
 | --- | --- |
-| `func(req doors.RequestModel, s doors.Source[Path]) doors.Response` (handler) | `func(s doors.Source[Path]) gox.Comp` (route renderer for `RouteModelSource`); or `func(s doors.Beam[Path]) gox.Comp` for `RouteModelBeam` |
+| `func(req doors.RequestModel, s doors.Source[Path]) doors.Response` (handler) | `func(s doors.Source[Path]) gox.Comp` (route renderer for `RouteModel`); or `func(s doors.Beam[Path]) gox.Comp` for `RouteModelBeam` |
 | `doors.NewLocation(ctx, model)` | `doors.NewLocation(model)` (no `ctx`) |
 
 Helper signatures and struct fields holding the path source don't need to change — `doors.Source[Path]` is still the right type. Only the entry-point shape moved.

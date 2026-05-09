@@ -63,7 +63,7 @@ That keeps behavior aligned with what is actually on screen.
 - a `Source` is a writable reactive value, either original state or a derived view
 - a `Beam` is a read-only value derived from state or observed from it
 
-A `Source` is also a `Beam`, so you can read, subscribe, and route from both writable and read-only values. The current URL is a `Source[Location]` — that is why `doors.Route(...)` with `doors.RouteModelSource(...)` gives the matched view a typed `Source` you can write back to.
+A `Source` is also a `Beam`, so you can read, subscribe, and route from both writable and read-only values. The current URL is a `Source[Location]` — that is why `doors.Route(...)` with `doors.RouteModel(...)` gives the matched view a typed `Source` you can write back to.
 
 The important user-facing behavior is consistency. During a render/update pass, a whole rendered branch will observe the same state.
 

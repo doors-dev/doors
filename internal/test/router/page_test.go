@@ -191,7 +191,7 @@ func waitClassNot(t *testing.T, page *rod.Page, selector string, className strin
 }
 
 func TestPageStatic(t *testing.T) {
-	bro := routeBro(doors.RouteModelSource(func(_ doors.Source[PathA]) gox.Elem {
+	bro := routeBro(doors.RouteModel(func(_ doors.Source[PathA]) gox.Elem {
 		return static("a", 0)
 	}))
 	defer bro.Close()
@@ -201,7 +201,7 @@ func TestPageStatic(t *testing.T) {
 }
 
 func TestPageStaticCode(t *testing.T) {
-	bro := routeBro(doors.RouteModelSource(func(_ doors.Source[PathA]) gox.Elem {
+	bro := routeBro(doors.RouteModel(func(_ doors.Source[PathA]) gox.Elem {
 		return static("a", 404)
 	}))
 	defer bro.Close()
@@ -382,9 +382,9 @@ func TestRouterBeamCombinedCustomEncoderRoute(t *testing.T) {
 
 func TestLocations(t *testing.T) {
 	bro := routeBro(
-		doors.RouteModelSource(pageA),
-		doors.RouteModelSource(pageC),
-		doors.RouteModelSource(func(_ doors.Source[PathB]) gox.Elem {
+		doors.RouteModel(pageA),
+		doors.RouteModel(pageC),
+		doors.RouteModel(func(_ doors.Source[PathB]) gox.Elem {
 			return static("b", 0)
 		}),
 	)
@@ -419,7 +419,7 @@ func TestLocations(t *testing.T) {
 }
 
 func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
-	bro := routeBro(doors.RouteModelSource(pageQuery))
+	bro := routeBro(doors.RouteModel(pageQuery))
 	defer bro.Close()
 
 	page := bro.Page(t, "/q")
@@ -456,7 +456,7 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 
 func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
 	bro := locationBroWrap(func(l doors.Source[doors.Location]) gox.Comp {
-		return doors.Route(doors.RouteModelSource(pageQuery))
+		return doors.Route(doors.RouteModel(pageQuery))
 	}, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			r.Header.Set(zombieHeader, "1")
@@ -499,7 +499,7 @@ func TestPageLoadTimeout(t *testing.T) {
 		doors.WithErrorPage(func(_ *http.Request, err error) gox.Elem {
 			return plainErrorPage(err)
 		}),
-	}, doors.RouteModelSource(func(_ doors.Source[PathSlow]) gox.Elem {
+	}, doors.RouteModel(func(_ doors.Source[PathSlow]) gox.Elem {
 		return pageSlow()
 	}))
 	defer bro.Close()
@@ -528,7 +528,7 @@ func TestPageLoadTimeout(t *testing.T) {
 func TestParallelComponentRender(t *testing.T) {
 	bro := routeBroOptions([]doors.With{
 		doors.WithConf(routerConf(doors.Conf{RequestTimeout: 2 * time.Second})),
-	}, doors.RouteModelSource(func(_ doors.Source[PathParallel]) gox.Elem {
+	}, doors.RouteModel(func(_ doors.Source[PathParallel]) gox.Elem {
 		return pageParallel()
 	}))
 	defer bro.Close()
@@ -654,7 +654,7 @@ func TestActiveLinkMatchersByClick(t *testing.T) {
 }
 
 func TestPathModelEscapedSegmentDecodeAndEncode(t *testing.T) {
-	bro := routeBro(doors.RouteModelSource(pageEscaped))
+	bro := routeBro(doors.RouteModel(pageEscaped))
 	defer bro.Close()
 
 	page := bro.Page(t, "/escaped/hello%20world%2Fagain")
@@ -673,9 +673,9 @@ func TestPathModelEscapedSegmentDecodeAndEncode(t *testing.T) {
 
 func TestAfterAssign(t *testing.T) {
 	bro := routeBro(
-		doors.RouteModelSource(pageA),
-		doors.RouteModelSource(pageC),
-		doors.RouteModelSource(func(_ doors.Source[PathB]) gox.Elem {
+		doors.RouteModel(pageA),
+		doors.RouteModel(pageC),
+		doors.RouteModel(func(_ doors.Source[PathB]) gox.Elem {
 			return static("b", 0)
 		}),
 	)
@@ -692,9 +692,9 @@ func TestAfterAssign(t *testing.T) {
 
 func TestAfterReplace(t *testing.T) {
 	bro := routeBro(
-		doors.RouteModelSource(pageA),
-		doors.RouteModelSource(pageC),
-		doors.RouteModelSource(func(_ doors.Source[PathB]) gox.Elem {
+		doors.RouteModel(pageA),
+		doors.RouteModel(pageC),
+		doors.RouteModel(func(_ doors.Source[PathB]) gox.Elem {
 			return static("b", 0)
 		}),
 	)
@@ -711,9 +711,9 @@ func TestAfterReplace(t *testing.T) {
 
 func TestAfterReload(t *testing.T) {
 	bro := routeBro(
-		doors.RouteModelSource(pageA),
-		doors.RouteModelSource(pageC),
-		doors.RouteModelSource(func(_ doors.Source[PathB]) gox.Elem {
+		doors.RouteModel(pageA),
+		doors.RouteModel(pageC),
+		doors.RouteModel(func(_ doors.Source[PathB]) gox.Elem {
 			return static("b", 0)
 		}),
 	)

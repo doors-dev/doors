@@ -116,7 +116,7 @@ They go through the browser location API and load the target page again.
 
 That makes them useful when you intentionally want a full page load.
 
-For normal in-app navigation, prefer [Navigation](./09-navigation.md), especially `ALink` or updating the `Source` from `RouteModelSource`.
+For normal in-app navigation, prefer [Navigation](./09-navigation.md), especially `ALink` or updating the `Source` from `RouteModel`.
 
 Built-ins:
 
@@ -191,6 +191,6 @@ The same shape works for `r.After(...)` and `OnError`.
 - Use `doors.Call` when the result does not matter.
 - Use `doors.XCall` mainly with `ActionEmit`.
 - Keep `$on(...)` handlers synchronous and scoped intentionally.
-- Prefer `ALink` or updating the `Source` from `RouteModelSource` for in-app navigation.
+- Prefer `ALink` or updating the `Source` from `RouteModel` for in-app navigation.
 - Use location actions when you intentionally want a full page load.
 - Use `r.After(...)` for success-only follow-up and `OnError` for fallback or recovery behavior.

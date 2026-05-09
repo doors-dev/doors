@@ -512,8 +512,8 @@ elem routerLensCrossDocument() {
 	<html>
 		<body>
 			~(doors.Route(
-				doors.RouteModelSource(crossAContent),
-				doors.RouteModelSource(crossBContent),
+				doors.RouteModel(crossAContent),
+				doors.RouteModel(crossBContent),
 				doors.RouteDefaultComp[doors.Location](routeDefault404()),
 			))
 		</body>
@@ -572,9 +572,9 @@ elem routerCombinedLensDocument() {
 	<html>
 		<body>
 			~(doors.Route(
-				doors.RouteModelSource(combinedAContent),
+				doors.RouteModel(combinedAContent),
 				doors.RouteDerive(deriveCustomRoute).Source(setCustomRoute, combinedCustomContent),
-				doors.RouteModelSource(combinedQueryContent),
+				doors.RouteModel(combinedQueryContent),
 				doors.RouteMatch(func(l doors.Location) bool {
 					return len(l.Segments) == 1 && l.Segments[0] == "raw"
 				}).Source(combinedRawContent),

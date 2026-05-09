@@ -3,7 +3,7 @@
 In **Doors**, in-app navigation happens in one of two ways:
 
 - declaratively with `doors.ALink`
-- programmatically by updating the `Source` received from `RouteModelSource`
+- programmatically by updating the `Source` received from `RouteModel`
 
 Both update the current page instance's location source. The router (see [Routing](./05-routing.md)) reacts by re-matching routes and updating the view in place. No full reload is involved.
 
@@ -152,7 +152,7 @@ For action types, see [Actions](./12-actions.md).
 
 For navigation that doesn't fit an anchor (button, wizard step, form flow), update that `Source` directly.
 
-The source you get from `doors.RouteModelSource(...)` is a typed view of the current URL. Updating it encodes the new path model back into the URL, like an `ALink` click.
+The source you get from `doors.RouteModel(...)` is a typed view of the current URL. Updating it encodes the new path model back into the URL, like an `ALink` click.
 
 For raw locations, update `doors.Router(ctx)` directly.
 

@@ -32,7 +32,7 @@ elem (a App) Main() {
 	<html lang="en">
 		<body>
 			~(doors.Route(
-				doors.RouteModelSource(func(p doors.Source[Path]) gox.Comp {
+				doors.RouteModel(func(p doors.Source[Path]) gox.Comp {
 					return Page(p)
 				}),
 				doors.RouteLocationDefaultComp(NotFound{}),
@@ -42,7 +42,7 @@ elem (a App) Main() {
 }
 ```
 
-`RouteModelSource` matches when the URL decodes into `Path`. The matched view receives `doors.Source[Path]`: a typed view of the current URL. Updating that source encodes the new `Path` back into the URL.
+`RouteModel` matches when the URL decodes into `Path`. The matched view receives `doors.Source[Path]`: a typed view of the current URL. Updating that source encodes the new `Path` back into the URL.
 
 `RouteLocationDefaultComp` is the fallback for URLs that didn't decode. Routes are tried in order and the first match renders, so put fallbacks last.
 
@@ -195,9 +195,9 @@ A page can route on more than one path model — list them in order of specifici
 ```gox
 <>
     ~(doors.Route(
-        doors.RouteModelSource(renderHome),
-        doors.RouteModelSource(renderPost),
-        doors.RouteModelSource(renderCatalog),
+        doors.RouteModel(renderHome),
+        doors.RouteModel(renderPost),
+        doors.RouteModel(renderCatalog),
         doors.RouteLocationDefaultComp(NotFound{}),
     ))
 </>
@@ -270,7 +270,7 @@ The fragment swaps only when the active route changes. Within a matched route, t
 
 In a routing context, that opens up a few common patterns:
 
-- **Match the location without a path model.** The general `RouteValue`, `RouteMatch`, and `RouteDerive` builders work directly on `Location`, and compose freely with `RouteModelSource` / `RouteModelBeam` in the same router. Reach for them when one ad-hoc URL doesn't deserve its own struct.
+- **Match the location without a path model.** The general `RouteValue`, `RouteMatch`, and `RouteDerive` builders work directly on `Location`, and compose freely with `RouteModel` / `RouteModelBeam` in the same router. Reach for them when one ad-hoc URL doesn't deserve its own struct.
 - **Take the location source directly.** `RouteLocationDefaultSource` (and `RouteLocationDefaultBeam`) gives the matched view raw `Source[Location]` / `Beam[Location]`, useful as a fallback or when a page parses URLs itself.
 - **Dispatch on a derived value.** Once a page has a typed `Path`, derive a beam for the variant field and route on it again. The fragment only swaps when the variant actually changes.
 - **Mix URL routing with non-URL state.** Branch on a session-scoped flag, a feature toggle, an auth state — using the same `Route*` builders.
