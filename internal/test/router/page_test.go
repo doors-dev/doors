@@ -47,6 +47,13 @@ func routeBroOptions(options []doors.With, routes ...doors.RouteSource[doors.Loc
 	}, options)
 }
 
+func routerConf(conf doors.Conf) doors.Conf {
+	if test.LimitMode() {
+		conf.InstanceGoroutineLimit = 1
+	}
+	return conf
+}
+
 func locationBro[C gox.Comp](render func(doors.Source[doors.Location]) C) *test.Bro {
 	return test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
 		return render(doors.Router(ctx))
@@ -488,7 +495,7 @@ func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
 
 func TestPageLoadTimeout(t *testing.T) {
 	bro := routeBroOptions([]doors.With{
-		doors.WithConf(doors.Conf{RequestTimeout: time.Second}),
+		doors.WithConf(routerConf(doors.Conf{RequestTimeout: time.Second})),
 		doors.WithErrorPage(func(_ *http.Request, err error) gox.Elem {
 			return plainErrorPage(err)
 		}),
@@ -520,7 +527,7 @@ func TestPageLoadTimeout(t *testing.T) {
 
 func TestParallelComponentRender(t *testing.T) {
 	bro := routeBroOptions([]doors.With{
-		doors.WithConf(doors.Conf{RequestTimeout: 2 * time.Second}),
+		doors.WithConf(routerConf(doors.Conf{RequestTimeout: 2 * time.Second})),
 	}, doors.RouteModelSource(func(_ doors.Source[PathParallel]) gox.Elem {
 		return pageParallel()
 	}))

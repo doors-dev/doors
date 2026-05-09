@@ -191,7 +191,7 @@ func NewBroWrapOptions(browser *rod.Browser, page func(context.Context, doors.Re
 	if LimitMode() {
 		conf := doors.Conf{}
 		conf.InstanceGoroutineLimit = 1
-		options = append(options, doors.WithConf(conf))
+		options = append([]doors.With{doors.WithConf(conf)}, options...)
 	}
 	a := doors.NewApp(page, options...)
 	if len(middleware) != 0 {

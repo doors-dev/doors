@@ -12,8 +12,8 @@ Sections are grouped by the *shape* of the change — each starts with prose, th
 6. [Path Model](#6-path-model) — unchanged for `bool` variants
 7. [Static Files](#7-static-files-old-route-types--middleware) — `RouteFS` / `RouteDir` / `RouteFile` / `RouteResource` → `app.Use(...)` middleware
 8. [State Routing Primitive](#8-state-new-routing-primitive) — `RouteSource` / `RouteBeam` on every reactive value
-9. [Removed Deprecated APIs](#10-removed-deprecated-apis) — `doors.Sub` / `doors.Inject` / old `Door` method names
-10. [Other Removed](#11-other-removed) — full kill list
+9. [Removed Deprecated APIs](#9-removed-deprecated-apis) — `doors.Sub` / `doors.Inject` / old `Door` method names
+10. [Other Removed](#10-other-removed) — full kill list
 11. [Sanity Checks](#quick-sanity-checks-for-migrated-code) — grep recipes for verifying a migrated tree
 
 ## Before You Start
@@ -92,23 +92,23 @@ elem (a App) Main() {
 
 For each old `UseModel(...)` registration, add a `RouteModelSource` (or `RouteModelBeam`) entry inside one `RouterSource` / `RouterBeam`. The renderer receives the same `doors.Source[Path]` it used to — only the wiring moves.
 
-### Pre-render side-effects (auth bootstrap)
+### Per-request setup before rendering
 
-What used to live at the top of a `UseModel` handler now goes into the page function. The session store is reached via `doors.SessionStore(ctx)` in dynamic code.
+What used to live at the top of a `UseModel` handler now goes into the page function. Session and instance stores are reached from the Doors context (`doors.SessionStore(ctx)` / `doors.InstanceStore(ctx)`).
 
 **Old:**
 ```go
 doors.UseModel(r, func(req doors.RequestModel, s doors.Source[Path]) doors.Response {
-    auth := req.SessionStore().Init(authKey{}, func() any { … }).(doors.Source[bool])
-    return doors.ResponseComp(App{auth: auth})
+    state := req.SessionStore().Init(sessionStateKey{}, func() any { … }).(doors.Source[SessionState])
+    return doors.ResponseComp(App{state: state})
 })
 ```
 
 **New:**
 ```go
 app := doors.NewApp(func(ctx context.Context, r doors.Request) gox.Comp {
-    auth := doors.SessionStore(ctx).Init(authKey{}, func() any { … }).(doors.Source[bool])
-    return App{auth: auth}
+    state := doors.SessionStore(ctx).Init(sessionStateKey{}, func() any { … }).(doors.Source[SessionState])
+    return App{state: state}
 })
 ```
 
@@ -118,6 +118,7 @@ app := doors.NewApp(func(ctx context.Context, r doors.Request) gox.Comp {
 
 - HTTP-level redirects → middleware via `app.Use(...)`.
 - Reroute → change the URL inside a page function or live instance via locations source (`doors.Router(ctx)` returns `doors.Source[doors.Location]`)
+
 ---
 
 ## 2. App Configuration
@@ -191,16 +192,16 @@ The interface that used to be called `Request` was renamed `RequestCommon`. The 
 | `RequestRawForm.W()` / `RequestRawHook.W()` | `.ResponseWriter()` |
 | `r.After([]doors.Action{...})` | `r.After(actions)` (a single `doors.Actions` value — see §5) |
 
-A helper that previously took `doors.Request` from a caller (e.g. `func DarkThemeInit(r doors.Request)`) should take `doors.RequestCommon` now. `doors.Request` only fits the page-function signature.
+A helper that previously took `doors.Request` from a caller should take `doors.RequestCommon` now. `doors.Request` only fits the page-function signature.
 
 **Old:**
 ```go
-func DarkThemeInit(store doors.Store, r doors.Request) { … }
+func InitFromRequest(store doors.Store, r doors.Request) { … }
 ```
 
 **New:**
 ```go
-func DarkThemeInit(store doors.Store, r doors.RequestCommon) { … }
+func InitFromRequest(store doors.Store, r doors.RequestCommon) { … }
 ```
 
 ---
@@ -342,7 +343,7 @@ Render-method chain on `RouteValue` / `RouteMatch` / `RouteDerive`:
 
 ---
 
-## 11. Removed Deprecated APIs
+## 9. Removed Deprecated APIs
 
 These were already marked deprecated on `main` and have been deleted. Code that already followed the deprecation hints needs no work.
 
@@ -388,7 +389,7 @@ In `.gox` files, the GoX `elem(...) { … }` shorthand is also accepted:
 
 ---
 
-## 12. Other Removed
+## 10. Other Removed
 
 - `doors.NewRouter`, `doors.UseModel`, `doors.UseRoute`, `doors.UseFallback`, `doors.UseSystemConf`, `doors.UseCSP`, `doors.UseESConf`, `doors.UseServerID`, `doors.UseSessionCallback`, `doors.UseErrorPage`
 - `doors.RouteFS`, `doors.RouteDir`, `doors.RouteFile`, `doors.RouteResource` (use `app.Use(...)` middleware equivalents)
@@ -426,7 +427,6 @@ grep -rnE '\.(Update|Rebase|Replace|Delete|Clear|XUpdate|XRebase|XReplace|XDelet
 
 # RequestRawForm / RequestRawHook .W() → .ResponseWriter()
 grep -rnE '\.W\(\)' .
-
 
 # Outside the doors.NewApp page-function signature, request params should be doors.RequestCommon.
 grep -rnE 'doors\.Request\b' .
