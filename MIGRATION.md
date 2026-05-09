@@ -18,7 +18,7 @@ Sections are grouped by the *shape* of the change — each starts with prose, th
 
 ## Before You Start
 
-Bump the `github.com/doors-dev/doors` dependency first. The new API (`NewApp`, `RouterSource`, etc.) is not in older published versions.
+Bump the `github.com/doors-dev/doors` dependency first. The new API (`NewApp`, `Route`, etc.) is not in older published versions.
 
 ```bash
 go get github.com/doors-dev/doors@latest
@@ -30,12 +30,12 @@ Without this, the rest of the migration won't compile no matter how carefully yo
 
 ## 1. App Entry Point
 
-The router went away. **Doors** apps now have one page function that returns the root component, plus middleware via `app.Use(...)`. URL-to-page dispatch is no longer registration on the router — it happens inside the page component using `RouterSource` / `RouterBeam` and `Route*` builders.
+The router went away. **Doors** apps now have one page function that returns the root component, plus middleware via `app.Use(...)`. URL-to-page dispatch is no longer registration on the router — it happens inside the page component using `Route(...)` and route builders.
 
 | Old | New |
 | --- | --- |
 | `doors.NewRouter()` | `doors.NewApp(page, opts...)` |
-| `doors.UseModel(router, h)` | inside the page component: `doors.RouterSource(doors.RouteModelSource(render), …)` |
+| `doors.UseModel(router, h)` | inside the page component: `doors.Route(doors.RouteModelSource(render), …)` |
 | `doors.UseRoute(router, route)` / `RouteFS` / `RouteDir` / `RouteFile` / `RouteResource` | `app.Use(doors.UseFS(…))` / `UseDir` / `UseFile` / `UseResource` |
 | `doors.UseFallback(router, h)` | mount the app inside a parent mux, or use `app.Use(...)` middleware |
 
@@ -79,7 +79,7 @@ Routing happens **inside** the page component:
 elem (a App) Main() {
     <html>
         <body>
-            ~(doors.RouterSource(
+            ~(doors.Route(
                 doors.RouteModelSource(func(p doors.Source[Path]) gox.Comp {
                     return Page{path: p}
                 }),
@@ -90,7 +90,7 @@ elem (a App) Main() {
 }
 ```
 
-For each old `UseModel(...)` registration, add a `RouteModelSource` (or `RouteModelBeam`) entry inside one `RouterSource` / `RouterBeam`. The renderer receives the same `doors.Source[Path]` it used to — only the wiring moves.
+For each old `UseModel(...)` registration, add a route branch such as `RouteModelSource` inside one `Route(...)` call. The renderer receives the same `doors.Source[Path]` it used to — only the wiring moves.
 
 ### Per-request setup before rendering
 
@@ -322,7 +322,7 @@ A new compact form is also available (one typed `int` field with `|`-separated p
 
 ## 8. State: New Routing Primitive
 
-Every `doors.Source[T]` and `doors.Beam[T]` now has `RouteSource(routes...)` and `RouteBeam(routes...)` methods. URL routing (`doors.RouterSource` / `doors.RouterBeam`) is just routing on `doors.Router(ctx)`. The same `Route*` builders work for any reactive value.
+Every `doors.Source[T]` and `doors.Beam[T]` now has `RouteSource(routes...)` and `RouteBeam(routes...)` methods. URL routing with `doors.Route(...)` is routing on `doors.Router(ctx)`. The same route builders work for any reactive value.
 
 Builders:
 

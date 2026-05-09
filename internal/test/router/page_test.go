@@ -37,13 +37,13 @@ type PathParallel struct {
 
 func routeBro(routes ...doors.RouteSource[doors.Location]) *test.Bro {
 	return test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
-		return doors.RouterSource(routes...)
+		return doors.Route(routes...)
 	})
 }
 
 func routeBroOptions(options []doors.With, routes ...doors.RouteSource[doors.Location]) *test.Bro {
 	return test.NewBroOptions(browser, func(ctx context.Context, r doors.Request) gox.Comp {
-		return doors.RouterSource(routes...)
+		return doors.Route(routes...)
 	}, options)
 }
 
@@ -456,7 +456,7 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 
 func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
 	bro := locationBroWrap(func(l doors.Source[doors.Location]) gox.Comp {
-		return doors.RouterSource(doors.RouteModelSource(pageQuery))
+		return doors.Route(doors.RouteModelSource(pageQuery))
 	}, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			r.Header.Set(zombieHeader, "1")

@@ -180,14 +180,14 @@ For request matching, **Doors** uses the URL it sees, so mount it at `/` unless 
 
 ## Routing
 
-`doors.NewApp` itself does not match URLs. The page function returns a single root component for every request, and routing happens *inside* that component using `doors.RouterSource(...)` (or `doors.RouterBeam(...)`):
+`doors.NewApp` itself does not match URLs. The page function returns a single root component for every request, and routing happens *inside* that component using `doors.Route(...)`:
 
 ```gox
 elem (a App) Main() {
 	<!doctype html>
 	<html lang="en">
 		<body>
-			~(doors.RouterSource(
+			~(doors.Route(
 				doors.RouteModelSource(func(p doors.Source[Path]) gox.Comp {
 					return Page{path: p}
 				}),

@@ -16,7 +16,7 @@
 // values, and server-handled browser interactions.
 //
 // Most apps start with [NewApp], route the current [Location] with
-// [RouterSource] or [RouterBeam], and render dynamic fragments with [Door],
+// [Route], and render dynamic fragments with [Door],
 // [Source], and [Beam]. Event attrs such as [AClick], [ASubmit], and [ALink]
 // connect DOM events, forms, and navigation to Go handlers while still
 // producing regular HTML.

@@ -49,8 +49,7 @@ func Router(ctx context.Context) Source[Location] {
 	}
 }
 
-// RouterBeam returns a renderable component that routes the current URL through
-// read-only route branches.
+// Deprecated: Use Route(...)
 func RouterBeam(routes ...RouteBeam[Location]) gox.EditorComp {
 	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		path := Router(cur.Context())
@@ -58,9 +57,15 @@ func RouterBeam(routes ...RouteBeam[Location]) gox.EditorComp {
 	})
 }
 
-// RouterSource returns a renderable component that routes the current URL through
-// writable route branches.
+// Deprecated: Use Route(...)
 func RouterSource(routes ...RouteSource[Location]) gox.EditorComp {
+	return Route(routes...)
+}
+
+
+// Route returns a renderable component that routes the current URL through
+// writable route branches.
+func Route(routes ...RouteSource[Location]) gox.EditorComp {
 	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		path := Router(cur.Context())
 		return path.RouteSource(routes...).Edit(cur)

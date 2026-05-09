@@ -63,7 +63,7 @@ func (r CustomRoute) Encode() (doors.Location, error) {
 
 ## Link Behavior
 
-ALink always navigates dynamically. A normal click is intercepted, a hook updates the current instance's location source, and the page re-routes in place. `RouterSource` / `RouterBeam` matches the new `Location` — the active route swaps if a different route now matches; otherwise the existing fragment stays and reacts to the new value via its `Source` or `Beam`.
+ALink always navigates dynamically. A normal click is intercepted, a hook updates the current instance's location source, and the page re-routes in place. `Route(...)` matches the new `Location` — the active route swaps if a different route now matches; otherwise the existing fragment stays and reacts to the new value via its `Source` or `Beam`.
 
 The element is also a real anchor — `href` is set from the encoded model. That's there for browser features (middle-click, Cmd-click, "open in new tab", "copy link"), not as a fallback for clicks. Each of those opens the URL in a fresh browser context, handled like any other initial request.
 

@@ -39,10 +39,10 @@ See [App middleware](./docs/04-app.md#middleware).
 
 ### All page routing is reactive state
 
-The current URL is now exposed as `doors.Source[doors.Location]`. `doors.RouterSource(...)` and `doors.RouterBeam(...)` are shortcuts over that source, and path-model routes are declared inside the page component:
+The current URL is now exposed as `doors.Source[doors.Location]`, and path-model routes are declared inside the page component with `doors.Route(...)`:
 
 ```gox
-~(doors.RouterSource(
+~(doors.Route(
 	doors.RouteModelSource(func(p doors.Source[Path]) gox.Comp {
 		return Page{path: p}
 	}),
@@ -174,4 +174,4 @@ The highest-impact migration areas are:
 - move HTTP redirects to middleware and in-instance reroutes to location-source updates
 - update request helper signatures from `doors.Request` to `doors.RequestCommon` outside the page factory
 - replace slice fields for indicators, scopes, actions, and query matchers with joinable values
-- rename removed deprecated `Door`, beam, GoX cursor, and location helpers
+- rename removed deprecated `Door`, beam, and location helpers

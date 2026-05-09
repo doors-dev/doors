@@ -1316,7 +1316,7 @@ func routerLensCrossDocument() gox.Elem {
 			{
 				__e = __c.Submit(); if __e != nil { return }
 //line page.gox:514
-				__e = __c.Any(doors.RouterSource(
+				__e = __c.Any(doors.Route(
 				doors.RouteModelSource(crossAContent),
 				doors.RouteModelSource(crossBContent),
 				doors.RouteDefaultComp[doors.Location](routeDefault404()),
@@ -1432,7 +1432,7 @@ func routerCombinedLensDocument() gox.Elem {
 			{
 				__e = __c.Submit(); if __e != nil { return }
 //line page.gox:574
-				__e = __c.Any(doors.RouterSource(
+				__e = __c.Any(doors.Route(
 				doors.RouteModelSource(combinedAContent),
 				doors.RouteDerive(deriveCustomRoute).Source(setCustomRoute, combinedCustomContent),
 				doors.RouteModelSource(combinedQueryContent),

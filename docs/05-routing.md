@@ -9,7 +9,7 @@ For each page instance, the current URL is exposed as a single `doors.Source[doo
 The everyday shape is:
 
 - declare a path model
-- use `doors.RouterSource(...)` to route the URL through it
+- use `doors.Route(...)` to route the URL through it
 - render a fallback for URLs that don't decode
 
 ```gox
@@ -31,7 +31,7 @@ elem (a App) Main() {
 	<!doctype html>
 	<html lang="en">
 		<body>
-			~(doors.RouterSource(
+			~(doors.Route(
 				doors.RouteModelSource(func(p doors.Source[Path]) gox.Comp {
 					return Page(p)
 				}),
@@ -45,8 +45,6 @@ elem (a App) Main() {
 `RouteModelSource` matches when the URL decodes into `Path`. The matched view receives `doors.Source[Path]`: a typed view of the current URL. Updating that source encodes the new `Path` back into the URL.
 
 `RouteLocationDefaultComp` is the fallback for URLs that didn't decode. Routes are tried in order and the first match renders, so put fallbacks last.
-
-> Use `doors.RouterBeam(...)` with `RouteModelBeam(...)` when the page only needs to read the route. Beam routes can still use `ALink` for navigation; they just cannot update the matched route value directly.
 
 ## Path Models
 
@@ -196,7 +194,7 @@ A page can route on more than one path model — list them in order of specifici
 
 ```gox
 <>
-    ~(doors.RouterSource(
+    ~(doors.Route(
         doors.RouteModelSource(renderHome),
         doors.RouteModelSource(renderPost),
         doors.RouteModelSource(renderCatalog),
@@ -254,14 +252,13 @@ URL routing is one application of a state primitive. `doors.Router(ctx)` returns
 loc := doors.Router(ctx) // doors.Source[doors.Location]
 ```
 
-`doors.RouterSource(routes...)` and `doors.RouterBeam(routes...)` are shortcuts over the current location source:
+`doors.Route(routes...)` routes the current location source:
 
 ```go
 doors.Router(ctx).RouteSource(routes...)
-doors.Router(ctx).RouteBeam(routes...)
 ```
 
-`RouteSource` is the writable form: matched routes may receive a `Source` and write back to the routed value. `RouteBeam` is the read-only form: matched routes receive only a `Beam`.
+Matched routes may receive a `Source` and write back to the routed value.
 
 ### The Primitive
 

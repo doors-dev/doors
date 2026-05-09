@@ -511,7 +511,7 @@ elem routeDefault404() {
 elem routerLensCrossDocument() {
 	<html>
 		<body>
-			~(doors.RouterSource(
+			~(doors.Route(
 				doors.RouteModelSource(crossAContent),
 				doors.RouteModelSource(crossBContent),
 				doors.RouteDefaultComp[doors.Location](routeDefault404()),
@@ -571,7 +571,7 @@ func setCustomRoute(l doors.Location, r CustomRoute) doors.Location {
 elem routerCombinedLensDocument() {
 	<html>
 		<body>
-			~(doors.RouterSource(
+			~(doors.Route(
 				doors.RouteModelSource(combinedAContent),
 				doors.RouteDerive(deriveCustomRoute).Source(setCustomRoute, combinedCustomContent),
 				doors.RouteModelSource(combinedQueryContent),
