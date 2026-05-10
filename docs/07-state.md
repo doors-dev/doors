@@ -250,8 +250,8 @@ The `set` parameter on `RouteDerive(...).Source(...)` writes a derived value bac
 Default routes also have a render-method shape:
 
 - `RouteDefaultComp(comp)` — fixed component
-- `RouteDefaultBeam(render)` — `func(Beam[T]) gox.Elem`
-- `RouteDefault(render)` — `func(Source[T]) gox.Elem`, only inside `source.Route(...)`
+- `RouteDefaultBeam(render)` — `func(Beam[T]) gox.Comp`
+- `RouteDefault(render)` — `func(Source[T]) gox.Comp`, only inside `source.Route(...)`
 
 #### Example
 

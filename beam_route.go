@@ -29,12 +29,12 @@ import (
 //
 // The route matches when the current [Location] decodes into M. Updating the
 // source re-encodes M back into the current location.
-func RouteModel[M any](render func(Source[M]) gox.Elem) RouteSource[Location] {
+func RouteModel[M any, C gox.Comp](render func(Source[M]) C) RouteSource[Location] {
 	a, err := path.GetModelAdapter[M]()
 	if err != nil {
 		slog.Error("Model adapter error", "error", err)
 	}
-	return modelSource[M]{
+	return modelSource[M, C]{
 		err:     err,
 		adapter: a,
 		render:  render,
@@ -42,17 +42,17 @@ func RouteModel[M any](render func(Source[M]) gox.Elem) RouteSource[Location] {
 }
 
 // Deprecated: Use RouteModel
-func RouteModelSource[M any](render func(Source[M]) gox.Elem) RouteSource[Location] {
+func RouteModelSource[M any, C gox.Comp](render func(Source[M]) C) RouteSource[Location] {
 	return RouteModel(render)
 }
 
-type modelSource[M any] struct {
+type modelSource[M any, C gox.Comp] struct {
 	err     error
 	adapter path.ModelAdapter[M]
-	render  func(Source[M]) gox.Elem
+	render  func(Source[M]) C
 }
 
-func (ml modelSource[M]) sourceRender(l Source[Location]) gox.Editor {
+func (ml modelSource[M, C]) sourceRender(l Source[Location]) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		nl := DeriveSourceEqual(l, func(l Location) M {
 			m, ok := ml.adapter.Decode(l)
@@ -74,7 +74,7 @@ func (ml modelSource[M]) sourceRender(l Source[Location]) gox.Editor {
 	})
 }
 
-func (ml modelSource[M]) match(l Location) routeMatch {
+func (ml modelSource[M, C]) match(l Location) routeMatch {
 	if ml.err != nil {
 		return routeMatchFalse
 	}
@@ -84,35 +84,35 @@ func (ml modelSource[M]) match(l Location) routeMatch {
 	return routeMatchFalse
 }
 
-var _ RouteSource[Location] = modelSource[any]{}
+var _ RouteSource[Location] = modelSource[any, gox.Comp]{}
 
 // RouteModelBeam creates a URL route for path model M and renders a read-only
 // beam for the decoded model.
 //
 // The route matches when the current [Location] decodes into M.
-func RouteModelBeam[M any](render func(Beam[M]) gox.Elem) RouteBeam[Location] {
+func RouteModelBeam[M any, C gox.Comp](render func(Beam[M]) C) RouteBeam[Location] {
 	a, err := path.GetModelAdapter[M]()
 	if err != nil {
 		slog.Error("Model adapter error", "error", err)
 	}
-	return modelBeam[M]{
+	return modelBeam[M, C]{
 		err:     err,
 		adapter: a,
 		render:  render,
 	}
 }
 
-type modelBeam[M any] struct {
+type modelBeam[M any, C gox.Comp] struct {
 	err     error
 	adapter path.ModelAdapter[M]
-	render  func(Beam[M]) gox.Elem
+	render  func(Beam[M]) C
 }
 
-func (ml modelBeam[M]) sourceRender(l Source[Location]) gox.Editor {
+func (ml modelBeam[M, C]) sourceRender(l Source[Location]) gox.Editor {
 	return ml.beamRender(l)
 }
 
-func (ml modelBeam[M]) beamRender(l Beam[Location]) gox.Editor {
+func (ml modelBeam[M, C]) beamRender(l Beam[Location]) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		nl := DeriveBeamEqual(l, func(l Location) M {
 			m, ok := ml.adapter.Decode(l)
@@ -127,7 +127,7 @@ func (ml modelBeam[M]) beamRender(l Beam[Location]) gox.Editor {
 	})
 }
 
-func (ml modelBeam[M]) match(l Location) routeMatch {
+func (ml modelBeam[M, C]) match(l Location) routeMatch {
 	if ml.err != nil {
 		return routeMatchFalse
 	}
@@ -137,7 +137,7 @@ func (ml modelBeam[M]) match(l Location) routeMatch {
 	return routeMatchFalse
 }
 
-var _ RouteBeam[Location] = modelBeam[any]{}
+var _ RouteBeam[Location] = modelBeam[any, gox.Comp]{}
 
 // RouteDerive starts a route builder that matches when derive returns ok and
 // exposes the derived value to the route render function.
@@ -233,17 +233,17 @@ func (m MatchRoute[T]) Source(render func(Source[T]) gox.Elem) RouteSource[T] {
 
 // RouteDefault creates a fallback route that always matches and renders a
 // writable source for the full routed value.
-func RouteDefault[T any](render func(Source[T]) gox.Elem) RouteSource[T] {
+func RouteDefault[T any, C gox.Comp](render func(Source[T]) C) RouteSource[T] {
 	return defaultRouteSource[T](func(l Source[T]) gox.Elem {
-		return render(l)
+		return render(l).Main()
 	})
 }
 
 // RouteDefaultBeam creates a fallback route that always matches and renders a
 // read-only beam for the full routed value.
-func RouteDefaultBeam[T any](render func(Beam[T]) gox.Elem) RouteBeam[T] {
+func RouteDefaultBeam[T any, C gox.Comp](render func(Beam[T]) C) RouteBeam[T] {
 	return defaultRouteBeam[T](func(l Beam[T]) gox.Elem {
-		return render(l)
+		return render(l).Main()
 	})
 }
 
