@@ -83,7 +83,7 @@ func WithErrorPage(ep ErrorPage) With {
 //
 // The page function receives the Doors runtime context and request helpers, and
 // returns the component to render for the current request.
-func NewApp(page func(ctx context.Context, r Request) gox.Comp, options ...With) App {
+func NewApp[C gox.Comp](page func(ctx context.Context, r Request) C, options ...With) App {
 	os := app.Options{}
 	for _, o := range options {
 		o.apply(&os)

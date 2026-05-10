@@ -471,7 +471,7 @@ elem routerBeamDocument() {
 			~(doors.RouterBeam(
 				doors.RouteModelBeam(beamCrossAContent),
 				doors.RouteModelBeam(beamCrossBContent),
-				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+				doors.RouteLocationDefaultComp(routeDefault404()),
 			))
 		</body>
 	</html>
@@ -514,7 +514,7 @@ elem routerLensCrossDocument() {
 			~(doors.Route(
 				doors.RouteModel(crossAContent),
 				doors.RouteModel(crossBContent),
-				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+				doors.RouteLocationDefaultComp(routeDefault404()),
 			))
 		</body>
 	</html>
@@ -578,7 +578,7 @@ elem routerCombinedLensDocument() {
 				doors.RouteMatch(func(l doors.Location) bool {
 					return len(l.Segments) == 1 && l.Segments[0] == "raw"
 				}).Source(combinedRawContent),
-				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+				doors.RouteLocationDefaultComp(routeDefault404()),
 			))
 		</body>
 	</html>
@@ -690,7 +690,7 @@ elem routerCombinedBeamDocument() {
 				doors.RouteModelBeam(beamCrossAContent),
 				doors.RouteDerive(deriveCustomRoute).Beam(combinedCustomBeamContent),
 				doors.RouteModelBeam(combinedQueryBeamContent),
-				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+				doors.RouteLocationDefaultComp(routeDefault404()),
 			))
 		</body>
 	</html>

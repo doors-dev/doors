@@ -79,8 +79,8 @@ elem (a App) Main() {
     <html>
         <body>
             ~(doors.Route(
-                doors.RouteModel(func(p doors.Source[Path]) gox.Comp {
-                    return Page{path: p}
+                doors.RouteModel(elem(p doors.Source[Path]) {
+                    ~Page{path: p}
                 }),
                 doors.RouteLocationDefaultComp(NotFound{}),
             ))
@@ -211,7 +211,7 @@ func InitFromRequest(store doors.Store, r doors.RequestCommon) { … }
 
 | Old | New |
 | --- | --- |
-| `func(req doors.RequestModel, s doors.Source[Path]) doors.Response` (handler) | `func(s doors.Source[Path]) gox.Comp` (route renderer for `RouteModel`); or `func(s doors.Beam[Path]) gox.Comp` for `RouteModelBeam` |
+| `func(req doors.RequestModel, s doors.Source[Path]) doors.Response` (handler) | `func(s doors.Source[Path]) gox.Elem` (route renderer for `RouteModel`); or `func(s doors.Beam[Path]) gox.Elem` for `RouteModelBeam` |
 | `doors.NewLocation(ctx, model)` | `doors.NewLocation(model)` (no `ctx`) |
 
 Helper signatures and struct fields holding the path source don't need to change — `doors.Source[Path]` is still the right type. Only the entry-point shape moved.

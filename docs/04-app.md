@@ -188,8 +188,8 @@ elem (a App) Main() {
 	<html lang="en">
 		<body>
 			~(doors.Route(
-				doors.RouteModel(func(p doors.Source[Path]) gox.Comp {
-					return Page{path: p}
+				doors.RouteModel(elem(p doors.Source[Path]) {
+					~Page{path: p}
 				}),
 				doors.RouteLocationDefaultComp(NotFound{}),
 			))

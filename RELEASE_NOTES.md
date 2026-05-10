@@ -43,8 +43,8 @@ The current URL is now exposed as `doors.Source[doors.Location]`, and path-model
 
 ```gox
 ~(doors.Route(
-	doors.RouteModel(func(p doors.Source[Path]) gox.Comp {
-		return Page{path: p}
+	doors.RouteModel(elem(p doors.Source[Path]) {
+		~Page{path: p}
 	}),
 	doors.RouteLocationDefaultComp(NotFound{}),
 ))
