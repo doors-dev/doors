@@ -62,13 +62,20 @@ func RouterSource(routes ...RouteSource[Location]) gox.EditorComp {
 	return Route(routes...)
 }
 
-
 // Route returns a renderable component that routes the current URL through
 // writable route branches.
 func Route(routes ...RouteSource[Location]) gox.EditorComp {
 	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		path := Router(cur.Context())
-		return path.RouteSource(routes...).Edit(cur)
+		return path.Route(routes...).Edit(cur)
+	})
+}
+
+// RouteLocationDefault creates a fallback URL route that renders a
+// writable source for the current [Location].
+func RouteLocationDefault[C gox.Comp](render func(Source[Location]) C) RouteSource[Location] {
+	return defaultRouteSource[Location](func(l Source[Location]) gox.Elem {
+		return render(l).Main()
 	})
 }
 
@@ -76,14 +83,6 @@ func Route(routes ...RouteSource[Location]) gox.EditorComp {
 // read-only beam for the current [Location].
 func RouteLocationDefaultBeam[C gox.Comp](render func(Beam[Location]) C) RouteBeam[Location] {
 	return defaultRouteBeam[Location](func(l Beam[Location]) gox.Elem {
-		return render(l).Main()
-	})
-}
-
-// RouteLocationDefaultSource creates a fallback URL route that renders a
-// writable source for the current [Location].
-func RouteLocationDefaultSource[C gox.Comp](render func(Source[Location]) C) RouteSource[Location] {
-	return defaultRouteSource[Location](func(l Source[Location]) gox.Elem {
 		return render(l).Main()
 	})
 }

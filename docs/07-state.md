@@ -119,7 +119,7 @@ Four rendering strategies drive content from reactive values:
 | `Bind` | Rerenders one fragment on every value change | `Beam` and `Source` |
 | `Effect` | Rerenders the closest dynamic parent when any read value changes | `Beam` and `Source` |
 | `RouteBeam` | Picks one of several read-only views based on the value | `Beam` and `Source` |
-| `RouteSource` | Picks one of several writable views based on the value | `Source` |
+| `Route` | Picks one of several writable views based on the value | `Source` |
 
 ### Bind
 
@@ -200,17 +200,17 @@ It is enough to check only the last `ok`. `Effect` fails only when the context w
 
 ### Routing
 
-`RouteBeam` and `RouteSource` pick one of several views based on a reactive value:
+`RouteBeam` and `source.Route` pick one of several views based on a reactive value:
 
 ```go
 beam.RouteBeam(routes...)      // gox.EditorComp
 source.RouteBeam(routes...)    // gox.EditorComp
-source.RouteSource(routes...)  // gox.EditorComp
+source.Route(routes...)        // gox.EditorComp
 ```
 
 The routed fragment only swaps when the active route changes. Value changes that keep the same route matched do not rerender the route fragment. Instead, the route's render function receives a live `Beam` or `Source` and reacts inside with normal state primitives (`Bind`, `Effect`, derived values).
 
-`RouteBeam` accepts only read-only routes. `RouteSource` accepts both writable and read-only routes, because a source can also be passed where a beam is expected.
+`RouteBeam` accepts only read-only routes. `source.Route` accepts both writable and read-only routes, because a source can also be passed where a beam is expected.
 
 URL routing is just the special case where the source is `doors.Source[doors.Location]`; see [Routing](./05-routing.md) for path models and URL helpers. The mechanics below apply to any reactive value.
 
@@ -240,10 +240,10 @@ The match builders are not yet full routes. Chain one of these to produce one:
 
 | Method | Render signature | Available in |
 | --- | --- | --- |
-| `.Comp(comp)` | fixed `gox.Comp`, no value | `RouteBeam(...)` and `RouteSource(...)` |
-| `.Beam(render)` | `func(Beam[T]) gox.Elem` | `RouteBeam(...)` and `RouteSource(...)` |
-| `.Source(render)` on `RouteMatch` | `func(Source[T]) gox.Elem` | `RouteSource(...)` only |
-| `.Source(set, render)` on `RouteDerive` | `set func(parent, derived) parent`, `render func(Source[derived]) gox.Elem` | `RouteSource(...)` only |
+| `.Comp(comp)` | fixed `gox.Comp`, no value | `RouteBeam(...)` and `source.Route(...)` |
+| `.Beam(render)` | `func(Beam[T]) gox.Elem` | `RouteBeam(...)` and `source.Route(...)` |
+| `.Source(render)` on `RouteMatch` | `func(Source[T]) gox.Elem` | `source.Route(...)` only |
+| `.Source(set, render)` on `RouteDerive` | `set func(parent, derived) parent`, `render func(Source[derived]) gox.Elem` | `source.Route(...)` only |
 
 The `set` parameter on `RouteDerive(...).Source(...)` writes a derived value back into the parent state. Without it, the route would have no way to map a write on `Source[Derived]` back to `Source[Parent]`.
 
@@ -251,7 +251,7 @@ Default routes also have a render-method shape:
 
 - `RouteDefaultComp(comp)` — fixed component
 - `RouteDefaultBeam(render)` — `func(Beam[T]) gox.Comp`
-- `RouteDefaultSource(render)` — `func(Source[T]) gox.Comp`, only inside `RouteSource(...)`
+- `RouteDefault(render)` — `func(Source[T]) gox.Comp`, only inside `source.Route(...)`
 
 #### Example
 

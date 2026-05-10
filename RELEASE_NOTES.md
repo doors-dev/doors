@@ -1,6 +1,6 @@
 # Doors `0.12` Release Notes
 
-Doors `0.12` is a broad release focused on making the public API more direct: an app is now an `http.Handler`, routing is built on reactive state, and the old router/response layer has been removed.
+Doors `0.12` is a broad release focused on making the public API more direct: `App` replaced `Router`, page routing is built entirely on reactive state, writable derived views expand the state toolkit, and several verbose APIs were tightened into a cleaner shape.
 
 This release has migration-impacting changes for applications written against `0.8.x`-`0.10.x`. Start with the [migration guide](./MIGRATION.md) when updating an existing codebase.
 
@@ -62,7 +62,7 @@ See [Routing](./docs/05-routing.md) and [Navigation](./docs/09-navigation.md).
 
 - `DeriveBeam` / `DeriveBeamEqual` create read-only derived views.
 - `DeriveSource` / `DeriveSourceEqual` create writable derived views over a parent source.
-- `RouteBeam` and `RouteSource` branch UI on any reactive value, not only URLs.
+- `Source.Route` and `Beam.RouteBeam` branch UI on any reactive value, not only URLs.
 
 This makes route switching, tab panels, feature gates, and nested state views use the same primitive.
 
@@ -80,8 +80,7 @@ Hook options that used to accept slices now accept a single joinable interface v
 Single helpers can be passed directly, and multiple values compose with `.And(...)` or the `Join*` helpers:
 
 ```go
-Indicator: doors.IndicateClass("loading").
-	And(doors.IndicateAttrQuery("#spinner", "aria-busy", "true"))
+Indicator: doors.IndicateClass("loading").And(doors.IndicateAttrQuery("#spinner", "aria-busy", "true"))
 ```
 
 This removes the old `Only` helper families and makes single-value cases less noisy.
@@ -104,17 +103,9 @@ Use `doors.ESProfile{...}` for simple esbuild settings and `doors.WithESProfiles
 
 See [Configuration](./docs/21-configuration.md) and [JavaScript](./docs/15-javascript.md).
 
-### Request and response cleanup
-
-Page factories now return `gox.Comp` directly. The old `doors.Response*` types are gone.
-
-The old common request interface was renamed to `doors.RequestCommon`, while the new `doors.Request` is the page-function request type for cookies, headers, and response headers.
-
-HTTP-level redirects now belong in middleware before the app handler. In-instance reroutes are normal state updates through the location source, such as `doors.Router(ctx)` or a `Source[Path]` received from `RouteModel`.
-
 ### Door method names
 
-Deprecated `Door` methods were removed in favor of names that describe what changes:
+The low-level `Door` API was renamed into a more concise and expressive system, making direct Door manipulation cleaner:
 
 | Old | New |
 | --- | --- |
@@ -174,4 +165,4 @@ The highest-impact migration areas are:
 - move HTTP redirects to middleware and in-instance reroutes to location-source updates
 - update request helper signatures from `doors.Request` to `doors.RequestCommon` outside the page factory
 - replace slice fields for indicators, scopes, actions, and query matchers with joinable values
-- rename removed deprecated `Door`, beam, and location helpers
+- rename removed older `Door`, beam, and location helpers

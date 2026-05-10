@@ -92,8 +92,11 @@ type Beam[T any] interface {
 type Source[T any] interface {
 	Beam[T]
 
-	// RouteSource returns a renderable component that renders the first matching
+	// Route returns a renderable component that renders the first matching
 	// writable route for this source.
+	Route(routes ...RouteSource[T]) gox.EditorComp
+
+	// Deprecated: Use Route
 	RouteSource(routes ...RouteSource[T]) gox.EditorComp
 
 	// Update sets a new value and propagates it to subscribers and derived
@@ -172,8 +175,12 @@ type source[T any] struct {
 	beam.Source[T]
 }
 
-func (s source[T]) RouteSource(routes ...RouteSource[T]) gox.EditorComp {
+func (s source[T]) Route(routes ...RouteSource[T]) gox.EditorComp {
 	return routeSource(s, routes)
+}
+
+func (s source[T]) RouteSource(routes ...RouteSource[T]) gox.EditorComp {
+	return s.Route(routes...)
 }
 
 func (s source[T]) RouteBeam(routes ...RouteBeam[T]) gox.EditorComp {
@@ -236,8 +243,12 @@ type derivedSource[T1, T2 any] struct {
 	beam.Lens[T1, T2]
 }
 
-func (l derivedSource[T1, T2]) RouteSource(routes ...RouteSource[T2]) gox.EditorComp {
+func (l derivedSource[T1, T2]) Route(routes ...RouteSource[T2]) gox.EditorComp {
 	return routeSource(l, routes)
+}
+
+func (l derivedSource[T1, T2]) RouteSource(routes ...RouteSource[T2]) gox.EditorComp {
+	return l.Route(routes...)
 }
 
 func (l derivedSource[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.EditorComp {

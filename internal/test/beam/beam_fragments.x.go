@@ -1561,7 +1561,7 @@ func (f *BeamRouteStateFragment) Main() gox.Elem {
 //line beam_fragments.gox:916
 	})); if __e != nil { return }
 //line beam_fragments.gox:917
-		__e = __c.Any(f.source.RouteSource(
+		__e = __c.Any(f.source.Route(
 		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
 		doors.RouteDefaultBeam(f.lensDefault),
 	)); if __e != nil { return }
@@ -1571,7 +1571,7 @@ func (f *BeamRouteStateFragment) Main() gox.Elem {
 		doors.RouteDefaultBeam(f.beamDefault),
 	)); if __e != nil { return }
 //line beam_fragments.gox:925
-		__e = __c.Any(f.source.RouteSource(
+		__e = __c.Any(f.source.Route(
 		doors.RouteDeriveEqual(f.matchList, f.equalList).Source(f.setList, f.lensListRoute),
 	)); if __e != nil { return }
 //line beam_fragments.gox:928
@@ -1690,7 +1690,7 @@ func (f *BeamRouteNoDefaultBurstFragment) Main() gox.Elem {
 //line beam_fragments.gox:984
 	})); if __e != nil { return }
 //line beam_fragments.gox:985
-		__e = __c.Any(f.source.RouteSource(
+		__e = __c.Any(f.source.Route(
 		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
 	)); if __e != nil { return }
 //line beam_fragments.gox:988
@@ -1931,7 +1931,7 @@ func (f *BeamRouteEntrypointsFragment) Main() gox.Elem {
 //line beam_fragments.gox:1093
 	})); if __e != nil { return }
 //line beam_fragments.gox:1094
-		__e = __c.Any(f.str.RouteSource(
+		__e = __c.Any(f.str.Route(
 		doors.RouteDerive(f.matchNonEmpty).Source(f.setString, f.lensRoute),
 	)); if __e != nil { return }
 //line beam_fragments.gox:1097
@@ -1944,7 +1944,7 @@ func (f *BeamRouteEntrypointsFragment) Main() gox.Elem {
 		doors.RouteDefaultBeam(f.derivedDefault),
 	)); if __e != nil { return }
 //line beam_fragments.gox:1104
-		__e = __c.Any(f.str.RouteSource(
+		__e = __c.Any(f.str.Route(
 		doors.RouteMatch(func(v string) bool {
 			return strings.HasPrefix(v, "simple")
 		}).Source(f.simpleLensRoute),

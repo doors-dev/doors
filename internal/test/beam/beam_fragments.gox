@@ -914,7 +914,7 @@ elem (f *BeamRouteStateFragment) Main() {
 		}
 		<div id="route-source">~(fmt.Sprintf("%d:%s:%d", v.Int, v.Str, f.sourceRenders))</div>
 	}))
-	~(f.source.RouteSource(
+	~(f.source.Route(
 		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
 		doors.RouteDefaultBeam(f.lensDefault),
 	))
@@ -922,7 +922,7 @@ elem (f *BeamRouteStateFragment) Main() {
 		doors.RouteDerive(f.matchString).Beam(f.beamRoute),
 		doors.RouteDefaultBeam(f.beamDefault),
 	))
-	~(f.source.RouteSource(
+	~(f.source.Route(
 		doors.RouteDeriveEqual(f.matchList, f.equalList).Source(f.setList, f.lensListRoute),
 	))
 	~(f.source.RouteBeam(
@@ -982,7 +982,7 @@ elem (f *BeamRouteNoDefaultBurstFragment) Main() {
 	~(f.source.Bind(elem(v state) {
 		<div id="route-burst-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
 	}))
-	~(f.source.RouteSource(
+	~(f.source.Route(
 		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
 	))
 	~(f.source.RouteBeam(
@@ -1091,7 +1091,7 @@ elem (f *BeamRouteEntrypointsFragment) Main() {
 	~(f.source.Bind(elem(v state) {
 		<div id="route-entry-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
 	}))
-	~(f.str.RouteSource(
+	~(f.str.Route(
 		doors.RouteDerive(f.matchNonEmpty).Source(f.setString, f.lensRoute),
 	))
 	~(f.str.RouteBeam(
@@ -1101,7 +1101,7 @@ elem (f *BeamRouteEntrypointsFragment) Main() {
 		doors.RouteDerive(f.matchOdd).Beam(f.derivedRoute),
 		doors.RouteDefaultBeam(f.derivedDefault),
 	))
-	~(f.str.RouteSource(
+	~(f.str.Route(
 		doors.RouteMatch(func(v string) bool {
 			return strings.HasPrefix(v, "simple")
 		}).Source(f.simpleLensRoute),

@@ -64,20 +64,20 @@ func (t *titleInstance) CSPCollector() common.CSPCollector {
 	}
 	return (&common.CSP{}).NewCollector()
 }
-func (t *titleInstance) ModuleRegistry() core.ModuleRegistry   { return t.modules }
-func (t *titleInstance) ID() string                            { return "instance" }
-func (t *titleInstance) RootID() uint64                        { return 1 }
-func (t *titleInstance) NewID() uint64                         { return 1 }
-func (t *titleInstance) Runtime() shredder.Runtime             { return nil }
-func (t *titleInstance) SetStatus(int)                         {}
-func (t *titleInstance) Session() core.Session                 { return t.session }
-func (t *titleInstance) Store() ctex.Store                     { return ctex.NewStore() }
+func (t *titleInstance) ModuleRegistry() core.ModuleRegistry  { return t.modules }
+func (t *titleInstance) ID() string                           { return "instance" }
+func (t *titleInstance) RootID() uint64                       { return 1 }
+func (t *titleInstance) NewID() uint64                        { return 1 }
+func (t *titleInstance) Runtime() shredder.Runtime            { return nil }
+func (t *titleInstance) SetStatus(int)                        {}
+func (t *titleInstance) Session() core.Session                { return t.session }
+func (t *titleInstance) Store() ctex.Store                    { return ctex.NewStore() }
 func (t *titleInstance) Location() beam.Source[path.Location] { return t.location }
-func (t *titleInstance) Kill()                                 {}
-func (t *titleInstance) TitleMeta() core.TitleMeta             { return t }
-func (t *titleInstance) PathMaker() path.PathMaker             { return t.session.app.PathMaker() }
-func (t *titleInstance) Edit(cur gox.Cursor) error             { return nil }
-func (t *titleInstance) Main() gox.Elem                        { return nil }
+func (t *titleInstance) Kill()                                {}
+func (t *titleInstance) TitleMeta() core.TitleMeta            { return t }
+func (t *titleInstance) PathMaker() path.PathMaker            { return t.session.app.PathMaker() }
+func (t *titleInstance) Edit(cur gox.Cursor) error            { return nil }
+func (t *titleInstance) Main() gox.Elem                       { return nil }
 func (t *titleInstance) UpdateTitle(content string, attrs gox.Attrs) context.CancelFunc {
 	t.title = content
 	t.titleAttrs = attrs

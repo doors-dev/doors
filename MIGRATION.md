@@ -11,10 +11,9 @@ Sections are grouped by the *shape* of the change — each starts with prose, th
 5. [Joiner Shape](#5-joiner-shape-indicators-scopes-actions-querymatcher) — `[]Indicator` / `[]Scope` / `[]Action` / `[]QueryMatcher` → single interface values composed with `.And(...)`
 6. [Path Model](#6-path-model) — unchanged for `bool` variants
 7. [Static Files](#7-static-files-old-route-types--middleware) — `RouteFS` / `RouteDir` / `RouteFile` / `RouteResource` → `app.Use(...)` middleware
-8. [State Routing Primitive](#8-state-new-routing-primitive) — `RouteSource` / `RouteBeam` on every reactive value
-9. [Removed Deprecated APIs](#9-removed-deprecated-apis) — `doors.Sub` / `doors.Inject` / old `Door` method names
-10. [Other Removed](#10-other-removed) — full kill list
-11. [Sanity Checks](#quick-sanity-checks-for-migrated-code) — grep recipes for verifying a migrated tree
+8. [Removed Older APIs](#8-removed-older-apis) — `doors.Sub` / `doors.Inject` / old `Door` method names
+9. [Other Removed](#9-other-removed) — full kill list
+10. [Sanity Checks](#quick-sanity-checks-for-migrated-code) — grep recipes for verifying a migrated tree
 
 ## Before You Start
 
@@ -320,32 +319,9 @@ A new compact form is also available (one typed `int` field with `|`-separated p
 
 ---
 
-## 8. State: New Routing Primitive
+## 8. Removed Older APIs
 
-Every `doors.Source[T]` and `doors.Beam[T]` now has `RouteSource(routes...)` and `RouteBeam(routes...)` methods. URL routing with `doors.Route(...)` is routing on `doors.Router(ctx)`. The same route builders work for any reactive value.
-
-Builders:
-
-- `RouteValue(v)` — match when the value equals `v`
-- `RouteMatch(pred)` — match when `pred(value)` returns `true`
-- `RouteDerive(derive)` — match when `derive(value)` returns `(_, true)`; render receives the derived value
-- `RouteDeriveEqual(derive, equal)` — derive with custom equality (for non-comparable derived types)
-- `RouteDefault*` — always matches
-
-Render-method chain on `RouteValue` / `RouteMatch` / `RouteDerive`:
-
-- `.Comp(comp)` — fixed component
-- `.Beam(render)` — render with `Beam[T]` of the routed/derived value
-- `.Source(render)` (on `RouteMatch`) — render with `Source[T]` of the original
-- `.Source(set, render)` (on `RouteDerive`) — `set` writes the derived value back into the parent
-
-`.Source(...)` routes are only available inside `RouteSource(...)`.
-
----
-
-## 9. Removed Deprecated APIs
-
-These were already marked deprecated on `main` and have been deleted. Code that already followed the deprecation hints needs no work.
+These older helper APIs have been deleted.
 
 ### Free helpers
 
@@ -389,7 +365,7 @@ In `.gox` files, the GoX `elem(...) { … }` shorthand is also accepted:
 
 ---
 
-## 10. Other Removed
+## 9. Other Removed
 
 - `doors.NewRouter`, `doors.UseModel`, `doors.UseRoute`, `doors.UseFallback`, `doors.UseSystemConf`, `doors.UseCSP`, `doors.UseESConf`, `doors.UseServerID`, `doors.UseSessionCallback`, `doors.UseErrorPage`
 - `doors.RouteFS`, `doors.RouteDir`, `doors.RouteFile`, `doors.RouteResource` (use `app.Use(...)` middleware equivalents)

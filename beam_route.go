@@ -231,18 +231,18 @@ func (m MatchRoute[T]) Source(render func(Source[T]) gox.Elem) RouteSource[T] {
 	}
 }
 
-// RouteDefaultBeam creates a fallback route that always matches and renders a
-// read-only beam for the full routed value.
-func RouteDefaultBeam[T any, C gox.Comp](render func(Beam[T]) C) RouteBeam[T] {
-	return defaultRouteBeam[T](func(l Beam[T]) gox.Elem {
+// RouteDefault creates a fallback route that always matches and renders a
+// writable source for the full routed value.
+func RouteDefault[T any, C gox.Comp](render func(Source[T]) C) RouteSource[T] {
+	return defaultRouteSource[T](func(l Source[T]) gox.Elem {
 		return render(l).Main()
 	})
 }
 
-// RouteDefaultSource creates a fallback route that always matches and renders a
-// writable source for the full routed value.
-func RouteDefaultSource[T any, C gox.Comp](render func(Source[T]) C) RouteSource[T] {
-	return defaultRouteSource[T](func(l Source[T]) gox.Elem {
+// RouteDefaultBeam creates a fallback route that always matches and renders a
+// read-only beam for the full routed value.
+func RouteDefaultBeam[T any, C gox.Comp](render func(Beam[T]) C) RouteBeam[T] {
+	return defaultRouteBeam[T](func(l Beam[T]) gox.Elem {
 		return render(l).Main()
 	})
 }
