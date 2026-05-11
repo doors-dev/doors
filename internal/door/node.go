@@ -308,7 +308,6 @@ func (r *nodePrinter) pipePresend(job *gox.JobHeadOpen) error {
 
 func (r *nodePrinter) Send(job gox.Job) error {
 	if !r.ready {
-		r.ready = true
 		return r.init(job)
 	}
 	if r.open == nil {
@@ -337,39 +336,62 @@ func (r *nodePrinter) Send(job gox.Job) error {
 }
 
 func (r *nodePrinter) init(job gox.Job) error {
-	openJob, isOpen := job.(*gox.JobHeadOpen)
-	if !isOpen {
+	switch job := job.(type) {
+	case *gox.JobComp:
+		comp := job.Comp
+		ctx := job.Ctx
+		gox.Release(job)
+		el := comp.Main()
+		if el == nil {
+			r.ready = true
+			return nil
+		}
+		cur := gox.NewCursor(ctx, r)
+		return el(cur)
+	case *gox.JobHeadOpen:
+		r.ready = true
+		return r.initOpenJob(job)
+	default:
+		r.ready = true
 		return r.pipeSend(job)
 	}
-	if openJob.Kind == gox.KindVoid {
-		return r.pipeSend(job)
-	}
-	if openJob.Kind == gox.KindRegular {
+}
+
+func (r *nodePrinter) initOpenJob(openJob *gox.JobHeadOpen) error {
+	switch openJob.Kind {
+	case gox.KindRegular:
 		if strings.EqualFold(openJob.Tag, "head") {
 			return errors.New("door does not support <head> as a container")
 		}
 		if strings.EqualFold(openJob.Tag, "title") {
-			return r.pipeSend(job)
+			return r.pipeSend(openJob)
 		}
 		if strings.EqualFold(openJob.Tag, "script") {
-			return r.pipeSend(job)
+			return r.pipeSend(openJob)
 		}
 		if strings.EqualFold(openJob.Tag, "style") {
-			return r.pipeSend(job)
+			return r.pipeSend(openJob)
 		}
 		if openJob.Tag == "d0-r" {
-			return r.pipeSend(job)
+			return r.pipeSend(openJob)
 		}
 		if openJob.Attrs.Has("data-d0c") {
-			return r.pipeSend(job)
+			return r.pipeSend(openJob)
 		}
 		if openJob.Attrs.Has("data-d0r") {
-			return r.pipeSend(job)
+			return r.pipeSend(openJob)
 		}
 		if openJob.Tag == "" {
-			return r.pipeSend(job)
+			return r.pipeSend(openJob)
 		}
+		r.open = openJob
+		return nil
+	case gox.KindContainer:
+		r.open = openJob
+		return nil
+	case gox.KindVoid:
+		return r.pipeSend(openJob)
+	default:
+		panic("unknown gox head kind")
 	}
-	r.open = openJob
-	return nil
 }
