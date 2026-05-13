@@ -67,7 +67,7 @@ func (p *pagePrinter) scan(j gox.Job) error {
 		p.state = pageHead
 		return p.cur.Printer().Send(j)
 	}
-	if strings.EqualFold(openJob.Tag, "script") {
+	if strings.EqualFold(openJob.Tag, "script") || strings.EqualFold(openJob.Tag, "link") {
 		p.state = pageDone
 		if err := p.insert(); err != nil {
 			return err
@@ -86,7 +86,7 @@ func (p *pagePrinter) scan(j gox.Job) error {
 
 func (p *pagePrinter) head(j gox.Job) error {
 	if openJob, ok := j.(*gox.JobHeadOpen); ok {
-		if strings.EqualFold(openJob.Tag, "script") {
+		if strings.EqualFold(openJob.Tag, "script") || strings.EqualFold(openJob.Tag, "link") {
 			p.state = pageDone
 			if err := p.insert(); err != nil {
 				return err

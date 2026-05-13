@@ -154,6 +154,37 @@ func getTextContent(t *testing.T, page *rod.Page, selector string) string {
 	return value.Value.Str()
 }
 
+func getStylesheetHref(t *testing.T, page *rod.Page) string {
+	t.Helper()
+	links, err := page.Timeout(200 * time.Millisecond).Elements(`head link[rel="stylesheet"]`)
+	if err != nil {
+		t.Fatal("stylesheet: links not found")
+	}
+	for _, link := range links {
+		href, err := link.Attribute("href")
+		if err != nil {
+			t.Fatal("stylesheet: href attribute not found")
+		}
+		if href == nil {
+			t.Fatal("stylesheet: href attribute is nil")
+		}
+		if !strings.HasSuffix(*href, ".d0r.css") {
+			return *href
+		}
+	}
+	if len(links) == 0 {
+		t.Fatal("stylesheet: links not found")
+	}
+	href, err := links[0].Attribute("href")
+	if err != nil {
+		t.Fatal("stylesheet: href attribute not found")
+	}
+	if href == nil {
+		t.Fatal("stylesheet: href attribute is nil")
+	}
+	return *href
+}
+
 func testStyleAttr(t *testing.T, h func(test.PathLens) gox.Elem, check func(t *testing.T, href string)) {
 	t.Helper()
 	bro := importsBro(h, &ModuleFragment{})
@@ -162,7 +193,7 @@ func testStyleAttr(t *testing.T, h func(test.PathLens) gox.Elem, check func(t *t
 	defer page.Close()
 	<-time.After(100 * time.Millisecond)
 	checkColor(t, page)
-	check(t, getAttr(t, page, `head link[rel="stylesheet"]`, "href"))
+	check(t, getStylesheetHref(t, page))
 }
 
 func fetchText(t *testing.T, url string) string {
