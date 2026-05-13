@@ -82,7 +82,7 @@ func (s Solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	count, err := s.deck.CollectResults(rep.Results)
+	err = s.deck.CollectResults(rep.Results)
 	if err != nil {
 		if err == context.Canceled {
 			return
@@ -90,9 +90,7 @@ func (s Solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 		s.inst.SyncError(err)
 		return
 	}
-	if count > 0 {
-		s.inst.Touch()
-	}
+	s.inst.Touch()
 	wr := &writer{w: w, f: w.(http.Flusher), sizeLimit: s.conf.FlushSize, timeLimit: s.conf.FlushTimeout}
 	if err := wr.WriteAck(); err != nil {
 		return

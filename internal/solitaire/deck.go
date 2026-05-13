@@ -212,7 +212,7 @@ func (b bufferedResult) process() {
 	b.call.Result(b.result.output, b.result.err)
 }
 
-func (d *deck) CollectResults(r map[uint64]result) (int, error) {
+func (d *deck) CollectResults(r map[uint64]result) error {
 	buffer := make([]bufferedResult, 0, len(r))
 	defer func() {
 		for _, r := range buffer {
@@ -222,37 +222,34 @@ func (d *deck) CollectResults(r map[uint64]result) (int, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.killed {
-		return 0, context.Canceled
+		return context.Canceled
 	}
-	counter := 0
 	for seq, result := range r {
 		if seq > d.seq {
-			return counter, errors.New("ready overflows last seq")
+			return errors.New("ready overflows last seq")
 		}
 		d.latestReport = max(d.latestReport, seq)
 		issued, ok := d.issued[seq]
 		if !ok {
 			restored, err := d.inner.ExtractRestored(seq)
 			if err != nil {
-				return counter, err
+				return err
 			}
 			if restored == nil {
 				continue
 			}
-			counter += 1
 			d.expirator.Report(seq)
 			buffer = append(buffer, bufferedResult{restored.Call, result})
 			continue
 		}
 		if issued.call == nil {
-			return counter, errors.New("reported to unwritten card")
+			return errors.New("reported to unwritten card")
 		}
 		delete(d.issued, seq)
-		counter += 1
 		d.expirator.Report(seq)
 		buffer = append(buffer, bufferedResult{issued.call, result})
 	}
-	return counter, nil
+	return nil
 }
 
 func (d *deck) HeatUp() {
