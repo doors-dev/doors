@@ -104,5 +104,9 @@ type Use = func(http.Handler) http.Handler
 type App interface {
 	// Use appends middleware around the app handler.
 	Use(middleware ...Use)
+	// InstanceCount returns the number of live instances across all sessions.
+	InstanceCount() int
+	// SessionCount returns the number of active sessions.
+	SessionCount() int
 	http.Handler
 }

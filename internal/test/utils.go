@@ -59,6 +59,10 @@ func LimitMode() bool {
 	return os.Getenv("LIMIT") != ""
 }
 
+func (s *Bro) App() doors.App {
+	return s.a
+}
+
 func (s *Bro) Close() {
 	s.s.Close()
 	<-s.closeCh

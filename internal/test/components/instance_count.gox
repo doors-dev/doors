@@ -1,0 +1,37 @@
+package components
+
+import (
+	"context"
+	"time"
+	
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type InstanceCountFragment struct {
+	test.NoBeam
+}
+
+elem (f *InstanceCountFragment) Main() {
+	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="session-id">~(doors.SessionId(ctx))</div>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			go func() {
+				<-time.After(300 * time.Millisecond)
+				doors.InstanceEnd(ctx)
+			}()
+			return true
+		},
+	} <button id="end-instance">end-instance</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			go func() {
+				<-time.After(300 * time.Millisecond)
+				doors.SessionEnd(ctx)
+			}()
+			return true
+		},
+	} <button id="end-session">end-session</button>
+}

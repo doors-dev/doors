@@ -178,6 +178,23 @@ http.ListenAndServe(":8080", mux)
 
 For request matching, **Doors** uses the URL it sees, so mount it at `/` unless you also configure your model paths accordingly.
 
+## Session & Instance Count
+
+`app.InstanceCount()` returns the total number of live page instances across all sessions. Each open tab or window in a browser counts as one instance.
+
+```go
+n := app.InstanceCount()
+```
+
+`app.SessionCount()` returns the total number of active sessions.
+
+```go
+n := app.SessionCount()
+```
+
+Both are useful for monitoring, health checks, and diagnostics — for example, exposing the values through a `/metrics` endpoint or logging them periodically.
+
+
 ## Routing
 
 `doors.NewApp` itself does not match URLs. The page function returns a single root component for every request, and routing happens *inside* that component using `doors.Route(...)`:

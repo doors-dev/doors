@@ -106,12 +106,13 @@ func (sess Session) Instance(loc path.Location) (Instance, bool) {
 	return inst, !sess.killed.Load()
 }
 
-/*
-func (sess *session) InstanceCount() int {
-	sess.mu.Lock()
-	defer sess.mu.Unlock()
-	return len(sess.instances)
-} */
+func (sess Session) InstanceCount() (n int) {
+	sess.instances.Range(func(_, _ any) bool {
+		n++
+		return true
+	})
+	return
+}
 
 func (sess *session) Renew(w http.ResponseWriter) bool {
 	sess.mu.Lock()

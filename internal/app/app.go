@@ -88,6 +88,22 @@ func (a App) RemoveSession(id string) {
 	a.tracker.Delete(id)
 }
 
+func (a App) InstanceCount() (n int) {
+	a.sessions.Range(func(_, v any) bool {
+		n += v.(instance.Session).InstanceCount()
+		return true
+	})
+	return
+}
+
+func (a App) SessionCount() (n int) {
+	a.sessions.Range(func(_, _ any) bool {
+		n++
+		return true
+	})
+	return
+}
+
 func (a *app) ensureSession(w http.ResponseWriter, r *http.Request) instance.Session {
 	s := a.getSession(w, r)
 	if s != nil {
