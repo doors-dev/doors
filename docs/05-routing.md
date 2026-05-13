@@ -252,6 +252,12 @@ URL routing is one application of a state primitive. `doors.Router(ctx)` returns
 loc := doors.Router(ctx) // doors.Source[doors.Location]
 ```
 
+`doors.Location` contains reference types (`Segments []string` and `Query url.Values`). Don't mutate a value obtained from the router directly. Clone it first when you need a mutable copy:
+
+```go
+loc := doors.Router(ctx).Get().Clone()
+```
+
 `doors.Route(routes...)` routes the current location source:
 
 ```go
