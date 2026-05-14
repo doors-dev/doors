@@ -18,6 +18,7 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -39,21 +40,20 @@ type App interface {
 type Session = *session
 
 func NewSession(a App) Session {
-	store := ctex.NewStore()
 	ctx, cancel := context.WithCancel(context.Background())
-	ctx = context.WithValue(ctx, ctex.KeySessionStore, store)
 	sess := &session{
-		store:   store,
+		store:   ctex.NewStore(),
 		id:      common.RandId(),
 		app:     a,
 		limiter: utils.NewLimiter(a.Conf().SessionInstanceLimit),
-		ctx:     ctx,
 		cancel:  cancel,
 	}
+	sess.ctx = context.WithValue(ctx, ctex.KeySession, sess)
 	return sess
 }
 
 type session struct {
+	renewed    atomic.Int64
 	instances  sync.Map
 	mu         sync.Mutex
 	store      ctex.Store
@@ -73,6 +73,10 @@ func (sess *session) killed() bool {
 
 func (sess *session) Context() context.Context {
 	return sess.ctx
+}
+
+func (sess *session) Store() ctex.Store {
+	return sess.store
 }
 
 func (sess *session) App() core.App {
@@ -123,7 +127,18 @@ func (sess Session) InstanceCount() (n int) {
 	return
 }
 
+const UPDATE_PERIOD = time.Second * 5
+
 func (sess *session) Renew(w http.ResponseWriter) bool {
+	now := time.Now().UnixMilli()
+	before := sess.renewed.Load()
+	ping := sess.App().Conf().SolitairePing
+	if now-before < ping.Milliseconds()/2 {
+		return !sess.killed()
+	}
+	if !sess.renewed.CompareAndSwap(before, now) {
+		return !sess.killed()
+	}
 	sess.mu.Lock()
 	defer sess.mu.Unlock()
 	if sess.killed() {

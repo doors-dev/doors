@@ -116,7 +116,7 @@ func (r *resourceProps) Submit(openJob *gox.JobHeadOpen, p *resourcePrinter) err
 	if r.mode == resources.ModeNoCache || !isStatic {
 		handler := sourceHandler.Handler()
 		contentType := r.contentType
-		hook, ok := core.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := core.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			if contentType != "" {
 				w.Header().Set("Content-Type", contentType)
 			}
@@ -125,15 +125,15 @@ func (r *resourceProps) Submit(openJob *gox.JobHeadOpen, p *resourcePrinter) err
 		if !ok {
 			return context.Canceled
 		}
-		path := core.PathMaker().Hook(core.InstanceID(), hook.HookID, r.name)
+		path := core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, r.name)
 		r.sourceAttr.Set(path)
 		return p.printer.Send(openJob)
 	}
-	res, err := core.ResourceRegistry().Static(sourceStatic.StaticEntry(), r.contentType)
+	res, err := core.App().ResourceRegistry().Static(sourceStatic.StaticEntry(), r.contentType)
 	if err != nil {
 		return err
 	}
-	path := core.PathMaker().Resource(res, r.name)
+	path := core.App().PathMaker().Resource(res, r.name)
 	r.sourceAttr.Set(path)
 	return p.printer.Send(openJob)
 }
@@ -195,16 +195,16 @@ func (r *resourceProps) resourceURL(core core.Core, res *resources.Resource) (st
 	mode := r.mode
 	switch mode {
 	case resources.ModeHost:
-		return core.PathMaker().Resource(res, r.name), nil
+		return core.App().PathMaker().Resource(res, r.name), nil
 	case resources.ModeNoHost, resources.ModeNoCache:
-		hook, ok := core.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := core.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			res.Serve(w, r)
 			return false
 		}, nil)
 		if !ok {
 			return "", context.Canceled
 		}
-		return core.PathMaker().Hook(core.InstanceID(), hook.HookID, r.name), nil
+		return core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, r.name), nil
 	default:
 		panic("internal error: unexpected resource mode")
 	}

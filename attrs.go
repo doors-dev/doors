@@ -74,7 +74,7 @@ type eventAttr[E any] struct {
 
 func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 	c := ctx.Value(ctex.KeyCore).(core.Core)
-	hook, ok := c.RegisterHook(p.handle, nil)
+	hook, ok := c.Door().RegisterHook(p.handle, nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}

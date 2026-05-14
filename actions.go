@@ -101,7 +101,7 @@ func (ae ActionEmit) action(ctx context.Context, core core.Core, gz bool) (actio
 	}
 	act := action.Emit{
 		Name:    ae.Name,
-		DoorID:  core.DoorID(),
+		DoorID:  core.Door().ID(),
 		Payload: payload,
 	}
 	return act, action.CallParams{}, nil
@@ -121,7 +121,7 @@ func (ar ActionLocationReload) And(a Actions) Actions {
 }
 
 func (ar ActionLocationReload) action(ctx context.Context, core core.Core, _ bool) (action.Action, action.CallParams, error) {
-	return &action.LocationReload{}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
+	return &action.LocationReload{}, action.CallParams{Timeout: core.App().Conf().InstanceTTL, Optimistic: true}, nil
 }
 
 // ActionLocationReplace replaces the current history entry with a model-derived
@@ -146,7 +146,7 @@ func (a ActionLocationReplace) action(ctx context.Context, core core.Core, _ boo
 	return &action.LocationReplace{
 		URL:    l.String(),
 		Origin: true,
-	}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
+	}, action.CallParams{Timeout: core.App().Conf().InstanceTTL, Optimistic: true}, nil
 }
 
 // ActionLocationAssign navigates to a model-derived URL.
@@ -170,7 +170,7 @@ func (aa ActionLocationAssign) action(ctx context.Context, core core.Core, _ boo
 	return &action.LocationAssign{
 		URL:    l.String(),
 		Origin: true,
-	}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
+	}, action.CallParams{Timeout: core.App().Conf().InstanceTTL, Optimistic: true}, nil
 }
 
 // ActionLocationRawAssign navigates to url without first encoding a path model.
@@ -190,7 +190,7 @@ func (a ActionLocationRawAssign) action(ctx context.Context, core core.Core, _ b
 	return &action.LocationAssign{
 		URL:    a.URL,
 		Origin: false,
-	}, action.CallParams{Timeout: core.Conf().InstanceTTL, Optimistic: true}, nil
+	}, action.CallParams{Timeout: core.App().Conf().InstanceTTL, Optimistic: true}, nil
 }
 
 // ActionScroll scrolls the first element matching Selector into view.

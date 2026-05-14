@@ -66,14 +66,14 @@ func (s *scriptProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 	switch src := s.source.(type) {
 	case string:
 		if s.specifier != "" {
-			core.ModuleRegistry().Add(s.specifier, src)
+			core.Instance().ModuleRegistry().Add(s.specifier, src)
 		}
 		return p.printer.Send(job)
 	case SourceExternal:
 		if s.specifier != "" {
-			core.ModuleRegistry().Add(s.specifier, string(src))
+			core.Instance().ModuleRegistry().Add(s.specifier, string(src))
 		}
-		core.CSPCollector().ScriptSource(string(src))
+		core.Instance().CSPCollector().ScriptSource(string(src))
 		return p.printer.Send(job)
 	case SourceStatic:
 		entry := src.scriptEntry(s.output == scriptInline, s.ts)
@@ -81,7 +81,7 @@ func (s *scriptProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 		if err != nil {
 			return err
 		}
-		res, err := core.ResourceRegistry().Script(entry, format, s.profile, s.mode)
+		res, err := core.App().ResourceRegistry().Script(entry, format, s.profile, s.mode)
 		if err != nil {
 			return err
 		}
@@ -90,21 +90,21 @@ func (s *scriptProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 			return err
 		}
 		if s.specifier != "" {
-			core.ModuleRegistry().Add(s.specifier, path)
+			core.Instance().ModuleRegistry().Add(s.specifier, path)
 		}
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	case SourceHandler:
 		handler := src.Handler()
-		hook, ok := core.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := core.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			return handler(ctx, w, r)
 		}, nil)
 		if !ok {
 			return context.Canceled
 		}
-		path := core.PathMaker().Hook(core.InstanceID(), hook.HookID, s.name)
+		path := core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, s.name)
 		if s.specifier != "" {
-			core.ModuleRegistry().Add(s.specifier, path)
+			core.Instance().ModuleRegistry().Add(s.specifier, path)
 		}
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)

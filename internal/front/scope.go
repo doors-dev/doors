@@ -57,7 +57,7 @@ type AutoId struct {
 
 func (s *AutoId) Id(inst core.Core) string {
 	s.once.Do(func() {
-		id := inst.NewID()
+		id := inst.Instance().NewID()
 		s.id = fmt.Sprint(id)
 	})
 	return s.id

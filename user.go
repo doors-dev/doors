@@ -29,7 +29,7 @@ import (
 // If ctx belongs to the root page render, nothing is reloaded.
 func Reload(ctx context.Context) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	core.Reload(ctx)
+	core.Door().Reload(ctx)
 }
 
 // XReload tracks completion of [Reload].
@@ -41,41 +41,41 @@ func Reload(ctx context.Context) {
 // own goroutine with [Free].
 func XReload(ctx context.Context) <-chan error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	return core.XReload(ctx)
+	return core.Door().XReload(ctx)
 }
 
 // SessionExpire sets the maximum lifetime of the current session.
 func SessionExpire(ctx context.Context, d time.Duration) {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	core.SessionExpire(d)
+	sess := ctx.Value(ctex.KeySession).(core.Session)
+	sess.Expire(d)
 }
 
 // SessionEnd immediately ends the current session and all instances.
 // Use it during logout to close authorized pages and free server resources.
 func SessionEnd(ctx context.Context) {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	core.SessionEnd()
+	sess := ctx.Value(ctex.KeySession).(core.Session)
+	sess.Kill()
 }
 
 // InstanceEnd ends the current instance (tab/window) but keeps the session and
 // other instances active.
 func InstanceEnd(ctx context.Context) {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	core.InstanceEnd()
+	core.Instance().Kill()
 }
 
 // InstanceId returns the unique ID of the current instance.
 // Useful for logging, debugging, and tracking connections.
 func InstanceId(ctx context.Context) string {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	return core.InstanceID()
+	return core.Instance().ID()
 }
 
 // SessionId returns the unique ID of the current session.
 // All instances in the same browser share this ID via a session cookie.
 func SessionId(ctx context.Context) string {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	return core.SessionID()
+	sess := ctx.Value(ctex.KeySession).(core.Session)
+	return sess.ID()
 }
 
 // Store is goroutine-safe key-value storage used for session and instance
@@ -84,7 +84,8 @@ type Store = ctex.Store
 
 // SessionStore returns storage shared by all instances in the current session.
 func SessionStore(ctx context.Context) Store {
-	return ctx.Value(ctex.KeySessionStore).(ctex.Store)
+	sess := ctx.Value(ctex.KeySession).(core.Session)
+	return sess.Store()
 }
 
 // InstanceStore returns storage scoped to the current instance only.
@@ -99,8 +100,8 @@ func InstanceStore(ctx context.Context) Store {
 // It is useful for goroutines or external work that should live for the whole
 // browser session, not just the current instance or dynamic owner.
 func SessionContext(ctx context.Context) context.Context {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	return core.SessionContext()
+	sess := ctx.Value(ctex.KeySession).(core.Session)
+	return sess.Context()
 }
 
 // IDRand returns a cryptographically secure, URL-safe identifier.
@@ -137,8 +138,8 @@ func FreeRoot(ctx context.Context) context.Context {
 	if !ok {
 		return ctex.NewFreeContext(ctx, ctx)
 	}
-	ctx = context.WithValue(ctx, ctex.KeyCore, core.RootCore())
-	return ctex.NewFreeContext(ctx, core.Runtime().Context())
+	ctx = context.WithValue(ctx, ctex.KeyCore, core.Door().RootCore())
+	return ctex.NewFreeContext(ctx, core.Instance().Runtime().Context())
 }
 
 // Free returns a free context that is safe to use with extended Doors

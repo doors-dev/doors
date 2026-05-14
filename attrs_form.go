@@ -52,7 +52,7 @@ func (s ARawSubmit) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	hook, ok := core.RegisterHook(s.handle, nil)
+	hook, ok := core.Door().RegisterHook(s.handle, nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}
@@ -112,7 +112,7 @@ func (s ASubmit[V]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	hook, ok := core.RegisterHook(s.handle, nil)
+	hook, ok := core.Door().RegisterHook(s.handle, nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}

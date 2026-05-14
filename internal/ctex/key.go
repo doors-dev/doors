@@ -17,8 +17,7 @@ package ctex
 type ctxKey int
 
 const (
-	KeyApp ctxKey = iota
-	KeyCore
+	KeyCore ctxKey = iota
+	KeySession
 	keyFrame
-	KeySessionStore
 )

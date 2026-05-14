@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/doors-dev/doors/internal/app"
 	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/instance"
 )
 
 type responseWriter struct {
@@ -87,8 +87,8 @@ func UseResource(path string, resource ResourceStatic, contentType string) Use {
 				next.ServeHTTP(w, r)
 				return
 			}
-			rr := r.Context().Value(ctex.KeyApp).(app.App)
-			res, err := rr.ResourceRegistry().Static(entry, contentType)
+			sess := r.Context().Value(ctex.KeySession).(instance.Session)
+			res, err := sess.App().ResourceRegistry().Static(entry, contentType)
 			if err != nil {
 				slog.Error("ServeResource failed to prepare the resource", "error", err)
 				w.WriteHeader(500)

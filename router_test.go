@@ -66,6 +66,16 @@ func testPage(label string) gox.Comp {
 	})
 }
 
+func TestWithIDValidation(t *testing.T) {
+	_ = WithID("test1")
+	defer func() {
+		if recover() == nil {
+			t.Fatal("expected WithID to reject escaped id")
+		}
+	}()
+	_ = WithID("bad/id")
+}
+
 func TestAppStaticMiddlewareServing(t *testing.T) {
 	dir := t.TempDir()
 	dirFile := filepath.Join(dir, "hello.txt")

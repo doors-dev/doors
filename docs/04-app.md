@@ -5,7 +5,7 @@
 Most apps follow three small steps:
 
 1. create the app with `doors.NewApp(page, options...)`
-2. attach middleware with `app.Use(...)` for static files or anything else that should bypass page rendering
+2. attach middleware with `app.Use(...)` for static files, logging, CORS, or anything else that runs before request handling
 3. pass the app to `http.ListenAndServe`
 
 ```go
@@ -26,7 +26,7 @@ if err := http.ListenAndServe(":8080", app); err != nil {
 
 In practice, the app pulls together:
 
-- middleware that runs in front of page rendering (static files, logging, CORS, ...)
+- middleware that runs in front of all request handling (static files, logging, CORS, ...)
 - app-wide settings (CSP, esbuild, server ID, error pages, session tracking, system limits)
 - where the binary plugs into your HTTP setup
 
@@ -82,7 +82,7 @@ See [Configuration](./21-configuration.md) for the full list.
 
 ## Middleware
 
-`app.Use(...)` adds standard `func(http.Handler) http.Handler` middleware in front of the page handler. It can short-circuit static files, set headers, gate access, log, or hand off to another mux before **Doors** renders a page. **Doors** system endpoints under `/~/...` are handled by the app itself; wrap the app in outer middleware if those requests must also be intercepted.
+`app.Use(...)` adds standard `func(http.Handler) http.Handler` middleware in front of all handlers, including system endpoints under `/~/...`. It can short-circuit static files, set headers, gate access, log, or hand off to another mux before **Doors** handles a request. Middleware runs after internal session initiation.
 
 ### UseFS
 
@@ -163,7 +163,7 @@ app.Use(
 )
 ```
 
-Middleware runs in registration order. Anything that doesn't short-circuit falls through to the **Doors** page handler.
+Middleware runs in registration order. Anything that doesn't short-circuit falls through to the **Doors** handler (system endpoints or page rendering).
 
 ## Mounting Inside Another Server
 

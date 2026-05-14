@@ -98,7 +98,7 @@ func Go(f func(context.Context)) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(ctex.KeyCore).(core.Core)
 		ctx := Free(cur.Context())
-		core.Runtime().Go(ctx, f)
+		core.Instance().Runtime().Go(ctx, f)
 		return nil
 	})
 }
@@ -111,7 +111,7 @@ func Go(f func(context.Context)) gox.Editor {
 func Status(statusCode int) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(ctex.KeyCore).(core.Core)
-		core.SetStatus(statusCode)
+		core.Instance().SetStatus(statusCode)
 		return nil
 	})
 }

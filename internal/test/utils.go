@@ -192,11 +192,13 @@ func NewBroWrap(browser *rod.Browser, page func(context.Context, doors.Request) 
 }
 
 func NewBroWrapOptions(browser *rod.Browser, page func(context.Context, doors.Request) gox.Comp, wrap func(http.Handler) http.Handler, options []doors.With, middleware ...doors.Use) *Bro {
+	baseOptions := []doors.With{doors.WithID(doors.IDRand())}
 	if LimitMode() {
 		conf := doors.Conf{}
 		conf.InstanceGoroutineLimit = 1
-		options = append([]doors.With{doors.WithConf(conf)}, options...)
+		baseOptions = append(baseOptions, doors.WithConf(conf))
 	}
+	options = append(baseOptions, options...)
 	a := doors.NewApp(page, options...)
 	if len(middleware) != 0 {
 		a.Use(middleware...)

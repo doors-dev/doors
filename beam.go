@@ -317,7 +317,7 @@ func (d derivedBeam[T1, T2]) innerBeam() beam.Beamer[T2] {
 
 func effect[T any](b Beam[T], ctx context.Context) (T, bool) {
 	return b.ReadAndSub(ctx, func(ctx context.Context, _ T) bool {
-		ctx.Value(ctex.KeyCore).(core.Core).Reload(ctx)
+		ctx.Value(ctex.KeyCore).(core.Core).Door().Reload(ctx)
 		return true
 	})
 }

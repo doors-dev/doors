@@ -55,7 +55,7 @@ func XCall[T any](ctx context.Context, action Action) <-chan CallResult[T] {
 func call[T any](ctx context.Context, action Action) <-chan CallResult[T] {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	ch := make(chan CallResult[T], 1)
-	a, params, err := action.action(ctx, core, !core.Conf().SolitaireDisableGzip)
+	a, params, err := action.action(ctx, core, !core.App().Conf().SolitaireDisableGzip)
 	res := CallResult[T]{}
 	if err != nil {
 		slog.Error("Action preparation error", "error", err)
@@ -67,7 +67,7 @@ func call[T any](ctx context.Context, action Action) <-chan CallResult[T] {
 	if ctx.Err() != nil {
 		ctex.LogCanceled(ctx, "call "+a.Log())
 	}
-	core.Call(
+	core.Door().UserCall(
 		ctx,
 		nil,
 		a,

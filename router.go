@@ -45,7 +45,7 @@ type LocationEncoder = path.Encoder
 func Router(ctx context.Context) Source[Location] {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	return source[Location]{
-		Source: core.Location(),
+		Source: core.Instance().Location(),
 	}
 }
 

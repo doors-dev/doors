@@ -3,20 +3,54 @@ package app
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
 )
 
 const ZombieHeader = "X-Zombie"
 
 func (a App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r = r.WithContext(context.WithValue(r.Context(), ctex.KeyApp, a))
+	sess := a.ensureSession(w, r)
+	r = r.WithContext(context.WithValue(r.Context(), ctex.KeySession, sess))
+	a.handler.ServeHTTP(w, r)
+}
+
+func (a *app) serve(w http.ResponseWriter, r *http.Request) {
 	if a.tryServeUtility(w, r) {
 		return
 	}
-	a.handler.ServeHTTP(w, r)
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+	sess, ok := r.Context().Value(ctex.KeySession).(instance.Session)
+	if !ok {
+		a.serveError(w, r, errors.New("Session is removed from the request context"))
+		return
+	}
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Content-Type", "text/html")
+	loc := path.NewLocationFromURL(r.URL)
+	inst, ok := sess.Instance(loc)
+	if !ok {
+		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
+		return
+	}
+	contextWithTimeout, cancel := context.WithTimeout(r.Context(), a.conf.RequestTimeout)
+	requestWithTimeout := r.WithContext(contextWithTimeout)
+	err, handeled := inst.Serve(w, requestWithTimeout, a.page)
+	cancel()
+	if !handeled {
+		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
+		return
+	}
+	if err != nil {
+		a.serveError(w, r, err)
+	}
 }
 
 func (a *app) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
@@ -31,7 +65,6 @@ func (a *app) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
 		a.registry.Serve(id, w, r)
 		return true
 	}
-
 	if hook, ok := match.Hook(); ok {
 		a.serveHook(w, r, hook.Instance, hook.Hook, hook.Track)
 		return true
@@ -51,9 +84,10 @@ func (a *app) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (a *app) serveSync(w http.ResponseWriter, r *http.Request, instanceId string) {
-	ses := a.getSession(w, r)
-	if ses == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+	ses, ok := r.Context().Value(ctex.KeySession).(instance.Session)
+	if !ok {
+		slog.Error("Session is removed from the request context")
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	inst, found := ses.GetInstance(instanceId)
@@ -64,38 +98,11 @@ func (a *app) serveSync(w http.ResponseWriter, r *http.Request, instanceId strin
 	inst.Connect(w, r)
 }
 
-func (a *app) serveInstance(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Content-Type", "text/html")
-	loc := path.NewLocationFromURL(r.URL)
-	iters := 0
-sess:
-	iters += 1
-	if iters >= 32 {
-		a.serveError(w, r, errors.New("suspected instance/session destruction loop"))
-		return
-	}
-	sess := a.ensureSession(w, r)
-	inst, ok := sess.Instance(loc)
-	if !ok {
-		goto sess
-	}
-	contextWithTimeout, cancel := context.WithTimeout(r.Context(), a.conf.RequestTimeout)
-	requestWithTimeout := r.WithContext(contextWithTimeout)
-	err, handeled := inst.Serve(w, requestWithTimeout, a.page)
-	cancel()
-	if !handeled {
-		goto sess
-	}
-	if err != nil {
-		a.serveError(w, r, err)
-	}
-}
-
 func (a *app) serveHook(w http.ResponseWriter, r *http.Request, instanceID string, hookID uint64, track uint64) {
-	ses := a.getSession(w, r)
-	if ses == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+	ses, ok := r.Context().Value(ctex.KeySession).(instance.Session)
+	if !ok {
+		slog.Error("Session is removed from the request context")
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	inst, found := ses.GetInstance(instanceID)
@@ -111,9 +118,10 @@ func (a *app) serveHook(w http.ResponseWriter, r *http.Request, instanceID strin
 
 func (a *app) restoreLocation(w http.ResponseWriter, r *http.Request, instId string, l path.Location) {
 	w.Header().Set("Cache-Control", "no-cache")
-	ses := a.getSession(w, r)
-	if ses == nil {
-		w.WriteHeader(http.StatusUnauthorized)
+	ses, ok := r.Context().Value(ctex.KeySession).(instance.Session)
+	if !ok {
+		slog.Error("Session is removed from the request context")
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	inst, ok := ses.GetInstance(instId)

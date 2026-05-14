@@ -44,7 +44,7 @@ func WithCSP(csp CSP) With {
 
 // WithID sets the stable app id used for generated names and session cookies.
 func WithID(id string) With {
-	if id == url.PathEscape(id) {
+	if id != url.PathEscape(id) {
 		panic("server ID must be URL compatible without escaping")
 	}
 	return optionFunc(func(o *app.Options) {

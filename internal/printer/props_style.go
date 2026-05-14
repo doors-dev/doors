@@ -59,11 +59,11 @@ func (s *styleProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 	case string:
 		return p.printer.Send(job)
 	case SourceExternal:
-		core.CSPCollector().StyleSource(string(src))
+		core.Instance().CSPCollector().StyleSource(string(src))
 		return p.printer.Send(job)
 	case SourceStatic:
 		entry := src.styleEntry()
-		res, err := core.ResourceRegistry().Style(entry, s.output == styleDefault, s.mode)
+		res, err := core.App().ResourceRegistry().Style(entry, s.output == styleDefault, s.mode)
 		if err != nil {
 			return err
 		}
@@ -75,13 +75,13 @@ func (s *styleProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 		return p.printer.Send(job)
 	case SourceHandler:
 		hander := src.Handler()
-		hook, ok := core.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := core.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			return hander(ctx, w, r)
 		}, nil)
 		if !ok {
 			return context.Canceled
 		}
-		path := core.PathMaker().Hook(core.InstanceID(), hook.HookID, s.name)
+		path := core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, s.name)
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	default:

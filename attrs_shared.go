@@ -113,7 +113,7 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 	if !initialized {
 		return
 	}
-	core.Call(
+	core.Door().UserCall(
 		ctx,
 		func() bool {
 			return a.check(seq)
@@ -160,7 +160,7 @@ func (a AShared) Update(ctx context.Context, value string) {
 		return
 	}
 	core := ctx.Value(ctex.KeyCore).(core.Core)
-	core.Call(
+	core.Door().UserCall(
 		ctx,
 		func() bool {
 			return a.check(seq)
@@ -191,10 +191,10 @@ func (a AShared) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	defer a.mu.Unlock()
 	if !a.initialized {
 		a.initialized = true
-		a.id = core.NewID()
+		a.id = core.Instance().NewID()
 	}
 	front.AttrsAppendDyn(attrs, a.id, a.name)
-	front.AttrsSetParent(attrs, core.DoorID())
+	front.AttrsSetParent(attrs, core.Door().ID())
 	if a.enable {
 		attrs.Get(a.name).Set(a.value)
 	}

@@ -57,7 +57,7 @@ func (a *app) ResourceRegistry() resources.Registry {
 
 func (a *app) Use(m ...Middleware) {
 	a.use = append(a.use, m...)
-	a.handler = http.HandlerFunc(a.serveInstance)
+	a.handler = http.HandlerFunc(a.serve)
 	for _, v := range slices.Backward(a.use) {
 		a.handler = v(a.handler)
 	}

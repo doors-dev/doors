@@ -197,10 +197,10 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 			req := request{w: w, r: r, ctx: ctx}
 			req.After(h.After)
 		}
-		core.Location().Update(ctx, loc)
+		core.Instance().Location().Update(ctx, loc)
 		return false
 	}
-	hook, ok := core.RegisterHook(handler, nil)
+	hook, ok := core.Door().RegisterHook(handler, nil)
 	if !ok {
 		return nil
 	}
@@ -223,7 +223,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	attrs.Get("href").Set(href)
 	active := h.active()
 	if active != nil {
-		front.AttrsSetParent(attrs, core.DoorID())
+		front.AttrsSetParent(attrs, core.Door().ID())
 		front.AttrsSetActive(attrs, active)
 	}
 	return nil

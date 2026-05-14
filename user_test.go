@@ -257,8 +257,9 @@ func helperContext(t *testing.T) (context.Context, *helperInstance) {
 		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	ctx = context.WithValue(ctx, ctex.KeySessionStore, ctex.NewStore())
 	inst.session = &helperSession{inst: inst, app: &helperApp{conf: &inst.conf}, ctx: ctx, cancel: cancel}
+	ctx = context.WithValue(ctx, ctex.KeySession, inst.session)
+	inst.session.ctx = ctx
 	return context.WithValue(ctx, ctex.KeyCore, core.NewCore(helperDoor{inst: inst})), inst
 }
 

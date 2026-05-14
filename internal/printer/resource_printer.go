@@ -129,8 +129,8 @@ func (p *resourcePrinter) processMeta(openJob *gox.JobHeadOpen) error {
 	attr.Unset()
 	name := b.String()
 	core := openJob.Context().Value(ctex.KeyCore).(core.Core)
-	cancel := core.TitleMeta().UpdateMeta(property, name, openJob.Attrs.Clone())
-	core.Clean(cancel)
+	cancel := core.Instance().TitleMeta().UpdateMeta(property, name, openJob.Attrs.Clone())
+	core.Door().Clean(cancel)
 	gox.Release(openJob)
 	return nil
 }
@@ -149,8 +149,8 @@ func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
 		core := j.Context().Value(ctex.KeyCore).(core.Core)
 		content := tit.buf.String()
 		attrs := tit.openJob.Attrs.Clone()
-		cancel := core.TitleMeta().UpdateTitle(content, attrs)
-		core.Clean(cancel)
+		cancel := core.Instance().TitleMeta().UpdateTitle(content, attrs)
+		core.Door().Clean(cancel)
 		gox.Release(tit.openJob)
 		gox.Release(closeJob)
 		r.resource = nil
@@ -234,7 +234,7 @@ func (r *embeddedResource) renderScript(core core.Core, p gox.Printer) error {
 	if entry == nil {
 		return r.dump(p)
 	}
-	res, err := core.ResourceRegistry().Script(entry, resources.FormatDefault{}, "", r.props.mode)
+	res, err := core.App().ResourceRegistry().Script(entry, resources.FormatDefault{}, "", r.props.mode)
 	if err != nil {
 		return err
 	}
@@ -251,7 +251,7 @@ func (r *embeddedResource) renderStyle(core core.Core, p gox.Printer) error {
 	if entry == nil {
 		return r.dump(p)
 	}
-	res, err := core.ResourceRegistry().Style(entry, true, r.props.mode)
+	res, err := core.App().ResourceRegistry().Style(entry, true, r.props.mode)
 	if err != nil {
 		return err
 	}

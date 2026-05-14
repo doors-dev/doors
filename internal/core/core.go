@@ -50,6 +50,7 @@ type Session interface {
 	ID() string
 	Expire(time.Duration)
 	Context() context.Context
+	Store() ctex.Store
 	Kill()
 }
 
@@ -101,110 +102,18 @@ type core struct {
 	door Door
 }
 
-func (c Core) Location() beam.Source[path.Location] {
-	return c.Instance().Location()
-}
-
-func (c Core) Reload(ctx context.Context) {
-	c.door.Reload(ctx)
-}
-
-func (c Core) XReload(ctx context.Context) <-chan error {
-	return c.Door().XReload(ctx)
-}
-
-func (c Core) RootCore() Core {
-	return c.door.RootCore()
-}
-
-func (c Core) Clean(f func()) {
-	c.door.Clean(f)
-}
-
-func (c Core) SessionContext() context.Context {
-	return c.Instance().Session().Context()
-}
-
-func (c Core) TitleMeta() TitleMeta {
-	return c.Instance().TitleMeta()
-}
-
-func (c Core) PathMaker() path.PathMaker {
-	return c.Instance().Session().App().PathMaker()
+func (c Core) App() App {
+	return c.door.Instance().Session().App()
 }
 
 func (c Core) Door() Door {
 	return c.door
 }
 
-func (c Core) DoorID() uint64 {
-	return c.door.ID()
-}
-
 func (c Core) Instance() Instance {
 	return c.door.Instance()
 }
 
-func (c Core) SessionExpire(d time.Duration) {
-	c.Instance().Session().Expire(d)
-}
-
-func (c Core) SessionEnd() {
-	c.Instance().Session().Kill()
-}
-
-func (c Core) InstanceEnd() {
-	c.Instance().Kill()
-}
-
-func (c Core) SessionID() string {
-	return c.Instance().Session().ID()
-}
-
-func (c Core) Runtime() shredder.Runtime {
-	return c.Instance().Runtime()
-}
-
 func (c Core) Cinema() beam.Cinema {
 	return c.door.Cinema()
-}
-
-func (c Core) SetStatus(status int) {
-	c.Instance().SetStatus(status)
-}
-
-func (c Core) InstanceID() string {
-	return c.Instance().ID()
-}
-
-func (c Core) RootID() uint64 {
-	return c.Instance().RootID()
-}
-
-func (c Core) NewID() uint64 {
-	return c.Instance().NewID()
-}
-
-func (c Core) Conf() *common.Conf {
-	return c.Instance().Session().App().Conf()
-}
-
-func (c Core) ResourceRegistry() resources.Registry {
-	return c.Instance().Session().App().ResourceRegistry()
-}
-
-func (c Core) ModuleRegistry() ModuleRegistry {
-	return c.Instance().ModuleRegistry()
-}
-
-func (c Core) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool) {
-	return c.door.RegisterHook(onTrigger, onCancel)
-}
-
-func (c Core) Call(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
-	c.door.UserCall(ctx, check, action, onResult, onCancel, params)
-}
-
-func (c Core) CSPCollector() common.CSPCollector {
-	return c.Instance().CSPCollector()
 }
