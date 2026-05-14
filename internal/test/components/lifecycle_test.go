@@ -25,6 +25,16 @@ import (
 
 func lifecyclePage(t *testing.T) *rod.Page {
 	t.Helper()
+	bro := lifecycleBro(t)
+	page := bro.Page(t, "/")
+	t.Cleanup(func() {
+		page.Close()
+	})
+	return page
+}
+
+func lifecycleBro(t *testing.T) *test.Bro {
+	t.Helper()
 	bro := test.NewPathBro(browser, func(r test.PathLens) gox.Comp {
 		return &test.Page{
 			Source: r,
@@ -35,12 +45,7 @@ func lifecyclePage(t *testing.T) *rod.Page {
 	t.Cleanup(func() {
 		bro.Close()
 	})
-
-	page := bro.Page(t, "/")
-	t.Cleanup(func() {
-		page.Close()
-	})
-	return page
+	return bro
 }
 
 func waitForContentChange(t *testing.T, page *rod.Page, selector string, previous string) string {
@@ -115,5 +120,29 @@ func TestSessionLifecycle(t *testing.T) {
 	}
 	if newInstanceMarker == instanceMarker {
 		t.Fatal("expected instance marker to change after session end")
+	}
+}
+
+func TestSessionStoreSharedAcrossInstances(t *testing.T) {
+	bro := lifecycleBro(t)
+	page1 := bro.Page(t, "/")
+	t.Cleanup(func() {
+		page1.Close()
+	})
+	page2 := bro.Page(t, "/")
+	t.Cleanup(func() {
+		page2.Close()
+	})
+
+	sessionMarker := test.GetContent(t, page1, "#session-marker")
+	otherSessionMarker := test.GetContent(t, page2, "#session-marker")
+	instanceMarker := test.GetContent(t, page1, "#instance-marker")
+	otherInstanceMarker := test.GetContent(t, page2, "#instance-marker")
+
+	if otherSessionMarker != sessionMarker {
+		t.Fatal("expected session store marker to be shared across instances")
+	}
+	if otherInstanceMarker == instanceMarker {
+		t.Fatal("expected instance store marker to stay scoped per instance")
 	}
 }

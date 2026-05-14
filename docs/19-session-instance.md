@@ -11,6 +11,7 @@ These utilities are for the cases where you want to:
 
 - cap how long the current **Doors** session may live
 - force-end a session or just one instance
+- attach background work to the session lifetime
 - attach runtime IDs to logs or traces
 
 For session and instance storage, see [Storage & Auth](./18-storage-auth.md).
@@ -86,7 +87,22 @@ Use it when you intentionally want a full teardown, for example:
 
 With shared reactive session state, this is not the normal auth update path. For normal login, logout, and deauth flows, it is usually better to update session-scoped state and let pages react.
 
+## Context
+
+`doors.SessionContext(ctx)` returns a context that is canceled when the current **Doors** session ends.
+
+```go
+sessionCtx := doors.SessionContext(ctx)
+```
+
+Use it for goroutines or external work that should live for the whole browser session and stop on `SessionEnd`, session expiration, or session cleanup.
+
+It is broader than the current instance or dynamic owner context. For work that should stay scoped to the current dynamic owner, keep using the current `ctx`.
+
+## Instance End
+
 `doors.InstanceEnd(ctx)` ends only the current live page instance.
+
 
 ```go
 doors.InstanceEnd(ctx)
@@ -132,6 +148,7 @@ They are **Doors** runtime IDs, not user IDs or authentication tokens.
 
 - Use `SessionExpire` to cap the session lifetime.
 - Use `SessionExpire(ctx, 0)` to remove an explicit session-expiration cap.
+- Use `SessionContext` for work that should stop when the whole session ends.
 - Use `SessionEnd` only when you really want to end the whole **Doors** session.
 - Use `InstanceEnd` when only the current live page should stop.
 - Use `SessionId` and `InstanceId` for diagnostics, not as business identifiers.

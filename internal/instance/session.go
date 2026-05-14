@@ -15,10 +15,9 @@
 package instance
 
 import (
-	//	"net/http"
+	"context"
 	"net/http"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -40,18 +39,22 @@ type App interface {
 type Session = *session
 
 func NewSession(a App) Session {
+	store := ctex.NewStore()
+	ctx, cancel := context.WithCancel(context.Background())
+	ctx = context.WithValue(ctx, ctex.KeySessionStore, store)
 	sess := &session{
-		store:   ctex.NewStore(),
+		store:   store,
 		id:      common.RandId(),
 		app:     a,
 		limiter: utils.NewLimiter(a.Conf().SessionInstanceLimit),
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 	return sess
 }
 
 type session struct {
 	instances  sync.Map
-	killed     atomic.Bool
 	mu         sync.Mutex
 	store      ctex.Store
 	id         string
@@ -60,6 +63,16 @@ type session struct {
 	expireTime time.Time
 	ttlTime    time.Time
 	killTimer  *time.Timer
+	ctx        context.Context
+	cancel     context.CancelFunc
+}
+
+func (sess *session) killed() bool {
+	return sess.ctx.Err() != nil
+}
+
+func (sess *session) Context() context.Context {
+	return sess.ctx
 }
 
 func (sess *session) App() core.App {
@@ -69,7 +82,7 @@ func (sess *session) App() core.App {
 func (sess *session) Expire(d time.Duration) {
 	sess.mu.Lock()
 	defer sess.mu.Unlock()
-	if sess.killed.Load() {
+	if sess.killed() {
 		return
 	}
 	if d == 0 {
@@ -84,26 +97,22 @@ func (sess Session) ID() string {
 	return sess.id
 }
 
-func (sess Session) Store() ctex.Store {
-	return sess.store
-}
-
 func (sess Session) Instance(loc path.Location) (Instance, bool) {
-	if sess.killed.Load() {
+	if sess.killed() {
 		return nil, false
 	}
 	inst := newInstance(sess, loc)
 	sess.instances.Store(inst.ID(), inst)
 	toSuspend := sess.limiter.Add(inst.ID())
 	if toSuspend == "" {
-		return inst, !sess.killed.Load()
+		return inst, !sess.killed()
 	}
 	instToSuspend, loaded := sess.instances.LoadAndDelete(toSuspend)
 	if !loaded {
-		return inst, !sess.killed.Load()
+		return inst, !sess.killed()
 	}
 	instToSuspend.(Instance).end(common.EndCauseSuspend)
-	return inst, !sess.killed.Load()
+	return inst, !sess.killed()
 }
 
 func (sess Session) InstanceCount() (n int) {
@@ -117,7 +126,7 @@ func (sess Session) InstanceCount() (n int) {
 func (sess *session) Renew(w http.ResponseWriter) bool {
 	sess.mu.Lock()
 	defer sess.mu.Unlock()
-	if sess.killed.Load() {
+	if sess.killed() {
 		return false
 	}
 	ttl := sess.app.Conf().SessionTTL
@@ -138,7 +147,7 @@ func (sess *session) Renew(w http.ResponseWriter) bool {
 		MaxAge:   int(maxAge.Seconds()),
 	}
 	http.SetCookie(w, cookie)
-	return !sess.killed.Load()
+	return !sess.killed()
 }
 
 func (sess *session) resetKillTimer() bool {
@@ -181,29 +190,23 @@ func (sess *session) removeInstance(id string) {
 }
 
 func (sess *session) GetInstance(id string) (Instance, bool) {
-	if sess.killed.Load() {
+	if sess.killed() {
 		return nil, false
 	}
 	inst, ok := sess.instances.Load(id)
 	if !ok {
 		return nil, false
 	}
-	return inst.(Instance), !sess.killed.Load()
+	return inst.(Instance), !sess.killed()
 }
 
 func (sess *session) Kill() {
-	if !sess.killed.CompareAndSwap(false, true) {
-		return
-	}
+	sess.cancel()
 	sess.mu.Lock()
 	if sess.killTimer != nil {
 		sess.killTimer.Stop()
+		sess.killTimer = nil
 	}
 	sess.mu.Unlock()
 	sess.app.RemoveSession(sess.id)
-	sess.instances.Range(func(key, value any) bool {
-		sess.instances.Delete(key)
-		value.(Instance).end(common.EndCauseKilled)
-		return true
-	})
 }

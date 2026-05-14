@@ -8,7 +8,7 @@ That pattern is especially useful for authentication. The same idea also works f
 
 You usually access storage in one of three places:
 
-- `doors.SessionStore(ctx)` for instance-scoped storage
+- `doors.SessionStore(ctx)` for session-scoped storage
 - `doors.InstanceStore(ctx)` for instance-scoped storage
 
 The store API is:
@@ -37,6 +37,8 @@ Use it for state that should be shared across pages or tabs in that browser sess
 - locale
 
 If several pages subscribe to the same source from session storage, they can all react to the same update.
+
+`doors.SessionContext(ctx)` returns a context tied to that same session lifetime. Use it for goroutines or external work that should stop when the **Doors** session ends, rather than when the current instance or dynamic owner is cleaned up.
 
 ## Instance
 

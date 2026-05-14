@@ -84,7 +84,10 @@ func (a App) Resources() resources.Registry {
 }
 
 func (a App) RemoveSession(id string) {
-	a.sessions.Delete(id)
+	_, ok := a.sessions.LoadAndDelete(id)
+	if !ok {
+		return
+	}
 	a.tracker.Delete(id)
 }
 

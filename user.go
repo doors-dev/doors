@@ -84,14 +84,23 @@ type Store = ctex.Store
 
 // SessionStore returns storage shared by all instances in the current session.
 func SessionStore(ctx context.Context) Store {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
-	return core.Instance().Session().Store()
+	return ctx.Value(ctex.KeySessionStore).(ctex.Store)
 }
 
 // InstanceStore returns storage scoped to the current instance only.
 func InstanceStore(ctx context.Context) Store {
 	core := ctx.Value(ctex.KeyCore).(core.Core)
 	return core.Instance().Store()
+}
+
+// SessionContext returns a context that is canceled when the current session
+// ends.
+//
+// It is useful for goroutines or external work that should live for the whole
+// browser session, not just the current instance or dynamic owner.
+func SessionContext(ctx context.Context) context.Context {
+	core := ctx.Value(ctex.KeyCore).(core.Core)
+	return core.SessionContext()
 }
 
 // IDRand returns a cryptographically secure, URL-safe identifier.

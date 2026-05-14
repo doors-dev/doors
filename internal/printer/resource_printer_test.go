@@ -109,7 +109,10 @@ type titleSession struct {
 	app titleApp
 }
 
-func (s titleSession) App() core.App        { return s.app }
+func (s titleSession) App() core.App { return s.app }
+func (s titleSession) Context() context.Context {
+	return context.Background()
+}
 func (s titleSession) Store() ctex.Store    { return ctex.NewStore() }
 func (s titleSession) ID() string           { return "session" }
 func (s titleSession) Expire(time.Duration) {}

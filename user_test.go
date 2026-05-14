@@ -213,12 +213,18 @@ func (h *helperApp) Conf() *common.Conf {
 }
 
 type helperSession struct {
-	inst *helperInstance
-	app  *helperApp
+	inst   *helperInstance
+	app    *helperApp
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func (h *helperSession) App() core.App {
 	return h.app
+}
+
+func (h *helperSession) Context() context.Context {
+	return h.ctx
 }
 
 func (h *helperSession) Store() ctex.Store {
@@ -233,7 +239,9 @@ func (h *helperSession) Expire(d time.Duration) {
 	h.inst.expire = d
 }
 
-func (h *helperSession) Kill() {}
+func (h *helperSession) Kill() {
+	h.cancel()
+}
 
 type helperLocation struct {
 	Home bool   `path:"/home"`
@@ -248,14 +256,16 @@ func helperContext(t *testing.T) (context.Context, *helperInstance) {
 		conf:     conf,
 		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
 	}
-	inst.session = &helperSession{inst: inst, app: &helperApp{conf: &inst.conf}}
-	return context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(helperDoor{inst: inst})), inst
+	ctx, cancel := context.WithCancel(context.Background())
+	ctx = context.WithValue(ctx, ctex.KeySessionStore, ctex.NewStore())
+	inst.session = &helperSession{inst: inst, app: &helperApp{conf: &inst.conf}, ctx: ctx, cancel: cancel}
+	return context.WithValue(ctx, ctex.KeyCore, core.NewCore(helperDoor{inst: inst})), inst
 }
 
 func helperContextWithRoot(t *testing.T) (context.Context, *helperInstance, core.Core) {
 	t.Helper()
 	ctx, inst := helperContext(t)
-	inst.runtime = shredder.NewRuntime(1, helperShutdown{})
+	inst.runtime = shredder.NewRuntime(context.Background(), 1, helperShutdown{})
 	t.Cleanup(func() {
 		inst.runtime.Cancel()
 	})
@@ -300,6 +310,18 @@ func TestUserHelpers(t *testing.T) {
 
 	if ctex.IsFreeCtx(context.Background()) {
 		t.Fatal("unexpected free context by default")
+	}
+}
+
+func TestSessionContextCanceledBySessionEnd(t *testing.T) {
+	ctx, _ := helperContext(t)
+	sessionCtx := SessionContext(ctx)
+	SessionEnd(ctx)
+
+	select {
+	case <-sessionCtx.Done():
+	case <-time.After(time.Second):
+		t.Fatal("expected SessionEnd to cancel SessionContext")
 	}
 }
 

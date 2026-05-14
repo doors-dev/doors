@@ -47,9 +47,9 @@ type App interface {
 
 type Session interface {
 	App() App
-	Store() ctex.Store
 	ID() string
 	Expire(time.Duration)
+	Context() context.Context
 	Kill()
 }
 
@@ -119,6 +119,10 @@ func (c Core) RootCore() Core {
 
 func (c Core) Clean(f func()) {
 	c.door.Clean(f)
+}
+
+func (c Core) SessionContext() context.Context {
+	return c.Instance().Session().Context()
 }
 
 func (c Core) TitleMeta() TitleMeta {

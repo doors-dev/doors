@@ -56,7 +56,7 @@ func expectNoSignal[T any](t *testing.T, ch <-chan T, name string) {
 }
 
 func TestReadBlockingWriteThreadWriterLifecycle(t *testing.T) {
-	runtime := NewRuntime(1, testShutdown{})
+	runtime := NewRuntime(context.Background(), 1, testShutdown{})
 	t.Cleanup(runtime.Cancel)
 
 	var thread ReadBlockingWriteThread
@@ -138,7 +138,7 @@ func TestReadBlockingWriteThreadRejectsSecondPendingWrite(t *testing.T) {
 }
 
 func TestReadWriteThreadSerializesWrites(t *testing.T) {
-	runtime := NewRuntime(1, testShutdown{})
+	runtime := NewRuntime(context.Background(), 1, testShutdown{})
 	t.Cleanup(runtime.Cancel)
 
 	var thread ReadWriteThread
@@ -328,7 +328,7 @@ func TestReadStarveWriteThreadQueuedWriteIsStarvedByLaterReads(t *testing.T) {
 }
 
 func TestReadStarveWriteThreadStarvesAndSerializesPendingWrites(t *testing.T) {
-	runtime := NewRuntime(1, testShutdown{})
+	runtime := NewRuntime(context.Background(), 1, testShutdown{})
 	t.Cleanup(runtime.Cancel)
 
 	var thread ReadStarveWriteThread

@@ -174,7 +174,7 @@ func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (e
 	if !inst.state.CompareAndSwap(zero, initializing) {
 		return nil, false
 	}
-	inst.runtime = shredder.NewRuntime(inst.Session().App().Conf().InstanceGoroutineLimit, inst)
+	inst.runtime = shredder.NewRuntime(inst.session.Context(), inst.Session().App().Conf().InstanceGoroutineLimit, inst)
 	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Session().App().Conf()))
 	inst.root = door.NewRoot(inst)
 	inst.killTimer = utils.NewKillTimer(inst)

@@ -20,4 +20,5 @@ const (
 	KeyApp ctxKey = iota
 	KeyCore
 	keyFrame
+	KeySessionStore
 )

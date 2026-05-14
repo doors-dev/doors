@@ -30,8 +30,8 @@ type Killer interface {
 
 type Runtime = *runtime
 
-func NewRuntime(workerLimit int, killer Killer) Runtime {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewRuntime(ctx context.Context, workerLimit int, killer Killer) Runtime {
+	ctx, cancel := context.WithCancel(ctx)
 	s := &runtime{
 		ctx:         ctx,
 		cancel:      cancel,
