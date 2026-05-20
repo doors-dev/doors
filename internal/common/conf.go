@@ -44,6 +44,13 @@ type Conf struct {
 	ServerCacheControl string
 	// ServerDisableGzip disables gzip compression for HTML, JS, and CSS if true.
 	ServerDisableGzip bool
+	// ServerSessionCookiePrefix sets the internal Doors session cookie name prefix.
+	// Use it when you want browser-enforced cookie prefix rules, such as
+	// __Host- or __Secure-. Empty by default.
+	ServerSessionCookiePrefix string
+	// ServerSessionCookieNoSecure disables the Secure attribute on the internal
+	// Doors session cookie. Use only for plain HTTP development.
+	ServerSessionCookieNoSecure bool
 	// DisconnectHiddenTimer is how long hidden/background instances stay connected.
 	// Default: InstanceTTL/2.
 	DisconnectHiddenTimer time.Duration

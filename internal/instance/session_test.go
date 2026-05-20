@@ -3,6 +3,7 @@ package instance
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -34,7 +35,7 @@ func (a *sessionTestApp) Conf() *common.Conf {
 }
 
 func (a *sessionTestApp) PathMaker() path.PathMaker {
-	return path.NewPathMaker("")
+	return path.NewPathMaker(a.conf.ServerSessionCookiePrefix, "test")
 }
 
 func (a *sessionTestApp) RemoveSession(id string) {
@@ -81,6 +82,51 @@ func TestSessionKillCancelsContext(t *testing.T) {
 	}
 	if sess.Renew(noopResponseWriter{}) {
 		t.Fatal("expected killed session to reject renewal")
+	}
+}
+
+func TestSessionRenewCookie(t *testing.T) {
+	app := newSessionTestApp()
+	sess := NewSession(app)
+	w := httptest.NewRecorder()
+	if !sess.Renew(w) {
+		t.Fatal("expected live session to renew")
+	}
+	cookies := w.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("expected one session cookie, got %d", len(cookies))
+	}
+	cookie := cookies[0]
+	if cookie.Name != "test" {
+		t.Fatalf("unexpected cookie name: %q", cookie.Name)
+	}
+	if cookie.Value != sess.ID() {
+		t.Fatalf("unexpected cookie value: %q", cookie.Value)
+	}
+	if !cookie.Secure {
+		t.Fatal("expected session cookie to be secure")
+	}
+	if cookie.Path != "/" {
+		t.Fatalf("unexpected cookie path: %q", cookie.Path)
+	}
+
+	app.conf.ServerSessionCookieNoSecure = true
+	app.conf.ServerSessionCookiePrefix = ""
+	w = httptest.NewRecorder()
+	sess = NewSession(app)
+	if !sess.Renew(w) {
+		t.Fatal("expected live no-secure session to renew")
+	}
+	cookies = w.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("expected one no-secure session cookie, got %d", len(cookies))
+	}
+	cookie = cookies[0]
+	if cookie.Name != "test" {
+		t.Fatalf("unexpected no-secure cookie name: %q", cookie.Name)
+	}
+	if cookie.Secure {
+		t.Fatal("expected no-secure session cookie to omit Secure")
 	}
 }
 

@@ -24,9 +24,9 @@ import (
 	"github.com/doors-dev/doors/internal/resources"
 )
 
-func NewPathMaker(serverID string) PathMaker {
+func NewPathMaker(prefix string, serverID string) PathMaker {
 	return PathMaker{
-		sessionCookie: "d0r-" + serverID,
+		sessionCookie: prefix + serverID,
 		serverID:      serverID,
 	}
 }

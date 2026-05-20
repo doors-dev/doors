@@ -44,7 +44,7 @@ func (o *Options) initDefaults() {
 		o.ESBuild = resources.DefaultProfile
 	}
 	if o.ID == "" {
-		o.ID = "0"
+		o.ID = "doors"
 	}
 	if o.SessionTracker == nil {
 		o.SessionTracker = notracker{}

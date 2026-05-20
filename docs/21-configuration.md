@@ -45,6 +45,7 @@ Common app options are:
 ## Server ID
 
 Use `doors.WithID(...)` when this app should have its own **Doors** runtime URL prefix and session cookie namespace.
+If unset, the ID defaults to `doors`.
 
 ```go
 app := doors.NewApp(page, doors.WithID("blue"))
@@ -53,7 +54,7 @@ app := doors.NewApp(page, doors.WithID("blue"))
 This value is used in two places:
 
 - **Doors** runtime URLs are built under a prefix like `/~/blue/...`
-- the **Doors** session cookie name becomes `d0r-blue`
+- the **Doors** session cookie name becomes `blue` by default
 
 That separation is especially useful when you run multiple **Doors** deployments side by side, for example:
 
@@ -86,6 +87,8 @@ The fields that matter most in practice are:
 - `RequestTimeout`: max duration of a client request or hook call. Default `30s`.
 - `ServerCacheControl`: cache header for **Doors**-served JS and CSS resources. Default `public, max-age=31536000, immutable`.
 - `ServerDisableGzip`: disables gzip for HTML, JS, and CSS.
+- `ServerSessionCookiePrefix`: optional prefix for the internal **Doors** session cookie name. Empty by default, so with `doors.WithID("blue")` the cookie is named `blue`. Set it explicitly when you want browser-enforced cookie prefix rules such as `__Host-` or `__Secure-`.
+- `ServerSessionCookieNoSecure`: omits the `Secure` attribute from the internal **Doors** session cookie. Use only for plain HTTP development.
 
 The `Solitaire*` fields tune the sync transport between server and browser:
 

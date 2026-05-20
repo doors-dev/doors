@@ -149,12 +149,15 @@ func TestLocationHelpers(t *testing.T) {
 }
 
 func TestPathMakerAndMatch(t *testing.T) {
-	pm := NewPathMaker("blue")
+	pm := NewPathMaker("__Host-", "blue")
 	if pm.ID() != "blue" {
 		t.Fatalf("unexpected id: %q", pm.ID())
 	}
 	if pm.Prefix() != "/~/blue" {
 		t.Fatalf("unexpected prefix: %q", pm.Prefix())
+	}
+	if pm.SessionCookie() != "__Host-blue" {
+		t.Fatalf("unexpected session cookie: %q", pm.SessionCookie())
 	}
 
 	hookPath := pm.Hook("inst1", 20, "file.txt")

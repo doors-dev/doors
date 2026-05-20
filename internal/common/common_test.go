@@ -51,6 +51,9 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if conf.ServerCacheControl != DefaultCacheControl {
 		t.Fatalf("unexpected cache control: %q", conf.ServerCacheControl)
 	}
+	if conf.ServerSessionCookiePrefix != "" {
+		t.Fatalf("unexpected session cookie prefix: %q", conf.ServerSessionCookiePrefix)
+	}
 	if conf.SessionTTL != conf.InstanceTTL {
 		t.Fatal("expected session ttl to be raised to instance ttl")
 	}
@@ -85,6 +88,14 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	}
 	if custom.SolitaireFlushSizeLimit != 32*1024 {
 		t.Fatal("expected solitaire flush size default")
+	}
+
+	noSecure := &Conf{
+		ServerSessionCookieNoSecure: true,
+	}
+	InitDefaults(noSecure)
+	if noSecure.ServerSessionCookiePrefix != "" {
+		t.Fatalf("expected no-secure session cookie prefix to stay empty, got %q", noSecure.ServerSessionCookiePrefix)
 	}
 }
 

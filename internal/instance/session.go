@@ -157,6 +157,7 @@ func (sess *session) Renew(w http.ResponseWriter) bool {
 		Name:     sess.app.PathMaker().SessionCookie(),
 		Value:    sess.id,
 		HttpOnly: true,
+		Secure:   !sess.app.Conf().ServerSessionCookieNoSecure,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(maxAge.Seconds()),

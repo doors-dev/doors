@@ -37,6 +37,12 @@ At a high level:
 - that session is renewed on later requests and uses a timer-based lifetime
 - a page gets its own live instance
 
+The internal **Doors** session cookie is `HttpOnly`, `Secure`, scoped to `/`, and named from `ServerSessionCookiePrefix + WithID`. By default, the prefix is empty and the app ID defaults to `doors`, so the cookie is named `doors`.
+
+For plain HTTP development, `ServerSessionCookieNoSecure` can omit `Secure`.
+
+If you want browser-enforced cookie prefix rules, set `ServerSessionCookiePrefix` explicitly, for example to `__Host-` or `__Secure-`.
+
 Instances also have their own lifecycle rules:
 
 - a new instance must get its first client connection within `InstanceConnectTimeout`

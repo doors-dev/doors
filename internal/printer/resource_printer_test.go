@@ -94,7 +94,7 @@ type titleApp struct {
 }
 
 func (a titleApp) PathMaker() path.PathMaker {
-	return path.NewPathMaker("srv")
+	return path.NewPathMaker("__Host-", "srv")
 }
 
 func (a titleApp) ResourceRegistry() resources.Registry {

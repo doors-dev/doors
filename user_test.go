@@ -201,7 +201,7 @@ type helperApp struct {
 }
 
 func (h *helperApp) PathMaker() path.PathMaker {
-	return path.NewPathMaker("")
+	return path.NewPathMaker("__Host-", "")
 }
 
 func (h *helperApp) ResourceRegistry() resources.Registry {

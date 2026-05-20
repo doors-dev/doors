@@ -100,6 +100,16 @@ func main() {
 
 Start the program with `go run .` and open [http://localhost:8080](http://localhost:8080).
 
+> **Safari on localhost**
+>
+> **Doors** uses a `Secure` internal session cookie by default. Chrome and Firefox usually accept secure cookies on `http://localhost`, but Safari rejects them on plain HTTP. If you test with Safari locally, either use local HTTPS or disable the `Secure` attribute for development:
+>
+> ```go
+> app := doors.NewApp(page, doors.WithConf(doors.Conf{
+> 	ServerSessionCookieNoSecure: true,
+> }))
+> ```
+
 #### What Just Happened?
 
 `doors.NewApp(...)` builds the **Doors** application. It takes a single page function that, for every request, returns the root component **Doors** should render:
