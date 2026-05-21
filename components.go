@@ -19,8 +19,8 @@ import (
 	"errors"
 	"io"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/gox"
 )
@@ -96,7 +96,7 @@ func (parallelJob) Output(io.Writer) error {
 //	})
 func Go(f func(context.Context)) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
-		core := cur.Context().Value(ctex.KeyCore).(core.Core)
+		core := cur.Context().Value(common.KeyCore).(core.Core)
 		ctx := Free(cur.Context())
 		core.Instance().Runtime().Go(ctx, f)
 		return nil
@@ -110,7 +110,7 @@ func Go(f func(context.Context)) gox.Editor {
 //	~(doors.Status(http.StatusNotFound))
 func Status(statusCode int) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
-		core := cur.Context().Value(ctex.KeyCore).(core.Core)
+		core := cur.Context().Value(common.KeyCore).(core.Core)
 		core.Instance().SetStatus(statusCode)
 		return nil
 	})

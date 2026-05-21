@@ -17,7 +17,6 @@ package utils
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -73,7 +72,7 @@ func (t *killTimer) KeepAlive() {
 		return
 	}
 	t.timer = time.AfterFunc(t.initial, func() {
-		slog.Debug("inactive instance killed by timeout", "type", "message", "instance_id", t.inst.ID())
+		t.inst.Logger().Debug("inactive instance killed by timeout", "type", "message", "instance_id", t.inst.ID())
 		t.inst.Kill()
 	})
 }

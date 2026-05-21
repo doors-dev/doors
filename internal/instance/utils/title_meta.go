@@ -219,7 +219,7 @@ func (t *titleMeta) callUpdateMeta(prop bool, id uint, name string, attrs gox.At
 		action.UpdateMeta{
 			Name:     name,
 			Property: prop,
-			Attrs:    common.AttrsToMap(attrs),
+			Attrs:    common.AttrsToMap(attrs, t.inst.Logger()),
 		},
 		nil,
 		nil,
@@ -240,7 +240,7 @@ func (t *titleMeta) callUpdateTitle(id uint, value string, attrs gox.Attrs) {
 		},
 		action.UpdateTitle{
 			Content: value,
-			Attrs:   common.AttrsToMap(attrs),
+			Attrs:   common.AttrsToMap(attrs, t.inst.Logger()),
 		},
 		nil,
 		nil,

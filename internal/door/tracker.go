@@ -41,7 +41,7 @@ func trackerRoot(r *root) (*tracker, core.Core) {
 	}
 	t.cinema = beam.NewCinema(nil, t)
 	core := core.NewCore(t)
-	t.contentCtx = context.WithValue(r.runtime().Context(), ctex.KeyCore, core)
+	t.contentCtx = context.WithValue(r.runtime().Context(), common.KeyCore, core)
 	return t, core
 }
 
@@ -64,6 +64,7 @@ func trackerRemove(prev *tracker, task *userTask) {
 			id:      prev.id,
 			payload: emptyPayload{},
 			task:    task,
+			logger:  prev.root.inst.Logger(),
 		})
 	})
 }
@@ -90,7 +91,7 @@ func trackerInherit(n *node, prev *tracker, preserveFrame bool) *tracker {
 	}
 	prev.clean(false, t.innerCallGuard)
 	core := core.NewCore(t)
-	t.contentCtx = context.WithValue(ctx, ctex.KeyCore, core)
+	t.contentCtx = context.WithValue(ctx, common.KeyCore, core)
 	t.parent.addChild(t)
 	return t
 }
@@ -110,7 +111,7 @@ func trackerCreate(n *node, p *pipe) *tracker {
 	t.cinema = beam.NewCinema(t.parent.cinema, t)
 	t.container = newContainerTracker(t)
 	core := core.NewCore(t)
-	t.contentCtx = context.WithValue(ctx, ctex.KeyCore, core)
+	t.contentCtx = context.WithValue(ctx, common.KeyCore, core)
 	t.parent.addChild(t)
 	return t
 }
@@ -324,7 +325,7 @@ func newContainerTracker(t *tracker) *containerTracker {
 	}
 	ft.cinema = beam.NewCinema(t.parent.Cinema(), ft)
 	core := core.NewCore(ft)
-	ft.ctx = context.WithValue(ctx, ctex.KeyCore, core)
+	ft.ctx = context.WithValue(ctx, common.KeyCore, core)
 	return ft
 }
 

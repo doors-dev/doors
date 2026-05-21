@@ -16,6 +16,7 @@ package resources
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"sync"
 
@@ -26,21 +27,22 @@ import (
 )
 
 type App interface {
+	Logger() *slog.Logger
 	Conf() *common.Conf
 	ESProfile(profile string) api.BuildOptions
 }
 
 type Registry = *registry
 
-func NewRegistry(s App) Registry {
+func NewRegistry(app App) Registry {
 	return &registry{
-		settings: s,
+		app: app,
 	}
 }
 
 type registry struct {
 	initGuard  sync.Once
-	settings   App
+	app        App
 	cache      sync.Map
 	lookup     sync.Map
 	mainScript *Resource
@@ -48,7 +50,7 @@ type registry struct {
 }
 
 func (rs *registry) init() {
-	opt := rs.settings.ESProfile("")
+	opt := rs.app.ESProfile("")
 	ScriptFS{
 		FS:   internal.ClientSrc,
 		Path: "index.ts",
@@ -64,6 +66,7 @@ func (rs *registry) init() {
 	}
 	content, err := build(&opt)
 	if err != nil {
+		rs.app.Logger().Error("esbuild error", "error", err)
 		panic(errors.Join(errors.New("client JS build error"), err))
 	}
 	rs.mainScript = NewResource(content, "application/javascript", rs.defaultSettings())
@@ -74,8 +77,8 @@ func (rs *registry) init() {
 
 func (rs *registry) defaultSettings() resourceSettings {
 	return resourceSettings{
-		cacheControl: rs.settings.Conf().ServerCacheControl,
-		disableGzip:  rs.settings.Conf().ServerDisableGzip,
+		cacheControl: rs.app.Conf().ServerCacheControl,
+		disableGzip:  rs.app.Conf().ServerDisableGzip,
 	}
 }
 
@@ -155,13 +158,16 @@ func (rs Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 	if _, ok := format.(FormatRaw); ok {
 		content, err = entry.Read()
 	} else {
-		opt := rs.settings.ESProfile(profile)
+		opt := rs.app.ESProfile(profile)
 		err := entry.Apply(&opt)
 		if err != nil {
 			return nil, err
 		}
 		format.Apply(&opt)
 		content, err = build(&opt)
+		if err != nil {
+			rs.app.Logger().Error("esbuild error", "error", err)
+		}
 	}
 	if err != nil {
 		return nil, err

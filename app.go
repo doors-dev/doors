@@ -2,6 +2,7 @@ package doors
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -16,9 +17,9 @@ type With interface {
 	apply(*app.Options)
 }
 
-type optionFunc func(*app.Options)
+type withFunc func(*app.Options)
 
-func (f optionFunc) apply(o *app.Options) {
+func (f withFunc) apply(o *app.Options) {
 	f(o)
 }
 
@@ -27,7 +28,7 @@ type Conf = common.Conf
 
 // WithConf applies runtime configuration to an app.
 func WithConf(conf Conf) With {
-	return optionFunc(func(o *app.Options) {
+	return withFunc(func(o *app.Options) {
 		o.Conf = conf
 	})
 }
@@ -37,7 +38,7 @@ type CSP = common.CSP
 
 // WithCSP enables Content-Security-Policy header generation for an app.
 func WithCSP(csp CSP) With {
-	return optionFunc(func(o *app.Options) {
+	return withFunc(func(o *app.Options) {
 		o.CSP = &csp
 	})
 }
@@ -47,14 +48,14 @@ func WithID(id string) With {
 	if id != url.PathEscape(id) {
 		panic("server ID must be URL compatible without escaping")
 	}
-	return optionFunc(func(o *app.Options) {
+	return withFunc(func(o *app.Options) {
 		o.ID = id
 	})
 }
 
 // WithESProfiles sets the esbuild options provider used for script resources.
 func WithESProfiles(profile func(p string) api.BuildOptions) With {
-	return optionFunc(func(o *app.Options) {
+	return withFunc(func(o *app.Options) {
 		o.ESBuild = profile
 	})
 }
@@ -64,7 +65,7 @@ type SessionTracker = app.SessionTracker
 
 // WithSessionTracker installs a session lifecycle observer.
 func WithSessionTracker(t SessionTracker) With {
-	return optionFunc(func(o *app.Options) {
+	return withFunc(func(o *app.Options) {
 		o.SessionTracker = t
 	})
 }
@@ -74,8 +75,16 @@ type ErrorPage = app.ErrorPage
 
 // WithErrorPage installs a custom app-level error page renderer.
 func WithErrorPage(ep ErrorPage) With {
-	return optionFunc(func(o *app.Options) {
+	return withFunc(func(o *app.Options) {
 		o.ErrorPage = ep
+	})
+}
+
+// WithLogger installs the logger used by Doors internals.
+// If l is nil, Doors uses slog.Default().
+func WithLogger(l *slog.Logger) With {
+	return withFunc(func(o *app.Options) {
+		o.Logger = l
 	})
 }
 

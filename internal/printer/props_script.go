@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
@@ -62,7 +62,7 @@ func (s *scriptProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 		}
 		return nil
 	}
-	core := job.Ctx.Value(ctex.KeyCore).(core.Core)
+	core := job.Ctx.Value(common.KeyCore).(core.Core)
 	switch src := s.source.(type) {
 	case string:
 		if s.specifier != "" {

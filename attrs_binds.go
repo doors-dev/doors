@@ -18,11 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/gox"
 )
@@ -54,7 +53,7 @@ func (h AHook[T]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 }
 
 func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(h.handle, nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
@@ -73,7 +72,7 @@ func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	err := dec.Decode(&input)
 	r.Body.Close()
 	if err != nil {
-		slog.Error("Hook decoding error", "error", err)
+		common.Logger(ctx).Error("Hook decoding error", "error", err)
 		w.WriteHeader(400)
 		return false
 	}
@@ -89,7 +88,7 @@ func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Re
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(&output)
 	if err != nil {
-		slog.Error("Hook output encoding error", "error", err)
+		common.Logger(ctx).Error("Hook output encoding error", "error", err)
 		w.WriteHeader(500)
 	}
 	return done
@@ -122,7 +121,7 @@ func (h ARawHook) Proxy(cur gox.Cursor, elem gox.Elem) error {
 }
 
 func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(h.handle, nil)
 	if !ok {
 		return errors.New("door: hook registration failed")

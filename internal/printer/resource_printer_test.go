@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -75,6 +76,7 @@ func (t *titleInstance) Store() ctex.Store                    { return ctex.NewS
 func (t *titleInstance) Location() beam.Source[path.Location] { return t.location }
 func (t *titleInstance) Kill()                                {}
 func (t *titleInstance) TitleMeta() core.TitleMeta            { return t }
+func (t *titleInstance) Logger() *slog.Logger                 { return slog.Default() }
 func (t *titleInstance) PathMaker() path.PathMaker            { return t.session.app.PathMaker() }
 func (t *titleInstance) Edit(cur gox.Cursor) error            { return nil }
 func (t *titleInstance) Main() gox.Elem                       { return nil }
@@ -105,11 +107,16 @@ func (a titleApp) Conf() *common.Conf {
 	return a.conf
 }
 
+func (a titleApp) Logger() *slog.Logger {
+	return slog.Default()
+}
+
 type titleSession struct {
 	app titleApp
 }
 
-func (s titleSession) App() core.App { return s.app }
+func (s titleSession) Logger() *slog.Logger { return s.app.Logger() }
+func (s titleSession) App() core.App        { return s.app }
 func (s titleSession) Context() context.Context {
 	return context.Background()
 }
@@ -205,7 +212,7 @@ func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstan
 	}
 	inst.session = &titleSession{app: titleApp{conf: &inst.conf, registry: registry}}
 	door := &hookDoor{id: 7, allowHook: allowHook, inst: inst}
-	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(door))
+	ctx := context.WithValue(context.Background(), common.KeyCore, core.NewCore(door))
 	return ctx, inst, door, modules
 }
 
@@ -369,7 +376,7 @@ func TestProcessTitleWrongClose(t *testing.T) {
 func TestProcessTitleSuccess(t *testing.T) {
 	inst := &titleInstance{}
 	inst.session = &titleSession{app: titleApp{conf: &inst.conf}}
-	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(titleDoor{inst: inst}))
+	ctx := context.WithValue(context.Background(), common.KeyCore, core.NewCore(titleDoor{inst: inst}))
 	open := gox.NewJobHeadOpen(ctx, 10, gox.KindRegular, "title", gox.NewAttrs())
 	open.Attrs.Get("data-id").Set("hero")
 
@@ -741,7 +748,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = resourceURL(failCtx.Value(ctex.KeyCore).(core.Core), res, resources.ModeNoHost, "x.txt")
+		_, err = resourceURL(failCtx.Value(common.KeyCore).(core.Core), res, resources.ModeNoHost, "x.txt")
 		if err != context.Canceled {
 			t.Fatalf("expected canceled resource url, got %v", err)
 		}

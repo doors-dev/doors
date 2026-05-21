@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log/slog"
 	"net/http"
 	"slices"
 	"sync"
@@ -29,6 +30,7 @@ func NewApp(page Page, o Options) App {
 		tracker:    o.SessionTracker,
 		esProfiles: o.ESBuild,
 		errPage:    o.ErrorPage,
+		logger:     o.Logger,
 	}
 	a.registry = resources.NewRegistry(a)
 	a.Use()
@@ -49,6 +51,11 @@ type app struct {
 	use        []Middleware
 	handler    http.Handler
 	errPage    ErrorPage
+	logger     *slog.Logger
+}
+
+func (a *app) Logger() *slog.Logger {
+	return a.logger
 }
 
 func (a *app) ResourceRegistry() resources.Registry {

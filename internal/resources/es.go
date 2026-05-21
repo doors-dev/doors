@@ -17,7 +17,6 @@ package resources
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
@@ -47,9 +46,6 @@ func build(options *api.BuildOptions) ([]byte, error) {
 	options.Platform = api.PlatformBrowser
 	result := api.Build(*options)
 	if len(result.Errors) != 0 {
-		for _, m := range result.Errors {
-			slog.Error("esbuild error", "text", m.Text)
-		}
 		return nil, BuildErrors(result.Errors)
 
 	}

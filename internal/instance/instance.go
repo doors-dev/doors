@@ -61,6 +61,10 @@ type instance struct {
 	titleMeta  core.TitleMeta
 }
 
+func (inst Instance) Logger() *slog.Logger {
+	return inst.session.app.Logger()
+}
+
 func (inst Instance) UpdateLocation(l path.Location) bool {
 	return inst.navigator.Update(l)
 }
@@ -119,7 +123,7 @@ func (inst *instance) SetStatus(s int) {
 }
 
 func (inst *instance) SyncError(err error) {
-	slog.Debug("Instance synchronization error", "error", err, "type", "error", "instance_id", inst.id)
+	inst.Logger().Debug("Instance synchronization error", "error", err, "type", "error", "instance_id", inst.id)
 	inst.end(common.EndCauseSyncError)
 }
 

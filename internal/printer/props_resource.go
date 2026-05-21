@@ -19,8 +19,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
 )
@@ -112,7 +112,7 @@ func (r *resourceProps) Submit(openJob *gox.JobHeadOpen, p *resourcePrinter) err
 	r.setDefaultMode(resources.ModeNoCache)
 	sourceHandler := r.source.(SourceHandler)
 	sourceStatic, isStatic := r.source.(SourceStatic)
-	core := openJob.Context().Value(ctex.KeyCore).(core.Core)
+	core := openJob.Context().Value(common.KeyCore).(core.Core)
 	if r.mode == resources.ModeNoCache || !isStatic {
 		handler := sourceHandler.Handler()
 		contentType := r.contentType

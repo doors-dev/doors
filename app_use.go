@@ -3,11 +3,10 @@ package doors
 import (
 	"errors"
 	"io/fs"
-	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/instance"
 )
 
@@ -87,10 +86,10 @@ func UseResource(path string, resource ResourceStatic, contentType string) Use {
 				next.ServeHTTP(w, r)
 				return
 			}
-			sess := r.Context().Value(ctex.KeySession).(instance.Session)
+			sess := r.Context().Value(common.KeySession).(instance.Session)
 			res, err := sess.App().ResourceRegistry().Static(entry, contentType)
 			if err != nil {
-				slog.Error("ServeResource failed to prepare the resource", "error", err)
+				sess.Logger().Error("ServeResource failed to prepare the resource", "error", err)
 				w.WriteHeader(500)
 				return
 			}

@@ -25,12 +25,12 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-func newError(err error) Error {
+func newError(err error, logger *slog.Logger) Error {
 	if e, ok := err.(Error); ok {
 		return e
 	}
 	id := common.RandId()
-	slog.Error("door rendering/printing error", "error", err, "error_id", id)
+	logger.Error("door rendering/printing error", "error", err, "error_id", id)
 	return Error{
 		id:  id,
 		err: err,

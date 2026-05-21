@@ -16,8 +16,9 @@ package ctex
 
 import (
 	"context"
-	"log/slog"
 	"time"
+
+	"github.com/doors-dev/doors/internal/common"
 )
 
 func NewFreeContext(ctx context.Context, runtime context.Context) context.Context {
@@ -63,7 +64,7 @@ func ClearFreeCtx(ctx context.Context) context.Context {
 
 func LogFreeWarning(ctx context.Context, entity string, operation string) {
 	if !IsFreeCtx(ctx) {
-		slog.Warn(
+		common.Logger(ctx).Warn(
 			"extended operation is used in non-free context. Receiving from channel could lead to DEADLOCK under extreme conditions, please refer to documentation",
 			"entity",
 			entity,

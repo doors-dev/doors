@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -26,6 +27,7 @@ type Options struct {
 	SessionTracker SessionTracker
 	ID             string
 	ErrorPage      ErrorPage
+	Logger         *slog.Logger
 }
 
 type notracker struct{}
@@ -48,5 +50,8 @@ func (o *Options) initDefaults() {
 	}
 	if o.SessionTracker == nil {
 		o.SessionTracker = notracker{}
+	}
+	if o.Logger == nil {
+		o.Logger = slog.Default()
 	}
 }

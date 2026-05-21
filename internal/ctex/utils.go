@@ -16,14 +16,15 @@ package ctex
 
 import (
 	"context"
-	"log/slog"
+
+	"github.com/doors-dev/doors/internal/common"
 )
 
 func LogCanceled(ctx context.Context, action string) {
 	if ctx.Err() == nil {
 		return
 	}
-	slog.Warn(
+	common.Logger(ctx).Warn(
 		"requested action from a canceled context. For long-running goroutines or awaited X* operations, use doors.Free(ctx)",
 		"action",
 		action,

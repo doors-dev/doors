@@ -12,12 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ctex
+package common
+
+import (
+	"context"
+	"log/slog"
+)
 
 type ctxKey int
 
 const (
 	KeyCore ctxKey = iota
 	KeySession
-	keyFrame
+	KeyFrame
 )
+
+func Logger(ctx context.Context) *slog.Logger {
+	if ctx == nil {
+		return slog.Default()
+	}
+	lp, ok := ctx.Value(KeySession).(interface{ Logger() *slog.Logger })
+	if !ok {
+		return slog.Default()
+	}
+	return lp.Logger()
+}

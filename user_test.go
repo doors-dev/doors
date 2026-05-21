@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"testing"
 	"time"
@@ -43,7 +44,8 @@ func (h helperDoor) UserCall(ctx context.Context, check func() bool, action acti
 
 type helperShutdown struct{}
 
-func (helperShutdown) Kill() {}
+func (helperShutdown) Kill()                {}
+func (helperShutdown) Logger() *slog.Logger { return slog.Default() }
 
 func (h helperDoor) Instance() core.Instance {
 	return h.inst
@@ -192,6 +194,10 @@ func (h *helperInstance) Location() beam.Source[path.Location] {
 
 func (h *helperInstance) Kill() {}
 
+func (h *helperInstance) Logger() *slog.Logger {
+	return slog.Default()
+}
+
 func (h *helperInstance) TitleMeta() core.TitleMeta {
 	return nil
 }
@@ -212,11 +218,19 @@ func (h *helperApp) Conf() *common.Conf {
 	return h.conf
 }
 
+func (h *helperApp) Logger() *slog.Logger {
+	return slog.Default()
+}
+
 type helperSession struct {
 	inst   *helperInstance
 	app    *helperApp
 	ctx    context.Context
 	cancel context.CancelFunc
+}
+
+func (h *helperSession) Logger() *slog.Logger {
+	return h.app.Logger()
 }
 
 func (h *helperSession) App() core.App {
@@ -258,9 +272,9 @@ func helperContext(t *testing.T) (context.Context, *helperInstance) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	inst.session = &helperSession{inst: inst, app: &helperApp{conf: &inst.conf}, ctx: ctx, cancel: cancel}
-	ctx = context.WithValue(ctx, ctex.KeySession, inst.session)
+	ctx = context.WithValue(ctx, common.KeySession, inst.session)
 	inst.session.ctx = ctx
-	return context.WithValue(ctx, ctex.KeyCore, core.NewCore(helperDoor{inst: inst})), inst
+	return context.WithValue(ctx, common.KeyCore, core.NewCore(helperDoor{inst: inst})), inst
 }
 
 func helperContextWithRoot(t *testing.T) (context.Context, *helperInstance, core.Core) {
@@ -271,7 +285,7 @@ func helperContextWithRoot(t *testing.T) (context.Context, *helperInstance, core
 		inst.runtime.Cancel()
 	})
 	root := core.NewCore(helperDoor{inst: inst})
-	ctx = context.WithValue(ctx, ctex.KeyCore, core.NewCore(helperDoorWithRoot{inst: inst, root: root}))
+	ctx = context.WithValue(ctx, common.KeyCore, core.NewCore(helperDoorWithRoot{inst: inst, root: root}))
 	return ctx, inst, root
 }
 
@@ -330,7 +344,7 @@ func TestFreeKeepsOwnerAndClearsFrame(t *testing.T) {
 	ctx, _ := helperContext(t)
 	ctx = context.WithValue(ctx, "value", "kept")
 	ctx, _ = ctex.AfterFrameInsert(ctx)
-	owner, _ := ctx.Value(ctex.KeyCore).(core.Core)
+	owner, _ := ctx.Value(common.KeyCore).(core.Core)
 	base, cancel := context.WithCancel(ctx)
 	free := Free(base)
 
@@ -340,7 +354,7 @@ func TestFreeKeepsOwnerAndClearsFrame(t *testing.T) {
 	if free.Value("value") != "kept" {
 		t.Fatal("expected Free to preserve context values")
 	}
-	if got, _ := free.Value(ctex.KeyCore).(core.Core); got != owner {
+	if got, _ := free.Value(common.KeyCore).(core.Core); got != owner {
 		t.Fatal("expected Free to keep the current Doors owner")
 	}
 	if _, ok := ctex.AfterFrame(free); ok {
@@ -368,7 +382,7 @@ func TestFreeRootSwitchesToRootCoreAndRuntime(t *testing.T) {
 	if free.Value("value") != "kept" {
 		t.Fatal("expected FreeRoot to preserve context values")
 	}
-	if got, _ := free.Value(ctex.KeyCore).(core.Core); got != root {
+	if got, _ := free.Value(common.KeyCore).(core.Core); got != root {
 		t.Fatal("expected FreeRoot to switch to root Doors context")
 	}
 	if _, ok := ctex.AfterFrame(free); ok {

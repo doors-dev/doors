@@ -16,13 +16,15 @@ package shredder
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 	"time"
 )
 
 type testShutdown struct{}
 
-func (testShutdown) Kill() {}
+func (testShutdown) Kill()                {}
+func (testShutdown) Logger() *slog.Logger { return slog.Default() }
 
 func expectBool(t *testing.T, ch <-chan bool, name string) bool {
 	t.Helper()

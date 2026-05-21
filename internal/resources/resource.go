@@ -15,7 +15,6 @@
 package resources
 
 import (
-	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -67,17 +66,11 @@ func (s *Resource) ServeCache(w http.ResponseWriter, r *http.Request, cache bool
 	}
 	if !s.settings.disableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		s.once.Do(func() {
-			zipped, err := common.Zip(s.content)
-			if err != nil {
-				slog.Error("gzip error", "error", err)
-			}
-			s.gzipped = zipped
+			s.gzipped = common.Zip(s.content)
 		})
-		if s.gzipped != nil {
-			w.Header().Set("Content-Encoding", "gzip")
-			w.Write(s.gzipped)
-			return
-		}
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Write(s.gzipped)
+		return
 	}
 	w.Write(s.content)
 }

@@ -24,13 +24,14 @@ import (
 	"github.com/gammazero/deque"
 )
 
-type Killer interface {
+type Owner interface {
+	Logger() *slog.Logger
 	Kill()
 }
 
 type Runtime = *runtime
 
-func NewRuntime(ctx context.Context, workerLimit int, killer Killer) Runtime {
+func NewRuntime(ctx context.Context, workerLimit int, killer Owner) Runtime {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &runtime{
 		ctx:         ctx,
@@ -39,7 +40,7 @@ func NewRuntime(ctx context.Context, workerLimit int, killer Killer) Runtime {
 		pool:        make([]chan task, workerLimit),
 		cold:        make(chan task),
 		hot:         make(chan int, workerLimit),
-		killer:      killer,
+		owner:       killer,
 	}
 	go s.loop()
 	return s
@@ -48,7 +49,7 @@ func NewRuntime(ctx context.Context, workerLimit int, killer Killer) Runtime {
 type runtime struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
-	killer      Killer
+	owner       Owner
 	workerLimit int
 	pool        []chan task
 	cold        chan task
@@ -114,7 +115,7 @@ func (t task) cancel(r *runtime) {
 }
 
 func (r *runtime) onPanic(err error) {
-	slog.Error("shredder runtime panic", "error", err)
+	r.owner.Logger().Error("shredder runtime panic", "error", err)
 	r.Cancel()
 }
 
@@ -216,7 +217,7 @@ func (r *runtime) loop() {
 			}
 			select {
 			case <-r.ctx.Done():
-				r.killer.Kill()
+				r.owner.Kill()
 				done = true
 			case f := <-r.cold:
 				ok := r.submitHot(f)
@@ -253,7 +254,7 @@ func (r *runtime) loop() {
 		}
 		select {
 		case <-r.ctx.Done():
-			r.killer.Kill()
+			r.owner.Kill()
 			done = true
 		case f := <-r.cold:
 			queue.PushBack(f)

@@ -24,6 +24,7 @@ import (
 )
 
 func (c Instance) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+	logger := c.Logger()
 	call := &call{
 		ctx:      ctx,
 		action:   action,
@@ -31,6 +32,7 @@ func (c Instance) UserCall(ctx context.Context, check func() bool, action action
 		onResult: onResult,
 		onCancel: onCancel,
 		params:   params,
+		logger:   logger,
 	}
 	c.solitaire.Call(call)
 }
@@ -41,6 +43,7 @@ type checkCall struct {
 	onResult func(json.RawMessage, error)
 	onCancel func()
 	params   action.CallParams
+	logger   *slog.Logger
 }
 
 func (c *checkCall) Params() action.CallParams {
@@ -66,7 +69,7 @@ func (c checkCall) Cancel() {
 }
 func (c *checkCall) Result(r json.RawMessage, err error) {
 	if err != nil {
-		slog.Error("Call failed", "action", c.action.Log(), "error", err)
+		c.logger.Error("Call failed", "action", c.action.Log(), "error", err)
 	}
 	if c.onResult == nil {
 		return
@@ -85,6 +88,7 @@ type call struct {
 	onResult func(json.RawMessage, error)
 	onCancel func()
 	params   action.CallParams
+	logger   *slog.Logger
 }
 
 func (c *call) Params() action.CallParams {
@@ -114,7 +118,7 @@ func (c call) Cancel() {
 
 func (c *call) Result(r json.RawMessage, err error) {
 	if err != nil {
-		slog.Error("Call failed", "action", c.action.Log(), "error", err)
+		c.logger.Error("Call failed", "action", c.action.Log(), "error", err)
 	}
 	if c.onResult == nil {
 		return

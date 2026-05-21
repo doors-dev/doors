@@ -115,11 +115,12 @@ func (n *node) sync(task *userTask) {
 		if err == nil {
 			payload, err = pip.Render(ownerTracker.Instance().Session().App().Conf().ServerDisableGzip)
 		}
+		logger := ownerTracker.root.inst.Logger()
 		callCtx := ownerTracker.ctx
 		if err != nil {
 			n.onErr(err)
 			task.Report(err)
-			payload = newError(err)
+			payload = newError(err, logger)
 			callCtx = n.tracker.parent.ctx
 		}
 		ownerTracker.root.inst.Call(&call{
@@ -128,6 +129,7 @@ func (n *node) sync(task *userTask) {
 			id:      n.tracker.id,
 			task:    task,
 			payload: payload,
+			logger:  logger,
 		})
 	})
 }

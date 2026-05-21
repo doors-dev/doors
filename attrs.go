@@ -20,8 +20,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/gox"
 )
@@ -73,7 +73,7 @@ type eventAttr[E any] struct {
 }
 
 func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
-	c := ctx.Value(ctex.KeyCore).(core.Core)
+	c := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := c.Door().RegisterHook(p.handle, nil)
 	if !ok {
 		return errors.New("door: hook registration failed")

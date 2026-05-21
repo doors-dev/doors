@@ -18,13 +18,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
@@ -57,6 +57,10 @@ func (s pagePrinterSettings) Conf() *common.Conf {
 
 func (s pagePrinterSettings) ESProfile(string) api.BuildOptions {
 	return api.BuildOptions{}
+}
+
+func (s pagePrinterSettings) Logger() *slog.Logger {
+	return slog.Default()
 }
 
 func TestPagePrinterInsertsHeadBeforeBody(t *testing.T) {
@@ -196,7 +200,7 @@ func TestPagePrinterIncludesFrontAssetsWhenNotStatic(t *testing.T) {
 		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
 	}
 	inst.session = &titleSession{app: titleApp{conf: &inst.conf, registry: registry}}
-	ctx := context.WithValue(context.Background(), ctex.KeyCore, core.NewCore(titleDoor{inst: inst}))
+	ctx := context.WithValue(context.Background(), common.KeyCore, core.NewCore(titleDoor{inst: inst}))
 
 	var out bytes.Buffer
 	p := NewPagePrinter(&out, false, front.Include(inst), nil, noMeta())

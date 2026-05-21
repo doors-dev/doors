@@ -16,8 +16,11 @@ package shredder
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"sync/atomic"
+
+	"github.com/doors-dev/doors/internal/common"
 )
 
 type ValveFrame struct {
@@ -37,12 +40,12 @@ func (f *ValveFrame) Activate() {
 	f.buffer = nil
 	f.mu.Unlock()
 	for i, e := range buf {
-		f.schedule(e)
+		f.schedule(e, slog.Default())
 		buf[i] = nil
 	}
 }
 
-func (f *ValveFrame) schedule(e executable) {
+func (f *ValveFrame) schedule(e executable, l *slog.Logger) {
 	if f.active.Load() {
 		e.execute(func(error) {})
 		return
@@ -58,11 +61,11 @@ func (f *ValveFrame) schedule(e executable) {
 }
 
 func (f *ValveFrame) Run(ctx context.Context, s Runtime, fun func(bool)) {
-	f.schedule(run{runtime: s, ctx: ctx, fun: fun})
+	f.schedule(run{runtime: s, ctx: ctx, fun: fun}, common.Logger(ctx))
 }
 
 func (f *ValveFrame) Submit(ctx context.Context, s Runtime, fun func(bool)) {
-	f.schedule(spawn{runtime: s, ctx: ctx, fun: fun})
+	f.schedule(spawn{runtime: s, ctx: ctx, fun: fun}, common.Logger(ctx))
 }
 
 var _ SimpleFrame = &ValveFrame{}

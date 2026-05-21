@@ -99,6 +99,20 @@ The `Solitaire*` fields tune the sync transport between server and browser:
 
 Most apps should leave the `Solitaire*` settings alone unless they are debugging runtime behavior or tuning under load.
 
+## Logging
+
+**Doors** uses Go's `log/slog` for internal diagnostics. By default, it writes through `slog.Default()`.
+
+Use `doors.WithLogger(...)` when the app should route framework logs through your own logger:
+
+```go
+logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+app := doors.NewApp(page, doors.WithLogger(logger))
+```
+
+Pass `nil` or omit the option to use `slog.Default()`.
+
 ## CSP
 
 CSP is off until you call `doors.WithCSP(...)`.

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -39,6 +40,10 @@ func (s resourceTestSettings) Conf() *common.Conf {
 
 func (s resourceTestSettings) ESProfile(string) api.BuildOptions {
 	return api.BuildOptions{}
+}
+
+func (s resourceTestSettings) Logger() *slog.Logger {
+	return slog.Default()
 }
 
 type errStaticEntry struct{}

@@ -16,11 +16,10 @@ package doors
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/action"
 )
 
@@ -44,12 +43,12 @@ func actionsOrNil(actions Actions) []Action {
 }
 
 func intoActions(ctx context.Context, actions []Action) action.Actions {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	arr := make(action.Actions, 0)
 	for _, action := range actions {
 		a, _, err := action.action(ctx, core, false)
 		if err != nil {
-			slog.Error("Action preparation error", "error", err)
+			core.App().Logger().Error("Action preparation error", "error", err)
 			continue
 		}
 		arr = append(arr, a)

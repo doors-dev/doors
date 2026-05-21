@@ -50,6 +50,7 @@ type call struct {
 	kind    callKind
 	id      uint64
 	payload printer.Payload
+	logger  *slog.Logger
 }
 
 func (n *call) Cancel() {
@@ -60,7 +61,7 @@ func (n *call) Cancel() {
 func (n *call) Result(_ json.RawMessage, err error) {
 	n.payload.Release()
 	if err != nil {
-		slog.Error("door rendering call failed", "error", err)
+		n.logger.Error("door rendering call failed", "error", err)
 	}
 	n.send(err)
 }

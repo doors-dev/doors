@@ -16,8 +16,11 @@ package shredder
 
 import (
 	"context"
+	"log/slog"
 	"slices"
 	"sync"
+
+	"github.com/doors-dev/doors/internal/common"
 )
 
 type AfterFrame struct {
@@ -60,7 +63,7 @@ func (f *AfterFrame) RunAfter(ctx context.Context, r Runtime, fun func(bool)) {
 	f.mu.Unlock()
 }
 
-func (f *AfterFrame) schedule(e executable) {
+func (f *AfterFrame) schedule(e executable, _ *slog.Logger) {
 	f.mu.Lock()
 	if f.fired {
 		f.mu.Unlock()
@@ -93,12 +96,12 @@ func (f *AfterFrame) report(error) {
 }
 
 func (f *AfterFrame) Run(ctx context.Context, r Runtime, fun func(bool)) {
-	f.schedule(run{runtime: r, ctx: ctx, fun: fun})
+	f.schedule(run{runtime: r, ctx: ctx, fun: fun}, common.Logger(ctx))
 
 }
 
 func (f *AfterFrame) Submit(ctx context.Context, r Runtime, fun func(bool)) {
-	f.schedule(spawn{runtime: r, ctx: ctx, fun: fun})
+	f.schedule(spawn{runtime: r, ctx: ctx, fun: fun}, common.Logger(ctx))
 }
 
 var _ SimpleFrame = &AfterFrame{}

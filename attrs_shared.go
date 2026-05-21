@@ -17,9 +17,9 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"sync"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
@@ -98,7 +98,7 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 	id := a.id
 	value := a.value
 	a.mu.Unlock()
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	var act action.Action
 	if enabled {
 		act = &action.DynaSet{
@@ -113,6 +113,7 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 	if !initialized {
 		return
 	}
+	logger := core.App().Logger()
 	core.Door().UserCall(
 		ctx,
 		func() bool {
@@ -123,7 +124,7 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 			if err == nil {
 				return
 			}
-			slog.Error("shared attribute call error", "error", err)
+			logger.Error("shared attribute call error", "error", err)
 			a.restore(seq, prevValue, prevEnable)
 		},
 		nil,
@@ -159,7 +160,8 @@ func (a AShared) Update(ctx context.Context, value string) {
 	if !initialized {
 		return
 	}
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
+	logger := core.App().Logger()
 	core.Door().UserCall(
 		ctx,
 		func() bool {
@@ -173,7 +175,7 @@ func (a AShared) Update(ctx context.Context, value string) {
 			if err == nil {
 				return
 			}
-			slog.Error("shared attribute call error", "error", err)
+			logger.Error("shared attribute call error", "error", err)
 			a.restore(seq, prevValue, prevEnable)
 		},
 		nil,
@@ -186,7 +188,7 @@ func (a AShared) Proxy(cur gox.Cursor, elem gox.Elem) error {
 }
 
 func (a AShared) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if !a.initialized {

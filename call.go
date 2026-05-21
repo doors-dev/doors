@@ -17,8 +17,8 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 )
@@ -53,12 +53,12 @@ func XCall[T any](ctx context.Context, action Action) <-chan CallResult[T] {
 }
 
 func call[T any](ctx context.Context, action Action) <-chan CallResult[T] {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	ch := make(chan CallResult[T], 1)
 	a, params, err := action.action(ctx, core, !core.App().Conf().SolitaireDisableGzip)
 	res := CallResult[T]{}
 	if err != nil {
-		slog.Error("Action preparation error", "error", err)
+		core.App().Logger().Error("Action preparation error", "error", err)
 		res.Err = err
 		ch <- res
 		close(ch)

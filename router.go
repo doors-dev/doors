@@ -17,8 +17,8 @@ package doors
 import (
 	"context"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/gox"
 )
@@ -43,7 +43,7 @@ type LocationEncoder = path.Encoder
 // Updating the returned source changes the browser location and reroutes the
 // current page.
 func Router(ctx context.Context) Source[Location] {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	return source[Location]{
 		Source: core.Instance().Location(),
 	}

@@ -3,10 +3,9 @@ package app
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 
-	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/instance"
 	"github.com/doors-dev/doors/internal/path"
 )
@@ -15,7 +14,7 @@ const ZombieHeader = "X-Zombie"
 
 func (a App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sess := a.ensureSession(w, r)
-	r = r.WithContext(context.WithValue(r.Context(), ctex.KeySession, sess))
+	r = r.WithContext(context.WithValue(r.Context(), common.KeySession, sess))
 	a.handler.ServeHTTP(w, r)
 }
 
@@ -27,7 +26,7 @@ func (a *app) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
-	sess, ok := r.Context().Value(ctex.KeySession).(instance.Session)
+	sess, ok := r.Context().Value(common.KeySession).(instance.Session)
 	if !ok {
 		a.serveError(w, r, errors.New("Session is removed from the request context"))
 		return
@@ -84,9 +83,9 @@ func (a *app) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (a *app) serveSync(w http.ResponseWriter, r *http.Request, instanceId string) {
-	ses, ok := r.Context().Value(ctex.KeySession).(instance.Session)
+	ses, ok := r.Context().Value(common.KeySession).(instance.Session)
 	if !ok {
-		slog.Error("Session is removed from the request context")
+		a.Logger().Error("Session is removed from the request context")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -99,9 +98,9 @@ func (a *app) serveSync(w http.ResponseWriter, r *http.Request, instanceId strin
 }
 
 func (a *app) serveHook(w http.ResponseWriter, r *http.Request, instanceID string, hookID uint64, track uint64) {
-	ses, ok := r.Context().Value(ctex.KeySession).(instance.Session)
+	ses, ok := r.Context().Value(common.KeySession).(instance.Session)
 	if !ok {
-		slog.Error("Session is removed from the request context")
+		a.Logger().Error("Session is removed from the request context")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -118,9 +117,9 @@ func (a *app) serveHook(w http.ResponseWriter, r *http.Request, instanceID strin
 
 func (a *app) restoreLocation(w http.ResponseWriter, r *http.Request, instId string, l path.Location) {
 	w.Header().Set("Cache-Control", "no-cache")
-	ses, ok := r.Context().Value(ctex.KeySession).(instance.Session)
+	ses, ok := r.Context().Value(common.KeySession).(instance.Session)
 	if !ok {
-		slog.Error("Session is removed from the request context")
+		a.Logger().Error("Session is removed from the request context")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

@@ -15,6 +15,7 @@
 package path
 
 import (
+	"log/slog"
 	"net/http/httptest"
 	"net/url"
 	"testing"
@@ -38,6 +39,10 @@ func (stubSettings) Conf() *common.Conf {
 
 func (stubSettings) ESProfile(string) api.BuildOptions {
 	return api.BuildOptions{}
+}
+
+func (stubSettings) Logger() *slog.Logger {
+	return slog.Default()
 }
 
 func TestEncodeLocationValues(t *testing.T) {

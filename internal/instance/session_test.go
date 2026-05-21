@@ -2,6 +2,7 @@ package instance
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -44,6 +45,10 @@ func (a *sessionTestApp) RemoveSession(id string) {
 
 func (a *sessionTestApp) ResourceRegistry() resources.Registry {
 	return nil
+}
+
+func (a *sessionTestApp) Logger() *slog.Logger {
+	return slog.Default()
 }
 
 func TestSessionKillCancelsContext(t *testing.T) {

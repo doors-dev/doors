@@ -16,12 +16,11 @@ package doors
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 
 	"github.com/doors-dev/doors/internal/app"
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/gox"
@@ -172,10 +171,10 @@ func (h ALink) Proxy(cur gox.Cursor, elem gox.Elem) error {
 }
 
 func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	loc, err := path.Encode(h.Model)
 	if err != nil {
-		slog.Error("href creation error", "error", err)
+		core.App().Logger().Error("href creation error", "error", err)
 		return nil
 	}
 	h.Scope = linkScope{}.And(h.Scope)

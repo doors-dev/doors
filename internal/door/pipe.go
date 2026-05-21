@@ -74,7 +74,7 @@ func (p *pipe) Render(disableGzip bool) (printer.Payload, error) {
 
 func (p *pipe) error(err error) {
 	p.buffer.Clear()
-	p.buffer.PushBack(gox.NewJobComp(context.Background(), newError(err)))
+	p.buffer.PushBack(gox.NewJobComp(context.Background(), newError(err, p.tracker.Instance().Logger())))
 }
 
 func (p *pipe) branch() *deque.Deque[any] {

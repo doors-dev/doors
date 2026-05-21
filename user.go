@@ -28,7 +28,7 @@ import (
 //
 // If ctx belongs to the root page render, nothing is reloaded.
 func Reload(ctx context.Context) {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	core.Door().Reload(ctx)
 }
 
@@ -40,41 +40,41 @@ func Reload(ctx context.Context) {
 // Do not wait on it during rendering. If you need to wait, use [Go] or your
 // own goroutine with [Free].
 func XReload(ctx context.Context) <-chan error {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Door().XReload(ctx)
 }
 
 // SessionExpire sets the maximum lifetime of the current session.
 func SessionExpire(ctx context.Context, d time.Duration) {
-	sess := ctx.Value(ctex.KeySession).(core.Session)
+	sess := ctx.Value(common.KeySession).(core.Session)
 	sess.Expire(d)
 }
 
 // SessionEnd immediately ends the current session and all instances.
 // Use it during logout to close authorized pages and free server resources.
 func SessionEnd(ctx context.Context) {
-	sess := ctx.Value(ctex.KeySession).(core.Session)
+	sess := ctx.Value(common.KeySession).(core.Session)
 	sess.Kill()
 }
 
 // InstanceEnd ends the current instance (tab/window) but keeps the session and
 // other instances active.
 func InstanceEnd(ctx context.Context) {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	core.Instance().Kill()
 }
 
 // InstanceId returns the unique ID of the current instance.
 // Useful for logging, debugging, and tracking connections.
 func InstanceId(ctx context.Context) string {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Instance().ID()
 }
 
 // SessionId returns the unique ID of the current session.
 // All instances in the same browser share this ID via a session cookie.
 func SessionId(ctx context.Context) string {
-	sess := ctx.Value(ctex.KeySession).(core.Session)
+	sess := ctx.Value(common.KeySession).(core.Session)
 	return sess.ID()
 }
 
@@ -84,13 +84,13 @@ type Store = ctex.Store
 
 // SessionStore returns storage shared by all instances in the current session.
 func SessionStore(ctx context.Context) Store {
-	sess := ctx.Value(ctex.KeySession).(core.Session)
+	sess := ctx.Value(common.KeySession).(core.Session)
 	return sess.Store()
 }
 
 // InstanceStore returns storage scoped to the current instance only.
 func InstanceStore(ctx context.Context) Store {
-	core := ctx.Value(ctex.KeyCore).(core.Core)
+	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Instance().Store()
 }
 
@@ -100,7 +100,7 @@ func InstanceStore(ctx context.Context) Store {
 // It is useful for goroutines or external work that should live for the whole
 // browser session, not just the current instance or dynamic owner.
 func SessionContext(ctx context.Context) context.Context {
-	sess := ctx.Value(ctex.KeySession).(core.Session)
+	sess := ctx.Value(common.KeySession).(core.Session)
 	return sess.Context()
 }
 
@@ -134,11 +134,11 @@ func IDBytes(b []byte) string {
 // Use it for long-running goroutines and work that should outlive the current
 // dynamic owner.
 func FreeRoot(ctx context.Context) context.Context {
-	core, ok := ctx.Value(ctex.KeyCore).(core.Core)
+	core, ok := ctx.Value(common.KeyCore).(core.Core)
 	if !ok {
 		return ctex.NewFreeContext(ctx, ctx)
 	}
-	ctx = context.WithValue(ctx, ctex.KeyCore, core.Door().RootCore())
+	ctx = context.WithValue(ctx, common.KeyCore, core.Door().RootCore())
 	return ctex.NewFreeContext(ctx, core.Instance().Runtime().Context())
 }
 

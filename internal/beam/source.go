@@ -247,7 +247,7 @@ type Core interface {
 }
 
 func (s *source[T]) addWatcher(ctx context.Context, w *watcher) bool {
-	core, ok := ctx.Value(ctex.KeyCore).(Core)
+	core, ok := ctx.Value(common.KeyCore).(Core)
 	if !ok {
 		return false
 	}

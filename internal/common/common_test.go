@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"log/slog"
 	"slices"
 	"strings"
 	"testing"
@@ -195,7 +196,7 @@ func TestCollectionAndEncodingHelpers(t *testing.T) {
 	attrs := gox.NewAttrs()
 	attrs.Get("data-a").Set("1")
 	attrs.Get("data-b").Set("2")
-	mapped := AttrsToMap(attrs)
+	mapped := AttrsToMap(attrs, slog.Default())
 	if mapped["data-a"] != "1" || mapped["data-b"] != "2" {
 		t.Fatalf("unexpected attrs map: %#v", mapped)
 	}
@@ -223,10 +224,7 @@ func TestCollectionAndEncodingHelpers(t *testing.T) {
 		t.Fatalf("unexpected encoded id: %q", id)
 	}
 
-	zipped, err := Zip([]byte("hello world"))
-	if err != nil || len(zipped) == 0 {
-		t.Fatal("expected zip to produce data")
-	}
+	zipped := Zip([]byte("hello world"))
 	reader, err := gzip.NewReader(bytes.NewReader(zipped))
 	if err != nil {
 		t.Fatal(err)

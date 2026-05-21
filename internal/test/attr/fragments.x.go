@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.28
+// Managed by GoX v0.1.32
 
 //line fragments.gox:1
 package attr

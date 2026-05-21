@@ -18,8 +18,8 @@ import (
 	"context"
 
 	"github.com/doors-dev/doors/internal/beam"
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/gox"
 )
 
@@ -317,7 +317,7 @@ func (d derivedBeam[T1, T2]) innerBeam() beam.Beamer[T2] {
 
 func effect[T any](b Beam[T], ctx context.Context) (T, bool) {
 	return b.ReadAndSub(ctx, func(ctx context.Context, _ T) bool {
-		ctx.Value(ctex.KeyCore).(core.Core).Door().Reload(ctx)
+		ctx.Value(common.KeyCore).(core.Core).Door().Reload(ctx)
 		return true
 	})
 }

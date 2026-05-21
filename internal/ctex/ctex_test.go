@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
@@ -90,13 +91,13 @@ func TestFrameHelpers(t *testing.T) {
 		t.Fatal("expected frame helper to expose inserted frame")
 	}
 
-	target := context.WithValue(context.Background(), KeyCore, "core")
+	target := context.WithValue(context.Background(), common.KeyCore, "core")
 	infected := FrameInfect(ctx, target)
 	got, ok = AfterFrame(infected)
 	if !ok || got != after {
 		t.Fatal("expected frame to infect target context")
 	}
-	if infected.Value(KeyCore) != "core" {
+	if infected.Value(common.KeyCore) != "core" {
 		t.Fatal("expected frame infect to preserve existing target values")
 	}
 	if FrameInfect(base, target) != target {

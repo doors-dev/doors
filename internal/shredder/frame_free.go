@@ -14,7 +14,12 @@
 
 package shredder
 
-import "context"
+import (
+	"context"
+	"log/slog"
+
+	"github.com/doors-dev/doors/internal/common"
+)
 
 type FreeFrame struct{}
 
@@ -23,14 +28,14 @@ func (f FreeFrame) Release() {
 }
 
 func (f FreeFrame) Run(ctx context.Context, r Runtime, fun func(bool)) {
-	f.schedule(run{runtime: r, ctx: ctx, fun: fun})
+	f.schedule(run{runtime: r, ctx: ctx, fun: fun}, common.Logger(ctx))
 }
 
 func (f FreeFrame) Submit(ctx context.Context, r Runtime, fun func(bool)) {
-	f.schedule(spawn{runtime: r, ctx: ctx, fun: fun})
+	f.schedule(spawn{runtime: r, ctx: ctx, fun: fun}, common.Logger(ctx))
 }
 
-func (f FreeFrame) schedule(e executable) {
+func (f FreeFrame) schedule(e executable, _ *slog.Logger) {
 	e.execute(func(error) {})
 }
 

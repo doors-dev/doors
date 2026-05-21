@@ -14,7 +14,9 @@
 
 package shredder
 
-import "sync"
+import (
+	"sync"
+)
 
 type joinedFrame struct {
 	mu        sync.Mutex
@@ -53,7 +55,7 @@ func Join(release bool, frames ...AnyFrame) Frame {
 	}
 	joined.baseFrame.onComplete = joined.onComplete
 	for _, frame := range frames {
-		frame.schedule(joined)
+		frame.schedule(joined, nil)
 		if release {
 			if g, ok := frame.(Guard); ok {
 				g.Release()

@@ -16,6 +16,7 @@ package instance
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -35,6 +36,7 @@ type App interface {
 	PathMaker() path.PathMaker
 	RemoveSession(id string)
 	ResourceRegistry() resources.Registry
+	Logger() *slog.Logger
 }
 
 type Session = *session
@@ -48,7 +50,7 @@ func NewSession(a App) Session {
 		limiter: utils.NewLimiter(a.Conf().SessionInstanceLimit),
 		cancel:  cancel,
 	}
-	sess.ctx = context.WithValue(ctx, ctex.KeySession, sess)
+	sess.ctx = context.WithValue(ctx, common.KeySession, sess)
 	return sess
 }
 
@@ -65,6 +67,10 @@ type session struct {
 	killTimer  *time.Timer
 	ctx        context.Context
 	cancel     context.CancelFunc
+}
+
+func (sess *session) Logger() *slog.Logger {
+	return sess.app.Logger()
 }
 
 func (sess *session) killed() bool {

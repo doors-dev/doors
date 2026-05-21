@@ -17,6 +17,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -40,12 +41,14 @@ type ModuleRegistry interface {
 }
 
 type App interface {
+	Logger() *slog.Logger
 	PathMaker() path.PathMaker
 	ResourceRegistry() resources.Registry
 	Conf() *common.Conf
 }
 
 type Session interface {
+	Logger() *slog.Logger
 	App() App
 	ID() string
 	Expire(time.Duration)
@@ -62,6 +65,7 @@ type TitleMeta interface {
 
 type Instance interface {
 	Session() Session
+	Logger() *slog.Logger
 	Store() ctex.Store
 	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
 	CSPCollector() common.CSPCollector

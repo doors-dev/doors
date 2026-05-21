@@ -20,8 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
 )
@@ -128,7 +128,7 @@ func (p *resourcePrinter) processMeta(openJob *gox.JobHeadOpen) error {
 	}
 	attr.Unset()
 	name := b.String()
-	core := openJob.Context().Value(ctex.KeyCore).(core.Core)
+	core := openJob.Context().Value(common.KeyCore).(core.Core)
 	cancel := core.Instance().TitleMeta().UpdateMeta(property, name, openJob.Attrs.Clone())
 	core.Door().Clean(cancel)
 	gox.Release(openJob)
@@ -146,7 +146,7 @@ func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
 		if closeJob.ID != tit.openJob.ID {
 			return errors.New("title close tag does not match the open tag")
 		}
-		core := j.Context().Value(ctex.KeyCore).(core.Core)
+		core := j.Context().Value(common.KeyCore).(core.Core)
 		content := tit.buf.String()
 		attrs := tit.openJob.Attrs.Clone()
 		cancel := core.Instance().TitleMeta().UpdateTitle(content, attrs)
@@ -213,7 +213,7 @@ func (r *embeddedResource) appendBytes(b []byte) {
 }
 
 func (r *embeddedResource) render(p gox.Printer) error {
-	core := r.openJob.Context().Value(ctex.KeyCore).(core.Core)
+	core := r.openJob.Context().Value(common.KeyCore).(core.Core)
 	if r.props.name == "" {
 		r.props.name = "inline"
 	}

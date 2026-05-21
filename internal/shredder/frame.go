@@ -18,6 +18,8 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+
+	"github.com/doors-dev/doors/internal/common"
 )
 
 type executable interface {
@@ -40,7 +42,7 @@ type SimpleFrame interface {
 }
 
 type AnyFrame interface {
-	schedule(executable)
+	schedule(executable, *slog.Logger)
 }
 
 type baseFrame struct {
@@ -57,7 +59,7 @@ func (f *baseFrame) Run(ctx context.Context, s Runtime, fun func(bool)) {
 		runtime: s,
 		fun:     fun,
 		ctx:     ctx,
-	})
+	}, common.Logger(ctx))
 }
 
 func (f *baseFrame) Submit(ctx context.Context, s Runtime, fun func(bool)) {
@@ -65,7 +67,7 @@ func (f *baseFrame) Submit(ctx context.Context, s Runtime, fun func(bool)) {
 		runtime: s,
 		fun:     fun,
 		ctx:     ctx,
-	})
+	}, common.Logger(ctx))
 }
 
 func (f *baseFrame) Release() {
@@ -83,11 +85,11 @@ func (f *baseFrame) Release() {
 	f.onComplete()
 }
 
-func (f *baseFrame) schedule(e executable) {
+func (f *baseFrame) schedule(e executable, logger *slog.Logger) {
 	f.mu.Lock()
 	if f.isCompleted() {
 		f.mu.Unlock()
-		slog.Warn(
+		logger.Warn(
 			"attempted to schedule on completed frame; use ctx := doors.Free(ctx) for background operations and Doors API calls from goroutines",
 		)
 		e.execute(func(error) {})

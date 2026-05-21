@@ -28,7 +28,7 @@ import (
 	"github.com/tdewolff/minify/v2/css"
 )
 
-func AttrsToMap(a gox.Attrs) map[string]string {
+func AttrsToMap(a gox.Attrs, logger *slog.Logger) map[string]string {
 	attrs := make(map[string]string)
 	if a == nil {
 		return attrs
@@ -39,13 +39,13 @@ func AttrsToMap(a gox.Attrs) map[string]string {
 			continue
 		}
 		if err := attr.OutputName(b); err != nil {
-			slog.Error("failed to write attribute name", "error", err)
+			logger.Error("failed to write attribute name", "error", err)
 			continue
 		}
 		name := b.String()
 		b.Reset()
 		if err := attr.OutputValue(b); err != nil {
-			slog.Error("failed to write attribute value", "error", err)
+			logger.Error("failed to write attribute value", "error", err)
 			continue
 		}
 		value := b.String()
@@ -86,18 +86,18 @@ func EncodeId(b []byte) string {
 	return digitToLetter[c-'0':c-'0'+1] + s[1:]
 }
 
-func Zip(input []byte) ([]byte, error) {
+func Zip(input []byte) []byte {
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	_, err := gz.Write(input)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	err = gz.Close()
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	return buf.Bytes(), nil
+	return buf.Bytes()
 }
 
 func MinifyCSS(input []byte) ([]byte, error) {

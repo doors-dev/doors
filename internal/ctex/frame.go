@@ -17,6 +17,7 @@ package ctex
 import (
 	"context"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
@@ -66,11 +67,11 @@ func AfterFrameInsert(ctx context.Context) (context.Context, *shredder.AfterFram
 	fs := Frames{
 		after: &shredder.AfterFrame{},
 	}
-	return context.WithValue(ctx, keyFrame, fs), fs.after
+	return context.WithValue(ctx, common.KeyFrame, fs), fs.after
 }
 
 func SyncFrameInsert(ctx context.Context, sync shredder.Frame, init shredder.Frame) context.Context {
-	fs, ok := ctx.Value(keyFrame).(Frames)
+	fs, ok := ctx.Value(common.KeyFrame).(Frames)
 	if ok {
 		fs.sync = sync
 		fs.init = init
@@ -80,11 +81,11 @@ func SyncFrameInsert(ctx context.Context, sync shredder.Frame, init shredder.Fra
 			init: init,
 		}
 	}
-	return context.WithValue(ctx, keyFrame, fs)
+	return context.WithValue(ctx, common.KeyFrame, fs)
 }
 
 func AfterFrame(ctx context.Context) (*shredder.AfterFrame, bool) {
-	fs, ok := ctx.Value(keyFrame).(Frames)
+	fs, ok := ctx.Value(common.KeyFrame).(Frames)
 	if !ok {
 		return nil, false
 	}
@@ -92,22 +93,22 @@ func AfterFrame(ctx context.Context) (*shredder.AfterFrame, bool) {
 }
 
 func GetFrames(ctx context.Context) Frames {
-	f, _ := ctx.Value(keyFrame).(Frames)
+	f, _ := ctx.Value(common.KeyFrame).(Frames)
 	return f
 }
 
 func FrameInfect(source context.Context, target context.Context) context.Context {
-	fs, ok := source.Value(keyFrame).(Frames)
+	fs, ok := source.Value(common.KeyFrame).(Frames)
 	if !ok {
 		return target
 	}
-	return context.WithValue(target, keyFrame, fs)
+	return context.WithValue(target, common.KeyFrame, fs)
 }
 
 func FrameRemove(ctx context.Context) context.Context {
-	_, ok := ctx.Value(keyFrame).(Frames)
+	_, ok := ctx.Value(common.KeyFrame).(Frames)
 	if !ok {
 		return ctx
 	}
-	return context.WithValue(ctx, keyFrame, nil)
+	return context.WithValue(ctx, common.KeyFrame, nil)
 }

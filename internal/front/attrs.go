@@ -18,8 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
-	"strings"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
@@ -78,10 +76,6 @@ var _ gox.Output = (jsonAttrs)(nil)
 var _ gox.Mutate = (jsonAttrs)(nil)
 
 func (j jsonAttrs) Mutate(name string, prev any) any {
-	if !strings.HasPrefix(name, "data-d0") {
-		slog.Error("unexpected system attribute name", "name", name)
-		return prev
-	}
 	var arr jsonAttrs
 	if prev, ok := prev.(jsonAttrs); ok {
 		arr = prev
