@@ -141,7 +141,7 @@ func (t *tracker) Instance() core.Instance {
 
 func (t *tracker) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
 	frames := ctex.GetFrames(ctx)
-	callFrame := shredder.Join(true, frames.Call(), t.innerCallGuard)
+	callFrame := shredder.Join(ctx, true, frames.Call(), t.innerCallGuard)
 	defer callFrame.Release()
 	callFrame.Run(ctx, t.root.runtime(), func(b bool) {
 		if !b {
@@ -248,9 +248,9 @@ func (t *tracker) containerCinemaFrame() shredder.AnyFrame {
 	return t.container.cinema.ReadFrame()
 }
 
-func (t *tracker) writeFrame() shredder.Frame {
+func (t *tracker) writeFrame(ctx context.Context) shredder.Frame {
 	write := t.thread.Write()
-	frame := shredder.Join(false, write, t.cinema.ReadFrame(), t.containerCinemaFrame())
+	frame := shredder.Join(ctx, false, write, t.cinema.ReadFrame(), t.containerCinemaFrame())
 	write.Release()
 	return frame
 }

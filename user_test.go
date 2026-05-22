@@ -340,25 +340,25 @@ func TestSessionContextCanceledBySessionEnd(t *testing.T) {
 	}
 }
 
-func TestFreeKeepsOwnerAndClearsFrame(t *testing.T) {
+func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 	ctx, _ := helperContext(t)
 	ctx = context.WithValue(ctx, "value", "kept")
 	ctx, _ = ctex.AfterFrameInsert(ctx)
 	owner, _ := ctx.Value(common.KeyCore).(core.Core)
 	base, cancel := context.WithCancel(ctx)
-	free := Free(base)
+	free := DetachedContext(base)
 
 	if !ctex.IsFreeCtx(free) {
-		t.Fatal("expected Free to mark context as free")
+		t.Fatal("expected DetachedContext to mark context as free")
 	}
 	if free.Value("value") != "kept" {
-		t.Fatal("expected Free to preserve context values")
+		t.Fatal("expected DetachedContext to preserve context values")
 	}
 	if got, _ := free.Value(common.KeyCore).(core.Core); got != owner {
-		t.Fatal("expected Free to keep the current Doors owner")
+		t.Fatal("expected DetachedContext to keep the current Doors owner")
 	}
 	if _, ok := ctex.AfterFrame(free); ok {
-		t.Fatal("expected Free to clear current frame binding")
+		t.Fatal("expected DetachedContext to clear current frame binding")
 	}
 
 	cancel()
@@ -369,30 +369,30 @@ func TestFreeKeepsOwnerAndClearsFrame(t *testing.T) {
 	}
 }
 
-func TestFreeRootSwitchesToRootCoreAndRuntime(t *testing.T) {
+func TestInstanceContextSwitchesToRootCoreAndRuntime(t *testing.T) {
 	ctx, inst, root := helperContextWithRoot(t)
 	ctx = context.WithValue(ctx, "value", "kept")
 	ctx, _ = ctex.AfterFrameInsert(ctx)
 	base, cancel := context.WithCancel(ctx)
-	free := FreeRoot(base)
+	free := InstanceContext(base)
 
 	if !ctex.IsFreeCtx(free) {
-		t.Fatal("expected FreeRoot to mark context as free")
+		t.Fatal("expected InstanceContext to mark context as free")
 	}
 	if free.Value("value") != "kept" {
-		t.Fatal("expected FreeRoot to preserve context values")
+		t.Fatal("expected InstanceContext to preserve context values")
 	}
 	if got, _ := free.Value(common.KeyCore).(core.Core); got != root {
-		t.Fatal("expected FreeRoot to switch to root Doors context")
+		t.Fatal("expected InstanceContext to switch to root Doors context")
 	}
 	if _, ok := ctex.AfterFrame(free); ok {
-		t.Fatal("expected FreeRoot to clear current frame binding")
+		t.Fatal("expected InstanceContext to clear current frame binding")
 	}
 
 	cancel()
 	select {
 	case <-free.Done():
-		t.Fatal("expected FreeRoot to use instance runtime lifecycle instead of current owner lifecycle")
+		t.Fatal("expected InstanceContext to use instance runtime lifecycle instead of current owner lifecycle")
 	default:
 	}
 
@@ -400,7 +400,7 @@ func TestFreeRootSwitchesToRootCoreAndRuntime(t *testing.T) {
 	select {
 	case <-free.Done():
 	default:
-		t.Fatal("expected FreeRoot to follow instance runtime cancellation")
+		t.Fatal("expected InstanceContext to follow instance runtime cancellation")
 	}
 }
 

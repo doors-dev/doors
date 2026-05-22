@@ -143,14 +143,14 @@ These report completion:
 Do not wait on `X*` during rendering.
 
 If you need to wait, do it in a hook, inside `doors.Go(...)`, or in your own
-goroutine with `doors.Free(ctx)`.
+goroutine with `doors.DetachedContext(ctx)`.
 
-`doors.Free(ctx)` keeps the current dynamic ownership and lifecycle, so it is
-useful when you want to wait on `X*` safely from that same fragment.
+`doors.DetachedContext(ctx)` keeps the current Doors ownership and lifecycle,
+so it is useful when you want to wait on `X*` safely from that same fragment.
 
 If the work should outlive the current dynamic owner, use
-`doors.FreeRoot(ctx)` instead. It switches to the root Doors context and the
-instance runtime lifecycle.
+`doors.InstanceContext(ctx)`. It switches Doors ownership to the root of the
+current instance and uses the instance runtime lifecycle.
 
 > Most code should use the regular methods. Reach for `X*` when completion itself matters, such as pacing a fast stream of updates.
 

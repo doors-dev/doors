@@ -90,7 +90,7 @@ func (f *baseFrame) schedule(e executable, logger *slog.Logger) {
 	if f.isCompleted() {
 		f.mu.Unlock()
 		logger.Warn(
-			"attempted to schedule on completed frame; use ctx := doors.Free(ctx) for background operations and Doors API calls from goroutines",
+			"attempted to schedule on completed frame; use ctx := doors.DetachedContext(ctx) for background operations and Doors API calls from goroutines",
 		)
 		e.execute(func(error) {})
 		return

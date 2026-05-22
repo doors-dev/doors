@@ -33,7 +33,7 @@ func (d *Door) proxy(p *pipe, el gox.Elem) {
 		buffer: p.branch(),
 		el:     el,
 	}
-	d.schedule(task, p.renderFrame)
+	d.schedule(p.tracker.Context(), task, p.renderFrame)
 }
 
 func (d *Door) render(p *pipe) {
@@ -41,7 +41,7 @@ func (d *Door) render(p *pipe) {
 		pipe:   p,
 		buffer: p.branch(),
 	}
-	d.schedule(task, p.renderFrame)
+	d.schedule(p.tracker.Context(), task, p.renderFrame)
 }
 
 func (d *Door) outer(ctx context.Context, outer gox.Elem) <-chan error {
@@ -51,7 +51,7 @@ func (d *Door) outer(ctx context.Context, outer gox.Elem) <-chan error {
 		userTask: userTask,
 		outer:    outer,
 	}
-	d.schedule(task, userTask.InitFrame())
+	d.schedule(ctx, task, userTask.InitFrame())
 	return ch
 }
 
@@ -62,7 +62,7 @@ func (d *Door) inner(ctx context.Context, content any) <-chan error {
 		userTask: userTask,
 		content:  content,
 	}
-	d.schedule(task, userTask.InitFrame())
+	d.schedule(ctx, task, userTask.InitFrame())
 	return ch
 }
 
@@ -73,7 +73,7 @@ func (d *Door) static(ctx context.Context, content any) <-chan error {
 		userTask: userTask,
 		content:  content,
 	}
-	d.schedule(task, userTask.InitFrame())
+	d.schedule(ctx, task, userTask.InitFrame())
 	return ch
 }
 
@@ -83,7 +83,7 @@ func (d *Door) unmount(ctx context.Context) <-chan error {
 	task := nodeUnmount{
 		userTask: userTask,
 	}
-	d.schedule(task, userTask.InitFrame())
+	d.schedule(ctx, task, userTask.InitFrame())
 	return ch
 }
 
@@ -93,7 +93,7 @@ func (d *Door) reload(ctx context.Context) <-chan error {
 	task := nodeReload{
 		userTask: userTask,
 	}
-	d.schedule(task, userTask.InitFrame())
+	d.schedule(ctx, task, userTask.InitFrame())
 	return ch
 }
 
@@ -103,7 +103,7 @@ func (d *Door) reloadSelf(ctx context.Context, prev *node) <-chan error {
 	task := nodeReload{
 		userTask: userTask,
 	}
-	if !d.atomicSchedule(prev, task, userTask.InitFrame()) {
+	if !d.atomicSchedule(ctx, prev, task, userTask.InitFrame()) {
 		userTask.Cancel()
 	}
 	return ch
@@ -120,7 +120,7 @@ func (d *Door) unmountedSelf(prev *node) {
 	d.node.CompareAndSwap(prev, node)
 }
 
-func (d *Door) schedule(task nodeTask, externalFrame shredder.Frame) {
+func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredder.Frame) {
 	next := &node{
 		door: d,
 	}
@@ -132,7 +132,7 @@ func (d *Door) schedule(task nodeTask, externalFrame shredder.Frame) {
 		}
 		prev.guard.Activate()
 	}
-	initFrame := shredder.Join(true, &prev.guard, externalFrame)
+	initFrame := shredder.Join(ctx, true, &prev.guard, externalFrame)
 	defer initFrame.Release()
 	initFrame.Run(nil, nil, func(b bool) {
 		defer next.guard.Activate()
@@ -140,7 +140,7 @@ func (d *Door) schedule(task nodeTask, externalFrame shredder.Frame) {
 	})
 }
 
-func (d *Door) atomicSchedule(prev *node, task nodeTask, externalFrame shredder.Frame) bool {
+func (d *Door) atomicSchedule(ctx context.Context, prev *node, task nodeTask, externalFrame shredder.Frame) bool {
 	next := &node{
 		door: d,
 	}
@@ -148,7 +148,7 @@ func (d *Door) atomicSchedule(prev *node, task nodeTask, externalFrame shredder.
 	if !ok {
 		return false
 	}
-	initFrame := shredder.Join(true, &prev.guard, externalFrame)
+	initFrame := shredder.Join(ctx, true, &prev.guard, externalFrame)
 	defer initFrame.Release()
 	initFrame.Run(nil, nil, func(b bool) {
 		defer next.guard.Activate()

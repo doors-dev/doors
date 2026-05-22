@@ -54,7 +54,7 @@ func (d *Door) Inner(ctx context.Context, content any) {
 // If the door is not mounted, it closes immediately without sending a value.
 //
 // Do not wait on it during rendering. If you need to wait, use doors.Go(...),
-// or your own goroutine with doors.Free(ctx).
+// or your own goroutine with doors.DetachedContext(ctx).
 func (d *Door) XInner(ctx context.Context, content any) <-chan error {
 	ctex.LogFreeWarning(ctx, "Door", "XInner")
 	return d.inner(ctx, content)
@@ -75,7 +75,7 @@ func (d *Door) Outer(ctx context.Context, outer gox.Elem) {
 // If the door is not mounted, it closes immediately without sending a value.
 //
 // Do not wait on it during rendering. If you need to wait, use doors.Go(...),
-// or your own goroutine with doors.Free(ctx).
+// or your own goroutine with doors.DetachedContext(ctx).
 func (d *Door) XOuter(ctx context.Context, outer gox.Elem) <-chan error {
 	ctex.LogFreeWarning(ctx, "Door", "XOuter")
 	return d.outer(ctx, outer)
@@ -96,7 +96,7 @@ func (d *Door) Static(ctx context.Context, content any) {
 // If the door is not mounted, it closes immediately without sending a value.
 //
 // Do not wait on it during rendering. If you need to wait, use doors.Go(...),
-// or your own goroutine with doors.Free(ctx).
+// or your own goroutine with doors.DetachedContext(ctx).
 func (d *Door) XStatic(ctx context.Context, content any) <-chan error {
 	ctex.LogFreeWarning(ctx, "Door", "XStatic")
 	return d.static(ctx, content)
@@ -116,7 +116,7 @@ func (d *Door) Reload(ctx context.Context) {
 // If the door is not mounted, it closes immediately without sending a value.
 //
 // Do not wait on it during rendering. If you need to wait, use doors.Go(...),
-// or your own goroutine with doors.Free(ctx).
+// or your own goroutine with doors.DetachedContext(ctx).
 func (d *Door) XReload(ctx context.Context) <-chan error {
 	ctex.LogFreeWarning(ctx, "Door", "XReload")
 	return d.reload(ctx)
@@ -135,7 +135,7 @@ func (d *Door) Unmount(ctx context.Context) {
 // If the door is not mounted, it closes immediately without sending a value.
 //
 // Do not wait on it during rendering. If you need to wait, use doors.Go(...),
-// or your own goroutine with doors.Free(ctx).
+// or your own goroutine with doors.DetachedContext(ctx).
 func (d *Door) XUnmount(ctx context.Context) <-chan error {
 	ctex.LogFreeWarning(ctx, "Door", "XUnmount")
 	return d.unmount(ctx)

@@ -78,9 +78,9 @@ func (parallelJob) Output(io.Writer) error {
 //
 // The passed context is canceled when the dynamic owner is unmounted, which
 // makes [Go] a good fit for background loops that should stop with the page.
-// The context is also equivalent to calling [Free] on the surrounding context,
-// so it is safe to use with X* operations that should keep the current dynamic
-// ownership.
+// The context is also equivalent to calling [DetachedContext] on the
+// surrounding context, so it is safe to use with X-prefixed operations that
+// should keep the current dynamic ownership.
 //
 // Example:
 //
@@ -97,7 +97,7 @@ func (parallelJob) Output(io.Writer) error {
 func Go(f func(context.Context)) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(common.KeyCore).(core.Core)
-		ctx := Free(cur.Context())
+		ctx := DetachedContext(cur.Context())
 		core.Instance().Runtime().Go(ctx, f)
 		return nil
 	})

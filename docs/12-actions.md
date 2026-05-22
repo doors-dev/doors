@@ -50,12 +50,13 @@ if ok && res.Err == nil {
 Do not wait on `XCall` during rendering.
 
 If you need to wait for the result, do it in a hook, inside `doors.Go(...)`, or
-in your own goroutine with `doors.Free(ctx)`.
+in your own goroutine with `doors.DetachedContext(ctx)`.
 
-`doors.Free(ctx)` keeps the current dynamic ownership and lifecycle.
+`doors.DetachedContext(ctx)` keeps the current Doors ownership and lifecycle.
 
-If the work should outlive that owner, use `doors.FreeRoot(ctx)` instead. It
-switches to the root Doors context and the instance runtime lifecycle.
+If the work should outlive that owner, use `doors.InstanceContext(ctx)`. It
+switches Doors ownership to the root of the current instance and uses the
+instance runtime lifecycle.
 
 Canceling `ctx` requests best-effort cancellation. If a direct `XCall` is canceled, its channel closes without a value.
 

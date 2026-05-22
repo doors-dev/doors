@@ -57,6 +57,17 @@ func expectNoSignal[T any](t *testing.T, ch <-chan T, name string) {
 	}
 }
 
+func TestJoinCompletedFrameDoesNotPanic(t *testing.T) {
+	source := &baseFrame{
+		onComplete: func() {},
+	}
+	source.activate()
+	source.Release()
+
+	joined := Join(context.Background(), false, source)
+	joined.Release()
+}
+
 func TestReadBlockingWriteThreadWriterLifecycle(t *testing.T) {
 	runtime := NewRuntime(context.Background(), 1, testShutdown{})
 	t.Cleanup(runtime.Cancel)

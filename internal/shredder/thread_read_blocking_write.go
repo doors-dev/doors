@@ -15,6 +15,7 @@
 package shredder
 
 import (
+	"context"
 	"sync"
 )
 
@@ -39,7 +40,7 @@ func (f *ReadBlockingWriteThread) Read() Frame {
 	f.mu.Lock()
 	f.init()
 	defer f.mu.Unlock()
-	return Join(false, f.read)
+	return Join(context.Background(), false, f.read)
 }
 
 func (f *ReadBlockingWriteThread) complete() {
@@ -66,7 +67,7 @@ func (f *ReadBlockingWriteThread) Write() (write Frame, read Frame) {
 			f.read.activate()
 		},
 	}
-	read = Join(false, f.nextRead)
+	read = Join(context.Background(), false, f.nextRead)
 	write = f.write
 	f.mu.Unlock()
 	f.read.Release()

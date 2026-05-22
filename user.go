@@ -38,7 +38,7 @@ func Reload(ctx context.Context) {
 // If ctx belongs to the root page render, it sends an error and closes.
 //
 // Do not wait on it during rendering. If you need to wait, use [Go] or your
-// own goroutine with [Free].
+// own goroutine with [DetachedContext].
 func XReload(ctx context.Context) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Door().XReload(ctx)
@@ -99,6 +99,11 @@ func InstanceStore(ctx context.Context) Store {
 //
 // It is useful for goroutines or external work that should live for the whole
 // browser session, not just the current instance or dynamic owner.
+//
+// The returned context carries the current session value. It is suitable for
+// session-scoped helpers, Door methods, and Source or Beam mutations. It is not
+// tied to the current instance or dynamic owner, so it must not be used with
+// instance-scoped helpers, [Reload], or Source and Beam reads/subscriptions.
 func SessionContext(ctx context.Context) context.Context {
 	sess := ctx.Value(common.KeySession).(core.Session)
 	return sess.Context()
@@ -125,15 +130,16 @@ func IDBytes(b []byte) string {
 	return common.EncodeId(s[:])
 }
 
-// FreeRoot returns a free context that is safe to use with extended Doors
-// operations that may wait, such as X-prefixed methods.
+// InstanceContext returns a context that is detached from the current dynamic
+// owner and bounded by the current instance lifetime.
 //
-// The returned context keeps the original Values from ctx, switches framework
-// features and lifetime to the root Doors context.
+// The returned context keeps the original context values, clears the current
+// render frame, and switches Doors ownership to the root of the current
+// instance. It is safe to use with X-prefixed methods from goroutines.
 //
 // Use it for long-running goroutines and work that should outlive the current
 // dynamic owner.
-func FreeRoot(ctx context.Context) context.Context {
+func InstanceContext(ctx context.Context) context.Context {
 	core, ok := ctx.Value(common.KeyCore).(core.Core)
 	if !ok {
 		return ctex.NewFreeContext(ctx, ctx)
@@ -142,13 +148,26 @@ func FreeRoot(ctx context.Context) context.Context {
 	return ctex.NewFreeContext(ctx, core.Instance().Runtime().Context())
 }
 
-// Free returns a free context that is safe to use with extended Doors
-// operations that may wait, such as X-prefixed methods.
+// FreeRoot calls [InstanceContext].
 //
-// The returned context keeps the original Values from ctx together with the
-// current dynamic ownership and lifecycle.
+// Deprecated: use [InstanceContext].
+func FreeRoot(ctx context.Context) context.Context {
+	return InstanceContext(ctx)
+}
+
+// DetachedContext returns a context that is detached from the current render
+// frame and bounded by the current context lifetime.
 //
-// Use it when waiting should stay scoped to the current dynamic owner.
-func Free(ctx context.Context) context.Context {
+// The returned context keeps the original context values and Doors ownership.
+// It is safe to use with X-prefixed methods from goroutines when the work
+// should stay scoped to the current dynamic owner.
+func DetachedContext(ctx context.Context) context.Context {
 	return ctex.NewFreeContext(ctx, ctx)
+}
+
+// Free calls [DetachedContext].
+//
+// Deprecated: use [DetachedContext].
+func Free(ctx context.Context) context.Context {
+	return DetachedContext(ctx)
 }

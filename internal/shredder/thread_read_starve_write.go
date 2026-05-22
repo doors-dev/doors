@@ -14,7 +14,10 @@
 
 package shredder
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 type starveFrame struct {
 	baseFrame
@@ -46,7 +49,7 @@ func (s *starveFrame) onComplete() {
 
 func (s *starveFrame) getRead() Frame {
 	if !s.write {
-		return Join(false, &s.baseFrame)
+		return Join(context.Background(), false, &s.baseFrame)
 	}
 	if s.next == nil {
 		s.next = s.thread.newFrame(false)

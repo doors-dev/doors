@@ -35,7 +35,8 @@ type Root = *root
 
 func NewRoot(inst Instance) Root {
 	r := &root{
-		inst: inst,
+		inst:  inst,
+		hooks: make(map[uint64]*hook),
 	}
 	r.tracker, r.core = trackerRoot(r)
 	return r
@@ -44,7 +45,8 @@ func NewRoot(inst Instance) Root {
 type root struct {
 	core    core.Core
 	tracker *tracker
-	hooks   sync.Map
+	mu      sync.Mutex
+	hooks   map[uint64]*hook
 	inst    Instance
 }
 
@@ -61,11 +63,12 @@ func (r Root) instance() Instance {
 }
 
 func (r *root) cancelHook(id uint64) {
-	entry, ok := r.hooks.Load(id)
+	r.mu.Lock()
+	hook, ok := r.hooks[id]
+	r.mu.Unlock()
 	if !ok {
 		return
 	}
-	hook := entry.(*hook)
 	hook.cancel()
 }
 
@@ -74,19 +77,24 @@ func (r *root) runtime() shredder.Runtime {
 }
 
 func (r *root) addHook(h *hook) {
-	r.hooks.Store(h.id, h)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.hooks[h.id] = h
 }
 
 func (r *root) removeHook(id uint64) {
-	r.hooks.Delete(id)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.hooks, id)
 }
 
 func (r *root) TriggerHook(id uint64, w http.ResponseWriter, rq *http.Request, track uint64) bool {
-	entry, ok := r.hooks.Load(id)
+	r.mu.Lock()
+	hook, ok := r.hooks[id]
+	r.mu.Unlock()
 	if !ok {
 		return false
 	}
-	hook := entry.(*hook)
 	return hook.trigger(w, rq, track)
 }
 
@@ -97,17 +105,14 @@ func (r Root) IsStatic() bool {
 	if !r.tracker.cinema.IsEmpty() {
 		return false
 	}
-	static := true
-	r.hooks.Range(func(_, _ any) bool {
-		static = false
-		return false
-	})
-	return static
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.hooks) == 0
 }
 
 func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 	thread := shredder.Thread{}
-	renderFrame := shredder.Join(true, thread.Frame(), r.tracker.writeFrame())
+	renderFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), r.tracker.writeFrame(r.tracker.Context()))
 	pipe := newPipe(
 		r.tracker,
 		new(deque.Deque[any]),

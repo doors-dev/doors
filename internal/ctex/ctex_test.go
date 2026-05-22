@@ -17,7 +17,9 @@ package ctex
 import (
 	"context"
 	"reflect"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -49,6 +51,147 @@ func TestStoreOperations(t *testing.T) {
 	}
 	if removed := store.Remove("missing"); removed != nil {
 		t.Fatalf("expected nil remove for missing key, got %#v", removed)
+	}
+}
+
+func TestStoreInitWaitsForInFlightValue(t *testing.T) {
+	store := NewStore()
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	first := make(chan any, 1)
+	loaded := make(chan any, 1)
+	second := make(chan any, 1)
+	var calls atomic.Int32
+
+	go func() {
+		first <- store.Init("k", func() any {
+			calls.Add(1)
+			close(entered)
+			<-release
+			return "created"
+		})
+	}()
+	<-entered
+
+	go func() {
+		loaded <- store.Load("k")
+	}()
+	go func() {
+		second <- store.Init("k", func() any {
+			calls.Add(1)
+			return "ignored"
+		})
+	}()
+
+	requireNoStoreValue(t, loaded)
+	requireNoStoreValue(t, second)
+	close(release)
+
+	if got := requireStoreValue(t, first); got != "created" {
+		t.Fatalf("unexpected first init value: %#v", got)
+	}
+	if got := requireStoreValue(t, loaded); got != "created" {
+		t.Fatalf("unexpected load value: %#v", got)
+	}
+	if got := requireStoreValue(t, second); got != "created" {
+		t.Fatalf("unexpected second init value: %#v", got)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("expected constructor to run once, ran %d times", got)
+	}
+}
+
+func TestStoreInitPanicReleasesInFlightValue(t *testing.T) {
+	store := NewStore()
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	panicked := make(chan any, 1)
+	loaded := make(chan any, 1)
+	retried := make(chan any, 1)
+
+	go func() {
+		defer func() {
+			panicked <- recover()
+		}()
+		store.Init("k", func() any {
+			close(entered)
+			<-release
+			panic("boom")
+		})
+	}()
+	<-entered
+
+	go func() {
+		loaded <- store.Load("k")
+	}()
+	go func() {
+		retried <- store.Init("k", func() any {
+			return "retry"
+		})
+	}()
+
+	requireNoStoreValue(t, loaded)
+	requireNoStoreValue(t, retried)
+	close(release)
+
+	if got := requireStoreValue(t, panicked); got != "boom" {
+		t.Fatalf("expected init panic to propagate, got %#v", got)
+	}
+	if got := requireStoreValue(t, loaded); got != nil {
+		t.Fatalf("expected released failed init to read nil, got %#v", got)
+	}
+	retryValue := requireStoreValue(t, retried)
+	if retryValue != "retry" {
+		t.Fatalf("unexpected retry value after failed init: %#v", retryValue)
+	}
+
+	saved := make(chan any, 1)
+	go func() {
+		saved <- store.Save("k", "saved")
+	}()
+	if got := requireStoreValue(t, saved); got != retryValue {
+		t.Fatalf("expected save after failed init to return previous value %#v, got %#v", retryValue, got)
+	}
+	if got := store.Load("k"); got != "saved" {
+		t.Fatalf("expected save after failed init to publish value, got %#v", got)
+	}
+}
+
+func TestStoreInitRetriesAfterPanic(t *testing.T) {
+	store := NewStore()
+	func() {
+		defer func() {
+			if r := recover(); r != "boom" {
+				t.Fatalf("expected init panic to propagate, got %#v", r)
+			}
+		}()
+		store.Init("k", func() any {
+			panic("boom")
+		})
+	}()
+
+	if got := store.Init("k", func() any { return "retry" }); got != "retry" {
+		t.Fatalf("expected init after panic to retry constructor, got %#v", got)
+	}
+}
+
+func requireStoreValue(t *testing.T, ch <-chan any) any {
+	t.Helper()
+	select {
+	case v := <-ch:
+		return v
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for store value")
+		return nil
+	}
+}
+
+func requireNoStoreValue(t *testing.T, ch <-chan any) {
+	t.Helper()
+	select {
+	case v := <-ch:
+		t.Fatalf("expected store operation to wait, got %#v", v)
+	case <-time.After(25 * time.Millisecond):
 	}
 }
 

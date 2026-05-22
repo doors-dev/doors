@@ -42,7 +42,7 @@ func (s *screen) init(parent parentScreen, seq uint) {
 }
 
 func (s *screen) addWatcher(w *watcher) (uint, shredder.Frame) {
-	frame := shredder.Join(true, s.watcherSyncGuard.Read(), s.cinema.ReadFrame())
+	frame := shredder.Join(s.cinema.ctx(), true, s.watcherSyncGuard.Read(), s.cinema.ReadFrame())
 	s.mu.Lock()
 	seq := s.seq
 	if s.watchers == nil {
@@ -95,7 +95,7 @@ func (s *screen) removeSub(sub *screen) {
 }
 
 func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.SimpleFrame, sourceFrame shredder.SimpleFrame, seq uint, isStopped func() bool) {
-	syncFrame := shredder.Join(true, sourceFrame, s.cinema.door.ReadFrame(), s.thread.Frame(), s.cinema.ReadFrame())
+	syncFrame := shredder.Join(ctx, true, sourceFrame, s.cinema.door.ReadFrame(), s.thread.Frame(), s.cinema.ReadFrame())
 	defer syncFrame.Release()
 	schedule := syncFrame.Run
 	if init {
@@ -109,10 +109,10 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 		var subs []*screen
 		syncThread := shredder.Thread{}
 		writeFrame, readFrame := s.watcherSyncGuard.Write()
-		readFrame = shredder.Join(true, readFrame)
-		commitFrame := shredder.Join(true, syncThread.Frame(), syncFrame, writeFrame)
-		watchersFrame := shredder.Join(true, syncFrame, syncThread.Frame(), readFrame)
-		childerenFrame := shredder.Join(true, syncFrame, syncThread.Frame())
+		readFrame = shredder.Join(ctx, true, readFrame)
+		commitFrame := shredder.Join(ctx, true, syncThread.Frame(), syncFrame, writeFrame)
+		watchersFrame := shredder.Join(ctx, true, syncFrame, syncThread.Frame(), readFrame)
+		childerenFrame := shredder.Join(ctx, true, syncFrame, syncThread.Frame())
 
 		commitFrame.Run(s.cinema.ctx(), s.cinema.runtime(), func(b bool) {
 			if !b {
@@ -127,7 +127,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 				return
 			}
 			for _, watcher := range watchers {
-				watcherFrame := shredder.Join(false, watchersFrame, watcher.syncFrame())
+				watcherFrame := shredder.Join(ctx, false, watchersFrame, watcher.syncFrame())
 				watcherCtx := ctex.FrameInfect(ctx, s.cinema.ctx())
 				watcherCtx = ctex.SyncFrameInsert(watcherCtx, readFrame, watcherFrame)
 				watcherFrame.Submit(s.cinema.ctx(), s.cinema.runtime(), func(ok bool) {

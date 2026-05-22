@@ -72,7 +72,7 @@ func (n *node) sync(task *userTask) {
 		ownerTracker = n.tracker.parent
 		callGuard = &shredder.ValveFrame{}
 	}
-	renderFrame := shredder.Join(true, thread.Frame(), ownerTracker.writeFrame(), task.RenderFrame())
+	renderFrame := shredder.Join(ownerTracker.Context(), true, thread.Frame(), ownerTracker.writeFrame(ownerTracker.Context()), task.RenderFrame())
 	defer renderFrame.Release()
 	pip := newPipe(
 		ownerTracker,
@@ -103,7 +103,7 @@ func (n *node) sync(task *userTask) {
 			panic("unknown node mode")
 		}
 	})
-	callFrame := shredder.Join(true, thread.Frame(), n.tracker.outerCallGuard, task.CallFrame())
+	callFrame := shredder.Join(ownerTracker.Context(), true, thread.Frame(), n.tracker.outerCallGuard, task.CallFrame())
 	defer callFrame.Release()
 	callFrame.Run(ownerTracker.ctx, ownerTracker.root.runtime(), func(b bool) {
 		defer callGuard.Activate()
@@ -137,10 +137,10 @@ func (n *node) sync(task *userTask) {
 func (n *node) render(parentPipe *pipe, buffer *deque.Deque[any]) {
 	thread := shredder.Thread{}
 	ownerTracker := parentPipe.tracker
-	renderFrame := shredder.Join(true, parentPipe.renderFrame, thread.Frame())
+	renderFrame := shredder.Join(parentPipe.tracker.Context(), true, parentPipe.renderFrame, thread.Frame())
 	if n.isMounted() {
 		ownerTracker = n.tracker
-		renderFrame = shredder.Join(true, renderFrame, n.tracker.writeFrame())
+		renderFrame = shredder.Join(ownerTracker.Context(), true, renderFrame, n.tracker.writeFrame(ownerTracker.Context()))
 	}
 	defer renderFrame.Release()
 	pip := newPipe(
@@ -167,7 +167,7 @@ func (n *node) render(parentPipe *pipe, buffer *deque.Deque[any]) {
 			panic("unknown node mode")
 		}
 	})
-	finalFrame := shredder.Join(true, parentPipe.renderFrame, thread.Frame())
+	finalFrame := shredder.Join(parentPipe.tracker.Context(), true, parentPipe.renderFrame, thread.Frame())
 	defer finalFrame.Release()
 	finalFrame.Run(parentPipe.tracker.ctx, ownerTracker.root.runtime(), func(b bool) {
 		if !b {

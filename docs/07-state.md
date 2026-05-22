@@ -320,9 +320,9 @@ They are useful when completion itself matters, especially for backpressure. For
 
 Do not wait on `XUpdate` or `XMutate` during rendering.
 
-If you need to wait for propagation, do it in a hook, inside `doors.Go(...)`, or in your own goroutine with `doors.Free(ctx)`.
+If you need to wait for propagation, do it in a hook, inside `doors.Go(...)`, or in your own goroutine with `doors.DetachedContext(ctx)`.
 
-If that work should outlive the current dynamic owner, use `doors.FreeRoot(ctx)` instead.
+If that work should outlive the current dynamic owner, use `doors.InstanceContext(ctx)`.
 
 > For reference types such as slices, maps, pointers, or mutable structs, replace the stored value instead of mutating it in place. Doors compares committed values; in-place mutation can make old and new state indistinguishable.
 

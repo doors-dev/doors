@@ -180,8 +180,8 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 	}
 
 	sh := shredder.Thread{}
-	syncFrame := shredder.Join(true, sh.Frame())
-	checkFrame := shredder.Join(true, ctxFrame, sh.Frame())
+	syncFrame := shredder.Join(ctx, true, sh.Frame())
+	checkFrame := shredder.Join(ctx, true, ctxFrame, sh.Frame())
 	cleanFrame := &shredder.ValveFrame{}
 
 	for _, sub := range s.subs.Slice() {

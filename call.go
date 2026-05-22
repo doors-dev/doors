@@ -44,9 +44,10 @@ func Call(ctx context.Context, action Action) {
 // canceled, the channel closes without a value.
 //
 // Do not wait on it during rendering. If you need to wait, use [Go] or your
-// own goroutine with [Free]. T is the expected decoded payload type. For
-// actions other than [ActionEmit], [json.RawMessage] is usually the right
-// choice.
+// own goroutine with [DetachedContext].
+//
+// T is the expected decoded payload type. For actions other than [ActionEmit],
+// [json.RawMessage] is usually the right choice.
 func XCall[T any](ctx context.Context, action Action) <-chan CallResult[T] {
 	ctex.LogFreeWarning(ctx, "action", "XCall")
 	return call[T](ctx, action)

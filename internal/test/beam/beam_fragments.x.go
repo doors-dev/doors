@@ -1227,7 +1227,7 @@ func (f *BeamLensRoundTripFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line beam_fragments.gox:761
 		__e = __c.Any(test.Button("lens-xupdate", func(ctx context.Context) bool {
-		err, ok := <-f.intLens.XUpdate(doors.Free(ctx), 9)
+		err, ok := <-f.intLens.XUpdate(doors.DetachedContext(ctx), 9)
 		if !ok {
 			f.r.Update(ctx, 1, "x-closed")
 			return false

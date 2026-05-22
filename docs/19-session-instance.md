@@ -103,7 +103,11 @@ sessionCtx := doors.SessionContext(ctx)
 
 Use it for goroutines or external work that should live for the whole browser session and stop on `SessionEnd`, session expiration, or session cleanup.
 
-It is broader than the current instance or dynamic owner context. For work that should stay scoped to the current dynamic owner, keep using the current `ctx`.
+It is broader than the current instance or dynamic owner context. It is suitable for session-scoped helpers, Door methods, and Source or Beam mutations. Use an instance or render context for instance-scoped helpers, `doors.Reload(ctx)`, and Source or Beam reads/subscriptions.
+
+For work that should stay scoped to the current dynamic owner, keep using the current `ctx` or use `doors.DetachedContext(ctx)` from a goroutine that needs to wait on X-prefixed operations.
+
+For work that should outlive the current dynamic owner but stay bounded by the current page instance, use `doors.InstanceContext(ctx)`.
 
 ## Instance End
 
@@ -155,6 +159,8 @@ They are **Doors** runtime IDs, not user IDs or authentication tokens.
 - Use `SessionExpire` to cap the session lifetime.
 - Use `SessionExpire(ctx, 0)` to remove an explicit session-expiration cap.
 - Use `SessionContext` for work that should stop when the whole session ends.
+- Use `DetachedContext` for goroutines that should keep the current dynamic owner.
+- Use `InstanceContext` for goroutines that should outlive the current dynamic owner but stop with the current instance.
 - Use `SessionEnd` only when you really want to end the whole **Doors** session.
 - Use `InstanceEnd` when only the current live page should stop.
 - Use `SessionId` and `InstanceId` for diagnostics, not as business identifiers.

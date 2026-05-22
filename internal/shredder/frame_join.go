@@ -15,7 +15,10 @@
 package shredder
 
 import (
+	"context"
 	"sync"
+
+	"github.com/doors-dev/doors/internal/common"
 )
 
 type joinedFrame struct {
@@ -46,7 +49,7 @@ func (j *joinedFrame) execute(callback func(error)) {
 	j.register(callback)
 }
 
-func Join(release bool, frames ...AnyFrame) Frame {
+func Join(ctx context.Context, release bool, frames ...AnyFrame) Frame {
 	if len(frames) == 0 {
 		panic("join must have frames")
 	}
@@ -55,7 +58,7 @@ func Join(release bool, frames ...AnyFrame) Frame {
 	}
 	joined.baseFrame.onComplete = joined.onComplete
 	for _, frame := range frames {
-		frame.schedule(joined, nil)
+		frame.schedule(joined, common.Logger(ctx))
 		if release {
 			if g, ok := frame.(Guard); ok {
 				g.Release()
