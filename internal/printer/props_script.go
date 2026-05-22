@@ -17,6 +17,7 @@ package printer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -109,7 +110,17 @@ func (s *scriptProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	default:
-		panic("internal error: unknown script source kind should have been filtered earlier")
+		common.Logger(job.Ctx).Error(
+			"internal error: unknown script source kind should have been filtered earlier",
+			"source_kind",
+			s.sourceKind,
+			"source_type",
+			fmt.Sprintf("%T", s.source),
+		)
+		if s.sourceAttr != nil {
+			s.sourceAttr.Unset()
+		}
+		return p.printer.Send(job)
 	}
 
 }

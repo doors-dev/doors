@@ -790,6 +790,65 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 	})
 }
 
+func TestResourcePropsUnexpectedSourceFallback(t *testing.T) {
+	ctx, _, _, _ := newPrinterCore(t, true)
+
+	t.Run("script", func(t *testing.T) {
+		attrs := gox.NewAttrs()
+		sourceAttr := attrs.Get("src")
+		sourceAttr.Set("bad")
+		recorder := &recordingPrinter{}
+		props := &scriptProps{
+			resourceProps: resourceProps{
+				mode:       resources.ResourceMode(-1),
+				source:     struct{}{},
+				sourceAttr: sourceAttr,
+				sourceKind: sourceStatic,
+			},
+			output: scriptDefault,
+		}
+
+		err := props.Submit(gox.NewJobHeadOpen(ctx, 13, gox.KindRegular, "script", attrs), &resourcePrinter{printer: recorder})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sourceAttr.IsSet() {
+			t.Fatalf("expected fallback to unset incompatible script src, got %#v", sourceAttr.Value())
+		}
+		if len(recorder.opens) != 1 || recorder.opens[0].tag != "script" {
+			t.Fatalf("expected fallback to pass script tag through, got %#v", recorder.opens)
+		}
+	})
+
+	t.Run("style", func(t *testing.T) {
+		attrs := gox.NewAttrs()
+		sourceAttr := attrs.Get("href")
+		sourceAttr.Set("bad")
+		recorder := &recordingPrinter{}
+		props := &styleProps{
+			resourceProps: resourceProps{
+				mode:       resources.ResourceMode(-1),
+				source:     struct{}{},
+				sourceAttr: sourceAttr,
+				sourceKind: sourceStatic,
+			},
+			output: styleDefault,
+			rel:    true,
+		}
+
+		err := props.Submit(gox.NewJobHeadOpen(ctx, 14, gox.KindVoid, "link", attrs), &resourcePrinter{printer: recorder})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sourceAttr.IsSet() {
+			t.Fatalf("expected fallback to unset incompatible style href, got %#v", sourceAttr.Value())
+		}
+		if len(recorder.opens) != 1 || recorder.opens[0].tag != "link" {
+			t.Fatalf("expected fallback to pass style link through, got %#v", recorder.opens)
+		}
+	})
+}
+
 func TestProcessResErrors(t *testing.T) {
 	ctx, _, _, _ := newPrinterCore(t, true)
 	rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
