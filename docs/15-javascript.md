@@ -336,7 +336,7 @@ The handler receives `doors.RequestRawHook`, which adds:
 
 - `r.Body()` for raw request bodies
 - `r.Reader()` or `r.ParseForm(...)` for multipart forms
-- `r.W()` when you want to write the response yourself
+- `r.ResponseWriter()` when you want to write the response yourself
 
 When `$hook(...)` or `$fetch(...)` sends data, the client chooses the request body shape automatically:
 

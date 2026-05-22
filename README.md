@@ -22,6 +22,8 @@ For new applications, use [doors-dev/doors-starter](https://github.com/doors-dev
 
 The [Get Started](https://doors.dev/docs/get-started/) guide walks through a minimal hello-world app by hand, useful for understanding the basic pieces.
 
+For AI-assisted development, install the [Doors Skill](https://github.com/doors-dev/doors-skill) for Claude Code, Codex, or OpenCode.
+
 ## Example
 
 ```gox
@@ -110,6 +112,7 @@ Typical JavaScript stacks place much of the interaction model in the browser whi
 - [Tutorial](https://doors.dev/tutorial/)
 - [API Reference](https://pkg.go.dev/github.com/doors-dev/doors)
 - [GoX](https://github.com/doors-dev/gox)
+- [AI Agent Skill](https://github.com/doors-dev/doors-skill) — install for Claude Code, Codex, or OpenCode to get Doors-aware code generation
 
 ## Status
 

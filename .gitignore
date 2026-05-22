@@ -16,3 +16,4 @@ go.work.sum
 .DS_Store
 **/.DS_Store
 .gocache
+skill/
