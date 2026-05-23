@@ -26,6 +26,8 @@ The practical workflow is simple:
 
 ## Setup Project
 
+> For new applications, use [doors-dev/doors-starter](https://github.com/doors-dev/doors-starter), the recommended ready-to-run **Doors** project skeleton. This page walks through a minimal hello-world app by hand.
+
 Create a new directory containing our project:
 
 ```bash

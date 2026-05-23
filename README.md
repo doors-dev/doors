@@ -16,6 +16,12 @@ Read the [release notes](./RELEASE_NOTES.md) for the overview.
 
 If you are upgrading existing code or asking an agent to migrate it, start with the [migration guide](./MIGRATION.md).
 
+## Start a new project
+
+For new applications, use [doors-dev/doors-starter](https://github.com/doors-dev/doors-starter), the recommended ready-to-run **Doors** project skeleton.
+
+The [Get Started](https://doors.dev/docs/get-started/) guide walks through a minimal hello-world app by hand, useful for understanding the basic pieces.
+
 ## Example
 
 ```gox
@@ -100,6 +106,7 @@ Typical JavaScript stacks place much of the interaction model in the browser whi
 
 - [Officiean Website](https://doors.dev)
 - [Documentation](https://doors.dev/docs/)
+- [Starter Project](https://github.com/doors-dev/doors-starter)
 - [Tutorial](https://doors.dev/tutorial/)
 - [API Reference](https://pkg.go.dev/github.com/doors-dev/doors)
 - [GoX](https://github.com/doors-dev/gox)
