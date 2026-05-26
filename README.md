@@ -106,7 +106,7 @@ Typical JavaScript stacks place much of the interaction model in the browser whi
 
 ## Learn more
 
-- [Officiean Website](https://doors.dev)
+- [Official Website](https://doors.dev)
 - [Documentation](https://doors.dev/docs/)
 - [Starter Project](https://github.com/doors-dev/doors-starter)
 - [Tutorial](https://doors.dev/tutorial/)
