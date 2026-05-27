@@ -49,21 +49,11 @@ func Router(ctx context.Context) Source[Location] {
 	}
 }
 
-// Deprecated: Use Route(...)
-func RouterBeam(routes ...RouteBeam[Location]) gox.EditorComp {
-	return gox.EditorCompFunc(func(cur gox.Cursor) error {
-		path := Router(cur.Context())
-		return path.RouteBeam(routes...).Edit(cur)
-	})
-}
-
-// Deprecated: Use Route(...)
-func RouterSource(routes ...RouteSource[Location]) gox.EditorComp {
-	return Route(routes...)
-}
-
-// Route returns a renderable component that routes the current URL through
-// writable route branches.
+// Route returns a renderable component that picks one of several writable
+// route branches based on the current URL.
+//
+// Routes are tried in order and the first match renders. Use [RouteModel] to
+// match on path-model structs and [RouteLocationDefault] as the fallback.
 func Route(routes ...RouteSource[Location]) gox.EditorComp {
 	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		path := Router(cur.Context())
@@ -71,25 +61,31 @@ func Route(routes ...RouteSource[Location]) gox.EditorComp {
 	})
 }
 
-// RouteLocationDefault creates a fallback URL route that renders a
-// writable source for the current [Location].
-func RouteLocationDefault[C gox.Comp](render func(Source[Location]) C) RouteSource[Location] {
-	return defaultRouteSource[Location](func(l Source[Location]) gox.Elem {
-		return render(l).Main()
-	})
+// RouteLocationDefault creates a fallback URL route that calls render with a
+// writable [Source] of the current [Location].
+//
+// This is the URL-specific wrapper around [RouteDefault].
+func RouteLocationDefault[C gox.Comp](render func(s Source[Location]) C) RouteSource[Location] {
+	return RouteDefault(render)
 }
 
-// RouteLocationDefaultBeam creates a fallback URL route that renders a
-// read-only beam for the current [Location].
-func RouteLocationDefaultBeam[C gox.Comp](render func(Beam[Location]) C) RouteBeam[Location] {
-	return defaultRouteBeam[Location](func(l Beam[Location]) gox.Elem {
-		return render(l).Main()
-	})
+// RouteLocationDefaultBeam creates a fallback URL route that calls render
+// with a read-only [Beam] of the current [Location].
+//
+// This is the URL-specific wrapper around [RouteDefaultBeam].
+func RouteLocationDefaultBeam[C gox.Comp](render func(b Beam[Location]) C) RouteBeam[Location] {
+	return RouteLocationDefaultBeam(render)
 }
 
-// RouteLocationDefaultComp creates a fallback URL route that renders comp.
+// RouteLocationDefaultBind creates a fallback URL route that calls render with
+// the raw [Location] value directly — a shorthand for [RouteLocationDefaultBeam]
+// plus bind.
+func RouteLocationDefaultBind[C gox.Comp](render func(b Location) C) RouteBeam[Location] {
+	return RouteDefaultBind(render)
+}
+
+// RouteLocationDefaultComp creates a fallback URL route that renders a
+// fixed component. The component receives no reactive value.
 func RouteLocationDefaultComp(comp gox.Comp) RouteBeam[Location] {
-	return defaultRouteBeam[Location](func(b Beam[Location]) gox.Elem {
-		return comp.Main()
-	})
+	return RouteDefaultComp[Location](comp)
 }

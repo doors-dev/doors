@@ -94,7 +94,7 @@ func (parallelJob) Output(io.Writer) error {
 //	        }
 //	    }
 //	})
-func Go(f func(context.Context)) gox.Editor {
+func Go(f func(ctx context.Context)) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(common.KeyCore).(core.Core)
 		ctx := DetachedContext(cur.Context())

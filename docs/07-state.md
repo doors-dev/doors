@@ -242,6 +242,7 @@ The match builders are not yet full routes. Chain one of these to produce one:
 | --- | --- | --- |
 | `.Comp(comp)` | fixed `gox.Comp`, no value | `RouteBeam(...)` and `source.Route(...)` |
 | `.Beam(render)` | `func(Beam[T]) gox.Elem` | `RouteBeam(...)` and `source.Route(...)` |
+| `.Bind(render)` | `func(T) gox.Elem` | `RouteBeam(...)` and `source.Route(...)` |
 | `.Source(render)` on `RouteMatch` | `func(Source[T]) gox.Elem` | `source.Route(...)` only |
 | `.Source(set, render)` on `RouteDerive` | `set func(parent, derived) parent`, `render func(Source[derived]) gox.Elem` | `source.Route(...)` only |
 
@@ -251,6 +252,7 @@ Default routes also have a render-method shape:
 
 - `RouteDefaultComp(comp)` — fixed component
 - `RouteDefaultBeam(render)` — `func(Beam[T]) gox.Comp`
+- `RouteDefaultBind(render)` — `func(T) gox.Comp`, receives the raw value
 - `RouteDefault(render)` — `func(Source[T]) gox.Comp`, only inside `source.Route(...)`
 
 #### Example

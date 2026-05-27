@@ -191,7 +191,7 @@ func (s source[T]) Effect(ctx context.Context) (T, bool) {
 	return effect(s, ctx)
 }
 
-func (s source[T]) Bind(f func(T) gox.Elem) gox.EditorComp {
+func (s source[T]) Bind(f func(v T) gox.Elem) gox.EditorComp {
 	return bind(s, f)
 }
 
@@ -220,7 +220,7 @@ func (d source[T]) innerLens() beam.Lenser[T] {
 //			return s
 //		},
 //	)
-func DeriveSource[T1 any, T2 comparable](source Source[T1], get func(T1) T2, set func(T1, T2) T1) Source[T2] {
+func DeriveSource[T1 any, T2 comparable](source Source[T1], get func(v T1) T2, set func(v1 T1, v2 T2) T1) Source[T2] {
 	return derivedSource[T1, T2]{
 		beam.NewLens(source.innerLens(), get, set, beam.DefaultEqual),
 	}
@@ -233,7 +233,7 @@ func DeriveSource[T1 any, T2 comparable](source Source[T1], get func(T1) T2, set
 // equal and therefore not propagated to this source's subscribers or derived
 // beams. If equal is nil, every derived value propagates when the underlying
 // source propagates.
-func DeriveSourceEqual[T1 any, T2 any](source Source[T1], get func(T1) T2, set func(T1, T2) T1, equal func(new T2, old T2) bool) Source[T2] {
+func DeriveSourceEqual[T1 any, T2 any](source Source[T1], get func(v T1) T2, set func(v1 T1, v2 T2) T1, equal func(new T2, old T2) bool) Source[T2] {
 	return derivedSource[T1, T2]{
 		beam.NewLens(source.innerLens(), get, set, equal),
 	}
@@ -255,7 +255,7 @@ func (l derivedSource[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.EditorComp
 	return routeBeam(l, routes)
 }
 
-func (l derivedSource[T1, T2]) Bind(f func(T2) gox.Elem) gox.EditorComp {
+func (l derivedSource[T1, T2]) Bind(f func(v T2) gox.Elem) gox.EditorComp {
 	return bind(l, f)
 }
 
@@ -279,7 +279,7 @@ func (l derivedSource[T1, T2]) innerLens() beam.Lenser[T2] {
 //	fullName := doors.DeriveBeam(user, func(u User) string {
 //		return u.FirstName + " " + u.LastName
 //	})
-func DeriveBeam[T1 any, T2 comparable](source Beam[T1], get func(T1) T2) Beam[T2] {
+func DeriveBeam[T1 any, T2 comparable](source Beam[T1], get func(v T1) T2) Beam[T2] {
 	return derivedBeam[T1, T2]{
 		beam.NewBeam(source.innerBeam(), get, beam.DefaultEqual),
 	}
@@ -289,7 +289,7 @@ func DeriveBeam[T1 any, T2 comparable](source Beam[T1], get func(T1) T2) Beam[T2
 //
 // equal should report whether new and old should be treated as equal and
 // therefore not propagated. If equal is nil, every derived value propagates.
-func DeriveBeamEqual[T1 any, T2 any](source Beam[T1], get func(T1) T2, equal func(new T2, old T2) bool) Beam[T2] {
+func DeriveBeamEqual[T1 any, T2 any](source Beam[T1], get func(v T1) T2, equal func(new T2, old T2) bool) Beam[T2] {
 	return derivedBeam[T1, T2]{
 		beam.NewBeam(source.innerBeam(), get, equal),
 	}
@@ -303,7 +303,7 @@ func (b derivedBeam[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.EditorComp {
 	return routeBeam(b, routes)
 }
 
-func (b derivedBeam[T1, T2]) Bind(f func(T2) gox.Elem) gox.EditorComp {
+func (b derivedBeam[T1, T2]) Bind(f func(v T2) gox.Elem) gox.EditorComp {
 	return bind(b, f)
 }
 
