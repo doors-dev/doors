@@ -31,24 +31,35 @@ func NewNavigator(
 	inst core.Instance,
 	ctx context.Context,
 ) Navigator {
+	initial := inst.Location().Get()
 	n := &navigator{
-		inst: inst,
-		ctx:  ctx,
+		inst:   inst,
+		inital: &initial,
+		ctx:    ctx,
 	}
-	n.init()
 	return n
 }
 
 type navigator struct {
-	inst      core.Instance
-	ctx       context.Context
-	model     beam.Source[path.Location]
-	seq       atomic.Int32
-	noReplace atomic.Bool
+	inst   core.Instance
+	inital *path.Location
+	ctx    context.Context
+	model  beam.Source[path.Location]
+	seq    atomic.Int32
 }
 
-func (n *navigator) NoReplace() {
-	n.noReplace.Store(true)
+func (n *navigator) Sync() {
+	n.inst.Location().Sub(n.ctx, func(ctx context.Context, l path.Location) bool {
+		if n.inital != nil {
+			if !path.EqualLocation(l, *n.inital) {
+				n.push(ctx, l, true)
+			}
+			n.inital = nil
+			return false
+		}
+		n.push(ctx, l, false)
+		return false
+	})
 }
 
 func (n *navigator) Update(l path.Location) bool {
@@ -56,23 +67,15 @@ func (n *navigator) Update(l path.Location) bool {
 	return true
 }
 
-func (n *navigator) init() {
-	n.inst.Location().ReadAndSub(n.ctx, func(ctx context.Context, l path.Location) bool {
-		n.push(ctx, l)
-		return false
-	})
-}
-
-func (n *navigator) push(ctx context.Context, l path.Location) {
+func (n *navigator) push(ctx context.Context, l path.Location, replace bool) {
 	seq := n.seq.Add(1)
 	after, ok := ctex.AfterFrame(ctx)
-	replace := !n.noReplace.Load()
 	if !ok {
 		n.call(l.String(), seq, replace)
 		return
 	}
 	after.RunAfter(nil, nil, func(b bool) {
-		n.call(l.String(), seq, !n.noReplace.Load())
+		n.call(l.String(), seq, replace)
 	})
 }
 

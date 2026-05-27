@@ -238,6 +238,8 @@ The convenience is that the URL can be read and written like normal state. The t
 Two places commonly decide setup, redirects, or access before most UI is produced:
 
 - **The page function passed to `doors.NewApp(...)`** runs once per page request and has access to `doors.Request` (cookies, headers, response writer). The usual job here is to bootstrap session-scoped state from cookies or headers, such as hydrating an auth source. See [Storage & Auth](./18-storage-auth.md). You can also read or change the location here.
+
+  Mutating the location source in the app factory replaces the browser URL, and your app code observes the new location as the initial state. To read the current location before deciding whether to redirect, use `Get()` — unlike `Read`, it does not freeze the observable value for the render cycle. Place any `Sub` or `ReadAndSub` calls **after** the mutation.
 - **Inside the matched component.** You have the **Doors** runtime context and the matched route value. Read or update it, derive smaller state, and decide what to render from session state.
 
 To redirect or block a request before it reaches the **Doors** handler (system endpoints or page function), use HTTP middleware via `app.Use(...)`. The page function and component code both run after the request has already been accepted — they can change the location, but they aren't the place for HTTP-level redirects.

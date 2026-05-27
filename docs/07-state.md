@@ -389,6 +389,12 @@ During one render/update cycle, a Door subtree sees one coherent view of a `Sour
 
 In practice, this means beam-driven rendering stays predictable even when several parts of the page are updating at once.
 
+### Read-Freeze Semantics
+
+`Read` and `Sub` capture the observable value for the current render cycle. After calling either, mutating the same source in the same cycle won't be visible until the next cycle.
+
+This matters most in the page factory passed to `doors.NewApp`. If you need to redirect or adjust the initial location, use `Get()` to inspect the current value (it does not freeze), call `Update` or `Mutate` on `doors.Router(ctx)`, and place any `Sub` or `ReadAndSub` calls **after** the mutation.
+
 ## Skipping
 
 By default, a `Source` is allowed to skip stale in-flight propagation.

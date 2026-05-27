@@ -165,7 +165,7 @@ func (i instanceComp) Main() gox.Elem {
 		ctx := cur.Context()
 		i.inst.navigator = utils.NewNavigator(i.inst, ctx)
 		comp := i.page(ctx, i.w, i.r)
-		i.inst.navigator.NoReplace()
+		i.inst.navigator.Sync()
 		el := comp.Main()
 		if el == nil {
 			return nil
