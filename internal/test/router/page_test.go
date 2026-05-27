@@ -731,3 +731,39 @@ func TestAfterReload(t *testing.T) {
 	<-time.After(100 * time.Millisecond)
 	testPath(t, page, "a")
 }
+
+func TestRouteBindMethods(t *testing.T) {
+	bro := test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
+		return routeBindDocument()
+	})
+	defer bro.Close()
+
+	page := bro.Page(t, "/custom/bind-test?tab=active")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	test.TestContent(t, page, "#route-name", "derive-bind")
+	test.TestContent(t, page, "#custom-id", "bind-test")
+	test.TestContent(t, page, "#custom-tab", "active")
+
+	test.Click(t, page, "#to-match")
+	waitContent(t, page, "#route-name", "match-bind")
+	waitContent(t, page, "#match-path", "/cross-a")
+	testPath(t, page, "cross-a")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#to-derive")
+	waitContent(t, page, "#route-name", "derive-bind")
+	waitContent(t, page, "#custom-id", "bind-test")
+	waitContent(t, page, "#custom-tab", "active")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#to-default")
+	waitContent(t, page, "#route-name", "default-bind")
+	waitContent(t, page, "#default-path", "/unknown")
+	waitContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#to-match")
+	waitContent(t, page, "#route-name", "match-bind")
+	waitContent(t, page, "#instance-id", initialInstance)
+}

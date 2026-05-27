@@ -268,7 +268,7 @@ Matched routes may receive a `Source` and write back to the routed value.
 
 ### The Primitive
 
-State routing swaps one of several views based on a reactive value. Routes are built from `RouteValue`, `RouteMatch`, and `RouteDerive`, then completed with `.Comp`, `.Beam(...)`, or `.Source(...)`, plus an optional `RouteDefault*` fallback.
+State routing swaps one of several views based on a reactive value. Routes are built from `RouteValue`, `RouteMatch`, and `RouteDerive`, then completed with `.Comp`, `.Beam(...)`, `.Bind(...)`, or `.Source(...)`, plus an optional `RouteDefault*` fallback.
 
 The fragment swaps only when the active route changes. Within a matched route, the render function receives a live `Beam` or `Source` and reacts to value changes with normal state primitives. Full reference in [State](./07-state.md).
 
@@ -277,7 +277,7 @@ The fragment swaps only when the active route changes. Within a matched route, t
 In a routing context, that opens up a few common patterns:
 
 - **Match the location without a path model.** The general `RouteValue`, `RouteMatch`, and `RouteDerive` builders work directly on `Location`, and compose freely with `RouteModel` / `RouteModelBeam` in the same router. Reach for them when one ad-hoc URL doesn't deserve its own struct.
-- **Take the location source directly.** `RouteLocationDefault` (and `RouteLocationDefaultBeam`) gives the matched view raw `Source[Location]` / `Beam[Location]`, useful as a fallback or when a page parses URLs itself.
+- **Take the location source directly.** `RouteLocationDefault`, `RouteLocationDefaultBeam`, and `RouteLocationDefaultBind` give the matched view a `Source[Location]`, `Beam[Location]`, or raw `Location` value. Useful as a fallback or when a page parses URLs itself.
 - **Dispatch on a derived value.** Once a page has a typed `Path`, derive a beam for the variant field and route on it again. The fragment only swaps when the variant actually changes.
 - **Mix URL routing with non-URL state.** Branch on a session-scoped flag, a feature toggle, an auth state — using the same `Route*` builders.
 - **Custom slices of the URL.** Derive a single-purpose source or beam from `doors.Router(ctx)` (for example, one query param) without committing to a path model.

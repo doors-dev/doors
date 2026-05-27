@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.32
+// Managed by GoX v0.1.33-0.20260521150447-fa2a771ac3e0
 
 //line page.gox:1
 package router
@@ -1160,7 +1160,7 @@ func routerBeamDocument() gox.Elem {
 			{
 				__e = __c.Submit(); if __e != nil { return }
 //line page.gox:471
-				__e = __c.Any(doors.RouterBeam(
+				__e = __c.Any(doors.Route(
 				doors.RouteModelBeam(beamCrossAContent),
 				doors.RouteModelBeam(beamCrossBContent),
 				doors.RouteLocationDefaultComp(routeDefault404()),
@@ -1780,7 +1780,7 @@ func routerCombinedBeamDocument() gox.Elem {
 			{
 				__e = __c.Submit(); if __e != nil { return }
 //line page.gox:689
-				__e = __c.Any(doors.RouterBeam(
+				__e = __c.Any(doors.Route(
 				doors.RouteModelBeam(beamCrossAContent),
 				doors.RouteDerive(deriveCustomRoute).Beam(combinedCustomBeamContent),
 				doors.RouteModelBeam(combinedQueryBeamContent),
@@ -1919,4 +1919,165 @@ func combinedQueryBeamContent(b doors.Beam[PathQuery]) gox.Elem {
 	})); if __e != nil { return }
 	return })
 //line page.gox:729
+}
+
+//line page.gox:731
+func routeBindDocument() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("html"); if __e != nil { return }
+		{
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Init("body"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+//line page.gox:734
+				__e = __c.Any(doors.Route(
+				doors.RouteDerive(deriveCustomRoute).Bind(func(route CustomRoute) gox.Elem {
+					return gox.Elem(func(__c gox.Cursor) (__e error) {
+						ctx := __c.Context(); _ = ctx
+						__e = __c.Init("div"); if __e != nil { return }
+						{
+//line page.gox:736
+							__e = __c.Set("id", "route-name"); if __e != nil { return }
+							__e = __c.Submit(); if __e != nil { return }
+							__e = __c.Text("derive-bind"); if __e != nil { return }
+						}
+						__e = __c.Close(); if __e != nil { return }
+						__e = __c.Init("div"); if __e != nil { return }
+						{
+//line page.gox:737
+							__e = __c.Set("id", "custom-id"); if __e != nil { return }
+							__e = __c.Submit(); if __e != nil { return }
+//line page.gox:737
+							__e = __c.Any(route.ID); if __e != nil { return }
+						}
+						__e = __c.Close(); if __e != nil { return }
+						__e = __c.Init("div"); if __e != nil { return }
+						{
+//line page.gox:738
+							__e = __c.Set("id", "custom-tab"); if __e != nil { return }
+							__e = __c.Submit(); if __e != nil { return }
+//line page.gox:738
+							__e = __c.Any(route.Tab); if __e != nil { return }
+						}
+						__e = __c.Close(); if __e != nil { return }
+					return })
+//line page.gox:739
+				}),
+				doors.RouteMatch(func(l doors.Location) bool {
+					return len(l.Segments) == 1 && l.Segments[0] == "cross-a"
+				}).Bind(func(loc doors.Location) gox.Elem {
+					return gox.Elem(func(__c gox.Cursor) (__e error) {
+						ctx := __c.Context(); _ = ctx
+						__e = __c.Init("div"); if __e != nil { return }
+						{
+//line page.gox:743
+							__e = __c.Set("id", "route-name"); if __e != nil { return }
+							__e = __c.Submit(); if __e != nil { return }
+							__e = __c.Text("match-bind"); if __e != nil { return }
+						}
+						__e = __c.Close(); if __e != nil { return }
+						__e = __c.Init("div"); if __e != nil { return }
+						{
+//line page.gox:744
+							__e = __c.Set("id", "match-path"); if __e != nil { return }
+							__e = __c.Submit(); if __e != nil { return }
+//line page.gox:744
+							__e = __c.Any(loc.Path()); if __e != nil { return }
+						}
+						__e = __c.Close(); if __e != nil { return }
+					return })
+//line page.gox:745
+				}),
+				doors.RouteDefaultBind(func(loc doors.Location) gox.Elem {
+					return gox.Elem(func(__c gox.Cursor) (__e error) {
+						ctx := __c.Context(); _ = ctx
+//line page.gox:747
+						__e = __c.Any(doors.Status(404)); if __e != nil { return }
+						__e = __c.Init("div"); if __e != nil { return }
+						{
+//line page.gox:748
+							__e = __c.Set("id", "route-name"); if __e != nil { return }
+							__e = __c.Submit(); if __e != nil { return }
+							__e = __c.Text("default-bind"); if __e != nil { return }
+						}
+						__e = __c.Close(); if __e != nil { return }
+						__e = __c.Init("div"); if __e != nil { return }
+						{
+//line page.gox:749
+							__e = __c.Set("id", "default-path"); if __e != nil { return }
+							__e = __c.Submit(); if __e != nil { return }
+//line page.gox:749
+							__e = __c.Any(loc.Path()); if __e != nil { return }
+						}
+						__e = __c.Close(); if __e != nil { return }
+					return })
+//line page.gox:750
+				}),
+			)); if __e != nil { return }
+				__e = __c.Init("div"); if __e != nil { return }
+				{
+//line page.gox:752
+					__e = __c.Set("id", "instance-id"); if __e != nil { return }
+					__e = __c.Submit(); if __e != nil { return }
+//line page.gox:752
+					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+//line page.gox:753
+				__e = (doors.ALink{
+				Model: CustomRoute{
+					ID: "bind-test",
+					Tab: "active",
+				},
+			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); _ = ctx
+					__e = __c.Init("a"); if __e != nil { return }
+					{
+//line page.gox:758
+						__e = __c.Set("id", "to-derive"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Text("to-derive"); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+//line page.gox:759
+				__e = (doors.ALink{
+				Model: doors.Location{
+					Segments: []string{"cross-a"},
+				},
+			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); _ = ctx
+					__e = __c.Init("a"); if __e != nil { return }
+					{
+//line page.gox:763
+						__e = __c.Set("id", "to-match"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Text("to-match"); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+//line page.gox:764
+				__e = (doors.ALink{
+				Model: doors.Location{
+					Segments: []string{"unknown"},
+				},
+			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); _ = ctx
+					__e = __c.Init("a"); if __e != nil { return }
+					{
+//line page.gox:768
+						__e = __c.Set("id", "to-default"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Text("to-default"); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line page.gox:771
 }

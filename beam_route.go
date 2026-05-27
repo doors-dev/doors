@@ -24,12 +24,12 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// RouteModel creates a URL route for path model M and renders a writable
-// source for the decoded model.
+// RouteModel creates a URL route for path model M that calls render with a
+// writable [Source] for the decoded model.
 //
 // The route matches when the current [Location] decodes into M. Updating the
 // source re-encodes M back into the current location.
-func RouteModel[M any, C gox.Comp](render func(Source[M]) C) RouteSource[Location] {
+func RouteModel[M any, C gox.Comp](render func(s Source[M]) C) RouteSource[Location] {
 	a, err := path.GetModelAdapter[M]()
 	if err != nil {
 		slog.Error("Model adapter error", "error", err)
@@ -39,11 +39,6 @@ func RouteModel[M any, C gox.Comp](render func(Source[M]) C) RouteSource[Locatio
 		adapter: a,
 		render:  render,
 	}
-}
-
-// Deprecated: Use RouteModel
-func RouteModelSource[M any, C gox.Comp](render func(Source[M]) C) RouteSource[Location] {
-	return RouteModel(render)
 }
 
 type modelSource[M any, C gox.Comp] struct {
@@ -86,11 +81,11 @@ func (ml modelSource[M, C]) match(l Location) routeMatch {
 
 var _ RouteSource[Location] = modelSource[any, gox.Comp]{}
 
-// RouteModelBeam creates a URL route for path model M and renders a read-only
-// beam for the decoded model.
+// RouteModelBeam creates a URL route for path model M that calls render with
+// a read-only [Beam] for the decoded model.
 //
 // The route matches when the current [Location] decodes into M.
-func RouteModelBeam[M any, C gox.Comp](render func(Beam[M]) C) RouteBeam[Location] {
+func RouteModelBeam[M any, C gox.Comp](render func(b Beam[M]) C) RouteBeam[Location] {
 	a, err := path.GetModelAdapter[M]()
 	if err != nil {
 		slog.Error("Model adapter error", "error", err)
@@ -141,7 +136,7 @@ var _ RouteBeam[Location] = modelBeam[any, gox.Comp]{}
 
 // RouteDerive starts a route builder that matches when derive returns ok and
 // exposes the derived value to the route render function.
-func RouteDerive[T1 any, T2 comparable](derive func(T1) (T2, bool)) DeriveRoute[T1, T2] {
+func RouteDerive[T1 any, T2 comparable](derive func(v T1) (T2, bool)) DeriveRoute[T1, T2] {
 	return DeriveRoute[T1, T2]{
 		derive: derive,
 		equal:  beam.DefaultEqual[T2],
@@ -149,22 +144,28 @@ func RouteDerive[T1 any, T2 comparable](derive func(T1) (T2, bool)) DeriveRoute[
 }
 
 // RouteDeriveEqual is like [RouteDerive] with custom equality for the derived
-// value. If equal is nil, every matched update propagates.
-func RouteDeriveEqual[T1 any, T2 any](derive func(T1) (T2, bool), equal func(T2, T2) bool) DeriveRoute[T1, T2] {
+// value.
+//
+// If equal is nil, every matched update propagates.
+func RouteDeriveEqual[T1 any, T2 any](derive func(v T1) (T2, bool), equal func(v1 T2, v2 T2) bool) DeriveRoute[T1, T2] {
 	return DeriveRoute[T1, T2]{
 		derive: derive,
 		equal:  equal,
 	}
 }
 
-// DeriveRoute builds routes that render a derived value from the routed value.
+// DeriveRoute builds routes that expose a derived value from the routed value.
 type DeriveRoute[T1, T2 any] struct {
 	derive func(T1) (T2, bool)
 	equal  func(T2, T2) bool
 }
 
 // Source creates a writable route for the derived value.
-func (r DeriveRoute[T1, T2]) Source(set func(T1, T2) T1, render func(Source[T2]) gox.Elem) RouteSource[T1] {
+//
+// set receives the parent value and a new derived value, and returns the next
+// parent value. This is the write-back path that maps Source[derived] updates
+// back to Source[parent].
+func (r DeriveRoute[T1, T2]) Source(set func(v1 T1, v2 T2) T1, render func(s Source[T2]) gox.Elem) RouteSource[T1] {
 	return deriveRouteSource[T1, T2]{
 		derive: r.derive,
 		set:    set,
@@ -174,11 +175,27 @@ func (r DeriveRoute[T1, T2]) Source(set func(T1, T2) T1, render func(Source[T2])
 }
 
 // Beam creates a read-only route for the derived value.
-func (r DeriveRoute[T1, T2]) Beam(render func(Beam[T2]) gox.Elem) RouteBeam[T1] {
+//
+// render receives a live [Beam] of the derived type. The route rerenders only
+// when the active route changes; value changes within the same route are
+// handled by render reacting to the beam.
+func (r DeriveRoute[T1, T2]) Beam(render func(b Beam[T2]) gox.Elem) RouteBeam[T1] {
 	return deriveRouteBeam[T1, T2]{
 		derive: r.derive,
 		equal:  r.equal,
 		render: render,
+	}
+}
+
+// Bind creates a read-only route for the derived value, calling render with
+// the raw derived value directly — a shorthand for Beam plus bind.
+func (r DeriveRoute[T1, T2]) Bind(render func(v T2) gox.Elem) RouteBeam[T1] {
+	return deriveRouteBeam[T1, T2]{
+		derive: r.derive,
+		equal:  r.equal,
+		render: func(b Beam[T2]) gox.Elem {
+			return b.Bind(render).Main()
+		},
 	}
 }
 
@@ -191,21 +208,22 @@ func RouteValue[T comparable](v T) MatchRoute[T] {
 	}
 }
 
-// RouteMatch starts a route builder that matches when pred returns true and
-// renders the full routed value.
-func RouteMatch[T any](match func(T) bool) MatchRoute[T] {
+// RouteMatch starts a route builder that matches when match returns true and
+// exposes the full routed value to the render function.
+func RouteMatch[T any](match func(v T) bool) MatchRoute[T] {
 	return MatchRoute[T]{
 		pred: match,
 	}
 }
 
-// MatchRoute builds routes that render the full routed value when a predicate
+// MatchRoute builds routes that expose the full routed value when a predicate
 // matches.
 type MatchRoute[T any] struct {
 	pred func(T) bool
 }
 
-// Comp creates a route that renders comp when this matcher is active.
+// Comp creates a route that renders a fixed component when this matcher is
+// active. The component receives no reactive value.
 func (m MatchRoute[T]) Comp(comp gox.Comp) RouteBeam[T] {
 	return matchRouteBeam[T]{
 		pred: m.pred,
@@ -216,39 +234,90 @@ func (m MatchRoute[T]) Comp(comp gox.Comp) RouteBeam[T] {
 }
 
 // Beam creates a read-only route for the full routed value.
-func (m MatchRoute[T]) Beam(render func(Beam[T]) gox.Elem) RouteBeam[T] {
+//
+// render receives a live [Beam] of the routed type. The route rerenders only
+// when the active route changes; value changes within the same route are
+// handled by render reacting to the beam.
+func (m MatchRoute[T]) Beam(render func(b Beam[T]) gox.Elem) RouteBeam[T] {
 	return matchRouteBeam[T]{
 		pred:   m.pred,
 		render: render,
 	}
 }
 
+// Bind creates a read-only route that calls render with the raw matched value
+// directly — a shorthand for Beam plus bind.
+func (m MatchRoute[T]) Bind(render func(v T) gox.Elem) RouteBeam[T] {
+	return matchRouteBeam[T]{
+		pred: m.pred,
+		render: func(b Beam[T]) gox.Elem {
+			return b.Bind(render).Main()
+		},
+	}
+}
+
 // Source creates a writable route for the full routed value.
-func (m MatchRoute[T]) Source(render func(Source[T]) gox.Elem) RouteSource[T] {
+//
+// render receives a live [Source] of the routed type. Updating the source
+// writes back to the routed value. Use this inside [source.Route], not
+// [Beam.RouteBeam].
+func (m MatchRoute[T]) Source(render func(s Source[T]) gox.Elem) RouteSource[T] {
 	return matchRouteSource[T]{
 		pred:   m.pred,
 		render: render,
 	}
 }
 
-// RouteDefault creates a fallback route that always matches and renders a
-// writable source for the full routed value.
-func RouteDefault[T any, C gox.Comp](render func(Source[T]) C) RouteSource[T] {
+// RouteDefault creates a fallback route that always matches and calls render
+// with a writable [Source] of the full routed value.
+//
+// Place last in the route list. All preceding non-default routes are tried
+// first.
+func RouteDefault[T any, C gox.Comp](render func(s Source[T]) C) RouteSource[T] {
 	return defaultRouteSource[T](func(l Source[T]) gox.Elem {
-		return render(l).Main()
+		var comp gox.Comp = render(l)
+		if comp == nil {
+			return nil
+		}
+		return comp.Main()
 	})
 }
 
-// RouteDefaultBeam creates a fallback route that always matches and renders a
-// read-only beam for the full routed value.
-func RouteDefaultBeam[T any, C gox.Comp](render func(Beam[T]) C) RouteBeam[T] {
+// RouteDefaultBeam creates a fallback route that always matches and calls
+// render with a read-only [Beam] of the full routed value.
+//
+// Place last in the route list.
+func RouteDefaultBeam[T any, C gox.Comp](render func(b Beam[T]) C) RouteBeam[T] {
 	return defaultRouteBeam[T](func(l Beam[T]) gox.Elem {
-		return render(l).Main()
+		var comp gox.Comp = render(l)
+		if comp == nil {
+			return nil
+		}
+		return comp.Main()
+	})
+}
+
+// RouteDefaultBind creates a fallback route that always matches and calls
+// render with the raw routed value directly — a shorthand for [RouteDefaultBeam]
+// plus bind.
+func RouteDefaultBind[T any, C gox.Comp](render func(v T) C) RouteBeam[T] {
+	return defaultRouteBeam[T](func(b Beam[T]) gox.Elem {
+		return b.Bind(func(t T) gox.Elem {
+			var comp gox.Comp = render(t)
+			if comp == nil {
+				return nil
+			}
+			el := comp.Main()
+			if el == nil {
+				return nil
+			}
+			return el
+		}).Main()
 	})
 }
 
 // RouteDefaultComp creates a fallback route that always matches and renders
-// comp.
+// a fixed component. The component receives no reactive value.
 func RouteDefaultComp[T any](comp gox.Comp) RouteBeam[T] {
 	return defaultRouteBeam[T](func(b Beam[T]) gox.Elem {
 		return comp.Main()
@@ -270,6 +339,9 @@ type RouteSource[T1 any] interface {
 }
 
 // RouteBeam is a read-only route branch for values of type T1.
+//
+// It extends [RouteSource], so it can be passed where a writable route is
+// expected (a read-only route is a valid writable route that doesn't write).
 type RouteBeam[T1 any] interface {
 	RouteSource[T1]
 	beamRender(l Beam[T1]) gox.Editor

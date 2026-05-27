@@ -468,7 +468,7 @@ elem pageC(b doors.Source[PathC]) {
 elem routerBeamDocument() {
 	<html>
 		<body>
-			~(doors.RouterBeam(
+			~(doors.Route(
 				doors.RouteModelBeam(beamCrossAContent),
 				doors.RouteModelBeam(beamCrossBContent),
 				doors.RouteLocationDefaultComp(routeDefault404()),
@@ -686,7 +686,7 @@ elem combinedRawContent(l doors.Source[doors.Location]) {
 elem routerCombinedBeamDocument() {
 	<html>
 		<body>
-			~(doors.RouterBeam(
+			~(doors.Route(
 				doors.RouteModelBeam(beamCrossAContent),
 				doors.RouteDerive(deriveCustomRoute).Beam(combinedCustomBeamContent),
 				doors.RouteModelBeam(combinedQueryBeamContent),
@@ -726,4 +726,46 @@ elem combinedQueryBeamContent(b doors.Beam[PathQuery]) {
 			})
 		</div>
 	}))
+}
+
+elem routeBindDocument() {
+	<html>
+		<body>
+			~(doors.Route(
+				doors.RouteDerive(deriveCustomRoute).Bind(elem(route CustomRoute) {
+					<div id="route-name">derive-bind</div>
+					<div id="custom-id">~(route.ID)</div>
+					<div id="custom-tab">~(route.Tab)</div>
+				}),
+				doors.RouteMatch(func(l doors.Location) bool {
+					return len(l.Segments) == 1 && l.Segments[0] == "cross-a"
+				}).Bind(elem(loc doors.Location) {
+					<div id="route-name">match-bind</div>
+					<div id="match-path">~(loc.Path())</div>
+				}),
+				doors.RouteDefaultBind(elem(loc doors.Location) {
+					~(doors.Status(404))
+					<div id="route-name">default-bind</div>
+					<div id="default-path">~(loc.Path())</div>
+				}),
+			))
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			~>doors.ALink{
+				Model: CustomRoute{
+					ID: "bind-test",
+					Tab: "active",
+				},
+			} <a id="to-derive">to-derive</a>
+			~>doors.ALink{
+				Model: doors.Location{
+					Segments: []string{"cross-a"},
+				},
+			} <a id="to-match">to-match</a>
+			~>doors.ALink{
+				Model: doors.Location{
+					Segments: []string{"unknown"},
+				},
+			} <a id="to-default">to-default</a>
+		</body>
+	</html>
 }
