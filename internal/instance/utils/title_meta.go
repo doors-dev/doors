@@ -61,7 +61,7 @@ func (t *titleMeta) Edit(cur gox.Cursor) error {
 		if err := cur.Submit(); err != nil {
 			return err
 		}
-		if err := cur.Text(title.text); err != nil {
+		if err := cur.Raw(title.text); err != nil {
 			return err
 		}
 		if err := cur.Close(); err != nil {

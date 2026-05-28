@@ -57,7 +57,7 @@ const actions = {
 			title = document.createElement("title")
 			document.head.appendChild(title)
 		}
-		title.textContent = content
+		title.innerHTML = content
 		syncAttributes(title, attrs)
 	},
 	remove_meta: (_: Extras, name: string, property: boolean) => {
