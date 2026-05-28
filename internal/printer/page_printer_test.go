@@ -212,7 +212,7 @@ func TestPagePrinterIncludesFrontAssetsWhenNotStatic(t *testing.T) {
 	}
 
 	got := out.String()
-	if !strings.Contains(got, "d0r.css") || !strings.Contains(got, "d0r.js") {
+	if !strings.Contains(got, "doors.css") || !strings.Contains(got, "doors.js") {
 		t.Fatalf("expected front assets in non-static head, got %q", got)
 	}
 	if !strings.Contains(got, `id="instance"`) {

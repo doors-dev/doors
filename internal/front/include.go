@@ -31,7 +31,7 @@ func Include(inst core.Instance) gox.Elem {
 			if err := cur.Set("rel", "stylesheet"); err != nil {
 				return err
 			}
-			if err := cur.Set("href", pathMaker.Resource(registry.MainStyle(), "d0r.css")); err != nil {
+			if err := cur.Set("href", pathMaker.Resource(registry.MainStyle(), "doors.css")); err != nil {
 				return err
 			}
 		}
@@ -42,7 +42,7 @@ func Include(inst core.Instance) gox.Elem {
 			return err
 		}
 		{
-			if err := cur.Set("src", pathMaker.Resource(registry.MainScript(), "d0r.js")); err != nil {
+			if err := cur.Set("src", pathMaker.Resource(registry.MainScript(), "doors.js")); err != nil {
 				return err
 			}
 			if err := cur.Set("id", inst.ID()); err != nil {

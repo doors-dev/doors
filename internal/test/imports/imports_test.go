@@ -168,7 +168,7 @@ func getStylesheetHref(t *testing.T, page *rod.Page) string {
 		if href == nil {
 			t.Fatal("stylesheet: href attribute is nil")
 		}
-		if !strings.HasSuffix(*href, ".d0r.css") {
+		if !strings.HasSuffix(*href, ".doors.css") {
 			return *href
 		}
 	}
