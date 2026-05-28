@@ -80,7 +80,7 @@ func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (v 
 		if !has {
 			return e.value, true
 		}
-		e.updated = b.equal(*e.value, *prevValue.value)
+		e.updated = !b.equal(*e.value, *prevValue.value)
 		e.prev = prev
 		b.values[seq] = e
 		return e.value, e.updated
