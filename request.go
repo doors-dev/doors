@@ -39,6 +39,10 @@ type RequestCommon interface {
 	// Context returns the underlying HTTP request context.
 	// It is not the Doors runtime context passed to handlers.
 	Context() context.Context
+	// RequestHeader returns the incoming request headers.
+	RequestHeader() http.Header
+	// RemoteAddr returns the network address that sent the request
+	RemoteAddr() string
 }
 
 // RequestEvent is the request context passed to event handlers.
@@ -101,8 +105,6 @@ type RequestRawHook interface {
 // Use it for cookies, request headers, and response headers.
 type Request interface {
 	RequestCommon
-	// RequestHeader returns the incoming request headers.
-	RequestHeader() http.Header
 	// ResponseHeader returns the outgoing response headers.
 	ResponseHeader() http.Header
 }
@@ -111,6 +113,10 @@ type request struct {
 	w   http.ResponseWriter
 	r   *http.Request
 	ctx context.Context
+}
+
+func (r request) RemoteAddr() string {
+	return r.r.RemoteAddr
 }
 
 func (r request) Context() context.Context {
