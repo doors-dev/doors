@@ -166,6 +166,8 @@ export default {
 			screenY: event.screenY,
 			pageX: event.pageX,
 			pageY: event.pageY,
+			offsetX: event.offsetX,
+			offsetY: event.offsetY,
 			timestamp: date(new Date()),
 		};
 		return fetchOptJson(obj);

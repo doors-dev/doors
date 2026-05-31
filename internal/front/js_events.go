@@ -37,6 +37,8 @@ type PointerEvent struct {
 	ScreenY            float64   `json:"screenY"`
 	PageX              float64   `json:"pageX"`
 	PageY              float64   `json:"pageY"`
+	OffsetX            float64   `json:"offsetX"`
+	OffsetY            float64   `json:"offsetY"`
 	Timestamp          time.Time `json:"timestamp"`
 }
 
