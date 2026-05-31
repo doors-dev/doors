@@ -133,12 +133,13 @@ XReload(ctx context.Context) <-chan error
 XUnmount(ctx context.Context) <-chan error
 ```
 
-These report completion:
+These report completion. On success:
 
-- `nil` means the operation completed
-- a non-nil error means it failed or was canceled before finishing
-- `context.Canceled` means the operation was overwritten by a newer Door operation, unmount, or related lifecycle change
-- a closed channel with no value usually means the Door was not mounted by the time the operation was observed
+- `XInner`, `XOuter`, `XStatic`, `XReload`, and `XUnmount` send **two** `nil` values then close the channel — the first means the call was scheduled (render was completed), the second means it was applied to the page.
+
+On failure, the channel sends an error then closes. An error of `context.Canceled` means the operation was overwritten by a newer Door operation, unmount, or related lifecycle change.
+
+A closed channel with no value means the Door was not mounted by the time the operation was observed.
 
 Do not wait on `X*` during rendering.
 

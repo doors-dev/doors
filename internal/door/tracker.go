@@ -58,6 +58,7 @@ func trackerRemove(prev *tracker, task *userTask) {
 			task.Cancel()
 			return
 		}
+		task.Scheduled()
 		prev.root.inst.Call(&call{
 			ctx:     prev.parent.ctx,
 			kind:    callReplace,

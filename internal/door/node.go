@@ -122,6 +122,8 @@ func (n *node) sync(task *userTask) {
 			task.Report(err)
 			payload = newError(err, logger)
 			callCtx = n.tracker.parent.ctx
+		} else {
+			task.Scheduled()
 		}
 		ownerTracker.root.inst.Call(&call{
 			ctx:     callCtx,

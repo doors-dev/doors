@@ -158,7 +158,7 @@ type nodeTask interface {
 }
 
 func newUserTask(ctx context.Context) (*userTask, <-chan error) {
-	ch := make(chan error, 1)
+	ch := make(chan error, 2)
 	return &userTask{ch: &ch, ctx: ctx, frames: ctex.GetFrames(ctx)}, ch
 }
 
@@ -187,6 +187,16 @@ func (t *userTask) RenderFrame() shredder.SimpleFrame {
 		return shredder.FreeFrame{}
 	}
 	return t.frames.Render()
+}
+
+func (t *userTask) Scheduled() {
+	if t == nil {
+		return
+	}
+	if t.ch == nil {
+		return
+	}
+	*t.ch <- nil
 }
 
 func (t *userTask) Report(err error) {

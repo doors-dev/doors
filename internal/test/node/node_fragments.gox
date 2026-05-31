@@ -120,13 +120,16 @@ elem (f *FragmentX) Main() {
 	~>(f.report) ~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			ch := f.n.XInner(ctx, test.Marker("updated"))
-			err, ok := <-ch
-			if !ok {
-				f.rep(ctx, "channel closed")
-				return false
+			count := 0
+			for err := range ch {
+				count++
+				if err != nil {
+					f.rep(ctx, "channel err: " + err.Error())
+					return false
+				}
 			}
-			if err != nil {
-				f.rep(ctx, "channel err: " + err.Error())
+			if count == 0 {
+				f.rep(ctx, "channel closed")
 				return false
 			}
 			f.rep(ctx, "ok upd")
@@ -137,13 +140,16 @@ elem (f *FragmentX) Main() {
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			ch := f.n.XStatic(ctx, nil)
-			err, ok := <-ch
-			if !ok {
-				f.rep(ctx, "channel closed")
-				return false
+			count := 0
+			for err := range ch {
+				count++
+				if err != nil {
+					f.rep(ctx, "channel err: " + err.Error())
+					return false
+				}
 			}
-			if err != nil {
-				f.rep(ctx, "channel err: " + err.Error())
+			if count == 0 {
+				f.rep(ctx, "channel closed")
 				return false
 			}
 			f.rep(ctx, "ok del")
@@ -164,13 +170,16 @@ func (f *FragmentXDoor) rep(ctx context.Context, s string) {
 }
 
 func (f *FragmentXDoor) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
-	err, ok := <-ch
-	if !ok {
-		f.rep(ctx, "channel closed")
-		return false
+	count := 0
+	for err := range ch {
+		count++
+		if err != nil {
+			f.rep(ctx, "channel err: " + err.Error())
+			return false
+		}
 	}
-	if err != nil {
-		f.rep(ctx, "channel err: " + err.Error())
+	if count == 0 {
+		f.rep(ctx, "channel closed")
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -1282,13 +1291,16 @@ func (f *FragmentClosestXReload) rep(ctx context.Context, s string) {
 }
 
 func (f *FragmentClosestXReload) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
-	err, ok := <-ch
-	if !ok {
-		f.rep(ctx, "channel closed")
-		return false
+	count := 0
+	for err := range ch {
+		count++
+		if err != nil {
+			f.rep(ctx, "channel err: " + err.Error())
+			return false
+		}
 	}
-	if err != nil {
-		f.rep(ctx, "channel err: " + err.Error())
+	if count == 0 {
+		f.rep(ctx, "channel closed")
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -1343,13 +1355,17 @@ elem (f *FragmentRootXReload) Main() {
 		id="root-xreload"
 		(doors.AClick{
 			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-				err, ok := <-doors.XReload(ctx)
-				if !ok {
-					f.rep(ctx, "channel closed")
-					return false
+				ch := doors.XReload(ctx)
+				count := 0
+				for err := range ch {
+					count++
+					if err != nil {
+						f.rep(ctx, "channel err: " + err.Error())
+						return false
+					}
 				}
-				if err != nil {
-					f.rep(ctx, "channel err: " + err.Error())
+				if count == 0 {
+					f.rep(ctx, "channel closed")
 					return false
 				}
 				f.rep(ctx, "ok xreload")
@@ -1372,13 +1388,16 @@ func (f *FragmentDetachedReplace) rep(ctx context.Context, s string) {
 }
 
 func (f *FragmentDetachedReplace) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
-	err, ok := <-ch
-	if !ok {
-		f.rep(ctx, "channel closed")
-		return false
+	count := 0
+	for err := range ch {
+		count++
+		if err != nil {
+			f.rep(ctx, "channel err: " + err.Error())
+			return false
+		}
 	}
-	if err != nil {
-		f.rep(ctx, "channel err: " + err.Error())
+	if count == 0 {
+		f.rep(ctx, "channel closed")
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -1429,13 +1448,16 @@ func (f *FragmentDetachedRebase) rep(ctx context.Context, s string) {
 }
 
 func (f *FragmentDetachedRebase) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
-	err, ok := <-ch
-	if !ok {
-		f.rep(ctx, "channel closed")
-		return false
+	count := 0
+	for err := range ch {
+		count++
+		if err != nil {
+			f.rep(ctx, "channel err: " + err.Error())
+			return false
+		}
 	}
-	if err != nil {
-		f.rep(ctx, "channel err: " + err.Error())
+	if count == 0 {
+		f.rep(ctx, "channel closed")
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -1493,13 +1515,16 @@ func (f *FragmentProxyMove) rep(ctx context.Context, s string) {
 }
 
 func (f *FragmentProxyMove) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
-	err, ok := <-ch
-	if !ok {
-		f.rep(ctx, "channel closed")
-		return false
+	count := 0
+	for err := range ch {
+		count++
+		if err != nil {
+			f.rep(ctx, "channel err: " + err.Error())
+			return false
+		}
 	}
-	if err != nil {
-		f.rep(ctx, "channel err: " + err.Error())
+	if count == 0 {
+		f.rep(ctx, "channel closed")
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -1562,13 +1587,16 @@ func (f *FragmentHierarchy) rep(ctx context.Context, s string) {
 }
 
 func (f *FragmentHierarchy) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
-	err, ok := <-ch
-	if !ok {
-		f.rep(ctx, "channel closed")
-		return false
+	count := 0
+	for err := range ch {
+		count++
+		if err != nil {
+			f.rep(ctx, "channel err: " + err.Error())
+			return false
+		}
 	}
-	if err != nil {
-		f.rep(ctx, "channel err: " + err.Error())
+	if count == 0 {
+		f.rep(ctx, "channel closed")
 		return false
 	}
 	f.rep(ctx, okMsg)
@@ -1634,13 +1662,16 @@ func (f *FragmentErrorTransitions) rep(ctx context.Context, s string) {
 }
 
 func (f *FragmentErrorTransitions) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
-	err, ok := <-ch
-	if !ok {
-		f.rep(ctx, "channel closed")
-		return false
+	count := 0
+	for err := range ch {
+		count++
+		if err != nil {
+			f.rep(ctx, "channel err: " + err.Error())
+			return false
+		}
 	}
-	if err != nil {
-		f.rep(ctx, "channel err: " + err.Error())
+	if count == 0 {
+		f.rep(ctx, "channel closed")
 		return false
 	}
 	f.rep(ctx, okMsg)

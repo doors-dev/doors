@@ -34,7 +34,10 @@ func Reload(ctx context.Context) {
 
 // XReload tracks completion of [Reload].
 //
-// The channel receives nil on success or an error on failure, then closes.
+// On success the channel sends two nil values then closes: the first means the
+// call was scheduled (render was completed), the second means it was applied
+// to the page.
+// On failure it sends an error then closes.
 // If ctx belongs to the root page render, it sends an error and closes.
 //
 // Do not wait on it during rendering. If you need to wait, use [Go] or your

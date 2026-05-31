@@ -48,7 +48,10 @@ func (d *Door) Inner(ctx context.Context, content any) {
 }
 
 // XInner tracks completion of [Door.Inner].
-// The channel receives nil on success or an error on failure, then closes.
+// On success the channel sends two nil values then closes: the first means the
+// call was scheduled (render was completed), the second means it was applied
+// to the page.
+// On failure it sends an error then closes.
 // It receives context.Canceled if the operation is overwritten by a newer
 // update, unmount, or other door operation.
 // If the door is not mounted, it closes immediately without sending a value.
@@ -69,7 +72,10 @@ func (d *Door) Outer(ctx context.Context, outer gox.Elem) {
 }
 
 // XOuter tracks completion of [Door.Outer].
-// The channel receives nil on success or an error on failure, then closes.
+// On success the channel sends two nil values then closes: the first means the
+// call was scheduled (render was completed), the second means it was applied
+// to the page.
+// On failure it sends an error then closes.
 // It receives context.Canceled if the operation is overwritten by a newer
 // update, unmount, or other door operation.
 // If the door is not mounted, it closes immediately without sending a value.
@@ -90,7 +96,10 @@ func (d *Door) Static(ctx context.Context, content any) {
 }
 
 // XStatic tracks completion of [Door.Static].
-// The channel receives nil on success or an error on failure, then closes.
+// On success the channel sends two nil values then closes: the first means the
+// call was scheduled (render was completed), the second means it was applied
+// to the page.
+// On failure it sends an error then closes.
 // It receives context.Canceled if the operation is overwritten by a newer
 // update, unmount, or other door operation.
 // If the door is not mounted, it closes immediately without sending a value.
@@ -110,7 +119,10 @@ func (d *Door) Reload(ctx context.Context) {
 }
 
 // XReload tracks completion of [Door.Reload].
-// The channel receives nil on success or an error on failure, then closes.
+// On success the channel sends two nil values then closes: the first means the
+// call was scheduled (render was completed), the second means it was applied
+// to the page.
+// On failure it sends an error then closes.
 // It receives context.Canceled if the operation is overwritten by a newer
 // update, unmount, or other door operation.
 // If the door is not mounted, it closes immediately without sending a value.
@@ -129,7 +141,10 @@ func (d *Door) Unmount(ctx context.Context) {
 }
 
 // XUnmount tracks completion of [Door.Unmount].
-// The channel receives nil on success or an error on failure, then closes.
+// On success the channel sends two nil values then closes: the first means the
+// call was scheduled (render was completed), the second means it was applied
+// to the page.
+// On failure it sends an error then closes.
 // It receives context.Canceled if the operation is overwritten by a newer
 // update, unmount, or other door operation.
 // If the door is not mounted, it closes immediately without sending a value.

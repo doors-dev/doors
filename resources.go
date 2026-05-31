@@ -19,6 +19,8 @@ import (
 	"io/fs"
 	"net/http"
 
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/printer"
 )
 
@@ -90,3 +92,22 @@ func ResourceHandler(handler func(w http.ResponseWriter, r *http.Request)) Resou
 func ResourceProxy(url string) Resource {
 	return printer.SourceProxy(url)
 }
+
+
+// NewHookPath registers a resource handler as a hook and returns a URL path
+// that triggers it.
+//
+// If name is "", the path omits the name segment.
+//
+// The returned bool is false if the hook could not be registered (e.g., the
+// parent door is unmounted).
+func NewHookPath(ctx context.Context, r Resource, name string) (string, bool) {
+	core := ctx.Value(common.KeyCore).(core.Core)
+	hook, ok := core.Door().RegisterHook(r.Handler(), nil)
+	if !ok {
+		return "", false
+	}
+	return core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, name), true
+}
+
+
