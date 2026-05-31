@@ -16,7 +16,7 @@ package expirator
 
 import (
 	"container/heap"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
@@ -71,7 +71,8 @@ func NewExpirator(handler ExpirationHandler) *Expirator {
 }
 
 type Expirator struct {
-	expired atomic.Bool
+	mu      sync.Mutex
+	expired bool
 	lookup  map[uint64]*expiration
 	heap    *expirations
 	handler ExpirationHandler
@@ -80,18 +81,25 @@ type Expirator struct {
 }
 
 func (x *Expirator) Shutdown() {
-	if x.expired.Swap(true) {
+	x.mu.Lock()
+	defer x.mu.Unlock()
+	if x.expired {
 		return
 	}
+	x.expired = true
 	if x.timer != nil {
 		x.timer.Stop()
 	}
 }
 
 func (x *Expirator) expire() {
-	if x.expired.Swap(true) {
+	x.mu.Lock()
+	if x.expired {
+		x.mu.Unlock()
 		return
 	}
+	x.expired = true
+	x.mu.Unlock()
 	x.handler.Expire()
 }
 
@@ -115,10 +123,12 @@ func (x *Expirator) newHead(e *expiration) {
 }
 
 func (x *Expirator) Report(id uint64) {
-	if x.expired.Load() {
+	x.mu.Lock()
+	defer x.mu.Unlock()
+	if x.expired {
 		return
 	}
-	if x.head.id == id {
+	if x.head != nil && x.head.id == id {
 		var e *expiration
 		if x.heap.Len() > 0 {
 			e = heap.Pop(x.heap).(*expiration)
@@ -133,7 +143,9 @@ func (x *Expirator) Report(id uint64) {
 }
 
 func (x *Expirator) Track(id uint64, expire time.Time) {
-	if x.expired.Load() {
+	x.mu.Lock()
+	defer x.mu.Unlock()
+	if x.expired {
 		return
 	}
 	e := &expiration{

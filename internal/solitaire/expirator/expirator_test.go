@@ -54,7 +54,7 @@ func TestExpiratorTrackReportAndShutdown(t *testing.T) {
 	exp.Track(3, time.Now().Add(time.Hour))
 	exp.Shutdown()
 	exp.Shutdown()
-	if !exp.expired.Load() {
+	if !exp.expired {
 		t.Fatal("expected shutdown to mark expirator as expired")
 	}
 }
