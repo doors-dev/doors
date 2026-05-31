@@ -263,3 +263,18 @@ func TestScopeConcurrent(t *testing.T) {
 	test.TestReportId(t, page, 0, "3")
 	test.TestReportId(t, page, 1, "3")
 }
+
+func TestScopeRate(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &scopeFragment{
+			r: test.NewReporter(2),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.ClickBurst(t, page, "#r1", "#r2", "#r3")
+	waitSnapshotExact(t, page, 400*time.Millisecond, 1, "1", "rate scope first click")
+	waitSnapshotExact(t, page, 400*time.Millisecond, 2, "3", "rate scope throttled to latest candidate")
+}

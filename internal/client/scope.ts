@@ -272,6 +272,7 @@ abstract class Scope {
 
 
 const newScope = {
+	"rate": (runtime: Runtime, id: string) => new RateScope(runtime, id),
 	"debounce": (runtime: Runtime, id: string) => new DebounceScope(runtime, id),
 	"blocking": (runtime: Runtime, id: string) => new BlockingScope(runtime, id),
 	"concurrent": (runtime: Runtime, id: string) => new ConcurrentScope(runtime, id),
@@ -280,6 +281,37 @@ const newScope = {
 	"free": (runtime: Runtime, id: string) => new FreeScope(runtime, id),
 	"latest": (runtime: Runtime, id: string) => new LatestScope(runtime, id),
 } as const;
+
+class RateScope extends Scope {
+	private rateTimer: any = null
+	private candidate: [Hook, number] | null = null
+	private next() {
+		this.rateTimer = null
+		if (!this.candidate) {
+			return
+		}
+		const [hook, tick] = this.candidate
+		this.candidate = null
+		this.rateTimer = setTimeout(() => this.next(), tick)
+		this.promote(hook)
+	}
+	protected process(hook: Hook, opt: any): void {
+		const tick = opt as number;
+		if (this.candidate) {
+			this.candidate[0].cancel()
+			this.candidate = null
+		}
+		if (this.rateTimer != null) {
+			this.candidate = [hook, tick]
+			return
+		}
+		this.rateTimer = setTimeout(() => this.next(), tick)
+		this.promote(hook)
+	}
+	protected complete(_: Hook): void {
+	}
+
+}
 
 class DebounceScope extends Scope {
 	private durationTimer_: any = null

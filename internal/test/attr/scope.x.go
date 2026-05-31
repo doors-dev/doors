@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.32
+// Managed by GoX v0.1.36
 
 //line scope.gox:1
 package attr
@@ -124,48 +124,57 @@ func (f *scopeFragment) Main() gox.Elem {
 		__e = __c.Any(f.button("c2", concurrent.Scope(1), "2", true)); if __e != nil { return }
 //line scope.gox:89
 		__e = __c.Any(f.button("c3", concurrent.Scope(2), "3", false)); if __e != nil { return }
-//line scope.gox:90
+//line scope.gox:92
+		rate := &doors.ScopeRate{Tick: 300 * time.Millisecond}
+
+//line scope.gox:94
+		__e = __c.Any(f.button("r1", rate, "1", false)); if __e != nil { return }
+//line scope.gox:95
+		__e = __c.Any(f.button("r2", rate, "2", false)); if __e != nil { return }
+//line scope.gox:96
+		__e = __c.Any(f.button("r3", rate, "3", false)); if __e != nil { return }
+//line scope.gox:97
 		__e = __c.Any(f.scopePipeline()); if __e != nil { return }
 	return })
-//line scope.gox:91
+//line scope.gox:98
 }
 
-//line scope.gox:93
+//line scope.gox:100
 func (f *scopeFragment) button(id string, scope doors.Scopes, marker string, delay bool) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-//line scope.gox:94
+//line scope.gox:101
 			__e = __c.Set("id", id); if __e != nil { return }
-//line scope.gox:94
+//line scope.gox:101
 			__e = __c.Modify(doors.A(ctx, f.handler(scope, marker, delay))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line scope.gox:94
+//line scope.gox:101
 			__e = __c.Any(id); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line scope.gox:95
+//line scope.gox:102
 }
 
-//line scope.gox:97
+//line scope.gox:104
 func (f *scopeFragment) buttonLatest(id string, scope doors.Scopes, marker string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-//line scope.gox:98
+//line scope.gox:105
 			__e = __c.Set("id", id); if __e != nil { return }
-//line scope.gox:98
+//line scope.gox:105
 			__e = __c.Modify(doors.A(ctx, f.handlerLatest(scope, marker))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line scope.gox:98
+//line scope.gox:105
 			__e = __c.Any(id); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line scope.gox:99
+//line scope.gox:106
 }
 
 func (f *scopeFragment) handler(scope doors.Scopes, marker string, delay bool) doors.Attr {

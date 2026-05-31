@@ -87,6 +87,13 @@ elem (f *scopeFragment) Main() {
 	~(f.button("c1", concurrent.Scope(1), "1", true))
 	~(f.button("c2", concurrent.Scope(1), "2", true))
 	~(f.button("c3", concurrent.Scope(2), "3", false))
+	~// rate
+	~{
+		rate := &doors.ScopeRate{Tick: 300 * time.Millisecond}
+	}
+	~(f.button("r1", rate, "1", false))
+	~(f.button("r2", rate, "2", false))
+	~(f.button("r3", rate, "3", false))
 	~(f.scopePipeline())
 }
 

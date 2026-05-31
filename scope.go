@@ -90,6 +90,26 @@ func (ss *ScopeSerial) Scopes(core core.Core) []Scope {
 
 var _ Scopes = (*ScopeSerial)(nil)
 
+// ScopeRate enforces a minimum interval between requests in this scope.
+//
+// The first event fires immediately. Subsequent events are throttled so
+// that no two requests start closer together than Tick.
+type ScopeRate struct {
+	// Tick is the minimum interval between events.
+	Tick time.Duration
+	id   front.AutoId
+}
+
+func (sd *ScopeRate) And(s Scopes) Scopes {
+	return scopes([]Scopes{sd, s})
+}
+
+func (s *ScopeRate) Scopes(core core.Core) []Scope {
+	return []Scope{front.RateScope(s.id.Id(core), s.Tick)}
+}
+
+var _ Scopes = (*ScopeRate)(nil)
+
 // ScopeDebounce delays requests until input settles.
 type ScopeDebounce struct {
 	// Duration is the quiet period before a request is sent.

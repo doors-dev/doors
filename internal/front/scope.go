@@ -26,6 +26,7 @@ import (
 type scopeKind string
 
 const (
+	rateScope       scopeKind = "rate"
 	debounceScope   scopeKind = "debounce"
 	blockingScope   scopeKind = "blocking"
 	serialScope     scopeKind = "serial"
@@ -61,6 +62,14 @@ func (s *AutoId) Id(inst core.Core) string {
 		s.id = fmt.Sprint(id)
 	})
 	return s.id
+}
+
+func RateScope(id string, tick time.Duration) Scope {
+	return Scope{
+		Id:   id,
+		Kind: rateScope,
+		Opt:  tick.Milliseconds(),
+	}
 }
 
 func DebounceScope(id string, duration time.Duration, limit time.Duration) Scope {

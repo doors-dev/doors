@@ -33,6 +33,7 @@ The reusable scope types are:
 - `doors.ScopeBlocking`
 - `doors.ScopeSerial`
 - `doors.ScopeDebounce`
+- `doors.ScopeRate`
 - `doors.ScopeLatest`
 - `doors.ScopeFrame`      (use `.Scope(frame bool)` to get a `Scopes`)
 - `doors.ScopeConcurrent` (use `.Scope(groupID int)` to get a `Scopes`)
@@ -143,6 +144,34 @@ Use it for:
 If a new event arrives before the debounce fires, the previous pending one is canceled and the new one takes its place.
 
 Without a limit, only the final burst event runs. With a limit, execution still happens even if new events keep arriving.
+
+## Rate
+
+`ScopeRate` enforces a minimum interval between events in the scope.
+
+```gox
+<>
+	<button
+		(doors.AClick{
+			Scope: &doors.ScopeRate{
+                Tick: 500 * time.Millisecond,
+            },
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				return false
+			},
+		})>
+		Next
+	</button>
+</>
+```
+
+The first event fires immediately. Later events wait until `Tick` is passed. Only the latest pending event is kept; intermediate events arriving during the cooldown are dropped.
+
+Use it for:
+
+- any continuous input where you want a fixed server-call rate (mouse move for example)
+
+Unlike debounce, rate does not delay the first event and does not reset its cooldown on new arrivals. Unlike serial, rate holds only the latest pending event, not a queue.
 
 ## Frame
 
@@ -301,6 +330,7 @@ Each scope sees the event only after the previous scope accepted it. That lets y
 - Use a helper for one simple scope.
 - Reuse a scope instance when several handlers should coordinate with each other.
 - Use blocking to drop overlap, serial to queue overlap, and debounce to delay bursts.
+- Use rate to throttle events to a fixed minimum interval.
 - Use frame when one action should wait for earlier related actions and then run exclusively.
 - Use concurrent when overlap is allowed only inside one group.
 - Use latest when stale work should be canceled in favor of the newest event.
