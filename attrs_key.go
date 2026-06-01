@@ -20,9 +20,6 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// KeyboardEvent is the payload sent to keyboard event handlers.
-type KeyboardEvent = front.KeyboardEvent
-
 // RequestKeyboard is the typed request passed to keyboard event handlers.
 type RequestKeyboard = RequestEvent[KeyboardEvent]
 

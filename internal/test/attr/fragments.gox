@@ -24,8 +24,8 @@ elem (f *pointerFragment) Main() {
 	~>doors.APointerDown{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "DOWN")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	} <div
@@ -35,8 +35,8 @@ elem (f *pointerFragment) Main() {
 	~>doors.APointerUp{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "UP")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	} <div
@@ -46,8 +46,8 @@ elem (f *pointerFragment) Main() {
 	~>doors.APointerEnter{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "ENTER")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	} <div
@@ -58,8 +58,8 @@ elem (f *pointerFragment) Main() {
 	~>doors.APointerLeave{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "LEAVE")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	} <div
@@ -69,8 +69,8 @@ elem (f *pointerFragment) Main() {
 	~>doors.APointerMove{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "MOVE")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	} <div
@@ -80,8 +80,8 @@ elem (f *pointerFragment) Main() {
 	~>doors.APointerOver{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OVER")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	} <div
@@ -92,8 +92,8 @@ elem (f *pointerFragment) Main() {
 	~>doors.APointerOut{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OUT")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	} <div
@@ -244,4 +244,41 @@ elem (f *captureFragment) Main() {
 			return false
 		},
 	} <input id="filter-input" type="text"/>
+}
+
+type pointerCoordsFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+elem (f *pointerCoordsFragment) Main() {
+	~(f.r)
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			e := r.Event()
+			f.r.Update(ctx, 0, test.Float(e.OffsetX()))
+			f.r.Update(ctx, 1, test.Float(e.OffsetY()))
+			f.r.Update(ctx, 2, test.Float(e.ClientX()))
+			f.r.Update(ctx, 3, test.Float(e.ClientY()))
+			f.r.Update(ctx, 4, test.Float(e.PageX()))
+			f.r.Update(ctx, 5, test.Float(e.PageY()))
+			f.r.Update(ctx, 6, test.Float(e.ScreenX()))
+			f.r.Update(ctx, 7, test.Float(e.ScreenY()))
+			f.r.Update(ctx, 8, test.Float(e.Pointer.Width))
+			f.r.Update(ctx, 9, test.Float(e.Pointer.Height))
+			f.r.Update(ctx, 10, test.Float(e.Target.X))
+			f.r.Update(ctx, 11, test.Float(e.Target.Y))
+			f.r.Update(ctx, 12, test.Float(e.Target.Width))
+			f.r.Update(ctx, 13, test.Float(e.Target.Height))
+			f.r.Update(ctx, 14, test.Float(e.Page.X))
+			f.r.Update(ctx, 15, test.Float(e.Page.Y))
+			f.r.Update(ctx, 16, test.Float(e.Page.Width))
+			f.r.Update(ctx, 17, test.Float(e.Page.Height))
+			f.r.Update(ctx, 18, test.Float(e.Screen.X))
+			f.r.Update(ctx, 19, test.Float(e.Screen.Y))
+			f.r.Update(ctx, 20, test.Float(e.Screen.Width))
+			f.r.Update(ctx, 21, test.Float(e.Screen.Height))
+			return false
+		},
+	} <div id="coord-target">click-me</div>
 }

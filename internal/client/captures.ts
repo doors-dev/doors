@@ -146,11 +146,10 @@ export default {
 		if (!applyEventOpt(event, opt)) {
 			return undefined
 		}
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
 		const obj = {
 			type: event.type,
 			pointerId: event.pointerId,
-			width: event.width,
-			height: event.height,
 			pressure: event.pressure,
 			tangentialPressure: event.tangentialPressure,
 			tiltX: event.tiltX,
@@ -160,14 +159,30 @@ export default {
 			button: event.button,
 			pointerType: event.pointerType,
 			isPrimary: event.isPrimary,
-			clientX: event.clientX,
-			clientY: event.clientY,
-			screenX: event.screenX,
-			screenY: event.screenY,
-			pageX: event.pageX,
-			pageY: event.pageY,
-			offsetX: event.offsetX,
-			offsetY: event.offsetY,
+			pointer: {
+				x: event.offsetX,
+				y: event.offsetY,
+				width: event.width,
+				height: event.height,
+			},
+			target: {
+				x: rect.x,
+				y: rect.y,
+				width: rect.width,
+				height: rect.height,
+			},
+			page: {
+				x: window.scrollX,
+				y: window.scrollY,
+				width: window.innerWidth,
+				height: window.innerHeight,
+			},
+			screen: {
+				x: window.screenX,
+				y: window.screenY,
+				width: window.outerWidth,
+				height: window.outerHeight,
+			},
 			timestamp: date(new Date()),
 		};
 		return fetchOptJson(obj);

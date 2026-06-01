@@ -20,9 +20,6 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// PointerEvent is the payload sent to pointer event handlers.
-type PointerEvent = front.PointerEvent
-
 // RequestPointer is the typed request passed to pointer event handlers.
 type RequestPointer = RequestEvent[PointerEvent]
 

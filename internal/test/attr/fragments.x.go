@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.32
+// Managed by GoX v0.1.36
 
 //line fragments.gox:1
 package attr
@@ -32,8 +32,8 @@ func (f *pointerFragment) Main() gox.Elem {
 		__e = (doors.APointerDown{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "DOWN")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -51,8 +51,8 @@ func (f *pointerFragment) Main() gox.Elem {
 		__e = (doors.APointerUp{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "UP")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -70,8 +70,8 @@ func (f *pointerFragment) Main() gox.Elem {
 		__e = (doors.APointerEnter{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "ENTER")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -97,8 +97,8 @@ func (f *pointerFragment) Main() gox.Elem {
 		__e = (doors.APointerLeave{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "LEAVE")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -116,8 +116,8 @@ func (f *pointerFragment) Main() gox.Elem {
 		__e = (doors.APointerMove{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "MOVE")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -135,8 +135,8 @@ func (f *pointerFragment) Main() gox.Elem {
 		__e = (doors.APointerOver{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OVER")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -162,8 +162,8 @@ func (f *pointerFragment) Main() gox.Elem {
 		__e = (doors.APointerOut{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "OUT")
-			f.r.Update(ctx, 1, test.Float(r.Event().PageX))
-			f.r.Update(ctx, 2, test.Float(r.Event().PageY))
+			f.r.Update(ctx, 1, test.Float(r.Event().PageX()))
+			f.r.Update(ctx, 2, test.Float(r.Event().PageY()))
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -451,4 +451,58 @@ func (f *captureFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 	return })
 //line fragments.gox:247
+}
+
+type pointerCoordsFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+//line fragments.gox:254
+func (f *pointerCoordsFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line fragments.gox:255
+		__e = __c.Any(f.r); if __e != nil { return }
+//line fragments.gox:256
+		__e = (doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			e := r.Event()
+			f.r.Update(ctx, 0, test.Float(e.OffsetX()))
+			f.r.Update(ctx, 1, test.Float(e.OffsetY()))
+			f.r.Update(ctx, 2, test.Float(e.ClientX()))
+			f.r.Update(ctx, 3, test.Float(e.ClientY()))
+			f.r.Update(ctx, 4, test.Float(e.PageX()))
+			f.r.Update(ctx, 5, test.Float(e.PageY()))
+			f.r.Update(ctx, 6, test.Float(e.ScreenX()))
+			f.r.Update(ctx, 7, test.Float(e.ScreenY()))
+			f.r.Update(ctx, 8, test.Float(e.Pointer.Width))
+			f.r.Update(ctx, 9, test.Float(e.Pointer.Height))
+			f.r.Update(ctx, 10, test.Float(e.Target.X))
+			f.r.Update(ctx, 11, test.Float(e.Target.Y))
+			f.r.Update(ctx, 12, test.Float(e.Target.Width))
+			f.r.Update(ctx, 13, test.Float(e.Target.Height))
+			f.r.Update(ctx, 14, test.Float(e.Page.X))
+			f.r.Update(ctx, 15, test.Float(e.Page.Y))
+			f.r.Update(ctx, 16, test.Float(e.Page.Width))
+			f.r.Update(ctx, 17, test.Float(e.Page.Height))
+			f.r.Update(ctx, 18, test.Float(e.Screen.X))
+			f.r.Update(ctx, 19, test.Float(e.Screen.Y))
+			f.r.Update(ctx, 20, test.Float(e.Screen.Width))
+			f.r.Update(ctx, 21, test.Float(e.Screen.Height))
+			return false
+		},
+	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("div"); if __e != nil { return }
+			{
+//line fragments.gox:283
+				__e = __c.Set("id", "coord-target"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Text("click-me"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+	return })
+//line fragments.gox:284
 }

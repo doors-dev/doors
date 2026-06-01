@@ -156,9 +156,6 @@ func (s *ASubmit[V]) handle(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 
-// ChangeEvent is the payload sent to [AChange] handlers.
-type ChangeEvent = front.ChangeEvent
-
 // RequestChange is the typed request passed to [AChange] handlers.
 type RequestChange = RequestEvent[ChangeEvent]
 
@@ -200,9 +197,6 @@ func (p AChange) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		on:        p.On,
 	}.apply(ctx, attrs)
 }
-
-// InputEvent is the payload sent to [AInput] handlers.
-type InputEvent = front.InputEvent
 
 // RequestInput is the typed request passed to [AInput] handlers.
 type RequestInput = RequestEvent[InputEvent]
