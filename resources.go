@@ -94,20 +94,20 @@ func ResourceProxy(url string) Resource {
 }
 
 
-// NewHookPath registers a resource handler as a hook and returns a URL path
+// NewHook registers a resource handler as a hook and returns a URL path
 // that triggers it.
 //
-// If name is "", the path omits the name segment.
+// You can safely append "/filename.ext" to generated link.
 //
 // The returned bool is false if the hook could not be registered (e.g., the
 // parent door is unmounted).
-func NewHookPath(ctx context.Context, r Resource, name string) (string, bool) {
+func NewHook(ctx context.Context, r Resource) (string, bool) {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(r.Handler(), nil)
 	if !ok {
 		return "", false
 	}
-	return core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, name), true
+	return core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, ""), true
 }
 
 
