@@ -220,12 +220,40 @@ export class Package {
 
 }
 
+
+export class SyncFrame {
+	time: number
+	acks: Array<number> = []
+	constructor(tuple: Array<any>) {
+		this.time = tuple[0]
+		if (tuple.length > 1) {
+			this.acks = tuple[1]
+			this.acks.sort((a, b) => a - b)
+		}
+	}
+}
+
+export class Sync {
+	private parts_: Array<Uint8Array> = []
+	append(buf: Uint8Array) {
+		if (buf.length == 0) {
+			return
+		}
+		this.parts_.push(buf)
+	}
+	async frame(): Promise<SyncFrame> {
+		const tuple = await new Response(new Blob(this.parts_ as any, { type: "application/json" })).json();
+		this.parts_ = []
+		return new SyncFrame(tuple)
+	}
+}
+
 export class Header {
-	private headerParts_: Array<Uint8Array> = []
+	private parts_: Array<Uint8Array> = []
 
 	async package(): Promise<Package> {
-		const header = await new Response(new Blob(this.headerParts_ as any, { type: "application/json" })).json();
-		this.headerParts_ = []
+		const header = await new Response(new Blob(this.parts_ as any, { type: "application/json" })).json();
+		this.parts_ = []
 		return new Package(header)
 	}
 
@@ -233,6 +261,6 @@ export class Header {
 		if (buf.length == 0) {
 			return
 		}
-		this.headerParts_.push(buf)
+		this.parts_.push(buf)
 	}
 }

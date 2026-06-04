@@ -114,87 +114,161 @@ func (s *stubInstance) Touch() {
 }
 
 func testSolitaireConf() *common.SolitaireConf {
-	conf := &common.Conf{}
+	conf := &common.Conf{
+		SolitaireQueue:     8,
+		SolitairePending:   4,
+		SolitaireFrameSize: 4 * 1024,
+		SolitaireFrameTime: 20 * time.Millisecond,
+		SolitaireMaxRTT:    200 * time.Millisecond,
+	}
 	common.InitDefaults(conf)
 	return common.GetSolitaireConf(conf)
 }
 
-func TestWriterHelpersAndDecoders(t *testing.T) {
-	recorder := &stubRW{}
-	w := &writer{
-		sizeLimit: 2,
-		timeLimit: time.Hour,
-		w:         recorder,
-		f:         recorder,
+func newTestWriteController(conf *common.SolitaireConf, w *stubRW) *writeController {
+	return &writeController{
+		Sync:    &frameSyncer{Conf: conf},
+		Writer:  w,
+		Flusher: w,
+		Conf:    conf,
 	}
-	if err := w.WriteAck(); err != nil {
+}
+
+func newInnerCard(seq uint64, call *stubSyncCall) *inner.Card {
+	return inner.NewCard(seq, &inner.Call{
+		Call:   call,
+		Params: call.params,
+	})
+}
+
+func TestWriteControllerStashAndSubmit(t *testing.T) {
+	conf := testSolitaireConf()
+	recorder := &stubRW{}
+	fw := newTestWriteController(conf, recorder)
+
+	issuedCall := &stubSyncCall{
+		act: action.Emit{
+			Name:    "sync",
+			DoorID:  7,
+			Payload: action.NewText("payload"),
+		},
+	}
+	if got := fw.Stash(newInnerCard(5, issuedCall)); got != stashIssue {
+		t.Fatalf("expected issue stash result, got %v", got)
+	}
+	if fw.Len() != 1 {
+		t.Fatalf("expected one stashed header, got %d", fw.Len())
+	}
+	if fw.frameStart.IsZero() {
+		t.Fatal("expected issued card to start a frame")
+	}
+	if _, err := fw.Submit(signalSync); err != nil {
 		t.Fatal(err)
+	}
+	out := recorder.body.Bytes()
+	if !bytes.Contains(out, []byte{signalAction}) {
+		t.Fatalf("expected action signal in output, got %v", out)
+	}
+	if !bytes.Contains(out, []byte("payload")) {
+		t.Fatalf("expected action payload in output, got %q", out)
+	}
+	if !bytes.Contains(out, []byte{byte(signalSync)}) {
+		t.Fatalf("expected sync frame in output, got %v", out)
 	}
 	if recorder.flushes != 1 {
-		t.Fatalf("expected ack flush, got %d", recorder.flushes)
+		t.Fatalf("expected sync submit to flush once, got %d", recorder.flushes)
+	}
+	if fw.Len() != 0 {
+		t.Fatalf("expected stashed headers to clear after submit, got %d", fw.Len())
 	}
 
-	if _, err := w.Write([]byte("ab")); err != nil {
+	noAction := &stubSyncCall{}
+	cancelFrame := newTestWriteController(conf, &stubRW{})
+	if got := cancelFrame.Stash(newInnerCard(6, noAction)); got != stashCancel {
+		t.Fatalf("expected canceled stash result, got %v", got)
+	}
+	if cancelFrame.Len() != 0 {
+		t.Fatalf("canceled card must not be stashed, got %d headers", cancelFrame.Len())
+	}
+	if !cancelFrame.frameStart.IsZero() {
+		t.Fatal("canceled card must not start a frame")
+	}
+	if cancelFrame.buffer.Len() != 0 {
+		t.Fatalf("canceled card must not write to frame buffer, got %d bytes", cancelFrame.buffer.Len())
+	}
+}
+
+func TestWriteControllerSubmitRestoresOnWriteError(t *testing.T) {
+	conf := testSolitaireConf()
+	recorder := &stubRW{writeErr: true}
+	fw := newTestWriteController(conf, recorder)
+	call := &stubSyncCall{act: action.Test{Arg: "retry"}}
+	if got := fw.Stash(newInnerCard(1, call)); got != stashIssue {
+		t.Fatalf("expected issued card, got %v", got)
+	}
+
+	headers, err := fw.Submit(signalSync)
+	if err == nil {
+		t.Fatal("expected write error")
+	}
+	if len(headers) != 1 || headers[0].beg != 1 || headers[0].end != 1 {
+		t.Fatalf("unexpected headers returned for restore: %#v", headers)
+	}
+	if fw.Len() != 0 {
+		t.Fatalf("expected stashed headers to clear after failed submit, got %d", fw.Len())
+	}
+	if fw.buffer.Len() != 0 {
+		t.Fatalf("expected frame buffer reset after failed submit, got %d bytes", fw.buffer.Len())
+	}
+}
+
+func TestDeckDumpIssuesCancelsAndWritesFillers(t *testing.T) {
+	conf := testSolitaireConf()
+	deck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
+	optimistic := &stubSyncCall{
+		act:    action.Test{Arg: "optimistic"},
+		params: action.CallParams{Optimistic: true},
+	}
+	if err := deck.Insert(optimistic); err != nil {
 		t.Fatal(err)
 	}
-	if !w.toFlush {
-		t.Fatal("expected size limit to request flush")
-	}
-	w.TryFlush()
-	if recorder.flushes != 2 {
-		t.Fatalf("unexpected flush count after TryFlush: %d", recorder.flushes)
-	}
-
-	timeRecorder := &stubRW{}
-	timeWriter := &writer{
-		sizeLimit:   100,
-		timeLimit:   time.Millisecond,
-		lastFlushed: time.Now().Add(-time.Second),
-		w:           timeRecorder,
-		f:           timeRecorder,
-	}
-	if _, err := timeWriter.Write([]byte("x")); err != nil {
+	if err := deck.Dump(newTestWriteController(conf, &stubRW{})); err != nil {
 		t.Fatal(err)
 	}
-	if !timeWriter.toFlush {
-		t.Fatal("expected time limit to request flush")
+	if deck.PendingCount() != 1 {
+		t.Fatalf("expected issued action to become pending, got %d", deck.PendingCount())
+	}
+	if optimistic.resultCount != 1 {
+		t.Fatalf("expected optimistic Written result once, got %d", optimistic.resultCount)
+	}
+	if string(optimistic.lastOutput) != "null" {
+		t.Fatalf("unexpected optimistic output: %s", optimistic.lastOutput)
 	}
 
-	errorRecorder := &stubRW{writeErr: true}
-	errorWriter := &writer{w: errorRecorder, f: errorRecorder}
-	if err := errorWriter.WriteAck(); !errors.Is(err, writerError) {
-		t.Fatalf("expected writerError from WriteAck, got %v", err)
-	}
-	if _, err := errorWriter.Write([]byte("x")); !errors.Is(err, writerError) {
-		t.Fatalf("expected writerError from Write, got %v", err)
-	}
-
-	single := newHeader(5, 5)
-	if len(single) != 1 {
-		t.Fatalf("unexpected single header: %#v", single)
-	}
-	ranged := newHeader(2, 4)
-	if len(ranged) != 1 || len(ranged[0].([]uint64)) != 2 {
-		t.Fatalf("unexpected ranged header: %#v", ranged)
-	}
-
-	var filler bytes.Buffer
-	if err := single.writeFiller(&filler); err != nil {
+	cancelDeck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
+	canceled := &stubSyncCall{}
+	if err := cancelDeck.Insert(canceled); err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Contains(filler.Bytes(), terminator) {
-		t.Fatal("expected filler output to include terminator")
-	}
-
-	var issued bytes.Buffer
-	invocation := action.Emit{Name: "sync", DoorID: 7, Payload: action.NewText("payload")}.Invocation()
-	if err := (&issuedCall{invocation: invocation}).write(single, &issued); err != nil {
+	fw := newTestWriteController(conf, &stubRW{})
+	if err := cancelDeck.Dump(fw); err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Contains(issued.Bytes(), []byte("payload")) {
-		t.Fatalf("expected issued call payload in output, got %q", issued.Bytes())
+	if canceled.cancelCount != 1 {
+		t.Fatalf("expected canceled action once, got %d", canceled.cancelCount)
 	}
+	if cancelDeck.PendingCount() != 0 {
+		t.Fatalf("canceled action must not become pending, got %d", cancelDeck.PendingCount())
+	}
+	if fw.Len() != 1 {
+		t.Fatalf("expected deck to write one filler for canceled sequence, got %d", fw.Len())
+	}
+	if fw.stashed[0].beg != 1 || fw.stashed[0].end != 1 {
+		t.Fatalf("unexpected filler header: %#v", fw.stashed[0])
+	}
+}
 
+func TestReportParsingAndFrameSyncer(t *testing.T) {
 	var okResult result
 	if err := okResult.UnmarshalJSON([]byte(`[{"ok":true},null]`)); err != nil {
 		t.Fatal(err)
@@ -215,7 +289,7 @@ func TestWriterHelpersAndDecoders(t *testing.T) {
 	if err := one.UnmarshalJSON([]byte(`[3]`)); err != nil {
 		t.Fatal(err)
 	}
-	if one.start != 3 || one.end != 3 {
+	if one.beg != 3 || one.end != 3 {
 		t.Fatalf("unexpected single gap: %#v", one)
 	}
 
@@ -223,99 +297,69 @@ func TestWriterHelpersAndDecoders(t *testing.T) {
 	if err := many.UnmarshalJSON([]byte(`[3,5]`)); err != nil {
 		t.Fatal(err)
 	}
-	if many.start != 3 || many.end != 5 {
+	if many.beg != 3 || many.end != 5 {
 		t.Fatalf("unexpected ranged gap: %#v", many)
 	}
-
 	if err := (&gap{}).UnmarshalJSON([]byte(`[]`)); err == nil {
 		t.Fatal("expected empty gap payload to fail")
 	}
-}
 
-func TestDeckCallAndDeckState(t *testing.T) {
-	optimisticCall := &stubSyncCall{params: action.CallParams{Optimistic: true}}
-	deckCallOptimistic := &deckCall{call: optimisticCall, params: optimisticCall.params}
-	deckCallOptimistic.written()
-	deckCallOptimistic.written()
-	if optimisticCall.resultCount != 1 {
-		t.Fatalf("expected optimistic write result once, got %d", optimisticCall.resultCount)
-	}
-	if string(optimisticCall.lastOutput) != "null" {
-		t.Fatalf("unexpected optimistic output: %s", optimisticCall.lastOutput)
-	}
-
-	cancelCall := &stubSyncCall{act: action.Test{Arg: "cancel"}}
-	deckCallCancel := &deckCall{call: cancelCall}
-	if act, ok := deckCallCancel.action(); !ok || act.Log() != "test" {
-		t.Fatalf("unexpected deck call action: %v %v", act, ok)
-	}
-	deckCallCancel.cancel()
-	deckCallCancel.cancel()
-	if cancelCall.cancelCount != 1 {
-		t.Fatalf("expected cancel once, got %d", cancelCall.cancelCount)
-	}
-
-	resultCall := &stubSyncCall{act: action.Test{Arg: "result"}}
-	deckCallResult := &deckCall{call: resultCall}
-	expectedErr := errors.New("boom")
-	deckCallResult.result(json.RawMessage(`{"ok":true}`), expectedErr)
-	deckCallResult.result(json.RawMessage(`{"ok":false}`), nil)
-	if resultCall.resultCount != 1 {
-		t.Fatalf("expected result once, got %d", resultCall.resultCount)
-	}
-	if !errors.Is(resultCall.lastErr, expectedErr) {
-		t.Fatal("expected deck call result error to be preserved")
-	}
-
-	expireHandler := &stubExpireHandler{}
-	deck := newDeck(expirator.NewExpirator(expireHandler), 4, 4, time.Second)
-	if deck.PendingCount() != 0 || deck.QueueLength() != 0 || deck.Pending() {
-		t.Fatal("expected new deck to start empty")
-	}
-
-	call := &stubSyncCall{act: action.Test{Arg: "queued"}}
-	if err := deck.Insert(call); err != nil {
+	var rep report
+	if err := json.Unmarshal([]byte(`[7,123,{"2":[{"done":true},null],"3":[null,"bad"]},[[4,6],[8]]]`), &rep); err != nil {
 		t.Fatal(err)
 	}
-	if deck.QueueLength() != 1 {
-		t.Fatalf("unexpected queue length after insert: %d", deck.QueueLength())
+	if rep.ID != 7 || rep.TS != 123 {
+		t.Fatalf("unexpected report header: %#v", rep)
 	}
-	if deck.Pending() {
-		t.Fatal("expected deck to have no pending issued calls before WriteNext")
+	if string(rep.Results[2].output) != `{"done":true}` {
+		t.Fatalf("unexpected report result: %#v", rep.Results[2])
 	}
-
-	recorder := &stubRW{}
-	w := &writer{
-		sizeLimit: 100,
-		timeLimit: time.Hour,
-		w:         recorder,
-		f:         recorder,
+	if rep.Results[3].err == nil || rep.Results[3].err.Error() != "bad" {
+		t.Fatalf("unexpected report error: %#v", rep.Results[3])
 	}
-	res, syncErr := deck.WriteNext(w)
-	if res != writeOk || syncErr != nil {
-		t.Fatalf("unexpected write result: %v %v", res, syncErr)
-	}
-	if deck.PendingCount() != 1 || !deck.Pending() {
-		t.Fatal("expected issued call to become pending after WriteNext")
+	if len(rep.Gaps) != 2 || rep.Gaps[0].beg != 4 || rep.Gaps[0].end != 6 || rep.Gaps[1].beg != 8 || rep.Gaps[1].end != 8 {
+		t.Fatalf("unexpected report gaps: %#v", rep.Gaps)
 	}
 
-	extraCall := &stubSyncCall{act: action.Test{Arg: "extra"}}
-	if err := deck.cancelCut(inner.NewCard(99, &inner.Call{Call: extraCall})); err != nil {
+	conf := testSolitaireConf()
+	syncer := &frameSyncer{Conf: conf}
+	first := syncer.Collect()
+	var firstTuple []json.RawMessage
+	if err := json.Unmarshal(first, &firstTuple); err != nil {
 		t.Fatal(err)
 	}
-	if deck.QueueLength() != 1 {
-		t.Fatalf("unexpected queue length after cancelCut: %d", deck.QueueLength())
+	if len(firstTuple) != 1 {
+		t.Fatalf("expected initial sync tuple without acks, got %s", first)
 	}
-
-	deck.End()
-	if call.cancelCount != 1 {
-		t.Fatalf("expected issued call to be canceled on deck end, got %d", call.cancelCount)
+	var ts int64
+	if err := json.Unmarshal(firstTuple[0], &ts); err != nil {
+		t.Fatal(err)
+	}
+	syncer.Report(11, ts)
+	if rtt := syncer.RTT(); rtt < conf.FlushTime*2 || rtt > conf.MaxRTT {
+		t.Fatalf("rtt outside configured bounds: %v", rtt)
+	}
+	second := syncer.Collect()
+	var secondTuple []json.RawMessage
+	if err := json.Unmarshal(second, &secondTuple); err != nil {
+		t.Fatal(err)
+	}
+	if len(secondTuple) != 2 {
+		t.Fatalf("expected sync tuple with acks, got %s", second)
+	}
+	var acks []uint64
+	if err := json.Unmarshal(secondTuple[1], &acks); err != nil {
+		t.Fatal(err)
+	}
+	if len(acks) != 1 || acks[0] != 11 {
+		t.Fatalf("unexpected acks: %#v", acks)
 	}
 }
 
-func TestSolitaireAndConnectionHelpers(t *testing.T) {
+func TestSolitaireAndSenderHelpers(t *testing.T) {
+	conf := testSolitaireConf()
 	inst := &stubInstance{}
-	s := NewSolitaire(inst, testSolitaireConf())
+	s := NewSolitaire(inst, conf)
 
 	queuedCall := &stubSyncCall{act: action.Test{Arg: "queued"}}
 	s.Call(queuedCall)
@@ -330,39 +374,40 @@ func TestSolitaireAndConnectionHelpers(t *testing.T) {
 
 	recorder := &stubRW{}
 	ctx, cancel := context.WithCancelCause(context.Background())
-	connection := &con{
-		writer: &writer{
-			sizeLimit: 100,
-			timeLimit: time.Hour,
-			w:         recorder,
-			f:         recorder,
-		},
-		ctx:      ctx,
-		cancel:   cancel,
-		endGuard: make(chan struct{}),
-		deck:     s.deck,
-		inst:     inst,
+	sender := newSender(inst, s.deck, newTestWriteController(conf, recorder), ctx, cancel, conf)
+	if sender.Context() != ctx {
+		t.Fatal("expected sender context to be returned unchanged")
 	}
-	if connection.Context() != ctx {
-		t.Fatal("expected connection context to be returned unchanged")
-	}
-
 	cancel(context.Canceled)
-	connection.handleCause()
-	if !bytes.Contains(recorder.body.Bytes(), rollSignal) {
+	sender.handleCause()
+	if !bytes.Contains(recorder.body.Bytes(), []byte{byte(signalRoll), terminator}) {
 		t.Fatalf("expected roll signal to be written, got %v", recorder.body.Bytes())
 	}
 
 	endCtx, endCancel := context.WithCancelCause(context.Background())
-	s.conn.Store(&con{
-		writer: &writer{w: &stubRW{}, f: &stubRW{}},
-		ctx:    endCtx,
-		cancel: endCancel,
-		deck:   s.deck,
-		inst:   inst,
-	})
+	endSender := newSender(inst, s.deck, newTestWriteController(conf, &stubRW{}), endCtx, endCancel, conf)
+	s.sender.Store(endSender)
 	s.End(common.EndCauseSuspend)
 	if !errors.Is(context.Cause(endCtx), common.EndCauseSuspend) {
 		t.Fatalf("unexpected end cause: %v", context.Cause(endCtx))
+	}
+}
+
+func TestSenderRunCleanupSetsCauseAfterSubmitError(t *testing.T) {
+	conf := testSolitaireConf()
+	inst := &stubInstance{}
+	deck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
+	fw := newTestWriteController(conf, &stubRW{writeErr: true})
+	call := &stubSyncCall{act: action.Test{Arg: "write-error"}}
+	if got := fw.Stash(newInnerCard(1, call)); got != stashIssue {
+		t.Fatalf("expected issued card, got %v", got)
+	}
+	fw.frameStart = time.Now().Add(-conf.FlushTime)
+
+	ctx, cancel := context.WithCancelCause(context.Background())
+	sender := newSender(inst, deck, fw, ctx, cancel, conf)
+	sender.Run()
+	if !errors.Is(context.Cause(ctx), context.Canceled) {
+		t.Fatalf("expected cleanup to cancel sender context after submit error, got %v", context.Cause(ctx))
 	}
 }

@@ -110,15 +110,9 @@ func TestScopeSerial(t *testing.T) {
 	test.ClickNow(t, page, "#s1")
 	test.ClickNow(t, page, "#s2")
 	test.ClickNow(t, page, "#s3")
-	<-time.After(310 * time.Millisecond)
-	test.TestReport(t, page, "1")
-	test.TestReportId(t, page, 1, "1")
-	<-time.After(310 * time.Millisecond)
-	test.TestReport(t, page, "2")
-	test.TestReportId(t, page, 1, "2")
-	<-time.After(310 * time.Millisecond)
-	test.TestReport(t, page, "3")
-	test.TestReportId(t, page, 1, "3")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 1, "1", "serial scope first completion")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 2, "2", "serial scope second completion")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 3, "3", "serial scope third completion")
 }
 
 func TestScopeDebounce(t *testing.T) {
@@ -141,10 +135,7 @@ func TestScopeDebounce(t *testing.T) {
 	test.ClickNow(t, page, "#d3")
 	<-time.After(50 * time.Millisecond)
 	test.ClickNow(t, page, "#d2")
-	<-time.After(330 * time.Millisecond)
-
-	test.TestReport(t, page, "1")
-	test.TestReportId(t, page, 1, "2")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 1, "2", "debounce scope completion")
 
 }
 
@@ -166,19 +157,14 @@ func TestScopeDebounceLimit(t *testing.T) {
 	test.ClickNow(t, page, "#dl3")
 	<-time.After(200 * time.Millisecond)
 	test.ClickNow(t, page, "#dl3")
-	<-time.After(150 * time.Millisecond)
-	test.TestReport(t, page, "1")
-	test.TestReportId(t, page, 1, "3")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 1, "3", "debounce limit first completion")
 
 	test.ClickNow(t, page, "#dl2")
 	<-time.After(100 * time.Millisecond)
 	test.ClickNow(t, page, "#dl1")
 	<-time.After(100 * time.Millisecond)
 	test.ClickNow(t, page, "#dl2")
-	<-time.After(350 * time.Millisecond)
-
-	test.TestReport(t, page, "2")
-	test.TestReportId(t, page, 1, "2")
+	waitSnapshotExact(t, page, 700*time.Millisecond, 2, "2", "debounce limit second completion")
 
 }
 

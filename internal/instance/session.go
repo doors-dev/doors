@@ -138,7 +138,7 @@ const UPDATE_PERIOD = time.Second * 5
 func (sess *session) Renew(w http.ResponseWriter) bool {
 	now := time.Now().UnixMilli()
 	before := sess.renewed.Load()
-	ping := sess.App().Conf().SolitairePing
+	ping := sess.App().Conf().SolitaireRollTime
 	if now-before < ping.Milliseconds()/2 {
 		return !sess.killed()
 	}

@@ -69,9 +69,6 @@ func (a *app) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	if instanceID, ok := match.Sync(); ok {
-		if r.Method != http.MethodPut {
-			return false
-		}
 		a.serveSync(w, r, instanceID)
 		return true
 	}

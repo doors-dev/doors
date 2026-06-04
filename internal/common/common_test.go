@@ -61,6 +61,24 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if conf.SolitaireSyncTimeout != conf.InstanceTTL {
 		t.Fatal("expected solitaire sync timeout to default to instance ttl")
 	}
+	if conf.SolitaireRollTime != 15*time.Second {
+		t.Fatalf("unexpected solitaire roll time: %v", conf.SolitaireRollTime)
+	}
+	if conf.SolitaireFrameTime != time.Second/30 {
+		t.Fatalf("unexpected solitaire frame time: %v", conf.SolitaireFrameTime)
+	}
+	if conf.SolitaireFrameSize != 32*1024 {
+		t.Fatalf("unexpected solitaire frame size: %d", conf.SolitaireFrameSize)
+	}
+	if conf.SolitaireReportSize != 8*1024*1024 {
+		t.Fatalf("unexpected solitaire report size: %d", conf.SolitaireReportSize)
+	}
+	if conf.SolitaireMaxRTT != time.Second {
+		t.Fatalf("unexpected solitaire max rtt: %v", conf.SolitaireMaxRTT)
+	}
+	if conf.SolitaireReportTimeout != 5*time.Second {
+		t.Fatalf("unexpected solitaire report timeout: %v", conf.SolitaireReportTimeout)
+	}
 
 	solitaire := GetSolitaireConf(conf)
 	if solitaire.Queue != conf.SolitaireQueue || solitaire.Pending != conf.SolitairePending {
@@ -69,13 +87,23 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if solitaire.DisableGzip != conf.SolitaireDisableGzip {
 		t.Fatal("expected solitaire gzip setting to mirror system config")
 	}
+	if solitaire.Roll != conf.SolitaireRollTime ||
+		solitaire.FrameSize != conf.SolitaireFrameSize ||
+		solitaire.FlushTime != conf.SolitaireFrameTime ||
+		solitaire.DisableReportStreaming != conf.SolitaireDisableReportStreaming ||
+		solitaire.ReportSize != conf.SolitaireReportSize ||
+		solitaire.ReportTimeout != conf.SolitaireReportTimeout ||
+		solitaire.MaxRTT != conf.SolitaireMaxRTT {
+		t.Fatal("expected solitaire transport config to mirror system config")
+	}
 
 	custom := &Conf{
-		RequestTimeout:          2 * time.Second,
-		InstanceTTL:             3 * time.Second,
-		SessionTTL:              1 * time.Second,
-		SolitaireSyncTimeout:    9 * time.Second,
-		SolitaireFlushSizeLimit: -1,
+		RequestTimeout:       2 * time.Second,
+		InstanceTTL:          3 * time.Second,
+		SessionTTL:           1 * time.Second,
+		SolitaireSyncTimeout: 9 * time.Second,
+		SolitaireFrameSize:   -1,
+		SolitaireRollTime:    3 * time.Second,
 	}
 	InitDefaults(custom)
 	if custom.InstanceTTL != 4*time.Second {
@@ -87,8 +115,11 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if custom.SolitaireSyncTimeout != custom.InstanceTTL {
 		t.Fatal("expected solitaire sync timeout to be clipped to instance ttl")
 	}
-	if custom.SolitaireFlushSizeLimit != 32*1024 {
+	if custom.SolitaireFrameSize != 32*1024 {
 		t.Fatal("expected solitaire flush size default")
+	}
+	if custom.SolitaireReportTimeout != custom.SolitaireRollTime {
+		t.Fatal("expected report timeout to default to roll time when roll time is below 5s")
 	}
 
 	noSecure := &Conf{

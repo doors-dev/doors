@@ -13,6 +13,7 @@
 // limitations under the License.
 
 package solitaire
+/*
 
 import (
 	"encoding/json"
@@ -56,7 +57,7 @@ func (w *writer) TryFlush() {
 var writerError = errors.New("actual write error")
 
 func (w *writer) WriteAck() error {
-	_, err := w.w.Write(ackSignal)
+	_, err := w.w.Write(signalFlush)
 	if err != nil {
 		return writerError
 	}
@@ -88,14 +89,6 @@ func newHeader(startSeq uint64, endSeq uint64) header {
 
 type header []any
 
-var ackSignal = []byte{0x00}
-var actionSignal = []byte{0x01}
-var rollSignal = []byte{0x02}
-var suspendSignal = []byte{0x03}
-var killSignal = []byte{0x04}
-
-var terminator = []byte{0xFF}
-var errorTerminator = []byte{0xFD}
 
 func (h header) writeFiller(w io.Writer) error {
 	err := h.write(w, action.PayloadNone, 0)
@@ -106,7 +99,7 @@ func (h header) writeFiller(w io.Writer) error {
 }
 
 func (h header) write(w io.Writer, payloadType action.PayloadType, payloadLength int) error {
-	if _, err := w.Write(actionSignal); err != nil {
+	if _, err := w.Write(signalAction); err != nil {
 		return err
 	}
 	enc := json.NewEncoder(w)
@@ -141,64 +134,6 @@ func (i *issuedCall) write(h header, w io.Writer) error {
 	return nil
 }
 
-type result struct {
-	output json.RawMessage
-	err    error
-}
-
-func (r *result) UnmarshalJSON(data []byte) error {
-	var a [2]json.RawMessage
-	err := json.Unmarshal(data, &a)
-	if err != nil {
-		return err
-	}
-	var e *string
-	err = json.Unmarshal(a[1], &e)
-	if err != nil {
-		return err
-	}
-	if e != nil {
-		r.err = errors.New(*e)
-		return nil
-	}
-	r.output = a[0]
-	return nil
-}
-
-type gap struct {
-	start uint64
-	end   uint64
-}
-
-func (m *gap) UnmarshalJSON(data []byte) error {
-	var parts []json.RawMessage
-	err := json.Unmarshal(data, &parts)
-	if err != nil {
-		return err
-	}
-	if len(parts) == 0 {
-		return errors.New("empty result array")
-	}
-	err = json.Unmarshal(parts[0], &m.start)
-	if err != nil {
-		return err
-	}
-	if len(parts) > 1 {
-		err = json.Unmarshal(parts[1], &m.end)
-		if err != nil {
-			return err
-		}
-		return nil
-	} else {
-		m.end = m.start
-	}
-	return nil
-}
-
-type report struct {
-	Gaps    []gap             `json:"Gaps"`
-	Results map[uint64]result `json:"results"`
-}
 
 type deckCall struct {
 	call     action.Call
@@ -229,4 +164,4 @@ func (c *deckCall) result(ok json.RawMessage, err error) {
 		return
 	}
 	c.call.Result(ok, err)
-}
+} */

@@ -62,8 +62,7 @@ func TestAttrCall(t *testing.T) {
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
-	test.TestContent(t, page, "#target", fmt.Sprint(len(data)))
-	test.TestReport(t, page, data)
-	<-time.After(100 * time.Millisecond)
-	test.TestReportId(t, page, 1, "response")
+	waitContent(t, page, "#target", fmt.Sprint(len(data)), time.Second)
+	waitReportId(t, page, 0, data, time.Second)
+	waitReportId(t, page, 1, "response", time.Second)
 }

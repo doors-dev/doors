@@ -18,4 +18,5 @@ export const rootId: number = Number(document.currentScript!.dataset.root)
 export const ttl: number = Number(document.currentScript!.dataset.ttl)
 export const disconnectAfter: number = Number(document.currentScript!.dataset.disconnect)
 export const requestTimeout: number = Number(document.currentScript!.dataset.request)
-export const solitairePing: number = Number(document.currentScript!.dataset.ping)
+export const solitaireRoll: number = Number(document.currentScript!.dataset.roll)
+export const noStream: boolean = !!document.currentScript!.dataset.nostream

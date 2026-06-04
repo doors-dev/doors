@@ -57,59 +57,89 @@ type Conf struct {
 	// RequestTimeout is the max duration of a client-server request.
 	// Default: 30s.
 	RequestTimeout time.Duration
-	// SolitairePing is the max time before rolling the request.
+	// SolitaireRollTime is the max lifetime of a solitaire sender or report
+	// receiver request before rolling to a replacement request.
 	// Default: 15s.
-	SolitairePing time.Duration
-	// SolitaireSyncTimeout is the max pending duration of a server→client sync task,
-	// including user calls. Exceeding this kills the instance.
+	SolitaireRollTime time.Duration
+	// SolitaireSyncTimeout is the max pending duration of a server-to-client
+	// sync task, including user calls. Exceeding this kills the instance.
 	// Default: InstanceTTL.
 	SolitaireSyncTimeout time.Duration
-	// SolitaireRollTimeout is how long an active sync connection lasts before
-	// rolling to a new one if the queue is long. Default: 1s.
-	SolitaireRollTimeout time.Duration
-	// SolitaireFlushTimeout is the max time before forcing a flush.
-	// Default: 30ms
-	SolitaireFlushTimeout time.Duration
-	// SolitaireFlushSizeLimit is the max buffered bytes before forcing a flush.
-	// Default: 32 KB
-	SolitaireFlushSizeLimit int
+	// SolitaireFrameTime is the max time to buffer an outgoing server-to-client
+	// frame before forcing a sync flush.
+	// Default: ~33.3ms (30 FPS).
+	SolitaireFrameTime time.Duration
+	// SolitaireFrameSize is the max buffered bytes in an outgoing
+	// server-to-client frame before forcing a sync flush.
+	// Default: 32 KB.
+	SolitaireFrameSize int
 	// SolitaireDisableGzip disables gzip compression for solitaire sync payloads if true.
 	SolitaireDisableGzip bool
-	// SolitaireQueue is the max queued server→client sync task.
+	// SolitaireQueue is the max queued server-to-client sync task.
 	// Exceeding this kills the instance. Default: 1024.
 	SolitaireQueue int
-	// SolitairePending is the max unresolved server→client sync tasks.
+	// SolitairePending is the max unresolved server-to-client sync tasks.
 	// Throttles sending when reached. Default: 256.
 	SolitairePending int
+	// SolitaireDisableReportStreaming disables browser streaming request bodies
+	// for client-to-server reports. When true, each report uses a standalone
+	// JSON POST. Default: false.
+	SolitaireDisableReportStreaming bool
+	// SolitaireReportSize is the max size of one client-to-server report in a
+	// streaming report body. Default: 8 MB.
+	SolitaireReportSize int
+	// SolitaireReportTimeout is the max time to receive and decode one
+	// client-to-server report. Default: min(5s, SolitaireRollTime).
+	SolitaireReportTimeout time.Duration
+	// SolitaireMaxRTT caps the RTT estimate used for sync probing while the
+	// server has pending work but no frame ready to flush. Default: 1s.
+	SolitaireMaxRTT time.Duration
 }
 
 type SolitaireConf struct {
-	Ping         time.Duration
-	FlushSize    int
-	RollDuration time.Duration
-	FlushTimeout time.Duration
-	DisableGzip  bool
-	Queue        int
-	Pending      int
-	SyncTimeout  time.Duration
+	// Roll is the effective solitaire request roll interval.
+	Roll time.Duration
+	// FrameSize is the effective outgoing server-to-client frame size limit.
+	FrameSize int
+	// FlushTime is the effective outgoing server-to-client frame time limit.
+	FlushTime time.Duration
+	// DisableGzip is the effective solitaire payload gzip flag.
+	DisableGzip bool
+	// DisableReportStreaming is the effective report streaming flag.
+	DisableReportStreaming bool
+	// Queue is the effective queued sync task limit.
+	Queue int
+	// Pending is the effective unresolved sync task limit.
+	Pending int
+	// SyncTimeout is the effective sync task timeout.
+	SyncTimeout time.Duration
+	// ReportSize is the effective streaming report message size limit.
+	ReportSize int
+	// ReportTimeout is the effective single-report receive timeout.
+	ReportTimeout time.Duration
+	// MaxRTT is the effective RTT estimate cap.
+	MaxRTT time.Duration
 }
 
 func GetSolitaireConf(s *Conf) *SolitaireConf {
 	return &SolitaireConf{
-		SyncTimeout:  s.SolitaireSyncTimeout,
-		Ping:         s.SolitairePing,
-		FlushSize:    s.SolitaireFlushSizeLimit,
-		RollDuration: s.SolitaireRollTimeout,
-		FlushTimeout: s.SolitaireFlushTimeout,
-		DisableGzip:  s.SolitaireDisableGzip,
-		Queue:        s.SolitaireQueue,
-		Pending:      s.SolitairePending,
+		SyncTimeout:            s.SolitaireSyncTimeout,
+		Roll:                   s.SolitaireRollTime,
+		FrameSize:              s.SolitaireFrameSize,
+		FlushTime:              s.SolitaireFrameTime,
+		DisableGzip:            s.SolitaireDisableGzip,
+		DisableReportStreaming: s.SolitaireDisableReportStreaming,
+		Queue:                  s.SolitaireQueue,
+		Pending:                s.SolitairePending,
+		ReportSize:             s.SolitaireReportSize,
+		ReportTimeout:          s.SolitaireReportTimeout,
+		MaxRTT:                 s.SolitaireMaxRTT,
 	}
 }
 
 func (s *Conf) solitaireDefaults() {
-	if s.SolitaireFlushSizeLimit <= 0 {
-		s.SolitaireFlushSizeLimit = 32 * 1024
+	if s.SolitaireFrameSize <= 0 {
+		s.SolitaireFrameSize = 32 * 1024
 	}
 	if s.SolitaireSyncTimeout <= 0 {
 		s.SolitaireSyncTimeout = s.InstanceTTL
@@ -117,11 +147,8 @@ func (s *Conf) solitaireDefaults() {
 	if s.SolitaireSyncTimeout > s.InstanceTTL {
 		s.SolitaireSyncTimeout = s.InstanceTTL
 	}
-	if s.SolitaireFlushTimeout <= 0 {
-		s.SolitaireFlushTimeout = 30 * time.Millisecond
-	}
-	if s.SolitaireRollTimeout <= 0 {
-		s.SolitaireRollTimeout = 1 * time.Second
+	if s.SolitaireFrameTime <= 0 {
+		s.SolitaireFrameTime = time.Second / 30
 	}
 	if s.SolitaireQueue <= 0 {
 		s.SolitaireQueue = 1024
@@ -129,8 +156,17 @@ func (s *Conf) solitaireDefaults() {
 	if s.SolitairePending <= 0 {
 		s.SolitairePending = 256
 	}
-	if s.SolitairePing <= 0 {
-		s.SolitairePing = 15 * time.Second
+	if s.SolitaireRollTime <= 0 {
+		s.SolitaireRollTime = 15 * time.Second
+	}
+	if s.SolitaireReportSize <= 0 {
+		s.SolitaireReportSize = 8 * 1024 * 1024
+	}
+	if s.SolitaireMaxRTT <= 0 {
+		s.SolitaireMaxRTT = time.Second
+	}
+	if s.SolitaireReportTimeout <= 0 {
+		s.SolitaireReportTimeout = min(5*time.Second, s.SolitaireRollTime)
 	}
 }
 

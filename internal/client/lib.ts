@@ -12,6 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { noStream } from "./params";
+
+
+export type Result<T, E> =
+	undefined extends E
+	? never
+	: [T, undefined] | [undefined, E];
+
+export async function result<T>(f: () => Promise<T>): Promise<Result<T, Error>> {
+	try {
+		return [await f(), undefined];
+	} catch (err) {
+		return [
+			undefined,
+			err instanceof Error ? err : new Error(String(err)),
+		];
+	}
+}
 
 export const doAfter = (f: () => void) => {
 	setTimeout(f, 0)

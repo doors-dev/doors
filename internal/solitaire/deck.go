@@ -20,28 +20,25 @@ import (
 	"sync"
 	"time"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/solitaire/expirator"
 	"github.com/doors-dev/doors/internal/solitaire/inner"
 )
 
-func newDeck(expirator *expirator.Expirator, queueLimit int, issueLimit int, syncTimeout time.Duration) *deck {
+func newDeck(expirator *expirator.Expirator, conf *common.SolitaireConf) *deck {
 	d := &deck{
-		expirator:   expirator,
-		issueLimit:  issueLimit,
-		queueLimit:  queueLimit,
-		issued:      make(map[uint64]*issuedCall),
-		syncTimeout: syncTimeout,
+		expirator: expirator,
+		issued:    make(map[uint64]*inner.Card),
+		conf:      conf,
 	}
 	return d
 }
 
 type deck struct {
-	issueLimit   int
-	queueLimit   int
-	syncTimeout  time.Duration
+	conf         *common.SolitaireConf
 	seq          uint64
-	issued       map[uint64]*issuedCall
+	issued       map[uint64]*inner.Card
 	mu           sync.Mutex
 	killed       bool
 	latestReport uint64
@@ -59,18 +56,19 @@ func (d *deck) End() {
 	d.mu.Unlock()
 	d.expirator.Shutdown()
 	for _, issued := range d.issued {
-		if issued.call == nil {
-			continue
-		}
-		issued.call.Cancel()
+		issued.Call.Cancel()
 	}
 	d.inner.Cancel()
 }
 
 func (d *deck) PendingCount() int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	return len(d.issued)
 }
 func (d *deck) QueueLength() int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	return d.inner.Len()
 }
 
@@ -80,127 +78,64 @@ func (d *deck) Pending() bool {
 	return len(d.issued) != 0
 }
 
-type writeResult int
-
-const (
-	writeOk writeResult = iota
-	writeNothing
-	writeErr
-	writeLimit
-	writeSyncErr
-	writeContinue
-	writeKilled
-)
-
-func (d *deck) issue() (*inner.Card, *issuedCall, writeResult) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.killed {
-		return nil, nil, writeKilled
-	}
-	if len(d.issued) == d.issueLimit {
-		return nil, nil, writeLimit
-	}
-	card := d.inner.Cut()
-	if card == nil {
-		return nil, nil, writeNothing
-	}
-	var issued *issuedCall
-	if !card.IsFiller() {
-		issued = &issuedCall{}
-		d.issued[card.Seq()] = issued
-	}
-	return card, issued, writeContinue
-}
-
-func (d *deck) unIssue(card *inner.Card) error {
+func (d *deck) Restore(beg uint64, end uint64) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.killed {
 		return nil
 	}
-	if card.IsFiller() {
-		d.inner.Fill(card.Beg, card.End)
-		return nil
-	}
-	delete(d.issued, card.Seq())
-	d.inner.Insert(card)
-	return d.checkQueueLength()
-}
-
-func (d *deck) invocation(card *inner.Card, issued *issuedCall) writeResult {
-	action, ok := card.Call.Action()
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.killed {
-		return writeKilled
-	}
+	issued, ok := d.issued[end]
 	if !ok {
-		delete(d.issued, card.Seq())
-		d.inner.Fill(card.Beg, card.End)
-		return writeNothing
+		d.inner.Fill(beg, end)
+		return nil
 	}
-	issued.call = card.Call
-	issued.invocation = action.Invocation()
-	return writeContinue
+	delete(d.issued, end)
+	if err := d.restore(end, issued.Call); err != nil {
+		return err
+	}
+	if beg != end {
+		d.inner.Fill(beg, end-1)
+	}
+	return nil
 }
 
-func (d *deck) error(card *inner.Card) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.killed {
-		return
-	}
-	d.inner.Fill(card.Beg, card.End)
-	delete(d.issued, card.Seq())
-}
+var errorKilled = errors.New("killed")
+var errorLimit = errors.New("limit")
 
-func (d *deck) WriteNext(w *writer) (res writeResult, syncErr error) {
-	card, issued, res := d.issue()
-	if res != writeContinue {
-		return res, nil
-	}
-	header := newHeader(card.Beg, card.End)
-	if card.IsFiller() {
-		if err := header.writeFiller(w); err != nil {
-			d.unIssue(card)
-			return writeErr, nil
+func (d *deck) Dump(s Stasher) error {
+	for {
+		d.mu.Lock()
+		if d.killed {
+			d.mu.Unlock()
+			return errorKilled
 		}
-		return writeOk, nil
-	}
-	res = d.invocation(card, issued)
-	if res == writeKilled {
-		card.Call.Cancel()
-		return writeKilled, nil
-	}
-	if res == writeNothing {
-		d.expirator.Report(card.Seq())
-		card.Call.Cancel()
-		return writeContinue, nil
-	}
-	if res != writeContinue {
-		return res, nil
-	}
-	err := issued.write(header, w)
-	issued.invocation = action.Invocation{}
-	if err != nil {
-		if errors.Is(err, writerError) {
-			if err := d.unIssue(card); err != nil {
-				return writeSyncErr, err
-			}
-			return writeErr, nil
+		if len(d.issued) == d.conf.Pending {
+			d.mu.Unlock()
+			return errorLimit
 		}
-		d.error(card)
-		d.expirator.Report(card.Seq())
-		card.Call.Result(nil, errors.Join(errors.New("call serialization error"), err))
-		_, err := w.Write(errorTerminator)
-		if err != nil {
-			return writeErr, nil
+		card := d.inner.Cut()
+		d.mu.Unlock()
+		if card == nil {
+			return nil
 		}
-		return writeOk, nil
+		switch s.Stash(card) {
+		case stashFiller:
+		case stashCancel:
+			d.expirator.Report(card.End)
+			card.Call.Cancel()
+			d.mu.Lock()
+			d.inner.Fill(card.Beg, card.End)
+			d.mu.Unlock()
+		case stashIssue:
+			d.mu.Lock()
+			d.issued[card.End] = card
+			d.mu.Unlock()
+			card.Call.Written()
+		}
+		if s.Full() {
+			return nil
+		}
 	}
-	card.Call.Written()
-	return writeOk, nil
 }
 
 type bufferedResult struct {
@@ -242,12 +177,9 @@ func (d *deck) CollectResults(r map[uint64]result) error {
 			buffer = append(buffer, bufferedResult{restored.Call, result})
 			continue
 		}
-		if issued.call == nil {
-			return errors.New("reported to unwritten card")
-		}
 		delete(d.issued, seq)
 		d.expirator.Report(seq)
-		buffer = append(buffer, bufferedResult{issued.call, result})
+		buffer = append(buffer, bufferedResult{issued.Call, result})
 	}
 	return nil
 }
@@ -267,34 +199,31 @@ func (d *deck) FillGaps(g []gap) error {
 	if d.killed {
 		return context.Canceled
 	}
-	tolarance := min(uint64(d.issueLimit), d.seq)
+	tolarance := min(uint64(d.conf.Pending), d.seq)
 	prevEnd := max(d.latestReport, tolarance) - tolarance
 	for _, gap := range g {
-		if gap.end < gap.start {
+		if gap.end < gap.beg {
 			return errors.New("gap range issue")
 		}
 		if gap.end > d.seq {
 			return errors.New("gap overflows last seq")
 		}
-		if prevEnd >= gap.start {
+		if prevEnd >= gap.beg {
 			return errors.New("gap overlap")
 		}
 		prevEnd = gap.end
-		beg := gap.start
-		for seq := max(gap.start, d.latestReport); seq <= gap.end; seq++ {
-			call, ok := d.issued[seq]
+		beg := gap.beg
+		for seq := max(gap.beg, d.latestReport); seq <= gap.end; seq++ {
+			card, ok := d.issued[seq]
 			if !ok {
 				continue
-			}
-			if call.call == nil {
-				return errors.New("can't report gap to non-issued card")
 			}
 			if beg != seq {
 				d.inner.Fill(beg, seq-1)
 			}
 			beg = seq + 1
 			delete(d.issued, seq)
-			if err := d.restore(seq, call.call); err != nil {
+			if err := d.restore(seq, card.Call); err != nil {
 				return err
 			}
 		}
@@ -318,7 +247,7 @@ func (d *deck) Insert(c action.Call) (err error) {
 		Params: c.Params(),
 	}
 	if dc.Params.Timeout == 0 {
-		dc.Params.Timeout = d.syncTimeout
+		dc.Params.Timeout = d.conf.SyncTimeout
 	}
 	card := inner.NewCard(d.seq, dc)
 	d.inner.Append(card)
@@ -328,7 +257,7 @@ func (d *deck) Insert(c action.Call) (err error) {
 }
 
 func (d *deck) checkQueueLength() error {
-	if d.inner.Len() < d.queueLimit {
+	if d.inner.Len() < d.conf.Queue {
 		return nil
 	}
 	return errors.New("call queue limit reached")
@@ -339,11 +268,4 @@ func (d *deck) restore(seq uint64, c *inner.Call) error {
 	d.inner.Insert(n)
 	return d.checkQueueLength()
 
-}
-
-func (d *deck) cancelCut(n *inner.Card) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.inner.Insert(n)
-	return d.checkQueueLength()
 }

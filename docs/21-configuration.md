@@ -94,7 +94,9 @@ The `Solitaire*` fields tune the sync transport between server and browser:
 
 - `SolitaireSyncTimeout` limits how long a pending server-to-client sync task may wait. If it is exceeded, the instance is ended.
 - `SolitaireQueue` and `SolitairePending` control queue depth and backpressure.
-- `SolitairePing`, `SolitaireRollTimeout`, `SolitaireFlushSizeLimit`, and `SolitaireFlushTimeout` control how the sync connection is kept alive and flushed.
+- `SolitaireRollTime`, `SolitaireFrameTime`, and `SolitaireFrameSize` control request handover and server-to-client frame buffering.
+- `SolitaireDisableReportStreaming`, `SolitaireReportSize`, and `SolitaireReportTimeout` control client-to-server report delivery.
+- `SolitaireMaxRTT` caps the RTT estimate used for sync probing when the server has pending work but no frame ready to flush.
 - `SolitaireDisableGzip` disables gzip for solitaire sync payloads without affecting HTML, JS, or CSS compression.
 
 Most apps should leave the `Solitaire*` settings alone unless they are debugging runtime behavior or tuning under load.

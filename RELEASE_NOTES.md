@@ -1,4 +1,36 @@
-# Doors `0.12` Release Notes
+# Doors `0.13` Release Notes — "Harmony"
+
+## Highlights
+
+### Performance control
+
+`SolitaireFrameTime` now controls the entire sync cycle — both server-to-client flushes and client-to-server reports. That enables precise performance tuning.
+
+The default is ~33ms (30 FPS). Lower values increase UI responsiveness; higher values reduce syscall frequency and Go scheduler load.
+
+### Streaming reports
+
+Chromium-based browsers now send client reports over persistent HTTP streams instead of individual POST requests, reducing connection overhead. Unsupported browsers fall back to the previous behavior automatically.
+
+### Solitaire engine rewrite
+
+The sync engine (client and server) has been restructured: the connection handler is split into dedicated sender and receiver components, with a new frame-based write controller and adaptive RTT estimation.
+
+## Details
+
+**Separated push and pull.** Server-to-client sync and client-to-server reporting now run over independent connections, each with its own lifecycle. This avoids unnecessary connection churn and keeps the coupling between directions intentional rather than accidental.
+
+**Explicit framing.** Server-to-client data is now organized into deliberate frames. The server controls when a frame goes out and the client responds to complete frames, so behavior no longer depends on incidental network fragmentation or system buffer behavior — making the flow more controllable.
+
+**Report loss detection.** In the previous design, the server's response to a client report served as implicit delivery confirmation. With separated connections, that guarantee is gone. The protocol now carries explicit acknowledgments so the client can detect and retransmit dropped reports.
+
+**Adaptive timing.** The server continuously estimates round-trip time from live traffic and uses it to pace recovery probes.
+
+**WebTransport-ready.** The new implementation is transport-agnostic — ready for WebTransport support when the standard becomes more common, with no structural changes needed.
+
+---
+
+# Doors `0.12` Release Notes — "Romance"
 
 Doors `0.12` is a broad release focused on making the public API more direct: `App` replaced `Router`, page routing is built entirely on reactive state, writable derived views expand the state toolkit, and several verbose APIs were tightened into a cleaner shape.
 
