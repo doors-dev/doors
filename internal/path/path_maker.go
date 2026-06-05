@@ -77,7 +77,7 @@ func (m Match) Undo() (UndoPath, bool) {
 
 var hookRegexp = regexp.MustCompile(`^/h/([0-9a-zA-Z]+)/(\d+)(\?.*|/.*)?$`)
 var resourceRegexp = regexp.MustCompile(`^/r/([0-9a-zA-Z]+)(\.[^/]+)?$`)
-var syncPath = regexp.MustCompile(`^/s/([0-9a-zA-Z]+)(/)?$`)
+var syncPath = regexp.MustCompile(`^/s/([0-9a-zA-Z]+)(\?.*)?$`)
 var undoPath = regexp.MustCompile(`^/u/([0-9a-zA-Z]+)(/.*)$`)
 
 func (pm PathMaker) ID() string {

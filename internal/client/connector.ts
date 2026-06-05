@@ -47,7 +47,7 @@ class Conn {
 	private pausePromise: Promise<void>
 	private pauseCont: (() => void) | null = null
 	constructor(private ctrl_: Controller) {
-		new PackageReceiver(this, 0)
+		new PackageReceiver(this, 1)
 		this.sender = new ReportSender(this)
 		this.pausePromise = new Promise((res) => res())
 	}
@@ -127,7 +127,7 @@ class Conn {
 	resetTTL() {
 		this.ctrl_.resetTTL()
 	}
-	private receiveBoundary_ = 0
+	private receiveBoundary_ = 1
 	private receiveBoundaryBuffer_ = new Set<number>
 	private receivePackageBuffer_: Array<{ id: number, p: Package }> = []
 	private receiverPendingFlush = new Set<number>()
@@ -223,13 +223,15 @@ class ReportSender {
 		}
 		this.request(message)
 	}
+	private counter = 0
 	private async request(body: string) {
 		if (STRESS_MODE && Math.random() > 0.5) {
 			return
 		}
+		this.counter += 1
 		const abortTimer = new AbortTimer(solitaireRoll)
 		const [response, err] = await result(() => {
-			return fetch(`${prefix}/s/${id}`, {
+			return fetch(`${prefix}/s/${id}?t=${this.counter}`, {
 				signal: abortTimer.signal,
 				method: "POST",
 				headers: {
@@ -263,7 +265,7 @@ class ReportStreamer {
 		const channel = new TransformStream<WritableStreamDefaultWriter, WritableStreamDefaultWriter>();
 		const writer = channel.writable.getWriter()
 		const reader = channel.readable.getReader()
-		new ReportWriter(this.conn_, writer)
+		new ReportWriter(this.conn_, writer, 1)
 		this.loop(reader)
 	}
 	async write(report: string) {
@@ -277,16 +279,15 @@ class ReportStreamer {
 	private async loop(readerForWriter: ReadableStreamDefaultReader) {
 		let writer: WritableStreamDefaultWriter | null = null
 		let message: Uint8Array | null = null
-		let messagePromise: Promise<ReadableStreamReadResult<Uint8Array>> | null = null
 		let writerPromise: Promise<ReadableStreamReadResult<WritableStreamDefaultWriter>> | null = null
+		let resolved = false
 		while (true) {
-			if (!messagePromise) {
-				messagePromise = this.messageReader_.read()
-			}
 			if (!writerPromise) {
+				resolved = false
 				writerPromise = readerForWriter.read()
+				writerPromise.then(() => resolved = true)
 			}
-			if (!writer) {
+			if (!writer || resolved) {
 				const { value } = await writerPromise
 				writerPromise = null
 				writer = value!
@@ -301,18 +302,8 @@ class ReportStreamer {
 				message = null
 				continue
 			}
-			const race = await Promise.race([
-				messagePromise.then(value => ({ index: 0, value })),
-				writerPromise.then(value => ({ index: 1, value })),
-			]);
-			if (race.index == 0) {
-				message = race.value.value as Uint8Array
-				messagePromise = null
-			}
-			if (race.index == 1) {
-				writer = race.value.value as WritableStreamDefaultWriter
-				writerPromise = null
-			}
+			const { value } = await this.messageReader_.read()
+			message = value!
 		}
 	}
 }
@@ -323,7 +314,8 @@ class ReportWriter {
 	private rollTimer_: ReliableTimer
 	private rolled = false
 	private stream = new TransformStream()
-	constructor(private conn_: Conn, private writer_: WritableStreamDefaultWriter<WritableStreamDefaultWriter>) {
+	private writer = this.stream.writable.getWriter()
+	constructor(private conn_: Conn, private writer_: WritableStreamDefaultWriter<WritableStreamDefaultWriter>, private id: number) {
 		this.abortTimer_ = new AbortTimer(solitaireRoll * 4 / 3)
 		this.rollTimer_ = new ReliableTimer(solitaireRoll, () => {
 			this.roll()
@@ -336,12 +328,11 @@ class ReportWriter {
 		}
 		this.rolled = true
 		this.conn_.pauseGuard().then(() => {
-			new ReportWriter(this.conn_, this.writer_)
+			new ReportWriter(this.conn_, this.writer_, this.id + 1)
 		})
 	}
 	private loop() {
-		const writer = this.stream.writable.getWriter();
-		const promise = fetch(`${prefix}/s/${id}`, {
+		const promise = fetch(`${prefix}/s/${id}?t=${this.id}`, {
 			signal: this.abortTimer_.signal,
 			method: "POST",
 			body: this.stream.readable,
@@ -351,9 +342,9 @@ class ReportWriter {
 				'Content-Type': "application/octet-stream",
 			},
 		})
-		this.writer_.write(writer)
+		this.writer_.write(this.writer)
 		promise.then((response) => {
-			result(() => writer.abort())
+			result(() => this.writer.abort())
 			if (response.status === 401 || response.status === 410) {
 				this.kill()
 				return
@@ -364,8 +355,8 @@ class ReportWriter {
 			}
 			this.roll()
 			this.clear()
-		}).catch((err) => {
-			result(() => writer.abort())
+		}).catch(() => {
+			result(() => this.writer.abort())
 			this.error()
 		})
 
@@ -424,9 +415,10 @@ class PackageReceiver {
 		}
 		this.conn_.receiverDone(this.id, false)
 	}
+
 	private async loop(): Promise<boolean> {
 		const [response, err] = await result(() => {
-			return fetch(`${prefix}/s/${id}`, {
+			return fetch(`${prefix}/s/${id}?t=${this.id}`, {
 				signal: this.abortTimer_.signal,
 				method: "GET",
 				cache: "no-store",
