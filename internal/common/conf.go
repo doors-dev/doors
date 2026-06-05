@@ -81,10 +81,10 @@ type Conf struct {
 	// SolitairePending is the max unresolved server-to-client sync tasks.
 	// Throttles sending when reached. Default: 256.
 	SolitairePending int
-	// SolitaireDisableReportStreaming disables browser streaming request bodies
-	// for client-to-server reports. When true, each report uses a standalone
-	// JSON POST. Default: false.
-	SolitaireDisableReportStreaming bool
+	// SolitaireReportStreaming enables browser streaming request bodies for
+	// client-to-server reports. When false, each report uses a standalone JSON
+	// POST. Default: false.
+	SolitaireReportStreaming bool
 	// SolitaireReportSize is the max size of one client-to-server report in a
 	// streaming report body. Default: 8 MB.
 	SolitaireReportSize int
@@ -128,7 +128,7 @@ func GetSolitaireConf(s *Conf) *SolitaireConf {
 		FrameSize:              s.SolitaireFrameSize,
 		FlushTime:              s.SolitaireFrameTime,
 		DisableGzip:            s.SolitaireDisableGzip,
-		DisableReportStreaming: s.SolitaireDisableReportStreaming,
+		DisableReportStreaming: !s.SolitaireReportStreaming,
 		Queue:                  s.SolitaireQueue,
 		Pending:                s.SolitairePending,
 		ReportSize:             s.SolitaireReportSize,

@@ -90,7 +90,7 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if solitaire.Roll != conf.SolitaireRollTime ||
 		solitaire.FrameSize != conf.SolitaireFrameSize ||
 		solitaire.FlushTime != conf.SolitaireFrameTime ||
-		solitaire.DisableReportStreaming != conf.SolitaireDisableReportStreaming ||
+		solitaire.DisableReportStreaming == conf.SolitaireReportStreaming ||
 		solitaire.ReportSize != conf.SolitaireReportSize ||
 		solitaire.ReportTimeout != conf.SolitaireReportTimeout ||
 		solitaire.MaxRTT != conf.SolitaireMaxRTT {
