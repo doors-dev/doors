@@ -102,21 +102,20 @@ func (d *deck) Restore(beg uint64, end uint64) error {
 var errorKilled = errors.New("killed")
 var errorLimit = errors.New("limit")
 
-func (d *deck) Dump(s Stasher) error {
-	for {
+func (d *deck) Dump(s Stasher) (err error) {
+	for err == nil {
 		d.mu.Lock()
 		if d.killed {
 			d.mu.Unlock()
 			return errorKilled
 		}
-		if len(d.issued) == d.conf.Pending {
-			d.mu.Unlock()
-			return errorLimit
+		if len(d.issued) >= d.conf.Pending {
+			err = errorLimit
 		}
 		card := d.inner.Cut()
 		d.mu.Unlock()
 		if card == nil {
-			return nil
+			return
 		}
 		switch s.Stash(card) {
 		case stashFiller:
@@ -133,9 +132,10 @@ func (d *deck) Dump(s Stasher) error {
 			card.Call.Written()
 		}
 		if s.Full() {
-			return nil
+			return
 		}
 	}
+	return
 }
 
 type bufferedResult struct {
@@ -257,7 +257,7 @@ func (d *deck) Insert(c action.Call) (err error) {
 }
 
 func (d *deck) checkQueueLength() error {
-	if d.inner.Len() < d.conf.Queue {
+	if d.inner.Len()+len(d.issued) < d.conf.Queue {
 		return nil
 	}
 	return errors.New("call queue limit reached")

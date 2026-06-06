@@ -90,7 +90,7 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if solitaire.Roll != conf.SolitaireRollTime ||
 		solitaire.FrameSize != conf.SolitaireFrameSize ||
 		solitaire.FlushTime != conf.SolitaireFrameTime ||
-		solitaire.DisableReportStreaming == conf.SolitaireReportStreaming ||
+		solitaire.DisableReportStreaming != conf.SolitaireDisableReportStreaming ||
 		solitaire.ReportSize != conf.SolitaireReportSize ||
 		solitaire.ReportTimeout != conf.SolitaireReportTimeout ||
 		solitaire.MaxRTT != conf.SolitaireMaxRTT {
@@ -120,6 +120,14 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	}
 	if custom.SolitaireReportTimeout != custom.SolitaireRollTime {
 		t.Fatal("expected report timeout to default to roll time when roll time is below 5s")
+	}
+	lowRTT := &Conf{
+		SolitaireFrameTime: 100 * time.Millisecond,
+		SolitaireMaxRTT:    time.Millisecond,
+	}
+	InitDefaults(lowRTT)
+	if lowRTT.SolitaireMaxRTT != 200*time.Millisecond {
+		t.Fatalf("expected solitaire max rtt to be at least 2x frame time, got %v", lowRTT.SolitaireMaxRTT)
 	}
 
 	noSecure := &Conf{

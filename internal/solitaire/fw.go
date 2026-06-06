@@ -54,6 +54,10 @@ func (f *writeController) Len() int {
 	return len(f.stashed)
 }
 
+func (f *writeController) Penalty() <-chan time.Time {
+	return time.After(f.Sync.RTT())
+}
+
 func (f *writeController) Wait(pending bool) <-chan time.Time {
 	if !pending && f.Len() == 0 {
 		var ch chan time.Time

@@ -12,7 +12,7 @@ The default is ~33ms (30 FPS). Lower values increase UI responsiveness; higher v
 
 Chromium-based browsers can send client reports over persistent HTTP streams instead of individual POST requests, reducing connection overhead.
 
-This is disabled by default because streaming request bodies are not handled correctly by all deployment infrastructure yet, including some reverse-proxy setups. Check the full production path before enabling `SolitaireReportStreaming`. Unsupported browsers fall back to the previous behavior automatically.
+This is enabled by default when the browser and connection support streaming request bodies. Unsupported browsers fall back to the previous behavior automatically. Some deployment infrastructure, including some reverse-proxy setups, does not handle streaming request bodies correctly; set `SolitaireDisableReportStreaming` after checking the full production path.
 
 ### Solitaire engine rewrite
 

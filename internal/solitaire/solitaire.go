@@ -90,7 +90,7 @@ func (s Solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 		cancelTimer()
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	if r.Header.Get("Accept") == "application/octet-stream" {
+	if r.Method == http.MethodGet {
 		s.inst.Touch()
 		fw := &writeController{
 			Sync:    &s.sync,
@@ -104,6 +104,10 @@ func (s Solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 			<-prev.Roll()
 		}
 		sender.Run()
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 	receiver := newReceiver(s.inst, s.deck, &s.sync, r, w, ctx, cancel, s.conf)
@@ -316,13 +320,6 @@ func (c *sender) submit(signal signal) error {
 	return err
 }
 
-func (c *sender) penalty() {
-	select {
-	case <-time.After(c.conf.MaxRTT):
-	case <-c.ctx.Done():
-	}
-}
-
 func (c *sender) Run() {
 	defer c.handleCause()
 	defer c.Cleanup()
@@ -360,6 +357,16 @@ func (c *sender) Run() {
 func (c *sender) arm() {
 	ch := make(chan struct{})
 	c.trigger.Store(&ch)
+}
+
+func (c *sender) penalty() {
+	select {
+	case <-c.writeController.Penalty():
+		if c.writeController.Len() == 0 {
+			c.deck.HeatUp()
+		}
+	case <-c.ctx.Done():
+	}
 }
 
 func (c *sender) wait() bool {

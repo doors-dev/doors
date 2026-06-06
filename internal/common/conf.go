@@ -75,16 +75,17 @@ type Conf struct {
 	SolitaireFrameSize int
 	// SolitaireDisableGzip disables gzip compression for solitaire sync payloads if true.
 	SolitaireDisableGzip bool
-	// SolitaireQueue is the max queued server-to-client sync task.
-	// Exceeding this kills the instance. Default: 1024.
+	// SolitaireQueue is the max total queued plus unresolved
+	// server-to-client sync tasks. Exceeding this kills the instance.
+	// Default: 1024.
 	SolitaireQueue int
 	// SolitairePending is the max unresolved server-to-client sync tasks.
 	// Throttles sending when reached. Default: 256.
 	SolitairePending int
-	// SolitaireReportStreaming enables browser streaming request bodies for
-	// client-to-server reports. When false, each report uses a standalone JSON
+	// SolitaireDisableReportStreaming disables browser streaming request bodies for
+	// client-to-server reports. When true, each report uses a standalone JSON
 	// POST. Default: false.
-	SolitaireReportStreaming bool
+	SolitaireDisableReportStreaming bool
 	// SolitaireReportSize is the max size of one client-to-server report in a
 	// streaming report body. Default: 8 MB.
 	SolitaireReportSize int
@@ -92,7 +93,8 @@ type Conf struct {
 	// client-to-server report. Default: min(5s, SolitaireRollTime).
 	SolitaireReportTimeout time.Duration
 	// SolitaireMaxRTT caps the RTT estimate used for sync probing while the
-	// server has pending work but no frame ready to flush. Default: 1s.
+	// server has pending work but no frame ready to flush. Values below
+	// 2*SolitaireFrameTime are raised to that minimum. Default: 1s.
 	SolitaireMaxRTT time.Duration
 }
 
@@ -107,7 +109,7 @@ type SolitaireConf struct {
 	DisableGzip bool
 	// DisableReportStreaming is the effective report streaming flag.
 	DisableReportStreaming bool
-	// Queue is the effective queued sync task limit.
+	// Queue is the effective queued plus unresolved sync task limit.
 	Queue int
 	// Pending is the effective unresolved sync task limit.
 	Pending int
@@ -117,7 +119,7 @@ type SolitaireConf struct {
 	ReportSize int
 	// ReportTimeout is the effective single-report receive timeout.
 	ReportTimeout time.Duration
-	// MaxRTT is the effective RTT estimate cap.
+	// MaxRTT is the effective RTT estimate cap after the 2*FlushTime minimum.
 	MaxRTT time.Duration
 }
 
@@ -128,7 +130,7 @@ func GetSolitaireConf(s *Conf) *SolitaireConf {
 		FrameSize:              s.SolitaireFrameSize,
 		FlushTime:              s.SolitaireFrameTime,
 		DisableGzip:            s.SolitaireDisableGzip,
-		DisableReportStreaming: !s.SolitaireReportStreaming,
+		DisableReportStreaming: s.SolitaireDisableReportStreaming,
 		Queue:                  s.SolitaireQueue,
 		Pending:                s.SolitairePending,
 		ReportSize:             s.SolitaireReportSize,
@@ -165,6 +167,7 @@ func (s *Conf) solitaireDefaults() {
 	if s.SolitaireMaxRTT <= 0 {
 		s.SolitaireMaxRTT = time.Second
 	}
+	s.SolitaireMaxRTT = max(s.SolitaireFrameTime*2, s.SolitaireMaxRTT)
 	if s.SolitaireReportTimeout <= 0 {
 		s.SolitaireReportTimeout = min(5*time.Second, s.SolitaireRollTime)
 	}

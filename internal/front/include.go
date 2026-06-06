@@ -66,7 +66,7 @@ func Include(inst core.Instance) gox.Elem {
 			if err := cur.Set("data-roll", conf.SolitaireRollTime.Milliseconds()); err != nil {
 				return err
 			}
-			if !conf.SolitaireReportStreaming {
+			if conf.SolitaireDisableReportStreaming {
 				if err := cur.Set("data-nostream", "true"); err != nil {
 					return err
 				}
