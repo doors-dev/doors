@@ -143,6 +143,7 @@ type receiver struct {
 }
 
 func (rv *receiver) Run() {
+	defer rv.r.Body.Close()
 	defer rv.Cleanup()
 	go rv.reader()
 	if rv.r.Header.Get("Content-Type") == "application/octet-stream" {
@@ -173,7 +174,6 @@ func (rv *receiver) readStream() {
 				return
 			}
 		case <-rv.conn.ctx.Done():
-			rv.r.Body.Close()
 			return
 		}
 		length := binary.BigEndian.Uint32(lengthBuffer[:])
@@ -193,7 +193,6 @@ func (rv *receiver) readStream() {
 				return
 			}
 		case <-time.After(rv.conf.ReportTimeout):
-			rv.r.Body.Close()
 			rv.w.WriteHeader(http.StatusRequestTimeout)
 			return
 		}

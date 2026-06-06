@@ -289,6 +289,10 @@ class ReportStreamer {
 			}
 			if (!writer || resolved) {
 				const { value } = await writerPromise
+				if (writer) {
+					const prevWriter = writer
+					result(() => prevWriter.close())
+				}
 				writerPromise = null
 				writer = value!
 				continue
