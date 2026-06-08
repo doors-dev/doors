@@ -29,8 +29,6 @@ import (
 	"github.com/go-rod/rod"
 )
 
-const zombieHeader = "X-Zombie"
-
 type PathParallel struct {
 	Path bool `path:"/parallel"`
 }
@@ -58,12 +56,6 @@ func locationBro[C gox.Comp](render func(doors.Source[doors.Location]) C) *test.
 	return test.NewBro(browser, func(ctx context.Context, r doors.Request) gox.Comp {
 		return render(doors.Router(ctx))
 	})
-}
-
-func locationBroWrap[C gox.Comp](render func(doors.Source[doors.Location]) C, wrap func(http.Handler) http.Handler) *test.Bro {
-	return test.NewBroWrap(browser, func(ctx context.Context, r doors.Request) gox.Comp {
-		return render(doors.Router(ctx))
-	}, wrap)
 }
 
 func testPath(t *testing.T, page *rod.Page, path string) {
@@ -454,20 +446,13 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 	}
 }
 
-func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
-	bro := locationBroWrap(func(l doors.Source[doors.Location]) gox.Comp {
-		return doors.Route(doors.RouteModel(pageQuery))
-	}, func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r.Header.Set(zombieHeader, "1")
-			w.Header().Set(zombieHeader, "1")
-			next.ServeHTTP(w, r)
-		})
-	})
+func TestBrowserBackRestoresQueryWithDrainReload(t *testing.T) {
+	bro := routeBro(doors.RouteModel(pageQuery))
 	defer bro.Close()
 
 	page := bro.Page(t, "/q")
 	defer page.Close()
+	bro.App().Drain(func() {})
 
 	initialInstance := test.GetContent(t, page, "#instance-id")
 	test.Click(t, page, "#query-next")
@@ -478,7 +463,7 @@ func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
 
 	nextInstance := test.GetContent(t, page, "#instance-id")
 	if nextInstance == initialInstance {
-		t.Fatalf("expected zombie navigation to full-reload, got same instance %q", nextInstance)
+		t.Fatalf("expected drain navigation to full-reload, got same instance %q", nextInstance)
 	}
 
 	page.NavigateBack()
@@ -489,7 +474,7 @@ func TestBrowserBackRestoresQueryWithZombieReload(t *testing.T) {
 
 	restoredInstance := test.GetContent(t, page, "#instance-id")
 	if restoredInstance == nextInstance {
-		t.Fatalf("expected zombie browser back to full-reload, got same instance %q", restoredInstance)
+		t.Fatalf("expected drain browser back to full-reload, got same instance %q", restoredInstance)
 	}
 }
 

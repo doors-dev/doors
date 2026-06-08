@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/instance"
@@ -52,6 +53,9 @@ type app struct {
 	handler    http.Handler
 	errPage    ErrorPage
 	logger     *slog.Logger
+
+	instanceCount atomic.Int64
+	drainCallback atomic.Pointer[func()]
 }
 
 func (a *app) Logger() *slog.Logger {
@@ -98,12 +102,8 @@ func (a App) RemoveSession(id string) {
 	a.tracker.Delete(id)
 }
 
-func (a App) InstanceCount() (n int) {
-	a.sessions.Range(func(_, v any) bool {
-		n += v.(instance.Session).InstanceCount()
-		return true
-	})
-	return
+func (a App) InstanceCount() int {
+	return int(a.instanceCount.Load())
 }
 
 func (a App) SessionCount() (n int) {
@@ -112,6 +112,36 @@ func (a App) SessionCount() (n int) {
 		return true
 	})
 	return
+}
+
+func (a App) Draining() bool {
+	return a.drainCallback.Load() != nil
+}
+
+func (a App) InstanceCreated() {
+	a.instanceCount.Add(1)
+}
+
+func (a App) InstanceDeleted() {
+	n := a.instanceCount.Add(-1)
+	if n != 0 {
+		return
+	}
+	callback := a.drainCallback.Load()
+	if callback != nil {
+		(*callback)()
+	}
+}
+
+func (a App) Drain(callback func()) {
+	once := sync.OnceFunc(callback)
+	if !a.drainCallback.CompareAndSwap(nil, &once) {
+		a.logger.Error("Drain called more than once")
+		return
+	}
+	if a.instanceCount.Load() == 0 {
+		once()
+	}
 }
 
 func (a *app) ensureSession(w http.ResponseWriter, r *http.Request) instance.Session {

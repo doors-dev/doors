@@ -18,7 +18,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/doors-dev/doors/internal/app"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front"
@@ -179,7 +178,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}
 	h.Scope = linkScope{}.And(h.Scope)
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		if r.Header.Get(app.ZombieHeader) != "" {
+		if core.Instance().Session().App().Draining() {
 			req := &request{w: w, r: r, ctx: ctx}
 			req.After(ActionLocationReload{})
 			InstanceEnd(ctx)

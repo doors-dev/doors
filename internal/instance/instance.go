@@ -178,6 +178,7 @@ func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (e
 	if !inst.state.CompareAndSwap(zero, initializing) {
 		return nil, false
 	}
+	inst.session.app.InstanceCreated()
 	inst.runtime = shredder.NewRuntime(inst.session.Context(), inst.Session().App().Conf().InstanceGoroutineLimit, inst)
 	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Session().App().Conf()))
 	inst.root = door.NewRoot(inst)
@@ -265,4 +266,5 @@ func (inst Instance) clean(cause common.EndCause) {
 	inst.solitaire.End(cause)
 	inst.killTimer.Stop()
 	inst.root.Kill()
+	inst.session.app.InstanceDeleted()
 }

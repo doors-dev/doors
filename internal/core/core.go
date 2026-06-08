@@ -45,6 +45,7 @@ type App interface {
 	PathMaker() path.PathMaker
 	ResourceRegistry() resources.Registry
 	Conf() *common.Conf
+	Draining() bool
 }
 
 type Session interface {

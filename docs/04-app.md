@@ -194,6 +194,23 @@ n := app.SessionCount()
 
 Both are useful for monitoring, health checks, and diagnostics — for example, exposing the values through a `/metrics` endpoint or logging them periodically.
 
+## Drain Mode
+
+`app.Drain(callback)` switches the app into one-way drain mode. It is meant for rollouts where an old process should keep existing interactive pages alive, but move users to a newer process as soon as they perform normal navigation.
+
+While draining, existing instances still handle their current page and server-side events. When a live instance performs a **Doors** link navigation, or when the browser asks **Doors** to restore a previous location, **Doors** ends that old instance and tells the browser to load the target URL as a normal page request. If your proxy or load balancer now routes normal page requests to the new deployment, the user lands on the new process.
+
+```go
+app.Drain(func() {
+	if err := server.Shutdown(context.Background()); err != nil {
+		logger.Error("server shutdown failed", "error", err)
+	}
+})
+```
+
+The callback runs once, after `app.InstanceCount()` reaches zero. If there are no live instances when `Drain` is called, the callback runs immediately. Later `Drain` calls are ignored and logged as errors.
+
+`Drain` does not stop the HTTP server, reject new page loads, or change proxy routing by itself. For a zero-downtime rollout, first arrange for new full page requests to stop reaching the old process, then call `Drain` on the old app.
 
 ## Routing
 

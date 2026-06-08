@@ -37,6 +37,9 @@ type App interface {
 	RemoveSession(id string)
 	ResourceRegistry() resources.Registry
 	Logger() *slog.Logger
+	InstanceCreated()
+	InstanceDeleted()
+	Draining() bool
 }
 
 type Session = *session

@@ -51,6 +51,10 @@ func (a *sessionTestApp) Logger() *slog.Logger {
 	return slog.Default()
 }
 
+func (a *sessionTestApp) InstanceCreated()  {}
+func (a *sessionTestApp) InstanceDeleted()  {}
+func (a *sessionTestApp) Draining() bool    { return false }
+
 func TestSessionKillCancelsContext(t *testing.T) {
 	app := newSessionTestApp()
 	sess := NewSession(app)

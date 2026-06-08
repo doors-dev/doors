@@ -111,6 +111,10 @@ func (a titleApp) Logger() *slog.Logger {
 	return slog.Default()
 }
 
+func (a titleApp) Draining() bool {
+	return false
+}
+
 type titleSession struct {
 	app titleApp
 }

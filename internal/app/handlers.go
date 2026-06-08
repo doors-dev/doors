@@ -10,8 +10,6 @@ import (
 	"github.com/doors-dev/doors/internal/path"
 )
 
-const ZombieHeader = "X-Zombie"
-
 func (a App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sess := a.ensureSession(w, r)
 	r = r.WithContext(context.WithValue(r.Context(), common.KeySession, sess))
@@ -125,7 +123,7 @@ func (a *app) restoreLocation(w http.ResponseWriter, r *http.Request, instId str
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	if w.Header().Get(ZombieHeader) != "" {
+	if a.Draining() {
 		inst.Kill()
 		w.WriteHeader(http.StatusGone)
 		return

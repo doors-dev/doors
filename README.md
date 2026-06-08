@@ -8,14 +8,6 @@
 
 Doors is a server-driven UI framework + runtime for building stateful, reactive web applications in Go.
 
-## Recent Version
-
-Doors `0.12` is a broad release with migration-impacting changes compared with `0.8.x`-`0.10.x`.
-
-Read the [release notes](./RELEASE_NOTES.md) for the overview.
-
-If you are upgrading existing code or asking an agent to migrate it, start with the [migration guide](./MIGRATION.md).
-
 ## Start a new project
 
 For new applications, use [doors-dev/doors-starter](https://github.com/doors-dev/doors-starter), the recommended ready-to-run **Doors** project skeleton.
@@ -114,9 +106,13 @@ Typical JavaScript stacks place much of the interaction model in the browser whi
 - [GoX](https://github.com/doors-dev/gox)
 - [AI Agent Skill](https://github.com/doors-dev/doors-skill) — install for Claude Code, Codex, or OpenCode to get Doors-aware code generation
 
+## Migrating older apps
+
+If you are upgrading an app from a version older than `0.12`, use the migration guide from any `0.12.x` tag.
+
 ## Status
 
-Doors is in beta. It is ready for development and can be used in production with caution, but you should expect fixes and updates as the ecosystem matures.
+Doors is in late beta. It is ready for development and can be used in production with caution, but you should expect fixes and updates as the ecosystem matures.
 
 ## Licensing
 

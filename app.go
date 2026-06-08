@@ -117,5 +117,10 @@ type App interface {
 	InstanceCount() int
 	// SessionCount returns the number of active sessions.
 	SessionCount() int
+	// Drain switches the app into drain mode. Already-started instances are
+	// hard-reloaded on the next navigation. The callback runs at most once,
+	// fired when the final live instance cleans up (or immediately if none
+	// are live). Drain is one-way for the lifetime of the app.
+	Drain(callback func())
 	http.Handler
 }
