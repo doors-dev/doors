@@ -330,6 +330,7 @@ class ReportWriter {
 		if (this.rolled) {
 			return
 		}
+		this.rollTimer_.cancel()
 		this.rolled = true
 		this.conn_.pauseGuard().then(() => {
 			new ReportWriter(this.conn_, this.writer_, this.id + 1)
@@ -403,12 +404,13 @@ class PackageReceiver {
 		this.launch()
 	}
 
+
 	private roll() {
 		if (this.rolled) {
 			return
 		}
 		this.rolled = true
-		this.clear()
+		this.rollTimer_.cancel()
 		this.conn_.pauseGuard().then(() => {
 			new PackageReceiver(this.conn_, this.id + 1)
 		})

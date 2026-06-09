@@ -245,7 +245,7 @@ export class ReliableTimer {
 	private tick_: number
 	constructor(private timeout_: number, handler: Function) {
 		this.timeout_ = timeout_
-		this.tick_ = Math.max(0.05 * this.timeout_, 20)
+		this.tick_ = Math.max(0.02 * this.timeout_, 20)
 		this.reset()
 		this.interval_ = setInterval(() => {
 			if (Date.now() < this.deadline_) {
@@ -268,13 +268,11 @@ export class ReliableTimer {
 export class AbortTimer {
 	private abortController_ = new AbortController()
 	private timer_: ReliableTimer
-	private expired_ = false
 	constructor(timeout: number) {
 		this.timer_ = new ReliableTimer(timeout, () => {
 			if (this.signal.aborted) {
 				return
 			}
-			this.expired_ = true
 			this.abortController_.abort("timeout")
 		})
 	}
@@ -282,7 +280,7 @@ export class AbortTimer {
 		if (!this.signal.aborted) {
 			return "running"
 		}
-		if (this.expired_) {
+		if (this.signal.reason == "timeout") {
 			return "expired"
 		}
 		return "aborted"
