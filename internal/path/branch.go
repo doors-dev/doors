@@ -17,6 +17,7 @@ package path
 import (
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -127,6 +128,9 @@ func (b branch) encode(m reflect.Value) ([]string, error) {
 					return nil, errors.New("no value provided for a required field")
 				}
 			}
+			if slices.Contains(v, "") {
+				return nil, errors.New("empty value in a multi-segment field")
+			}
 			parts = append(parts, v...)
 			continue
 		}
@@ -183,7 +187,7 @@ func (b branch) decode(m reflect.Value, parts []string) bool {
 					return false
 				}
 			} else {
-				s.set(m, parts[i:])
+				s.set(m, slices.Clone(parts[i:]))
 			}
 			continue
 		}

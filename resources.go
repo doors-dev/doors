@@ -97,10 +97,14 @@ func ResourceProxy(url string) Resource {
 // NewHook registers a resource handler as a hook and returns a URL path
 // that triggers it.
 //
-// You can safely append "/filename.ext" to generated link.
+// You can safely append "/filename.ext" to the generated link.
 //
 // The returned bool is false if the hook could not be registered (e.g., the
 // parent door is unmounted).
+//
+// Request body is not bounded by the configured server request body limit;
+// apply a safe limit yourself if you read the body in a [ResourceHandler]
+// or [ResourceHook] callback.
 func NewHook(ctx context.Context, r Resource) (string, bool) {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(r.Handler(), nil)

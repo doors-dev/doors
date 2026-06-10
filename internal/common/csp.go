@@ -73,7 +73,7 @@ type CSP struct {
 	//   nil      ⇒ emit:   frame-ancestors 'none'
 	//   len == 0 ⇒ omit:   (no frame-ancestors directive)
 	//   len > 0  ⇒ emit:   frame-ancestors <values>
-	FrameAcestors []string
+	FrameAncestors []string
 
 	// base-uri:
 	//   nil      ⇒ emit:   base-uri 'none'
@@ -197,7 +197,7 @@ func (c *CSP) generate(styleCollected *collectedCSP, scriptCollected *collectedC
 		"form-action":     c.FormActions,
 		"object-src":      c.ObjectSources,
 		"frame-src":       c.FrameSources,
-		"frame-ancestors": c.FrameAcestors,
+		"frame-ancestors": c.FrameAncestors,
 		"base-uri":        c.BaseURIAllow,
 	}
 	parts := []string{def, connect, script, style}

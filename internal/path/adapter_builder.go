@@ -118,7 +118,7 @@ func (a *adapterBuilder) addField(f reflect.StructField, index int) {
 	var kind fieldKind
 	switch f.Type.Kind() {
 	case reflect.Slice:
-		if f.Type.Elem().Kind() != reflect.String {
+		if f.Type != reflect.TypeFor[[]string]() {
 			return
 		}
 		a.fields[f.Name] = newMultiField(index)

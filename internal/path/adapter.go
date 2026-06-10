@@ -16,6 +16,7 @@ package path
 
 import (
 	"errors"
+	"iter"
 	"net/url"
 	"reflect"
 	"sync"
@@ -99,8 +100,7 @@ type AnyModelAdapter interface {
 type ModelAdapter[M any] adapter
 
 func (ma ModelAdapter[M]) Decode(l Location) (*M, bool) {
-	m := new(M)
-	if (adapter)(ma).decode(l, m) {
+	if m := decode[M]((adapter)(ma), l); m != nil {
 		return m, true
 	}
 	return nil, false
@@ -115,22 +115,40 @@ type adapter struct {
 	queryField int
 }
 
-func (a adapter) decode(l Location, ref any) bool {
-	for _, branch := range a.branches {
-		v := reflect.ValueOf(ref).Elem()
-		if branch.decode(v, l.Segments) {
-			branch.setMarker(v)
-			if a.queryField == -1 {
-				if err := queryDecoder.Decode(ref, l.Query); err != nil {
+func decode[M any](a adapter, l Location) *M {
+	for decoder := range a.decoders(l) {
+		m := new(M)
+		if !decoder(m) {
+			continue
+		}
+		return m
+	}
+	return nil
+}
+
+func (a adapter) decoders(l Location) iter.Seq[func(ref any) bool] {
+	return func(yield func(func(ref any) bool) bool) {
+		for _, branch := range a.branches {
+			decode := func(ref any) bool {
+				v := reflect.ValueOf(ref).Elem()
+				if !branch.decode(v, l.Segments) {
 					return false
 				}
-			} else {
-				v.Field(a.queryField).Set(reflect.ValueOf(l.Query))
+				branch.setMarker(v)
+				if a.queryField == -1 {
+					if err := queryDecoder.Decode(ref, l.Query); err != nil {
+						return false
+					}
+				} else {
+					v.Field(a.queryField).Set(reflect.ValueOf(cloneQuery(l.Query)))
+				}
+				return true
 			}
-			return true
+			if !yield(decode) {
+				return
+			}
 		}
 	}
-	return false
 }
 
 func (a adapter) encode(m any) (Location, error) {

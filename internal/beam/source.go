@@ -140,18 +140,33 @@ func (s *source[T]) Mutate(ctx context.Context, m func(T) T) {
 }
 
 func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T) <-chan error {
+	if mut == nil && value == nil {
+		panic("Source: no value or mutation provided")
+	}
 	s.mu.Lock()
 	ch := make(chan error, 1)
 	ctex.LogCanceled(ctx, "Source mutation")
 	ctx = ctex.ClearFreeCtx(ctx)
-
-	seq, commited := s.commit(mut, value)
-	if !commited {
+retry:
+	seq := s.seq
+	prev := s.values[seq]
+	if mut != nil {
+		s.mu.Unlock()
+		new := mut(*prev)
+		value = &new
+		s.mu.Lock()
+		if seq != s.seq {
+			goto retry
+		}
+	}
+	if s.equal != nil && s.equal(*prev, *value) {
 		s.mu.Unlock()
 		close(ch)
 		return ch
 	}
-
+	s.seq += 1
+	seq = s.seq
+	s.values[seq] = value
 	if len(s.subs) == 0 {
 		s.cleanBefore(seq)
 		s.mu.Unlock()
@@ -160,9 +175,7 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 		return ch
 	}
 	ctxFrame := ctex.GetFrames(ctx).Call()
-
 	stopped := atomic.Bool{}
-
 	isStopped := func() bool {
 		if s.noSkip {
 			return false
@@ -178,20 +191,15 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 		stopped.Store(true)
 		return true
 	}
-
 	sh := shredder.Thread{}
 	syncFrame := shredder.Join(ctx, true, sh.Frame())
 	checkFrame := shredder.Join(ctx, true, ctxFrame, sh.Frame())
 	cleanFrame := &shredder.ValveFrame{}
-
 	for _, sub := range s.subs.Slice() {
 		sub.sync(true, ctx, cleanFrame, syncFrame, seq, isStopped)
 	}
-
 	syncFrame.Release()
-
 	s.mu.Unlock()
-
 	checkFrame.Run(nil, nil, func(bool) {
 		ch <- nil
 		close(ch)
@@ -200,37 +208,13 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 		}
 		cleanFrame.Activate()
 	})
-
 	checkFrame.Release()
-
 	cleanFrame.Run(nil, nil, func(bool) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.cleanBefore(seq)
 	})
-
 	return ch
-}
-
-func (s *source[T]) commit(mut func(T) T, value *T) (uint, bool) {
-	prev := s.values[s.seq]
-	var next *T
-	switch true {
-	case mut != nil:
-		updated := mut(*prev)
-		next = &updated
-	case value != nil:
-		next = value
-	default:
-		panic("Source: no value or mutation provided")
-	}
-	if s.equal != nil && s.equal(*prev, *next) {
-		return 0, false
-	}
-	s.seq += 1
-	seq := s.seq
-	s.values[seq] = next
-	return seq, true
 }
 
 func (s *source[T]) cleanBefore(seq uint) {

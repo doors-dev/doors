@@ -47,6 +47,7 @@ func (e StaticFS) Read() ([]byte, error) {
 func (e StaticFS) entryID(w idWriter) {
 	w.WriteString("fs")
 	w.WriteString(e.Path)
+	w.WriteString("/")
 	if e.Name == "" {
 		b, _ := e.Read()
 		w.Write(b)
@@ -119,6 +120,7 @@ func (e ScriptFS) Apply(opt *api.BuildOptions) error {
 func (e ScriptFS) entryID(w idWriter) {
 	w.WriteString("fs")
 	w.WriteString(e.Path)
+	w.WriteString("/")
 	if e.Name == "" {
 		b, _ := e.Read()
 		w.Write(b)
@@ -170,6 +172,7 @@ func (e ScriptInlineFS) Apply(opt *api.BuildOptions) error {
 func (e ScriptInlineFS) entryID(w idWriter) {
 	w.WriteString("inline_fs")
 	w.WriteString(e.Path)
+	w.WriteString("/")
 	if e.Name == "" {
 		b, _ := e.Read()
 		w.Write(b)

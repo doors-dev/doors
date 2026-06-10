@@ -122,6 +122,10 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 	ch := make(chan struct{})
 	var err error
 	renderFrame.Submit(r.tracker.ctx, r.runtime(), func(b bool) {
+		if !b {
+			err = context.Canceled
+			return
+		}
 		cur := gox.NewCursor(r.tracker.Context(), pipe)
 		err = cur.Comp(comp)
 	})

@@ -84,12 +84,20 @@ func (f singleField) get(m reflect.Value) (string, bool) {
 	field := m.Field(f.index)
 	switch f.kind {
 	case kindString:
+		val := field.String()
+		if val == "" {
+			return "", false
+		}
 		return field.String(), true
 	case kindStringPtr:
 		if field.IsNil() {
 			return "", false
 		}
-		return field.Elem().String(), true
+		val := field.Elem().String()
+		if val == "" {
+			return "", false
+		}
+		return val, true
 	case kindInt:
 		return strconv.FormatInt(field.Int(), 10), true
 	case kindIntPtr:
@@ -130,14 +138,15 @@ func (f singleField) set(m reflect.Value, v string) bool {
 		field.Elem().SetString(v)
 		return true
 	case kindInt:
-		num, err := strconv.ParseInt(v, 10, 64)
+		num, err := strconv.ParseInt(v, 10, field.Type().Bits())
 		if err != nil {
 			return false
 		}
 		field.SetInt(num)
 		return true
+
 	case kindIntPtr:
-		num, err := strconv.ParseInt(v, 10, 64)
+		num, err := strconv.ParseInt(v, 10, field.Type().Elem().Bits())
 		if err != nil {
 			return false
 		}
@@ -147,14 +156,14 @@ func (f singleField) set(m reflect.Value, v string) bool {
 		field.Elem().SetInt(num)
 		return true
 	case kindUint:
-		num, err := strconv.ParseUint(v, 10, 64)
+		num, err := strconv.ParseUint(v, 10, field.Type().Bits())
 		if err != nil {
 			return false
 		}
 		field.SetUint(num)
 		return true
 	case kindUintPtr:
-		num, err := strconv.ParseUint(v, 10, 64)
+		num, err := strconv.ParseUint(v, 10, field.Type().Elem().Bits())
 		if err != nil {
 			return false
 		}
@@ -164,14 +173,14 @@ func (f singleField) set(m reflect.Value, v string) bool {
 		field.Elem().SetUint(num)
 		return true
 	case kindFloat:
-		num, err := strconv.ParseFloat(v, 64)
+		num, err := strconv.ParseFloat(v, field.Type().Bits())
 		if err != nil {
 			return false
 		}
 		field.SetFloat(num)
 		return true
 	case kindFloatPtr:
-		num, err := strconv.ParseFloat(v, 64)
+		num, err := strconv.ParseFloat(v, field.Type().Elem().Bits())
 		if err != nil {
 			return false
 		}

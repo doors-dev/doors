@@ -48,6 +48,11 @@ type Conf struct {
 	// Use it when you want browser-enforced cookie prefix rules, such as
 	// __Host- or __Secure-. Empty by default.
 	ServerSessionCookiePrefix string
+
+	// ServerRequestBodyLimit is the max size in bytes for server-bound request
+	// bodies in hooks and form submissions.
+	// Default: 8 MB.
+	ServerRequestBodyLimit int
 	// ServerSessionCookieNoSecure disables the Secure attribute on the internal
 	// Doors session cookie. Use only for plain HTTP development.
 	ServerSessionCookieNoSecure bool
@@ -86,9 +91,9 @@ type Conf struct {
 	// client-to-server reports. When true, each report uses a standalone JSON
 	// POST. Default: false.
 	SolitaireDisableReportStreaming bool
-	// SolitaireReportSize is the max size of one client-to-server report in a
-	// streaming report body. Default: 8 MB.
-	SolitaireReportSize int
+	// SolitaireReportLimit is the max size of one client-to-server report
+	// report. Default: 8 MB.
+	SolitaireReportLimit int
 	// SolitaireReportTimeout is the max time to receive and decode one
 	// client-to-server report. Default: min(5s, SolitaireRollTime).
 	SolitaireReportTimeout time.Duration
@@ -133,7 +138,7 @@ func GetSolitaireConf(s *Conf) *SolitaireConf {
 		DisableReportStreaming: s.SolitaireDisableReportStreaming,
 		Queue:                  s.SolitaireQueue,
 		Pending:                s.SolitairePending,
-		ReportSize:             s.SolitaireReportSize,
+		ReportSize:             s.SolitaireReportLimit,
 		ReportTimeout:          s.SolitaireReportTimeout,
 		MaxRTT:                 s.SolitaireMaxRTT,
 	}
@@ -161,8 +166,8 @@ func (s *Conf) solitaireDefaults() {
 	if s.SolitaireRollTime <= 0 {
 		s.SolitaireRollTime = 15 * time.Second
 	}
-	if s.SolitaireReportSize <= 0 {
-		s.SolitaireReportSize = 8 * 1024 * 1024
+	if s.SolitaireReportLimit <= 0 {
+		s.SolitaireReportLimit = 8 * 1024 * 1024
 	}
 	if s.SolitaireMaxRTT <= 0 {
 		s.SolitaireMaxRTT = time.Second
@@ -201,6 +206,9 @@ func InitDefaults(s *Conf) {
 	}
 	if s.SessionTTL <= s.InstanceTTL {
 		s.SessionTTL = s.InstanceTTL
+	}
+	if s.ServerRequestBodyLimit <= 0 {
+		s.ServerRequestBodyLimit = 8 * 1024 * 1024
 	}
 	s.solitaireDefaults()
 }

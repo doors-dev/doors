@@ -146,6 +146,9 @@ func NewSource[T comparable](init T) Source[T] {
 //
 // equal should report whether new and old should be treated as equal and
 // therefore not propagated. If equal is nil, every update propagates.
+//
+// equal runs while the source's internal lock is held: it must not panic and
+// must not call back into any source or beam.
 func NewSourceEqual[T any](init T, equal func(new T, old T) bool) Source[T] {
 	return source[T]{
 		beam.NewSource(init, equal, false),
@@ -165,6 +168,9 @@ func NewSourceNoSkip[T comparable](init T) Source[T] {
 //
 // equal should report whether new and old should be treated as equal and
 // therefore not propagated. If equal is nil, every update propagates.
+//
+// equal runs while the source's internal lock is held: it must not panic and
+// must not call back into any source or beam.
 func NewSourceEqualNoSkip[T any](init T, equal func(new T, old T) bool) Source[T] {
 	return source[T]{
 		beam.NewSource(init, equal, true),
@@ -233,6 +239,9 @@ func DeriveSource[T1 any, T2 comparable](source Source[T1], get func(v T1) T2, s
 // equal and therefore not propagated to this source's subscribers or derived
 // beams. If equal is nil, every derived value propagates when the underlying
 // source propagates.
+//
+// equal runs while the beam's internal lock is held: it must not panic and
+// must not call back into any source or beam.
 func DeriveSourceEqual[T1 any, T2 any](source Source[T1], get func(v T1) T2, set func(v1 T1, v2 T2) T1, equal func(new T2, old T2) bool) Source[T2] {
 	return derivedSource[T1, T2]{
 		beam.NewLens(source.innerLens(), get, set, equal),
@@ -289,6 +298,9 @@ func DeriveBeam[T1 any, T2 comparable](source Beam[T1], get func(v T1) T2) Beam[
 //
 // equal should report whether new and old should be treated as equal and
 // therefore not propagated. If equal is nil, every derived value propagates.
+//
+// equal runs while the beam's internal lock is held: it must not panic and
+// must not call back into any source or beam.
 func DeriveBeamEqual[T1 any, T2 any](source Beam[T1], get func(v T1) T2, equal func(new T2, old T2) bool) Beam[T2] {
 	return derivedBeam[T1, T2]{
 		beam.NewBeam(source.innerBeam(), get, equal),

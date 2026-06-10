@@ -65,11 +65,18 @@ type RequestForm[D any] interface {
 type RequestRawForm interface {
 	RequestCommon
 	RequestAfter
+	// SetRequestBodyLimit sets the max request body size in bytes for
+	// ParseForm, Reader, and Body. Negative values disable the limit, zero
+	// forbids body reads. Defaults to the configured server request body
+	// limit.
+	SetRequestBodyLimit(limit int)
 	// ResponseWriter returns the HTTP response writer.
 	ResponseWriter() http.ResponseWriter
-	// Reader returns a multipart reader for streaming form parts.
+	// Reader returns a multipart reader for streaming form parts. The body
+	// is bounded by the most recently set request body limit.
 	Reader() (*multipart.Reader, error)
 	// ParseForm parses the form data with a memory limit.
+	// The body is bounded by the request body limit.
 	ParseForm(maxMemory int) (ParsedForm, error)
 }
 
@@ -110,20 +117,22 @@ type Request interface {
 }
 
 type request struct {
-	w   http.ResponseWriter
-	r   *http.Request
-	ctx context.Context
+	w     http.ResponseWriter
+	r     *http.Request
+	ctx   context.Context
+	limit int
+	defaultLimit int
 }
 
-func (r request) RemoteAddr() string {
+func (r *request) RemoteAddr() string {
 	return r.r.RemoteAddr
 }
 
-func (r request) Context() context.Context {
+func (r *request) Context() context.Context {
 	return r.r.Context()
 }
 
-func (r request) After(a Actions) error {
+func (r *request) After(a Actions) error {
 	actions := intoActions(r.ctx, a.Actions())
 	err := actions.Set(r.w.Header())
 	if err != nil {
@@ -132,58 +141,69 @@ func (r request) After(a Actions) error {
 	return nil
 }
 
-func (r request) Body() io.ReadCloser {
-	return r.r.Body
+func (r *request) Body() io.ReadCloser {
+	if r.limit < 0 {
+		return r.r.Body
+	}
+	return http.MaxBytesReader(r.w, r.r.Body, int64(r.limit))
 }
 
-func (r request) SetCookie(cookie *http.Cookie) {
+func (r *request) SetCookie(cookie *http.Cookie) {
 	http.SetCookie(r.w, cookie)
 }
 
-func (r request) GetCookie(name string) (*http.Cookie, error) {
+func (r *request) GetCookie(name string) (*http.Cookie, error) {
 	return r.r.Cookie(name)
 }
 
-func (r request) ParseForm(maxMemory int) (ParsedForm, error) {
-	if maxMemory <= 0 {
-		maxMemory = defaultMaxMemory
+func (r *request) SetRequestBodyLimit(limit int) {
+	r.limit = limit
+}
+
+func (r *request) ParseForm(maxMemory int) (ParsedForm, error) {
+	if r.limit < 0 {
+		return r, r.r.ParseMultipartForm(int64(maxMemory))
 	}
+	r.r.Body = http.MaxBytesReader(r.w, r.r.Body, int64(r.limit))
 	return r, r.r.ParseMultipartForm(int64(maxMemory))
 }
 
-func (r request) Reader() (*multipart.Reader, error) {
+func (r *request) Reader() (*multipart.Reader, error) {
+	if r.limit >= 0 {
+		r.r.Body = http.MaxBytesReader(r.w, r.r.Body, int64(r.limit))
+	}
 	return r.r.MultipartReader()
 }
 
-func (r request) FormValues() url.Values {
+func (r *request) FormValues() url.Values {
 	return r.r.Form
 }
 
-func (r request) Done() <-chan struct{} {
+func (r *request) Done() <-chan struct{} {
 	return r.r.Context().Done()
 }
 
-func (r request) Form() *multipart.Form {
+func (r *request) Form() *multipart.Form {
 	return r.r.MultipartForm
 }
 
-func (r request) FormValue(key string) string {
+func (r *request) FormValue(key string) string {
 	return r.r.FormValue(key)
 }
 
-func (r request) FormFile(key string) (multipart.File, *multipart.FileHeader, error) {
+func (r *request) FormFile(key string) (multipart.File, *multipart.FileHeader, error) {
 	return r.r.FormFile(key)
 }
 
-func (r request) ResponseWriter() http.ResponseWriter {
+func (r *request) ResponseWriter() http.ResponseWriter {
 	return r.w
 }
 
-func (r request) RequestHeader() http.Header {
+func (r *request) RequestHeader() http.Header {
 	return r.r.Header
 }
 
-func (r request) ResponseHeader() http.Header {
+func (r *request) ResponseHeader() http.Header {
 	return r.w.Header()
 }
 
@@ -192,7 +212,7 @@ type eventRequest[E any] struct {
 	e *E
 }
 
-func (e eventRequest[E]) Event() E {
+func (e *eventRequest[E]) Event() E {
 	return *e.e
 }
 
@@ -201,6 +221,6 @@ type formHookRequest[D any] struct {
 	data *D
 }
 
-func (d formHookRequest[D]) Data() D {
+func (d *formHookRequest[D]) Data() D {
 	return *d.data
 }

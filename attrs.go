@@ -73,36 +73,39 @@ type eventAttr[E any] struct {
 }
 
 func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
-	c := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := c.Door().RegisterHook(p.handle, nil)
+	core := ctx.Value(common.KeyCore).(core.Core)
+	hook, ok := core.Door().RegisterHook(p.handle(core), nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}
 	front.AttrsAppendCapture(attrs, p.capture, front.Hook{
 		OnError:  intoActions(ctx, actionsOrNil(p.onError)),
 		Before:   intoActions(ctx, actionsOrNil(p.before)),
-		Scope:    scopesOrNil(c, p.scope),
+		Scope:    scopesOrNil(core, p.scope),
 		Indicate: indicatorsOrNil(p.indicator),
 		Hook:     hook,
 	})
 	return nil
 }
 
-func (p *eventAttr[E]) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	var e E
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&e)
-	r.Body.Close()
-	if err != nil {
-		w.WriteHeader(400)
-		return false
+func (p *eventAttr[E]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		r.Body = http.MaxBytesReader(w, r.Body, int64(core.App().Conf().ServerRequestBodyLimit))
+		var e E
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&e)
+		r.Body.Close()
+		if err != nil {
+			w.WriteHeader(400)
+			return false
+		}
+		return p.on(ctx, &eventRequest[E]{
+			request: request{
+				r:   r,
+				w:   w,
+				ctx: ctx,
+			},
+			e: &e,
+		})
 	}
-	return p.on(ctx, eventRequest[E]{
-		request: request{
-			r:   r,
-			w:   w,
-			ctx: ctx,
-		},
-		e: &e,
-	})
 }

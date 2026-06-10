@@ -28,6 +28,13 @@ type expiration struct {
 
 type expirations []*expiration
 
+func (h expirations) Head() *expiration {
+	if h.Len() == 0 {
+		return nil
+	}
+	return h[0]
+}
+
 func (h expirations) Len() int {
 	return len(h)
 }
@@ -74,10 +81,9 @@ type Expirator struct {
 	mu      sync.Mutex
 	expired bool
 	lookup  map[uint64]*expiration
-	heap    *expirations
 	handler ExpirationHandler
-	head    *expiration
 	timer   *time.Timer
+	heap    *expirations
 }
 
 func (x *Expirator) Shutdown() {
@@ -104,12 +110,9 @@ func (x *Expirator) expire() {
 }
 
 func (x *Expirator) newHead(e *expiration) {
-	if x.timer != nil {
-		if !x.timer.Stop() {
-			return
-		}
+	if x.timer != nil && !x.timer.Stop() {
+		return
 	}
-	x.head = e
 	if e == nil {
 		x.timer = nil
 		return
@@ -117,9 +120,9 @@ func (x *Expirator) newHead(e *expiration) {
 	d := time.Until(e.time)
 	if x.timer == nil {
 		x.timer = time.AfterFunc(d, x.expire)
-	} else {
-		x.timer.Reset(d)
+		return
 	}
+	x.timer.Reset(d)
 }
 
 func (x *Expirator) Report(id uint64) {
@@ -128,18 +131,15 @@ func (x *Expirator) Report(id uint64) {
 	if x.expired {
 		return
 	}
-	if x.head != nil && x.head.id == id {
-		var e *expiration
-		if x.heap.Len() > 0 {
-			e = heap.Pop(x.heap).(*expiration)
-			delete(x.lookup, e.id)
-		}
-		x.newHead(e)
-		return
-	}
 	e := x.lookup[id]
 	delete(x.lookup, id)
+	first := e.index == 0
 	heap.Remove(x.heap, e.index)
+	if !first {
+		return
+	}
+	e = x.heap.Head()
+	x.newHead(e)
 }
 
 func (x *Expirator) Track(id uint64, expire time.Time) {
@@ -152,11 +152,10 @@ func (x *Expirator) Track(id uint64, expire time.Time) {
 		id:   id,
 		time: expire,
 	}
+	x.lookup[e.id] = e
 	heap.Push(x.heap, e)
-	if e.index == 0 && (x.head == nil || e.time.Before(x.head.time)) {
-		heap.Pop(x.heap)
-		x.newHead(e)
+	if e.index != 0 {
 		return
 	}
-	x.lookup[e.id] = e
+	x.newHead(e)
 }

@@ -17,6 +17,7 @@ package path
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -154,7 +155,7 @@ func (pm PathMaker) Hook(instanceId string, hookId uint64, name string) string {
 	fmt.Fprintf(builder, "%s/h/%s/%d", pm.Prefix(), instanceId, hookId)
 	if name != "" {
 		builder.WriteByte('/')
-		builder.WriteString(name)
+		builder.WriteString(url.PathEscape(name))
 	}
 	return builder.String()
 }
@@ -165,7 +166,7 @@ func (pm PathMaker) Resource(r *resources.Resource, name string) string {
 	fmt.Fprintf(builder, "%s/r/%s", pm.Prefix(), id)
 	if name != "" {
 		builder.WriteByte('.')
-		builder.WriteString(name)
+		builder.WriteString(url.PathEscape(name))
 	}
 	return builder.String()
 }

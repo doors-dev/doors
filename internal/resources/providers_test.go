@@ -62,12 +62,12 @@ func TestStaticEntries(t *testing.T) {
 	if string(data) != "fs-content" {
 		t.Fatalf("StaticFS.Read got %q", string(data))
 	}
-	if got := entryIDString(t, fsEntry); got != "fsasset.txtfs-content" {
+	if got := entryIDString(t, fsEntry); got != "fsasset.txt/fs-content" {
 		t.Fatalf("StaticFS.entryID got %q", got)
 	}
 
 	fsNamed := StaticFS{FS: fsys, Path: "asset.txt", Name: "named"}
-	if got := entryIDString(t, fsNamed); got != "fsasset.txtnamed" {
+	if got := entryIDString(t, fsNamed); got != "fsasset.txt/named" {
 		t.Fatalf("StaticFS named entryID got %q", got)
 	}
 
@@ -135,11 +135,11 @@ func TestScriptEntries(t *testing.T) {
 		if len(opt.Plugins) != 1 {
 			t.Fatalf("ScriptFS plugins = %#v", opt.Plugins)
 		}
-		if got := entryIDString(t, entry); got != "fsindex.jswindow.value = \"js\"" {
+		if got := entryIDString(t, entry); got != "fsindex.js/window.value = \"js\"" {
 			t.Fatalf("ScriptFS.entryID got %q", got)
 		}
 		named := ScriptFS{FS: fsys, Path: "index.js", Name: "module"}
-		if got := entryIDString(t, named); got != "fsindex.jsmodule" {
+		if got := entryIDString(t, named); got != "fsindex.js/module" {
 			t.Fatalf("ScriptFS named entryID got %q", got)
 		}
 	})
@@ -163,7 +163,7 @@ func TestScriptEntries(t *testing.T) {
 		if !strings.Contains(jsOpt.Stdin.Contents, "_d0r(document.currentScript, async ($on, $data, $hook, $fetch, $G, $sys, HookErr)") {
 			t.Fatalf("ScriptInlineFS JS contents = %q", jsOpt.Stdin.Contents)
 		}
-		if got := entryIDString(t, js); got != "inline_fsindex.jswindow.value = \"js\"" {
+		if got := entryIDString(t, js); got != "inline_fsindex.js/window.value = \"js\"" {
 			t.Fatalf("ScriptInlineFS JS entryID got %q", got)
 		}
 
@@ -178,7 +178,7 @@ func TestScriptEntries(t *testing.T) {
 		if !strings.Contains(tsOpt.Stdin.Contents, "$data: <T = any>(name: string) => T | Promise<ArrayBuffer>") {
 			t.Fatalf("ScriptInlineFS TS contents = %q", tsOpt.Stdin.Contents)
 		}
-		if got := entryIDString(t, ts); got != "inline_fsindex.tsinline" {
+		if got := entryIDString(t, ts); got != "inline_fsindex.ts/inline" {
 			t.Fatalf("ScriptInlineFS TS entryID got %q", got)
 		}
 

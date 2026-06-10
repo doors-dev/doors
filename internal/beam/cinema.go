@@ -63,6 +63,8 @@ func (c Cinema) writeFrame() shredder.Frame {
 }
 
 func (c Cinema) IsEmpty() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return len(c.screens) == 0
 }
 
@@ -103,9 +105,9 @@ func (c *cinema) addWatcher(src anySource, w *watcher) bool {
 		c.mu.Unlock()
 		return false
 	}
-	c.mu.Unlock()
 	seq, frame := s.addWatcher(w)
 	defer frame.Release()
+	c.mu.Unlock()
 	ctx := ctex.SyncFrameInsert(c.ctx(), frame, nil)
 	w.init(ctx, seq)
 	return true
@@ -131,6 +133,7 @@ func (c *cinema) getScreen(src anySource) (*screen, bool) {
 		src.addSub(scr)
 	} else {
 		if !c.parent.addSub(src, scr) {
+			delete(c.screens, src.getID())
 			return nil, false
 		}
 	}

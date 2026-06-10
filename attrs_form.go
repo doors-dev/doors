@@ -52,7 +52,7 @@ func (s ARawSubmit) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(s.handle, nil)
+	hook, ok := core.Door().RegisterHook(s.handle(core), nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}
@@ -66,13 +66,15 @@ func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 	return nil
 }
 
-func (s *ARawSubmit) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	done := s.On(ctx, request{
-		w:   w,
-		r:   r,
-		ctx: ctx,
-	})
-	return done
+func (s *ARawSubmit) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		return s.On(ctx, &request{
+			w:     w,
+			r:     r,
+			ctx:   ctx,
+			limit: core.App().Conf().ServerRequestBodyLimit,
+		})
+	}
 }
 
 var formDecoder *form.Decoder
@@ -84,10 +86,6 @@ func init() {
 // ASubmit handles a form submission by decoding it into T with
 // go-playground/form.
 type ASubmit[T any] struct {
-	// MaxMemory sets the maximum number of bytes to parse into memory.
-	// It is passed to ParseMultipartForm.
-	// Defaults to 8 MB if zero.
-	MaxMemory int
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
 	Scope Scopes
@@ -112,7 +110,7 @@ func (s ASubmit[V]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(s.handle, nil)
+	hook, ok := core.Door().RegisterHook(s.handle(core), nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}
@@ -126,34 +124,32 @@ func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 	return nil
 }
 
-const defaultMaxMemory = 8 << 20
-
-func (s *ASubmit[V]) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	maxMemory := defaultMaxMemory
-	if s.MaxMemory > 0 {
-		maxMemory = s.MaxMemory
+func (s *ASubmit[V]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		limit := core.App().Conf().ServerRequestBodyLimit
+		r.Body = http.MaxBytesReader(w, r.Body, int64(limit))
+		err := r.ParseMultipartForm(int64(limit))
+		if err != nil {
+			w.WriteHeader(400)
+			w.Write([]byte("Multipart form parsing error"))
+			return false
+		}
+		var v V
+		err = formDecoder.Decode(&v, r.Form)
+		if err != nil {
+			w.WriteHeader(400)
+			w.Write([]byte("Form decoding error"))
+			return false
+		}
+		return s.On(ctx, &formHookRequest[V]{
+			data: &v,
+			request: request{
+				w:   w,
+				r:   r,
+				ctx: ctx,
+			},
+		})
 	}
-	err := r.ParseMultipartForm(int64(maxMemory))
-	if err != nil {
-		w.Write([]byte("Multipart form parsing error"))
-		w.WriteHeader(400)
-		return false
-	}
-	var v V
-	err = formDecoder.Decode(&v, r.Form)
-	if err != nil {
-		w.Write([]byte("Form decoding error"))
-		w.WriteHeader(400)
-		return false
-	}
-	return s.On(ctx, formHookRequest[V]{
-		data: &v,
-		request: request{
-			w:   w,
-			r:   r,
-			ctx: ctx,
-		},
-	})
 }
 
 // RequestChange is the typed request passed to [AChange] handlers.

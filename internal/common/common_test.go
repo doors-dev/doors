@@ -70,8 +70,8 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if conf.SolitaireFrameSize != 32*1024 {
 		t.Fatalf("unexpected solitaire frame size: %d", conf.SolitaireFrameSize)
 	}
-	if conf.SolitaireReportSize != 8*1024*1024 {
-		t.Fatalf("unexpected solitaire report size: %d", conf.SolitaireReportSize)
+	if conf.SolitaireReportLimit != 8*1024*1024 {
+		t.Fatalf("unexpected solitaire report size: %d", conf.SolitaireReportLimit)
 	}
 	if conf.SolitaireMaxRTT != time.Second {
 		t.Fatalf("unexpected solitaire max rtt: %v", conf.SolitaireMaxRTT)
@@ -91,7 +91,7 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 		solitaire.FrameSize != conf.SolitaireFrameSize ||
 		solitaire.FlushTime != conf.SolitaireFrameTime ||
 		solitaire.DisableReportStreaming != conf.SolitaireDisableReportStreaming ||
-		solitaire.ReportSize != conf.SolitaireReportSize ||
+		solitaire.ReportSize != conf.SolitaireReportLimit ||
 		solitaire.ReportTimeout != conf.SolitaireReportTimeout ||
 		solitaire.MaxRTT != conf.SolitaireMaxRTT {
 		t.Fatal("expected solitaire transport config to mirror system config")
@@ -149,7 +149,7 @@ func TestCSPGenerateAndCollector(t *testing.T) {
 		FormActions:         nil,
 		ObjectSources:       []string{},
 		FrameSources:        []string{"https://frame.example"},
-		FrameAcestors:       nil,
+		FrameAncestors:       nil,
 		BaseURIAllow:        []string{},
 		ImgSources:          []string{"data:"},
 		ReportTo:            "csp-endpoint",

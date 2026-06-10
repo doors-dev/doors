@@ -60,10 +60,11 @@ var _ Indicators = indication(nil)
 
 type IndicatorContent struct {
 	Selector Selector // Target element
-	Content  string   // Replacement content
+	Content  string   // Replacement content. WARNING: escaping is not applied.
 }
 
 // IndicateContent builds an [IndicatorContent] that targets the event element.
+// WARNING: escaping is not applied.
 func IndicateContent(content string) IndicatorContent {
 	return IndicatorContent{Selector: SelectorTarget(), Content: content}
 }

@@ -154,6 +154,7 @@ func (rv *receiver) Run() {
 		rv.readStream()
 		return
 	}
+	rv.r.Body = http.MaxBytesReader(rv.w, rv.r.Body, int64(rv.conf.ReportSize))
 	rep := report{}
 	select {
 	case err := <-rv.decode(&rep):

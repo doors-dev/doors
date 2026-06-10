@@ -32,8 +32,9 @@ func TestExpiratorTrackReportAndShutdown(t *testing.T) {
 	exp := NewExpirator(handler)
 
 	exp.Track(1, time.Now().Add(time.Hour))
-	if exp.head == nil || exp.head.id != 1 {
-		t.Fatalf("unexpected head after first track: %#v", exp.head)
+	h := exp.heap.Head()
+	if h == nil || h.id != 1 {
+		t.Fatalf("unexpected head after first track: %#v", h)
 	}
 
 	exp.Track(2, time.Now().Add(2*time.Hour))
@@ -42,13 +43,14 @@ func TestExpiratorTrackReportAndShutdown(t *testing.T) {
 	}
 
 	exp.Report(1)
-	if exp.head == nil || exp.head.id != 2 {
-		t.Fatalf("unexpected head after reporting first expiration: %#v", exp.head)
+	h = exp.heap.Head()
+	if h == nil || h.id != 2 {
+		t.Fatalf("unexpected head after reporting first expiration: %#v", h)
 	}
 
 	exp.Report(2)
-	if exp.head != nil {
-		t.Fatalf("expected head to be cleared, got %#v", exp.head)
+	if exp.heap.Head() != nil {
+		t.Fatalf("expected head to be cleared, got %#v", exp.heap.Head())
 	}
 
 	exp.Track(3, time.Now().Add(time.Hour))

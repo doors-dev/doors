@@ -251,9 +251,7 @@ func (t *tracker) containerCinemaFrame() shredder.AnyFrame {
 
 func (t *tracker) writeFrame(ctx context.Context) shredder.Frame {
 	write := t.thread.Write()
-	frame := shredder.Join(ctx, false, write, t.cinema.ReadFrame(), t.containerCinemaFrame())
-	write.Release()
-	return frame
+	return shredder.Join(ctx, true, write, t.cinema.ReadFrame(), t.containerCinemaFrame())
 }
 
 func (t *tracker) isCanceled() bool {
@@ -399,7 +397,7 @@ func (t *containerTracker) Context() context.Context {
 }
 
 func (t *containerTracker) ReadFrame() shredder.Frame {
-	return t.tracker.ReadFrame()
+	return t.getTracker().ReadFrame()
 }
 
 func (t *containerTracker) clean(cleanGuard shredder.SimpleFrame) {

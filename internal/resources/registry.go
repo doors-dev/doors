@@ -159,7 +159,7 @@ func (rs Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 		content, err = entry.Read()
 	} else {
 		opt := rs.app.ESProfile(profile)
-		err := entry.Apply(&opt)
+		err = entry.Apply(&opt)
 		if err != nil {
 			return nil, err
 		}

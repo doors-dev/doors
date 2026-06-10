@@ -16,7 +16,7 @@ import { HookErr, hookErrKinds } from './capture'
 import captures from './captures'
 import indicator, { IndicatorEntry } from './indicator'
 import { requestTimeout, id, prefix } from './params'
-import { AbortTimer } from './lib'
+import { AbortTimer, result } from './lib'
 import action, { Action } from './calls'
 import { decodePayload } from './package'
 import controller from './controller'
@@ -78,7 +78,12 @@ export class Hook {
 	}
 	private async actions(actions: Array<Action>) {
 		for (const [name, arg, payload] of actions) {
-			const [_, err] = action(name, arg, { element: this.params_.event?.target as any, payload: await decodePayload(payload) })
+			const [decoded, decodeErr] = await result(async () => await decodePayload(payload))
+			if (decodeErr) {
+				console.error("hook action payload decode error", decodeErr)
+				continue
+			}
+			const [_, err] = action(name, arg, { element: this.params_.event?.target as any, payload: decoded })
 			if (err) {
 				console.error("hook action error", err)
 			}
@@ -420,17 +425,23 @@ class ConcurrentScope extends Scope {
 
 class FrameScope extends Scope {
 	private frameHook_: Hook | null = null
+	private framePromoted_ = false
 	protected complete(hook: Hook): void {
 		if (!this.frameHook_) {
 			return
 		}
 		if (this.frameHook_ == hook) {
 			this.frameHook_ = null
+			this.framePromoted_ = false
+			return
+		}
+		if (this.framePromoted_) {
 			return
 		}
 		if (this.size != 1) {
 			return
 		}
+		this.framePromoted_ = true
 		this.promote(this.frameHook_)
 
 	}
@@ -448,6 +459,7 @@ class FrameScope extends Scope {
 		if (this.size != 1) {
 			return
 		}
+		this.framePromoted_ = true
 		this.promote(hook)
 	}
 }

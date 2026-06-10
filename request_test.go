@@ -67,8 +67,8 @@ func TestRequestMultipartAndCookies(t *testing.T) {
 	if len(cookies) != 1 || cookies[0].Name != "written" || cookies[0].Value != "cookie-2" {
 		t.Fatalf("unexpected written cookies: %#v", cookies)
 	}
-
-	parsed, err := r.ParseForm(0)
+	r.SetRequestBodyLimit(10_000_000)
+	parsed, err := r.ParseForm(10_000_000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestRequestMultipartAndCookies(t *testing.T) {
 func TestRequestReaderBodyDoneAndWrappers(t *testing.T) {
 	req, _ := newMultipartRequest(t)
 	rec := httptest.NewRecorder()
-	r := &request{w: rec, r: req}
+	r := &request{w: rec, r: req, limit: 10_000_000}
 
 	reader, err := r.Reader()
 	if err != nil {
@@ -159,13 +159,27 @@ func TestRequestReaderBodyDoneAndWrappers(t *testing.T) {
 
 	rawReq := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("raw"))
 	rawRec := httptest.NewRecorder()
-	rawRequest := &request{w: rawRec, r: rawReq}
+	rawRequest := &request{w: rawRec, r: rawReq, limit: -1}
 	body, err := io.ReadAll(rawRequest.Body())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(body) != "raw" {
 		t.Fatalf("unexpected raw body: %q", string(body))
+	}
+
+	zeroReq := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("forbidden"))
+	zeroRequest := &request{w: httptest.NewRecorder(), r: zeroReq}
+	zeroRequest.SetRequestBodyLimit(0)
+	if _, err := io.ReadAll(zeroRequest.Body()); err == nil {
+		t.Fatal("expected zero body limit to forbid reading")
+	}
+
+	cappedReq, _ := newMultipartRequest(t)
+	cappedRequest := &request{w: httptest.NewRecorder(), r: cappedReq}
+	cappedRequest.SetRequestBodyLimit(8)
+	if _, err := cappedRequest.ParseForm(10); err == nil {
+		t.Fatal("expected body over the limit to fail parsing")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

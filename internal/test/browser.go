@@ -26,5 +26,8 @@ func NewBrowser() *rod.Browser {
 	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" {
 		l = l.NoSandbox(true)
 	}
+	if bin := os.Getenv("DOORS_TEST_CHROME"); bin != "" {
+		l = l.Bin(bin).Leakless(false)
+	}
 	return rod.New().ControlURL(l.MustLaunch()).MustConnect()
 }

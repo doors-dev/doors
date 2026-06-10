@@ -69,6 +69,7 @@ func (s *Resource) ServeCache(w http.ResponseWriter, r *http.Request, cache bool
 			s.gzipped = common.Zip(s.content)
 		})
 		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Vary", "Accept-Encoding")
 		w.Write(s.gzipped)
 		return
 	}

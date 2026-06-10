@@ -98,7 +98,7 @@ func NewApp[C gox.Comp](page func(ctx context.Context, r Request) C, options ...
 		o.apply(&os)
 	}
 	return app.NewApp(func(ctx context.Context, w http.ResponseWriter, r *http.Request) gox.Comp {
-		req := request{
+		req := &request{
 			w: w,
 			r: r,
 		}

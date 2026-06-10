@@ -54,7 +54,7 @@ func (h AHook[T]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(h.handle, nil)
+	hook, ok := core.Door().RegisterHook(h.handle(core), nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}
@@ -66,32 +66,34 @@ func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return nil
 }
 
-func (h *AHook[T]) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	var input T
-	dec := json.NewDecoder(r.Body)
-	err := dec.Decode(&input)
-	r.Body.Close()
-	if err != nil {
-		common.Logger(ctx).Error("Hook decoding error", "error", err)
-		w.WriteHeader(400)
-		return false
+func (h *AHook[T]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, int64(core.App().Conf().ServerRequestBodyLimit)))
+		var input T
+		err := dec.Decode(&input)
+		r.Body.Close()
+		if err != nil {
+			common.Logger(ctx).Error("Hook decoding error", "error", err)
+			w.WriteHeader(400)
+			return false
+		}
+		output, done := h.On(ctx, &formHookRequest[T]{
+			data: &input,
+			request: request{
+				w:   w,
+				r:   r,
+				ctx: ctx,
+			},
+		})
+		enc := json.NewEncoder(w)
+		enc.SetEscapeHTML(false)
+		err = enc.Encode(&output)
+		if err != nil {
+			common.Logger(ctx).Error("Hook output encoding error", "error", err)
+			w.WriteHeader(500)
+		}
+		return done
 	}
-	output, done := h.On(ctx, &formHookRequest[T]{
-		data: &input,
-		request: request{
-			w:   w,
-			r:   r,
-			ctx: ctx,
-		},
-	})
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	err = enc.Encode(&output)
-	if err != nil {
-		common.Logger(ctx).Error("Hook output encoding error", "error", err)
-		w.WriteHeader(500)
-	}
-	return done
 
 }
 
@@ -122,7 +124,7 @@ func (h ARawHook) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(h.handle, nil)
+	hook, ok := core.Door().RegisterHook(h.handle(core), nil)
 	if !ok {
 		return errors.New("door: hook registration failed")
 	}
@@ -134,12 +136,15 @@ func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return nil
 }
 
-func (h *ARawHook) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	return h.On(ctx, request{
-		r:   r,
-		w:   w,
-		ctx: ctx,
-	})
+func (h *ARawHook) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		return h.On(ctx, &request{
+			r:     r,
+			w:     w,
+			ctx:   ctx,
+			limit: core.App().Conf().ServerRequestBodyLimit,
+		})
+	}
 }
 
 // AData exposes Value to browser code through `$data(name)`.

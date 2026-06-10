@@ -35,14 +35,18 @@ type Location struct {
 // The returned Location has independent Segments and Query slices, so callers
 // can mutate it without changing the original value.
 func (l Location) Clone() Location {
-	query := make(url.Values, len(l.Query))
-	for key, value := range l.Query {
-		query[key] = slices.Clone(value)
-	}
 	return Location{
 		Segments: slices.Clone(l.Segments),
-		Query:    query,
+		Query:    cloneQuery(l.Query),
 	}
+}
+
+func cloneQuery(query url.Values) url.Values {
+	clone := make(url.Values, len(query))
+	for key, value := range query {
+		clone[key] = slices.Clone(value)
+	}
+	return clone
 }
 
 // Path returns the escaped path portion of l without the query string.

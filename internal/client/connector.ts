@@ -462,7 +462,12 @@ class PackageReceiver {
 				this.error()
 				return false
 			}
-			const chunkResult = await this.packageReader.readChunk(read.value)
+			const [chunkResult, chunkErr] = await result(() => this.packageReader.readChunk(read.value))
+			if (chunkErr) {
+				console.error("stream decode error", chunkErr)
+				this.error()
+				return false
+			}
 			switch (chunkResult) {
 				case readResult.cont:
 					break
