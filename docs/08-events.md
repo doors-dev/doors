@@ -92,7 +92,9 @@ On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 Form handlers use:
 
 - `doors.RequestForm[T]` for decoded form data
-- `doors.RequestRawForm` for raw multipart access
+- `doors.RequestRawForm` for raw multipart access, including `SetRequestBodyLimit(limit int)` for per-request limits
+
+Event and form handler request bodies are bounded by `ServerRequestBodyLimit` (default 8 MB). For `ASubmit`, this value is also used as the max memory limit for form parsing. Use `SetRequestBodyLimit` on a raw form request to override the limit per request, or set a negative value to disable it entirely.
 
 ## Options
 

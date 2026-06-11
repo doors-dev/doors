@@ -89,13 +89,14 @@ The fields that matter most in practice are:
 - `ServerDisableGzip`: disables gzip for HTML, JS, and CSS.
 - `ServerSessionCookiePrefix`: optional prefix for the internal **Doors** session cookie name. Empty by default, so with `doors.WithID("blue")` the cookie is named `blue`. Set it explicitly when you want browser-enforced cookie prefix rules such as `__Host-` or `__Secure-`.
 - `ServerSessionCookieNoSecure`: omits the `Secure` attribute from the internal **Doors** session cookie. Use only for plain HTTP development.
+- `ServerRequestBodyLimit`: max request body size in bytes for hook and form submission handlers. Default `8 MB`. Applies to all `doors.A...` event handlers, hooks, and form submissions. Also used as the max memory limit for automatically parsed form data (e.g. `ASubmit`).
 
 The `Solitaire*` fields tune the sync transport between server and browser:
 
 - `SolitaireSyncTimeout` limits how long a pending server-to-client sync task may wait. If it is exceeded, the instance is ended.
 - `SolitaireQueue` caps queued plus unresolved server-to-client sync tasks; exceeding it ends the instance. `SolitairePending` throttles unresolved work by pacing sends when the pending limit is reached.
 - `SolitaireRollTime`, `SolitaireFrameTime`, and `SolitaireFrameSize` control request handover and server-to-client frame buffering.
-- `SolitaireDisableReportStreaming`, `SolitaireReportSize`, and `SolitaireReportTimeout` control client-to-server report delivery. Streaming reports are enabled by default when the browser and connection support streaming request bodies; set `SolitaireDisableReportStreaming` when the deployment path cannot handle them reliably.
+- `SolitaireDisableReportStreaming`, `SolitaireReportLimit`, and `SolitaireReportTimeout` control client-to-server report delivery. `SolitaireReportLimit` defaults to `8 MB`. Streaming reports are enabled by default when the browser and connection support streaming request bodies; set `SolitaireDisableReportStreaming` when the deployment path cannot handle them reliably.
 - `SolitaireMaxRTT` caps the RTT estimate used for sync probing when the server has pending work but no frame ready to flush. Values below `2*SolitaireFrameTime` are raised to that minimum.
 - `SolitaireDisableGzip` disables gzip for solitaire sync payloads without affecting HTML, JS, or CSS compression.
 

@@ -25,7 +25,7 @@ The `Indicate*` family covers four indicator kinds:
 | `IndicateClass(class)` | Add CSS class(es) |
 | `IndicateClassRemove(class)` | Remove CSS class(es) |
 
-> `IndicateContent` writes to `innerHTML` — pass only trusted HTML.
+> `IndicateContent` writes to `innerHTML` without applying escaping. Pass only trusted HTML.
 
 ## Targets
 
@@ -66,6 +66,8 @@ Indicator: doors.JoinIndicators(
 	doors.IndicatorContent{Selector: sel, Content: "Saving..."},
 )
 ```
+
+> The `IndicatorContent` struct and `IndicateContent` helper do not apply HTML escaping. Content is written directly to `innerHTML`. Only use them with content you fully control.
 
 ## Behavior
 

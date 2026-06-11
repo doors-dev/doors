@@ -35,6 +35,8 @@ settings := doors.NewSourceEqual(Settings{}, func(new Settings, old Settings) bo
 
 The equality function should return `true` when the values should be treated as equal, which suppresses propagation.
 
+> The `equal` function runs while the source's internal lock is held. It must not panic and must not call back into any source or beam.
+
 
 ## Derived Sources
 
@@ -92,6 +94,8 @@ isMetric := doors.DeriveSource(units,
 
 Use `doors.DeriveSourceEqual(...)` when you need custom equality for the derived value.
 
+> The `equal` function runs while the beam's internal lock is held. It must not panic and must not call back into any source or beam.
+
 Updating a derived source writes back through its parent. The parent source remains the single stored value; the derived source only describes how to read and replace one piece of it.
 
 ## Beams
@@ -105,6 +109,8 @@ longRange := doors.DeriveBeam(settings, func(s Settings) bool {
 ```
 
 Use `doors.DeriveBeamEqual(...)` when you need custom equality for the derived value.
+
+> The `equal` function runs while the beam's internal lock is held. It must not panic and must not call back into any source or beam.
 
 This is one of the main ways **Doors** keeps updates small. If only `Units` changes, a beam or source derived from `Days` can stay unchanged and the fragment using it does not need to rerender.
 

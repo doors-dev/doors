@@ -131,7 +131,7 @@ var assets embed.FS
 
 If a hook returns `true`, the resource is served only once. That is useful for one-time downloads and other short-lived links.
 
-> The `ctx` argument is the **Doors** runtime context for framework APIs. The `*http.Request` still has its normal `r.Context()` request context.
+> Request body is not bounded by `ServerRequestBodyLimit` for resource hooks. Apply a safe limit yourself if you read the body in a `ResourceHandler` or `ResourceHook` callback.
 
 ### Proxy
 
