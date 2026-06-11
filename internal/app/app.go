@@ -27,7 +27,7 @@ func NewApp(page Page, o Options) App {
 		page:       page,
 		conf:       o.Conf,
 		csp:        o.CSP,
-		pathMaker:  path.NewPathMaker(o.Conf.ServerSessionCookiePrefix, o.ID),
+		pathMaker:  path.NewPathMaker(o.Conf.ServerSessionCookiePrefix, o.ID, o.Conf.ServerIDCookieName),
 		tracker:    o.SessionTracker,
 		esProfiles: o.ESBuild,
 		errPage:    o.ErrorPage,

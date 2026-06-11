@@ -36,7 +36,7 @@ func (a *sessionTestApp) Conf() *common.Conf {
 }
 
 func (a *sessionTestApp) PathMaker() path.PathMaker {
-	return path.NewPathMaker(a.conf.ServerSessionCookiePrefix, "test")
+	return path.NewPathMaker(a.conf.ServerSessionCookiePrefix, "test", a.conf.ServerIDCookieName)
 }
 
 func (a *sessionTestApp) RemoveSession(id string) {
@@ -136,6 +136,36 @@ func TestSessionRenewCookie(t *testing.T) {
 	}
 	if cookie.Secure {
 		t.Fatal("expected no-secure session cookie to omit Secure")
+	}
+}
+
+func TestSessionRenewServerIDCookie(t *testing.T) {
+	app := newSessionTestApp()
+	app.conf.ServerIDCookieName = "server_id"
+	sess := NewSession(app)
+	w := httptest.NewRecorder()
+	if !sess.Renew(w) {
+		t.Fatal("expected live session to renew")
+	}
+	cookies := w.Result().Cookies()
+	if len(cookies) != 2 {
+		t.Fatalf("expected two cookies (session + server ID), got %d", len(cookies))
+	}
+	serverCookie := cookies[1]
+	if serverCookie.Name != "server_id" {
+		t.Fatalf("unexpected server ID cookie name: %q", serverCookie.Name)
+	}
+	if serverCookie.Value != "test" {
+		t.Fatalf("unexpected server ID cookie value: %q", serverCookie.Value)
+	}
+	if !serverCookie.HttpOnly {
+		t.Fatal("expected server ID cookie to be HttpOnly")
+	}
+	if !serverCookie.Secure {
+		t.Fatal("expected server ID cookie to be Secure")
+	}
+	if serverCookie.Path != "/" {
+		t.Fatalf("unexpected server ID cookie path: %q", serverCookie.Path)
 	}
 }
 

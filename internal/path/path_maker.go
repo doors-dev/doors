@@ -25,16 +25,18 @@ import (
 	"github.com/doors-dev/doors/internal/resources"
 )
 
-func NewPathMaker(prefix string, serverID string) PathMaker {
+func NewPathMaker(prefix string, serverID string, serverIDCookieName string) PathMaker {
 	return PathMaker{
-		sessionCookie: prefix + serverID,
-		serverID:      serverID,
+		sessionCookie:      prefix + serverID,
+		serverID:           serverID,
+		serverIDCookieName: serverIDCookieName,
 	}
 }
 
 type PathMaker struct {
-	serverID      string
-	sessionCookie string
+	serverID           string
+	sessionCookie      string
+	serverIDCookieName string
 }
 
 type HookMatch struct {
@@ -80,6 +82,14 @@ var hookRegexp = regexp.MustCompile(`^/h/([0-9a-zA-Z]+)/(\d+)(\?.*|/.*)?$`)
 var resourceRegexp = regexp.MustCompile(`^/r/([0-9a-zA-Z]+)(\.[^/]+)?$`)
 var syncPath = regexp.MustCompile(`^/s/([0-9a-zA-Z]+)(\?.*)?$`)
 var undoPath = regexp.MustCompile(`^/u/([0-9a-zA-Z]+)(/.*)$`)
+
+func (pm PathMaker) SetServerIDCookie() bool {
+	return pm.serverIDCookieName != ""
+}
+
+func (pm PathMaker) ServerIDCookieName() string {
+	return pm.serverIDCookieName
+}
 
 func (pm PathMaker) ID() string {
 	return pm.serverID

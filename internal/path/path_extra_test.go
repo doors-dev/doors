@@ -154,7 +154,7 @@ func TestLocationHelpers(t *testing.T) {
 }
 
 func TestPathMakerAndMatch(t *testing.T) {
-	pm := NewPathMaker("__Host-", "blue")
+	pm := NewPathMaker("__Host-", "blue", "")
 	if pm.ID() != "blue" {
 		t.Fatalf("unexpected id: %q", pm.ID())
 	}
