@@ -172,7 +172,7 @@ func (sess *session) Renew(w http.ResponseWriter) bool {
 		MaxAge:   int(maxAge.Seconds()),
 	}
 	http.SetCookie(w, cookie)
-	if sess.app.PathMaker().SetServerIDCookie() {
+	if sess.app.PathMaker().SetServerIDCookie() && !sess.app.Draining() {
 		cookie := &http.Cookie{
 			Name:     sess.app.PathMaker().ServerIDCookieName(),
 			Value:    sess.app.PathMaker().ID(),
