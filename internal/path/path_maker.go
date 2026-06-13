@@ -103,6 +103,10 @@ func (pm PathMaker) Prefix() string {
 	return "/~/" + pm.serverID
 }
 
+func (pm PathMaker) IsSystem(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, "/~/")
+}
+
 func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 	path, ok := strings.CutPrefix(r.URL.RequestURI(), pm.Prefix())
 	if !ok {

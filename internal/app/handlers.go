@@ -20,7 +20,7 @@ func (a *app) serve(w http.ResponseWriter, r *http.Request) {
 	if a.tryServeUtility(w, r) {
 		return
 	}
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodGet || a.pathMaker.IsSystem(r) {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
