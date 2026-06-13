@@ -53,6 +53,14 @@ func WithID(id string) With {
 	})
 }
 
+// WithIDCookie sets the name of an additional cookie that carries the server ID
+// for sticky session load balancing. When empty, no additional cookie is set.
+func WithIDCookie(name string) With {
+	return withFunc(func(o *app.Options) {
+		o.CookieName = name
+	})
+}
+
 // WithESProfiles sets the esbuild options provider used for script resources.
 func WithESProfiles(profile func(p string) api.BuildOptions) With {
 	return withFunc(func(o *app.Options) {

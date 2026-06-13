@@ -48,11 +48,6 @@ type Conf struct {
 	// Use it when you want browser-enforced cookie prefix rules, such as
 	// __Host- or __Secure-. Empty by default.
 	ServerSessionCookiePrefix string
-	// ServerIDCookieName is the name of an additional cookie that carries the
-	// server ID, set alongside the session cookie. Used for sticky session
-	// load balancing. When empty, no additional cookie is set.
-	ServerIDCookieName string
-
 	// ServerRequestBodyLimit is the max size in bytes for server-bound request
 	// bodies in hooks and form submissions.
 	// Default: 8 MB.

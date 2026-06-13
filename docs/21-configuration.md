@@ -37,6 +37,7 @@ Common app options are:
 - `doors.ESProfile{...}` — simple esbuild profile settings
 - `doors.WithESProfiles(...)` — esbuild profile selection
 - `doors.WithID(...)` — server ID for runtime URLs and cookie names
+- `doors.WithIDCookie(...)` — sticky session cookie name
 - `doors.WithSessionTracker(...)` — observe session create/delete
 - `doors.WithErrorPage(...)` — custom error page
 
@@ -64,15 +65,13 @@ That separation is especially useful when you run multiple **Doors** deployments
 
 The ID must already be URL-safe. If it needs escaping, **Doors** will panic during setup.
 
-When running behind a load balancer that requires sticky sessions, use `ServerIDCookieName` to expose the server ID in a separate cookie. The load balancer can read that cookie to route subsequent requests back to the same server:
+When running behind a load balancer that requires sticky sessions, use `doors.WithIDCookie(...)` to expose the server ID in a separate cookie. The load balancer can read that cookie to route subsequent requests back to the same server:
 
 ```go
-doors.WithConf(doors.Conf{
-    ServerIDCookieName: "server_id",
-})
+app := doors.NewApp(page, doors.WithIDCookie("server_id"))
 ```
 
-The cookie carries the same value as the server ID (set with `doors.WithID(...)`) and shares the same attributes (`HttpOnly`, `Secure`, `Path`, `SameSite`, `MaxAge`) as the session cookie. When `ServerIDCookieName` is empty, no additional cookie is set.
+The cookie carries the same value as the server ID (set with `doors.WithID(...)`) and shares the same attributes (`HttpOnly`, `Secure`, `Path`, `SameSite`, `MaxAge`) as the session cookie. When the cookie name is empty, no additional cookie is set.
 
 ## System
 
@@ -99,7 +98,6 @@ The fields that matter most in practice are:
 - `ServerDisableGzip`: disables gzip for HTML, JS, and CSS.
 - `ServerSessionCookiePrefix`: optional prefix for the internal **Doors** session cookie name. Empty by default, so with `doors.WithID("blue")` the cookie is named `blue`. Set it explicitly when you want browser-enforced cookie prefix rules such as `__Host-` or `__Secure-`.
 - `ServerSessionCookieNoSecure`: omits the `Secure` attribute from the internal **Doors** session cookie. Use only for plain HTTP development.
-- `ServerIDCookieName`: name of an additional cookie that carries the server ID for sticky session load balancing. When empty, no additional cookie is set.
 - `ServerRequestBodyLimit`: max request body size in bytes for hook and form submission handlers. Default `8 MB`. Applies to all `doors.A...` event handlers, hooks, and form submissions. Also used as the max memory limit for automatically parsed form data (e.g. `ASubmit`).
 
 The `Solitaire*` fields tune the sync transport between server and browser:

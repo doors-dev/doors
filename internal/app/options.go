@@ -26,6 +26,7 @@ type Options struct {
 	ESBuild        func(profile string) api.BuildOptions
 	SessionTracker SessionTracker
 	ID             string
+	CookieName     string
 	ErrorPage      ErrorPage
 	Logger         *slog.Logger
 }

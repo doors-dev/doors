@@ -14,8 +14,9 @@ import (
 )
 
 type sessionTestApp struct {
-	conf    common.Conf
-	removed chan string
+	conf       common.Conf
+	cookieName string
+	removed    chan string
 }
 
 func newSessionTestApp() *sessionTestApp {
@@ -36,7 +37,7 @@ func (a *sessionTestApp) Conf() *common.Conf {
 }
 
 func (a *sessionTestApp) PathMaker() path.PathMaker {
-	return path.NewPathMaker(a.conf.ServerSessionCookiePrefix, "test", a.conf.ServerIDCookieName)
+	return path.NewPathMaker(a.conf.ServerSessionCookiePrefix, "test", a.cookieName)
 }
 
 func (a *sessionTestApp) RemoveSession(id string) {
@@ -141,7 +142,7 @@ func TestSessionRenewCookie(t *testing.T) {
 
 func TestSessionRenewServerIDCookie(t *testing.T) {
 	app := newSessionTestApp()
-	app.conf.ServerIDCookieName = "server_id"
+	app.cookieName = "server_id"
 	sess := NewSession(app)
 	w := httptest.NewRecorder()
 	if !sess.Renew(w) {
