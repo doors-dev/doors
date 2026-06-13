@@ -17,16 +17,23 @@ package shredder
 import (
 	"context"
 	"log/slog"
+	"slices"
 	"sync"
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 )
 
+type bufferedExecutable struct {
+	e executable
+	l *slog.Logger
+}
+
 type ValveFrame struct {
-	mu     sync.Mutex
-	buffer []executable
-	active atomic.Bool
+	mu      sync.Mutex
+	buffer  []bufferedExecutable
+	active  atomic.Bool
+	reverse bool
 }
 
 func (f *ValveFrame) Activate() {
@@ -39,9 +46,14 @@ func (f *ValveFrame) Activate() {
 	buf := f.buffer
 	f.buffer = nil
 	f.mu.Unlock()
-	for i, e := range buf {
-		f.schedule(e, slog.Default())
-		buf[i] = nil
+	if f.reverse {
+		for _, e := range slices.Backward(buf) {
+			f.schedule(e.e, e.l)
+		}
+		return
+	}
+	for _, e := range buf {
+		f.schedule(e.e, e.l)
 	}
 }
 
@@ -56,7 +68,7 @@ func (f *ValveFrame) schedule(e executable, l *slog.Logger) {
 		e.execute(func(error) {})
 		return
 	}
-	f.buffer = append(f.buffer, e)
+	f.buffer = append(f.buffer, bufferedExecutable{e: e, l: l})
 	f.mu.Unlock()
 }
 

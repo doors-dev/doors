@@ -88,7 +88,7 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) boo
 	ctx, frame := ctex.AfterFrameInsert(h.tracker.Context())
 	defer frame.Activate()
 	if track != 0 {
-		frame.RunAfter(nil, nil, func(b bool) {
+		frame.After().Run(nil, nil, func(b bool) {
 			h.tracker.inst().Call(reportHook(track))
 		})
 	}

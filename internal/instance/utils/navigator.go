@@ -74,7 +74,7 @@ func (n *navigator) push(ctx context.Context, l path.Location, replace bool) {
 		n.call(l.String(), seq, replace)
 		return
 	}
-	after.RunAfter(nil, nil, func(b bool) {
+	after.After().Run(nil, nil, func(b bool) {
 		n.call(l.String(), seq, replace)
 	})
 }

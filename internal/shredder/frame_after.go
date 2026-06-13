@@ -17,82 +17,71 @@ package shredder
 import (
 	"context"
 	"log/slog"
-	"slices"
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
 )
 
+type afterFrameState int
+
+const (
+	afterWaiting = iota
+	afterActivated
+	afterFired
+)
+
 type AfterFrame struct {
-	mu        sync.Mutex
-	counter   int
-	fired     bool
-	activated bool
-	after     []executable
+	mu      sync.Mutex
+	state   afterFrameState
+	counter int
+	valve   ValveFrame
 }
 
 func (f *AfterFrame) Activate() {
 	f.mu.Lock()
-	if f.activated {
+	if f.state != afterWaiting {
 		f.mu.Unlock()
 		return
 	}
-	f.activated = true
 	if f.counter != 0 {
+		f.state = afterActivated
 		f.mu.Unlock()
 		return
 	}
-	after := f.after
-	f.after = nil
-	f.fired = true
+	f.state = afterFired
+	f.valve.reverse = true
 	f.mu.Unlock()
-	for _, e := range slices.Backward(after) {
-		e.execute(func(err error) {})
-	}
+	f.valve.Activate()
 }
 
-func (f *AfterFrame) RunAfter(ctx context.Context, r Runtime, fun func(bool)) {
-	e := run{runtime: r, ctx: ctx, fun: fun}
-	f.mu.Lock()
-	if f.fired {
-		f.mu.Unlock()
-		e.execute(func(err error) {})
-		return
-	}
-	f.after = append(f.after, e)
-	f.mu.Unlock()
+func (f *AfterFrame) After() SimpleFrame {
+	return &f.valve
 }
 
 func (f *AfterFrame) schedule(e executable, _ *slog.Logger) {
 	f.mu.Lock()
-	if f.fired {
-		f.mu.Unlock()
-		e.execute(func(err error) {})
-		return
+	if f.state != afterFired {
+		f.counter += 1
 	}
-	f.counter += 1
 	f.mu.Unlock()
 	e.execute(f.report)
 }
 
 func (f *AfterFrame) report(error) {
 	f.mu.Lock()
-	if f.fired {
-		f.mu.Unlock()
-		panic("can't report after fire")
-	}
-	f.counter -= 1
-	if f.counter != 0 || !f.activated {
+	if f.state == afterFired {
 		f.mu.Unlock()
 		return
 	}
-	after := f.after
-	f.after = nil
-	f.fired = true
-	f.mu.Unlock()
-	for _, e := range slices.Backward(after) {
-		e.execute(func(err error) {})
+	f.counter -= 1
+	if f.counter > 0 || f.state != afterActivated {
+		f.mu.Unlock()
+		return
 	}
+	f.state = afterFired
+	f.valve.reverse = true
+	f.mu.Unlock()
+	f.valve.Activate()
 }
 
 func (f *AfterFrame) Run(ctx context.Context, r Runtime, fun func(bool)) {
@@ -104,4 +93,4 @@ func (f *AfterFrame) Submit(ctx context.Context, r Runtime, fun func(bool)) {
 	f.schedule(spawn{runtime: r, ctx: ctx, fun: fun}, common.Logger(ctx))
 }
 
-var _ SimpleFrame = &AfterFrame{}
+var _ SimpleFrame = (*AfterFrame)(nil)
