@@ -331,6 +331,9 @@ class Controller {
 	}
 	kill() {
 		if (this.state_ == state.dead) {
+			if (!document.hidden) {
+				this.reload()
+			}
 			return
 		}
 		this.state_ = state.dead
