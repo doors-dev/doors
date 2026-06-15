@@ -146,7 +146,6 @@ type ALink struct {
 	// Actions to run after the hook request. Optional.
 	After Actions
 	// Actions to run on error.
-	// Default (nil) triggers a location reload.
 	OnError Actions
 }
 
@@ -179,8 +178,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	h.Scope = linkScope{}.And(h.Scope)
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 		if core.Instance().Session().App().Draining() {
-			req := &request{w: w, r: r, ctx: ctx}
-			req.After(ActionLocationReload{})
+			w.WriteHeader(http.StatusGone)
 			InstanceEnd(ctx)
 			return false
 		}
@@ -201,9 +199,6 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	hook, ok := core.Door().RegisterHook(handler, nil)
 	if !ok {
 		return nil
-	}
-	if h.OnError == nil {
-		h.OnError = ActionLocationReload{}
 	}
 	front.AttrsAppendCapture(attrs, front.LinkCapture{
 		StopPropagation: h.StopPropagation,

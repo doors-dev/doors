@@ -30,6 +30,7 @@ export interface Connector {
 	send(frame: Frame): void
 	pause(): void
 	resume(): void
+	resetDelays(): void
 }
 
 export function NewConnector(ctrl: Controller): Connector {
@@ -46,10 +47,15 @@ class Conn {
 	private ts: number = 0
 	private pausePromise: Promise<void>
 	private pauseCont: (() => void) | null = null
+
 	constructor(private ctrl_: Controller) {
 		new PackageReceiver(this, 1)
 		this.sender = new ReportSender(this)
 		this.pausePromise = new Promise((res) => res())
+	}
+	resetDelays() {
+		this.receiverDelay.reset()
+		this.senderDelay.reset()
 	}
 	resume() {
 		if (!this.pauseCont) {
@@ -244,7 +250,7 @@ class ReportSender {
 		if (err) {
 			return
 		}
-		if (response.status === 401 || response.status === 410) {
+		if (response.status === 410) {
 			this.conn_.kill()
 			return
 		}
@@ -350,7 +356,7 @@ class ReportWriter {
 		this.writer_.write(this.writer)
 		promise.then((response) => {
 			result(() => this.writer.abort())
-			if (response.status === 401 || response.status === 410) {
+			if (response.status === 410) {
 				this.kill()
 				return
 			}
@@ -437,7 +443,7 @@ class PackageReceiver {
 			this.error()
 			return false
 		}
-		if (response.status === 401 || response.status === 410) {
+		if (response.status === 410) {
 			this.kill()
 			return false
 		}

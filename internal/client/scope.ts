@@ -17,8 +17,8 @@ import { requestTimeout, id, prefix } from './params'
 import { AbortTimer, FetchOpt, result } from './lib'
 import action, { Action } from './calls'
 import { decodePayload } from './package'
-import controller from './controller'
 import { HookErr, hookErrKinds } from './hook_err'
+import controller from './controller'
 
 export type ScopeSet = [keyof typeof newScope, string, any]
 
@@ -31,7 +31,7 @@ export function NewFetch(params: {
 	indicator: Array<IndicatorEntry>,
 	before: Array<Action>
 }): Fetch {
-	const hook = new Hook(params) 
+	const hook = new Hook(params)
 	return hook.fetch
 }
 
@@ -66,26 +66,6 @@ class Hook {
 		runtime.submitHook(this)
 		return this.promise_
 	}
-	/*
-	capture(name: string, opt: any, arg: any) {
-		const captureFunction = captures[name]
-		if (!captureFunction) {
-			this.err(new HookErr(hookErrKinds.capture, new Error("capture " + name + " not found")))
-			return this.promise_
-		}
-		try {
-			this.fetch_ = captureFunction(arg, opt)
-			if (this.fetch_ === undefined) {
-				this.rej_(new HookErr(hookErrKinds.canceled))
-				return this.promise_
-			}
-		} catch (e) {
-			this.rej_(new HookErr(hookErrKinds.capture, e))
-			return this.promise_
-		}
-		runtime.submitHook(this)
-		return this.promise_
-	} */
 	nextScope() {
 		return this.scopeQueue_.shift()
 	}
@@ -123,12 +103,12 @@ class Hook {
 			}).then(r => {
 				this.abortTimer_!.cancel()
 				if (r.ok) {
+					controller.resetDelays()
 					runtime.hookOk(track, r)
 					return
 				}
-				if (r.status === 401 || r.status === 410) {
+				if (r.status === 410) {
 					runtime.hookErr(track, new HookErr(hookErrKinds.gone, r))
-					controller.gone()
 				} else if (r.status === 400) {
 					runtime.hookErr(track, new HookErr(hookErrKinds.bad_request))
 				} else if (r.status === 404) {
@@ -287,8 +267,6 @@ abstract class Scope {
 	}
 	protected abstract process(hook: Hook, opt: any): void
 	protected abstract complete(hook: Hook): void
-
-
 }
 
 

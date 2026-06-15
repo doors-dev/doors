@@ -84,7 +84,7 @@ export const doorId = (doorId: string) => {
 export type FetchOpt = {
 	body: any;
 	headers: { [key: string]: string };
-}
+} | {}
 
 
 export const fetchOptForm = (data: FormData): FetchOpt => {
@@ -102,9 +102,9 @@ export const fetchOptJson = (data: any): FetchOpt => {
 }
 
 export const fetchOpt = (data: any): FetchOpt => {
-	const result: FetchOpt = {
-		body: null,
-		headers: {},
+	const result = {
+		body: null as any,
+		headers: {} as { [key: string]: string },
 	}
 	if (data === undefined) {
 		return result
@@ -221,7 +221,13 @@ export class ProgressiveDelay {
 	reset() {
 		this.resetFee()
 		this.resetMarker()
+		if (!this.task) {
+			return
+		}
+		this.task.immediate()
+		this.task = null
 	}
+	private task: DelayedTask | null
 	wait(): Promise<void> {
 		return new Promise(res => {
 			const diff = this.diff()
@@ -234,11 +240,25 @@ export class ProgressiveDelay {
 			if (diff == 0) {
 				this.increaseFee()
 			}
-			new ReliableTimer(this.delay(), () => {
+			this.task = new DelayedTask(this.delay(), () => {
 				this.resetMarker()
+				this.task = null
 				res()
 			})
 		})
+	}
+}
+
+class DelayedTask {
+	private timer: ReliableTimer
+	constructor(delay: number, private complete: () => void) {
+		this.timer = new ReliableTimer(delay, this.complete)
+	}
+	public immediate() {
+		if (!this.timer.cancel()) {
+			return
+		}
+		this.complete()
 	}
 }
 

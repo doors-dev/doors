@@ -67,7 +67,20 @@ ALink always navigates dynamically. A normal click is intercepted, a hook update
 
 The element is also a real anchor — `href` is set from the encoded model. That's there for browser features (middle-click, Cmd-click, "open in new tab", "copy link"), not as a fallback for clicks. Each of those opens the URL in a fresh browser context, handled like any other initial request.
 
-On a normal dynamic click, the client updates the browser URL to the link `href` before the hook request runs. If that request then fails (for example, the instance has expired), `OnError` runs. The default is `ActionLocationReload{}`, so the browser loads the URL now in the address bar, which is the link target.
+On a normal dynamic click, the client updates the browser URL to the link `href`
+**before** the hook request runs. If an error occurs:
+
+- **Canceled** (blocked by scope) or **Not found (404)** (hook removed on server):
+  The URL reverts to its previous value. Silent — `OnError` does not run.
+- **Gone (410)** (instance stopped): The page reloads to the new URL. `OnError`
+  does not run; the reload supersedes it.
+- **Network error** or **Server error (5xx)**: The hook request likely never
+  reached the server, so the URL reverts. `OnError` runs — you can show an error
+  message (for example via `ActionEmit` and a `$on` handler). If the request did
+  reach the server despite the error, the server will restore the URL to the new
+  path on reconnect.
+- **Bad request (400)** or other unexpected errors: The URL stays at the new
+  path. `OnError` runs. Rare, usually from third-party proxies.
 
 ## Fragment
 

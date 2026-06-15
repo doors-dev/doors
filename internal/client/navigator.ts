@@ -45,27 +45,32 @@ export type LinkElement = Element & {
 }
 
 
-const linkAttr = "data-d0a"
-
-export class Navigator {
-	private registry = new Set<LinkElement>()
-
-	constructor(
-	) {
-		window.addEventListener('popstate', async () => {
-			await this.pop();
-		});
-	}
-
-	private searchToMap(searchParams: URLSearchParams): Map<string, string[]> {
+const urls = {
+	toString(url: URL): string {
+		let path = url.pathname
+		if (!path.startsWith("/")) {
+			path = "/" + path
+		}
+		return path + (url.search ? (path.endsWith("/") ? url.search : "/" + url.search) : "")
+	},
+	current(): URL {
+		return new URL(window.location.href, window.location.origin)
+	},
+	new(path: string): URL {
+		return new URL(path, window.location.origin)
+	},
+	equal(url1: URL, url2: URL, checkHash: boolean = false) {
+		const hashMatch = checkHash ? url1.hash === url2.hash : true
+		return hashMatch && url1.pathname === url2.pathname && this.searchEqual(this.searchToMap(url1.searchParams), this.searchToMap(url2.searchParams))
+	},
+	searchToMap(searchParams: URLSearchParams): Map<string, string[]> {
 		const map = new Map<string, string[]>();
 		for (const key of searchParams.keys()) {
 			map.set(key, searchParams.getAll(key));
 		}
 		return map;
-	}
-
-	private searchEqual(
+	},
+	searchEqual(
 		a: Map<string, string[]>,
 		b: Map<string, string[]>
 	): boolean {
@@ -79,9 +84,59 @@ export class Navigator {
 		}
 		return true;
 	}
+}
 
+
+const linkAttr = "data-d0a"
+
+export class Navigator {
+	private registry = new Set<LinkElement>()
+	constructor(
+	) {
+		window.addEventListener('popstate', this.pop);
+	}
+	private blockPop: Array<{ id: number, time: number }> = []
+	private isPopBlocked() {
+		if (this.blockPop.length == 0) {
+			return false
+		}
+		const blockPop = this.blockPop
+		this.blockPop = []
+		const id = history.state?.next
+		let blocked = false
+		for (const block of blockPop) {
+			if (Date.now() - block.time > 1000) {
+				continue
+			}
+			if (id === block.id) {
+				blocked = true
+				continue
+			}
+			this.blockPop.push(block)
+		}
+		return blocked
+	}
+	private pop = async (): Promise<void> => {
+		if (this.isPopBlocked()) {
+			return
+		}
+		const abortTimer = new AbortTimer(requestTimeout)
+		try {
+			const r = await fetch(`${prefix}/u/${id}${urls.toString(urls.current())}`, {
+				method: "GET",
+				signal: abortTimer.signal,
+			});
+			if (!r.ok) {
+				throw new Error("code " + r.status);
+			}
+		} catch (e) {
+			location.reload()
+		} finally {
+			abortTimer.cancel()
+		}
+	}
 	scan(parent: Element | Document | DocumentFragment) {
-		const url = this.urlCurrent()
+		const url = urls.current()
 		for (const element of parent.querySelectorAll(`[${linkAttr}][href]:not([${linkAttr}="indexed"])`) as any as Array<HTMLAnchorElement>) {
 			const settings = JSON.parse(element.getAttribute(linkAttr)!)
 			element.setAttribute(linkAttr, "indexed")
@@ -101,7 +156,7 @@ export class Navigator {
 	}
 
 	public activateCurrent(): void {
-		this.activate(this.urlCurrent())
+		this.activate(urls.current())
 	}
 
 	private trim(path: string): string {
@@ -111,7 +166,7 @@ export class Navigator {
 	private newLink(el: Element, settings: any): LinkElement {
 		const linkEl = el as LinkElement
 		linkEl._d0r = {
-			url: new URL(el.getAttribute("href")!, window.location.origin),
+			url: urls.new(el.getAttribute("href")!),
 			settings: settings,
 			state: {
 				indicator: undefined,
@@ -123,7 +178,7 @@ export class Navigator {
 	private activateLink(el: LinkElement, newUrl: URL): LinkElement {
 		const data = el._d0r
 		const [pathMatchTuple, queryMatchers, matchFragment, indicators]: any = data.settings
-		if (data.state.url && this.urlAreEqual(data.state.url, newUrl, matchFragment)) {
+		if (data.state.url && urls.equal(data.state.url, newUrl, matchFragment)) {
 			return el
 		}
 		const pathMatch: PathMatchType = pathMatchTuple[0];
@@ -147,13 +202,13 @@ export class Navigator {
 			}
 		}
 		if (match) {
-			const newSearch = this.searchToMap(newUrl.searchParams)
-			const search = this.searchToMap(url.searchParams)
+			const newSearch = urls.searchToMap(newUrl.searchParams)
+			const search = urls.searchToMap(url.searchParams)
 			for (const matcher of queryMatchers) {
 				const matchType: QueryMatchType = matcher[0];
 				const matchArg: string[] | undefined = matcher[1];
 				if (matchType == queryMatcherTypes.all) {
-					match = this.searchEqual(newSearch, search);
+					match = urls.searchEqual(newSearch, search);
 					break
 				}
 				if (matchType == queryMatcherTypes.ignoreAll) {
@@ -178,7 +233,7 @@ export class Navigator {
 						b.set(param, search.get(param))
 						search.delete(param)
 					}
-					match = this.searchEqual(a, b);
+					match = urls.searchEqual(a, b);
 					if (!match) {
 						break
 					}
@@ -198,71 +253,50 @@ export class Navigator {
 		return el
 	}
 
-	private async pop(): Promise<void> {
-		const abortTimer = new AbortTimer(requestTimeout)
-		try {
-			const r = await fetch(`${prefix}/u/${id}${this.urlCurrentString()}`, {
-				method: "GET",
-				signal: abortTimer.signal,
-			});
-			if (!r.ok) {
-				throw new Error("code " + r.status);
-			}
-		} catch (e) {
-			location.reload()
-		} finally {
-			abortTimer.cancel()
-		}
-	}
-
-	urlCurrent(): URL {
-		return new URL(window.location.href)
-	}
-
-	private urlCurrentString(): string {
-		const url = this.urlCurrent()
-		let path = url.pathname
-		if (!path.startsWith("/")) {
-			path = "/" + path
-		}
-		return path + (url.search ? (path.endsWith("/") ? url.search : "/" + url.search) : "")
-	}
-
-	private urlAreEqual(url1: URL, url2: URL, checkHash: boolean = false) {
-		const hashMatch = checkHash ? url1.hash === url2.hash : true
-		return hashMatch && url1.pathname === url2.pathname && this.searchEqual(this.searchToMap(url1.searchParams), this.searchToMap(url2.searchParams))
-	}
-	public push(path: string, serverPush: boolean): boolean {
-		const newUrl = new URL(path, window.location.origin);
-		const currentUrl = new URL(this.urlCurrent(), window.location.origin)
-		if (!this.urlAreEqual(currentUrl, newUrl)) {
-			history.pushState(null, '', path);
+	private counter = 0
+	public push(path: string, serverPush: boolean): (() => void) | null {
+		const newUrl = urls.new(path)
+		const currentUrl = urls.current()
+		if (!urls.equal(currentUrl, newUrl)) {
+			this.counter += 1
+			const id = this.counter
+			history.replaceState({ ...history.state, next: id }, '')
+			history.pushState({ id }, '', path);
 			if (serverPush) {
-				this.activateCurrent()
+				this.activate(newUrl)
 			}
-			return true
+			return () => {
+				if (history.state?.id !== id) {
+					return;
+				}
+				this.blockPop.push({ id, time: Date.now() })
+				history.go(-1);
+			}
 		}
 		if (serverPush) {
+			history.replaceState({ ...history.state, id: undefined }, '')
 			this.activateCurrent()
-			return false
+			return null
 		}
-		if (newUrl.hash != currentUrl.hash) {
-			history.replaceState(null, '', path);
-			this.activateCurrent()
+		if (newUrl.hash == currentUrl.hash) {
+			return null
 		}
+		history.replaceState(null, '', path);
+		this.activateCurrent()
 		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
 		if (hash) {
 			scrollInto(hash)
 		}
-		return false
+		return null
 	}
 	public replace(path: string): void {
-		const newUrl = new URL(path, window.location.origin);
-		const currentUrl = new URL(this.urlCurrent(), window.location.origin)
-		if (!this.urlAreEqual(currentUrl, newUrl)) {
-			this.activate(newUrl)
-			history.replaceState(null, '', path);
+		const newUrl = urls.new(path)
+		const currentUrl = urls.current()
+		if (urls.equal(newUrl, currentUrl)) {
+			return
 		}
+		history.replaceState(null, '', path);
+		this.activate(newUrl)
 	}
 
 }

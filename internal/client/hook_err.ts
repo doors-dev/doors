@@ -29,11 +29,11 @@ export class HookErr extends Error {
 			case hookErrKinds.other:
 				if (opt instanceof Error) {
 					message = `other error: ${opt.message}`
-				}
-				if (opt && opt.status) {
+				} else if (opt && opt.status) {
 					message = `other error: status ${opt.status}`
+				} else {
+					message = "other error"
 				}
-				message = "other error"
 				break
 			case hookErrKinds.network:
 				message = opt?.message

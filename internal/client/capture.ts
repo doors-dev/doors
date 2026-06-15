@@ -13,13 +13,14 @@
 // limitations under the License.
 
 import action from "./calls";
-import { fetchOpt, fetchOptJson, fetchOptForm, date, FetchOpt } from "./lib";
+import { fetchOpt, fetchOptJson, fetchOptForm, date, FetchOpt, result } from "./lib";
 import navigator from "./navigator";
 import { Fetch, NewFetch } from "./scope";
 import { decodePayload } from "./package";
 import { HookErr, hookErrKinds } from "./hook_err";
+import controller from "./controller";
 
-interface CaputeOpt {
+interface CaptureOpt {
 	// preventDefault
 	pd?: boolean;
 	// stopPropagation
@@ -31,7 +32,7 @@ interface CaputeOpt {
 	// exclude value
 	ev?: boolean;
 }
-function applyEventOpt(event: Event, opt: CaputeOpt): boolean {
+function applyEventOpt(event: Event, opt: CaptureOpt): boolean {
 	if (opt.et) {
 		if (event.target !== event.currentTarget) {
 			return false
@@ -100,7 +101,7 @@ export function capture(name: string, opt: any, arg: any, event: Event | undefin
 	return captureFunction(f, arg, opt)
 }
 
-type Capture = ((fetch: Fetch, data: any, opt: CaputeOpt) => Promise<Response>)
+type Capture = ((fetch: Fetch, data: any, opt: CaptureOpt) => Promise<Response>)
 const captures: { [key: string]: Capture } = {
 	"default": (fetch: Fetch, data: any) => {
 		return fetch(fetchOpt(data))
@@ -108,18 +109,32 @@ const captures: { [key: string]: Capture } = {
 	"json": (fetch: Fetch, data: any) => {
 		return fetch(fetchOptJson(data))
 	},
-	"link": (fetch: Fetch, event: MouseEvent, opt: CaputeOpt) => {
+	"link": async (fetch: Fetch, event: MouseEvent, opt: CaptureOpt) => {
 		opt.pd = true;
 		if (!applyEventOpt(event, opt)) {
 			throw new HookErr(hookErrKinds.canceled)
 		}
-		const href = (event.currentTarget as HTMLAnchorElement).href;
-		if (href) {
-			if (!navigator.push(href, false)) {
-				throw new HookErr(hookErrKinds.canceled)
-			}
+		const href = (event.currentTarget as HTMLAnchorElement).href!;
+		const revert = navigator.push(href, false)
+		if (!revert) {
+			throw new HookErr(hookErrKinds.canceled)
 		}
-		return fetch({} as FetchOpt)
+		const [res, err] = await result(() => fetch({}))
+		if (!err) {
+			return res
+		}
+		if (!(err instanceof HookErr)) {
+			throw err
+		}
+		if (err.network() || err.server()) {
+			revert()
+			throw err
+		}
+		if (err.notFound() || err.canceled()) {
+			revert()
+			throw err
+		}
+		throw err
 	},
 	"focus": (fetch: Fetch, event: FocusEvent) => {
 		const obj = {
@@ -128,7 +143,7 @@ const captures: { [key: string]: Capture } = {
 		};
 		return fetch(fetchOptJson(obj))
 	},
-	"focus_io": (fetch: Fetch, event: FocusEvent, opt: CaputeOpt) => {
+	"focus_io": (fetch: Fetch, event: FocusEvent, opt: CaptureOpt) => {
 		if (!applyEventOpt(event, opt)) {
 			throw new HookErr(hookErrKinds.canceled)
 		}
@@ -138,7 +153,7 @@ const captures: { [key: string]: Capture } = {
 		};
 		return fetch(fetchOptJson(obj))
 	},
-	"keyboard": (fetch: Fetch, event: KeyboardEvent, opt: CaputeOpt) => {
+	"keyboard": (fetch: Fetch, event: KeyboardEvent, opt: CaptureOpt) => {
 		if (!applyEventOpt(event, opt)) {
 			throw new HookErr(hookErrKinds.canceled)
 		}
@@ -155,7 +170,7 @@ const captures: { [key: string]: Capture } = {
 		};
 		return fetch(fetchOptJson(obj))
 	},
-	"pointer": (fetch: Fetch, event: PointerEvent, opt: CaputeOpt) => {
+	"pointer": (fetch: Fetch, event: PointerEvent, opt: CaptureOpt) => {
 		if (!applyEventOpt(event, opt)) {
 			throw new HookErr(hookErrKinds.canceled)
 		}
@@ -200,7 +215,7 @@ const captures: { [key: string]: Capture } = {
 		};
 		return fetch(fetchOptJson(obj))
 	},
-	"input": (fetch: Fetch, event: InputEvent, opt: CaputeOpt) => {
+	"input": (fetch: Fetch, event: InputEvent, opt: CaptureOpt) => {
 		return fetch(fetchOptJson({
 			type: event.type,
 			data: event.data,
@@ -242,6 +257,7 @@ export function attach(parent: Element | DocumentFragment | Document) {
 						return
 					}
 					if (error.gone()) {
+						controller.gone()
 						return
 					}
 					if (!onErr || onErr.length == 0) {

@@ -40,18 +40,18 @@ function syncAttributes(el: Element, attrs: {[key:string]:string}) {
 }
 
 const actions = {
-	location_reload: (_: Extras) => {
+	"location_reload": (_: Extras) => {
 		doAfter(() => {
 			location.reload()
 		})
 	},
-	indicate: (ext: Extras, duration: number, indicatations: Array<IndicatorEntry>) => {
+	"indicate": (ext: Extras, duration: number, indicatations: Array<IndicatorEntry>) => {
 		const id = indicator.start(ext.element ?? null, indicatations)
 		if (id) {
 			setTimeout(() => indicator.end(id), duration)
 		}
 	},
-	update_title: (_: Extras, content: string, attrs: {[key:string]:string}) => {
+	"update_title": (_: Extras, content: string, attrs: {[key:string]:string}) => {
 		let title = document.head.querySelector("title")
 		if (!title) {
 			title = document.createElement("title")
@@ -60,7 +60,7 @@ const actions = {
 		title.innerHTML = content
 		syncAttributes(title, attrs)
 	},
-	remove_meta: (_: Extras, name: string, property: boolean) => {
+	"remove_meta": (_: Extras, name: string, property: boolean) => {
 		const key = property ? "property" : "name"
 		let meta = document.head.querySelector(`meta[${key}=${JSON.stringify(name)}]`)
 		if(!meta) {
@@ -68,7 +68,7 @@ const actions = {
 		}
 		meta.remove()
 	},
-	update_meta: (_: Extras, name: string, property: boolean, attrs: {[key:string]:string}) => {
+	"update_meta": (_: Extras, name: string, property: boolean, attrs: {[key:string]:string}) => {
 		const key = property ? "property" : "name"
 		const targetAttrs = {
 			...attrs,
@@ -81,10 +81,10 @@ const actions = {
 		}
 		syncAttributes(meta, targetAttrs)
 	},
-	report_hook: (_: Extras, track: number) => {
+	"report_hook": (_: Extras, track: number) => {
 		report(track)
 	},
-	location_replace: (_: Extras, href: string, origin: boolean) => {
+	"location_replace": (_: Extras, href: string, origin: boolean) => {
 		let url: URL
 		if (origin) {
 			url = new URL(href, window.location.origin);
@@ -95,12 +95,12 @@ const actions = {
 			location.replace(url.toString())
 		})
 	},
-	scroll: (_: Extras, selector: string, options: any) => {
+	"scroll": (_: Extras, selector: string, options: any) => {
 		if(!scrollInto(selector, options)) {
 			throw new Error("element to scroll into not found")
 		}
 	},
-	location_assign: (_: Extras, href: string, origin: boolean) => {
+	"location_assign": (_: Extras, href: string, origin: boolean) => {
 		let url: URL
 		if (origin) {
 			url = new URL(href, window.location.origin);
@@ -111,30 +111,30 @@ const actions = {
 			location.assign(url.toString())
 		})
 	},
-	emit: (ext: Extras, name: string, doorId: number): any => {
+	"emit": (ext: Extras, name: string, doorId: number): any => {
 		const handler = doors.getHandler(doorId, name)
 		if (!handler) {
 			throw new Error(`handler ${name} not found`)
 		}
 		return handler(ext.payload!.any, ext.error as any)
 	},
-	dyna_set: (_: Extras, id: number, value: string) => {
+	"dyna_set": (_: Extras, id: number, value: string) => {
 		setAttr(id, value)
 	},
-	dyna_remove: (_: Extras, id: number) => {
+	"dyna_remove": (_: Extras, id: number) => {
 		removeAttr(id)
 	},
-	set_path: (_: Extras, path: string, replace: boolean) => {
+	"set_path": (_: Extras, path: string, replace: boolean) => {
 		if (replace) {
 			navigator.replace(path)
 			return
 		}
 		navigator.push(path, true)
 	},
-	door_replace: (ext: Extras, doorId: number) => {
+	"door_replace": (ext: Extras, doorId: number) => {
 		doors.replace(doorId, ext.payload!.text!)
 	},
-	door_update: (ext: Extras, doorId: number) => {
+	"door_update": (ext: Extras, doorId: number) => {
 		doors.update(doorId, ext.payload!.text!)
 	},
 }

@@ -247,6 +247,9 @@ class Controller {
 		window.addEventListener("pageshow", () => this.syncVisibility())
 		document.addEventListener("visibilitychange", () => this.syncVisibility())
 	}
+	resetDelays() {
+		this.connector_.resetDelays()
+	}
 	resetTTL() {
 		this.ttlTimer_.reset()
 	}
@@ -265,7 +268,7 @@ class Controller {
 		if (document.hidden && this.sleepTimer_ !== undefined) {
 			return
 		}
-		if (document.hidden ) {
+		if (document.hidden) {
 			this.sleepTimer_ = setTimeout(() => {
 				this.sleep()
 			}, disconnectAfter)
@@ -356,6 +359,9 @@ const controller = new Controller()
 
 export default {
 	ready: controller.ready,
+	resetDelays() {
+		controller.resetDelays()
+	},
 	gone() {
 		controller.kill()
 	}
