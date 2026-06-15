@@ -12,88 +12,215 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import ctrl from './controller'
-import { Hook } from './scope'
-import action, { Action } from './calls'
-import { decodePayload } from './package'
+import action from "./calls";
+import { fetchOpt, fetchOptJson, fetchOptForm, date, FetchOpt } from "./lib";
+import navigator from "./navigator";
+import { Fetch, NewFetch } from "./scope";
+import { decodePayload } from "./package";
+import { HookErr, hookErrKinds } from "./hook_err";
 
-export const hookErrKinds = {
-	canceled: "canceled",
-	unauthorized: "unauthorized",
-	not_found: "not_found",
-	other: "other",
-	network: "network",
-	bad_request: "bad_request",
-	server: "server",
-	capture: "capture",
-} as const
-
-type HookErrKind = typeof hookErrKinds[keyof typeof hookErrKinds]
-
-export class HookErr extends Error {
-	public arg: any
-	public status: number | undefined = undefined
-	public cause: Error | undefined = undefined
-	constructor(public kind: HookErrKind, opt?: any) {
-		let message: string
-		switch (kind) {
-			case hookErrKinds.not_found:
-				message = `hook not found on server, may be done`
-				break
-			case hookErrKinds.canceled:
-				message = `hook is blocked by scope`
-				break
-			case hookErrKinds.unauthorized:
-				message = `instance is stopped`
-				break
-			case hookErrKinds.other:
-				message = `other error: ${opt?.status}`
-				break
-			case hookErrKinds.network:
-				message = opt?.message
-				break
-			case hookErrKinds.capture:
-				message = opt?.message
-				break
-			case hookErrKinds.server:
-				message = `server error: ${opt?.status}`
-				break
-			case hookErrKinds.bad_request:
-				message = `body parsing error, bad request`
-				break
-			default:
-				throw new Error(`unsupported error type: ${kind}`)
-		}
-
-		const cause = opt instanceof Error ? opt : undefined
-		// @ts-expect-error: Error constructor overload not recognized by TS (ES2022 feature)
-		super(message, cause ? { cause } : undefined)
-		if (opt && opt.status && typeof opt.status == "number") {
-			this.status = opt.status
-		}
-		if (cause) {
-			this.cause = cause
+interface CaputeOpt {
+	// preventDefault
+	pd?: boolean;
+	// stopPropagation
+	sp?: boolean;
+	// exactTarget
+	et?: boolean;
+	// filter
+	fr?: Array<string> | null;
+	// exclude value
+	ev?: boolean;
+}
+function applyEventOpt(event: Event, opt: CaputeOpt): boolean {
+	if (opt.et) {
+		if (event.target !== event.currentTarget) {
+			return false
 		}
 	}
-	canceled() { return this.kind === hookErrKinds.canceled; }
-	notFound() { return this.kind === hookErrKinds.not_found; }
-	unauthorized() { return this.kind === hookErrKinds.unauthorized; }
-	other() { return this.kind === hookErrKinds.other; }
-	network() { return this.kind === hookErrKinds.network; }
-	capture() { return this.kind === hookErrKinds.capture; }
-	server() { return this.kind === hookErrKinds.server; }
-	badRequest() { return this.kind === hookErrKinds.bad_request; }
+	if (opt.pd) {
+		event.preventDefault();
+	}
+	if (opt.sp) {
+		event.stopPropagation();
+	}
+	if (opt.fr && opt.fr.length > 0) {
+		if (!opt.fr.includes(event['key'])) {
+			return false
+		}
+	}
+	return true
 }
+
+interface InputValues {
+	name: string | null;
+	value: string;
+	number: number | null;
+	date: string | null;
+	selected: string[];
+	checked: boolean;
+}
+
+function getInputValues(input: HTMLInputElement | HTMLSelectElement): InputValues {
+	const value = input.value;
+	let number: number | null = (input as HTMLInputElement).valueAsNumber;
+	if (isNaN(number)) {
+		number = null;
+	}
+
+	let dateValue: string | null = null;
+	const valueAsDate = (input as HTMLInputElement).valueAsDate;
+	if (valueAsDate) {
+		dateValue = valueAsDate.toISOString();
+	}
+
+	let selected: string[] = [];
+	if ('selectedOptions' in input && input.selectedOptions) {
+		selected = Array.from(input.selectedOptions).map(option => option.value);
+	}
+	const checked = 'checked' in input ? input.checked === true : false;
+	const name = input.name || null;
+
+	return { name, value, number, date: dateValue, selected, checked };
+}
+
+
 export function capture(name: string, opt: any, arg: any, event: Event | undefined, hook: any): Promise<Response> {
-	const [hookId, scopeQueue, indicator, before, onErr] = hook
-	const h = new Hook({
+	const captureFunction = captures[name]
+	if (!captureFunction) {
+		throw new HookErr(hookErrKinds.other, new Error("capture " + name + " not found"))
+	}
+	const [hookId, scopeQueue, indicator, before] = hook
+	const f = NewFetch({
 		hookId,
 		event: event,
 		scopeQueue,
 		indicator,
 		before
 	})
-	return h.capture(name, opt, arg)
+	return captureFunction(f, arg, opt)
+}
+
+type Capture = ((fetch: Fetch, data: any, opt: CaputeOpt) => Promise<Response>)
+const captures: { [key: string]: Capture } = {
+	"default": (fetch: Fetch, data: any) => {
+		return fetch(fetchOpt(data))
+	},
+	"json": (fetch: Fetch, data: any) => {
+		return fetch(fetchOptJson(data))
+	},
+	"link": (fetch: Fetch, event: MouseEvent, opt: CaputeOpt) => {
+		opt.pd = true;
+		if (!applyEventOpt(event, opt)) {
+			throw new HookErr(hookErrKinds.canceled)
+		}
+		const href = (event.currentTarget as HTMLAnchorElement).href;
+		if (href) {
+			if (!navigator.push(href, false)) {
+				throw new HookErr(hookErrKinds.canceled)
+			}
+		}
+		return fetch({} as FetchOpt)
+	},
+	"focus": (fetch: Fetch, event: FocusEvent) => {
+		const obj = {
+			type: event.type,
+			timestamp: date(new Date()),
+		};
+		return fetch(fetchOptJson(obj))
+	},
+	"focus_io": (fetch: Fetch, event: FocusEvent, opt: CaputeOpt) => {
+		if (!applyEventOpt(event, opt)) {
+			throw new HookErr(hookErrKinds.canceled)
+		}
+		const obj = {
+			type: event.type,
+			timestamp: date(new Date()),
+		};
+		return fetch(fetchOptJson(obj))
+	},
+	"keyboard": (fetch: Fetch, event: KeyboardEvent, opt: CaputeOpt) => {
+		if (!applyEventOpt(event, opt)) {
+			throw new HookErr(hookErrKinds.canceled)
+		}
+		const obj = {
+			type: event.type,
+			key: event.key,
+			code: event.code,
+			repeat: event.repeat,
+			altKey: event.altKey,
+			ctrlKey: event.ctrlKey,
+			shiftKey: event.shiftKey,
+			metaKey: event.metaKey,
+			timestamp: date(new Date()),
+		};
+		return fetch(fetchOptJson(obj))
+	},
+	"pointer": (fetch: Fetch, event: PointerEvent, opt: CaputeOpt) => {
+		if (!applyEventOpt(event, opt)) {
+			throw new HookErr(hookErrKinds.canceled)
+		}
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+		const obj = {
+			type: event.type,
+			pointerId: event.pointerId,
+			pressure: event.pressure,
+			tangentialPressure: event.tangentialPressure,
+			tiltX: event.tiltX,
+			tiltY: event.tiltY,
+			twist: event.twist,
+			buttons: event.buttons,
+			button: event.button,
+			pointerType: event.pointerType,
+			isPrimary: event.isPrimary,
+			pointer: {
+				x: event.offsetX,
+				y: event.offsetY,
+				width: event.width,
+				height: event.height,
+			},
+			target: {
+				x: rect.x,
+				y: rect.y,
+				width: rect.width,
+				height: rect.height,
+			},
+			page: {
+				x: window.scrollX,
+				y: window.scrollY,
+				width: window.innerWidth,
+				height: window.innerHeight,
+			},
+			screen: {
+				x: window.screenX,
+				y: window.screenY,
+				width: window.outerWidth,
+				height: window.outerHeight,
+			},
+			timestamp: date(new Date()),
+		};
+		return fetch(fetchOptJson(obj))
+	},
+	"input": (fetch: Fetch, event: InputEvent, opt: CaputeOpt) => {
+		return fetch(fetchOptJson({
+			type: event.type,
+			data: event.data,
+			...opt.ev === true ? {} : getInputValues(event.target as HTMLInputElement | HTMLSelectElement),
+			timestamp: date(new Date()),
+		}))
+	},
+	"change": (fetch: Fetch, event: Event) => {
+		return fetch(fetchOptJson({
+			type: event.type,
+			...getInputValues(event.target as HTMLInputElement | HTMLSelectElement),
+			timestamp: date(new Date()),
+		}))
+	},
+	"submit": (fetch: Fetch, event: SubmitEvent) => {
+		applyEventOpt(event, { pd: true });
+		const form = event.target as HTMLFormElement;
+		const formData = new FormData(form);
+		return fetch(fetchOptForm(formData))
+	},
 }
 
 const attr = "data-d0c"
@@ -102,11 +229,11 @@ export function attach(parent: Element | DocumentFragment | Document) {
 		const capturesList = JSON.parse(element.getAttribute(attr)!)
 		element.setAttribute(attr, "applied")
 		for (const [event, name, opt, hook] of capturesList) {
+			const [hookId, scopeQueue, indicator, before, onErr] = hook
 			element.addEventListener(event, async (e) => {
 				try {
-					await capture(name, opt, e, e, hook)
+					await capture(name, opt, e, e, [hookId, scopeQueue, indicator, before])
 				} catch (error: any) {
-					const onErr = hook[4] as Array<Action>
 					if (!(error instanceof HookErr)) {
 						console.error("unknown error in capture:", error)
 						return
@@ -114,8 +241,7 @@ export function attach(parent: Element | DocumentFragment | Document) {
 					if (error.canceled() || error.notFound()) {
 						return
 					}
-					if (error.unauthorized()) {
-						ctrl.gone()
+					if (error.gone()) {
 						return
 					}
 					if (!onErr || onErr.length == 0) {

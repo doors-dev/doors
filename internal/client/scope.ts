@@ -12,19 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { HookErr, hookErrKinds } from './capture'
-import captures from './captures'
 import indicator, { IndicatorEntry } from './indicator'
 import { requestTimeout, id, prefix } from './params'
-import { AbortTimer, result } from './lib'
+import { AbortTimer, FetchOpt, result } from './lib'
 import action, { Action } from './calls'
 import { decodePayload } from './package'
 import controller from './controller'
+import { HookErr, hookErrKinds } from './hook_err'
 
 export type ScopeSet = [keyof typeof newScope, string, any]
 
+export type Fetch = (opt: FetchOpt) => Promise<Response>
 
-export class Hook {
+export function NewFetch(params: {
+	hookId: number,
+	event?: Event,
+	scopeQueue: Array<ScopeSet>,
+	indicator: Array<IndicatorEntry>,
+	before: Array<Action>
+}): Fetch {
+	const hook = new Hook(params) 
+	return hook.fetch
+}
+
+class Hook {
 	private res_: (value: Response) => void
 	private rej_: (reason: HookErr) => void
 	private promise_: Promise<Response>
@@ -49,8 +60,13 @@ export class Hook {
 		} else {
 			this.scopeQueue_ = [...this.params_.scopeQueue]
 		}
-
 	}
+	fetch = async (opt: FetchOpt): Promise<Response> => {
+		this.fetch_ = opt
+		runtime.submitHook(this)
+		return this.promise_
+	}
+	/*
 	capture(name: string, opt: any, arg: any) {
 		const captureFunction = captures[name]
 		if (!captureFunction) {
@@ -69,7 +85,7 @@ export class Hook {
 		}
 		runtime.submitHook(this)
 		return this.promise_
-	}
+	} */
 	nextScope() {
 		return this.scopeQueue_.shift()
 	}
@@ -111,7 +127,7 @@ export class Hook {
 					return
 				}
 				if (r.status === 401 || r.status === 410) {
-					runtime.hookErr(track, new HookErr(hookErrKinds.unauthorized, r))
+					runtime.hookErr(track, new HookErr(hookErrKinds.gone, r))
 					controller.gone()
 				} else if (r.status === 400) {
 					runtime.hookErr(track, new HookErr(hookErrKinds.bad_request))

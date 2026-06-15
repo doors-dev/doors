@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { noStream } from "./params";
-
 
 export type Result<T, E> =
 	undefined extends E
@@ -83,24 +81,30 @@ export const doorId = (doorId: string) => {
 	return Number(doorId.slice(3))
 }
 
-export const fetchOptForm = (data: FormData) => {
+export type FetchOpt = {
+	body: any;
+	headers: { [key: string]: string };
+}
+
+
+export const fetchOptForm = (data: FormData): FetchOpt => {
 	return {
 		body: data,
 		headers: {},
 	}
 }
 
-export const fetchOptJson = (data: any) => {
+export const fetchOptJson = (data: any): FetchOpt => {
 	return {
 		body: JSON.stringify(data),
 		headers: { "Content-Type": "application/json;charset=UTF-8" }
 	}
 }
 
-export const fetchOpt = (data: any) => {
-	const result = {
-		body: null as any,
-		headers: {} as { [key: string]: string },
+export const fetchOpt = (data: any): FetchOpt => {
+	const result: FetchOpt = {
+		body: null,
+		headers: {},
 	}
 	if (data === undefined) {
 		return result

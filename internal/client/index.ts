@@ -14,10 +14,10 @@
 
 import door from './door'
 import { capture } from './capture'
-import { HookErr, hookErrKinds } from './capture'
 import controller from './controller'
 import navigator from './navigator'
 import { decodePayload } from './package'
+import { HookErr, hookErrKinds } from './hook_err'
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
 	const attrName = `data-d0h-${name}`
@@ -51,7 +51,7 @@ class $D {
 	fetch = async (name: string, arg: any): Promise<Response> => {
 		const hook = getHookParams(this.anchor_, name)
 		if (hook === undefined) {
-			throw new HookErr(hookErrKinds.capture, new Error("hook " + name + " not found"))
+			throw new HookErr(hookErrKinds.other, new Error("hook " + name + " not found"))
 		}
 		return await capture("default", undefined, arg, undefined, hook)
 	}
@@ -77,6 +77,7 @@ class $D {
 	}
 }
 
+type HookErrType = typeof HookErr
 
 function init(
 	anchor: HTMLElement,
@@ -91,7 +92,7 @@ function init(
 			clean: $D['clean'],
 			activateLinks: () => void,
 		},
-		HookErr: typeof HookErr,
+		HookErr: HookErrType,
 	) => Promise<void> | void
 ) {
 	const $d = new $D(anchor)

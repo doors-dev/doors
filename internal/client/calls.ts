@@ -16,10 +16,10 @@ import doors from "./door"
 import navigator from "./navigator"
 import indicator, { IndicatorEntry } from "./indicator"
 import { removeAttr, setAttr } from "./dyna"
-import { HookErr } from "./capture"
 import { doAfter, scrollInto } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
+import { HookErr } from "./hook_err.ts"
 
 
 type Extras = {
