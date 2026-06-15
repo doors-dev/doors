@@ -298,6 +298,53 @@ Calls to that same instance are serialized, so rapid repeated events on one acti
 
 If you reuse one activated attr across several elements, those elements also share the same hook instance and the same execution queue.
 
+## Event Presets
+
+Event attrs carry many fields. When the same `Scope`, `Indicator`, and `OnError` appear on every handler, a preset keeps that boilerplate in one place.
+
+A preset is a small struct implementing `doors.Attr`. It holds only the fields that vary per use and constructs the full event attr in `Proxy` and `Modify`:
+
+```go
+var _ doors.Attr = SaveClick{}
+
+type SaveClick struct {
+	On func(context.Context, doors.RequestEvent[doors.PointerEvent]) bool
+}
+
+func (p SaveClick) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return p.click().Proxy(cur, elem)
+}
+
+func (p SaveClick) Modify(ctx context.Context, tag string, attrs gox.Attrs) error {
+	return p.click().Modify(ctx, tag, attrs)
+}
+
+func (p SaveClick) click() doors.AClick {
+	return doors.AClick{
+		Scope:     &doors.ScopeBlocking{},
+		Indicator: doors.IndicateAttr("aria-busy", "true"),
+		OnError: doors.ActionIndicate{
+			Indicator: doors.IndicateClass("error"),
+			Duration:  300 * time.Millisecond,
+		},
+		On: p.On,
+	}
+}
+```
+
+Use it like any other event attr:
+
+```gox
+<button (SaveClick{
+	On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+		// save logic
+		return false
+	},
+})>Save</button>
+```
+
+The same pattern works for any event attr family — forms, keyboard, input and links.
+
 ## Unsupported
 
 If the browser event you need is not supported by the built-in `doors.A...` event attributes, wire it yourself in JavaScript and call a custom hook.
