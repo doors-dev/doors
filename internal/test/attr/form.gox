@@ -19,9 +19,9 @@ type formFragment struct {
 }
 
 elem (f *formFragment) Main() {
-	~{
-		f.r.Update(ctx, 0, "init")
-	}
+	~~
+	f.r.Update(ctx, 0, "init")
+	~~
 	~(f.r)
 	~(if f.raw {
 		~(f.form(f.submitRaw()))

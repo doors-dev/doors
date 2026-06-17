@@ -117,10 +117,10 @@ type Request interface {
 }
 
 type request struct {
-	w     http.ResponseWriter
-	r     *http.Request
-	ctx   context.Context
-	limit int
+	w            http.ResponseWriter
+	r            *http.Request
+	ctx          context.Context
+	limit        int
 	defaultLimit int
 }
 

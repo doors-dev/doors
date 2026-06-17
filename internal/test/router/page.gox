@@ -59,21 +59,21 @@ elem pageParallel() {
 	<html>
 		<body>
 			~>(doors.Parallel()) <>
-				~{
-					<-time.After(500 * time.Millisecond)
-				}
+				~~
+				<-time.After(500 * time.Millisecond)
+				~~
 				<div id="part-a">part-a</div>
 			</>
 			~>(doors.Parallel()) <>
-				~{
-					<-time.After(500 * time.Millisecond)
-				}
+				~~
+				<-time.After(500 * time.Millisecond)
+				~~
 				<div id="part-b">part-b</div>
 			</>
 			<>
-				~{
-					<-time.After(500 * time.Millisecond)
-				}
+				~~
+				<-time.After(500 * time.Millisecond)
+				~~
 				<div id="part-c">part-c</div>
 			</>
 		</body>
@@ -105,10 +105,10 @@ elem pageQuery(b doors.Source[PathQuery]) {
 				</div>
 			}))
 			
-			~{
-				tag := "next"
-				page := 2
-			}
+			~~
+			tag := "next"
+			page := 2
+			~~
 			~>doors.ALink{
 				Model: PathQuery{
 					Path: true,
@@ -320,9 +320,9 @@ elem pageEscaped(b doors.Source[PathEscaped]) {
 					~(path.Name)
 				</div>
 			}))
-			~{
-				name := "next value/again"
-			}
+			~~
+			name := "next value/again"
+			~~
 			~>doors.ALink{
 				Model: PathEscaped{
 					Path: true,
@@ -593,10 +593,10 @@ elem combinedAContent(l doors.Source[PathCrossA]) {
 			Tab: "details",
 		},
 	} <a id="model-to-custom">model-to-custom</a>
-	~{
-		tag := "from-model"
-		page := 3
-	}
+	~~
+	tag := "from-model"
+	page := 3
+	~~
 	~>doors.ALink{
 		Model: PathQuery{
 			Path: true,
@@ -625,10 +625,10 @@ elem combinedCustomContent(l doors.Source[CustomRoute]) {
 			Tab: "again",
 		},
 	} <a id="custom-next">custom-next</a>
-	~{
-		tag := "from-custom"
-		page := 5
-	}
+	~~
+	tag := "from-custom"
+	page := 5
+	~~
 	~>doors.ALink{
 		Model: PathQuery{
 			Path: true,

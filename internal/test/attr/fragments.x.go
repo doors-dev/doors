@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.36
+// Managed by GoX v0.2.1
 
 //line fragments.gox:1
 package attr
@@ -337,10 +337,10 @@ func (f *captureFragment) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line fragments.gox:202
 		f.r.Update(ctx, 0, "")
-		f.r.Update(ctx, 1, "")
-		f.r.Update(ctx, 2, "")
-		f.r.Update(ctx, 3, "")
-		f.r.Update(ctx, 4, "")
+	f.r.Update(ctx, 1, "")
+	f.r.Update(ctx, 2, "")
+	f.r.Update(ctx, 3, "")
+	f.r.Update(ctx, 4, "")
 
 //line fragments.gox:208
 		__e = __c.Any(f.r); if __e != nil { return }

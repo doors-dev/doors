@@ -238,35 +238,35 @@ An inline expression is a function literal evaluated immediately during renderin
 
 ```gox
 <div>
-    ~func {
+    ~({
         user, err := Users.get(id)
         if err != nil {
             return <span>DB error</span>
         }
         return Card(user)
-    }
+    })
 </div>
 ```
 
 It can also be used in attribute values:
 
 ```gox
-<input type="checkbox" checked=func {
+<input type="checkbox" checked=({
     user := Users.get(id)
-    return user.Agreed // false or nil omits the attribute
-}>
+    return user.Agreed
+})>
 ```
 
 ### Go snippets
 
-To switch to **Go** mode, use `~{ /* statements */ }`:
+To switch to **Go** mode, use `~~ /* statements */ ~~`:
 
 ```gox
 <card>
-    ~{
-        // write regular Go code here
-        user := Users.Get(id)
-    }
+    ~~
+    // write regular Go code here
+    user := Users.Get(id)
+    ~~
     <header>~(user.name)</header>
 </card>
 ```

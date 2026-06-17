@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.32
+// Managed by GoX v0.2.1
 
 //line beam_fragments.gox:1
 package beam
@@ -32,10 +32,10 @@ func (f *BeamSkipFragment) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:28
 		f.r.Update(ctx, 0, "init")
-		f.b.ReadAndSub(ctx, func(ctx context.Context, s state) bool {
-			<-time.After(300 * time.Millisecond)
-			return false
-		})
+	f.b.ReadAndSub(ctx, func(ctx context.Context, s state) bool {
+		<-time.After(300 * time.Millisecond)
+		return false
+	})
 
 //line beam_fragments.gox:34
 		__e = (f.node).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -44,11 +44,11 @@ func (f *BeamSkipFragment) Main() gox.Elem {
 			{
 //line beam_fragments.gox:36
 				f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-				if s.Str == "1" {
-					f.r.Update(ctx, 0, "propagated")
-				}
-				return false
-			})
+			if s.Str == "1" {
+				f.r.Update(ctx, 0, "propagated")
+			}
+			return false
+		})
 
 			}
 			__e = __c.Close(); if __e != nil { return }
@@ -104,19 +104,19 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:73
 		d := doors.DeriveBeam(f.b, func(s state) int {
-			return s.Int
-		})
-		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
-			return false
-		})
-		n1 := doors.Door{}
-		n2 := doors.Door{}
-		f.b.Mutate(ctx, func(s state) state {
-			s.Int = s.Int + 1
-			return s
-		})
-		r, _ := d.Read(ctx)
+		return s.Int
+	})
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
+	n1 := doors.Door{}
+	n2 := doors.Door{}
+	f.b.Mutate(ctx, func(s state) state {
+		s.Int = s.Int + 1
+		return s
+	})
+	r, _ := d.Read(ctx)
 
 //line beam_fragments.gox:88
 		__e = __c.Any(test.ReportId(1, fmt.Sprint(r))); if __e != nil { return }
@@ -127,19 +127,19 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 			{
 //line beam_fragments.gox:91
 				f.b.Mutate(ctx, func(s state) state {
-				s.Int = s.Int + 1
-				return s
-			})
-			r, _ := d.Read(ctx)
+			s.Int = s.Int + 1
+			return s
+		})
+		r, _ := d.Read(ctx)
 
 //line beam_fragments.gox:97
 				__e = __c.Any(test.ReportId(2, fmt.Sprint(r))); if __e != nil { return }
 //line beam_fragments.gox:99
 				n3 := doors.Door{}
-			d.Sub(ctx, func(ctx context.Context, s int) bool {
-				n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s)))
-				return false
-			})
+		d.Sub(ctx, func(ctx context.Context, s int) bool {
+			n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s)))
+			return false
+		})
 
 //line beam_fragments.gox:105
 				__e = __c.Any(&n3); if __e != nil { return }
@@ -153,10 +153,10 @@ func (f *BeamDeriveFragment) content() gox.Elem {
 			{
 //line beam_fragments.gox:109
 				f.b.Mutate(ctx, func(s state) state {
-				s.Int = s.Int + 1
-				return s
-			})
-			r, _ := f.b.Read(ctx)
+			s.Int = s.Int + 1
+			return s
+		})
+		r, _ := f.b.Read(ctx)
 
 //line beam_fragments.gox:115
 				__e = __c.Any(test.ReportId(3, fmt.Sprint(r.Int))); if __e != nil { return }
@@ -182,16 +182,16 @@ func (f *BeamConsistentFragment) content() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:129
 		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
-			return false
-		})
-		n1 := doors.Door{}
-		n2 := doors.Door{}
-		f.b.Mutate(ctx, func(s state) state {
-			s.Int = s.Int + 1
-			return s
-		})
-		r, _ := f.b.Read(ctx)
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
+	n1 := doors.Door{}
+	n2 := doors.Door{}
+	f.b.Mutate(ctx, func(s state) state {
+		s.Int = s.Int + 1
+		return s
+	})
+	r, _ := f.b.Read(ctx)
 
 //line beam_fragments.gox:141
 		__e = __c.Any(test.ReportId(1, fmt.Sprint(r.Int))); if __e != nil { return }
@@ -202,19 +202,19 @@ func (f *BeamConsistentFragment) content() gox.Elem {
 			{
 //line beam_fragments.gox:144
 				f.b.Mutate(ctx, func(s state) state {
-				s.Int = s.Int + 1
-				return s
-			})
-			r, _ := f.b.Read(ctx)
+			s.Int = s.Int + 1
+			return s
+		})
+		r, _ := f.b.Read(ctx)
 
 //line beam_fragments.gox:150
 				__e = __c.Any(test.ReportId(2, fmt.Sprint(r.Int))); if __e != nil { return }
 //line beam_fragments.gox:152
 				n3 := doors.Door{}
-			f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-				n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s.Int)))
-				return false
-			})
+		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+			n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s.Int)))
+			return false
+		})
 
 //line beam_fragments.gox:158
 				__e = __c.Any(&n3); if __e != nil { return }
@@ -228,10 +228,10 @@ func (f *BeamConsistentFragment) content() gox.Elem {
 			{
 //line beam_fragments.gox:162
 				f.b.Mutate(ctx, func(s state) state {
-				s.Int = s.Int + 1
-				return s
-			})
-			r, _ := f.b.Read(ctx)
+			s.Int = s.Int + 1
+			return s
+		})
+		r, _ := f.b.Read(ctx)
 
 //line beam_fragments.gox:168
 				__e = __c.Any(test.ReportId(3, fmt.Sprint(r.Int))); if __e != nil { return }
@@ -279,9 +279,9 @@ func (f *BeamUpdateFragment) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:191
 		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
-			return false
-		})
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
 
 //line beam_fragments.gox:197
 		__e = __c.Many(test.Button("update", func(ctx context.Context) bool {
@@ -321,19 +321,19 @@ func (f *BeamEqualFragment) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:229
 		if f.p == nil {
-			f.p = doors.DeriveBeamEqual(f.b, func(s state) string {
-				if s.Int % 2 == 0 {
-					return "even"
-				}
-				return "odd"
-			}, func(new string, old string) bool {
-				return new == old
-			})
-		}
-		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
-			return false
+		f.p = doors.DeriveBeamEqual(f.b, func(s state) string {
+			if s.Int % 2 == 0 {
+				return "even"
+			}
+			return "odd"
+		}, func(new string, old string) bool {
+			return new == old
 		})
+	}
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
 
 //line beam_fragments.gox:244
 		__e = __c.Any(f.p.Bind(func(v string) gox.Elem {
@@ -406,9 +406,9 @@ func (f *BeamRenderBranchUpdateFrameFragment) content(i int) gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 //line beam_fragments.gox:288
 		f.b.Mutate(ctx, func(i int) int {
-			return i + 1
-		})
-		newI, _ := f.b.Read(ctx)
+		return i + 1
+	})
+	newI, _ := f.b.Read(ctx)
 
 		__e = __c.Init("span"); if __e != nil { return }
 		{
@@ -431,12 +431,12 @@ func (f *BeamRenderBranchUpdateFrameFragment) Main() gox.Elem {
 		__e = __c.Any(&f.n); if __e != nil { return }
 //line beam_fragments.gox:299
 		f.b.ReadAndSub(ctx, func(ctx context.Context, i int) bool {
-			f.n.Inner(ctx, f.content(i))
-			return true
-		})
-		f.b.Mutate(ctx, func(i int) int {
-			return i + 1
-		})
+		f.n.Inner(ctx, f.content(i))
+		return true
+	})
+	f.b.Mutate(ctx, func(i int) int {
+		return i + 1
+	})
 
 	return })
 //line beam_fragments.gox:307
@@ -463,9 +463,9 @@ func (f *BeamRenderBranchInitFrameFragment) content(i int) gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 //line beam_fragments.gox:318
 		f.b.Mutate(ctx, func(i int) int {
-			return i + 1
-		})
-		newI, _ := f.b.Read(ctx)
+		return i + 1
+	})
+	newI, _ := f.b.Read(ctx)
 
 		__e = __c.Init("span"); if __e != nil { return }
 		{
@@ -488,11 +488,11 @@ func (f *BeamRenderBranchInitFrameFragment) Main() gox.Elem {
 		__e = __c.Any(&f.n); if __e != nil { return }
 //line beam_fragments.gox:329
 		go func() {
-			f.b.Sub(ctx, func(ctx context.Context, i int) bool {
-				f.n.Inner(ctx, f.content(i))
-				return true
-			})
-		}()
+		f.b.Sub(ctx, func(ctx context.Context, i int) bool {
+			f.n.Inner(ctx, f.content(i))
+			return true
+		})
+	}()
 
 	return })
 //line beam_fragments.gox:336
@@ -510,11 +510,11 @@ func (f *BeamRenderUpdateWarningFragment) content() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:346
 		n3 := doors.Door{}
-		_, _ = f.b.Read(ctx)
-		f.b.Sub(ctx, func(ctx context.Context, i int) bool {
-			n3.Inner(ctx, test.ReportId(4, fmt.Sprint(i)))
-			return false
-		})
+	_, _ = f.b.Read(ctx)
+	f.b.Sub(ctx, func(ctx context.Context, i int) bool {
+		n3.Inner(ctx, test.ReportId(4, fmt.Sprint(i)))
+		return false
+	})
 
 //line beam_fragments.gox:353
 		__e = __c.Any(&n3); if __e != nil { return }
@@ -560,7 +560,7 @@ func (f *BeamEffectSourceFragment) innerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:377
 		f.innerRenders++
-		value, _ := f.b.Effect(ctx)
+	value, _ := f.b.Effect(ctx)
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -590,7 +590,7 @@ func (f *BeamEffectSourceFragment) outerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:386
 		f.outerRenders++
-		f.host.Inner(ctx, f.innerContent())
+	f.host.Inner(ctx, f.innerContent())
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -646,7 +646,7 @@ func (f *BeamEffectDerivedFragment) innerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:420
 		f.innerRenders++
-		value, _ := f.d.Effect(ctx)
+	value, _ := f.d.Effect(ctx)
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -676,7 +676,7 @@ func (f *BeamEffectDerivedFragment) outerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:429
 		f.outerRenders++
-		f.host.Inner(ctx, f.innerContent())
+	f.host.Inner(ctx, f.innerContent())
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -699,11 +699,11 @@ func (f *BeamEffectDerivedFragment) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:438
 		if f.d == nil {
-			f.d = doors.DeriveBeam(f.b, func(v int) string {
-				return fmt.Sprintf("v:%d", v)
-			})
-		}
-		f.frame.Inner(ctx, f.outerContent())
+		f.d = doors.DeriveBeam(f.b, func(v int) string {
+			return fmt.Sprintf("v:%d", v)
+		})
+	}
+	f.frame.Inner(ctx, f.outerContent())
 
 //line beam_fragments.gox:445
 		__e = __c.Any(&f.frame); if __e != nil { return }
@@ -737,8 +737,8 @@ func (f *BeamEffectMultiFragment) innerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:468
 		f.innerRenders++
-		left, _ := f.left.Effect(ctx)
-		right, _ := f.right.Effect(ctx)
+	left, _ := f.left.Effect(ctx)
+	right, _ := f.right.Effect(ctx)
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -777,7 +777,7 @@ func (f *BeamEffectMultiFragment) outerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:479
 		f.outerRenders++
-		f.host.Inner(ctx, f.innerContent())
+	f.host.Inner(ctx, f.innerContent())
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -832,8 +832,8 @@ func (f *BeamEffectDuplicateFragment) innerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:512
 		f.innerRenders++
-		first, _ := f.b.Effect(ctx)
-		second, _ := f.b.Effect(ctx)
+	first, _ := f.b.Effect(ctx)
+	second, _ := f.b.Effect(ctx)
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -872,7 +872,7 @@ func (f *BeamEffectDuplicateFragment) outerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:523
 		f.outerRenders++
-		f.host.Inner(ctx, f.innerContent())
+	f.host.Inner(ctx, f.innerContent())
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -923,20 +923,20 @@ func (f *BeamReadAndSubFragment) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line beam_fragments.gox:553
 		if f.derived == nil {
-			f.derived = doors.DeriveBeam(f.source, func(v int) string {
-				return fmt.Sprintf("v:%d", v)
-			})
+		f.derived = doors.DeriveBeam(f.source, func(v int) string {
+			return fmt.Sprintf("v:%d", v)
+		})
+	}
+	if !f.derivedRegistered {
+		initial, ok := f.derived.ReadAndSub(ctx, func(ctx context.Context, value string) bool {
+			f.r.Update(ctx, 1, value)
+			return true
+		})
+		if ok {
+			f.r.Update(ctx, 0, initial)
+			f.derivedRegistered = true
 		}
-		if !f.derivedRegistered {
-			initial, ok := f.derived.ReadAndSub(ctx, func(ctx context.Context, value string) bool {
-				f.r.Update(ctx, 1, value)
-				return true
-			})
-			if ok {
-				f.r.Update(ctx, 0, initial)
-				f.derivedRegistered = true
-			}
-		}
+	}
 
 //line beam_fragments.gox:569
 		__e = __c.Any(test.Button("beam-read-sub-update-2", func(ctx context.Context) bool {

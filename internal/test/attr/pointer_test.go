@@ -99,43 +99,43 @@ func parseFloat(t *testing.T, s string) float64 {
 const epsilon = 5.0
 
 type reportedCoords struct {
-	offsetX, offsetY       float64
-	clientX, clientY       float64
-	pageX, pageY           float64
-	screenX, screenY       float64
-	pointerW, pointerH     float64
-	targetX, targetY       float64
-	targetW, targetH       float64
-	pageScrollX, pageScrollY float64
-	pageW, pageH           float64
+	offsetX, offsetY             float64
+	clientX, clientY             float64
+	pageX, pageY                 float64
+	screenX, screenY             float64
+	pointerW, pointerH           float64
+	targetX, targetY             float64
+	targetW, targetH             float64
+	pageScrollX, pageScrollY     float64
+	pageW, pageH                 float64
 	screenOffsetX, screenOffsetY float64
-	screenW, screenH       float64
+	screenW, screenH             float64
 }
 
 func readCoords(t *testing.T, page *rod.Page) reportedCoords {
 	return reportedCoords{
-		offsetX:        parseFloat(t, test.GetReportContent(t, page, 0)),
-		offsetY:        parseFloat(t, test.GetReportContent(t, page, 1)),
-		clientX:        parseFloat(t, test.GetReportContent(t, page, 2)),
-		clientY:        parseFloat(t, test.GetReportContent(t, page, 3)),
-		pageX:          parseFloat(t, test.GetReportContent(t, page, 4)),
-		pageY:          parseFloat(t, test.GetReportContent(t, page, 5)),
-		screenX:        parseFloat(t, test.GetReportContent(t, page, 6)),
-		screenY:        parseFloat(t, test.GetReportContent(t, page, 7)),
-		pointerW:       parseFloat(t, test.GetReportContent(t, page, 8)),
-		pointerH:       parseFloat(t, test.GetReportContent(t, page, 9)),
-		targetX:        parseFloat(t, test.GetReportContent(t, page, 10)),
-		targetY:        parseFloat(t, test.GetReportContent(t, page, 11)),
-		targetW:        parseFloat(t, test.GetReportContent(t, page, 12)),
-		targetH:        parseFloat(t, test.GetReportContent(t, page, 13)),
-		pageScrollX:    parseFloat(t, test.GetReportContent(t, page, 14)),
-		pageScrollY:    parseFloat(t, test.GetReportContent(t, page, 15)),
-		pageW:          parseFloat(t, test.GetReportContent(t, page, 16)),
-		pageH:          parseFloat(t, test.GetReportContent(t, page, 17)),
-		screenOffsetX:  parseFloat(t, test.GetReportContent(t, page, 18)),
-		screenOffsetY:  parseFloat(t, test.GetReportContent(t, page, 19)),
-		screenW:        parseFloat(t, test.GetReportContent(t, page, 20)),
-		screenH:        parseFloat(t, test.GetReportContent(t, page, 21)),
+		offsetX:       parseFloat(t, test.GetReportContent(t, page, 0)),
+		offsetY:       parseFloat(t, test.GetReportContent(t, page, 1)),
+		clientX:       parseFloat(t, test.GetReportContent(t, page, 2)),
+		clientY:       parseFloat(t, test.GetReportContent(t, page, 3)),
+		pageX:         parseFloat(t, test.GetReportContent(t, page, 4)),
+		pageY:         parseFloat(t, test.GetReportContent(t, page, 5)),
+		screenX:       parseFloat(t, test.GetReportContent(t, page, 6)),
+		screenY:       parseFloat(t, test.GetReportContent(t, page, 7)),
+		pointerW:      parseFloat(t, test.GetReportContent(t, page, 8)),
+		pointerH:      parseFloat(t, test.GetReportContent(t, page, 9)),
+		targetX:       parseFloat(t, test.GetReportContent(t, page, 10)),
+		targetY:       parseFloat(t, test.GetReportContent(t, page, 11)),
+		targetW:       parseFloat(t, test.GetReportContent(t, page, 12)),
+		targetH:       parseFloat(t, test.GetReportContent(t, page, 13)),
+		pageScrollX:   parseFloat(t, test.GetReportContent(t, page, 14)),
+		pageScrollY:   parseFloat(t, test.GetReportContent(t, page, 15)),
+		pageW:         parseFloat(t, test.GetReportContent(t, page, 16)),
+		pageH:         parseFloat(t, test.GetReportContent(t, page, 17)),
+		screenOffsetX: parseFloat(t, test.GetReportContent(t, page, 18)),
+		screenOffsetY: parseFloat(t, test.GetReportContent(t, page, 19)),
+		screenW:       parseFloat(t, test.GetReportContent(t, page, 20)),
+		screenH:       parseFloat(t, test.GetReportContent(t, page, 21)),
 	}
 }
 

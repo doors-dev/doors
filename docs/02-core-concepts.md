@@ -122,9 +122,9 @@ For ordinary render flow, wrap independent slow fragments with
 ```gox
 <>
 	~>(doors.Parallel()) <>
-		~{
-			user := loadUser(ctx)
-		}
+		~~
+		user := loadUser(ctx)
+		~~
 		<section>~(user.Name)</section>
 	</>
 </>

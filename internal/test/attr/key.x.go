@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.32
+// Managed by GoX v0.2.1
 
 //line key.gox:1
 package attr
@@ -66,12 +66,12 @@ func (f *keyFragment) Main() gox.Elem {
 		__e = __c.Submit(); if __e != nil { return }
 //line key.gox:42
 		f.r.Update(ctx, 0, "")
-		f.r.Update(ctx, 1, "")
-		f.r.Update(ctx, 2, "")
-		f.r.Update(ctx, 3, "")
-		f.r.Update(ctx, 4, "")
-		f.r.Update(ctx, 5, "")
-		f.r.Update(ctx, 6, "")
+	f.r.Update(ctx, 1, "")
+	f.r.Update(ctx, 2, "")
+	f.r.Update(ctx, 3, "")
+	f.r.Update(ctx, 4, "")
+	f.r.Update(ctx, 5, "")
+	f.r.Update(ctx, 6, "")
 
 //line key.gox:50
 		__e = __c.Any(f.r); if __e != nil { return }

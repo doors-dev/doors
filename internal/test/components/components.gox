@@ -11,9 +11,9 @@ import (
 
 elem head(b doors.Source[test.Path]) {
 	~>(new(doors.Door)) <div hidden id="head-anchor">
-		~{
-			path, _ := b.Effect(ctx)
-		}
+		~~
+		path, _ := b.Effect(ctx)
+		~~
 		~(if path.Vh {
 			<title>home</title>
 			<meta name="description" content="Welcome to the home page">

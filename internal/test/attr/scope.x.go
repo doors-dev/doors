@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.36
+// Managed by GoX v0.2.1
 
 //line scope.gox:1
 package attr
@@ -32,9 +32,9 @@ func (f *scopeFragment) scopePipeline() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line scope.gox:28
 		ds := &doors.ScopeDebounce{Duration: 250 * time.Millisecond, Limit: 0}
-		ds2 := &doors.ScopeDebounce{Duration: 250 * time.Millisecond, Limit: 0}
-		ss := &doors.ScopeSerial{}
-		fs := &doors.ScopeFrame{}
+	ds2 := &doors.ScopeDebounce{Duration: 250 * time.Millisecond, Limit: 0}
+	ss := &doors.ScopeSerial{}
+	fs := &doors.ScopeFrame{}
 
 //line scope.gox:33
 		__e = __c.Any(f.button("p1", ds, "1", false)); if __e != nil { return }

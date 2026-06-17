@@ -44,12 +44,12 @@ elem (f *dynaFragment) buttons(index string, da doors.AShared, value string) {
 }
 
 elem (f *dynaFragment) Main() {
-	~{
-		da1 := doors.NewAShared("data-test1", f.v1)
-	}
-	~{
-		da2 := doors.NewAShared("data-test2", f.v2)
-	}
+	~~
+	da1 := doors.NewAShared("data-test1", f.v1)
+	~~
+	~~
+	da2 := doors.NewAShared("data-test2", f.v2)
+	~~
 	~>(f.n) <>
 		~(f.content(da1, da2))
 	</>

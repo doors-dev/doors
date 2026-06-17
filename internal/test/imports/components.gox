@@ -77,9 +77,9 @@ elem fileRawSrcModify() {
 }
 
 elem fileImgFS() {
-	~{
-		moduleDir, _ := fs.Sub(moduleFS, "module_src")
-	}
+	~~
+	moduleDir, _ := fs.Sub(moduleFS, "module_src")
+	~~
 	<img id="file-img-fs" src=(doors.ResourceFS(moduleDir, "pixel.svg")) type="image/svg+xml"/>
 }
 
@@ -200,9 +200,9 @@ elem styleHead(_b doors.Source[test.Path]) {
 }
 
 elem styleFSHead(_b doors.Source[test.Path]) {
-	~{
-		moduleDir, _ := fs.Sub(moduleFS, "module_src")
-	}
+	~~
+	moduleDir, _ := fs.Sub(moduleFS, "module_src")
+	~~
 	<link rel="stylesheet" href=(doors.ResourceFS(moduleDir, "style.css"))/>
 }
 
@@ -258,9 +258,9 @@ elem moduleBundleHostHead(_b doors.Source[test.Path]) {
 }
 
 elem moduleBundleFSHead(_b doors.Source[test.Path]) {
-	~{
-		moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src")
-	}
+	~~
+	moduleBundleDir, _ := fs.Sub(moduleBundleFS, "module_bundle_src")
+	~~
 	<script
 		id="module-bundle-fs"
 		src=(doors.ResourceFS(moduleBundleDir, "index.ts"))

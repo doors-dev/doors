@@ -38,14 +38,14 @@ elem (f *keyFragment) Main() {
 		},
 	} <input type="text" id="input" placeholder=""/>
 	<hr/>
-	~{
-		f.r.Update(ctx, 0, "")
-		f.r.Update(ctx, 1, "")
-		f.r.Update(ctx, 2, "")
-		f.r.Update(ctx, 3, "")
-		f.r.Update(ctx, 4, "")
-		f.r.Update(ctx, 5, "")
-		f.r.Update(ctx, 6, "")
-	}
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	f.r.Update(ctx, 2, "")
+	f.r.Update(ctx, 3, "")
+	f.r.Update(ctx, 4, "")
+	f.r.Update(ctx, 5, "")
+	f.r.Update(ctx, 6, "")
+	~~
 	~(f.r)
 }

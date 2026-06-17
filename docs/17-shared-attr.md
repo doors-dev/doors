@@ -24,9 +24,9 @@ Prefer `ActionEmit` with a `$on(...)` handler when the browser should own the DO
 
 ```gox
 <>
-	~{
-		locked := doors.NewAShared("disabled", "")
-	}
+	~~
+	locked := doors.NewAShared("disabled", "")
+	~~
 
 	<header>
 		<button (locked)>Save draft</button>

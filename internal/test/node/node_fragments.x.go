@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.36
+// Managed by GoX v0.2.1
 
 //line node_fragments.gox:1
 package door
@@ -88,7 +88,7 @@ func (f *FragmentMany) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:42
 		f.n.Inner(ctx, f.sample())
-		n := doors.Door{}
+	n := doors.Door{}
 
 //line node_fragments.gox:45
 		__e = (n).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -321,7 +321,7 @@ func (f *FragmentXDoor) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:195
 		f.n.Inner(ctx, test.Marker("x-init"))
-		f.frame.Inner(ctx, f.mount())
+	f.frame.Inner(ctx, f.mount())
 
 //line node_fragments.gox:198
 		__e = __c.Any(&f.frame); if __e != nil { return }
@@ -1116,7 +1116,7 @@ func (f *FragmentClosestReload) outerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:604
 		f.outerRenders++
-		f.node.Inner(ctx, f.innerContent())
+	f.node.Inner(ctx, f.innerContent())
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -2241,7 +2241,7 @@ func (f *FragmentClosestXReload) outerContent() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1328
 		f.outerRenders++
-		f.node.Inner(ctx, f.innerContent())
+	f.node.Inner(ctx, f.innerContent())
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
@@ -2364,7 +2364,7 @@ func (f *FragmentDetachedReplace) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1413
 		f.node.Inner(ctx, test.Marker("replace-base"))
-		f.frame.Inner(ctx, f.mount())
+	f.frame.Inner(ctx, f.mount())
 
 //line node_fragments.gox:1416
 		__e = __c.Any(&f.frame); if __e != nil { return }
@@ -2488,7 +2488,7 @@ func (f *FragmentDetachedRebase) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1479
 		f.node.Inner(ctx, test.Marker("rebase-base"))
-		f.frame.Inner(ctx, f.mount())
+	f.frame.Inner(ctx, f.mount())
 
 //line node_fragments.gox:1482
 		__e = __c.Any(&f.frame); if __e != nil { return }
@@ -2652,8 +2652,8 @@ func (f *FragmentProxyMove) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1558
 		f.node.Inner(ctx, test.Marker("proxy-base"))
-		f.frame1.Inner(ctx, f.mountFrame1())
-		f.frame2.Inner(ctx, f.frame2Empty())
+	f.frame1.Inner(ctx, f.mountFrame1())
+	f.frame2.Inner(ctx, f.frame2Empty())
 
 //line node_fragments.gox:1562
 		__e = __c.Any(&f.frame1); if __e != nil { return }
@@ -2788,9 +2788,9 @@ func (f *FragmentHierarchy) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1630
 		f.grand.Inner(ctx, test.Marker("grand-init"))
-		f.child.Inner(ctx, f.childBody())
-		f.host1.Inner(ctx, f.host1Body())
-		f.host2.Inner(ctx, f.host2Empty())
+	f.child.Inner(ctx, f.childBody())
+	f.host1.Inner(ctx, f.host1Body())
+	f.host2.Inner(ctx, f.host2Empty())
 
 //line node_fragments.gox:1635
 		__e = __c.Any(&f.host1); if __e != nil { return }
@@ -2878,7 +2878,7 @@ func (f *FragmentErrorTransitions) Main() gox.Elem {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1693
 		f.node.Inner(ctx, test.Marker("error-base"))
-		f.frame.Inner(ctx, f.mount())
+	f.frame.Inner(ctx, f.mount())
 
 //line node_fragments.gox:1696
 		__e = __c.Any(&f.frame); if __e != nil { return }

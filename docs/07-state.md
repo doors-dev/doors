@@ -150,12 +150,12 @@ type CounterView struct {
 }
 
 elem (c *CounterView) Main() {
-	~{
-		c.counter.Sub(ctx, func(ctx context.Context, v int) bool {
-			c.body.Inner(ctx, v)
-			return false
-		})
-	}
+	~~
+	c.counter.Sub(ctx, func(ctx context.Context, v int) bool {
+		c.body.Inner(ctx, v)
+		return false
+	})
+	~~
 
 	~>(c.body) <span></span>
 }
@@ -170,9 +170,9 @@ Reach for the manual form when you need explicit control over the door, the subs
 ```gox
 <>
 	~>(new(doors.Door)) <section>
-		~{
-			settings, _ := settingsBeam.Effect(ctx)
-		}
+		~~
+		settings, _ := settingsBeam.Effect(ctx)
+		~~
 		<span>Days: ~(settings.Days)</span>
 	</section>
 </>
@@ -188,10 +188,10 @@ type SearchView struct {
 
 elem (v *SearchView) Main() {
 	~>(new(doors.Door)) <div>
-		~{
-			query, _ := v.query.Effect(ctx)
-			page, ok := v.page.Effect(ctx)
-		}
+		~~
+		query, _ := v.query.Effect(ctx)
+		page, ok := v.page.Effect(ctx)
+		~~
 		~(if ok {
 			<p>Query: ~(query)</p>
 			<p>Page: ~(page)</p>

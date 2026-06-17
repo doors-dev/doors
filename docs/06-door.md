@@ -46,9 +46,9 @@ Use `~(&door)` when you want to render the Door's current state directly:
 
 ```gox
 elem (p *Panel) Main() {
-	~{
-		p.body.Outer(ctx, <div>Prepared before mount</div>)
-	}
+	~~
+	p.body.Outer(ctx, <div>Prepared before mount</div>)
+	~~
 	~(&p.body)
 }
 ```

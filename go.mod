@@ -3,7 +3,7 @@ module github.com/doors-dev/doors
 go 1.25.1
 
 require (
-	github.com/doors-dev/gox v0.1.36
+	github.com/doors-dev/gox v0.2.1
 	github.com/evanw/esbuild v0.28.0
 	github.com/gammazero/deque v1.2.1
 	github.com/go-playground/form/v4 v4.3.0

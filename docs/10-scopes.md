@@ -55,9 +55,9 @@ Sharing a scope instance means the handlers coordinate with each other instead o
 
 ```gox
 <>
-	~{
-		block := &doors.ScopeBlocking{}
-	}
+	~~
+	block := &doors.ScopeBlocking{}
+	~~
 
 	<button
 		(doors.AClick{
@@ -113,12 +113,12 @@ Unlike blocking, serial does not drop later events. It holds them and runs them 
 
 ```gox
 <>
-	~{
-		debounce := &doors.ScopeDebounce{
-			Duration: 300 * time.Millisecond,
-			Limit:    600 * time.Millisecond,
-		}
+	~~
+	debounce := &doors.ScopeDebounce{
+		Duration: 300 * time.Millisecond,
+		Limit:    600 * time.Millisecond,
 	}
+	~~
 
 	<input
 		(doors.AInput{
@@ -188,13 +188,13 @@ Example:
 
 ```gox
 <>
-	~{
-		frame := &doors.ScopeFrame{}
-		debounce := &doors.ScopeDebounce{
-			Duration: 300 * time.Millisecond,
-			Limit:    600 * time.Millisecond,
-		}
+	~~
+	frame := &doors.ScopeFrame{}
+	debounce := &doors.ScopeDebounce{
+		Duration: 300 * time.Millisecond,
+		Limit:    600 * time.Millisecond,
 	}
+	~~
 
 	<input
 		(doors.AInput{
@@ -230,9 +230,9 @@ Example:
 
 ```gox
 <>
-	~{
-		scope := &doors.ScopeConcurrent{}
-	}
+	~~
+	scope := &doors.ScopeConcurrent{}
+	~~
 
 	<button
 		(doors.AClick{
@@ -296,13 +296,13 @@ Scopes are joinable, so they can be chained into a pipeline with `.And(...)` (or
 
 ```gox
 <>
-	~{
-		frame := &doors.ScopeFrame{}
-		debounce := &doors.ScopeDebounce{
-			Duration: 150 * time.Millisecond,
-		}
-		serial := &doors.ScopeSerial{}
+	~~
+	frame := &doors.ScopeFrame{}
+	debounce := &doors.ScopeDebounce{
+		Duration: 150 * time.Millisecond,
 	}
+	serial := &doors.ScopeSerial{}
+	~~
 
 	<button
 		(doors.AClick{

@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.33-0.20260521150447-fa2a771ac3e0
+// Managed by GoX v0.2.1
 
 //line page.gox:1
 package router
@@ -218,7 +218,7 @@ func pageQuery(b doors.Source[PathQuery]) gox.Elem {
 			})); if __e != nil { return }
 //line page.gox:109
 				tag := "next"
-				page := 2
+			page := 2
 
 //line page.gox:112
 				__e = (doors.ALink{
@@ -1489,7 +1489,7 @@ func combinedAContent(l doors.Source[PathCrossA]) gox.Elem {
 		return })); if __e != nil { return }
 //line page.gox:597
 		tag := "from-model"
-		page := 3
+	page := 3
 
 //line page.gox:600
 		__e = (doors.ALink{
@@ -1595,7 +1595,7 @@ func combinedCustomContent(l doors.Source[CustomRoute]) gox.Elem {
 		return })); if __e != nil { return }
 //line page.gox:629
 		tag := "from-custom"
-		page := 5
+	page := 5
 
 //line page.gox:632
 		__e = (doors.ALink{

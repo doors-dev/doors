@@ -17,9 +17,9 @@ type pointerFragment struct {
 }
 
 elem (f *pointerFragment) Main() {
-	~{
-		f.r.Update(ctx, 0, "")
-	}
+	~~
+	f.r.Update(ctx, 0, "")
+	~~
 	~(f.r)
 	~>doors.APointerDown{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
@@ -198,13 +198,13 @@ type captureFragment struct {
 }
 
 elem (f *captureFragment) Main() {
-	~{
-		f.r.Update(ctx, 0, "")
-		f.r.Update(ctx, 1, "")
-		f.r.Update(ctx, 2, "")
-		f.r.Update(ctx, 3, "")
-		f.r.Update(ctx, 4, "")
-	}
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	f.r.Update(ctx, 2, "")
+	f.r.Update(ctx, 3, "")
+	f.r.Update(ctx, 4, "")
+	~~
 	~(f.r)
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {

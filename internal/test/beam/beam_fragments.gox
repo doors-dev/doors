@@ -24,22 +24,22 @@ type BeamSkipFragment struct {
 }
 
 elem (f *BeamSkipFragment) Main() {
-	~{
-		f.r.Update(ctx, 0, "init")
-		f.b.ReadAndSub(ctx, func(ctx context.Context, s state) bool {
-			<-time.After(300 * time.Millisecond)
+	~~
+	f.r.Update(ctx, 0, "init")
+	f.b.ReadAndSub(ctx, func(ctx context.Context, s state) bool {
+		<-time.After(300 * time.Millisecond)
+		return false
+	})
+	~~
+	~>(f.node) <>
+		~~
+		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+			if s.Str == "1" {
+				f.r.Update(ctx, 0, "propagated")
+			}
 			return false
 		})
-	}
-	~>(f.node) <>
-		~{
-			f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-				if s.Str == "1" {
-					f.r.Update(ctx, 0, "propagated")
-				}
-				return false
-			})
-		}
+		~~
 	</>
 	~(test.Button("update1", func(ctx context.Context) bool {
 		f.b.Update(ctx, state{Str: "1"})
@@ -69,49 +69,49 @@ elem (f *BeamDeriveFragment) Main() {
 }
 
 elem (f *BeamDeriveFragment) content() {
-	~{
-		d := doors.DeriveBeam(f.b, func(s state) int {
-			return s.Int
-		})
-		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
-			return false
-		})
-		n1 := doors.Door{}
-		n2 := doors.Door{}
+	~~
+	d := doors.DeriveBeam(f.b, func(s state) int {
+		return s.Int
+	})
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
+	n1 := doors.Door{}
+	n2 := doors.Door{}
+	f.b.Mutate(ctx, func(s state) state {
+		s.Int = s.Int + 1
+		return s
+	})
+	r, _ := d.Read(ctx)
+	~~
+	~(test.ReportId(1, fmt.Sprint(r)))
+	~>(n1) <>
+		~~
 		f.b.Mutate(ctx, func(s state) state {
 			s.Int = s.Int + 1
 			return s
 		})
 		r, _ := d.Read(ctx)
-	}
-	~(test.ReportId(1, fmt.Sprint(r)))
-	~>(n1) <>
-		~{
-			f.b.Mutate(ctx, func(s state) state {
-				s.Int = s.Int + 1
-				return s
-			})
-			r, _ := d.Read(ctx)
-		}
+		~~
 		~(test.ReportId(2, fmt.Sprint(r)))
-		~{
-			n3 := doors.Door{}
-			d.Sub(ctx, func(ctx context.Context, s int) bool {
-				n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s)))
-				return false
-			})
-		}
+		~~
+		n3 := doors.Door{}
+		d.Sub(ctx, func(ctx context.Context, s int) bool {
+			n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s)))
+			return false
+		})
+		~~
 		~(&n3)
 	</>
 	~>(n2) <>
-		~{
-			f.b.Mutate(ctx, func(s state) state {
-				s.Int = s.Int + 1
-				return s
-			})
-			r, _ := f.b.Read(ctx)
-		}
+		~~
+		f.b.Mutate(ctx, func(s state) state {
+			s.Int = s.Int + 1
+			return s
+		})
+		r, _ := f.b.Read(ctx)
+		~~
 		~(test.ReportId(3, fmt.Sprint(r.Int)))
 	</>
 	~(f.r)
@@ -125,46 +125,46 @@ type BeamConsistentFragment struct {
 }
 
 elem (f *BeamConsistentFragment) content() {
-	~{
-		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
-			return false
-		})
-		n1 := doors.Door{}
-		n2 := doors.Door{}
+	~~
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
+	n1 := doors.Door{}
+	n2 := doors.Door{}
+	f.b.Mutate(ctx, func(s state) state {
+		s.Int = s.Int + 1
+		return s
+	})
+	r, _ := f.b.Read(ctx)
+	~~
+	~(test.ReportId(1, fmt.Sprint(r.Int)))
+	~>(n1) <>
+		~~
 		f.b.Mutate(ctx, func(s state) state {
 			s.Int = s.Int + 1
 			return s
 		})
 		r, _ := f.b.Read(ctx)
-	}
-	~(test.ReportId(1, fmt.Sprint(r.Int)))
-	~>(n1) <>
-		~{
-			f.b.Mutate(ctx, func(s state) state {
-				s.Int = s.Int + 1
-				return s
-			})
-			r, _ := f.b.Read(ctx)
-		}
+		~~
 		~(test.ReportId(2, fmt.Sprint(r.Int)))
-		~{
-			n3 := doors.Door{}
-			f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-				n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s.Int)))
-				return false
-			})
-		}
+		~~
+		n3 := doors.Door{}
+		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+			n3.Inner(ctx, test.ReportId(4, fmt.Sprint(s.Int)))
+			return false
+		})
+		~~
 		~(&n3)
 	</>
 	~>(n2) <>
-		~{
-			f.b.Mutate(ctx, func(s state) state {
-				s.Int = s.Int + 1
-				return s
-			})
-			r, _ := f.b.Read(ctx)
-		}
+		~~
+		f.b.Mutate(ctx, func(s state) state {
+			s.Int = s.Int + 1
+			return s
+		})
+		r, _ := f.b.Read(ctx)
+		~~
 		~(test.ReportId(3, fmt.Sprint(r.Int)))
 	</>
 	~(f.r)
@@ -187,12 +187,12 @@ type BeamUpdateFragment struct {
 }
 
 elem (f *BeamUpdateFragment) Main() {
-	~{
-		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
-			return false
-		})
-	}
+	~~
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
+	~~
 	~(
 		test.Button("update", func(ctx context.Context) bool {
 			f.b.Update(ctx, state{
@@ -225,22 +225,22 @@ type BeamEqualFragment struct {
 }
 
 elem (f *BeamEqualFragment) Main() {
-	~{
-		if f.p == nil {
-			f.p = doors.DeriveBeamEqual(f.b, func(s state) string {
-				if s.Int % 2 == 0 {
-					return "even"
-				}
-				return "odd"
-			}, func(new string, old string) bool {
-				return new == old
-			})
-		}
-		f.b.Sub(ctx, func(ctx context.Context, s state) bool {
-			f.r.Update(ctx, 0, fmt.Sprint(s.Int))
-			return false
+	~~
+	if f.p == nil {
+		f.p = doors.DeriveBeamEqual(f.b, func(s state) string {
+			if s.Int % 2 == 0 {
+				return "even"
+			}
+			return "odd"
+		}, func(new string, old string) bool {
+			return new == old
 		})
 	}
+	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
+		f.r.Update(ctx, 0, fmt.Sprint(s.Int))
+		return false
+	})
+	~~
 	~(f.p.Bind(elem(v string) {
 		<div id="parity">~(v)</div>
 	}))
@@ -284,26 +284,26 @@ type BeamRenderBranchUpdateFrameFragment struct {
 
 elem (f *BeamRenderBranchUpdateFrameFragment) content(i int) {
 	<span id="watcher-i">~(fmt.Sprint(i))</span>
-	~{
-		f.b.Mutate(ctx, func(i int) int {
-			return i + 1
-		})
-		newI, _ := f.b.Read(ctx)
-	}
+	~~
+	f.b.Mutate(ctx, func(i int) int {
+		return i + 1
+	})
+	newI, _ := f.b.Read(ctx)
+	~~
 	<span id="watcher-newi">~(fmt.Sprint(newI))</span>
 }
 
 elem (f *BeamRenderBranchUpdateFrameFragment) Main() {
 	~(&f.n)
-	~{
-		f.b.ReadAndSub(ctx, func(ctx context.Context, i int) bool {
-			f.n.Inner(ctx, f.content(i))
-			return true
-		})
-		f.b.Mutate(ctx, func(i int) int {
-			return i + 1
-		})
-	}
+	~~
+	f.b.ReadAndSub(ctx, func(ctx context.Context, i int) bool {
+		f.n.Inner(ctx, f.content(i))
+		return true
+	})
+	f.b.Mutate(ctx, func(i int) int {
+		return i + 1
+	})
+	~~
 }
 
 type BeamRenderBranchInitFrameFragment struct {
@@ -314,25 +314,25 @@ type BeamRenderBranchInitFrameFragment struct {
 
 elem (f *BeamRenderBranchInitFrameFragment) content(i int) {
 	<span id="watcher-i">~(fmt.Sprint(i))</span>
-	~{
-		f.b.Mutate(ctx, func(i int) int {
-			return i + 1
-		})
-		newI, _ := f.b.Read(ctx)
-	}
+	~~
+	f.b.Mutate(ctx, func(i int) int {
+		return i + 1
+	})
+	newI, _ := f.b.Read(ctx)
+	~~
 	<span id="watcher-newi">~(fmt.Sprint(newI))</span>
 }
 
 elem (f *BeamRenderBranchInitFrameFragment) Main() {
 	~(&f.n)
-	~{
-		go func() {
-			f.b.Sub(ctx, func(ctx context.Context, i int) bool {
-				f.n.Inner(ctx, f.content(i))
-				return true
-			})
-		}()
-	}
+	~~
+	go func() {
+		f.b.Sub(ctx, func(ctx context.Context, i int) bool {
+			f.n.Inner(ctx, f.content(i))
+			return true
+		})
+	}()
+	~~
 }
 
 type BeamRenderUpdateWarningFragment struct {
@@ -342,14 +342,14 @@ type BeamRenderUpdateWarningFragment struct {
 }
 
 elem (f *BeamRenderUpdateWarningFragment) content() {
-	~{
-		n3 := doors.Door{}
-		_, _ = f.b.Read(ctx)
-		f.b.Sub(ctx, func(ctx context.Context, i int) bool {
-			n3.Inner(ctx, test.ReportId(4, fmt.Sprint(i)))
-			return false
-		})
-	}
+	~~
+	n3 := doors.Door{}
+	_, _ = f.b.Read(ctx)
+	f.b.Sub(ctx, func(ctx context.Context, i int) bool {
+		n3.Inner(ctx, test.ReportId(4, fmt.Sprint(i)))
+		return false
+	})
+	~~
 	~(&n3)
 }
 
@@ -373,27 +373,27 @@ type BeamEffectSourceFragment struct {
 }
 
 elem (f *BeamEffectSourceFragment) innerContent() {
-	~{
-		f.innerRenders++
-		value, _ := f.b.Effect(ctx)
-	}
+	~~
+	f.innerRenders++
+	value, _ := f.b.Effect(ctx)
+	~~
 	<div id="effect-source-value">~(fmt.Sprint(value))</div>
 	<div id="effect-source-inner-renders">~(fmt.Sprint(f.innerRenders))</div>
 }
 
 elem (f *BeamEffectSourceFragment) outerContent() {
-	~{
-		f.outerRenders++
-		f.host.Inner(ctx, f.innerContent())
-	}
+	~~
+	f.outerRenders++
+	f.host.Inner(ctx, f.innerContent())
+	~~
 	<div id="effect-source-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
 	~(&f.host)
 }
 
 elem (f *BeamEffectSourceFragment) Main() {
-	~{
-		f.frame.Inner(ctx, f.outerContent())
-	}
+	~~
+	f.frame.Inner(ctx, f.outerContent())
+	~~
 	~(&f.frame)
 	~(test.Button("effect-source-update-1", func(ctx context.Context) bool {
 		f.b.Update(ctx, 1)
@@ -416,32 +416,32 @@ type BeamEffectDerivedFragment struct {
 }
 
 elem (f *BeamEffectDerivedFragment) innerContent() {
-	~{
-		f.innerRenders++
-		value, _ := f.d.Effect(ctx)
-	}
+	~~
+	f.innerRenders++
+	value, _ := f.d.Effect(ctx)
+	~~
 	<div id="effect-derived-value">~(value)</div>
 	<div id="effect-derived-inner-renders">~(fmt.Sprint(f.innerRenders))</div>
 }
 
 elem (f *BeamEffectDerivedFragment) outerContent() {
-	~{
-		f.outerRenders++
-		f.host.Inner(ctx, f.innerContent())
-	}
+	~~
+	f.outerRenders++
+	f.host.Inner(ctx, f.innerContent())
+	~~
 	<div id="effect-derived-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
 	~(&f.host)
 }
 
 elem (f *BeamEffectDerivedFragment) Main() {
-	~{
-		if f.d == nil {
-			f.d = doors.DeriveBeam(f.b, func(v int) string {
-				return fmt.Sprintf("v:%d", v)
-			})
-		}
-		f.frame.Inner(ctx, f.outerContent())
+	~~
+	if f.d == nil {
+		f.d = doors.DeriveBeam(f.b, func(v int) string {
+			return fmt.Sprintf("v:%d", v)
+		})
 	}
+	f.frame.Inner(ctx, f.outerContent())
+	~~
 	~(&f.frame)
 	~(test.Button("effect-derived-update-1", func(ctx context.Context) bool {
 		f.b.Update(ctx, 1)
@@ -464,29 +464,29 @@ type BeamEffectMultiFragment struct {
 }
 
 elem (f *BeamEffectMultiFragment) innerContent() {
-	~{
-		f.innerRenders++
-		left, _ := f.left.Effect(ctx)
-		right, _ := f.right.Effect(ctx)
-	}
+	~~
+	f.innerRenders++
+	left, _ := f.left.Effect(ctx)
+	right, _ := f.right.Effect(ctx)
+	~~
 	<div id="effect-multi-left">~(fmt.Sprint(left))</div>
 	<div id="effect-multi-right">~(fmt.Sprint(right))</div>
 	<div id="effect-multi-inner-renders">~(fmt.Sprint(f.innerRenders))</div>
 }
 
 elem (f *BeamEffectMultiFragment) outerContent() {
-	~{
-		f.outerRenders++
-		f.host.Inner(ctx, f.innerContent())
-	}
+	~~
+	f.outerRenders++
+	f.host.Inner(ctx, f.innerContent())
+	~~
 	<div id="effect-multi-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
 	~(&f.host)
 }
 
 elem (f *BeamEffectMultiFragment) Main() {
-	~{
-		f.frame.Inner(ctx, f.outerContent())
-	}
+	~~
+	f.frame.Inner(ctx, f.outerContent())
+	~~
 	~(&f.frame)
 	~(test.Button("effect-multi-left-update", func(ctx context.Context) bool {
 		f.left.Update(ctx, 1)
@@ -508,29 +508,29 @@ type BeamEffectDuplicateFragment struct {
 }
 
 elem (f *BeamEffectDuplicateFragment) innerContent() {
-	~{
-		f.innerRenders++
-		first, _ := f.b.Effect(ctx)
-		second, _ := f.b.Effect(ctx)
-	}
+	~~
+	f.innerRenders++
+	first, _ := f.b.Effect(ctx)
+	second, _ := f.b.Effect(ctx)
+	~~
 	<div id="effect-dup-first">~(fmt.Sprint(first))</div>
 	<div id="effect-dup-second">~(fmt.Sprint(second))</div>
 	<div id="effect-dup-inner-renders">~(fmt.Sprint(f.innerRenders))</div>
 }
 
 elem (f *BeamEffectDuplicateFragment) outerContent() {
-	~{
-		f.outerRenders++
-		f.host.Inner(ctx, f.innerContent())
-	}
+	~~
+	f.outerRenders++
+	f.host.Inner(ctx, f.innerContent())
+	~~
 	<div id="effect-dup-outer-renders">~(fmt.Sprint(f.outerRenders))</div>
 	~(&f.host)
 }
 
 elem (f *BeamEffectDuplicateFragment) Main() {
-	~{
-		f.frame.Inner(ctx, f.outerContent())
-	}
+	~~
+	f.frame.Inner(ctx, f.outerContent())
+	~~
 	~(&f.frame)
 	~(test.Button("effect-dup-update", func(ctx context.Context) bool {
 		f.b.Update(ctx, 1)
@@ -549,23 +549,23 @@ type BeamReadAndSubFragment struct {
 }
 
 elem (f *BeamReadAndSubFragment) Main() {
-	~{
-		if f.derived == nil {
-			f.derived = doors.DeriveBeam(f.source, func(v int) string {
-				return fmt.Sprintf("v:%d", v)
-			})
-		}
-		if !f.derivedRegistered {
-			initial, ok := f.derived.ReadAndSub(ctx, func(ctx context.Context, value string) bool {
-				f.r.Update(ctx, 1, value)
-				return true
-			})
-			if ok {
-				f.r.Update(ctx, 0, initial)
-				f.derivedRegistered = true
-			}
+	~~
+	if f.derived == nil {
+		f.derived = doors.DeriveBeam(f.source, func(v int) string {
+			return fmt.Sprintf("v:%d", v)
+		})
+	}
+	if !f.derivedRegistered {
+		initial, ok := f.derived.ReadAndSub(ctx, func(ctx context.Context, value string) bool {
+			f.r.Update(ctx, 1, value)
+			return true
+		})
+		if ok {
+			f.r.Update(ctx, 0, initial)
+			f.derivedRegistered = true
 		}
 	}
+	~~
 	~(test.Button("beam-read-sub-update-2", func(ctx context.Context) bool {
 		f.source.Update(ctx, 2)
 		return false
@@ -693,43 +693,43 @@ func (f *BeamLensRoundTripFragment) reportState(ctx context.Context, prefix stri
 }
 
 elem (f *BeamLensRoundTripFragment) Main() {
-	~{
-		f.init()
-	}
+	~~
+	f.init()
+	~~
 	~(f.source.Bind(elem(v state) {
-		~{
-			f.sourceRenders++
-		}
+		~~
+		f.sourceRenders++
+		~~
 		<div id="lens-source">~(fmt.Sprintf("%d:%s:%d", v.Int, v.Str, f.sourceRenders))</div>
 	}))
 	~(f.intLens.Bind(elem(v int) {
-		~{
-			f.intRenders++
-		}
+		~~
+		f.intRenders++
+		~~
 		<div id="lens-int">~(fmt.Sprintf("%d:%d", v, f.intRenders))</div>
 	}))
 	~(f.strLens.Bind(elem(v string) {
-		~{
-			f.strRenders++
-		}
+		~~
+		f.strRenders++
+		~~
 		<div id="lens-str">~(fmt.Sprintf("%s:%d", v, f.strRenders))</div>
 	}))
 	~(f.evenLens.Bind(elem(v bool) {
-		~{
-			f.evenRenders++
-		}
+		~~
+		f.evenRenders++
+		~~
 		<div id="lens-even">~(fmt.Sprintf("%t:%d", v, f.evenRenders))</div>
 	}))
 	~(f.label.Bind(elem(v string) {
-		~{
-			f.labelRenders++
-		}
+		~~
+		f.labelRenders++
+		~~
 		<div id="lens-label">~(fmt.Sprintf("%s:%d", v, f.labelRenders))</div>
 	}))
 	~(f.parityLens.Bind(elem(v string) {
-		~{
-			f.parityRenders++
-		}
+		~~
+		f.parityRenders++
+		~~
 		<div id="lens-parity">~(fmt.Sprintf("%s:%d", v, f.parityRenders))</div>
 	}))
 	~(test.Button("lens-source-update", func(ctx context.Context) bool {
@@ -837,9 +837,9 @@ func (f *BeamRouteStateFragment) equalList(a []string, b []string) bool {
 }
 
 elem (f *BeamRouteStateFragment) lensRoute(l doors.Source[string]) {
-	~{
-		f.lensRouteRenders++
-	}
+	~~
+	f.lensRouteRenders++
+	~~
 	<div id="route-lens-render">~(fmt.Sprint(f.lensRouteRenders))</div>
 	~(l.Bind(elem(v string) {
 		<div id="route-lens-value">~("lens:" + v)</div>
@@ -855,9 +855,9 @@ elem (f *BeamRouteStateFragment) lensRoute(l doors.Source[string]) {
 }
 
 elem (f *BeamRouteStateFragment) lensListRoute(l doors.Source[[]string]) {
-	~{
-		f.lensListRenders++
-	}
+	~~
+	f.lensListRenders++
+	~~
 	<div id="route-lens-list-render">~(fmt.Sprint(f.lensListRenders))</div>
 	~(l.Bind(elem(v []string) {
 		<div id="route-lens-list-value">~(strings.Join(v, ","))</div>
@@ -865,9 +865,9 @@ elem (f *BeamRouteStateFragment) lensListRoute(l doors.Source[[]string]) {
 }
 
 elem (f *BeamRouteStateFragment) lensDefault(b doors.Beam[state]) {
-	~{
-		f.defaultLensRenders++
-	}
+	~~
+	f.defaultLensRenders++
+	~~
 	<div id="route-lens-default-render">~(fmt.Sprint(f.defaultLensRenders))</div>
 	~(b.Bind(elem(v state) {
 		<div id="route-lens-default-value">~(fmt.Sprintf("default:%d:%s", v.Int, v.Str))</div>
@@ -875,9 +875,9 @@ elem (f *BeamRouteStateFragment) lensDefault(b doors.Beam[state]) {
 }
 
 elem (f *BeamRouteStateFragment) beamRoute(b doors.Beam[string]) {
-	~{
-		f.beamRouteRenders++
-	}
+	~~
+	f.beamRouteRenders++
+	~~
 	<div id="route-beam-render">~(fmt.Sprint(f.beamRouteRenders))</div>
 	~(b.Bind(elem(v string) {
 		<div id="route-beam-value">~("beam:" + v)</div>
@@ -885,9 +885,9 @@ elem (f *BeamRouteStateFragment) beamRoute(b doors.Beam[string]) {
 }
 
 elem (f *BeamRouteStateFragment) beamListRoute(b doors.Beam[[]string]) {
-	~{
-		f.beamListRenders++
-	}
+	~~
+	f.beamListRenders++
+	~~
 	<div id="route-beam-list-render">~(fmt.Sprint(f.beamListRenders))</div>
 	~(b.Bind(elem(v []string) {
 		<div id="route-beam-list-value">~(strings.Join(v, ","))</div>
@@ -895,9 +895,9 @@ elem (f *BeamRouteStateFragment) beamListRoute(b doors.Beam[[]string]) {
 }
 
 elem (f *BeamRouteStateFragment) beamDefault(b doors.Beam[state]) {
-	~{
-		f.defaultBeamRenders++
-	}
+	~~
+	f.defaultBeamRenders++
+	~~
 	<div id="route-beam-default-render">~(fmt.Sprint(f.defaultBeamRenders))</div>
 	~(b.Bind(elem(v state) {
 		<div id="route-beam-default-value">~(fmt.Sprintf("beam-default:%d:%s", v.Int, v.Str))</div>
@@ -905,13 +905,13 @@ elem (f *BeamRouteStateFragment) beamDefault(b doors.Beam[state]) {
 }
 
 elem (f *BeamRouteStateFragment) Main() {
-	~{
-		f.init()
-	}
+	~~
+	f.init()
+	~~
 	~(f.source.Bind(elem(v state) {
-		~{
-			f.sourceRenders++
-		}
+		~~
+		f.sourceRenders++
+		~~
 		<div id="route-source">~(fmt.Sprintf("%d:%s:%d", v.Int, v.Str, f.sourceRenders))</div>
 	}))
 	~(f.source.Route(
@@ -976,9 +976,9 @@ elem (f *BeamRouteNoDefaultBurstFragment) beamRoute(b doors.Beam[string]) {
 }
 
 elem (f *BeamRouteNoDefaultBurstFragment) Main() {
-	~{
-		f.init()
-	}
+	~~
+	f.init()
+	~~
 	~(f.source.Bind(elem(v state) {
 		<div id="route-burst-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
 	}))
@@ -1085,9 +1085,9 @@ elem (f *BeamRouteEntrypointsFragment) simpleBeamRoute(b doors.Beam[string]) {
 }
 
 elem (f *BeamRouteEntrypointsFragment) Main() {
-	~{
-		f.init()
-	}
+	~~
+	f.init()
+	~~
 	~(f.source.Bind(elem(v state) {
 		<div id="route-entry-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
 	}))

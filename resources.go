@@ -93,7 +93,6 @@ func ResourceProxy(url string) Resource {
 	return printer.SourceProxy(url)
 }
 
-
 // NewHook registers a resource handler as a hook and returns a URL path
 // that triggers it.
 //
@@ -113,5 +112,3 @@ func NewHook(ctx context.Context, r Resource) (string, bool) {
 	}
 	return core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, ""), true
 }
-
-

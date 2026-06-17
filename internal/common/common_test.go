@@ -149,7 +149,7 @@ func TestCSPGenerateAndCollector(t *testing.T) {
 		FormActions:         nil,
 		ObjectSources:       []string{},
 		FrameSources:        []string{"https://frame.example"},
-		FrameAncestors:       nil,
+		FrameAncestors:      nil,
 		BaseURIAllow:        []string{},
 		ImgSources:          []string{"data:"},
 		ReportTo:            "csp-endpoint",

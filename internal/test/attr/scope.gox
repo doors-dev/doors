@@ -24,12 +24,12 @@ func (f *scopeFragment) update(ctx context.Context, marker string) {
 }
 
 elem (f *scopeFragment) scopePipeline() {
-	~{
-		ds := &doors.ScopeDebounce{Duration: 250 * time.Millisecond, Limit: 0}
-		ds2 := &doors.ScopeDebounce{Duration: 250 * time.Millisecond, Limit: 0}
-		ss := &doors.ScopeSerial{}
-		fs := &doors.ScopeFrame{}
-	}
+	~~
+	ds := &doors.ScopeDebounce{Duration: 250 * time.Millisecond, Limit: 0}
+	ds2 := &doors.ScopeDebounce{Duration: 250 * time.Millisecond, Limit: 0}
+	ss := &doors.ScopeSerial{}
+	fs := &doors.ScopeFrame{}
+	~~
 	~(f.button("p1", ds, "1", false))
 	~(f.button("p2", fs.Scope(false).And(ds).And(ss), "2", true))
 	~(f.button("p3", fs.Scope(false).And(ds2).And(ss), "3", true))
@@ -38,59 +38,59 @@ elem (f *scopeFragment) scopePipeline() {
 }
 
 elem (f *scopeFragment) Main() {
-	~{
-		f.update(ctx, "0")
-	}
+	~~
+	f.update(ctx, "0")
+	~~
 	~(f.r)
-	~{
-		blocking := &doors.ScopeBlocking{}
-	}
+	~~
+	blocking := &doors.ScopeBlocking{}
+	~~
 	~(f.button("b1", blocking, "1", true))
 	~(f.button("b2", blocking, "2", true))
 	~(f.button("b3", blocking, "3", true)) ~// serial
-	~{
-		serial := &doors.ScopeSerial{}
-	}
+	~~
+	serial := &doors.ScopeSerial{}
+	~~
 	~(f.button("s1", serial, "1", true))
 	~(f.button("s2", serial, "2", true))
 	~(f.button("s3", serial, "3", true)) ~// debounce
-	~{
-		debouce := &doors.ScopeDebounce{Duration: 300 * time.Millisecond, Limit: 0}
-	}
+	~~
+	debouce := &doors.ScopeDebounce{Duration: 300 * time.Millisecond, Limit: 0}
+	~~
 	~(f.button("d1", debouce, "1", false))
 	~(f.button("d2", debouce, "2", false))
 	~(f.button("d3", debouce, "3", false)) ~// debounce with limit
-	~{
-		debouce = &doors.ScopeDebounce{Duration: 300 * time.Millisecond, Limit: 700 * time.Millisecond}
-	}
+	~~
+	debouce = &doors.ScopeDebounce{Duration: 300 * time.Millisecond, Limit: 700 * time.Millisecond}
+	~~
 	~(f.button("dl1", debouce, "1", false))
 	~(f.button("dl2", debouce, "2", false))
 	~(f.button("dl3", debouce, "3", false)) ~// frame
-	~{
-		frame := &doors.ScopeFrame{}
-	}
+	~~
+	frame := &doors.ScopeFrame{}
+	~~
 	~(f.button("f1", frame.Scope(false), "1", true))
 	~(f.button("f2", frame.Scope(false), "2", false))
 	~(f.button("f3", frame.Scope(true), "3", true))
 	~(f.button("f4", frame.Scope(true), "4", false))
 	~// latest
-	~{
-		latest := &doors.ScopeLatest{}
-	}
+	~~
+	latest := &doors.ScopeLatest{}
+	~~
 	~(f.buttonLatest("l1", latest, "1"))
 	~(f.buttonLatest("l2", latest, "2"))
 	~(f.buttonLatest("l3", latest, "3"))
 	~// concurrent
-	~{
-		concurrent := &doors.ScopeConcurrent{}
-	}
+	~~
+	concurrent := &doors.ScopeConcurrent{}
+	~~
 	~(f.button("c1", concurrent.Scope(1), "1", true))
 	~(f.button("c2", concurrent.Scope(1), "2", true))
 	~(f.button("c3", concurrent.Scope(2), "3", false))
 	~// rate
-	~{
-		rate := &doors.ScopeRate{Tick: 300 * time.Millisecond}
-	}
+	~~
+	rate := &doors.ScopeRate{Tick: 300 * time.Millisecond}
+	~~
 	~(f.button("r1", rate, "1", false))
 	~(f.button("r2", rate, "2", false))
 	~(f.button("r3", rate, "3", false))
