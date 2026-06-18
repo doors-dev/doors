@@ -99,19 +99,26 @@ func (pm PathMaker) SessionCookie() string {
 	return pm.sessionCookie
 }
 
+const systemPrefix = "/~/"
+
 func (pm PathMaker) Prefix() string {
-	return "/~/" + pm.serverID
+	return systemPrefix + pm.serverID
 }
 
 func (pm PathMaker) IsSystem(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, "/~/")
+	return strings.HasPrefix(r.URL.Path, systemPrefix)
 }
 
 func (pm PathMaker) Match(r *http.Request) (Match, bool) {
-	path, ok := strings.CutPrefix(r.URL.RequestURI(), pm.Prefix())
+	tilde, ok := strings.CutPrefix(r.URL.RequestURI(), systemPrefix)
 	if !ok {
 		return Match{}, false
 	}
+	idx := strings.IndexByte(tilde, '/')
+	if idx < 0 {
+		return Match{}, false
+	}
+	path := tilde[idx:]
 	matches := hookRegexp.FindStringSubmatch(path)
 	if len(matches) != 0 {
 		instanceID := matches[1]

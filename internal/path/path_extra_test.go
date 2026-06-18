@@ -212,8 +212,18 @@ func TestPathMakerAndMatch(t *testing.T) {
 	if _, ok := pm.Match(httptest.NewRequest("GET", hookPath+"?t=bad", nil)); ok {
 		t.Fatal("expected bad hook track to fail matching")
 	}
-	if _, ok := pm.Match(httptest.NewRequest("GET", "/~/other/h/x/1/2", nil)); ok {
-		t.Fatal("expected wrong prefix to fail matching")
+	if _, ok := pm.Match(httptest.NewRequest("GET", "/not-system/h/inst1/20", nil)); ok {
+		t.Fatal("expected non-system prefix to fail matching")
+	}
+
+	altHookPath := "/~/other/h/inst1/20?t=3"
+	match, ok = pm.Match(httptest.NewRequest("GET", altHookPath, nil))
+	if !ok {
+		t.Fatal("expected hook path with alternate server segment to match")
+	}
+	hook, ok = match.Hook()
+	if !ok || hook.Instance != "inst1" || hook.Hook != 20 || hook.Track != 3 {
+		t.Fatalf("unexpected hook match with alternate segment: %#v", hook)
 	}
 }
 
