@@ -114,11 +114,11 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 	if !ok {
 		return Match{}, false
 	}
-	idx := strings.IndexByte(tilde, '/')
-	if idx < 0 {
+	index := strings.IndexByte(tilde, '/')
+	if index < 0 {
 		return Match{}, false
 	}
-	path := tilde[idx:]
+	path := tilde[index:]
 	matches := hookRegexp.FindStringSubmatch(path)
 	if len(matches) != 0 {
 		instanceID := matches[1]

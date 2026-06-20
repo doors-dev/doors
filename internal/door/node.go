@@ -19,6 +19,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front"
 	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -76,7 +77,7 @@ func (n *node) sync(task *userTask) {
 	defer renderFrame.Release()
 	pip := newPipe(
 		ownerTracker,
-		new(deque.Deque[any]),
+		common.GetDequeBuffer(),
 		renderFrame,
 		callGuard,
 	)
@@ -108,6 +109,7 @@ func (n *node) sync(task *userTask) {
 	callFrame.Run(ownerTracker.ctx, ownerTracker.root.runtime(), func(b bool) {
 		defer callGuard.Activate()
 		if !b {
+			pip.Release()
 			task.Cancel()
 			return
 		}

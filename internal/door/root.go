@@ -19,11 +19,11 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
-	"github.com/gammazero/deque"
 )
 
 type Instance interface {
@@ -115,7 +115,7 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 	renderFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), r.tracker.writeFrame(r.tracker.Context()))
 	pipe := newPipe(
 		r.tracker,
-		new(deque.Deque[any]),
+		common.GetDequeBuffer(),
 		renderFrame,
 		r.tracker.innerCallGuard,
 	)

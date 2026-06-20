@@ -18,6 +18,7 @@ import (
 	"compress/gzip"
 	"sync"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/gox"
 )
@@ -53,7 +54,7 @@ func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
 		buf: bufferPrinterPool.Get().(sliceWriter),
 	}
 	if !disableGzip {
-		b.gzip = gzip.NewWriter(&b.buf)
+		b.gzip = common.GetGzipWriter(&b.buf)
 		b.printer = defaultPrinter{b.gzip}
 	} else {
 		b.printer = defaultPrinter{&b.buf}
@@ -69,6 +70,10 @@ func (b *PayloadPrinter) Payload() action.Payload {
 }
 
 func (b *PayloadPrinter) Release() {
+	if b.gzip != nil {
+		common.PutGzipWriter(b.gzip)
+		b.gzip = nil
+	}
 	if b.buf == nil {
 		return
 	}

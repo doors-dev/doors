@@ -192,7 +192,8 @@ func IntoPayload(v any, gz bool) (Payload, error) {
 	var w io.Writer = buf
 	var wgz *gzip.Writer
 	if gz {
-		wgz = gzip.NewWriter(buf)
+		wgz = common.GetGzipWriter(buf)
+		defer common.PutGzipWriter(wgz)
 		w = wgz
 	}
 	var t PayloadType

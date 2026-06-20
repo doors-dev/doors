@@ -17,6 +17,7 @@ package door
 import (
 	"context"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/action"
 	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -60,6 +61,11 @@ func (p *pipe) Collect() Stack {
 	return stack
 }
 
+func (p *pipe) Release() {
+	stack := p.Collect()
+	stack.Release()
+}
+
 func (p *pipe) Render(disableGzip bool) (printer.Payload, error) {
 	stack := p.Collect()
 	pr := printer.NewPayloadPrinter(disableGzip)
@@ -78,7 +84,7 @@ func (p *pipe) error(err error) {
 }
 
 func (p *pipe) branch() *deque.Deque[any] {
-	buffer := new(deque.Deque[any])
+	buffer := common.GetDequeBuffer()
 	p.buffer.PushBack(buffer)
 	return buffer
 }
@@ -147,6 +153,7 @@ cycle:
 	if next == nil {
 		return nil
 	}
+	common.FreezeDequeBuffer(next)
 	for item := range next.IterPopFront() {
 		switch item := item.(type) {
 		case *deque.Deque[any]:
@@ -154,6 +161,7 @@ cycle:
 			goto cycle
 		case gox.Job:
 			if err := pr.Send(item); err != nil {
+				p.Release()
 				return err
 			}
 		default:
@@ -162,6 +170,14 @@ cycle:
 	}
 	p.pop()
 	goto cycle
+}
+
+func (p *Stack) Release() {
+	for i, buffer := range *p {
+		common.ReleaseDequeBuffer(buffer)
+		(*p)[i] = nil
+	}
+	*p = nil
 }
 
 func (p Stack) next() *deque.Deque[any] {
@@ -176,8 +192,11 @@ func (p *Stack) push(buf *deque.Deque[any]) {
 }
 
 func (p *Stack) pop() {
-	(*p)[len(*p)-1] = nil
-	*p = (*p)[:len(*p)-1]
+	index := len(*p) - 1
+	buffer := (*p)[index]
+	(*p)[index] = nil
+	*p = (*p)[:index]
+	common.PutDequeBuffer(buffer)
 }
 
 func EmptyPayload() printer.Payload {

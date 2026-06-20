@@ -16,7 +16,6 @@ package common
 
 import (
 	"bytes"
-	"compress/gzip"
 	"crypto/rand"
 	"log"
 	"log/slog"
@@ -88,7 +87,8 @@ func EncodeId(b []byte) string {
 
 func Zip(input []byte) []byte {
 	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
+	gz := GetGzipWriter(&buf)
+	defer PutGzipWriter(gz)
 	_, err := gz.Write(input)
 	if err != nil {
 		panic(err)

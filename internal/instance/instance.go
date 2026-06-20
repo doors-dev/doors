@@ -1,7 +1,6 @@
 package instance
 
 import (
-	"compress/gzip"
 	"context"
 	"io"
 	"log/slog"
@@ -222,7 +221,8 @@ func (inst *instance) render(w http.ResponseWriter, r *http.Request, pipe door.S
 	inst.renderHeaders(w, gz, importHash)
 	var writer io.Writer = w
 	if gz {
-		wgz := gzip.NewWriter(w)
+		wgz := common.GetGzipWriter(w)
+		defer common.PutGzipWriter(wgz)
 		defer wgz.Close()
 		writer = wgz
 	}
