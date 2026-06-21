@@ -20,13 +20,19 @@ import (
 )
 
 type examplePath struct {
-	Home bool `path:"/"`
-	Post bool `path:"/posts/:ID"`
-	ID   int
+	Section exampleSection `/:" | posts/:ID"`
+	ID      int
 }
 
+type exampleSection int
+
+const (
+	exampleSectionHome exampleSection = iota
+	exampleSectionPost
+)
+
 func ExampleNewLocation() {
-	loc, err := NewLocation(examplePath{Post: true, ID: 42})
+	loc, err := NewLocation(examplePath{Section: exampleSectionPost, ID: 42})
 	if err != nil {
 		panic(err)
 	}

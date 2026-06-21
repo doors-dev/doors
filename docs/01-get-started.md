@@ -196,5 +196,6 @@ Now the browser click is sent back to Go, the handler updates the counter state,
 
 - [Core Concepts](./02-core-concepts.md) explains the runtime model behind sessions, instances, doors, hooks, and state.
 - [Template Syntax](./03-template-syntax.md) covers the GoX syntax used throughout the docs.
+- [Components](./08-components.md) explains component structure, state ownership, and rendering boundaries.
 - [App](./04-app.md) and [Routing](./05-routing.md) take the next step into request handling and URL design.
 - [State](./07-state.md) covers reactive state.

@@ -100,6 +100,8 @@ elem (it Item) Main() {
 
 > `gox.Elem` also implements `gox.Comp`. So if a function accepts `gox.Comp`, it also accepts `gox.Elem`.
 
+See [Components](./08-components.md) for **Doors** component structure, state ownership, and rendering boundaries.
+
 ## Placeholder
 
 Render a value of any type using a placeholder: `~(expression)`.

@@ -14,7 +14,8 @@ The everyday shape is:
 
 ```gox
 type Path struct {
-	Section Section `path:"/ | /docs/:ID? | /tutorial/:ID? | /license"`
+	// Matches /, /docs, and /docs/:ID.
+	Section Section `/:" | docs/:ID?"`
 	ID      *string
 }
 
@@ -23,8 +24,6 @@ type Section int
 const (
 	SectionHome Section = iota
 	SectionDocs
-	SectionTutorial
-	SectionLicense
 )
 
 elem (a App) Main() {
@@ -32,9 +31,9 @@ elem (a App) Main() {
 	<html lang="en">
 		<body>
 			~(doors.Route(
-				doors.RouteModel(elem(p doors.Source[Path]) {
-					~(Page(p))
-				}),
+				// Decode the browser URL into Path.
+				doors.RouteModel(Page),
+				// Render when the URL does not decode into any path model.
 				doors.RouteLocationDefaultComp(NotFound{}),
 			))
 		</body>
@@ -46,6 +45,35 @@ elem (a App) Main() {
 
 `RouteLocationDefaultComp` is the fallback for URLs that didn't decode. Routes are tried in order and the first match renders, so put fallbacks last.
 
+Inside the matched app page, route on decoded fields instead of parsing strings:
+
+```gox
+elem Page(path doors.Source[Path]) {
+	~(path.Route(
+		// /: home page.
+		doors.RouteMatch(func(p Path) bool {
+			return p.Section == SectionHome
+		}).Comp(Home{}),
+		// /docs and /docs/:ID.
+		doors.RouteMatch(func(p Path) bool {
+			return p.Section == SectionDocs
+		}).Bind(DocsPage),
+		// Decoded but unsupported Section values.
+		doors.RouteDefaultComp[Path](NotFound{}),
+	))
+}
+
+elem DocsPage(p Path) {
+	~(if p.ID == nil {
+		~(DocsIndex{})
+	} else {
+		~(DocPage{ID: *p.ID})
+	})
+}
+```
+
+Branches that need URL params, such as `DocsPage`, receive the decoded `Path` value so they can render from `ID` directly.
+
 ## Path Models
 
 A path model is a struct that defines how URLs decode into a typed value. **Doors** uses it to:
@@ -56,23 +84,11 @@ A path model is a struct that defines how URLs decode into a typed value. **Door
 
 ### Variants
 
-A path model expresses its variants in one of two styles:
-
-- **one `int` field** with patterns separated by `|`
-- **one or more `bool` fields**, each with its own pattern
-
-Both are first-class. The two styles can't be mixed in the same struct.
-
-Common rules:
-
-- Leading and trailing slashes are normalized — `"/docs"`, `"docs"`, and `"/docs/"` describe the same pattern.
-- Spaces around `|` are optional and trimmed — `"/|/docs|/guide"` and `"/ | /docs | /guide"` are equivalent.
-
-#### Int Multi-Variant
+A path model uses one `int` field for its page variants. Use a named `int` type with `iota` constants for readable switches:
 
 ```go
 type Path struct {
-	Section Section `path:"/ | /docs | /guide"`
+	Section Section `/:" | docs | guide"`
 }
 
 type Section int
@@ -84,35 +100,65 @@ const (
 )
 ```
 
-The `int` field stores the index of the matched pattern. Decoding sets it to the index of the pattern that matched. Encoding picks the pattern at that index.
+The `int` field stores the index of the matched variant. Decoding sets it to the index of the variant that matched. Encoding picks the variant at that index.
 
-A typed `int` paired with `iota` constants gives readable code and exhaustive switches. A plain `int` works too.
+The tag key is the path prefix. The tag value is a `|`-separated list of variants under that prefix.
 
-#### Bool Variants
+Use `/` for small models and single pages:
 
 ```go
 type Path struct {
-	Home  bool `path:"/"`
-	Docs  bool `path:"/docs"`
-	Guide bool `path:"/guide"`
+	Section Section `/:" | catalog | search"`
 }
 ```
 
-Each `bool` field is one variant. When **Doors** decodes a URL, the matched variant's field becomes `true`. When encoding from a model, **Doors** uses the variant whose marker field is `true` (if more than one is `true`, the first in field order wins).
-
-#### When to Use Which
-
-- **`int` multi-variant** is more compact for many variants and gives you exhaustive switches via typed constants. The ordering is implicit (struct tag order).
-- **`bool` variants** read well when each variant has a clear name and you want to refer to it explicitly (`Path{Docs: true}` rather than `Path{Section: SectionDocs}`). Also natural for very small models — including a single-pattern model.
-
-### Params
-
-Use `:FieldName` to capture a path segment into the struct field with the same name.
+Use a longer prefix key to describe an area with several local variants or shared parameters:
 
 ```go
 type Path struct {
-	Post bool `path:"/posts/:ID"`
-	ID   int
+	Section Section `/posts:" | new | archived"`
+}
+```
+
+This matches `/posts`, `/posts/new`, and `/posts/archived`.
+
+In a real app with dozens of pages, path models stay ergonomic when they are small. Put as much shared path as the area needs in the key, then keep the variants relative to it. For example, `"/post/:ID":"view | edit"` reads as "inside a post, choose view or edit". A larger app might use a deeper key such as `"/org/:OrgID/project/:ProjectID":"overview | settings"`.
+
+Prefer `/:"catalog"` over `/catalog:""` for a single route. A segment in the key is for declaring an area, not for spelling every path segment.
+
+Use `/` as the root prefix:
+
+```go
+type Path struct {
+	Section Section `/:" | docs | guide"`
+}
+```
+
+Quote the tag key when the prefix contains `:` or another character that cannot appear in an unquoted Go struct-tag key:
+
+```go
+type Path struct {
+	Section Section `"/post/:ID":"view | edit"`
+	ID      int
+}
+```
+
+This matches `/post/42/view` and `/post/42/edit`.
+
+Common rules:
+
+- Write prefixes with a leading slash. Leading and trailing slashes are normalized — `/docs`, `docs`, and `/docs/` describe the same prefix or variant.
+- Spaces around `|` are optional and trimmed — `" | docs | guide"` and `"|docs|guide"` are equivalent.
+- An empty variant means the prefix itself. For example, `/posts:" | new"` matches `/posts` and `/posts/new`.
+
+### Params
+
+Use `:FieldName` to capture a path segment into the struct field with the same name. Captures can be in the prefix or in a variant.
+
+```go
+type Path struct {
+	Section Section `/:"posts/:ID"`
+	ID      int
 }
 ```
 
@@ -124,7 +170,7 @@ Add `?` to make the last captured segment optional. Optional single-segment capt
 
 ```go
 type Path struct {
-	Catalog bool `path:"/catalog/:ID?"`
+	Section Section `/:"catalog/:ID?"`
 	ID      *int
 }
 ```
@@ -137,8 +183,8 @@ Use `+` on the last parameter to capture the remaining path into `[]string`:
 
 ```go
 type Path struct {
-	Docs bool `path:"/docs/:Rest+"`
-	Rest []string
+	Section Section `/:"docs/:Rest+"`
+	Rest    []string
 }
 ```
 
@@ -159,7 +205,7 @@ Use `query:"name"` tags for query-string values.
 
 ```go
 type Path struct {
-	Catalog bool     `path:"/catalog"`
+	Section Section `/:"catalog"`
 	Color   []string `query:"color"`
 	Page    *int     `query:"page"`
 }
@@ -177,8 +223,8 @@ When a page has many query values, keep `url.Values` directly in the model inste
 import "net/url"
 
 type Path struct {
-	Search bool `path:"/search"`
-	Query  url.Values
+	Section Section `/:"search"`
+	Query   url.Values
 }
 ```
 
@@ -224,11 +270,11 @@ href := loc.String() // /docs
 
 ## Trust And Permissions
 
-The location is client state. A user can craft any URL that pass your path model decoder.
+The location is client state. A user can craft any URL that passes your path model decoder.
 
 Two consequences:
 
-- **Always check permissions while rendering, against the current location or decoded model.** A successful match means "this URL parses", not "this user is allowed to see this".
+- **Always check permissions while rendering, against the current location or decoded model.** A successful match means "this URL parses", not "this user is allowed to see what it points at".
 - **For state the client must not control, use a separate `Source`.** Don't store auth, role, or other trust-bearing values on the route. Initialize them server-side and keep them on a session-scoped source. See [Storage & Auth](./18-storage-auth.md).
 
 The convenience is that the URL can be read and written like normal state. The trust boundary does not change: reading it tells you what the client asked for, nothing more.

@@ -21,10 +21,25 @@ import (
 	"strings"
 )
 
-func newBranch(index int, patternIndex int, path string, fields map[string]field) (branch, error) {
-	b := branch{
+func newFieldBranch(index int, patternIndex int, path string, fields map[string]field) (fieldBranch, error) {
+	b, err := newBranch(path, fields, true)
+	if err != nil {
+		return fieldBranch{}, err
+	}
+	return fieldBranch{
 		fieldIndex:   index,
 		patternIndex: patternIndex,
+		branch:       b,
+	}, nil
+}
+
+func newPrefixBranch(path string, fields map[string]field) (branch, error) {
+	return newBranch(path, fields, false)
+}
+
+func newBranch(path string, fields map[string]field, tail bool) (branch, error) {
+	b := branch{
+		tail: tail,
 	}
 	if path == "" {
 		return b, nil
@@ -32,7 +47,7 @@ func newBranch(index int, patternIndex int, path string, fields map[string]field
 	parts := strings.Split(path, "/")
 	b.segments = make([]segment, 0, len(parts))
 	for i, part := range parts {
-		last := i == len(parts)-1
+		last := tail && i == len(parts)-1
 		name, ok := strings.CutPrefix(part, ":")
 		if !ok {
 			b.segments = append(b.segments, newLiteralSegment(part))
@@ -62,7 +77,7 @@ func newBranch(index int, patternIndex int, path string, fields map[string]field
 		}
 		field, ok := fields[name]
 		if !ok {
-			return branch{}, errors.New("path parameter field " + name + " was not found among exported compatible fields")
+			return branch{}, errors.New("path parameter :" + name + " has no matching exported field; path marker fields cannot be used as captures")
 		}
 		if multiple {
 			multiField, ok := field.multi()
@@ -90,10 +105,33 @@ func newBranch(index int, patternIndex int, path string, fields map[string]field
 	return b, nil
 }
 
-type branch struct {
+type fieldBranch struct {
 	fieldIndex   int
 	patternIndex int
-	segments     []segment
+	branch
+}
+
+func (b fieldBranch) getMarker(m reflect.Value) bool {
+	if b.patternIndex == -1 {
+		return m.Field(b.fieldIndex).Bool()
+	}
+	return m.Field(b.fieldIndex).Int() == int64(b.patternIndex)
+}
+
+func (b fieldBranch) setMarker(m reflect.Value) func() {
+	if b.patternIndex == -1 {
+		return func() {
+			m.Field(b.fieldIndex).SetBool(true)
+		}
+	}
+	return func() {
+		m.Field(b.fieldIndex).SetInt(int64(b.patternIndex))
+	}
+}
+
+type branch struct {
+	segments []segment
+	tail     bool
 }
 
 func (b branch) encode(m reflect.Value) ([]string, error) {
@@ -139,29 +177,34 @@ func (b branch) encode(m reflect.Value) ([]string, error) {
 	return parts, nil
 }
 
-func (b branch) decode(m reflect.Value, parts []string) bool {
+func (b branch) len() int {
+	return len(b.segments)
+}
+
+func (b branch) decode(m reflect.Value, parts []string) ([]func(), bool) {
 	if len(b.segments) == 0 {
 		if len(parts) == 0 {
-			return true
+			return nil, true
 		}
-		return false
+		return nil, false
 	}
 	if len(parts) < len(b.segments)-1 {
-		return false
+		return nil, false
 	}
-	if len(parts) > len(b.segments) {
+	if b.tail && len(parts) > len(b.segments) {
 		if _, ok := b.segments[len(b.segments)-1].multi(); !ok {
-			return false
+			return nil, false
 		}
 	}
+	mutations := make([]func(), 0, len(b.segments))
 	for i, segment := range b.segments {
-		last := i == len(b.segments)-1
+		last := b.tail && i == len(b.segments)-1
 		if s, ok := segment.literal(); ok {
 			if len(parts) <= i {
-				return false
+				return nil, false
 			}
 			if parts[i] != s {
-				return false
+				return nil, false
 			}
 			continue
 		}
@@ -171,10 +214,14 @@ func (b branch) decode(m reflect.Value, parts []string) bool {
 			}
 			if len(parts) <= i {
 				if !s.optional {
-					return false
+					return nil, false
 				}
-			} else if !s.set(m, parts[i]) {
-				return false
+			} else {
+				mutation, ok := s.set(m, parts[i])
+				if !ok {
+					return nil, false
+				}
+				mutations = append(mutations, mutation)
 			}
 			continue
 		}
@@ -184,29 +231,14 @@ func (b branch) decode(m reflect.Value, parts []string) bool {
 			}
 			if len(parts) <= i {
 				if !s.optional {
-					return false
+					return nil, false
 				}
 			} else {
-				s.set(m, slices.Clone(parts[i:]))
+				mutations = append(mutations, s.set(m, slices.Clone(parts[i:])))
 			}
 			continue
 		}
 		panic("unknown segment type")
 	}
-	return true
-}
-
-func (b branch) getMarker(m reflect.Value) bool {
-	if b.patternIndex == -1 {
-		return m.Field(b.fieldIndex).Bool()
-	}
-	return m.Field(b.fieldIndex).Int() == int64(b.patternIndex)
-}
-
-func (b branch) setMarker(m reflect.Value) {
-	if b.patternIndex == -1 {
-		m.Field(b.fieldIndex).SetBool(true)
-		return
-	}
-	m.Field(b.fieldIndex).SetInt(int64(b.patternIndex))
+	return mutations, true
 }

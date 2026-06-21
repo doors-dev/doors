@@ -54,8 +54,10 @@ func (f multiField) get(m reflect.Value) []string {
 	return m.Field(int(f)).Interface().([]string)
 }
 
-func (f multiField) set(m reflect.Value, v []string) {
-	m.Field(int(f)).Set(reflect.ValueOf(v))
+func (f multiField) set(m reflect.Value, v []string) func() {
+	return func() {
+		m.Field(int(f)).Set(reflect.ValueOf(v))
+	}
 }
 
 type fieldKind int
@@ -125,70 +127,77 @@ func (f singleField) get(m reflect.Value) (string, bool) {
 	}
 }
 
-func (f singleField) set(m reflect.Value, v string) bool {
+func (f singleField) set(m reflect.Value, v string) (func(), bool) {
 	field := m.Field(f.index)
 	switch f.kind {
 	case kindString:
-		field.SetString(v)
-		return true
+		return func() {
+			field.SetString(v)
+		}, true
 	case kindStringPtr:
-		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
-		}
-		field.Elem().SetString(v)
-		return true
+		return func() {
+			if field.IsNil() {
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+			field.Elem().SetString(v)
+		}, true
 	case kindInt:
 		num, err := strconv.ParseInt(v, 10, field.Type().Bits())
 		if err != nil {
-			return false
+			return nil, false
 		}
-		field.SetInt(num)
-		return true
-
+		return func() {
+			field.SetInt(num)
+		}, true
 	case kindIntPtr:
 		num, err := strconv.ParseInt(v, 10, field.Type().Elem().Bits())
 		if err != nil {
-			return false
+			return nil, false
 		}
-		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
-		}
-		field.Elem().SetInt(num)
-		return true
+		return func() {
+			if field.IsNil() {
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+			field.Elem().SetInt(num)
+		}, true
 	case kindUint:
 		num, err := strconv.ParseUint(v, 10, field.Type().Bits())
 		if err != nil {
-			return false
+			return nil, false
 		}
-		field.SetUint(num)
-		return true
+		return func() {
+			field.SetUint(num)
+		}, true
 	case kindUintPtr:
 		num, err := strconv.ParseUint(v, 10, field.Type().Elem().Bits())
 		if err != nil {
-			return false
+			return nil, false
 		}
-		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
-		}
-		field.Elem().SetUint(num)
-		return true
+		return func() {
+			if field.IsNil() {
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+			field.Elem().SetUint(num)
+		}, true
 	case kindFloat:
 		num, err := strconv.ParseFloat(v, field.Type().Bits())
 		if err != nil {
-			return false
+			return nil, false
 		}
-		field.SetFloat(num)
-		return true
+		return func() {
+			field.SetFloat(num)
+		}, true
 	case kindFloatPtr:
 		num, err := strconv.ParseFloat(v, field.Type().Elem().Bits())
 		if err != nil {
-			return false
+			return nil, false
 		}
-		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
-		}
-		field.Elem().SetFloat(num)
-		return true
+		return func() {
+			if field.IsNil() {
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+			field.Elem().SetFloat(num)
+		}, true
 	default:
 		panic("unknown field type")
 	}

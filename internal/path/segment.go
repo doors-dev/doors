@@ -70,7 +70,7 @@ func (c singleSegment) get(m reflect.Value) (string, bool) {
 	return c.field.get(m)
 }
 
-func (c singleSegment) set(m reflect.Value, v string) bool {
+func (c singleSegment) set(m reflect.Value, v string) (func(), bool) {
 	return c.field.set(m, v)
 }
 
@@ -83,11 +83,11 @@ func (c multiSegment) get(m reflect.Value) []string {
 	return c.field.get(m)
 }
 
-func (c multiSegment) set(m reflect.Value, v []string) {
+func (c multiSegment) set(m reflect.Value, v []string) func() {
 	if len(v) == 0 {
 		if !c.optional {
 			panic("non-option field can't receive empty value")
 		}
 	}
-	c.field.set(m, v)
+	return c.field.set(m, v)
 }

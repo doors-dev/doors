@@ -190,3 +190,8 @@ After a Door has been made static or unmounted, later calls still update the Doo
 - Use `Static(ctx, nil)` when the Door should disappear without replacement content.
 - Use `Reload` when you want to redraw the current content.
 - Use `Unmount` when the Door should disappear for now but keep its internal state for reuse.
+
+## Related
+
+- [Components](./08-components.md) for component rendering boundaries and state ownership.
+- [State](./07-state.md) for `Bind`, `Effect`, sources, and beams.

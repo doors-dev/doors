@@ -88,6 +88,157 @@ func TestGenericAdapterHelpers(t *testing.T) {
 	}
 }
 
+func TestPrefixIntPathVariants(t *testing.T) {
+	type Section int
+	const (
+		SectionView Section = iota
+		SectionEdit
+	)
+	type page struct {
+		Section Section `"/post/:ID":"view | edit"`
+		ID      int
+	}
+
+	adapter, err := GetModelAdapter[page]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, ok := adapter.Decode(NewLocationFromEscapedURI("/post/42/view"))
+	if !ok {
+		t.Fatal("expected prefixed view path to decode")
+	}
+	if decoded.Section != SectionView || decoded.ID != 42 {
+		t.Fatalf("unexpected decoded view model: %#v", decoded)
+	}
+	decoded, ok = adapter.Decode(NewLocationFromEscapedURI("/post/42/edit"))
+	if !ok {
+		t.Fatal("expected prefixed edit path to decode")
+	}
+	if decoded.Section != SectionEdit || decoded.ID != 42 {
+		t.Fatalf("unexpected decoded edit model: %#v", decoded)
+	}
+	encoded, err := adapter.Encode(&page{Section: SectionEdit, ID: 42})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/post/42/edit" {
+		t.Fatalf("unexpected encoded prefixed path: %q", encoded.String())
+	}
+	if _, ok := adapter.Decode(NewLocationFromEscapedURI("/post/42/delete")); ok {
+		t.Fatal("expected unknown prefixed variant to reject")
+	}
+	if _, ok := adapter.Decode(NewLocationFromEscapedURI("/post/bad/view")); ok {
+		t.Fatal("expected incompatible prefix parameter to reject")
+	}
+}
+
+func TestUnquotedRootPrefixPathVariant(t *testing.T) {
+	type page struct {
+		Section int `/:"view"`
+	}
+	adapter, err := GetModelAdapter[page]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, ok := adapter.Decode(NewLocationFromEscapedURI("/view"))
+	if !ok {
+		t.Fatal("expected unquoted root prefix path to decode")
+	}
+	if decoded.Section != 0 {
+		t.Fatalf("unexpected decoded section: %#v", decoded)
+	}
+	encoded, err := adapter.Encode(&page{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/view" {
+		t.Fatalf("unexpected encoded path: %q", encoded.String())
+	}
+}
+
+func TestPrefixIntPathVariantsWithEmptyVariant(t *testing.T) {
+	type page struct {
+		Section int `"/post/:ID":" | edit"`
+		ID      int
+	}
+	adapter, err := GetModelAdapter[page]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, ok := adapter.Decode(NewLocationFromEscapedURI("/post/42"))
+	if !ok {
+		t.Fatal("expected empty prefixed variant to decode")
+	}
+	if decoded.Section != 0 || decoded.ID != 42 {
+		t.Fatalf("unexpected decoded empty variant model: %#v", decoded)
+	}
+	encoded, err := adapter.Encode(&page{ID: 42})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/post/42" {
+		t.Fatalf("unexpected encoded empty variant path: %q", encoded.String())
+	}
+	encoded, err = adapter.Encode(&page{Section: 1, ID: 42})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/post/42/edit" {
+		t.Fatalf("unexpected encoded edit variant path: %q", encoded.String())
+	}
+}
+
+func TestPrefixBoolPathVariants(t *testing.T) {
+	type page struct {
+		Slug  bool `/slug:"slug2"`
+		User  bool `"/users/:ID":"settings"`
+		ID    int
+		Plain bool `/:"plain"`
+	}
+	adapter, err := GetModelAdapter[page]()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	decoded, ok := adapter.Decode(NewLocationFromEscapedURI("/slug/slug2"))
+	if !ok {
+		t.Fatal("expected unquoted bool prefix path to decode")
+	}
+	if !decoded.Slug || decoded.User || decoded.ID != 0 || decoded.Plain {
+		t.Fatalf("unexpected decoded slug model: %#v", decoded)
+	}
+	encoded, err := adapter.Encode(&page{Slug: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/slug/slug2" {
+		t.Fatalf("unexpected encoded slug path: %q", encoded.String())
+	}
+
+	decoded, ok = adapter.Decode(NewLocationFromEscapedURI("/users/7/settings"))
+	if !ok {
+		t.Fatal("expected quoted bool prefix path with capture to decode")
+	}
+	if decoded.Slug || !decoded.User || decoded.ID != 7 || decoded.Plain {
+		t.Fatalf("unexpected decoded user model: %#v", decoded)
+	}
+	encoded, err = adapter.Encode(&page{User: true, ID: 7})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded.String() != "/users/7/settings" {
+		t.Fatalf("unexpected encoded user path: %q", encoded.String())
+	}
+
+	decoded, ok = adapter.Decode(NewLocationFromEscapedURI("/plain"))
+	if !ok {
+		t.Fatal("expected bool root prefix path to decode")
+	}
+	if decoded.Slug || decoded.User || decoded.ID != 0 || !decoded.Plain {
+		t.Fatalf("unexpected decoded plain model: %#v", decoded)
+	}
+}
+
 func TestURLValuesField(t *testing.T) {
 	type page struct {
 		View  bool `path:"/docs/:ID"`
@@ -121,6 +272,44 @@ func TestURLValuesField(t *testing.T) {
 	}
 	if _, err := GetModelAdapter[mixed](); err == nil {
 		t.Fatal("expected raw query values and query tags to conflict")
+	}
+}
+
+func TestDecodeBranchFallbackDoesNotLeakMutations(t *testing.T) {
+	type page struct {
+		ByID   bool `path:"/posts/:ID/edit"`
+		BySlug bool `path:"/posts/:Slug"`
+		ID     int
+		Slug   string
+	}
+	adapter, err := GetModelAdapter[page]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, ok := adapter.Decode(NewLocationFromEscapedURI("/posts/42"))
+	if !ok {
+		t.Fatal("expected slug branch to decode after id branch rejects the missing edit segment")
+	}
+	if decoded.ByID || !decoded.BySlug || decoded.ID != 0 || decoded.Slug != "42" {
+		t.Fatalf("unexpected decoded fallback model: %#v", decoded)
+	}
+}
+
+func TestDecodeSwallowsQueryErrors(t *testing.T) {
+	type page struct {
+		View bool `path:"/"`
+		Page int  `query:"page"`
+	}
+	adapter, err := GetModelAdapter[page]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, ok := adapter.Decode(NewLocationFromEscapedURI("/?page=bad"))
+	if !ok {
+		t.Fatal("expected path decode to succeed despite bad query value")
+	}
+	if !decoded.View || decoded.Page != 0 {
+		t.Fatalf("unexpected decoded model with bad query: %#v", decoded)
 	}
 }
 
@@ -249,6 +438,20 @@ func TestPathValidationErrors(t *testing.T) {
 	}
 	if _, err := GetModelAdapter[stringPath](); err == nil {
 		t.Fatal("expected non-bool non-int path field to fail")
+	}
+
+	type unexportedPath struct {
+		view bool `path:"/"`
+	}
+	if _, err := GetModelAdapter[unexportedPath](); err == nil {
+		t.Fatal("expected unexported path field to fail")
+	}
+
+	type markerCaptureCollision struct {
+		Section int `path:"/:Section"`
+	}
+	if _, err := GetModelAdapter[markerCaptureCollision](); err == nil {
+		t.Fatal("expected path marker field to not be available as a path capture")
 	}
 
 	type optionalNotLast struct {

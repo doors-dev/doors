@@ -498,3 +498,5 @@ elem (s *Search) Main() {
 ```
 
 This keeps one source of truth while letting the query and page fragments update independently.
+
+See [Components](./08-components.md) for how to structure component fields around local, shared, and derived state.

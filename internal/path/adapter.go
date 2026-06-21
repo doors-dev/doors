@@ -16,7 +16,7 @@ package path
 
 import (
 	"errors"
-	"iter"
+	"log/slog"
 	"net/url"
 	"reflect"
 	"sync"
@@ -100,7 +100,8 @@ type AnyModelAdapter interface {
 type ModelAdapter[M any] adapter
 
 func (ma ModelAdapter[M]) Decode(l Location) (*M, bool) {
-	if m := decode[M]((adapter)(ma), l); m != nil {
+	m := new(M)
+	if (adapter)(ma).decode(l, m) {
 		return m, true
 	}
 	return nil, false
@@ -111,50 +112,62 @@ func (ma ModelAdapter[M]) Encode(m *M) (Location, error) {
 }
 
 type adapter struct {
-	branches   []branch
+	prefix     *branch
+	branches   []fieldBranch
 	queryField int
 }
 
-func decode[M any](a adapter, l Location) *M {
-	for decoder := range a.decoders(l) {
-		m := new(M)
-		if !decoder(m) {
+func (a adapter) decode(l Location, ref any) bool {
+	v := reflect.ValueOf(ref).Elem()
+	segments := l.Segments
+	var prefixMutations []func()
+	if a.prefix != nil {
+		var ok bool
+		if prefixMutations, ok = a.prefix.decode(v, segments); !ok {
+			return false
+		}
+		segments = segments[a.prefix.len():]
+	}
+	for _, branch := range a.branches {
+		mutations, ok := branch.decode(v, segments)
+		if !ok {
 			continue
 		}
-		return m
-	}
-	return nil
-}
-
-func (a adapter) decoders(l Location) iter.Seq[func(ref any) bool] {
-	return func(yield func(func(ref any) bool) bool) {
-		for _, branch := range a.branches {
-			decode := func(ref any) bool {
-				v := reflect.ValueOf(ref).Elem()
-				if !branch.decode(v, l.Segments) {
-					return false
+		mutations = append(mutations, branch.setMarker(v))
+		if a.queryField == -1 {
+			mutations = append(mutations, func() {
+				if err := queryDecoder.Decode(ref, l.Query); err != nil {
+					slog.Error("Query decoding error", "error", err)
 				}
-				branch.setMarker(v)
-				if a.queryField == -1 {
-					if err := queryDecoder.Decode(ref, l.Query); err != nil {
-						return false
-					}
-				} else {
-					v.Field(a.queryField).Set(reflect.ValueOf(cloneQuery(l.Query)))
-				}
-				return true
-			}
-			if !yield(decode) {
-				return
-			}
+			})
+		} else {
+			query := cloneQuery(l.Query)
+			mutations = append(mutations, func() {
+				v.Field(a.queryField).Set(reflect.ValueOf(query))
+			})
 		}
+		for _, mutation := range prefixMutations {
+			mutation()
+		}
+		for _, mutation := range mutations {
+			mutation()
+		}
+		return true
 	}
+	return false
 }
 
 func (a adapter) encode(m any) (Location, error) {
 	v := reflect.ValueOf(m)
 	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
+	}
+	var prefixSegments []string
+	if a.prefix != nil {
+		var err error
+		if prefixSegments, err = a.prefix.encode(v); err != nil {
+			return Location{}, err
+		}
 	}
 	for _, b := range a.branches {
 		if len(a.branches) != 1 && !b.getMarker(v) {
@@ -163,6 +176,9 @@ func (a adapter) encode(m any) (Location, error) {
 		segments, err := b.encode(v)
 		if err != nil {
 			return Location{}, err
+		}
+		if len(prefixSegments) != 0 {
+			segments = append(prefixSegments, segments...)
 		}
 		var query url.Values
 		if a.queryField == -1 {
