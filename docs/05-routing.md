@@ -34,7 +34,7 @@ elem (a App) Main() {
 				// Decode the browser URL into Path.
 				doors.RouteModel(Page),
 				// Render when the URL does not decode into any path model.
-				doors.RouteLocationDefaultComp(NotFound{}),
+				doors.RouteDefaultComp[doors.Location](NotFound{}),
 			))
 		</body>
 	</html>
@@ -43,7 +43,7 @@ elem (a App) Main() {
 
 `RouteModel` matches when the URL decodes into `Path`. The matched view receives `doors.Source[Path]`: a typed view of the current URL. Updating that source encodes the new `Path` back into the URL.
 
-`RouteLocationDefaultComp` is the fallback for URLs that didn't decode. Routes are tried in order and the first match renders, so put fallbacks last.
+`RouteDefaultComp[doors.Location]` is the fallback for URLs that didn't decode. Routes are tried in order and the first match renders, so put fallbacks last.
 
 Inside the matched app page, route on decoded fields instead of parsing strings:
 
@@ -244,7 +244,7 @@ A page can route on more than one path model — list them in order of specifici
         doors.RouteModel(renderHome),
         doors.RouteModel(renderPost),
         doors.RouteModel(renderCatalog),
-        doors.RouteLocationDefaultComp(NotFound{}),
+        doors.RouteDefaultComp[doors.Location](NotFound{}),
     ))
 </>
 ```
@@ -325,7 +325,7 @@ The fragment swaps only when the active route changes. Within a matched route, t
 In a routing context, that opens up a few common patterns:
 
 - **Match the location without a path model.** The general `RouteValue`, `RouteMatch`, and `RouteDerive` builders work directly on `Location`, and compose freely with `RouteModel` / `RouteModelBeam` in the same router. Reach for them when one ad-hoc URL doesn't deserve its own struct.
-- **Take the location source directly.** `RouteLocationDefault`, `RouteLocationDefaultBeam`, and `RouteLocationDefaultBind` give the matched view a `Source[Location]`, `Beam[Location]`, or raw `Location` value. Useful as a fallback or when a page parses URLs itself.
+- **Take the location source directly.** `RouteDefault`, `RouteDefaultBeam`, and `RouteDefaultBind` can give the matched view a `Source[Location]`, `Beam[Location]`, or raw `Location` value. Useful as a fallback or when a page parses URLs itself.
 - **Dispatch on a derived value.** Once a page has a typed `Path`, derive a beam for the variant field and route on it again. The fragment only swaps when the variant actually changes.
 - **Mix URL routing with non-URL state.** Branch on a session-scoped flag, a feature toggle, an auth state — using the same `Route*` builders.
 - **Custom slices of the URL.** Derive a single-purpose source or beam from `doors.Router(ctx)` (for example, one query param) without committing to a path model.

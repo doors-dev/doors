@@ -1,3 +1,105 @@
+# Doors `0.14` Release Notes — "Altitude"
+
+Doors `0.14` is a focused ergonomics release. The changes are small in surface area, but they make daily Doors code feel more coherent for developers and users.
+
+## Highlights
+
+### GoX syntax coherence
+
+Doors now uses GoX v0.2 syntax.
+
+**Go snippets** used `~{ ... }` to switch from template mode into plain Go statements. The curly-brace delimiters were easy to confuse with regular Go blocks when scanning templates quickly, especially nested ones, and implied a scope boundary that doesn't actually exist.
+
+```gox
+<>
+    ~// Old
+    ~{
+        user := db.Get(id)
+        items := user.Items
+    }
+
+    ~// New
+    ~~
+    user := db.Get(id)
+    items := user.Items
+    ~~
+</>
+```
+
+The new `~~ ... ~~` delimiters are visually distinct and don't create a scope that isn't actually there.
+
+**Inline expressions** used `~func { ... }` for multi-statement blocks that evaluate at render time and return a value into the template. The form looked like a Go function literal but wasn't one - it was a GoX-specific construct.
+
+```gox
+    <>
+    ~// Old
+    ~func {
+        user, err := db.Get(id)
+        if err != nil { return <span>error</span> }
+        return Card(user)
+    }
+
+    ~// New
+    ~({
+        user, err := db.Get(id)
+        if err != nil { return <span>error</span> }
+        return Card(user)
+    })
+</>
+```
+
+The new form is just a placeholder `~(...)` with `{ ... }` inside. In attribute values, the `~` is dropped as usual:
+
+```gox
+<input checked=({ return ok })>
+```
+
+Old syntax is still supported and compiles without issues. To migrate existing templates, make sure you have the latest GoX toolchain. The GoX LSP formatter and `gox fmt` both auto-convert the old syntax.
+
+See [Template Syntax](./docs/03-template-syntax.md).
+
+### Path model segments
+
+Path models now support prefix tags: put the shared URL segment or prefix in the struct-tag key, then list variants under it in the tag value. This removes the repeated path segments that used to make local route groups noisy:
+
+```go
+// Old
+type ArticlePath struct {
+	Section ArticleSection `path:"/article/:ID | /article/:ID/edit | /article/:ID/settings"`
+	ID      int
+}
+
+// New
+type ArticlePath struct {
+	Section ArticleSection `"/article/:ID":" | edit | settings"`
+	ID      int
+}
+```
+
+Variants describe only what changes inside that area, while the shared prefix lives in the tag key. This makes path models much easier to split by concern and keeps large applications from accumulating one oversized route model.
+
+Old `path:"..."` tags and bool marker fields remain supported as compatibility syntax.
+
+See [Routing](./docs/05-routing.md).
+
+### Zero-delay reconnect
+
+When the network drops, the sync client backs off with progressive reconnect delays, up to the maximum retry delay. Previously, if the network recovered while the browser was still waiting inside a long retry delay, the next user action could still appear delayed until the scheduled reconnect fired.
+
+Now, user activity resets the pending sync reconnect delays and triggers an immediate reconnect attempt. After a long network interruption, a click, input, or navigation no longer waits behind an old backoff timer.
+
+This closes the last visible gap where Doors' server-driven sync model could surface to the user after network recovery.
+
+### Navigation error handling
+
+Failed Doors link navigation no longer reloads the page by default.
+
+Previously, a failed navigation behaved more like a traditional PHP-style server-rendered app: if the network was lost, the browser could leave the current page and show its own connection error page. That made sense as a conservative SSR fallback, but it is not how users expect a modern web app to behave.
+
+Now there is no default error action. You can still specify your own `OnError` actions for fallback UI, notifications, or recovery behavior. If a Doors link optimistically changes the URL and the navigation hook fails, the URL change is reverted instead of turning into a full browser-level failure page.
+
+---
+
 # Doors `0.13` Release Notes — "Harmony"
 
 ## Highlights

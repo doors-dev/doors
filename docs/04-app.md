@@ -225,7 +225,7 @@ elem (a App) Main() {
 				doors.RouteModel(elem(p doors.Source[Path]) {
 					~Page{path: p}
 				}),
-				doors.RouteLocationDefaultComp(NotFound{}),
+				doors.RouteDefaultComp[doors.Location](NotFound{}),
 			))
 		</body>
 	</html>

@@ -53,7 +53,7 @@ func Router(ctx context.Context) Source[Location] {
 // route branches based on the current URL.
 //
 // Routes are tried in order and the first match renders. Use [RouteModel] to
-// match on path-model structs and [RouteLocationDefault] as the fallback.
+// match on path-model structs and [RouteDefault] as the fallback.
 func Route(routes ...RouteSource[Location]) gox.EditorComp {
 	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		path := Router(cur.Context())
@@ -65,6 +65,8 @@ func Route(routes ...RouteSource[Location]) gox.EditorComp {
 // writable [Source] of the current [Location].
 //
 // This is the URL-specific wrapper around [RouteDefault].
+//
+// Deprecated: use [RouteDefault] instead.
 func RouteLocationDefault[C gox.Comp](render func(s Source[Location]) C) RouteSource[Location] {
 	return RouteDefault(render)
 }
@@ -73,19 +75,25 @@ func RouteLocationDefault[C gox.Comp](render func(s Source[Location]) C) RouteSo
 // with a read-only [Beam] of the current [Location].
 //
 // This is the URL-specific wrapper around [RouteDefaultBeam].
+//
+// Deprecated: use [RouteDefaultBeam] instead.
 func RouteLocationDefaultBeam[C gox.Comp](render func(b Beam[Location]) C) RouteBeam[Location] {
-	return RouteLocationDefaultBeam(render)
+	return RouteDefaultBeam(render)
 }
 
 // RouteLocationDefaultBind creates a fallback URL route that calls render with
-// the raw [Location] value directly — a shorthand for [RouteLocationDefaultBeam]
+// the raw [Location] value directly — a shorthand for [RouteDefaultBeam]
 // plus bind.
+//
+// Deprecated: use [RouteDefaultBind] instead.
 func RouteLocationDefaultBind[C gox.Comp](render func(b Location) C) RouteBeam[Location] {
 	return RouteDefaultBind(render)
 }
 
 // RouteLocationDefaultComp creates a fallback URL route that renders a
 // fixed component. The component receives no reactive value.
+//
+// Deprecated: use [RouteDefaultComp] instead.
 func RouteLocationDefaultComp(comp gox.Comp) RouteBeam[Location] {
 	return RouteDefaultComp[Location](comp)
 }
