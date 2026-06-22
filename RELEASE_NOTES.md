@@ -98,6 +98,22 @@ Previously, a failed navigation behaved more like a traditional PHP-style server
 
 Now there is no default error action. You can still specify your own `OnError` actions for fallback UI, notifications, or recovery behavior. If a Doors link optimistically changes the URL and the navigation hook fails, the URL change is reverted instead of turning into a full browser-level failure page.
 
+## Other improvements
+
+### ⚡ Claude Fable codebase audit
+
+Doors completed a Claude Fable audit covering the entire codebase, including the reactive state layer, Door engine, instance/session HTTP handling, routing/path models, printing/resources, TypeScript client, and public hook APIs. The audit used parallel subsystem reviews, then each finding was re-verified by hand against the actual source.
+
+All findings were fixed. The follow-up work tightened sync and screen cleanup, path decoding/encoding edge cases, form and hook error handling, resource build failures, request-body limits, client recovery paths, and several race/leak-prone lifecycle edges. Regression coverage was added around the fixes so these cases stay closed.
+
+### Ecosystem level-up: official Caddy plugin
+
+[`doors-caddy`](https://github.com/doors-dev/doors-caddy) is the official Caddy plugin and Go integration library for production Doors deployments. It solves three stack-level problems:
+
+- **Rollouts without user interruption.** For stateful server-driven apps, rollouts are usually painful because live sessions must stay connected to the process that owns them. Doors no longer has that pain: Kubernetes + Caddy plugin + Argo Rollouts can provide seamless rollouts. The user keeps a complete, coherent app version throughout the live session, while normal navigation moves them to the fresh deployment.
+- **Sticky load balancing.** A Doors instance is live on one server. The balancer is responsible for initial assignment; after that, the user sticks to that server until the session ends. 
+- **Geo-based redirects.** UX responsiveness depends on server location. The plugin can redirect users to the closest regional domain by country, while leaving Doors system paths and non-GET requests untouched.
+
 ---
 
 # Doors `0.13` Release Notes — "Harmony"
