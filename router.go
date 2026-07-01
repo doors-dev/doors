@@ -49,6 +49,25 @@ func Router(ctx context.Context) Source[Location] {
 	}
 }
 
+// HistoryReplaceContext marks ctx so that a routing update made with it replaces
+// the current browser history entry (history.replaceState) instead of pushing a
+// new one (history.pushState).
+//
+// It works with any update that changes the URL, because they all write through
+// to the same underlying [Location] state and the mark travels with the write:
+// the top-level [Router] source, a path-model route source (from [RouteModel]),
+// or a derived route source (from RouteDerive(...).Source). Update or Mutate are
+// both honored.
+//
+// The mark only influences the resulting history entry; passing it to an update
+// of a source not backed by the URL has no effect.
+//
+//	// replace instead of push, on a path-model source
+//	path.Update(HistoryReplaceContext(ctx), Path{Section: SectionDocs})
+func HistoryReplaceContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, common.KeyHistoryReplace, true)
+}
+
 // Route returns a renderable component that picks one of several writable
 // route branches based on the current URL.
 //

@@ -158,6 +158,10 @@ func (h *helperInstance) ModuleRegistry() core.ModuleRegistry {
 	return nil
 }
 
+func (h *helperInstance) LastSeen() time.Time {
+	return time.Time{}
+}
+
 func (h *helperInstance) ID() string {
 	return "instance-1"
 }
@@ -247,6 +251,10 @@ func (h *helperSession) Context() context.Context {
 
 func (h *helperSession) Store() ctex.Store {
 	return ctex.NewStore()
+}
+
+func (h *helperSession) LastSeen() time.Time {
+	return time.Time{}
 }
 
 func (h *helperSession) ID() string {

@@ -22,7 +22,6 @@ import (
 )
 
 func NewFreeContext(ctx context.Context, runtime context.Context) context.Context {
-	ctx = FrameRemove(ctx)
 	return freeContext{ctx, runtime}
 }
 
@@ -44,6 +43,9 @@ func (f freeContext) Err() error {
 }
 
 func (f freeContext) Value(key any) any {
+	if key == common.KeyFrame {
+		return nil
+	}
 	return f.ctx.Value(key)
 }
 
@@ -52,14 +54,6 @@ var _ context.Context = freeContext{}
 func IsFreeCtx(ctx context.Context) bool {
 	_, ok := ctx.(freeContext)
 	return ok
-}
-
-func ClearFreeCtx(ctx context.Context) context.Context {
-	fc, ok := ctx.(freeContext)
-	if !ok {
-		return ctx
-	}
-	return ClearFreeCtx(fc.ctx)
 }
 
 func LogFreeWarning(ctx context.Context, entity string, operation string) {

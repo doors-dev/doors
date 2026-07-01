@@ -15,11 +15,13 @@
 package attr
 
 import (
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/doors-dev/doors/internal/test"
+	"github.com/go-rod/rod"
 )
 
 func currentHash(t *testing.T, pageURL string) string {
@@ -44,15 +46,34 @@ func waitReportValue(t *testing.T, pageURL func() string, check func() string, e
 	}
 }
 
+func dispatchKey(t *testing.T, page *rod.Page, selector, init string) {
+	t.Helper()
+	_, err := page.Eval(fmt.Sprintf(`() => {
+		const el = document.querySelector(%q)
+		if (!el) {
+			throw new Error("element not found: " + %q)
+		}
+		el.dispatchEvent(new KeyboardEvent("keydown", %s))
+	}`, selector, selector, init))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCapturePipelineOptions(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &captureFragment{
-			r: test.NewReporter(5),
+			r: test.NewReporter(10),
 		}
 	})
 	defer bro.Close()
 	page := bro.Page(t, "/")
 	defer page.Close()
+
+	pageURL := func() string { return page.MustInfo().URL }
+	report := func(id int) func() string {
+		return func() string { return test.GetReportContent(t, page, id) }
+	}
 
 	test.Click(t, page, "#bubble-child")
 	test.TestReportId(t, page, 0, "")
@@ -75,28 +96,43 @@ func TestCapturePipelineOptions(t *testing.T) {
 	}
 
 	test.Click(t, page, "#filter-input")
-	_, err := page.Eval(`() => {
-		const el = document.querySelector("#filter-input")
-		if (!(el instanceof HTMLInputElement)) {
-			throw new Error("filter-input not found")
-		}
-		el.dispatchEvent(new KeyboardEvent("keydown", { key: "c", bubbles: true }))
-	}`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	dispatchKey(t, page, "#filter-input", `{ key: "c", bubbles: true }`)
 	test.TestReportId(t, page, 4, "")
-	_, err = page.Eval(`() => {
-		const el = document.querySelector("#filter-input")
-		if (!(el instanceof HTMLInputElement)) {
-			throw new Error("filter-input not found")
-		}
-		el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))
-	}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	waitReportValue(t, func() string { return page.MustInfo().URL }, func() string {
-		return test.GetReportContent(t, page, 4)
-	}, "Enter")
+	dispatchKey(t, page, "#filter-input", `{ key: "Enter", bubbles: true }`)
+	waitReportValue(t, pageURL, report(4), "1")
+	dispatchKey(t, page, "#filter-input", `{ key: "Enter", ctrlKey: true, shiftKey: true, altKey: true, metaKey: true, bubbles: true }`)
+	waitReportValue(t, pageURL, report(4), "2")
+
+	dispatchKey(t, page, "#keys-ctrl", `{ key: "s", bubbles: true }`)
+	test.TestReportId(t, page, 5, "")
+	dispatchKey(t, page, "#keys-ctrl", `{ key: "s", ctrlKey: true, bubbles: true }`)
+	waitReportValue(t, pageURL, report(5), "1")
+	dispatchKey(t, page, "#keys-ctrl", `{ key: "s", ctrlKey: true, shiftKey: true, altKey: true, metaKey: true, bubbles: true }`)
+	waitReportValue(t, pageURL, report(5), "2")
+
+	dispatchKey(t, page, "#keys-ctrl-off", `{ key: "d", ctrlKey: true, bubbles: true }`)
+	test.TestReportId(t, page, 6, "")
+	dispatchKey(t, page, "#keys-ctrl-off", `{ key: "d", bubbles: true }`)
+	waitReportValue(t, pageURL, report(6), "1")
+	dispatchKey(t, page, "#keys-ctrl-off", `{ key: "d", shiftKey: true, altKey: true, metaKey: true, bubbles: true }`)
+	waitReportValue(t, pageURL, report(6), "2")
+
+	dispatchKey(t, page, "#keys-meta", `{ key: "e", bubbles: true }`)
+	test.TestReportId(t, page, 7, "")
+	dispatchKey(t, page, "#keys-meta", `{ key: "e", metaKey: true, bubbles: true }`)
+	waitReportValue(t, pageURL, report(7), "1")
+
+	dispatchKey(t, page, "#keys-multi", `{ key: "a", ctrlKey: true, bubbles: true }`)
+	waitReportValue(t, pageURL, report(8), "1")
+	dispatchKey(t, page, "#keys-multi", `{ key: "b", bubbles: true }`)
+	test.TestReportId(t, page, 8, "1")
+	dispatchKey(t, page, "#keys-multi", `{ key: "b", shiftKey: true, bubbles: true }`)
+	waitReportValue(t, pageURL, report(8), "2")
+
+	dispatchKey(t, page, "#keys-any", `{ key: "z", bubbles: true }`)
+	test.TestReportId(t, page, 9, "")
+	dispatchKey(t, page, "#keys-any", `{ key: "z", altKey: true, bubbles: true }`)
+	waitReportValue(t, pageURL, report(9), "1")
+	dispatchKey(t, page, "#keys-any", `{ key: "q", altKey: true, bubbles: true }`)
+	waitReportValue(t, pageURL, report(9), "2")
 }

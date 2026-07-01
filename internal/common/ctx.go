@@ -25,6 +25,7 @@ const (
 	KeyCore ctxKey = iota
 	KeySession
 	KeyFrame
+	KeyHistoryReplace
 )
 
 func Logger(ctx context.Context) *slog.Logger {

@@ -67,6 +67,7 @@ func (t *titleInstance) CSPCollector() common.CSPCollector {
 }
 func (t *titleInstance) ModuleRegistry() core.ModuleRegistry  { return t.modules }
 func (t *titleInstance) ID() string                           { return "instance" }
+func (t *titleInstance) LastSeen() time.Time                  { return time.Time{} }
 func (t *titleInstance) RootID() uint64                       { return 1 }
 func (t *titleInstance) NewID() uint64                        { return 1 }
 func (t *titleInstance) Runtime() shredder.Runtime            { return nil }
@@ -126,6 +127,7 @@ func (s titleSession) Context() context.Context {
 }
 func (s titleSession) Store() ctex.Store    { return ctex.NewStore() }
 func (s titleSession) ID() string           { return "session" }
+func (s titleSession) LastSeen() time.Time  { return time.Time{} }
 func (s titleSession) Expire(time.Duration) {}
 func (s titleSession) Kill()                {}
 

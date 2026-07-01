@@ -113,7 +113,7 @@ Some event families also add browser-event options such as:
 - `PreventDefault`
 - `StopPropagation`
 - `ExactTarget`
-- `Filter`
+- `Keys`
 - `ExcludeValue`
 
 Not every event family supports every one of these options.
@@ -123,7 +123,7 @@ Not every event family supports every one of these options.
 When an event fires, the client/runtime flow is roughly:
 
 1. capture the browser event and build the payload
-2. apply client-side event options such as `PreventDefault`, `StopPropagation`, `ExactTarget`, or key `Filter`
+2. apply client-side event options such as `PreventDefault`, `StopPropagation`, `ExactTarget`, or keyboard `Keys` matching
 3. run client-side scopes
 4. start indication
 5. run any `Before` actions
@@ -177,17 +177,28 @@ Keyboard attributes are:
 - `doors.AKeyDown`
 - `doors.AKeyUp`
 
-Use `Filter` to limit by `event.key`:
+Use `Keys` to fire only for specific keys and modifier combinations. The hook fires when the event matches any entry:
 
 ```gox
 <input
 	(doors.AKeyDown{
-		Filter: []string{"Enter"},
+		Keys: []doors.Key{
+			{Key: "Enter"},
+			{Key: "s", CtrlMod: doors.ModOn},
+		},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			return false
 		},
 	})/>
 ```
+
+Each `doors.Key` matches `event.key` (an empty string matches any key) plus a required state for each modifier. `CtrlMod`, `ShiftMod`, `AltMod`, and `MetaMod` are `doors.Mod` values:
+
+- `doors.ModAny` (default) — modifier ignored
+- `doors.ModOn` — modifier must be held
+- `doors.ModOff` — modifier must not be held
+
+So `{Key: "Enter"}` matches Enter with any modifiers, and `{Key: "s", CtrlMod: doors.ModOn}` matches Ctrl+S regardless of Shift, Alt, or Meta. To require an exact combination, set the other modifiers to `doors.ModOff`.
 
 The keyboard payload includes `Key`, `Code`, `Repeat`, and modifier state such as `CtrlKey`, `ShiftKey`, `AltKey`, and `MetaKey`.
 

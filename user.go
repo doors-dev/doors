@@ -81,6 +81,20 @@ func SessionId(ctx context.Context) string {
 	return sess.ID()
 }
 
+// InstanceLastSeen returns the time of the most recent client contact with the
+// current instance (its latest live keep-alive).
+func InstanceLastSeen(ctx context.Context) time.Time {
+	core := ctx.Value(common.KeyCore).(core.Core)
+	return core.Instance().LastSeen()
+}
+
+// SessionLastSeen returns the time of the most recent client contact with the
+// current session (its latest renewal).
+func SessionLastSeen(ctx context.Context) time.Time {
+	sess := ctx.Value(common.KeySession).(core.Session)
+	return sess.LastSeen()
+}
+
 // Store is goroutine-safe key-value storage used for session and instance
 // data.
 type Store = ctex.Store

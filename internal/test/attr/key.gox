@@ -36,6 +36,12 @@ elem (f *keyFragment) Main() {
 			}
 			return false
 		},
+	} ~>doors.AKeyUp{
+		Keys: []doors.Key{{Key: "e", CtrlMod: doors.ModOn}},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+			f.r.Update(ctx, 7, "ctrl-e")
+			return false
+		},
 	} <input type="text" id="input" placeholder=""/>
 	<hr/>
 	~~
@@ -46,6 +52,7 @@ elem (f *keyFragment) Main() {
 	f.r.Update(ctx, 4, "")
 	f.r.Update(ctx, 5, "")
 	f.r.Update(ctx, 6, "")
+	f.r.Update(ctx, 7, "")
 	~~
 	~(f.r)
 }

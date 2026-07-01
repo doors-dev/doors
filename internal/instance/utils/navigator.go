@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/beam"
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/action"
@@ -57,7 +58,8 @@ func (n *navigator) Sync() {
 			n.inital = nil
 			return false
 		}
-		n.push(ctx, l, false)
+		replace, _ := ctx.Value(common.KeyHistoryReplace).(bool)
+		n.push(ctx, l, replace)
 		return false
 	})
 }

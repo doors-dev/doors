@@ -194,7 +194,13 @@ elem (f *dataFragment) Main() {
 
 type captureFragment struct {
 	test.NoBeam
-	r *test.Reporter
+	r       *test.Reporter
+	filter  int
+	ctrlOn  int
+	ctrlOff int
+	metaOn  int
+	multi   int
+	anyKey  int
 }
 
 elem (f *captureFragment) Main() {
@@ -204,6 +210,11 @@ elem (f *captureFragment) Main() {
 	f.r.Update(ctx, 2, "")
 	f.r.Update(ctx, 3, "")
 	f.r.Update(ctx, 4, "")
+	f.r.Update(ctx, 5, "")
+	f.r.Update(ctx, 6, "")
+	f.r.Update(ctx, 7, "")
+	f.r.Update(ctx, 8, "")
+	f.r.Update(ctx, 9, "")
 	~~
 	~(f.r)
 	~>doors.AClick{
@@ -240,10 +251,51 @@ elem (f *captureFragment) Main() {
 	~>doors.AKeyDown{
 		Filter: []string{"Enter"},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
-			f.r.Update(ctx, 4, r.Event().Key)
+			f.filter++
+			f.r.Update(ctx, 4, fmt.Sprint(f.filter))
 			return false
 		},
 	} <input id="filter-input" type="text"/>
+	~>doors.AKeyDown{
+		Keys: []doors.Key{{Key: "s", CtrlMod: doors.ModOn}},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+			f.ctrlOn++
+			f.r.Update(ctx, 5, fmt.Sprint(f.ctrlOn))
+			return false
+		},
+	} <input id="keys-ctrl" type="text"/>
+	~>doors.AKeyDown{
+		Keys: []doors.Key{{Key: "d", CtrlMod: doors.ModOff}},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+			f.ctrlOff++
+			f.r.Update(ctx, 6, fmt.Sprint(f.ctrlOff))
+			return false
+		},
+	} <input id="keys-ctrl-off" type="text"/>
+	~>doors.AKeyDown{
+		Keys: []doors.Key{{Key: "e", MetaMod: doors.ModOn}},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+			f.metaOn++
+			f.r.Update(ctx, 7, fmt.Sprint(f.metaOn))
+			return false
+		},
+	} <input id="keys-meta" type="text"/>
+	~>doors.AKeyDown{
+		Keys: []doors.Key{{Key: "a"}, {Key: "b", ShiftMod: doors.ModOn}},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+			f.multi++
+			f.r.Update(ctx, 8, fmt.Sprint(f.multi))
+			return false
+		},
+	} <input id="keys-multi" type="text"/>
+	~>doors.AKeyDown{
+		Keys: []doors.Key{{Key: "", AltMod: doors.ModOn}},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+			f.anyKey++
+			f.r.Update(ctx, 9, fmt.Sprint(f.anyKey))
+			return false
+		},
+	} <input id="keys-any" type="text"/>
 }
 
 type pointerCoordsFragment struct {

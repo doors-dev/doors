@@ -205,3 +205,16 @@ elem (a *App) goToCity(cityID int) {
 	</button>
 }
 ```
+
+### History Replace
+
+A programmatic update pushes a new browser history entry by default. To replace the current entry instead (like `history.replaceState`), wrap the context with `doors.HistoryReplaceContext`:
+
+```go
+a.path.Update(doors.HistoryReplaceContext(ctx), Path{
+	Section: SectionDashboard,
+	ID:      cityID,
+})
+```
+
+It works with any URL-backed source — `doors.Router(ctx)`, a `RouteModel` source, or a derived route source — and with both `Update` and `Mutate`. Browser back then skips the replaced entry.

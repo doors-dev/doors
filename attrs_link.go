@@ -136,6 +136,10 @@ type ALink struct {
 	Active Active
 	// Stop event propagation (for dynamic links). Optional.
 	StopPropagation bool
+	// When true, an optimistic click replaces the current browser history
+	// entry (history.replaceState) instead of pushing a new one, so Back skips
+	// over this navigation. Optional; defaults to push.
+	HistoryReplace bool
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
 	// Optional.
 	Scope Scopes
@@ -193,6 +197,9 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 			req := request{w: w, r: r, ctx: ctx}
 			req.After(h.After)
 		}
+		if h.HistoryReplace {
+			ctx = HistoryReplaceContext(ctx)
+		}
 		core.Instance().Location().Update(ctx, loc)
 		return false
 	}
@@ -202,6 +209,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}
 	front.AttrsAppendCapture(attrs, front.LinkCapture{
 		StopPropagation: h.StopPropagation,
+		HistoryReplace:  h.HistoryReplace,
 	}, front.Hook{
 		Indicate: indicatorsOrNil(h.Indicator),
 		Scope:    scopesOrNil(core, h.Scope),

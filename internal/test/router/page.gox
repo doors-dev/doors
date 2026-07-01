@@ -769,3 +769,144 @@ elem routeBindDocument() {
 		</body>
 	</html>
 }
+
+elem pageHistoryReplace(b doors.Source[doors.Location]) {
+	<html>
+		<body>
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			~(b.Bind(elem(l doors.Location) {
+				<div id="path">~(l.String())</div>
+			}))
+			~~
+			locC1, _ := doors.NewLocation(PathC{PathC1: true})
+			locC2, _ := doors.NewLocation(PathC{PathC2: true})
+			~~
+			~>doors.AClick{
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+					b.Update(ctx, locC1)
+					return false
+				},
+			} <button id="soft-assign">soft-assign</button>
+			~>doors.AClick{
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+					b.Update(doors.HistoryReplaceContext(ctx), locC2)
+					return false
+				},
+			} <button id="soft-replace">soft-replace</button>
+		</body>
+	</html>
+}
+
+type ReplaceStep int
+
+const (
+	ReplaceA ReplaceStep = iota
+	ReplaceB
+	ReplaceC
+)
+
+type PathReplace struct {
+	Step ReplaceStep `/:"rep-a | rep-b | rep-c"`
+}
+
+elem pageReplaceModel(s doors.Source[PathReplace]) {
+	<html>
+		<body>
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			~(s.Bind(elem(p PathReplace) {
+				<div id="step">~(fmt.Sprint(int(p.Step)))</div>
+			}))
+			~>doors.AClick{
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+					s.Update(ctx, PathReplace{Step: ReplaceB})
+					return false
+				},
+			} <button id="pm-push">pm-push</button>
+			~>doors.AClick{
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+					s.Update(doors.HistoryReplaceContext(ctx), PathReplace{Step: ReplaceC})
+					return false
+				},
+			} <button id="pm-replace">pm-replace</button>
+			~>doors.AClick{
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+					s.Mutate(doors.HistoryReplaceContext(ctx), func(p PathReplace) PathReplace {
+						p.Step = ReplaceC
+						return p
+					})
+					return false
+				},
+			} <button id="pm-replace-mutate">pm-replace-mutate</button>
+		</body>
+	</html>
+}
+
+type LinkStep int
+
+const (
+	LinkA LinkStep = iota
+	LinkB
+	LinkC
+)
+
+type PathLink struct {
+	Step LinkStep `/:"la | lb | lc"`
+}
+
+elem pageLinkNav(s doors.Source[PathLink]) {
+	<html>
+		<body>
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			~(s.Bind(elem(p PathLink) {
+				<div id="step">~(fmt.Sprint(int(p.Step)))</div>
+			}))
+			~>doors.ALink{
+				Model: PathLink{Step: LinkB},
+			} <a id="push-b">push-b</a>
+			~>doors.ALink{
+				Model:          PathLink{Step: LinkC},
+				HistoryReplace: true,
+			} <a id="replace-c">replace-c</a>
+			~>doors.ALink{
+				Model:          PathLink{Step: LinkA},
+				HistoryReplace: true,
+			} <a id="replace-self">replace-self</a>
+			~>doors.ALink{
+				Model:          PathLink{Step: LinkA},
+				Fragment:       "sec",
+				HistoryReplace: true,
+			} <a id="replace-hash">replace-hash</a>
+			<div id="sec" style="margin-top: 3000px">sec</div>
+		</body>
+	</html>
+}
+
+elem pageLastSeen(b doors.Source[doors.Location]) {
+	~~
+	result := doors.NewSource("")
+	~~
+	<html>
+		<body>
+			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			~(result.Bind(elem(s string) {
+				<div id="result">~(s)</div>
+			}))
+			~>doors.AClick{
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+					now := time.Now()
+					inst := doors.InstanceLastSeen(ctx)
+					sess := doors.SessionLastSeen(ctx)
+					ok := !inst.IsZero() && !sess.IsZero() &&
+						!inst.After(now) && !sess.After(now) &&
+						now.Sub(inst) < time.Minute && now.Sub(sess) < time.Minute
+					if ok {
+						result.Update(ctx, "ok")
+					} else {
+						result.Update(ctx, fmt.Sprintf("bad inst=%v sess=%v", inst, sess))
+					}
+					return false
+				},
+			} <button id="check">check</button>
+		</body>
+	</html>
+}

@@ -205,12 +205,6 @@ func TestFreeHelpers(t *testing.T) {
 	if !IsFreeCtx(free) {
 		t.Fatal("expected free context flag")
 	}
-	if cleared := ClearFreeCtx(base); cleared != base {
-		t.Fatal("expected clear to preserve non-free context")
-	}
-	if IsFreeCtx(ClearFreeCtx(free)) {
-		t.Fatal("expected cleared context to become non-free")
-	}
 
 	LogFreeWarning(base, "beam", "recv")
 	LogFreeWarning(free, "beam", "recv")
@@ -243,8 +237,12 @@ func TestFrameHelpers(t *testing.T) {
 	if infected.Value(common.KeyCore) != "core" {
 		t.Fatal("expected frame infect to preserve existing target values")
 	}
-	if FrameInfect(base, target) != target {
-		t.Fatal("expected infect without frame to preserve target context")
+	noFrame := FrameInfect(base, target)
+	if _, ok := AfterFrame(noFrame); ok {
+		t.Fatal("expected no frame when source has none")
+	}
+	if noFrame.Value(common.KeyCore) != "core" {
+		t.Fatal("expected infect to expose target core value")
 	}
 }
 

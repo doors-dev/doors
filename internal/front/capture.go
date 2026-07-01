@@ -34,12 +34,22 @@ func (pc PointerCapture) Listen() string {
 	return pc.Event
 }
 
+// KeyMatch is a single key + modifier constraint for a keyboard hook.
+// The modifier fields carry Mod values: 0 any, 1 on, 2 off.
+type KeyMatch struct {
+	Key   string `json:"k"`
+	Ctrl  uint8  `json:"c"`
+	Shift uint8  `json:"s"`
+	Alt   uint8  `json:"a"`
+	Meta  uint8  `json:"m"`
+}
+
 type KeyboardEventCapture struct {
-	Event           string   `json:"-"`
-	Filter          []string `json:"fr"`
-	PreventDefault  bool     `json:"pd"`
-	StopPropagation bool     `json:"sp"`
-	ExactTarget     bool     `json:"et"`
+	Event           string     `json:"-"`
+	Keys            []KeyMatch `json:"ks,omitempty"`
+	PreventDefault  bool       `json:"pd"`
+	StopPropagation bool       `json:"sp"`
+	ExactTarget     bool       `json:"et"`
 }
 
 func (c KeyboardEventCapture) Name() string {
@@ -63,6 +73,7 @@ func (c FormCapture) Listen() string {
 
 type LinkCapture struct {
 	StopPropagation bool `json:"sp"`
+	HistoryReplace  bool `json:"hr"`
 }
 
 func (c LinkCapture) Name() string {

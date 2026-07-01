@@ -29,6 +29,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -346,6 +348,33 @@ func ClickBurst(t *testing.T, page *rod.Page, selectors ...string) {
 	}`, selectors)
 	if err != nil {
 		t.Fatal("click burst failed: ", err)
+	}
+}
+
+// HijackFailOnce intercepts requests whose URL matches the rod glob pattern and
+// fails the first match with a network-level ConnectionFailed error, letting
+// every other request (including later matches) pass through untouched. Only the
+// given pattern is registered with the CDP Fetch domain, so unrelated traffic
+// such as the SSE sync stream, resource loads and page navigations is never
+// paused. The returned stop function tears the router down; it is safe to call
+// more than once.
+func HijackFailOnce(t *testing.T, page *rod.Page, pattern string) func() {
+	t.Helper()
+	router := page.HijackRequests()
+	var failed atomic.Bool
+	router.MustAdd(pattern, func(h *rod.Hijack) {
+		if failed.CompareAndSwap(false, true) {
+			h.Response.Fail(proto.NetworkErrorReasonConnectionFailed)
+			return
+		}
+		h.ContinueRequest(&proto.FetchContinueRequest{})
+	})
+	go router.Run()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			router.MustStop()
+		})
 	}
 }
 

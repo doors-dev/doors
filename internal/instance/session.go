@@ -110,6 +110,10 @@ func (sess Session) ID() string {
 	return sess.id
 }
 
+func (sess *session) LastSeen() time.Time {
+	return time.UnixMilli(sess.renewed.Load())
+}
+
 func (sess Session) Instance(loc path.Location) (Instance, bool) {
 	if sess.killed() {
 		return nil, false

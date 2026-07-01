@@ -71,10 +71,12 @@ func TestKey(t *testing.T) {
 	page.Keyboard.Release(input.ShiftLeft)
 	waitReport(t, page, 4, "true")
 
+	test.TestReportId(t, page, 7, "")
+
 	page.Keyboard.Press(input.ControlLeft)
 	page.Keyboard.Press(input.KeyE)
 	page.Keyboard.Release(input.KeyE)
 	page.Keyboard.Release(input.ControlLeft)
 	waitReport(t, page, 5, "true")
-
+	waitReport(t, page, 7, "ctrl-e")
 }

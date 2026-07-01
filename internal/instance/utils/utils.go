@@ -36,12 +36,13 @@ func NewKillTimer(inst core.Instance) KillTimer {
 }
 
 type killTimer struct {
-	mu      sync.Mutex
-	stopped bool
-	initial time.Duration
-	regular time.Duration
-	timer   *time.Timer
-	inst    core.Instance
+	mu        sync.Mutex
+	stopped   bool
+	initial   time.Duration
+	regular   time.Duration
+	timer     *time.Timer
+	inst      core.Instance
+	keepAlive time.Time
 }
 
 func (t *killTimer) Stop() {
@@ -57,12 +58,19 @@ func (t *killTimer) Stop() {
 	t.timer.Stop()
 }
 
+func (t *killTimer) LastSeen() time.Time {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.keepAlive
+}
+
 func (t *killTimer) KeepAlive() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.stopped {
 		return
 	}
+	t.keepAlive = time.Now()
 	if t.timer != nil {
 		stopped := t.timer.Stop()
 		if !stopped {

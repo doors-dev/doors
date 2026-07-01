@@ -16,6 +16,7 @@ package ctex
 
 import (
 	"context"
+	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -98,17 +99,36 @@ func GetFrames(ctx context.Context) Frames {
 }
 
 func FrameInfect(source context.Context, target context.Context) context.Context {
-	fs, ok := source.Value(common.KeyFrame).(Frames)
-	if !ok {
-		return target
+	return infectedContext{
+		source: source,
+		target: target,
 	}
-	return context.WithValue(target, common.KeyFrame, fs)
 }
 
-func FrameRemove(ctx context.Context) context.Context {
-	_, ok := ctx.Value(common.KeyFrame).(Frames)
-	if !ok {
-		return ctx
-	}
-	return context.WithValue(ctx, common.KeyFrame, nil)
+type infectedContext struct {
+	source context.Context
+	target context.Context
 }
+
+func (c infectedContext) Deadline() (deadline time.Time, ok bool) {
+	return c.target.Deadline()
+}
+
+func (c infectedContext) Done() <-chan struct{} {
+	return c.target.Done()
+}
+
+func (c infectedContext) Err() error {
+	return c.target.Err()
+}
+
+func (c infectedContext) Value(key any) any {
+	switch key {
+	case common.KeyCore, common.KeySession:
+		return c.target.Value(key)
+	default:
+		return c.source.Value(key)
+	}
+}
+
+var _ context.Context = infectedContext{}

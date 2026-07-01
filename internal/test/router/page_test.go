@@ -134,6 +134,19 @@ func waitEscapedPath(t *testing.T, page *rod.Page, path string) {
 	}
 }
 
+func waitPath(t *testing.T, page *rod.Page, path string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		segments := strings.Split(strings.Trim(page.MustInfo().URL, "/"), "/")
+		if segments[len(segments)-1] == path {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	testPath(t, page, path)
+}
+
 func waitContent(t *testing.T, page *rod.Page, selector string, content string) {
 	t.Helper()
 	deadline := time.Now().Add(time.Second)
@@ -715,6 +728,240 @@ func TestAfterReload(t *testing.T) {
 	page.NavigateBack()
 	<-time.After(100 * time.Millisecond)
 	testPath(t, page, "a")
+}
+
+func TestHistoryReplaceContext(t *testing.T) {
+	bro := locationBro(pageHistoryReplace)
+	defer bro.Close()
+	page := bro.Page(t, "/a")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+
+	test.Click(t, page, "#soft-assign")
+	testPath(t, page, "c1")
+	waitContent(t, page, "#path", "/c1")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#soft-replace")
+	testPath(t, page, "c2")
+	waitContent(t, page, "#path", "/c2")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "a")
+	waitContent(t, page, "#path", "/a")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+}
+
+func TestHistoryReplaceContextPathModel(t *testing.T) {
+	bro := routeBro(doors.RouteModel(pageReplaceModel))
+	defer bro.Close()
+	page := bro.Page(t, "/rep-a")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	testPath(t, page, "rep-a")
+
+	test.Click(t, page, "#pm-push")
+	testPath(t, page, "rep-b")
+	waitContent(t, page, "#step", "1")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#pm-replace")
+	testPath(t, page, "rep-c")
+	waitContent(t, page, "#step", "2")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "rep-a")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+}
+
+func TestHistoryReplaceContextMutateAndNoLeak(t *testing.T) {
+	bro := routeBro(doors.RouteModel(pageReplaceModel))
+	defer bro.Close()
+	page := bro.Page(t, "/rep-a")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	testPath(t, page, "rep-a")
+
+	test.Click(t, page, "#pm-push")
+	testPath(t, page, "rep-b")
+	waitContent(t, page, "#step", "1")
+
+	test.Click(t, page, "#pm-replace-mutate")
+	testPath(t, page, "rep-c")
+	waitContent(t, page, "#step", "2")
+
+	test.Click(t, page, "#pm-push")
+	testPath(t, page, "rep-b")
+	waitContent(t, page, "#step", "1")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "rep-c")
+
+	page.NavigateBack()
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "rep-a")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+}
+
+func historyLength(t *testing.T, page *rod.Page) int {
+	t.Helper()
+	obj, err := page.Eval("() => history.length")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return obj.Value.Int()
+}
+
+func waitHistoryStateIdCleared(t *testing.T, page *rod.Page) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		obj, err := page.Eval("() => (history.state && history.state.id) ?? null")
+		if err == nil && obj.Value.Nil() {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("expected history.state.id to be cleared after replace confirm")
+}
+
+func waitHash(t *testing.T, page *rod.Page, hash string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		u, err := url.Parse(page.MustInfo().URL)
+		if err == nil && u.Fragment == hash {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("expected url hash %q before timeout", hash)
+}
+
+func TestALinkHistoryReplace(t *testing.T) {
+	bro := routeBro(doors.RouteModel(pageLinkNav))
+	defer bro.Close()
+	page := bro.Page(t, "/la")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	testPath(t, page, "la")
+	lenStart := historyLength(t, page)
+
+	test.Click(t, page, "#push-b")
+	testPath(t, page, "lb")
+	waitContent(t, page, "#step", "1")
+	if got := historyLength(t, page); got != lenStart+1 {
+		t.Fatalf("push should grow history by 1: %d -> %d", lenStart, got)
+	}
+
+	test.Click(t, page, "#replace-c")
+	testPath(t, page, "lc")
+	waitContent(t, page, "#step", "2")
+	if got := historyLength(t, page); got != lenStart+1 {
+		t.Fatalf("replace must not grow history: expected %d got %d", lenStart+1, got)
+	}
+	waitHistoryStateIdCleared(t, page)
+
+	page.NavigateBack()
+	<-time.After(150 * time.Millisecond)
+	testPath(t, page, "la")
+	waitContent(t, page, "#step", "0")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+}
+
+func TestALinkHistoryReplaceEdges(t *testing.T) {
+	bro := routeBro(doors.RouteModel(pageLinkNav))
+	defer bro.Close()
+	page := bro.Page(t, "/la")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	testPath(t, page, "la")
+	lenStart := historyLength(t, page)
+
+	test.Click(t, page, "#replace-self")
+	<-time.After(100 * time.Millisecond)
+	testPath(t, page, "la")
+	test.TestContent(t, page, "#step", "0")
+	if got := historyLength(t, page); got != lenStart {
+		t.Fatalf("self replace-link must not change history: %d -> %d", lenStart, got)
+	}
+	test.TestContent(t, page, "#instance-id", initialInstance)
+
+	test.Click(t, page, "#replace-hash")
+	waitHash(t, page, "sec")
+	if got := historyLength(t, page); got != lenStart {
+		t.Fatalf("hash-only replace-link must not change history: %d -> %d", lenStart, got)
+	}
+	test.TestContent(t, page, "#step", "0")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+}
+
+func TestALinkHistoryReplaceRevertsOnError(t *testing.T) {
+	bro := routeBro(doors.RouteModel(pageLinkNav))
+	defer bro.Close()
+	page := bro.Page(t, "/la")
+	defer page.Close()
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	testPath(t, page, "la")
+	lenStart := historyLength(t, page)
+
+	// Fail the next hook POST so the optimistic replace navigation gets a
+	// network error. Only the hook path (/~/<server>/h/...) is intercepted, so
+	// the SSE sync stream (/s/) and every other request pass through untouched.
+	stop := test.HijackFailOnce(t, page, "*/h/*")
+	defer stop()
+
+	test.Click(t, page, "#replace-c")
+
+	// navigator.replace optimistically replaceState-ed the URL to /lc; the failed
+	// hook must trigger revert() which restores the prior href and state. Revert
+	// is async (it runs after the failed fetch), so poll for the snap back.
+	waitPath(t, page, "la")
+	waitHistoryStateIdCleared(t, page)
+	if got := historyLength(t, page); got != lenStart {
+		t.Fatalf("revert must not leak a history entry: %d -> %d", lenStart, got)
+	}
+	test.TestContent(t, page, "#step", "0")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+
+	// Drop the failure and prove the navigator state is clean post-revert: a
+	// normal push nav must work, grow history by one and stay interactive.
+	stop()
+	test.Click(t, page, "#push-b")
+	testPath(t, page, "lb")
+	waitContent(t, page, "#step", "1")
+	if got := historyLength(t, page); got != lenStart+1 {
+		t.Fatalf("push after revert should grow history by 1: %d -> %d", lenStart, got)
+	}
+
+	// And a real browser back still works (no stray blockPop / corrupted state).
+	page.NavigateBack()
+	<-time.After(150 * time.Millisecond)
+	testPath(t, page, "la")
+	waitContent(t, page, "#step", "0")
+	test.TestContent(t, page, "#instance-id", initialInstance)
+}
+
+func TestLastSeen(t *testing.T) {
+	bro := locationBro(pageLastSeen)
+	defer bro.Close()
+	page := bro.Page(t, "/x")
+	defer page.Close()
+
+	test.Click(t, page, "#check")
+	waitContent(t, page, "#result", "ok")
 }
 
 func TestRouteBindMethods(t *testing.T) {

@@ -146,7 +146,6 @@ func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T)
 	s.mu.Lock()
 	ch := make(chan error, 1)
 	ctex.LogCanceled(ctx, "Source mutation")
-	ctx = ctex.ClearFreeCtx(ctx)
 retry:
 	seq := s.seq
 	prev := s.values[seq]

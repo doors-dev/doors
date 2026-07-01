@@ -53,6 +53,7 @@ type Session interface {
 	App() App
 	ID() string
 	Expire(time.Duration)
+	LastSeen() time.Time
 	Context() context.Context
 	Store() ctex.Store
 	Kill()
@@ -72,6 +73,7 @@ type Instance interface {
 	CSPCollector() common.CSPCollector
 	ModuleRegistry() ModuleRegistry
 	ID() string
+	LastSeen() time.Time
 	RootID() uint64
 	NewID() uint64
 	Runtime() shredder.Runtime

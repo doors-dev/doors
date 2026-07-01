@@ -20,6 +20,33 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// Mod is the required state of a keyboard modifier in a Key match.
+type Mod uint8
+
+const (
+	// ModAny matches regardless of whether the modifier is held.
+	ModAny Mod = iota
+	// ModOn requires the modifier to be held.
+	ModOn
+	// ModOff requires the modifier to not be held.
+	ModOff
+)
+
+// Key describes a single keyboard shortcut to match against a keyboard event.
+// A keyboard hook fires when the event matches any of the entries in Keys.
+type Key struct {
+	// Key is the event.key to match. An empty string matches any key.
+	Key string
+	// CtrlMod is the required ctrl modifier state.
+	CtrlMod Mod
+	// ShiftMod is the required shift modifier state.
+	ShiftMod Mod
+	// AltMod is the required alt modifier state.
+	AltMod Mod
+	// MetaMod is the required meta (cmd/win) modifier state.
+	MetaMod Mod
+}
+
 // RequestKeyboard is the typed request passed to keyboard event handlers.
 type RequestKeyboard = RequestEvent[KeyboardEvent]
 
@@ -33,7 +60,14 @@ type keyEventHook struct {
 	// If true, only fires when the event occurs on this element itself.
 	// Optional.
 	ExactTarget bool
-	// Filters by event.key if provided.
+	// Filters by event.key and modifier state. The hook fires only when the
+	// event matches at least one entry.
+	// Optional.
+	Keys []Key
+	// Filters by event.key.
+	//
+	// Deprecated: use Keys. Each entry matches its key regardless of modifier
+	// state.
 	// Optional.
 	Filter []string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
@@ -56,12 +90,26 @@ type keyEventHook struct {
 }
 
 func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
+	keys := make([]front.KeyMatch, 0, len(k.Keys)+len(k.Filter))
+	for _, key := range k.Keys {
+		keys = append(keys, front.KeyMatch{
+			Key:   key.Key,
+			Ctrl:  uint8(key.CtrlMod),
+			Shift: uint8(key.ShiftMod),
+			Alt:   uint8(key.AltMod),
+			Meta:  uint8(key.MetaMod),
+		})
+	}
+	for _, filter := range k.Filter {
+		keys = append(keys, front.KeyMatch{Key: filter})
+	}
 	return eventAttr[KeyboardEvent]{
 		capture: front.KeyboardEventCapture{
 			Event:           event,
-			Filter:          k.Filter,
+			Keys:            keys,
 			PreventDefault:  k.PreventDefault,
 			StopPropagation: k.StopPropagation,
+			ExactTarget:     k.ExactTarget,
 		},
 		before:    k.Before,
 		scope:     k.Scope,
@@ -83,7 +131,14 @@ type AKeyDown struct {
 	// If true, only fires when the event occurs on this element itself.
 	// Optional.
 	ExactTarget bool
-	// Filters by event.key if provided.
+	// Filters by event.key and modifier state. The hook fires only when the
+	// event matches at least one entry.
+	// Optional.
+	Keys []Key
+	// Filters by event.key.
+	//
+	// Deprecated: use Keys. Each entry matches its key regardless of modifier
+	// state.
 	// Optional.
 	Filter []string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).
@@ -125,7 +180,14 @@ type AKeyUp struct {
 	// If true, only fires when the event occurs on this element itself.
 	// Optional.
 	ExactTarget bool
-	// Filters by event.key if provided.
+	// Filters by event.key and modifier state. The hook fires only when the
+	// event matches at least one entry.
+	// Optional.
+	Keys []Key
+	// Filters by event.key.
+	//
+	// Deprecated: use Keys. Each entry matches its key regardless of modifier
+	// state.
 	// Optional.
 	Filter []string
 	// Defines how the hook is scheduled (e.g. blocking, debounce).

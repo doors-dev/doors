@@ -20,6 +20,29 @@ import { decodePayload } from "./package";
 import { HookErr, hookErrKinds } from "./hook_err";
 import controller from "./controller";
 
+// KeyMatch mirrors front.KeyMatch: a key + modifier constraints (0 any, 1 on, 2 off).
+interface KeyMatch {
+	// key (empty string matches any key)
+	k: string;
+	// ctrl required state
+	c: number;
+	// shift required state
+	s: number;
+	// alt required state
+	a: number;
+	// meta required state
+	m: number;
+}
+
+function modOk(pressed: boolean, mod: number): boolean {
+	if (mod === 1) {
+		return pressed
+	}
+	if (mod === 2) {
+		return !pressed
+	}
+	return true
+}
 interface CaptureOpt {
 	// preventDefault
 	pd?: boolean;
@@ -27,8 +50,10 @@ interface CaptureOpt {
 	sp?: boolean;
 	// exactTarget
 	et?: boolean;
-	// filter
-	fr?: Array<string> | null;
+	// keys: key + modifier matches
+	ks?: Array<KeyMatch> | null;
+	// history.replaceState instead of pushState (link)
+	hr?: boolean;
 	// exclude value
 	ev?: boolean;
 }
@@ -38,16 +63,35 @@ function applyEventOpt(event: Event, opt: CaptureOpt): boolean {
 			return false
 		}
 	}
+	if (opt.ks && opt.ks.length > 0) {
+		const ke = event as KeyboardEvent
+		const matched = opt.ks.some((match) => {
+			if (match.k !== "" && match.k !== ke.key) {
+				return false
+			}
+			if (!modOk(ke.ctrlKey, match.c)) {
+				return false
+			}
+			if (!modOk(ke.shiftKey, match.s)) {
+				return false
+			}
+			if (!modOk(ke.altKey, match.a)) {
+				return false
+			}
+			if (!modOk(ke.metaKey, match.m)) {
+				return false
+			}
+			return true
+		})
+		if (!matched) {
+			return false
+		}
+	}
 	if (opt.pd) {
 		event.preventDefault();
 	}
 	if (opt.sp) {
 		event.stopPropagation();
-	}
-	if (opt.fr && opt.fr.length > 0) {
-		if (!opt.fr.includes(event['key'])) {
-			return false
-		}
 	}
 	return true
 }
@@ -115,7 +159,7 @@ const captures: { [key: string]: Capture } = {
 			throw new HookErr(hookErrKinds.canceled)
 		}
 		const href = (event.currentTarget as HTMLAnchorElement).href!;
-		const revert = navigator.push(href, false)
+		const revert = opt.hr ? navigator.replace(href, false) : navigator.push(href, false)
 		if (!revert) {
 			throw new HookErr(hookErrKinds.canceled)
 		}

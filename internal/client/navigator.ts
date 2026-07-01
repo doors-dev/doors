@@ -289,14 +289,42 @@ export class Navigator {
 		}
 		return null
 	}
-	public replace(path: string): void {
+	public replace(path: string, serverPush: boolean): (() => void) | null {
 		const newUrl = urls.new(path)
 		const currentUrl = urls.current()
-		if (urls.equal(newUrl, currentUrl)) {
-			return
+		if (!urls.equal(currentUrl, newUrl)) {
+			if (serverPush) {
+				history.replaceState(null, '', path)
+				this.activate(newUrl)
+				return null
+			}
+			this.counter += 1
+			const id = this.counter
+			const priorHref = window.location.href
+			const priorState = history.state
+			history.replaceState({ ...priorState, id }, '', path)
+			return () => {
+				if (history.state?.id !== id) {
+					return
+				}
+				history.replaceState(priorState, '', priorHref)
+			}
 		}
-		history.replaceState(null, '', path);
-		this.activate(newUrl)
+		if (serverPush) {
+			history.replaceState({ ...history.state, id: undefined }, '')
+			this.activateCurrent()
+			return null
+		}
+		if (newUrl.hash == currentUrl.hash) {
+			return null
+		}
+		history.replaceState(null, '', path)
+		this.activateCurrent()
+		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
+		if (hash) {
+			scrollInto(hash)
+		}
+		return null
 	}
 
 }

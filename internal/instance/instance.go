@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
@@ -140,6 +141,13 @@ func (inst Instance) Location() beam.Source[path.Location] {
 
 func (inst Instance) ID() string {
 	return inst.id
+}
+
+func (inst Instance) LastSeen() time.Time {
+	if inst.killTimer == nil {
+		return time.Time{}
+	}
+	return inst.killTimer.LastSeen()
 }
 
 func (inst Instance) Store() ctex.Store {

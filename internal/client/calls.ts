@@ -126,7 +126,7 @@ const actions = {
 	},
 	"set_path": (_: Extras, path: string, replace: boolean) => {
 		if (replace) {
-			navigator.replace(path)
+			navigator.replace(path, true)
 			return
 		}
 		navigator.push(path, true)
