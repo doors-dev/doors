@@ -102,7 +102,7 @@ export class Navigator {
 		}
 		const blockPop = this.blockPop
 		this.blockPop = []
-		const id = history.state?.next
+		const id = history.state?._d0r?.next
 		let blocked = false
 		for (const block of blockPop) {
 			if (Date.now() - block.time > 1000) {
@@ -260,13 +260,13 @@ export class Navigator {
 		if (!urls.equal(currentUrl, newUrl)) {
 			this.counter += 1
 			const id = this.counter
-			history.replaceState({ ...history.state, next: id }, '')
-			history.pushState({ id }, '', path);
+			history.replaceState({ ...history.state, _d0r: { ...history.state?._d0r, next: id } }, '')
+			history.pushState({ _d0r: { id } }, '', path);
 			if (serverPush) {
 				this.activate(newUrl)
 			}
 			return () => {
-				if (history.state?.id !== id) {
+				if (history.state?._d0r?.id !== id) {
 					return;
 				}
 				this.blockPop.push({ id, time: Date.now() })
@@ -274,14 +274,14 @@ export class Navigator {
 			}
 		}
 		if (serverPush) {
-			history.replaceState({ ...history.state, id: undefined }, '')
+			history.replaceState({ ...history.state, _d0r: { ...history.state?._d0r, id: undefined } }, '')
 			this.activateCurrent()
 			return null
 		}
 		if (newUrl.hash == currentUrl.hash) {
 			return null
 		}
-		history.replaceState(null, '', path);
+		history.replaceState({ ...history.state, _d0r: undefined }, '', path);
 		this.activateCurrent()
 		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
 		if (hash) {
@@ -294,7 +294,7 @@ export class Navigator {
 		const currentUrl = urls.current()
 		if (!urls.equal(currentUrl, newUrl)) {
 			if (serverPush) {
-				history.replaceState(null, '', path)
+				history.replaceState({ ...history.state, _d0r: undefined }, '', path)
 				this.activate(newUrl)
 				return null
 			}
@@ -302,23 +302,23 @@ export class Navigator {
 			const id = this.counter
 			const priorHref = window.location.href
 			const priorState = history.state
-			history.replaceState({ ...priorState, id }, '', path)
+			history.replaceState({ ...priorState, _d0r: { ...priorState?._d0r, id } }, '', path)
 			return () => {
-				if (history.state?.id !== id) {
+				if (history.state?._d0r?.id !== id) {
 					return
 				}
 				history.replaceState(priorState, '', priorHref)
 			}
 		}
 		if (serverPush) {
-			history.replaceState({ ...history.state, id: undefined }, '')
+			history.replaceState({ ...history.state, _d0r: { ...history.state?._d0r, id: undefined } }, '')
 			this.activateCurrent()
 			return null
 		}
 		if (newUrl.hash == currentUrl.hash) {
 			return null
 		}
-		history.replaceState(null, '', path)
+		history.replaceState({ ...history.state, _d0r: undefined }, '', path)
 		this.activateCurrent()
 		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
 		if (hash) {
