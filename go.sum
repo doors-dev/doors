@@ -1,5 +1,5 @@
-github.com/doors-dev/gox v0.2.1 h1:TVqJRFIoEY+1b1VYKua5QurY4uxUM2Jh3vlgKUPcZqc=
-github.com/doors-dev/gox v0.2.1/go.mod h1:LQVtr4f4r5C4U9A5RqcvgjYj5ctwH0arj493hJBklnw=
+github.com/doors-dev/gox v0.2.3 h1:qrH1qEpqUXkcjFAM0SViq0PhiaaYqINvnYk55rakjNM=
+github.com/doors-dev/gox v0.2.3/go.mod h1:LQVtr4f4r5C4U9A5RqcvgjYj5ctwH0arj493hJBklnw=
 github.com/evanw/esbuild v0.28.0 h1:V96ghtc5p5JnNUQIUsc5H3kr+AcFcMqOJll2ZmJW6Lo=
 github.com/evanw/esbuild v0.28.0/go.mod h1:D2vIQZqV/vIf/VRHtViaUtViZmG7o+kKmlBfVQuRi48=
 github.com/gammazero/deque v1.2.1 h1:9fnQVFCCZ9/NOc7ccTNqzoKd1tCWOqeI05/lPqFPMGQ=
