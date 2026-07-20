@@ -25,11 +25,12 @@ type Closure = () => void | Promise<void>
 
 
 const attr = "data-d0r"
-const attrIndexed = "data-d0"
 const tag = "d0-r"
 
+const doorState = Symbol()
+
 type DoorElement = Element & {
-	_d0r: {
+	[doorState]: {
 		id: number
 		parent: number
 		impostor: boolean
@@ -83,9 +84,11 @@ class Doors {
 	private impostors = new Map<number, Set<number>>()
 
 	private scanImpostors(parent: Element | Document | DocumentFragment) {
-		for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attrIndexed}="indexed"])`)) {
+		for (const element of parent.querySelectorAll<Element>(`[${attr}]`)) {
+			if (doorState in element) {
+				continue
+			}
 			const id = element.getAttribute(attr)
-			element.setAttribute(attrIndexed, "indexed")
 			this.register(element, { impostorId: id! })
 		}
 	}
@@ -121,7 +124,7 @@ class Doors {
 
 		const door = element as DoorElement
 		const id = impostor ? Number(info.impostorId) : doorId(element.id);
-		door._d0r = {
+		door[doorState] = {
 			id: id,
 			parent: getParentId(element),
 			impostor: impostor,
@@ -130,30 +133,30 @@ class Doors {
 		if (!impostor) {
 			return
 		}
-		let siblings = this.impostors.get(door._d0r.parent)
+		let siblings = this.impostors.get(door[doorState].parent)
 		if (!siblings) {
 			siblings = new Set()
-			this.impostors.set(door._d0r.parent, siblings)
+			this.impostors.set(door[doorState].parent, siblings)
 		}
 		siblings.add(id)
 	}
 
 	unregister(element: Element): void {
 		const door = element as DoorElement
-		this.elements.delete(door._d0r.id)
-		this.clear(door._d0r.id)
-		const onRemove = this.onRemove.get(door._d0r.id)
+		this.elements.delete(door[doorState].id)
+		this.clear(door[doorState].id)
+		const onRemove = this.onRemove.get(door[doorState].id)
 		if (onRemove !== undefined) {
-			this.onRemove.delete(door._d0r.id)
+			this.onRemove.delete(door[doorState].id)
 			onRemove.forEach(c => execute(c))
 		}
-		if (!door._d0r.impostor) {
+		if (!door[doorState].impostor) {
 			return
 		}
-		const siblings = this.impostors.get(door._d0r.parent)!
-		siblings.delete(door._d0r.id)
+		const siblings = this.impostors.get(door[doorState].parent)!
+		siblings.delete(door[doorState].id)
 		if (siblings.size == 0) {
-			this.impostors.delete(door._d0r.parent)
+			this.impostors.delete(door[doorState].parent)
 		}
 	}
 
@@ -169,7 +172,7 @@ class Doors {
 		if (!door) {
 			throw new Error(`door ${id} not found`)
 		}
-		this.clear(door._d0r.id)
+		this.clear(door[doorState].id)
 
 		const range = document.createRange()
 		range.selectNodeContents(door)
@@ -184,7 +187,7 @@ class Doors {
 		if (!door) {
 			throw new Error(`door ${id} not found`)
 		}
-		if (door._d0r.impostor) {
+		if (door[doorState].impostor) {
 			this.unregister(door)
 		}
 		const range = document.createRange()
@@ -243,7 +246,7 @@ class Doors {
 			console.error(`unexpected behavior: door [${id}] not found for call [${name}]`)
 			return undefined
 		}
-		return this.getHandler(element._d0r.parent, name)
+		return this.getHandler(element[doorState].parent, name)
 	}
 
 }
