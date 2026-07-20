@@ -238,6 +238,15 @@ func (t *tracker) Clean(f func()) {
 	t.onClean = append(t.onClean, f)
 }
 
+func (t *tracker) Ready(f func()) {
+	t.innerCallGuard.Submit(t.ctx, t.Runtime(), func(b bool) {
+		if !b {
+			return
+		}
+		f()
+	})
+}
+
 func (t *tracker) ReadFrame() shredder.Frame {
 	return t.thread.Read()
 }
@@ -349,12 +358,16 @@ func (t *containerTracker) Clean(f func()) {
 	t.onClean = append(t.onClean, f)
 }
 
+func (t *containerTracker) Ready(f func()) {
+	t.getTracker().Ready(f)
+}
+
 func (t *containerTracker) Instance() core.Instance {
-	return t.tracker.Instance()
+	return t.getTracker().Instance()
 }
 
 func (t *containerTracker) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
-	t.tracker.UserCall(ctx, check, action, onResult, onCancel, params)
+	t.getTracker().UserCall(ctx, check, action, onResult, onCancel, params)
 }
 
 func (t *containerTracker) getTracker() *tracker {
@@ -451,4 +464,31 @@ func (t *containerTracker) RootCore() core.Core {
 
 func (t *containerTracker) XReload(ctx context.Context) <-chan error {
 	return t.getTracker().XReload(ctx)
+}
+
+func newStaticTracker(parent *tracker, guard *shredder.ValveFrame) *staticTracker {
+	t := &staticTracker{tracker: parent, guard: guard}
+	ctx := context.WithValue(parent.contentCtx, common.KeyCore, core.NewCore(t))
+	t.staticCtx, t.cancel = context.WithCancel(ctx)
+	return t
+}
+
+type staticTracker struct {
+	*tracker
+	guard     *shredder.ValveFrame
+	staticCtx context.Context
+	cancel    context.CancelFunc
+}
+
+func (t *staticTracker) Ready(f func()) {
+	t.guard.Submit(t.staticCtx, t.Runtime(), func(b bool) {
+		if !b {
+			return
+		}
+		f()
+	})
+}
+
+func (t *staticTracker) Context() context.Context {
+	return t.staticCtx
 }

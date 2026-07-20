@@ -41,6 +41,7 @@ type node struct {
 	door    *Door
 	mode    nodeMode
 	tracker *tracker
+	static  *staticTracker
 	outer   gox.Elem
 	content any
 }
@@ -54,6 +55,9 @@ func (n *node) unmountedSelf() {
 }
 
 func (n *node) onErr(err error) {
+	if n.static != nil {
+		n.static.cancel()
+	}
 	if !n.isMounted() {
 		return
 	}
@@ -72,6 +76,7 @@ func (n *node) sync(task *userTask) {
 	if n.mode == modeStatic {
 		ownerTracker = n.tracker.parent
 		callGuard = &shredder.ValveFrame{}
+		n.static = newStaticTracker(ownerTracker, callGuard)
 	}
 	renderFrame := shredder.Join(ownerTracker.Context(), true, thread.Frame(), ownerTracker.writeFrame(ownerTracker.Context()), task.RenderFrame())
 	defer renderFrame.Release()
@@ -99,7 +104,7 @@ func (n *node) sync(task *userTask) {
 			err = n.renderBlend(pip)
 		case modeStatic:
 			callKind = callReplace
-			err = n.renderStatic(pip)
+			err = n.renderStatic(pip, n.static.Context())
 		default:
 			panic("unknown node mode")
 		}
@@ -166,7 +171,7 @@ func (n *node) render(parentPipe *pipe, buffer *deque.Deque[any]) {
 		case modeBlend:
 			err = n.renderBlend(pip)
 		case modeStatic:
-			err = n.renderStatic(pip)
+			err = n.renderStatic(pip, pip.tracker.Context())
 		default:
 			panic("unknown node mode")
 		}
@@ -185,8 +190,8 @@ func (n *node) render(parentPipe *pipe, buffer *deque.Deque[any]) {
 	})
 }
 
-func (n *node) renderStatic(pip *pipe) (err error) {
-	cur := gox.NewCursor(pip.tracker.Context(), pip)
+func (n *node) renderStatic(pip *pipe, ctx context.Context) (err error) {
+	cur := gox.NewCursor(ctx, pip)
 	return cur.Any(n.content)
 }
 

@@ -88,7 +88,7 @@ func (parallelJob) Output(io.Writer) error {
 //	    for {
 //	        select {
 //	        case <-time.After(time.Second):
-//	            door.Update(ctx, currentTime())
+//	            door.Inner(ctx, currentTime())
 //	        case <-ctx.Done():
 //	            return
 //	        }

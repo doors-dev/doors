@@ -153,6 +153,7 @@ func (titleDoor) RootCore() core.Core {
 func (titleDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
 }
 func (titleDoor) Clean(func()) {}
+func (titleDoor) Ready(func()) {}
 
 type testMetaUpdate struct {
 	name     string
@@ -202,6 +203,7 @@ func (d *hookDoor) RootCore() core.Core {
 func (d *hookDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
 }
 func (d *hookDoor) Clean(func()) {}
+func (d *hookDoor) Ready(func()) {}
 
 func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstance, *hookDoor, *testModuleRegistry) {
 	t.Helper()
