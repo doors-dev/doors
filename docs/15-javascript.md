@@ -359,6 +359,7 @@ The main client-side helpers are:
 - `$sys.ready(): Promise<void>`
 - `$sys.clean(fn: () => void | Promise<void>): void`
 - `$sys.activateLinks(): void`
+- `$sys.dispatch(target: EventTarget, event: Event): Promise<number>`
 - `HookErr`
 
 Manual `$hook(...)` and `$fetch(...)` calls throw `HookErr`. Catch it when failure is part of the normal flow.
@@ -396,3 +397,22 @@ Use `$sys.clean(...)` for timers, global listeners, and embedded widgets that ne
 	})
 </script>
 ```
+
+### Programmatic Events
+
+Use `$sys.dispatch(target, event)` to fire a synthetic DOM event and await the full server round trip:
+
+```gox
+<script>
+	const count = await $sys.dispatch(
+		document.querySelector("#save"),
+		new PointerEvent("click", { bubbles: true, cancelable: true }),
+	)
+</script>
+```
+
+It dispatches the event on the target and resolves once every triggered handler has finished on the server and the resulting DOM patches are applied. The resolved number is how many handlers ran; `0` means no **Doors** handler picked the event up.
+
+Failures reject with `HookErr`, matching `$hook(...)` and `$fetch(...)`. A `canceled` error means the hook was blocked or canceled by a scope, or declined by an event option filter. Any scope kind can cancel, and a `latest` scope may abort a request already in flight — so `canceled` does not guarantee the server never received the event.
+
+Construct events with the proper typed constructor (`PointerEvent`, `KeyboardEvent`, `InputEvent`, ...) and set `bubbles`/`cancelable` where the real event would have them, so handlers receive the payload they expect. Native browser events are unaffected — `$sys.dispatch` only tracks the event object you pass in.

@@ -180,6 +180,41 @@ This means:
 
 After a Door has been made static or unmounted, later calls still update the Door's stored state. They do not automatically put that Door back into the DOM, but they do affect what will happen if the Door is rendered again later.
 
+### Lifecycle Hooks
+
+`doors.OnReady` and `doors.OnClean` attach callbacks to the content being rendered:
+
+```go
+doors.OnReady(ctx context.Context, f func(ctx context.Context))
+doors.OnClean(ctx context.Context, f func())
+```
+
+`OnReady` fires when the render cycle that produced the surrounding content completes — the HTML is rendered and the update is on its way to the client. Called with a `ctx` whose content is already on the page (an event handler, for example), it fires promptly.
+
+`OnClean` fires when that content is cleared:
+
+- the enclosing Door is updated (`Inner`, `Outer`, `Reload`)
+- the Door is removed (`Static`, `Unmount`)
+- an ancestor Door re-renders
+- the render fails
+- the instance ends
+
+The two are not symmetric. `OnReady` is **best-effort**: if the render cycle fails or is superseded by a newer Door operation, it never fires. `OnClean` is **exactly-once**: every rendered piece of content is eventually cleared. So acquire in render code, release in `OnClean`:
+
+```gox
+elem (c Chat) Main() {
+	~~
+	sub := c.hub.Subscribe()
+	doors.OnClean(ctx, func() {
+		sub.Close()
+	})
+	~~
+	<div class="chat">Live</div>
+}
+```
+
+Do not block in either callback. `OnReady` runs on the instance goroutine pool with a context equivalent to `doors.DetachedContext`. `OnClean` runs inline on framework goroutines and receives no context — if teardown is slow, start your own goroutine with a context captured beforehand (for example from `doors.InstanceContext(ctx)`).
+
 ## Use Cases
 
 - Use `Inner` when the Door should stay in place and only its contents should change.

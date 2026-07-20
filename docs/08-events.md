@@ -391,6 +391,10 @@ Example:
 
 See [JavaScript](./15-javascript.md).
 
+## Synthetic Events
+
+Event attrs listen through normal DOM listeners, so a synthetic event fired with `dispatchEvent` triggers `doors.A*` handlers exactly like a native one. To await the full round trip from JavaScript — handlers finished and patches applied — use `$sys.dispatch(target, event)`, covered in [JavaScript](./15-javascript.md).
+
 ## Rules
 
 - Use the `ctx` that **Doors** gives you in the handler.
