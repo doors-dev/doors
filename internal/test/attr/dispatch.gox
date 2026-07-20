@@ -1,0 +1,101 @@
+package attr
+
+import (
+	"context"
+	"fmt"
+	"sync/atomic"
+	"time"
+	
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+// Served as a managed inline TypeScript script, so the $sys TS annotation in
+// internal/resources/providers.go must stay syntactically valid for the page
+// (and therefore every test below) to work. The "keysErr" listener is the
+// sink for the #keys-err OnError action: it must NEVER fire for a declined
+// (non-matching key) event, so #onerr staying empty pins the onErr half of
+// the declined-event swallow.
+const dispatchScript = `
+window.__sysDispatch = (selector: string, event: Event) => {
+	return $sys.dispatch(document.querySelector(selector)!, event)
+}
+$on("keysErr", (arg: any) => {
+	document.querySelector("#onerr")!.textContent += String(arg)
+})
+`
+
+type dispatchFragment struct {
+	r *test.Reporter
+	test.NoBeam
+	clicks atomic.Int32
+	debounce atomic.Int32
+}
+
+elem (f *dispatchFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "0")
+	f.r.Update(ctx, 1, "")
+	f.r.Update(ctx, 2, "0")
+	f.r.Update(ctx, 3, "")
+	f.r.Update(ctx, 4, "")
+	debounce := &doors.ScopeDebounce{Duration: 150 * time.Millisecond, Limit: 0}
+	~~
+	~(f.r)
+	<button
+		id="btn"
+		(doors.A(ctx, doors.AClick{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 0, fmt.Sprint(f.clicks.Add(1)))
+				return false
+			},
+		}))>
+		btn
+	</button>
+	<input
+		type="text"
+		id="keys"
+		(doors.A(ctx, doors.AKeyDown{
+			Keys: []doors.Key{{Key: "Enter"}},
+			On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+				f.r.Update(ctx, 1, "enter")
+				return false
+			},
+		}))/>
+	~// Same filter but WITH a server-declared error action: a declined native
+	~// keydown must be swallowed before the onErr branch, so "keysErr" must
+	~// never be emitted and #onerr must stay empty (native atomicity pin).
+	<input
+		type="text"
+		id="keys-err"
+		(doors.A(ctx, doors.AKeyDown{
+			Keys: []doors.Key{{Key: "Enter"}},
+			OnError: doors.ActionEmit{Name: "keysErr", Arg: "onerr"},
+			On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+				f.r.Update(ctx, 4, "enter")
+				return false
+			},
+		}))/>
+	<div id="onerr"></div>
+	<button
+		id="deb"
+		(doors.A(ctx, doors.AClick{
+			Scope: debounce,
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 2, fmt.Sprint(f.debounce.Add(1)))
+				return false
+			},
+		}))>
+		deb
+	</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 3, "parent")
+			return false
+		},
+	} <div id="parent">
+		<span id="child">child</span>
+	</div>
+	<script src=(doors.ResourceString(dispatchScript)) inline type="typescript"></script>
+}

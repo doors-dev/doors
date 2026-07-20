@@ -15,7 +15,8 @@
 import { rootId } from './params'
 import { doorId } from './lib'
 
-import { attach as attachCaptures, HookErr } from "./capture"
+import { attach as attachCaptures } from "./capture"
+import { HookErr } from "./hook_err"
 import navigator from "./navigator"
 import { attach as attachDyna } from "./dyna"
 

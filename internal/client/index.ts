@@ -18,6 +18,7 @@ import controller from './controller'
 import navigator from './navigator'
 import { decodePayload } from './package'
 import { HookErr, hookErrKinds } from './hook_err'
+import { dispatch } from './dispatch'
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
 	const attrName = `data-d0h-${name}`
@@ -91,6 +92,7 @@ function init(
 			ready: $D['ready'],
 			clean: $D['clean'],
 			activateLinks: () => void,
+			dispatch: (target: EventTarget, event: Event) => Promise<number>,
 		},
 		HookErr: HookErrType,
 	) => Promise<void> | void
@@ -105,6 +107,7 @@ function init(
 		ready: $d.ready,
 		clean: $d.clean,
 		activateLinks: () => navigator.activateCurrent(),
+		dispatch,
 	}
 	return f($on, $data, $hook, $fetch, $G, $sys, HookErr)
 }
