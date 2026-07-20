@@ -93,6 +93,7 @@ type Door interface {
 	RootCore() Core
 	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
 	Clean(func())
+	Ready(f func())
 }
 
 func NewCore(door Door) Core {

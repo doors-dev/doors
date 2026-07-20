@@ -53,6 +53,8 @@ func (h helperDoor) Instance() core.Instance {
 
 func (helperDoor) Clean(func()) {}
 
+func (helperDoor) Ready(func()) {}
+
 func (helperDoor) Cinema() beam.Cinema {
 	return nil
 }
@@ -87,6 +89,8 @@ func (h helperDoorWithRoot) Instance() core.Instance {
 }
 
 func (helperDoorWithRoot) Clean(func()) {}
+
+func (helperDoorWithRoot) Ready(func()) {}
 
 // UserCall implements [core.Door].
 func (h helperDoorWithRoot) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
