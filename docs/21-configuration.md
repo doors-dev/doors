@@ -40,6 +40,7 @@ Common app options are:
 - `doors.WithIDCookie(...)` — sticky session cookie name
 - `doors.WithSessionTracker(...)` — observe session create/delete
 - `doors.WithErrorPage(...)` — custom error page
+- `doors.WithPrinterMiddleware(...)` — observe or adjust emitted HTML, covered in [Printer Middleware](./22-printer-middleware.md)
 
 **Doors** fills in defaults automatically, so you usually set only the values you want to change.
 
