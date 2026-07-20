@@ -23,8 +23,8 @@ export function collect(event: Event, promise: Promise<Response>) {
 
 export async function dispatch(target: EventTarget, event: Event): Promise<number> {
 	await controller.ready
-	const promises: Promise<Response>[] = []
-	;(event as any)[collector] = promises
+	const promises: Promise<Response>[] = [];
+	(event as any)[collector] = promises
 	try {
 		target.dispatchEvent(event)
 	} finally {
