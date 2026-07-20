@@ -66,10 +66,10 @@ func (p *pipe) Release() {
 	stack.Release()
 }
 
-func (p *pipe) Render(disableGzip bool) (printer.Payload, error) {
+func (p *pipe) Render(disableGzip bool, printerMiddleware common.PrinterMiddleware) (printer.Payload, error) {
 	stack := p.Collect()
 	pr := printer.NewPayloadPrinter(disableGzip)
-	err := stack.Print(pr)
+	err := stack.Print(printerMiddleware(pr))
 	if err != nil {
 		pr.Release()
 		return nil, err

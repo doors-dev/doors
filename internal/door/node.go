@@ -120,7 +120,8 @@ func (n *node) sync(task *userTask) {
 		}
 		var payload printer.Payload
 		if err == nil {
-			payload, err = pip.Render(ownerTracker.Instance().Session().App().Conf().ServerDisableGzip)
+			app := ownerTracker.Instance().Session().App()
+			payload, err = pip.Render(app.Conf().ServerDisableGzip, app.PrinterMiddleware())
 		}
 		logger := ownerTracker.root.inst.Logger()
 		callCtx := ownerTracker.ctx

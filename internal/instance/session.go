@@ -40,6 +40,7 @@ type App interface {
 	InstanceCreated()
 	InstanceDeleted()
 	Draining() bool
+	PrinterMiddleware() common.PrinterMiddleware
 }
 
 type Session = *session

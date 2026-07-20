@@ -46,6 +46,7 @@ type App interface {
 	ResourceRegistry() resources.Registry
 	Conf() *common.Conf
 	Draining() bool
+	PrinterMiddleware() common.PrinterMiddleware
 }
 
 type Session interface {

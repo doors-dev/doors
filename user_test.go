@@ -234,6 +234,10 @@ func (h *helperApp) Draining() bool {
 	return false
 }
 
+func (h *helperApp) PrinterMiddleware() common.PrinterMiddleware {
+	return func(next gox.Printer) gox.Printer { return next }
+}
+
 type helperSession struct {
 	inst   *helperInstance
 	app    *helperApp

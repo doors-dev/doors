@@ -24,14 +24,15 @@ type App = *app
 func NewApp(page Page, o Options) App {
 	o.initDefaults()
 	a := &app{
-		page:       page,
-		conf:       o.Conf,
-		csp:        o.CSP,
-		pathMaker:  path.NewPathMaker(o.Conf.ServerSessionCookiePrefix, o.ID, o.CookieName),
-		tracker:    o.SessionTracker,
-		esProfiles: o.ESBuild,
-		errPage:    o.ErrorPage,
-		logger:     o.Logger,
+		page:              page,
+		conf:              o.Conf,
+		csp:               o.CSP,
+		pathMaker:         path.NewPathMaker(o.Conf.ServerSessionCookiePrefix, o.ID, o.CookieName),
+		tracker:           o.SessionTracker,
+		esProfiles:        o.ESBuild,
+		errPage:           o.ErrorPage,
+		logger:            o.Logger,
+		printerMiddleware: o.PrinterMiddleware,
 	}
 	a.registry = resources.NewRegistry(a)
 	a.Use()
@@ -41,18 +42,19 @@ func NewApp(page Page, o Options) App {
 type ErrorPage = func(r *http.Request, err error) gox.Elem
 
 type app struct {
-	page       Page
-	conf       common.Conf
-	csp        *common.CSP
-	registry   resources.Registry
-	pathMaker  path.PathMaker
-	tracker    SessionTracker
-	esProfiles func(profile string) api.BuildOptions
-	sessions   sync.Map
-	use        []Middleware
-	handler    http.Handler
-	errPage    ErrorPage
-	logger     *slog.Logger
+	page              Page
+	conf              common.Conf
+	csp               *common.CSP
+	registry          resources.Registry
+	pathMaker         path.PathMaker
+	tracker           SessionTracker
+	esProfiles        func(profile string) api.BuildOptions
+	sessions          sync.Map
+	use               []Middleware
+	handler           http.Handler
+	errPage           ErrorPage
+	logger            *slog.Logger
+	printerMiddleware common.PrinterMiddleware
 
 	instanceCount atomic.Int64
 	drainCallback atomic.Pointer[func()]
@@ -60,6 +62,10 @@ type app struct {
 
 func (a *app) Logger() *slog.Logger {
 	return a.logger
+}
+
+func (a *app) PrinterMiddleware() common.PrinterMiddleware {
+	return a.printerMiddleware
 }
 
 func (a *app) ResourceRegistry() resources.Registry {

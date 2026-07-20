@@ -11,6 +11,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/gox"
 )
 
 type sessionTestApp struct {
@@ -55,6 +56,10 @@ func (a *sessionTestApp) Logger() *slog.Logger {
 func (a *sessionTestApp) InstanceCreated() {}
 func (a *sessionTestApp) InstanceDeleted() {}
 func (a *sessionTestApp) Draining() bool   { return false }
+
+func (a *sessionTestApp) PrinterMiddleware() common.PrinterMiddleware {
+	return func(next gox.Printer) gox.Printer { return next }
+}
 
 func TestSessionKillCancelsContext(t *testing.T) {
 	app := newSessionTestApp()

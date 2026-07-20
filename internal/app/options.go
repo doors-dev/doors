@@ -6,6 +6,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/gox"
 	"github.com/evanw/esbuild/pkg/api"
 )
 
@@ -21,14 +22,15 @@ type SessionTracker interface {
 }
 
 type Options struct {
-	Conf           common.Conf
-	CSP            *common.CSP
-	ESBuild        func(profile string) api.BuildOptions
-	SessionTracker SessionTracker
-	ID             string
-	CookieName     string
-	ErrorPage      ErrorPage
-	Logger         *slog.Logger
+	Conf              common.Conf
+	CSP               *common.CSP
+	ESBuild           func(profile string) api.BuildOptions
+	SessionTracker    SessionTracker
+	ID                string
+	CookieName        string
+	ErrorPage         ErrorPage
+	Logger            *slog.Logger
+	PrinterMiddleware common.PrinterMiddleware
 }
 
 type notracker struct{}
@@ -54,5 +56,8 @@ func (o *Options) initDefaults() {
 	}
 	if o.Logger == nil {
 		o.Logger = slog.Default()
+	}
+	if o.PrinterMiddleware == nil {
+		o.PrinterMiddleware = func(next gox.Printer) gox.Printer { return next }
 	}
 }
