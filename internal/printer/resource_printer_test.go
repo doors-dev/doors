@@ -116,6 +116,10 @@ func (a titleApp) Draining() bool {
 	return false
 }
 
+func (a titleApp) PrinterMiddleware() common.PrinterMiddleware {
+	return func(next gox.Printer) gox.Printer { return next }
+}
+
 type titleSession struct {
 	app titleApp
 }

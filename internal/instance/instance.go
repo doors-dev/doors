@@ -235,7 +235,7 @@ func (inst *instance) render(w http.ResponseWriter, r *http.Request, pipe door.S
 		writer = wgz
 	}
 	pr := printer.NewPagePrinter(writer, static, front.Include(inst), importMap, inst.titleMeta)
-	return pipe.Print(pr)
+	return pipe.Print(inst.session.App().PrinterMiddleware()(pr))
 }
 
 func (inst *instance) renderHeaders(w http.ResponseWriter, gz bool, importHash []byte) {
