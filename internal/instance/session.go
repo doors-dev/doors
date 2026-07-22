@@ -28,6 +28,7 @@ import (
 	"github.com/doors-dev/doors/internal/instance/utils"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
+	"github.com/doors-dev/gox"
 )
 
 type App interface {
@@ -40,7 +41,7 @@ type App interface {
 	InstanceCreated()
 	InstanceDeleted()
 	Draining() bool
-	PrinterMiddleware() common.PrinterMiddleware
+	PrinterMiddleware() func(next gox.Printer) gox.Printer
 }
 
 type Session = *session

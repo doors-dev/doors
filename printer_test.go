@@ -42,7 +42,7 @@ func TestWithPrinterMiddlewarePageRender(t *testing.T) {
 	invoked := 0
 	app := NewApp(func(context.Context, Request) gox.Comp {
 		return testPage("stamped-page")
-	}, WithPrinterMiddleware(func(next gox.Printer) gox.Printer {
+	}, WithPrinter(func(next gox.Printer) gox.Printer {
 		invoked++
 		return &pageStamp{next: next}
 	}))

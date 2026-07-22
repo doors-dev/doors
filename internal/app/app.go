@@ -54,17 +54,16 @@ type app struct {
 	handler           http.Handler
 	errPage           ErrorPage
 	logger            *slog.Logger
-	printerMiddleware common.PrinterMiddleware
-
-	instanceCount atomic.Int64
-	drainCallback atomic.Pointer[func()]
+	printerMiddleware func(next gox.Printer) gox.Printer
+	instanceCount     atomic.Int64
+	drainCallback     atomic.Pointer[func()]
 }
 
 func (a *app) Logger() *slog.Logger {
 	return a.logger
 }
 
-func (a *app) PrinterMiddleware() common.PrinterMiddleware {
+func (a *app) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return a.printerMiddleware
 }
 

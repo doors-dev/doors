@@ -30,7 +30,7 @@ type Options struct {
 	CookieName        string
 	ErrorPage         ErrorPage
 	Logger            *slog.Logger
-	PrinterMiddleware common.PrinterMiddleware
+	PrinterMiddleware func(next gox.Printer) gox.Printer
 }
 
 type notracker struct{}
