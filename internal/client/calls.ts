@@ -20,7 +20,7 @@ import { doAfter, scrollInto, Result } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
 import { HookErr } from "./hook_err.ts"
-import { stampTrigger, clearTrigger } from "./trigger"
+import { putTrigger } from "./trigger"
 
 
 type Extras = {
@@ -29,10 +29,9 @@ type Extras = {
 	element?: Element,
 }
 
-const triggerEvents: { [key: string]: (type: string, init: any) => Event } = {
+const captureEvents: { [key: string]: (type: string, init: any) => Event } = {
 	"pointer": (type, init) => new PointerEvent(type, init),
 	"keyboard": (type, init) => new KeyboardEvent(type, init),
-	"link": (type, init) => new MouseEvent(type, init),
 	"focus": (type, init) => new FocusEvent(type, init),
 	"focus_io": (type, init) => new FocusEvent(type, init),
 	"input": (type, init) => new InputEvent(type, init),
@@ -96,29 +95,25 @@ const actions = {
 	"report_hook": (_: Extras, track: number) => {
 		report(track)
 	},
-	"trigger_hook": (ext: Extras, doorId: number, hookId: number) => {
-		const entry = doors.getTrigger(hookId)
-		if (!entry) {
-			throw new Error(`trigger ${doorId}/${hookId} not found`)
+	"emit_event": (ext: Extras, emitterId: number, type: string, capture: string) => {
+		const promises: Promise<Response>[] = []
+		const elements = doors.getEmitter(emitterId)
+		if (elements) {
+			const make = captureEvents[capture]
+			for (const element of elements) {
+				let event: Event
+				if (make) {
+					event = make(type, { bubbles: true, cancelable: true, ...ext.payload?.any })
+				} else {
+					event = new CustomEvent(type, { bubbles: true, cancelable: true, detail: ext.payload?.any })
+				}
+				const meta = putTrigger(event)
+				element.dispatchEvent(event)
+				promises.push(...meta.promises)
+			}
 		}
-		if (!entry.element.isConnected) {
-			throw new Error(`trigger ${doorId}/${hookId} element is disconnected`)
-		}
-		const make = triggerEvents[entry.capture]
-		let event: Event
-		if (make) {
-			event = make(entry.type, { bubbles: true, cancelable: true, ...ext.payload?.any })
-		} else {
-			event = new CustomEvent(entry.type, { bubbles: true, cancelable: true, detail: ext.payload?.any })
-		}
-		stampTrigger(event, hookId)
-		entry.element.dispatchEvent(event)
-		const meta = clearTrigger(event)
-		if (!meta?.consumed) {
-			throw new Error("no capture consumed trigger")
-		}
-		return meta.promise!.then(
-			() => null,
+		return Promise.all(promises).then(
+			() => promises.length,
 			(err) => {
 				if (err instanceof HookErr) {
 					throw new Error(err.message ? `${err.kind}: ${err.message}` : err.kind)

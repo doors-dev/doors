@@ -14,31 +14,16 @@
 
 const trigger = Symbol()
 
-type TriggerMeta = {
-	hook: number
-	consumed: boolean
-	promise?: Promise<Response>
+export type TriggerMeta = {
+	promises: Promise<Response>[]
 }
 
-export function stampTrigger(event: Event, hook: number) {
-	(event as any)[trigger] = { hook, consumed: false }
+export function putTrigger(event: Event): TriggerMeta {
+	const meta: TriggerMeta = { promises: [] };
+	(event as any)[trigger] = meta
+	return meta
 }
 
-export function peekTrigger(event: Event): TriggerMeta | undefined {
+export function getTrigger(event: Event): TriggerMeta | undefined {
 	return (event as any)[trigger]
-}
-
-export function consumeTrigger(event: Event): TriggerMeta | undefined {
-	const value: TriggerMeta | undefined = (event as any)[trigger]
-	if (value === undefined) {
-		return undefined
-	}
-	value.consumed = true
-	return value
-}
-
-export function clearTrigger(event: Event): TriggerMeta | undefined {
-	const value = (event as any)[trigger]
-	delete (event as any)[trigger]
-	return value
 }

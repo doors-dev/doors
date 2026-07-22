@@ -39,7 +39,7 @@ type ARawSubmit struct {
 	Before Actions
 	// Backend form handler.
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestRawForm) bool
 	// Actions to run on error.
 	// Optional.
@@ -68,6 +68,10 @@ func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 
 func (s *ARawSubmit) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		if s.On == nil {
+			r.Body.Close()
+			return false
+		}
 		return s.On(ctx, &request{
 			w:     w,
 			r:     r,
@@ -97,7 +101,7 @@ type ASubmit[T any] struct {
 	Before Actions
 	// Backend form handler.
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestForm[T]) bool
 	// Actions to run on error.
 	// Optional.
@@ -126,6 +130,10 @@ func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 
 func (s *ASubmit[V]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		if s.On == nil {
+			r.Body.Close()
+			return false
+		}
 		limit := core.App().Conf().ServerRequestBodyLimit
 		r.Body = http.MaxBytesReader(w, r.Body, int64(limit))
 		err := r.ParseMultipartForm(int64(limit))
@@ -172,7 +180,7 @@ type AChange struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[ChangeEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestChange) bool
 	// Actions to run on error.
 	// Optional.
@@ -213,7 +221,7 @@ type AInput struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[InputEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestInput) bool
 	// If true, does not include value in event
 	// Optional.

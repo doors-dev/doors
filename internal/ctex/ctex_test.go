@@ -205,9 +205,6 @@ func TestFreeHelpers(t *testing.T) {
 	if !IsFreeCtx(free) {
 		t.Fatal("expected free context flag")
 	}
-
-	LogFreeWarning(base, "beam", "recv")
-	LogFreeWarning(free, "beam", "recv")
 }
 
 func TestFrameHelpers(t *testing.T) {

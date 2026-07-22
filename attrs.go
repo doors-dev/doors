@@ -90,6 +90,10 @@ func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 
 func (p *eventAttr[E]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		if p.on == nil {
+			r.Body.Close()
+			return false
+		}
 		r.Body = http.MaxBytesReader(w, r.Body, int64(core.App().Conf().ServerRequestBodyLimit))
 		var e E
 		decoder := json.NewDecoder(r.Body)

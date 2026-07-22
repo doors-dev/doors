@@ -79,7 +79,7 @@ type keyEventHook struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[KeyboardEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestKeyboard) bool
 	// Actions to run on error.
 	// Optional.
@@ -150,7 +150,7 @@ type AKeyDown struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[KeyboardEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestKeyboard) bool
 	// Actions to run on error.
 	// Optional.
@@ -199,7 +199,7 @@ type AKeyUp struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[KeyboardEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestKeyboard) bool
 	// Actions to run on error.
 	// Optional.

@@ -23,16 +23,9 @@ import { attach as attachDyna } from "./dyna"
 type Handler = ((arg: any) => any) | ((arg: any, err: HookErr) => any)
 type Closure = () => void | Promise<void>
 
-export type TriggerEntry = {
-	element: Element
-	type: string
-	capture: string
-	opt: any
-}
-
-
 const attr = "data-d0r"
 const tag = "d0-r"
+const emitAttr = "data-d0e"
 
 const doorState = Symbol()
 
@@ -86,7 +79,7 @@ function getParentId(el: Element): number {
 class Doors {
 	private elements = new Map<number, DoorElement>()
 	private handlers = new Map<number, Map<string, Handler>>()
-	private triggers = new Map<number, TriggerEntry>()
+	private emitters = new Map<number, Set<Element>>()
 	private onClear = new Map<number, Array<Closure>>()
 	private onRemove = new Map<number, Array<Closure>>()
 	private impostors = new Map<number, Set<number>>()
@@ -168,8 +161,30 @@ class Doors {
 		}
 	}
 
+	private scanEmitters(parent: Element | Document | DocumentFragment) {
+		for (const element of parent.querySelectorAll<Element>(`[${emitAttr}]`)) {
+			const id = Number(element.getAttribute(emitAttr))
+			let elements = this.emitters.get(id)
+			if (!elements) {
+				elements = new Set()
+				this.emitters.set(id, elements)
+			}
+			if (elements.has(element)) {
+				continue
+			}
+			elements.add(element)
+			this.onUnmount(element, () => {
+				elements.delete(element)
+				if (elements.size === 0) {
+					this.emitters.delete(id)
+				}
+			})
+		}
+	}
+
 	scan(parent: Element | Document | DocumentFragment) {
 		this.scanImpostors(parent)
+		this.scanEmitters(parent)
 		attachCaptures(parent)
 		attachDyna(parent)
 		navigator.scan(parent)
@@ -254,15 +269,8 @@ class Doors {
 		return this.getHandler(element[doorState].parent, name)
 	}
 
-	registerTrigger(element: Element, hookId: number, entry: Omit<TriggerEntry, "element">): void {
-		this.triggers.set(hookId, { element, ...entry })
-		this.onUnmount(element, () => {
-			this.triggers.delete(hookId)
-		})
-	}
-
-	getTrigger(hookId: number): TriggerEntry | undefined {
-		return this.triggers.get(hookId)
+	getEmitter(id: number): Set<Element> | undefined {
+		return this.emitters.get(id)
 	}
 
 }

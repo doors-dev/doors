@@ -119,7 +119,6 @@ func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool)
 
 // XUpdate behaves like [Lenser.Update] and returns a completion channel.
 func (s *source[T]) XUpdate(ctx context.Context, v T) <-chan error {
-	ctex.LogFreeWarning(ctx, "Source", "XUpdate")
 	return s.mutateOrUpdate(ctx, nil, &v)
 }
 
@@ -130,7 +129,6 @@ func (s *source[T]) Update(ctx context.Context, v T) {
 
 // XMutate behaves like [Lenser.Mutate] and returns a completion channel.
 func (s *source[T]) XMutate(ctx context.Context, m func(T) T) <-chan error {
-	ctex.LogFreeWarning(ctx, "Source", "XMutate")
 	return s.mutateOrUpdate(ctx, m, nil)
 }
 

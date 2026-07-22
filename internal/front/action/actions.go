@@ -183,6 +183,24 @@ func (a Indicate) Invocation() Invocation {
 	}
 }
 
+type EmitEvent struct {
+	EmitterID uint64
+	Type      string
+	Capture   string
+	Payload   Payload
+}
+
+func (a EmitEvent) Log() string {
+	return "emit_event"
+}
+func (a EmitEvent) Invocation() Invocation {
+	return Invocation{
+		name:    "emit_event",
+		arg:     []any{a.EmitterID, a.Type, a.Capture},
+		payload: a.Payload,
+	}
+}
+
 type ReportHook struct {
 	HookId uint64
 }

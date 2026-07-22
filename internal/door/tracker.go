@@ -311,7 +311,6 @@ func (t *tracker) Reload(ctx context.Context) {
 }
 
 func (t *tracker) XReload(ctx context.Context) <-chan error {
-	ctex.LogFreeWarning(ctx, "Door", "XReload")
 	if t.node == nil {
 		ch := make(chan error, 1)
 		ch <- errors.New("root door cannot be reloaded")
