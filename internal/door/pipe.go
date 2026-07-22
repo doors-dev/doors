@@ -66,7 +66,7 @@ func (p *pipe) Release() {
 	stack.Release()
 }
 
-func (p *pipe) Render(disableGzip bool, printerMiddleware common.PrinterMiddleware) (printer.Payload, error) {
+func (p *pipe) Render(disableGzip bool, printerMiddleware func(next gox.Printer) gox.Printer) (printer.Payload, error) {
 	stack := p.Collect()
 	pr := printer.NewPayloadPrinter(disableGzip)
 	err := stack.Print(printerMiddleware(pr))

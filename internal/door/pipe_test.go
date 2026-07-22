@@ -45,7 +45,7 @@ func (a *pipeTestApp) PathMaker() path.PathMaker            { return path.NewPat
 func (a *pipeTestApp) ResourceRegistry() resources.Registry { return nil }
 func (a *pipeTestApp) Conf() *common.Conf                   { return &a.conf }
 func (a *pipeTestApp) Draining() bool                       { return false }
-func (a *pipeTestApp) PrinterMiddleware() common.PrinterMiddleware {
+func (a *pipeTestApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }
 }
 

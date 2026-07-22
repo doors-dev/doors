@@ -96,6 +96,16 @@ func WithLogger(l *slog.Logger) With {
 	})
 }
 
+// WithPrinter installs the printer middleware into an app.
+//
+// The middleware applies to every page render and door render cycle of the
+// app. A nil middleware disables wrapping.
+func WithPrinter(p func(next gox.Printer) gox.Printer) With {
+	return withFunc(func(o *app.Options) {
+		o.PrinterMiddleware = p
+	})
+}
+
 // NewApp creates a Doors HTTP handler from the root page function.
 //
 // The page function receives the Doors runtime context and request helpers, and
@@ -120,7 +130,7 @@ type Use = func(http.Handler) http.Handler
 // App is a Doors application and HTTP handler.
 type App interface {
 	// Use appends middleware around the app handler.
-	Use(middleware ...Use)
+	Use(middleware ...func(http.Handler) http.Handler)
 	// InstanceCount returns the number of live instances across all sessions.
 	InstanceCount() int
 	// SessionCount returns the number of active sessions.

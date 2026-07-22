@@ -57,7 +57,7 @@ func (a *sessionTestApp) InstanceCreated() {}
 func (a *sessionTestApp) InstanceDeleted() {}
 func (a *sessionTestApp) Draining() bool   { return false }
 
-func (a *sessionTestApp) PrinterMiddleware() common.PrinterMiddleware {
+func (a *sessionTestApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }
 }
 
