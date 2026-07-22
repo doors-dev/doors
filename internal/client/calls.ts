@@ -16,16 +16,28 @@ import doors from "./door"
 import navigator from "./navigator"
 import indicator, { IndicatorEntry } from "./indicator"
 import { removeAttr, setAttr } from "./dyna"
-import { doAfter, scrollInto } from "./lib"
+import { doAfter, scrollInto, Result } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
 import { HookErr } from "./hook_err.ts"
+import { stampTrigger, clearTrigger } from "./trigger"
 
 
 type Extras = {
 	error?: HookErr,
 	payload?: Payload,
 	element?: Element,
+}
+
+const triggerEvents: { [key: string]: (type: string, init: any) => Event } = {
+	"pointer": (type, init) => new PointerEvent(type, init),
+	"keyboard": (type, init) => new KeyboardEvent(type, init),
+	"link": (type, init) => new MouseEvent(type, init),
+	"focus": (type, init) => new FocusEvent(type, init),
+	"focus_io": (type, init) => new FocusEvent(type, init),
+	"input": (type, init) => new InputEvent(type, init),
+	"change": (type, init) => new Event(type, init),
+	"submit": (type, init) => new Event(type, init),
 }
 
 function syncAttributes(el: Element, attrs: {[key:string]:string}) {
@@ -84,6 +96,37 @@ const actions = {
 	"report_hook": (_: Extras, track: number) => {
 		report(track)
 	},
+	"trigger_hook": (ext: Extras, doorId: number, hookId: number) => {
+		const entry = doors.getTrigger(hookId)
+		if (!entry) {
+			throw new Error(`trigger ${doorId}/${hookId} not found`)
+		}
+		if (!entry.element.isConnected) {
+			throw new Error(`trigger ${doorId}/${hookId} element is disconnected`)
+		}
+		const make = triggerEvents[entry.capture]
+		let event: Event
+		if (make) {
+			event = make(entry.type, { bubbles: true, cancelable: true, ...ext.payload?.any })
+		} else {
+			event = new CustomEvent(entry.type, { bubbles: true, cancelable: true, detail: ext.payload?.any })
+		}
+		stampTrigger(event, hookId)
+		entry.element.dispatchEvent(event)
+		const meta = clearTrigger(event)
+		if (!meta?.consumed) {
+			throw new Error("no capture consumed trigger")
+		}
+		return meta.promise!.then(
+			() => null,
+			(err) => {
+				if (err instanceof HookErr) {
+					throw new Error(err.message ? `${err.kind}: ${err.message}` : err.kind)
+				}
+				throw err
+			},
+		)
+	},
 	"location_replace": (_: Extras, href: string, origin: boolean) => {
 		let url: URL
 		if (origin) {
@@ -139,17 +182,21 @@ const actions = {
 	},
 }
 
-type Output = Exclude<any, undefined>;
 type Err = {
 	message: string;
 	[key: string]: any;
 };
 
-export type CallResult = ([Output, undefined] | [undefined, Err])
-
 export type Action = [string, Array<any>, EncodedPayload] | [string, Array<any>]
 
-export default function action(name: string, args: Array<any>, extras: Extras = {}): CallResult {
+function normalizeErr(e: any): Err {
+	if (e && typeof e === "object" && typeof e.message === "string") {
+		return e
+	}
+	return new Error("unknown error")
+}
+
+export default function action(name: string, args: Array<any>, extras: Extras = {}): Result<any, Err> | Promise<Result<any, Err>> {
 	try {
 		const fn = actions[name]
 		if (!fn) {
@@ -157,16 +204,16 @@ export default function action(name: string, args: Array<any>, extras: Extras = 
 		}
 		let output = fn(extras, ...args)
 		if (output instanceof Promise) {
-			throw new Error("async actions are prohibited")
+			return output.then(
+				(o): Result<any, Err> => [o ?? null, undefined],
+				(e): Result<any, Err> => [undefined, normalizeErr(e)],
+			)
 		}
 		if (output === undefined) {
 			output = null
 		}
 		return [output, undefined]
 	} catch (e) {
-		if (e && typeof e === "object" && typeof e.message === "string") {
-			return [undefined, e]
-		}
-		return [undefined, new Error("unknown error")]
+		return [undefined, normalizeErr(e)]
 	}
 }

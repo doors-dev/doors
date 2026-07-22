@@ -118,6 +118,8 @@ elem (f *callFragment) Main() {
 			ch := doors.XCall[string](ctx, doors.ActionEmit{Name: "myCall", Arg: len(r.Data())})
 			res := <-ch
 			f.r.Update(ctx, 1, res.Ok)
+			asyncRes := <-doors.XCall[string](ctx, doors.ActionEmit{Name: "myAsyncCall", Arg: r.Data()})
+			f.r.Update(ctx, 2, asyncRes.Ok)
 			return len(r.Data()), true
 		},
 	} ~>doors.AData{
@@ -128,6 +130,7 @@ elem (f *callFragment) Main() {
 			document.getElementById("target").innerHTML = `${data}`
 			return "response"
 		})
+		$on("myAsyncCall", (data) => new Promise((resolve) => setTimeout(() => resolve(`async:${data}`), 100)))
 		await $hook("myHook", await $data("myData"))
 	</script>
 }

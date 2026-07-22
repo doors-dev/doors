@@ -13,13 +13,14 @@
 // limitations under the License.
 
 import action from "./calls";
+import doors from "./door";
 import { fetchOpt, fetchOptJson, fetchOptForm, date, result } from "./lib";
 import navigator from "./navigator";
 import { Fetch, NewFetch } from "./scope";
 import { decodePayload } from "./package";
 import { HookErr, hookErrKinds } from "./hook_err";
 import controller from "./controller";
-import { collect } from "./dispatch";
+import { peekTrigger, consumeTrigger } from "./trigger";
 
 // KeyMatch mirrors front.KeyMatch: a key + modifier constraints (0 any, 1 on, 2 off).
 interface KeyMatch {
@@ -290,14 +291,24 @@ export function attach(parent: Element | DocumentFragment | Document) {
 		element.setAttribute(attr, "applied")
 		for (const [event, name, opt, hook] of capturesList) {
 			const [hookId, scopeQueue, indicator, before, onErr] = hook
+			doors.registerTrigger(element, hookId, { type: event, capture: name, opt })
 			element.addEventListener(event, async (e) => {
+				const meta = peekTrigger(e)
+				if (meta !== undefined) {
+					if (meta.hook !== hookId || meta.consumed) {
+						return
+					}
+					consumeTrigger(e)
+				}
 				let p: Promise<Response>
 				try {
 					p = capture(name, opt, e, e, [hookId, scopeQueue, indicator, before])
 				} catch (error: any) {
 					p = Promise.reject(error)
 				}
-				collect(e, p)
+				if (meta !== undefined) {
+					meta.promise = p
+				}
 				try {
 					await p
 				} catch (error: any) {
@@ -317,7 +328,16 @@ export function attach(parent: Element | DocumentFragment | Document) {
 						return
 					}
 					for (const [name, arg, payload] of onErr) {
-						const [_, e] = action(name, arg, { element, error: error, payload: await decodePayload(payload) })
+						const res = action(name, arg, { element, error: error, payload: await decodePayload(payload) })
+						if (res instanceof Promise) {
+							res.then(([_, e]) => {
+								if (e) {
+									console.error("error action " + name + " failed", e)
+								}
+							})
+							continue
+						}
+						const [_, e] = res
 						if (e) {
 							console.error("error action " + name + " failed", e)
 						}

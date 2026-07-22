@@ -23,6 +23,13 @@ import { attach as attachDyna } from "./dyna"
 type Handler = ((arg: any) => any) | ((arg: any, err: HookErr) => any)
 type Closure = () => void | Promise<void>
 
+export type TriggerEntry = {
+	element: Element
+	type: string
+	capture: string
+	opt: any
+}
+
 
 const attr = "data-d0r"
 const tag = "d0-r"
@@ -79,6 +86,7 @@ function getParentId(el: Element): number {
 class Doors {
 	private elements = new Map<number, DoorElement>()
 	private handlers = new Map<number, Map<string, Handler>>()
+	private triggers = new Map<number, TriggerEntry>()
 	private onClear = new Map<number, Array<Closure>>()
 	private onRemove = new Map<number, Array<Closure>>()
 	private impostors = new Map<number, Set<number>>()
@@ -215,22 +223,19 @@ class Doors {
 		handlers.set(name, handler)
 	}
 
-	onUnmount(element: Element, handler: () => void | Promise<void>): void {
+	onUnmount(element: Element, handler: Closure): void {
 		let id = getSelfId(element)
-		if (id !== undefined) {
-			if (!this.onRemove.has(id)) {
-				this.onRemove.set(id, [handler])
-				return
-			}
-			this.onRemove.get(id)!.push(handler)
+		let index = this.onRemove
+		if (id === undefined) {
+			id = getParentId(element)
+			index = this.onClear
+		}
+		const closures = index.get(id)
+		if (!closures) {
+			index.set(id, [handler])
 			return
 		}
-		id = getParentId(element)
-		if (!this.onClear.has(id)) {
-			this.onClear.set(id, [handler])
-			return
-		}
-		this.onClear.get(id)!.push(handler)
+		closures.push(handler)
 	}
 
 	getHandler(id: number, name: string): Handler | undefined {
@@ -247,6 +252,17 @@ class Doors {
 			return undefined
 		}
 		return this.getHandler(element[doorState].parent, name)
+	}
+
+	registerTrigger(element: Element, hookId: number, entry: Omit<TriggerEntry, "element">): void {
+		this.triggers.set(hookId, { element, ...entry })
+		this.onUnmount(element, () => {
+			this.triggers.delete(hookId)
+		})
+	}
+
+	getTrigger(hookId: number): TriggerEntry | undefined {
+		return this.triggers.get(hookId)
 	}
 
 }
