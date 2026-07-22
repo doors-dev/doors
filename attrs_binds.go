@@ -44,7 +44,7 @@ type AHook[T any] struct {
 	// Receives typed input (T, unmarshaled from JSON) through RequestHook,
 	// and returns any output which will be marshaled to JSON.
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(ctx context.Context, r RequestHook[T]) (any, bool)
 }
 
@@ -77,14 +77,18 @@ func (h *AHook[T]) handle(core core.Core) func(ctx context.Context, w http.Respo
 			w.WriteHeader(400)
 			return false
 		}
-		output, done := h.On(ctx, &formHookRequest[T]{
-			data: &input,
-			request: request{
-				w:   w,
-				r:   r,
-				ctx: ctx,
-			},
-		})
+		var output any
+		var done bool
+		if h.On != nil {
+			output, done = h.On(ctx, &formHookRequest[T]{
+				data: &input,
+				request: request{
+					w:   w,
+					r:   r,
+					ctx: ctx,
+				},
+			})
+		}
 		enc := json.NewEncoder(w)
 		enc.SetEscapeHTML(false)
 		err = enc.Encode(&output)
@@ -114,7 +118,7 @@ type ARawHook struct {
 	// Backend handler for the hook.
 	// Provides raw access via RRawHook (body reader, multipart parser).
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(ctx context.Context, r RequestRawHook) bool
 }
 
@@ -138,6 +142,10 @@ func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 
 func (h *ARawHook) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		if h.On == nil {
+			r.Body.Close()
+			return false
+		}
 		return h.On(ctx, &request{
 			r:     r,
 			w:     w,

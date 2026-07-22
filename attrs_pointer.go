@@ -45,7 +45,7 @@ type pointerEventHook struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -92,7 +92,7 @@ type AClick struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -131,7 +131,7 @@ type APointerDown struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -170,7 +170,7 @@ type APointerUp struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -209,7 +209,7 @@ type APointerMove struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -248,7 +248,7 @@ type APointerOver struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -287,7 +287,7 @@ type APointerOut struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -326,7 +326,7 @@ type APointerEnter struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -365,7 +365,7 @@ type APointerLeave struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -404,7 +404,7 @@ type APointerCancel struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -443,7 +443,7 @@ type AGotPointerCapture struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.
@@ -482,7 +482,7 @@ type ALostPointerCapture struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[PointerEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestPointer) bool
 	// Actions to run on error.
 	// Optional.

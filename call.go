@@ -49,7 +49,6 @@ func Call(ctx context.Context, action Action) {
 // T is the expected decoded payload type. For actions other than [ActionEmit],
 // [json.RawMessage] is usually the right choice.
 func XCall[T any](ctx context.Context, action Action) <-chan CallResult[T] {
-	ctex.LogFreeWarning(ctx, "action", "XCall")
 	return call[T](ctx, action)
 }
 

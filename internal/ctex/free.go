@@ -55,15 +55,3 @@ func IsFreeCtx(ctx context.Context) bool {
 	_, ok := ctx.(freeContext)
 	return ok
 }
-
-func LogFreeWarning(ctx context.Context, entity string, operation string) {
-	if !IsFreeCtx(ctx) {
-		common.Logger(ctx).Warn(
-			"extended operation is used in non-free context. Receiving from channel could lead to DEADLOCK under extreme conditions, please refer to documentation",
-			"entity",
-			entity,
-			"operation",
-			operation,
-		)
-	}
-}

@@ -42,6 +42,10 @@ func AttrsAppendDyn(attrs gox.Attrs, id uint64, name string) {
 	attrs.Get("data-d0y").Set(val)
 }
 
+func AttrsSetEmitter(attrs gox.Attrs, id uint64) {
+	attrs.Get("data-d0e").Set(fmt.Sprintf("%d", id))
+}
+
 func AttrsSetParent(attrs gox.Attrs, parent uint64) {
 	attr := attrs.Get("data-d0p")
 	if attr.IsSet() {

@@ -106,6 +106,21 @@ func (e PointerEvent) ScreenY() float64 {
 	return e.ClientY() + e.Screen.Y
 }
 
+// PointerAction is the synthetic pointer event init an [Emitter] sends to the client.
+type PointerAction struct {
+	PointerID   int     `json:"pointerId,omitempty"`
+	Buttons     int     `json:"buttons,omitempty"`
+	Button      int     `json:"button,omitempty"`
+	PointerType string  `json:"pointerType,omitempty"`
+	IsPrimary   bool    `json:"isPrimary,omitempty"`
+	ClientX     float64 `json:"clientX,omitempty"`
+	ClientY     float64 `json:"clientY,omitempty"`
+	CtrlKey     bool    `json:"ctrlKey,omitempty"`
+	ShiftKey    bool    `json:"shiftKey,omitempty"`
+	AltKey      bool    `json:"altKey,omitempty"`
+	MetaKey     bool    `json:"metaKey,omitempty"`
+}
+
 // KeyboardEvent is the browser keyboard event payload sent to Doors.
 type KeyboardEvent struct {
 	Type      string    `json:"type"`
@@ -119,11 +134,25 @@ type KeyboardEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// KeyboardAction is the synthetic keyboard event init an [Emitter] sends to the client.
+type KeyboardAction struct {
+	Key      string `json:"key,omitempty"`
+	Code     string `json:"code,omitempty"`
+	Repeat   bool   `json:"repeat,omitempty"`
+	CtrlKey  bool   `json:"ctrlKey,omitempty"`
+	ShiftKey bool   `json:"shiftKey,omitempty"`
+	AltKey   bool   `json:"altKey,omitempty"`
+	MetaKey  bool   `json:"metaKey,omitempty"`
+}
+
 // FocusEvent is the browser focus event payload sent to Doors.
 type FocusEvent struct {
 	Type      string    `json:"type"`
 	Timestamp time.Time `json:"timestamp"`
 }
+
+// FocusAction is the synthetic focus event init an [Emitter] sends to the client.
+type FocusAction struct{}
 
 // ChangeEvent describes a committed form value change.
 type ChangeEvent struct {
@@ -137,6 +166,9 @@ type ChangeEvent struct {
 	Timestamp time.Time  `json:"timestamp"`
 }
 
+// ChangeAction is the synthetic change event init an [Emitter] sends to the client.
+type ChangeAction struct{}
+
 // InputEvent describes a live form value edit.
 type InputEvent struct {
 	Type      string `json:"type"`
@@ -149,3 +181,12 @@ type InputEvent struct {
 	Checked   bool       `json:"checked"`
 	Timestamp time.Time  `json:"timestamp"`
 }
+
+// InputAction is the synthetic input event init an [Emitter] sends to the client.
+type InputAction struct {
+	Data      string `json:"data,omitempty"`
+	InputType string `json:"inputType,omitempty"`
+}
+
+// SubmitAction is the synthetic submit event init an [Emitter] sends to the client.
+type SubmitAction struct{}

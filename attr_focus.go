@@ -43,7 +43,7 @@ type focusIOEventHook struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
@@ -78,7 +78,7 @@ type focusEventHook struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestEvent[FocusEvent]) bool
 	// Actions to run on error.
 	// Optional.
@@ -113,7 +113,7 @@ type AFocus struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
@@ -143,7 +143,7 @@ type ABlur struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
@@ -179,7 +179,7 @@ type AFocusIn struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.
@@ -215,7 +215,7 @@ type AFocusOut struct {
 	// Backend event handler.
 	// Receives a typed RequestEvent[FocusEvent].
 	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// Optional.
 	On func(context.Context, RequestFocus) bool
 	// Actions to run on error.
 	// Optional.

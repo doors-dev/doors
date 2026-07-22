@@ -80,15 +80,7 @@ class Hook {
 				continue
 			}
 			const res = action(name, arg, { element: this.params_.event?.target as any, payload: decoded })
-			if (res instanceof Promise) {
-				res.then(([_, err]) => {
-					if (err) {
-						console.error("hook action error", err)
-					}
-				})
-				continue
-			}
-			const [_, err] = res
+			const [_, err] = res instanceof Promise ? await res : res
 			if (err) {
 				console.error("hook action error", err)
 			}
