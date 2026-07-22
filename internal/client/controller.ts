@@ -33,9 +33,6 @@ class Solitaire {
 			this.collectedLost_.delete(gap)
 		}
 	}
-	isDone(): boolean {
-		return !this.top
-	}
 	collectLost(): Lost {
 		const lost: Lost = []
 		for (const seq of this.getLost()) {
@@ -195,8 +192,18 @@ class Card {
 
 class Tracker {
 	private buffered_: Results = new Map()
+	constructor(private notify_: () => void) {
+	}
 	process(p: Package) {
-		const [ok, err] = action(p.action, p.arg, { payload: p.getPayload() })
+		const result = action(p.action, p.arg, { payload: p.getPayload() })
+		if (result instanceof Promise) {
+			result.then(([ok, err]) => {
+				this.buffered_.set(p.end, [ok, err?.message])
+				this.notify_()
+			})
+			return
+		}
+		const [ok, err] = result
 		this.buffered_.set(p.end, [ok, err?.message])
 	}
 	return(collected: Results) {
@@ -208,9 +215,6 @@ class Tracker {
 		const collected = this.buffered_
 		this.buffered_ = new Map()
 		return collected
-	}
-	isDone(): boolean {
-		return this.buffered_.size == 0
 	}
 }
 
@@ -225,7 +229,7 @@ type State = typeof state[keyof typeof state]
 class Controller {
 	private state_: State = state.active
 	private deck_ = new Solitaire()
-	private tracker_ = new Tracker()
+	private tracker_ = new Tracker(() => this.send())
 	readonly ready: Promise<void>
 	private connector_: Connector
 	private loaded_ = false

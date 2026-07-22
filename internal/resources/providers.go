@@ -144,8 +144,7 @@ func inlineScriptArgs(kind Kind) string {
 		"$hook: (name: string, arg?: any) => Promise<any>, " +
 		"$fetch: (name: string, arg?: any) => Promise<Response>, " +
 		"$G: {[key: string]: any}, " +
-		"$sys: {ready:() => Promise<void>, clean: (handler: () => void | Promise<void>) => void, activateLinks: () => void, " +
-		"dispatch: (target: EventTarget, event: Event) => Promise<number>}, " +
+		"$sys: {ready:() => Promise<void>, clean: (handler: () => void | Promise<void>) => void, activateLinks: () => void}, " +
 		"HookErr: new (...args: any[]) => Error"
 }
 

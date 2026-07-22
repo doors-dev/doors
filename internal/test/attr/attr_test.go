@@ -56,7 +56,7 @@ func TestAttrCall(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &callFragment{
 			data: data,
-			r:    test.NewReporter(2),
+			r:    test.NewReporter(3),
 		}
 	})
 	page := bro.Page(t, "/")
@@ -65,4 +65,5 @@ func TestAttrCall(t *testing.T) {
 	waitContent(t, page, "#target", fmt.Sprint(len(data)), time.Second)
 	waitReportId(t, page, 0, data, time.Second)
 	waitReportId(t, page, 1, "response", time.Second)
+	waitReportId(t, page, 2, "async:"+data, 2*time.Second)
 }
