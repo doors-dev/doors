@@ -27,7 +27,7 @@ import (
 //
 //	~(&doors.Door{})
 func (d *Door) Edit(cur gox.Cursor) error {
-	return cur.Printer().Send(renderJob{door: d})
+	return cur.Printer().Send(renderJob{door: d, fakeJob: fakeJob{cur.Context()}})
 }
 
 // Proxy renders door through the gox proxy pipeline.
@@ -36,7 +36,7 @@ func (d *Door) Edit(cur gox.Cursor) error {
 //
 //	~>(&doors.Door{}) <div>content</div>
 func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
-	return cur.Printer().Send(proxyJob{door: d, el: el})
+	return cur.Printer().Send(proxyJob{door: d, el: el, fakeJob: fakeJob{cur.Context()}})
 }
 
 // Inner replaces the door's current children while keeping the same door

@@ -1,0 +1,127 @@
+package components
+
+import (
+	"context"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type ctxTestKey struct{}
+
+elem ctxValue(id string) {
+	~~
+	v, ok := ctx.Value(ctxTestKey{}).(string)
+	if !ok {
+		v = "none"
+	}
+	~~
+	<div id=(id) data-value=(v)></div>
+}
+
+elem ctxLit(id string, v string) {
+	<div id=(id) data-value=(v)></div>
+}
+
+func ctxHandlerValue(ctx context.Context) string {
+	v, ok := ctx.Value(ctxTestKey{}).(string)
+	if !ok {
+		v = "none"
+	}
+	return v
+}
+
+type CtxFragment struct {
+	test.NoBeam
+	inner doors.Door
+	stat  doors.Door
+	deep  doors.Door
+}
+
+elem (f *CtxFragment) innerContent(label string) {
+	~(ctxValue(label))
+	~>(f.deep) <>
+		~(ctxValue(label + "-deep"))
+	</>
+}
+
+elem (f *CtxFragment) Main() {
+	~(ctxValue("outside"))
+	~>(doors.Ctx(context.WithValue(context.Background(), ctxTestKey{}, "v1"))) <>
+		~(ctxValue("inside"))
+		~>(doors.Ctx(context.WithValue(ctx, ctxTestKey{}, "v2"))) <>
+			~(ctxValue("override"))
+		</>
+		~>(f.inner) <>
+			~(f.innerContent("initial"))
+		</>
+		~>(f.stat) <>
+			~(ctxValue("stat-initial"))
+		</>
+	</>
+	~~
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	~~
+	~>(doors.Ctx(context.WithValue(canceledCtx, ctxTestKey{}, "vc"))) <>
+		~(ctxValue("canceled"))
+	</>
+	~(test.Button("update-inner", func(ctx context.Context) bool {
+		f.inner.Inner(ctx, f.innerContent("updated"))
+		return true
+	}))
+	~(test.Button("static-stat", func(ctx context.Context) bool {
+		f.stat.Static(ctx, ctxValue("stat-static"))
+		return true
+	}))
+}
+
+type CtxRerenderFragment struct {
+	test.NoBeam
+	wrap         doors.Door
+	dyn          doors.Door
+	repContent   doors.Door
+	repContainer doors.Door
+}
+
+elem (f *CtxRerenderFragment) dynContent(label string) {
+	~(ctxValue(label))
+	~(test.Button("content-handler", func(ctx context.Context) bool {
+		f.repContent.Inner(ctx, ctxLit("content-report", ctxHandlerValue(ctx)))
+		return true
+	}))
+}
+
+elem (f *CtxRerenderFragment) wrapContent(val string) {
+	~>(doors.Ctx(context.WithValue(context.Background(), ctxTestKey{}, val))) <>
+		~>(f.dyn) ~>doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.repContainer.Inner(ctx, ctxLit("container-report", ctxHandlerValue(ctx)))
+				return true
+			},
+		} <div id="dyn-el">
+			~(f.dynContent("dyn-" + val))
+		</div>
+		~(test.Button("same-scope-handler", func(ctx context.Context) bool {
+			f.repContent.Inner(ctx, ctxLit("same-scope-report", ctxHandlerValue(ctx)))
+			return true
+		}))
+	</>
+}
+
+elem (f *CtxRerenderFragment) Main() {
+	~>(f.wrap) <>
+		~(f.wrapContent("a"))
+	</>
+	~(&f.repContent)
+	~(&f.repContainer)
+	~(test.Button("rerender-wrap", func(ctx context.Context) bool {
+		f.wrap.Inner(ctx, f.wrapContent("b"))
+		return true
+	}))
+	~(test.Button("update-dyn", func(ctx context.Context) bool {
+		f.dyn.Inner(ctx, f.dynContent("dyn-updated"))
+		return true
+	}))
+}

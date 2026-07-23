@@ -22,10 +22,12 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-type fakeJob struct{}
+type fakeJob struct {
+	ctx context.Context
+}
 
 func (d fakeJob) Context() context.Context {
-	return context.Background()
+	return d.ctx
 }
 
 func (d fakeJob) Output(w io.Writer) error {
@@ -38,7 +40,7 @@ type renderJob struct {
 }
 
 func (d renderJob) Render(p *pipe) {
-	d.door.render(p)
+	d.door.render(p, d.Context())
 }
 
 type proxyJob struct {
@@ -48,5 +50,5 @@ type proxyJob struct {
 }
 
 func (d proxyJob) Render(p *pipe) {
-	d.door.proxy(p, d.el)
+	d.door.proxy(p, d.el, d.Context())
 }

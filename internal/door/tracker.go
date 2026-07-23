@@ -41,7 +41,8 @@ func trackerRoot(r *root) (*tracker, core.Core) {
 	}
 	t.cinema = beam.NewCinema(nil, t)
 	core := core.NewCore(t)
-	t.contentCtx = context.WithValue(r.runtime().Context(), common.KeyCore, core)
+	ctx := context.WithValue(r.runtime().Context(), common.KeyCore, core)
+	t.renderCtx = common.NewRenderCtx(ctx, ctx)
 	return t, core
 }
 
@@ -83,6 +84,8 @@ func trackerInherit(n *node, prev *tracker, preserveFrame bool) *tracker {
 		outerCallGuard: prev.outerCallGuard,
 	}
 	t.cinema = beam.NewCinema(t.parent.cinema, t)
+	core := core.NewCore(t)
+	t.renderCtx = common.NewRenderCtx(context.WithValue(ctx, common.KeyCore, core), prev.renderCtx.User())
 	if preserveFrame {
 		t.container = prev.container
 		t.container.update(t)
@@ -91,13 +94,14 @@ func trackerInherit(n *node, prev *tracker, preserveFrame bool) *tracker {
 		prev.container.clean(t.innerCallGuard)
 	}
 	prev.clean(false, t.innerCallGuard)
-	core := core.NewCore(t)
-	t.contentCtx = context.WithValue(ctx, common.KeyCore, core)
 	t.parent.addChild(t)
 	return t
 }
 
-func trackerCreate(n *node, p *pipe) *tracker {
+func trackerCreate(n *node, p *pipe, userCtx context.Context) *tracker {
+	if renderCtx, ok := userCtx.(common.RenderCtx); ok {
+		userCtx = renderCtx.User()
+	}
 	ctx, cancel := context.WithCancel(p.tracker.ctx)
 	t := &tracker{
 		id:             p.tracker.Instance().NewID(),
@@ -112,9 +116,35 @@ func trackerCreate(n *node, p *pipe) *tracker {
 	t.cinema = beam.NewCinema(t.parent.cinema, t)
 	t.container = newContainerTracker(t)
 	core := core.NewCore(t)
-	t.contentCtx = context.WithValue(ctx, common.KeyCore, core)
+	t.renderCtx = common.NewRenderCtx(context.WithValue(ctx, common.KeyCore, core), userCtx)
 	t.parent.addChild(t)
 	return t
+}
+
+func trackerStaticInherit(prev *tracker) *staticTracker {
+	ctx, cancel := context.WithCancel(prev.parent.renderCtx.System())
+	t := &staticTracker{
+		id:             prev.id,
+		tracker:        prev.parent,
+		innerCallGuard: &shredder.ValveFrame{},
+		outerCallGuard: prev.outerCallGuard,
+		cancel:         cancel,
+	}
+	t.renderCtx = common.NewRenderCtx(context.WithValue(ctx, common.KeyCore, core.NewCore(t)), prev.renderCtx.User())
+	return t
+}
+
+func trackerStatic(p *pipe, userCtx context.Context) *staticTracker {
+	if renderCtx, ok := userCtx.(common.RenderCtx); ok {
+		userCtx = renderCtx.User()
+	}
+	ctx, cancel := context.WithCancel(p.tracker.renderCtx.System())
+	return &staticTracker{
+		tracker:        p.tracker,
+		innerCallGuard: p.callGuard,
+		renderCtx:      common.NewRenderCtx(ctx, userCtx),
+		cancel:         cancel,
+	}
 }
 
 type tracker struct {
@@ -126,7 +156,7 @@ type tracker struct {
 	thread         shredder.ReadWriteThread
 	cinema         beam.Cinema
 	ctx            context.Context
-	contentCtx     context.Context
+	renderCtx      common.RenderCtx
 	cancel         context.CancelFunc
 	outerCallGuard *shredder.ValveFrame
 	innerCallGuard *shredder.ValveFrame
@@ -258,9 +288,9 @@ func (t *tracker) containerCinemaFrame() shredder.AnyFrame {
 	return t.container.cinema.ReadFrame()
 }
 
-func (t *tracker) writeFrame(ctx context.Context) shredder.Frame {
+func (t *tracker) writeFrame() shredder.Frame {
 	write := t.thread.Write()
-	return shredder.Join(ctx, true, write, t.cinema.ReadFrame(), t.containerCinemaFrame())
+	return shredder.Join(t.renderCtx, true, write, t.cinema.ReadFrame(), t.containerCinemaFrame())
 }
 
 func (t *tracker) isCanceled() bool {
@@ -268,7 +298,7 @@ func (t *tracker) isCanceled() bool {
 }
 
 func (t *tracker) Context() context.Context {
-	return t.contentCtx
+	return t.renderCtx
 }
 
 func (t *tracker) Cinema() beam.Cinema {
@@ -405,7 +435,7 @@ func (f *containerTracker) update(t *tracker) {
 }
 
 func (t *containerTracker) Context() context.Context {
-	return t.ctx
+	return common.NewRenderCtx(t.ctx, t.getTracker().renderCtx.User())
 }
 
 func (t *containerTracker) ReadFrame() shredder.Frame {
@@ -465,22 +495,17 @@ func (t *containerTracker) XReload(ctx context.Context) <-chan error {
 	return t.getTracker().XReload(ctx)
 }
 
-func newStaticTracker(parent *tracker, guard *shredder.ValveFrame) *staticTracker {
-	t := &staticTracker{tracker: parent, guard: guard}
-	ctx := context.WithValue(parent.contentCtx, common.KeyCore, core.NewCore(t))
-	t.staticCtx, t.cancel = context.WithCancel(ctx)
-	return t
-}
-
 type staticTracker struct {
 	*tracker
-	guard     *shredder.ValveFrame
-	staticCtx context.Context
-	cancel    context.CancelFunc
+	id             uint64
+	innerCallGuard *shredder.ValveFrame
+	outerCallGuard *shredder.ValveFrame
+	renderCtx      common.RenderCtx
+	cancel         context.CancelFunc
 }
 
 func (t *staticTracker) Ready(f func()) {
-	t.guard.Submit(t.staticCtx, t.Runtime(), func(b bool) {
+	t.innerCallGuard.Submit(t.renderCtx, t.Runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -489,5 +514,5 @@ func (t *staticTracker) Ready(f func()) {
 }
 
 func (t *staticTracker) Context() context.Context {
-	return t.staticCtx
+	return t.renderCtx
 }
