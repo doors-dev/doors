@@ -16,6 +16,7 @@ package doors
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -187,4 +188,8 @@ func DetachedContext(ctx context.Context) context.Context {
 // Deprecated: use [DetachedContext].
 func Free(ctx context.Context) context.Context {
 	return DetachedContext(ctx)
+}
+
+func Logger(ctx context.Context) *slog.Logger {
+	return common.Logger(ctx)
 }
