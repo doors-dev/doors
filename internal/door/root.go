@@ -112,7 +112,7 @@ func (r Root) IsStatic() bool {
 
 func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 	thread := shredder.Thread{}
-	renderFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), r.tracker.writeFrame(r.tracker.Context()))
+	renderFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), r.tracker.writeFrame())
 	pipe := newPipe(
 		r.tracker,
 		common.GetDequeBuffer(),

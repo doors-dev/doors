@@ -55,6 +55,16 @@ func Parallel() gox.Proxy {
 	})
 }
 
+// Ctx renders the following element with user values from the provided
+// context. Render scope and cancelation stay with the enclosing render.
+func Ctx(ctx context.Context) gox.Proxy {
+	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
+		ctx := common.NewRenderCtx(cur.Context(), ctx)
+		cur = gox.NewCursor(ctx, cur.Printer())
+		return elem(cur)
+	})
+}
+
 type parallelJob struct {
 	ctx context.Context
 	el  gox.Elem

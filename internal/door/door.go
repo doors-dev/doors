@@ -27,19 +27,21 @@ type Door struct {
 	node atomic.Pointer[node]
 }
 
-func (d *Door) proxy(p *pipe, el gox.Elem) {
+func (d *Door) proxy(p *pipe, el gox.Elem, ctx context.Context) {
 	task := nodeProxy{
 		pipe:   p,
 		buffer: p.branch(),
 		el:     el,
+		ctx:    ctx,
 	}
 	d.schedule(p.tracker.Context(), task, p.renderFrame)
 }
 
-func (d *Door) render(p *pipe) {
+func (d *Door) render(p *pipe, ctx context.Context) {
 	task := nodeRender{
 		pipe:   p,
 		buffer: p.branch(),
+		ctx:    ctx,
 	}
 	d.schedule(p.tracker.Context(), task, p.renderFrame)
 }
