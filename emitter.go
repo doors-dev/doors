@@ -57,164 +57,117 @@ func (e *Emitter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 }
 
 // Click returns an [Action] emitting a click event.
-func (e *Emitter) Click(init PointerAction) Action {
-	return e.emitAction("click", "pointer", init)
+func (e *Emitter) Click(emit PointerEmit) Action {
+	return e.emit("click", "pointer", emit)
 }
 
 // PointerDown returns an [Action] emitting a pointerdown event.
-func (e *Emitter) PointerDown(init PointerAction) Action {
-	return e.emitAction("pointerdown", "pointer", init)
+func (e *Emitter) PointerDown(emit PointerEmit) Action {
+	return e.emit("pointerdown", "pointer", emit)
 }
 
 // PointerUp returns an [Action] emitting a pointerup event.
-func (e *Emitter) PointerUp(init PointerAction) Action {
-	return e.emitAction("pointerup", "pointer", init)
+func (e *Emitter) PointerUp(emit PointerEmit) Action {
+	return e.emit("pointerup", "pointer", emit)
 }
 
 // PointerMove returns an [Action] emitting a pointermove event.
-func (e *Emitter) PointerMove(init PointerAction) Action {
-	return e.emitAction("pointermove", "pointer", init)
+func (e *Emitter) PointerMove(emit PointerEmit) Action {
+	return e.emit("pointermove", "pointer", emit)
 }
 
 // PointerOver returns an [Action] emitting a pointerover event.
-func (e *Emitter) PointerOver(init PointerAction) Action {
-	return e.emitAction("pointerover", "pointer", init)
+func (e *Emitter) PointerOver(emit PointerEmit) Action {
+	return e.emit("pointerover", "pointer", emit)
 }
 
 // PointerOut returns an [Action] emitting a pointerout event.
-func (e *Emitter) PointerOut(init PointerAction) Action {
-	return e.emitAction("pointerout", "pointer", init)
+func (e *Emitter) PointerOut(emit PointerEmit) Action {
+	return e.emit("pointerout", "pointer", emit)
 }
 
 // PointerEnter returns an [Action] emitting a pointerenter event.
-func (e *Emitter) PointerEnter(init PointerAction) Action {
-	return e.emitAction("pointerenter", "pointer", init)
+func (e *Emitter) PointerEnter(emit PointerEmit) Action {
+	return e.emit("pointerenter", "pointer", emit)
 }
 
 // PointerLeave returns an [Action] emitting a pointerleave event.
-func (e *Emitter) PointerLeave(init PointerAction) Action {
-	return e.emitAction("pointerleave", "pointer", init)
+func (e *Emitter) PointerLeave(emit PointerEmit) Action {
+	return e.emit("pointerleave", "pointer", emit)
 }
 
 // PointerCancel returns an [Action] emitting a pointercancel event.
-func (e *Emitter) PointerCancel(init PointerAction) Action {
-	return e.emitAction("pointercancel", "pointer", init)
+func (e *Emitter) PointerCancel(emit PointerEmit) Action {
+	return e.emit("pointercancel", "pointer", emit)
 }
 
 // GotPointerCapture returns an [Action] emitting a gotpointercapture event.
-func (e *Emitter) GotPointerCapture(init PointerAction) Action {
-	return e.emitAction("gotpointercapture", "pointer", init)
+func (e *Emitter) GotPointerCapture(emit PointerEmit) Action {
+	return e.emit("gotpointercapture", "pointer", emit)
 }
 
 // LostPointerCapture returns an [Action] emitting a lostpointercapture event.
-func (e *Emitter) LostPointerCapture(init PointerAction) Action {
-	return e.emitAction("lostpointercapture", "pointer", init)
+func (e *Emitter) LostPointerCapture(emit PointerEmit) Action {
+	return e.emit("lostpointercapture", "pointer", emit)
 }
 
 // KeyDown returns an [Action] emitting a keydown event.
-func (e *Emitter) KeyDown(init KeyboardAction) Action {
-	return e.emitAction("keydown", "keyboard", init)
+func (e *Emitter) KeyDown(emit KeyboardEmit) Action {
+	return e.emit("keydown", "keyboard", emit)
 }
 
 // KeyUp returns an [Action] emitting a keyup event.
-func (e *Emitter) KeyUp(init KeyboardAction) Action {
-	return e.emitAction("keyup", "keyboard", init)
+func (e *Emitter) KeyUp(emit KeyboardEmit) Action {
+	return e.emit("keyup", "keyboard", emit)
 }
 
 // Focus returns an [Action] emitting a focus event.
-func (e *Emitter) Focus(init FocusAction) Action {
-	return e.emitAction("focus", "focus", init)
+func (e *Emitter) Focus(emit FocusEmit) Action {
+	return e.emit("focus", "focus", emit)
 }
 
 // Blur returns an [Action] emitting a blur event.
-func (e *Emitter) Blur(init FocusAction) Action {
-	return e.emitAction("blur", "focus", init)
+func (e *Emitter) Blur(emit FocusEmit) Action {
+	return e.emit("blur", "focus", emit)
 }
 
 // FocusIn returns an [Action] emitting a focusin event.
-func (e *Emitter) FocusIn(init FocusAction) Action {
-	return e.emitAction("focusin", "focus_io", init)
+func (e *Emitter) FocusIn(emit FocusEmit) Action {
+	return e.emit("focusin", "focus_io", emit)
 }
 
 // FocusOut returns an [Action] emitting a focusout event.
-func (e *Emitter) FocusOut(init FocusAction) Action {
-	return e.emitAction("focusout", "focus_io", init)
+func (e *Emitter) FocusOut(emit FocusEmit) Action {
+	return e.emit("focusout", "focus_io", emit)
 }
 
 // Input returns an [Action] emitting an input event.
-func (e *Emitter) Input(init InputAction) Action {
-	return e.emitAction("input", "input", init)
+func (e *Emitter) Input(emit InputEmit) Action {
+	return e.emit("input", "input", emit)
 }
 
 // Change returns an [Action] emitting a change event.
-func (e *Emitter) Change(init ChangeAction) Action {
-	return e.emitAction("change", "change", init)
+func (e *Emitter) Change(emit ChangeEmit) Action {
+	return e.emit("change", "change", emit)
 }
 
 // Submit returns an [Action] emitting a submit event.
-func (e *Emitter) Submit(init SubmitAction) Action {
-	return e.emitAction("submit", "submit", init)
+func (e *Emitter) Submit(emit SubmitEmit) Action {
+	return e.emit("submit", "submit", emit)
 }
 
-// Emit returns an [Action] emitting an arbitrary event with init.
-//
-// Known event types use the matching event constructor; others dispatch a
-// CustomEvent with init as detail.
-func (e *Emitter) Emit(event string, init map[string]any) Action {
-	return e.emitAction(event, emitCaptures[event], init)
+func (e *Emitter) emit(kind string, capture string, data any) Action {
+	return actionFunc(func(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error) {
+		payload, err := action.IntoPayload(data, gz)
+		if err != nil {
+			return nil, action.CallParams{}, err
+		}
+		act := action.EmitEvent{
+			EmitterID: e.autoID(core),
+			Type:      kind,
+			Capture:   capture,
+			Payload:   payload,
+		}
+		return act, action.CallParams{}, nil
+	})
 }
-
-func (e *Emitter) emitAction(event string, capture string, data any) Action {
-	return actionEmitEvent{
-		emitter: e,
-		event:   event,
-		capture: capture,
-		data:    data,
-	}
-}
-
-var emitCaptures = map[string]string{
-	"click":              "pointer",
-	"pointerdown":        "pointer",
-	"pointerup":          "pointer",
-	"pointermove":        "pointer",
-	"pointerover":        "pointer",
-	"pointerout":         "pointer",
-	"pointerenter":       "pointer",
-	"pointerleave":       "pointer",
-	"pointercancel":      "pointer",
-	"gotpointercapture":  "pointer",
-	"lostpointercapture": "pointer",
-	"keydown":            "keyboard",
-	"keyup":              "keyboard",
-	"focus":              "focus",
-	"blur":               "focus",
-	"focusin":            "focus_io",
-	"focusout":           "focus_io",
-	"input":              "input",
-	"change":             "change",
-	"submit":             "submit",
-}
-
-type actionEmitEvent struct {
-	emitter *Emitter
-	event   string
-	capture string
-	data    any
-}
-
-func (ae actionEmitEvent) action(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error) {
-	payload, err := action.IntoPayload(ae.data, gz)
-	if err != nil {
-		return nil, action.CallParams{}, err
-	}
-	act := action.EmitEvent{
-		EmitterID: ae.emitter.autoID(core),
-		Type:      ae.event,
-		Capture:   ae.capture,
-		Payload:   payload,
-	}
-	return act, action.CallParams{}, nil
-}
-
-var _ Action = actionEmitEvent{}

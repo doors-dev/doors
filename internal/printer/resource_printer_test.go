@@ -156,8 +156,12 @@ func (titleDoor) RootCore() core.Core {
 }
 func (titleDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
 }
-func (titleDoor) Clean(func()) {}
-func (titleDoor) Ready(func()) {}
+func (titleDoor) CleanFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
+func (titleDoor) ReadyFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
 type testMetaUpdate struct {
 	name     string
@@ -206,8 +210,12 @@ func (d *hookDoor) RootCore() core.Core {
 }
 func (d *hookDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
 }
-func (d *hookDoor) Clean(func()) {}
-func (d *hookDoor) Ready(func()) {}
+func (d *hookDoor) CleanFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
+func (d *hookDoor) ReadyFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
 func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstance, *hookDoor, *testModuleRegistry) {
 	t.Helper()

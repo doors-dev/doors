@@ -16,6 +16,7 @@ package printer
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -130,7 +131,9 @@ func (p *resourcePrinter) processMeta(openJob *gox.JobHeadOpen) error {
 	name := b.String()
 	core := openJob.Context().Value(common.KeyCore).(core.Core)
 	cancel := core.Instance().TitleMeta().UpdateMeta(property, name, openJob.Attrs.Clone())
-	core.Door().Clean(cancel)
+	core.Door().CleanFrame().Run(context.Background(), nil, func(bool) {
+		cancel()
+	})
 	gox.Release(openJob)
 	return nil
 }
@@ -150,7 +153,9 @@ func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
 		content := tit.buf.String()
 		attrs := tit.openJob.Attrs.Clone()
 		cancel := core.Instance().TitleMeta().UpdateTitle(content, attrs)
-		core.Door().Clean(cancel)
+		core.Door().CleanFrame().Run(context.Background(), nil, func(bool) {
+			cancel()
+		})
 		gox.Release(tit.openJob)
 		gox.Release(closeJob)
 		r.resource = nil

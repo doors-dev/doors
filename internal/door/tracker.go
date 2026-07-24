@@ -54,7 +54,9 @@ func trackerShutdown(prev *tracker) {
 func trackerRemove(prev *tracker, task *userTask) {
 	prev.container.clean(shredder.FreeFrame{})
 	prev.clean(false, shredder.FreeFrame{})
-	prev.outerCallGuard.Submit(prev.parent.ctx, prev.root.runtime(), func(b bool) {
+	callFrame := shredder.Join(prev.parent.ctx, true, task.CallFrame(), prev.outerCallGuard)
+	defer callFrame.Release()
+	callFrame.Submit(prev.parent.ctx, prev.root.runtime(), func(b bool) {
 		if !b {
 			task.Cancel()
 			return
@@ -163,7 +165,7 @@ type tracker struct {
 	container      *containerTracker
 	hooks          common.Set[uint64]
 	children       common.Set[*tracker]
-	onClean        []func()
+	cleanValve     shredder.ValveFrame
 }
 
 func (t *tracker) Instance() core.Instance {
@@ -239,8 +241,6 @@ func (t *tracker) clean(cascade bool, cleanGuard shredder.SimpleFrame) {
 	t.mu.Lock()
 	hooks := t.hooks
 	children := t.children
-	clean := t.onClean
-	t.onClean = nil
 	t.hooks = nil
 	t.children = nil
 	t.mu.Unlock()
@@ -251,30 +251,16 @@ func (t *tracker) clean(cascade bool, cleanGuard shredder.SimpleFrame) {
 		t.root.cancelHook(hook)
 	}
 	cleanGuard.Run(context.Background(), nil, func(b bool) {
-		for _, clean := range clean {
-			clean()
-		}
+		t.cleanValve.Activate()
 	})
 }
 
-func (t *tracker) Clean(f func()) {
-	t.mu.Lock()
-	if t.ctx.Err() != nil {
-		t.mu.Unlock()
-		f()
-		return
-	}
-	defer t.mu.Unlock()
-	t.onClean = append(t.onClean, f)
+func (t *tracker) CleanFrame() shredder.SimpleFrame {
+	return shredder.Join(t.ctx, false, &t.cleanValve)
 }
 
-func (t *tracker) Ready(f func()) {
-	t.innerCallGuard.Submit(t.ctx, t.Runtime(), func(b bool) {
-		if !b {
-			return
-		}
-		f()
-	})
+func (t *tracker) ReadyFrame() shredder.SimpleFrame {
+	return shredder.Join(t.ctx, false, t.innerCallGuard)
 }
 
 func (t *tracker) ReadFrame() shredder.Frame {
@@ -367,28 +353,21 @@ func newContainerTracker(t *tracker) *containerTracker {
 }
 
 type containerTracker struct {
-	mu      sync.Mutex
-	tracker *tracker
-	cinema  beam.Cinema
-	hooks   common.Set[uint64]
-	ctx     context.Context
-	cancel  context.CancelFunc
-	onClean []func()
+	mu         sync.Mutex
+	tracker    *tracker
+	cinema     beam.Cinema
+	hooks      common.Set[uint64]
+	ctx        context.Context
+	cancel     context.CancelFunc
+	cleanValve shredder.ValveFrame
 }
 
-func (t *containerTracker) Clean(f func()) {
-	t.mu.Lock()
-	if t.ctx.Err() != nil {
-		t.mu.Unlock()
-		f()
-		return
-	}
-	defer t.mu.Unlock()
-	t.onClean = append(t.onClean, f)
+func (t *containerTracker) CleanFrame() shredder.SimpleFrame {
+	return shredder.Join(t.ctx, false, &t.cleanValve)
 }
 
-func (t *containerTracker) Ready(f func()) {
-	t.getTracker().Ready(f)
+func (t *containerTracker) ReadyFrame() shredder.SimpleFrame {
+	return t.getTracker().ReadyFrame()
 }
 
 func (t *containerTracker) Instance() core.Instance {
@@ -446,8 +425,6 @@ func (t *containerTracker) clean(cleanGuard shredder.SimpleFrame) {
 	t.cancel()
 	t.mu.Lock()
 	hooks := t.hooks
-	clean := t.onClean
-	t.onClean = nil
 	t.hooks = nil
 	t.mu.Unlock()
 	t.cinema.Cancel()
@@ -455,9 +432,7 @@ func (t *containerTracker) clean(cleanGuard shredder.SimpleFrame) {
 		t.tracker.root.cancelHook(hook)
 	}
 	cleanGuard.Run(context.Background(), nil, func(b bool) {
-		for _, clean := range clean {
-			clean()
-		}
+		t.cleanValve.Activate()
 	})
 }
 
@@ -504,13 +479,8 @@ type staticTracker struct {
 	cancel         context.CancelFunc
 }
 
-func (t *staticTracker) Ready(f func()) {
-	t.innerCallGuard.Submit(t.renderCtx, t.Runtime(), func(b bool) {
-		if !b {
-			return
-		}
-		f()
-	})
+func (t *staticTracker) ReadyFrame() shredder.SimpleFrame {
+	return shredder.Join(t.renderCtx, false, t.innerCallGuard)
 }
 
 func (t *staticTracker) Context() context.Context {

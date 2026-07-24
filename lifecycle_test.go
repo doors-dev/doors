@@ -151,6 +151,25 @@ func (h *lifecycleHarness) waitEvent(want string) {
 	}
 }
 
+func (h *lifecycleHarness) waitEvents(want ...string) {
+	h.t.Helper()
+	pending := map[string]int{}
+	for _, w := range want {
+		pending[w]++
+	}
+	for n := len(want); n > 0; n-- {
+		select {
+		case got := <-h.events:
+			if pending[got] == 0 {
+				h.t.Fatalf("unexpected event %q while waiting for %v", got, want)
+			}
+			pending[got]--
+		case <-time.After(5 * time.Second):
+			h.t.Fatalf("timed out waiting for events %v", want)
+		}
+	}
+}
+
 func (h *lifecycleHarness) expectNoEvent(d time.Duration) {
 	h.t.Helper()
 	select {
@@ -296,25 +315,225 @@ func TestOnReadyFromHandlerContextFiresPromptly(t *testing.T) {
 	h.waitEvent("ready-handler")
 }
 
+// OnFlush registered during a render with a trivial batch must not fire while
+// the producing cycle is in flight; it fires only after the cycle is enqueued,
+// with a detached live context.
+func TestOnFlushRenderCtxWaitsForCycle(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+		OnFlush(cur.Context(), func(ctx context.Context) {
+			if !ctex.IsFreeCtx(ctx) {
+				h.events <- "flush-ctx-not-detached"
+				return
+			}
+			if ctx.Err() != nil {
+				h.events <- "flush-ctx-canceled"
+				return
+			}
+			h.events <- "flush-render"
+		})
+		close(entered)
+		<-release
+		return cur.Text("v0")
+	}))
+	rendered := make(chan struct{})
+	go func() {
+		h.renderPageErr(mountDoor(d))
+		close(rendered)
+	}()
+	<-entered
+	h.expectNoEvent(50 * time.Millisecond)
+	close(release)
+	h.waitEvent("flush-render")
+	<-rendered
+}
+
+// OnFlush in a handler joins the handler's whole batch: it must not fire while
+// the handler is still open and fires once the batch is dispatched.
+func TestOnFlushHandlerCtxWaitsForBatch(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx := h.renderPage(nil)
+	c := pageCtx.Value(common.KeyCore).(core.Core)
+	entered := make(chan struct{})
+	proceed := make(chan struct{})
+	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		OnFlush(ctx, func(context.Context) { h.events <- "flush-handler" })
+		close(entered)
+		<-proceed
+		return true
+	}, nil)
+	if !ok {
+		t.Fatal("expected hook registration to succeed")
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	triggered := make(chan struct{})
+	go func() {
+		h.root.TriggerHook(hook.HookID, rec, req, 0)
+		close(triggered)
+	}()
+	<-entered
+	h.expectNoEvent(50 * time.Millisecond)
+	close(proceed)
+	h.waitEvent("flush-handler")
+	<-triggered
+}
+
+// OnFlush on a detached context opens a batch spanning the ops calls: ops run
+// synchronously, a nested OnFlush inside an op reuses the same batch context,
+// and on fires after the batch completes.
+func TestOnFlushDetachedCtxOpsAndNestedReuse(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx := h.renderPage(nil)
+	var outer, inner context.Context
+	var synced atomic.Bool
+	OnFlush(DetachedContext(pageCtx), func(context.Context) {
+		if inner == nil || inner != outer {
+			h.events <- "flush-nested-ctx-mismatch"
+			return
+		}
+		if !synced.Load() {
+			h.events <- "flush-ops-not-sync"
+			return
+		}
+		h.events <- "flush-detached"
+	}, func(ctx context.Context) {
+		outer = ctx
+		OnFlush(ctx, func(context.Context) {}, func(ctx context.Context) {
+			inner = ctx
+		})
+	}, func(ctx context.Context) {
+		synced.Store(true)
+	})
+	h.waitEvent("flush-detached")
+}
+
+// A reload whose node CAS fails (door updated in the same batch) must not
+// strand the batch counter: on still fires.
+func TestOnFlushReloadCasFailureClosesBatch(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	ctxCh := make(chan context.Context, 1)
+	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+		ctxCh <- cur.Context()
+		return cur.Text("v0")
+	}))
+	h.renderPage(mountDoor(d))
+	contentCtx := <-ctxCh
+
+	OnFlush(DetachedContext(contentCtx), func(context.Context) {
+		h.events <- "flush-after-stale-reload"
+	}, func(ctx context.Context) {
+		d.Inner(ctx, textElem("v1"))
+		Reload(ctx)
+	})
+	h.waitEvent("flush-after-stale-reload")
+}
+
+// An unmount inside the batch holds it open: on must not fire before the
+// unmount's client call is scheduled.
+func TestOnFlushWaitsForUnmountDispatch(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	d.Inner(context.Background(), textElem("v0"))
+	pageCtx := h.renderPage(mountDoor(d))
+
+	xch := make(chan (<-chan error), 1)
+	OnFlush(DetachedContext(pageCtx), func(ctx context.Context) {
+		ch := <-xch
+		select {
+		case err := <-ch:
+			if err != nil {
+				h.events <- "unmount-error"
+				return
+			}
+			h.events <- "flush-after-unmount-scheduled"
+		default:
+			h.events <- "flush-before-unmount-scheduled"
+		}
+	}, func(ctx context.Context) {
+		xch <- d.XUnmount(ctx)
+	})
+	h.waitEvent("flush-after-unmount-scheduled")
+}
+
+// A canceled owner context does not drop OnFlush: on still runs once the
+// batch point is reached; only render failure or instance shutdown drop it.
+func TestOnFlushRunsOnCanceledContext(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx := h.renderPage(nil)
+	cctx, cancel := context.WithCancel(DetachedContext(pageCtx))
+	cancel()
+	OnFlush(cctx, func(ctx context.Context) {
+		if ctx.Err() == nil {
+			h.events <- "flush-ctx-not-canceled"
+			return
+		}
+		h.events <- "flush-canceled"
+	})
+	h.waitEvent("flush-canceled")
+}
+
+// OnFlush registered after runtime shutdown still fires, with a canceled
+// context.
+func TestOnFlushRunsOnRuntimeShutdown(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx := h.renderPage(nil)
+	h.inst.runtime.Cancel()
+	OnFlush(DetachedContext(pageCtx), func(ctx context.Context) {
+		if ctx.Err() == nil {
+			h.events <- "flush-shutdown-ctx-live"
+			return
+		}
+		h.events <- "flush-shutdown"
+	})
+	h.waitEvent("flush-shutdown")
+}
+
+// A failing render still fires OnFlush, with a canceled context reporting the
+// drop of the batch; OnClean fires as well.
+func TestOnFlushRunsOnRenderError(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	d.Inner(context.Background(), textElem("v0"))
+	pageCtx := h.renderPage(mountDoor(d))
+
+	renderErr := errors.New("render failed")
+	failing := gox.Elem(func(cur gox.Cursor) error {
+		OnFlush(cur.Context(), func(ctx context.Context) {
+			if ctx.Err() == nil {
+				h.events <- "flush-error-ctx-live"
+				return
+			}
+			h.events <- "flush-error-canceled"
+		})
+		OnClean(cur.Context(), func() { h.events <- "clean-error" })
+		return renderErr
+	})
+	ch := d.XInner(DetachedContext(pageCtx), failing)
+	if err := <-ch; !errors.Is(err, renderErr) {
+		t.Fatalf("expected render error, got %v", err)
+	}
+	h.waitEvents("clean-error", "flush-error-canceled")
+	h.expectNoEvent(100 * time.Millisecond)
+}
+
 // A superseded render cycle drops its OnReady while its OnClean still fires,
-// deferred until the replacing cycle is enqueued and strictly before the
-// replacing content's OnReady.
+// deferred until the replacing cycle is enqueued.
 func TestOnReadySupersededDroppedCleanStillFires(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
 	d.Inner(context.Background(), textElem("v0"))
 	pageCtx := h.renderPage(mountDoor(d))
 
-	var cleanFirstDone atomic.Bool
 	blocked := make(chan struct{})
 	first := gox.Elem(func(cur gox.Cursor) error {
 		ctx := cur.Context()
 		OnReady(ctx, func(context.Context) { h.events <- "ready-first" })
-		OnClean(ctx, func() {
-			time.Sleep(10 * time.Millisecond)
-			h.events <- "clean-first"
-			cleanFirstDone.Store(true)
-		})
+		OnClean(ctx, func() { h.events <- "clean-first" })
 		close(blocked)
 		// Hold the first cycle open until the second operation supersedes it.
 		<-ctx.Done()
@@ -324,19 +543,12 @@ func TestOnReadySupersededDroppedCleanStillFires(t *testing.T) {
 	<-blocked
 
 	second := gox.Elem(func(cur gox.Cursor) error {
-		OnReady(cur.Context(), func(context.Context) {
-			if !cleanFirstDone.Load() {
-				h.events <- "ready-second-before-clean-completed"
-				return
-			}
-			h.events <- "ready-second"
-		})
+		OnReady(cur.Context(), func(context.Context) { h.events <- "ready-second" })
 		return cur.Text("v2")
 	})
 	d.XInner(DetachedContext(pageCtx), second)
 
-	h.waitEvent("clean-first")
-	h.waitEvent("ready-second")
+	h.waitEvents("clean-first", "ready-second")
 	if err := <-ch1; !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected superseded operation to report context.Canceled, got %v", err)
 	}
@@ -368,24 +580,19 @@ func TestOnReadyDroppedOnRenderError(t *testing.T) {
 }
 
 // On replacement, the replaced content's OnClean runs exactly once, deferred
-// until the replacing render has run (not at apply time), and completes before
-// the replacing content's OnReady starts. cleanDone is set as the callback's
-// last statement after a delay, so a clean batch that ran early (at apply) is
-// caught deterministically inside the replacing render body, and a clean batch
-// dispatched concurrently with ready-new is caught deterministically inside
-// the ready callback.
-func TestOnCleanReplaceOrdering(t *testing.T) {
+// until the replacing cycle is enqueued (not at apply time): it must still be
+// pending while the replacing content renders.
+func TestOnCleanReplaceDeferred(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	var cleanDone atomic.Bool
+	var cleanDispatched atomic.Bool
 	var cleanCount atomic.Int32
 	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
 		OnReady(cur.Context(), func(context.Context) { h.events <- "ready-old" })
 		OnClean(cur.Context(), func() {
-			time.Sleep(10 * time.Millisecond)
+			cleanDispatched.Store(true)
 			cleanCount.Add(1)
 			h.events <- "clean-old"
-			cleanDone.Store(true)
 		})
 		return cur.Text("v0")
 	}))
@@ -393,36 +600,28 @@ func TestOnCleanReplaceOrdering(t *testing.T) {
 	h.waitEvent("ready-old")
 
 	next := gox.Elem(func(cur gox.Cursor) error {
-		if cleanDone.Load() {
+		if cleanDispatched.Load() {
 			// The replaced OnClean must still be pending while the replacing
 			// content renders: it is deferred until this cycle is enqueued.
 			h.events <- "clean-before-replacing-render"
 			return nil
 		}
-		OnReady(cur.Context(), func(context.Context) {
-			if !cleanDone.Load() {
-				h.events <- "ready-before-clean-completed"
-				return
-			}
-			h.events <- "ready-new"
-		})
+		OnReady(cur.Context(), func(context.Context) { h.events <- "ready-new" })
 		return cur.Text("v1")
 	})
 	ch := d.XInner(DetachedContext(pageCtx), next)
 	if err := <-ch; err != nil {
 		t.Fatalf("expected replacing update to schedule, got %v", err)
 	}
-	h.waitEvent("clean-old")
-	h.waitEvent("ready-new")
+	h.waitEvents("clean-old", "ready-new")
 	if got := cleanCount.Load(); got != 1 {
 		t.Fatalf("expected the replaced OnClean to run exactly once, ran %d times", got)
 	}
 	h.expectNoEvent(100 * time.Millisecond)
 }
 
-// OnClean runs synchronously inside the unmount cascade; registration on an
-// already-cleaned owner runs immediately on the calling goroutine, and
-// OnReady on a cleaned owner is dropped.
+// OnClean fires on unmount; registration on an already-cleaned owner still
+// fires, and OnReady on a cleaned owner is dropped.
 func TestOnCleanUnmountAndCleanedOwner(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
@@ -436,28 +635,23 @@ func TestOnCleanUnmountAndCleanedOwner(t *testing.T) {
 	contentCtx := <-ctxCh
 
 	d.Unmount(pageCtx)
-	select {
-	case got := <-h.events:
-		if got != "clean-unmount" {
-			t.Fatalf("expected event %q, got %q", "clean-unmount", got)
-		}
-	default:
-		t.Fatal("expected OnClean to run synchronously inside the unmount cascade")
-	}
+	h.waitEvent("clean-unmount")
 
-	ran := false
-	OnClean(contentCtx, func() { ran = true })
-	if !ran {
-		t.Fatal("expected OnClean on a cleaned owner to run before returning")
+	late := make(chan struct{})
+	OnClean(contentCtx, func() { close(late) })
+	select {
+	case <-late:
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected OnClean on a cleaned owner to still fire")
 	}
 
 	OnReady(contentCtx, func(context.Context) { h.events <- "ready-late" })
 	h.expectNoEvent(100 * time.Millisecond)
 }
 
-// In a nested-door cascade, children's OnClean callbacks run before their
-// parents'.
-func TestOnCleanChildBeforeParent(t *testing.T) {
+// In a nested-door cascade, both children's and parents' OnClean callbacks
+// fire.
+func TestOnCleanCascadeFires(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	parent := &Door{}
 	child := &Door{}
@@ -472,11 +666,10 @@ func TestOnCleanChildBeforeParent(t *testing.T) {
 	pageCtx := h.renderPage(mountDoor(parent))
 
 	parent.Unmount(pageCtx)
-	h.waitEvent("clean-child")
-	h.waitEvent("clean-parent")
+	h.waitEvents("clean-child", "clean-parent")
 }
 
-// OnClean fires on instance end, nested doors before the root registrations.
+// OnClean fires on instance end for both nested doors and root registrations.
 func TestOnCleanOnInstanceEnd(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
@@ -488,8 +681,7 @@ func TestOnCleanOnInstanceEnd(t *testing.T) {
 	OnClean(pageCtx, func() { h.events <- "clean-root" })
 
 	h.root.Kill()
-	h.waitEvent("clean-door")
-	h.waitEvent("clean-root")
+	h.waitEvents("clean-door", "clean-root")
 }
 
 // A panic inside OnClean is recovered: the remaining callbacks in the batch

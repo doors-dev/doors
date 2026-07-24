@@ -51,9 +51,13 @@ func (h helperDoor) Instance() core.Instance {
 	return h.inst
 }
 
-func (helperDoor) Clean(func()) {}
+func (helperDoor) CleanFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
-func (helperDoor) Ready(func()) {}
+func (helperDoor) ReadyFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
 func (helperDoor) Cinema() beam.Cinema {
 	return nil
@@ -88,9 +92,13 @@ func (h helperDoorWithRoot) Instance() core.Instance {
 	return h.inst
 }
 
-func (helperDoorWithRoot) Clean(func()) {}
+func (helperDoorWithRoot) CleanFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
-func (helperDoorWithRoot) Ready(func()) {}
+func (helperDoorWithRoot) ReadyFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
 // UserCall implements [core.Door].
 func (h helperDoorWithRoot) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
