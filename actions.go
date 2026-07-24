@@ -28,6 +28,14 @@ type Action interface {
 	action(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error)
 }
 
+type actionFunc func(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error)
+
+func (a actionFunc) action(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error) {
+	return a(ctx, core, gz)
+}
+
+var _ Action = actionFunc(nil)
+
 // Actions is a composable list of client-side operations.
 type Actions interface {
 	// Actions returns the flattened action list.

@@ -93,8 +93,8 @@ type Door interface {
 	XReload(ctx context.Context) <-chan error
 	RootCore() Core
 	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
-	Clean(func())
-	Ready(f func())
+	CleanFrame() shredder.SimpleFrame
+	ReadyFrame() shredder.SimpleFrame
 }
 
 func NewCore(door Door) Core {

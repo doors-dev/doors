@@ -14,7 +14,9 @@
 
 package doors
 
-import "time"
+import (
+	"time"
+)
 
 // Rect describes a rectangle in a coordinate space: origin (X, Y) and
 // dimensions (W, H). Used by [PointerEvent] to carry target,
@@ -106,8 +108,8 @@ func (e PointerEvent) ScreenY() float64 {
 	return e.ClientY() + e.Screen.Y
 }
 
-// PointerAction is the synthetic pointer event init an [Emitter] sends to the client.
-type PointerAction struct {
+// PointerEmit is the synthetic pointer event init an [Emitter] sends to the client.
+type PointerEmit struct {
 	PointerID   int     `json:"pointerId,omitempty"`
 	Buttons     int     `json:"buttons,omitempty"`
 	Button      int     `json:"button,omitempty"`
@@ -134,8 +136,8 @@ type KeyboardEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// KeyboardAction is the synthetic keyboard event init an [Emitter] sends to the client.
-type KeyboardAction struct {
+// KeyboardEmit is the synthetic keyboard event init an [Emitter] sends to the client.
+type KeyboardEmit struct {
 	Key      string `json:"key,omitempty"`
 	Code     string `json:"code,omitempty"`
 	Repeat   bool   `json:"repeat,omitempty"`
@@ -151,8 +153,8 @@ type FocusEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// FocusAction is the synthetic focus event init an [Emitter] sends to the client.
-type FocusAction struct{}
+// FocusEmit is the synthetic focus event init an [Emitter] sends to the client.
+type FocusEmit struct{}
 
 // ChangeEvent describes a committed form value change.
 type ChangeEvent struct {
@@ -166,8 +168,8 @@ type ChangeEvent struct {
 	Timestamp time.Time  `json:"timestamp"`
 }
 
-// ChangeAction is the synthetic change event init an [Emitter] sends to the client.
-type ChangeAction struct{}
+// ChangeEmit is the synthetic change event init an [Emitter] sends to the client.
+type ChangeEmit struct{}
 
 // InputEvent describes a live form value edit.
 type InputEvent struct {
@@ -182,11 +184,11 @@ type InputEvent struct {
 	Timestamp time.Time  `json:"timestamp"`
 }
 
-// InputAction is the synthetic input event init an [Emitter] sends to the client.
-type InputAction struct {
+// InputEmit is the synthetic input event init an [Emitter] sends to the client.
+type InputEmit struct {
 	Data      string `json:"data,omitempty"`
 	InputType string `json:"inputType,omitempty"`
 }
 
-// SubmitAction is the synthetic submit event init an [Emitter] sends to the client.
-type SubmitAction struct{}
+// SubmitEmit is the synthetic submit event init an [Emitter] sends to the client.
+type SubmitEmit struct{}

@@ -105,7 +105,9 @@ func (d *Door) reloadSelf(ctx context.Context, prev *node) <-chan error {
 	task := nodeReload{
 		userTask: userTask,
 	}
-	if !d.atomicSchedule(ctx, prev, task, userTask.InitFrame()) {
+	frame := userTask.InitFrame()
+	if !d.atomicSchedule(ctx, prev, task, frame) {
+		frame.Release()
 		userTask.Cancel()
 	}
 	return ch
