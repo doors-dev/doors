@@ -16,7 +16,6 @@ package doors
 
 import (
 	"context"
-	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
@@ -34,15 +33,7 @@ var _ Attr = (*Emitter)(nil)
 // result is the number of captures the event fired; any capture error fails
 // the call.
 type Emitter struct {
-	once sync.Once
-	id   uint64
-}
-
-func (e *Emitter) autoID(c core.Core) uint64 {
-	e.once.Do(func() {
-		e.id = c.Instance().NewID()
-	})
-	return e.id
+	id front.AutoID
 }
 
 func (e *Emitter) Proxy(cur gox.Cursor, elem gox.Elem) error {
@@ -51,7 +42,7 @@ func (e *Emitter) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (e *Emitter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	front.AttrsSetEmitter(attrs, e.autoID(core))
+	front.AttrsSetEmitter(attrs, e.id.ID(core))
 	front.AttrsSetParent(attrs, core.Door().ID())
 	return nil
 }
@@ -163,7 +154,7 @@ func (e *Emitter) emit(kind string, capture string, data any) Action {
 			return nil, action.CallParams{}, err
 		}
 		act := action.EmitEvent{
-			EmitterID: e.autoID(core),
+			EmitterID: e.id.ID(core),
 			Type:      kind,
 			Capture:   capture,
 			Payload:   payload,

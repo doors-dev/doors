@@ -37,9 +37,9 @@ func AttrsSetData(attrs gox.Attrs, name string, data any) {
 	attrs.Get(fmt.Sprintf("data-d0d-%s", name)).Set(payloadAttr{data})
 }
 
-func AttrsAppendDyn(attrs gox.Attrs, id uint64, name string) {
-	val := jsonAttrs([]any{[]any{id, name}})
-	attrs.Get("data-d0y").Set(val)
+func AttrsAppendSetter(attrs gox.Attrs, id uint64) {
+	val := jsonAttrs([]any{id})
+	attrs.Get("data-d0s").Set(val)
 }
 
 func AttrsSetEmitter(attrs gox.Attrs, id uint64) {

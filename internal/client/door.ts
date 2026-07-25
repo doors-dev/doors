@@ -18,7 +18,7 @@ import { doorId } from './lib'
 import { attach as attachCaptures } from "./capture"
 import { HookErr } from "./hook_err"
 import navigator from "./navigator"
-import { attach as attachDyna } from "./dyna"
+import { attach as attachSetter } from "./setter"
 
 type Handler = ((arg: any) => any) | ((arg: any, err: HookErr) => any)
 type Closure = () => void | Promise<void>
@@ -186,7 +186,7 @@ class Doors {
 		this.scanImpostors(parent)
 		this.scanEmitters(parent)
 		attachCaptures(parent)
-		attachDyna(parent)
+		attachSetter(parent)
 		navigator.scan(parent)
 	}
 

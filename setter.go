@@ -1,0 +1,89 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package doors
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/front"
+	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/gox"
+)
+
+var _ Attr = (*Setter)(nil)
+
+// Setter sets attributes on the elements it is attached to.
+//
+// Attach it as an attribute to one or more elements, then pass the [Action]
+// returned by [Setter.Set] to [Call], [XCall], or any action-accepting API.
+// The result is the number of affected elements.
+//
+// Setter is stateless: it changes live elements only. A re-rendered element
+// returns to its template attributes.
+type Setter struct {
+	id front.AutoID
+}
+
+func (s *Setter) Proxy(cur gox.Cursor, elem gox.Elem) error {
+	return proxyMod(s, cur, elem)
+}
+
+func (s *Setter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
+	core := ctx.Value(common.KeyCore).(core.Core)
+	front.AttrsAppendSetter(attrs, s.id.ID(core))
+	front.AttrsSetParent(attrs, core.Door().ID())
+	return nil
+}
+
+// Set returns an [Action] setting attribute name on attached elements.
+//
+// The value follows template attribute semantics: nil and false remove the
+// attribute, true sets it bare, [gox.Output] values serialize themselves,
+// anything else is formatted with the fmt package.
+func (s *Setter) Set(name string, value any) Action {
+	return actionFunc(func(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error) {
+		act := action.AttrSet{
+			ID:   s.id.ID(core),
+			Name: name,
+		}
+		if m, ok := value.(gox.Mutate); ok {
+			value = m.Mutate(name, nil)
+		}
+		switch v := value.(type) {
+		case nil:
+			return act, action.CallParams{}, nil
+		case bool:
+			if !v {
+				return act, action.CallParams{}, nil
+			}
+			act.Value = new(string)
+		case gox.Output:
+			var b strings.Builder
+			if err := v.Output(&b); err != nil {
+				return nil, action.CallParams{}, err
+			}
+			str := b.String()
+			act.Value = &str
+		default:
+			str := fmt.Sprint(v)
+			act.Value = &str
+		}
+		return act, action.CallParams{}, nil
+	})
+}

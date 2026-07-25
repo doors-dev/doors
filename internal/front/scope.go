@@ -16,7 +16,7 @@ package front
 
 import (
 	"encoding/json"
-	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -51,17 +51,20 @@ func (s Scope) MarshalJSON() ([]byte, error) {
 	return json.Marshal(a)
 }
 
-type AutoId struct {
+type AutoID struct {
 	once sync.Once
-	id   string
+	id   uint64
 }
 
-func (s *AutoId) Id(inst core.Core) string {
+func (s *AutoID) ID(inst core.Core) uint64 {
 	s.once.Do(func() {
-		id := inst.Instance().NewID()
-		s.id = fmt.Sprint(id)
+		s.id = inst.Instance().NewID()
 	})
 	return s.id
+}
+
+func (s *AutoID) String(inst core.Core) string {
+	return strconv.FormatUint(s.ID(inst), 10)
 }
 
 func RateScope(id string, tick time.Duration) Scope {

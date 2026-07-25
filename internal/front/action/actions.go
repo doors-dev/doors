@@ -92,32 +92,19 @@ func (a Emit) Invocation() Invocation {
 	}
 }
 
-type DynaSet struct {
+type AttrSet struct {
 	ID    uint64
-	Value string
+	Name  string
+	Value *string
 }
 
-func (a DynaSet) Log() string {
-	return "dyna_set"
+func (a AttrSet) Log() string {
+	return "attr_set"
 }
-func (a DynaSet) Invocation() Invocation {
+func (a AttrSet) Invocation() Invocation {
 	return Invocation{
-		name: "dyna_set",
-		arg:  []any{a.ID, a.Value},
-	}
-}
-
-type DynaRemove struct {
-	ID uint64
-}
-
-func (a DynaRemove) Log() string {
-	return "dyna_remove"
-}
-func (a DynaRemove) Invocation() Invocation {
-	return Invocation{
-		name: "dyna_remove",
-		arg:  []any{a.ID},
+		name: "attr_set",
+		arg:  []any{a.ID, a.Name, a.Value},
 	}
 }
 

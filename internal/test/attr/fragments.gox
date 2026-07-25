@@ -130,7 +130,11 @@ elem (f *callFragment) Main() {
 			document.getElementById("target").innerHTML = `${data}`
 			return "response"
 		})
-		$on("myAsyncCall", (data) => new Promise((resolve) => setTimeout(() => resolve(`async:${data}`), 100)))
+		$on(
+			"myAsyncCall",
+			(data) =>
+				new Promise((resolve) => setTimeout(() => resolve(`async:${data}`), 100)),
+		)
 		await $hook("myHook", await $data("myData"))
 	</script>
 }
@@ -197,13 +201,13 @@ elem (f *dataFragment) Main() {
 
 type captureFragment struct {
 	test.NoBeam
-	r       *test.Reporter
-	filter  int
-	ctrlOn  int
+	r *test.Reporter
+	filter int
+	ctrlOn int
 	ctrlOff int
-	metaOn  int
-	multi   int
-	anyKey  int
+	metaOn int
+	multi int
+	anyKey int
 }
 
 elem (f *captureFragment) Main() {

@@ -62,7 +62,7 @@ func (ss scopes) Scopes(core core.Core) []Scope {
 //
 // Later requests are rejected while an earlier request is active.
 type ScopeBlocking struct {
-	id front.AutoId
+	id front.AutoID
 }
 
 func (sb *ScopeBlocking) And(s Scopes) Scopes {
@@ -70,14 +70,14 @@ func (sb *ScopeBlocking) And(s Scopes) Scopes {
 }
 
 func (sb *ScopeBlocking) Scopes(core core.Core) []Scope {
-	return []Scope{front.BlockingScope(sb.id.Id(core))}
+	return []Scope{front.BlockingScope(sb.id.String(core))}
 }
 
 var _ Scopes = (*ScopeBlocking)(nil)
 
 // ScopeSerial queues requests in this scope and runs them one after another.
 type ScopeSerial struct {
-	id front.AutoId
+	id front.AutoID
 }
 
 func (ss *ScopeSerial) And(s Scopes) Scopes {
@@ -85,7 +85,7 @@ func (ss *ScopeSerial) And(s Scopes) Scopes {
 }
 
 func (ss *ScopeSerial) Scopes(core core.Core) []Scope {
-	return []Scope{front.SerialScope(ss.id.Id(core))}
+	return []Scope{front.SerialScope(ss.id.String(core))}
 }
 
 var _ Scopes = (*ScopeSerial)(nil)
@@ -97,7 +97,7 @@ var _ Scopes = (*ScopeSerial)(nil)
 type ScopeRate struct {
 	// Tick is the minimum interval between events.
 	Tick time.Duration
-	id   front.AutoId
+	id   front.AutoID
 }
 
 func (sd *ScopeRate) And(s Scopes) Scopes {
@@ -105,7 +105,7 @@ func (sd *ScopeRate) And(s Scopes) Scopes {
 }
 
 func (s *ScopeRate) Scopes(core core.Core) []Scope {
-	return []Scope{front.RateScope(s.id.Id(core), s.Tick)}
+	return []Scope{front.RateScope(s.id.String(core), s.Tick)}
 }
 
 var _ Scopes = (*ScopeRate)(nil)
@@ -116,7 +116,7 @@ type ScopeDebounce struct {
 	Duration time.Duration
 	// Limit is the maximum delay before a pending request must be sent.
 	Limit time.Duration
-	id    front.AutoId
+	id    front.AutoID
 }
 
 func (sd *ScopeDebounce) And(s Scopes) Scopes {
@@ -124,38 +124,38 @@ func (sd *ScopeDebounce) And(s Scopes) Scopes {
 }
 
 func (s *ScopeDebounce) Scopes(core core.Core) []Scope {
-	return []Scope{front.DebounceScope(s.id.Id(core), s.Duration, s.Limit)}
+	return []Scope{front.DebounceScope(s.id.String(core), s.Duration, s.Limit)}
 }
 
 var _ Scopes = (*ScopeDebounce)(nil)
 
 // ScopeFrame groups requests by frame lifecycle.
 type ScopeFrame struct {
-	id front.AutoId
+	id front.AutoID
 }
 
 // Scope returns a scope for either the frame or non-frame group.
 func (d *ScopeFrame) Scope(frame bool) Scopes {
 	return scopeFunc(func(core core.Core) []Scope {
-		return []Scope{front.FrameScope(d.id.Id(core), frame)}
+		return []Scope{front.FrameScope(d.id.String(core), frame)}
 	})
 }
 
 // ScopeConcurrent allows one request per group to run concurrently.
 type ScopeConcurrent struct {
-	id front.AutoId
+	id front.AutoID
 }
 
 // Scope returns a concurrent scheduling group.
 func (d *ScopeConcurrent) Scope(groupID int) Scopes {
 	return scopeFunc(func(core core.Core) []Scope {
-		return []Scope{front.ConcurrentScope(d.id.Id(core), groupID)}
+		return []Scope{front.ConcurrentScope(d.id.String(core), groupID)}
 	})
 }
 
 // ScopeLatest keeps only the latest request in this scope.
 type ScopeLatest struct {
-	id front.AutoId
+	id front.AutoID
 }
 
 func (sl *ScopeLatest) And(s Scopes) Scopes {
@@ -163,7 +163,7 @@ func (sl *ScopeLatest) And(s Scopes) Scopes {
 }
 
 func (s *ScopeLatest) Scopes(core core.Core) []Scope {
-	return []Scope{front.LatestScope(s.id.Id(core))}
+	return []Scope{front.LatestScope(s.id.String(core))}
 }
 
 var _ Scopes = (*ScopeLatest)(nil)
