@@ -15,7 +15,7 @@
 import doors from "./door"
 import navigator from "./navigator"
 import indicator, { IndicatorEntry } from "./indicator"
-import { removeAttr, setAttr } from "./dyna"
+import { setAttr } from "./setter"
 import { doAfter, scrollInto, Result } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
@@ -156,11 +156,8 @@ const actions = {
 		}
 		return handler(ext.payload!.any, ext.error as any)
 	},
-	"dyna_set": (_: Extras, id: number, value: string) => {
-		setAttr(id, value)
-	},
-	"dyna_remove": (_: Extras, id: number) => {
-		removeAttr(id)
+	"attr_set": (_: Extras, id: number, name: string, value: string | null) => {
+		return setAttr(id, name, value)
 	},
 	"set_path": (_: Extras, path: string, replace: boolean) => {
 		if (replace) {

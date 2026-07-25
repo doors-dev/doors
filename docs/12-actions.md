@@ -7,7 +7,7 @@ Use them when the browser should do something imperative instead of just renderi
 For example, call a JavaScript handler registered with `$on(...)`.
 
 > If the UI should simply render different content, prefer normal rendering.
-> If one attribute should stay shared across existing elements, `AShared` from [Shared Attr](./17-shared-attr.md) is often a better fit than an action.
+> If attributes should stay shared across existing elements, `Setter` from [Setter](./17-shared-attr.md) is often a better fit than a custom action.
 
 ## Places
 
@@ -188,7 +188,7 @@ The same shape works for `r.After(...)` and `OnError`.
 ## Rules
 
 - Prefer rendering and state for durable UI changes.
-- Prefer `AShared` when one existing attribute should stay shared without rerendering the elements.
+- Prefer `Setter` when existing attributes should stay shared without rerendering the elements.
 - Use `doors.Call` when the result does not matter.
 - Use `doors.XCall` mainly with `ActionEmit`.
 - Keep `$on(...)` handlers synchronous and scoped intentionally.

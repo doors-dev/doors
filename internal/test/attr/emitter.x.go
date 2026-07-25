@@ -6,7 +6,7 @@ package attr
 import (
 	"context"
 	"fmt"
-
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
@@ -253,7 +253,7 @@ func (f *emitterFocusFragment) Main() gox.Elem {
 
 type emitterFormFragment struct {
 	test.NoBeam
-	r  *test.Reporter
+	r *test.Reporter
 	ei doors.Emitter
 	es doors.Emitter
 }

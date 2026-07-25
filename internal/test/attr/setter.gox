@@ -1,0 +1,75 @@
+package attr
+
+import (
+	"context"
+	"fmt"
+	
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type setterFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	s doors.Setter
+	n doors.Door
+}
+
+elem (f *setterFragment) content() {
+	~>(&f.s) <div id="t1"></div>
+	~>(&f.s) <div id="t2">
+		~>(&f.s) <div id="t3"></div>
+	</div>
+}
+
+elem (f *setterFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "")
+	~~
+	~(f.r)
+	~>(f.n) <>
+		~(f.content())
+	</>
+	~(test.Button("set-string", func(ctx context.Context) bool {
+		doors.Call(ctx, f.s.Set("data-test", `a&b"c"<d>`))
+		return false
+	}))
+	~(test.Button("set-bare", func(ctx context.Context) bool {
+		doors.Call(ctx, f.s.Set("data-test", true))
+		return false
+	}))
+	~(test.Button("set-int", func(ctx context.Context) bool {
+		doors.Call(ctx, f.s.Set("data-test", 42))
+		return false
+	}))
+	~(test.Button("remove-nil", func(ctx context.Context) bool {
+		doors.Call(ctx, f.s.Set("data-test", nil))
+		return false
+	}))
+	~(test.Button("remove-false", func(ctx context.Context) bool {
+		doors.Call(ctx, f.s.Set("data-test", false))
+		return false
+	}))
+	~(test.Button("xset", func(ctx context.Context) bool {
+		ch := doors.XCall[int](ctx, f.s.Set("data-count", "x"))
+		select {
+		case res := <-ch:
+			if res.Err != nil {
+				f.r.Update(ctx, 0, "err")
+			} else {
+				f.r.Update(ctx, 0, fmt.Sprint(res.Ok))
+			}
+		case <-ctx.Done():
+		}
+		return false
+	}))
+	~(test.Button("clear", func(ctx context.Context) bool {
+		f.n.Inner(ctx, nil)
+		return false
+	}))
+	~(test.Button("show", func(ctx context.Context) bool {
+		f.n.Inner(ctx, f.content())
+		return false
+	}))
+}

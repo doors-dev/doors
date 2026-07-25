@@ -482,12 +482,15 @@ func TestSharedAttrRestoreOnUpdateError(t *testing.T) {
 
 	shared.Update(ctx, "next")
 
-	set, ok := inst.lastCallAction.(*action.DynaSet)
+	set, ok := inst.lastCallAction.(action.AttrSet)
 	if !ok {
-		t.Fatalf("expected DynaSet action, got %T", inst.lastCallAction)
+		t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)
 	}
-	if set.Value != "next" {
-		t.Fatalf("expected attempted update value %q, got %q", "next", set.Value)
+	if set.Name != "data-shared" {
+		t.Fatalf("expected attr name %q, got %q", "data-shared", set.Name)
+	}
+	if set.Value == nil || *set.Value != "next" {
+		t.Fatalf("expected attempted update value %q, got %v", "next", set.Value)
 	}
 	if shared.value != "start" {
 		t.Fatalf("expected shared value restored to %q, got %q", "start", shared.value)
@@ -511,12 +514,15 @@ func TestSharedAttrRestoreOnDisableError(t *testing.T) {
 
 	shared.Disable(ctx)
 
-	remove, ok := inst.lastCallAction.(*action.DynaRemove)
+	remove, ok := inst.lastCallAction.(action.AttrSet)
 	if !ok {
-		t.Fatalf("expected DynaRemove action, got %T", inst.lastCallAction)
+		t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)
 	}
 	if remove.ID == 0 {
 		t.Fatal("expected dynamic attr id on remove action")
+	}
+	if remove.Value != nil {
+		t.Fatalf("expected nil value on remove action, got %q", *remove.Value)
 	}
 	if !shared.enable {
 		t.Fatal("expected shared attr enable flag restored after failed disable")
@@ -526,5 +532,53 @@ func TestSharedAttrRestoreOnDisableError(t *testing.T) {
 	}
 	if shared.seq != 0 {
 		t.Fatalf("expected restore to rewind seq to 0, got %d", shared.seq)
+	}
+}
+
+func TestSetterSetValueSemantics(t *testing.T) {
+	ctx, inst := helperContext(t)
+	setter := &Setter{}
+	str := func(s string) *string { return &s }
+	cases := []struct {
+		name  string
+		value any
+		want  *string
+	}{
+		{"string", "v", str("v")},
+		{"int", 42, str("42")},
+		{"true bare", true, str("")},
+		{"false removes", false, nil},
+		{"nil removes", nil, nil},
+		{"output", Class("a").Add("b"), str("a b")},
+	}
+	var id uint64
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			Call(ctx, setter.Set("data-x", tc.value))
+			act, ok := inst.lastCallAction.(action.AttrSet)
+			if !ok {
+				t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)
+			}
+			if act.Name != "data-x" {
+				t.Fatalf("expected attr name %q, got %q", "data-x", act.Name)
+			}
+			if id == 0 {
+				id = act.ID
+			} else if act.ID != id {
+				t.Fatalf("expected stable setter id %d, got %d", id, act.ID)
+			}
+			if tc.want == nil {
+				if act.Value != nil {
+					t.Fatalf("expected remove (nil value), got %q", *act.Value)
+				}
+				return
+			}
+			if act.Value == nil {
+				t.Fatalf("expected value %q, got remove (nil value)", *tc.want)
+			}
+			if *act.Value != *tc.want {
+				t.Fatalf("expected value %q, got %q", *tc.want, *act.Value)
+			}
+		})
 	}
 }

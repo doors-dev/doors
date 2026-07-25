@@ -38,6 +38,10 @@ func gunzipBytes(t *testing.T, data []byte) []byte {
 	return buf.Bytes()
 }
 
+func strPtr(s string) *string {
+	return &s
+}
+
 func TestActionLogsAndInvocations(t *testing.T) {
 	textPayload := NewText("hello")
 	jsonPayload := NewJSON([]byte(`{"ok":true}`))
@@ -90,19 +94,19 @@ func TestActionLogsAndInvocations(t *testing.T) {
 			expectedPayload: textPayload,
 		},
 		{
-			name:            "dyna set",
-			action:          DynaSet{ID: 7, Value: "value"},
-			log:             "dyna_set",
-			invocationName:  "dyna_set",
-			args:            []any{uint64(7), "value"},
+			name:            "attr set",
+			action:          AttrSet{ID: 7, Name: "data-x", Value: strPtr("value")},
+			log:             "attr_set",
+			invocationName:  "attr_set",
+			args:            []any{uint64(7), "data-x", strPtr("value")},
 			expectedPayload: NewNone(),
 		},
 		{
-			name:            "dyna remove",
-			action:          DynaRemove{ID: 8},
-			log:             "dyna_remove",
-			invocationName:  "dyna_remove",
-			args:            []any{uint64(8)},
+			name:            "attr remove",
+			action:          AttrSet{ID: 8, Name: "data-x"},
+			log:             "attr_set",
+			invocationName:  "attr_set",
+			args:            []any{uint64(8), "data-x", (*string)(nil)},
 			expectedPayload: NewNone(),
 		},
 		{
