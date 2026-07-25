@@ -36,16 +36,16 @@ func indicatorsOrNil(indicators Indicators) []Indicator {
 	return indicators.Indicators()
 }
 
-type indication []Indicators
+type joinedIndicators []Indicators
 
-func (is indication) And(i Indicators) Indicators {
-	c := make(indication, len(is), len(is)+1)
+func (is joinedIndicators) And(i Indicators) Indicators {
+	c := make(joinedIndicators, len(is), len(is)+1)
 	copy(c, is)
 	c = append(c, i)
 	return c
 }
 
-func (is indication) Indicators() []Indicator {
+func (is joinedIndicators) Indicators() []Indicator {
 	output := make([]Indicator, 0)
 	for _, ind := range is {
 		if ind == nil {
@@ -56,7 +56,7 @@ func (is indication) Indicators() []Indicator {
 	return output
 }
 
-var _ Indicators = indication(nil)
+var _ Indicators = joinedIndicators(nil)
 
 type IndicatorContent struct {
 	Selector Selector // Target element
@@ -88,7 +88,7 @@ func IndicateContentQueryParent(query, content string) IndicatorContent {
 }
 
 func (ic IndicatorContent) And(i Indicators) Indicators {
-	return indication([]Indicators{ic, i})
+	return joinedIndicators([]Indicators{ic, i})
 }
 
 func (ic IndicatorContent) Indicators() []Indicator {
@@ -128,7 +128,7 @@ func IndicateAttrQueryParent(query, name, value string) IndicatorAttr {
 }
 
 func (ia IndicatorAttr) And(i Indicators) Indicators {
-	return indication([]Indicators{ia, i})
+	return joinedIndicators([]Indicators{ia, i})
 }
 
 func (ia IndicatorAttr) Indicators() []Indicator {
@@ -167,7 +167,7 @@ func IndicateClassQueryParent(query, class string) IndicatorClass {
 }
 
 func (ic IndicatorClass) And(i Indicators) Indicators {
-	return indication([]Indicators{ic, i})
+	return joinedIndicators([]Indicators{ic, i})
 }
 
 func (ic IndicatorClass) Indicators() []Indicator {
@@ -206,7 +206,7 @@ func IndicateClassRemoveQueryParent(query, class string) IndicatorClassRemove {
 }
 
 func (irc IndicatorClassRemove) And(i Indicators) Indicators {
-	return indication([]Indicators{irc, i})
+	return joinedIndicators([]Indicators{irc, i})
 }
 
 func (irc IndicatorClassRemove) Indicators() []Indicator {

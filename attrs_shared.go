@@ -23,7 +23,7 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
 )
 
@@ -103,7 +103,7 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 	value := a.value
 	a.mu.Unlock()
 	core := ctx.Value(common.KeyCore).(core.Core)
-	act := action.AttrSet{
+	act := actions.AttrSet{
 		ID:   id,
 		Name: a.name,
 	}
@@ -128,7 +128,7 @@ func (a *aShared) updateEnable(ctx context.Context, enable bool) {
 			a.restore(seq, prevValue, prevEnable)
 		},
 		nil,
-		action.CallParams{},
+		actions.CallParams{},
 	)
 }
 
@@ -167,7 +167,7 @@ func (a AShared) Update(ctx context.Context, value string) {
 		func() bool {
 			return a.check(seq)
 		},
-		action.AttrSet{
+		actions.AttrSet{
 			ID:    id,
 			Name:  a.name,
 			Value: &nextValue,
@@ -180,7 +180,7 @@ func (a AShared) Update(ctx context.Context, value string) {
 			a.restore(seq, prevValue, prevEnable)
 		},
 		nil,
-		action.CallParams{},
+		actions.CallParams{},
 	)
 }
 

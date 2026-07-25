@@ -32,33 +32,34 @@ elem (f *setterFragment) Main() {
 		~(f.content())
 	</>
 	~(test.Button("set-string", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", `a&b"c"<d>`))
+		doors.Call(ctx, f.s.Set("data-test", `a&b"c"<d>`))
 		return false
 	}))
 	~(test.Button("set-bare", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", true))
+		doors.Call(ctx, f.s.Set("data-test", true))
 		return false
 	}))
 	~(test.Button("set-int", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", 42))
+		doors.Call(ctx, f.s.Set("data-test", 42))
 		return false
 	}))
 	~(test.Button("remove-nil", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", nil))
+		doors.Call(ctx, f.s.Set("data-test", nil))
 		return false
 	}))
 	~(test.Button("remove-false", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", false))
+		doors.Call(ctx, f.s.Set("data-test", false))
 		return false
 	}))
 	~(test.Button("xset", func(ctx context.Context) bool {
-		ch := doors.Call[int](ctx, f.s.Set("data-count", "x"))
+		var count int
+		ch := doors.Call(ctx, f.s.Set("data-count", "x").Into(&count))
 		select {
-		case res := <-ch:
-			if res.Err != nil {
+		case err := <-ch:
+			if err != nil {
 				f.r.Update(ctx, 0, "err")
 			} else {
-				f.r.Update(ctx, 0, fmt.Sprint(res.Ok))
+				f.r.Update(ctx, 0, fmt.Sprint(count))
 			}
 		case <-ctx.Done():
 		}

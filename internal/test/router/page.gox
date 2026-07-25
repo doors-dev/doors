@@ -20,7 +20,7 @@ elem pageA(b doors.Source[PathA]) {
 			<div id="path">A</div>
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call[any](ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
+					doors.Call(ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
 					return false
 				},
 			} <button id="assign">assign</button>
@@ -428,7 +428,7 @@ elem pageC(b doors.Source[PathC]) {
 			
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call[any](ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
+					doors.Call(ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
 					return true
 				},
 			} <button id="replace">replace</button>
@@ -436,7 +436,7 @@ elem pageC(b doors.Source[PathC]) {
 			
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call[any](ctx, doors.ActionLocationReload{})
+					doors.Call(ctx, doors.ActionLocationReload{})
 					return false
 				},
 			} <button id="reload">reload</button>

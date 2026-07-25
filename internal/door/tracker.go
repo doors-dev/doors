@@ -25,7 +25,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
@@ -172,7 +172,7 @@ func (t *tracker) Instance() core.Instance {
 	return t.root.instance()
 }
 
-func (t *tracker) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+func (t *tracker) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	frames := ctex.GetFrames(ctx)
 	callFrame := shredder.Join(ctx, true, frames.Call(), t.innerCallGuard)
 	defer callFrame.Release()
@@ -367,7 +367,7 @@ func (t *containerTracker) Instance() core.Instance {
 	return t.getTracker().Instance()
 }
 
-func (t *containerTracker) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+func (t *containerTracker) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	t.getTracker().UserCall(ctx, check, action, onResult, onCancel, params)
 }
 

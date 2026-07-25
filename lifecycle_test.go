@@ -31,7 +31,7 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -59,7 +59,7 @@ func (l *lifecycleInstance) NewID() uint64 {
 	return l.ids.Add(1)
 }
 
-func (l *lifecycleInstance) Call(c action.Call) {
+func (l *lifecycleInstance) Call(c actions.Call) {
 	c.Result(nil, nil)
 }
 

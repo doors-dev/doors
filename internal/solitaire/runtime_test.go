@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/solitaire/expirator"
 	"github.com/doors-dev/doors/internal/solitaire/inner"
 )
@@ -63,19 +63,19 @@ func (s *stubRW) Flush() {
 }
 
 type stubSyncCall struct {
-	act         action.Action
-	params      action.CallParams
+	act         actions.Action
+	params      actions.CallParams
 	cancelCount int
 	resultCount int
 	lastOutput  json.RawMessage
 	lastErr     error
 }
 
-func (s *stubSyncCall) Params() action.CallParams {
+func (s *stubSyncCall) Params() actions.CallParams {
 	return s.params
 }
 
-func (s *stubSyncCall) Action() (action.Action, bool) {
+func (s *stubSyncCall) Action() (actions.Action, bool) {
 	if s.act == nil {
 		return nil, false
 	}
@@ -147,10 +147,10 @@ func TestWriteControllerStashAndSubmit(t *testing.T) {
 	fw := newTestWriteController(conf, recorder)
 
 	issuedCall := &stubSyncCall{
-		act: action.Emit{
+		act: actions.Emit{
 			Name:    "sync",
 			DoorID:  7,
-			Payload: action.NewText("payload"),
+			Payload: actions.NewText("payload"),
 		},
 	}
 	if got := fw.Stash(newInnerCard(5, issuedCall)); got != stashIssue {
@@ -202,7 +202,7 @@ func TestWriteControllerSubmitRestoresOnWriteError(t *testing.T) {
 	conf := testSolitaireConf()
 	recorder := &stubRW{writeErr: true}
 	fw := newTestWriteController(conf, recorder)
-	call := &stubSyncCall{act: action.Test{Arg: "retry"}}
+	call := &stubSyncCall{act: actions.Test{Arg: "retry"}}
 	if got := fw.Stash(newInnerCard(1, call)); got != stashIssue {
 		t.Fatalf("expected issued card, got %v", got)
 	}
@@ -226,8 +226,8 @@ func TestDeckDumpIssuesCancelsAndWritesFillers(t *testing.T) {
 	conf := testSolitaireConf()
 	deck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
 	optimistic := &stubSyncCall{
-		act:    action.Test{Arg: "optimistic"},
-		params: action.CallParams{Optimistic: true},
+		act:    actions.Test{Arg: "optimistic"},
+		params: actions.CallParams{Optimistic: true},
 	}
 	if err := deck.Insert(optimistic); err != nil {
 		t.Fatal(err)
@@ -361,7 +361,7 @@ func TestSolitaireAndSenderHelpers(t *testing.T) {
 	inst := &stubInstance{}
 	s := NewSolitaire(inst, conf)
 
-	queuedCall := &stubSyncCall{act: action.Test{Arg: "queued"}}
+	queuedCall := &stubSyncCall{act: actions.Test{Arg: "queued"}}
 	s.Call(queuedCall)
 	if s.deck.QueueLength() != 1 {
 		t.Fatalf("expected solitaire call to queue work, got %d", s.deck.QueueLength())
@@ -398,7 +398,7 @@ func TestSenderRunCleanupSetsCauseAfterSubmitError(t *testing.T) {
 	inst := &stubInstance{}
 	deck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
 	fw := newTestWriteController(conf, &stubRW{writeErr: true})
-	call := &stubSyncCall{act: action.Test{Arg: "write-error"}}
+	call := &stubSyncCall{act: actions.Test{Arg: "write-error"}}
 	if got := fw.Stash(newInnerCard(1, call)); got != stashIssue {
 		t.Fatalf("expected issued card, got %v", got)
 	}

@@ -20,7 +20,7 @@ import (
 	"io"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
 )
 
@@ -105,7 +105,7 @@ type payloadAttr struct {
 }
 
 func (j payloadAttr) Output(w io.Writer) error {
-	payload, err := action.IntoPayload(j.value, false)
+	payload, err := actions.IntoPayload(j.value, false)
 	if err != nil {
 		return err
 	}

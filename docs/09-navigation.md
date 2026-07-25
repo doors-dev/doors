@@ -157,7 +157,7 @@ ALink is a dynamic hook, so it supports the same request-lifecycle fields as eve
 - `Indicator` — UI feedback while the request is in flight. See [Indication](./11-indication.md).
 - `Before` — actions to run before the request.
 - `After` — actions to run after a successful request.
-- `OnError` — actions to run on failure. Defaults to `ActionLocationReload{}` if nil.
+- `OnError` — actions to run on failure. If nil, the failed navigation reverts to the previous history entry.
 
 For action types, see [Actions](./12-actions.md).
 

@@ -18,12 +18,12 @@ import (
 	"encoding/json"
 	"sync/atomic"
 
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 )
 
 type Call struct {
-	Call     action.Call
-	Params   action.CallParams
+	Call     actions.Call
+	Params   actions.CallParams
 	reported atomic.Bool
 }
 
@@ -34,7 +34,7 @@ func (p *Call) Written() {
 	p.Result([]byte("null"), nil)
 }
 
-func (c *Call) Action() (action.Action, bool) {
+func (c *Call) Action() (actions.Action, bool) {
 	return c.Call.Action()
 }
 

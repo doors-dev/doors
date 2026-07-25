@@ -29,7 +29,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -52,12 +52,12 @@ type titleInstance struct {
 	location   beam.Source[path.Location]
 }
 
-func (t *titleInstance) CallCtx(context.Context, action.Action, func(json.RawMessage, error), func(), action.CallParams) context.CancelFunc {
+func (t *titleInstance) CallCtx(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) context.CancelFunc {
 	return func() {}
 }
-func (t *titleInstance) CallCheck(func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (t *titleInstance) CallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
-func (t *titleInstance) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (t *titleInstance) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (t *titleInstance) CSPCollector() common.CSPCollector {
 	if t.csp != nil {
@@ -153,7 +153,7 @@ func (titleDoor) Reload(context.Context) <-chan error {
 func (titleDoor) RootCore() core.Core {
 	return nil
 }
-func (titleDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (titleDoor) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (titleDoor) CleanFrame() shredder.SimpleFrame {
 	return &shredder.ValveFrame{}
@@ -206,7 +206,7 @@ func (d *hookDoor) Reload(context.Context) <-chan error {
 func (d *hookDoor) RootCore() core.Core {
 	return nil
 }
-func (d *hookDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (d *hookDoor) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (d *hookDoor) CleanFrame() shredder.SimpleFrame {
 	return &shredder.ValveFrame{}

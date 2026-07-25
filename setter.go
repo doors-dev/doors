@@ -22,7 +22,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
 )
 
@@ -30,9 +30,8 @@ var _ Attr = (*Setter)(nil)
 
 // Setter sets attributes on the elements it is attached to.
 //
-// Attach it as an attribute to one or more elements, then pass the [Action]
+// Attach it as an attribute to one or more elements, then pass the action
 // returned by [Setter.Set] to [Call] or any action-accepting API.
-// The result is the number of affected elements.
 //
 // Setter is stateless: it changes live elements only. A re-rendered element
 // returns to its template attributes.
@@ -51,14 +50,15 @@ func (s *Setter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return nil
 }
 
-// Set returns an [Action] setting attribute name on attached elements.
+// Set returns an action setting attribute name on attached elements; its
+// Into captures the number of affected elements (see [ActionInto]).
 //
 // The value follows template attribute semantics: nil and false remove the
 // attribute, true sets it bare, [gox.Output] values serialize themselves,
 // anything else is formatted with the fmt package.
-func (s *Setter) Set(name string, value any) Action {
-	return actionFunc(func(ctx context.Context, core core.Core, gz bool) (action.Action, action.CallParams, error) {
-		act := action.AttrSet{
+func (s *Setter) Set(name string, value any) ActionInto[int] {
+	return actionIntoFunc[int](func(ctx context.Context, core core.Core, gz bool) (action, error) {
+		act := actions.AttrSet{
 			ID:   s.id.ID(core),
 			Name: name,
 		}
@@ -67,16 +67,16 @@ func (s *Setter) Set(name string, value any) Action {
 		}
 		switch v := value.(type) {
 		case nil:
-			return act, action.CallParams{}, nil
+			return action{action: act}, nil
 		case bool:
 			if !v {
-				return act, action.CallParams{}, nil
+				return action{action: act}, nil
 			}
 			act.Value = new(string)
 		case gox.Output:
 			var b strings.Builder
 			if err := v.Output(&b); err != nil {
-				return nil, action.CallParams{}, err
+				return action{}, err
 			}
 			str := b.String()
 			act.Value = &str
@@ -84,6 +84,6 @@ func (s *Setter) Set(name string, value any) Action {
 			str := fmt.Sprint(v)
 			act.Value = &str
 		}
-		return act, action.CallParams{}, nil
+		return action{action: act}, nil
 	})
 }

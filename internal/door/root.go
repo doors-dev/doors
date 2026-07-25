@@ -21,13 +21,13 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
 
 type Instance interface {
-	Call(call action.Call)
+	Call(call actions.Call)
 	core.Instance
 }
 

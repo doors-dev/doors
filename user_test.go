@@ -27,7 +27,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -38,7 +38,7 @@ type helperDoor struct {
 	inst *helperInstance
 }
 
-func (h helperDoor) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+func (h helperDoor) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	h.inst.UserCall(ctx, check, action, onResult, onCancel, params)
 }
 
@@ -99,7 +99,7 @@ func (helperDoorWithRoot) ReadyFrame() shredder.SimpleFrame {
 }
 
 // UserCall implements [core.Door].
-func (h helperDoorWithRoot) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+func (h helperDoorWithRoot) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	panic("unimplemented")
 }
 
@@ -128,21 +128,21 @@ func (h helperDoorWithRoot) RootCore() core.Core {
 type helperInstance struct {
 	expire         time.Duration
 	conf           common.Conf
-	lastCallAction action.Action
-	lastCallParams action.CallParams
+	lastCallAction actions.Action
+	lastCallParams actions.CallParams
 	callCheckErr   error
 	runtime        shredder.Runtime
 	session        *helperSession
 	location       beam.Source[path.Location]
 }
 
-func (h *helperInstance) CallCtx(_ context.Context, act action.Action, _ func(json.RawMessage, error), _ func(), params action.CallParams) context.CancelFunc {
+func (h *helperInstance) CallCtx(_ context.Context, act actions.Action, _ func(json.RawMessage, error), _ func(), params actions.CallParams) context.CancelFunc {
 	h.lastCallAction = act
 	h.lastCallParams = params
 	return func() {}
 }
 
-func (h *helperInstance) CallCheck(_ func() bool, act action.Action, onResult func(json.RawMessage, error), _ func(), params action.CallParams) {
+func (h *helperInstance) CallCheck(_ func() bool, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
 	h.lastCallAction = act
 	h.lastCallParams = params
 	if onResult != nil && h.callCheckErr != nil {
@@ -150,7 +150,7 @@ func (h *helperInstance) CallCheck(_ func() bool, act action.Action, onResult fu
 	}
 }
 
-func (h *helperInstance) UserCall(_ context.Context, _ func() bool, act action.Action, onResult func(json.RawMessage, error), _ func(), params action.CallParams) {
+func (h *helperInstance) UserCall(_ context.Context, _ func() bool, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
 	h.lastCallAction = act
 	h.lastCallParams = params
 	if onResult != nil && h.callCheckErr != nil {
@@ -431,22 +431,22 @@ func TestInstanceContextSwitchesToRootCoreAndRuntime(t *testing.T) {
 func TestCallUsesSolitaireDisableGzip(t *testing.T) {
 	ctx, inst := helperContext(t)
 
-	Call[json.RawMessage](ctx, ActionEmit{Name: "plain", Arg: "hello"})
-	emit, ok := inst.lastCallAction.(action.Emit)
+	Call(ctx, ActionEmit[any]{Name: "plain", Arg: "hello"})
+	emit, ok := inst.lastCallAction.(actions.Emit)
 	if !ok {
 		t.Fatalf("expected emit action, got %T", inst.lastCallAction)
 	}
-	if emit.Payload.Type() != action.PayloadTextGZ {
+	if emit.Payload.Type() != actions.PayloadTextGZ {
 		t.Fatalf("expected gzip text payload by default, got %v", emit.Payload.Type())
 	}
 
 	inst.conf.SolitaireDisableGzip = true
-	Call[json.RawMessage](ctx, ActionEmit{Name: "plain", Arg: "hello"})
-	emit, ok = inst.lastCallAction.(action.Emit)
+	Call(ctx, ActionEmit[any]{Name: "plain", Arg: "hello"})
+	emit, ok = inst.lastCallAction.(actions.Emit)
 	if !ok {
 		t.Fatalf("expected emit action, got %T", inst.lastCallAction)
 	}
-	if emit.Payload.Type() != action.PayloadText {
+	if emit.Payload.Type() != actions.PayloadText {
 		t.Fatalf("expected plain text payload when solitaire gzip is disabled, got %v", emit.Payload.Type())
 	}
 }
@@ -456,9 +456,9 @@ func TestCallUsesCanceledContext(t *testing.T) {
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
 
-	Call[json.RawMessage](canceled, ActionEmit{Name: "still-runs", Arg: "hello"})
+	Call(canceled, ActionEmit[any]{Name: "still-runs", Arg: "hello"})
 
-	emit, ok := inst.lastCallAction.(action.Emit)
+	emit, ok := inst.lastCallAction.(actions.Emit)
 	if !ok {
 		t.Fatalf("expected emit action from canceled context, got %T", inst.lastCallAction)
 	}
@@ -478,7 +478,7 @@ func TestSharedAttrRestoreOnUpdateError(t *testing.T) {
 
 	shared.Update(ctx, "next")
 
-	set, ok := inst.lastCallAction.(action.AttrSet)
+	set, ok := inst.lastCallAction.(actions.AttrSet)
 	if !ok {
 		t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)
 	}
@@ -510,7 +510,7 @@ func TestSharedAttrRestoreOnDisableError(t *testing.T) {
 
 	shared.Disable(ctx)
 
-	remove, ok := inst.lastCallAction.(action.AttrSet)
+	remove, ok := inst.lastCallAction.(actions.AttrSet)
 	if !ok {
 		t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)
 	}
@@ -550,8 +550,8 @@ func TestSetterSetValueSemantics(t *testing.T) {
 	var id uint64
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			Call[any](ctx, setter.Set("data-x", tc.value))
-			act, ok := inst.lastCallAction.(action.AttrSet)
+			Call(ctx, setter.Set("data-x", tc.value))
+			act, ok := inst.lastCallAction.(actions.AttrSet)
 			if !ok {
 				t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)
 			}

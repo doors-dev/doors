@@ -38,7 +38,7 @@ func pageA(b doors.Source[PathA]) gox.Elem {
 //line page.gox:21
 				__e = (doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call[any](ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
+					doors.Call(ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
 					return false
 				},
 			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -1050,7 +1050,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 //line page.gox:429
 				__e = (doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call[any](ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
+					doors.Call(ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
 					return true
 				},
 			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -1076,7 +1076,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 //line page.gox:437
 				__e = (doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call[any](ctx, doors.ActionLocationReload{})
+					doors.Call(ctx, doors.ActionLocationReload{})
 					return false
 				},
 			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
