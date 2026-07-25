@@ -110,17 +110,11 @@ func (e PointerEvent) ScreenY() float64 {
 
 // PointerEmit is the synthetic pointer event init an [Emitter] sends to the client.
 type PointerEmit struct {
-	PointerID   int     `json:"pointerId,omitempty"`
-	Buttons     int     `json:"buttons,omitempty"`
-	Button      int     `json:"button,omitempty"`
-	PointerType string  `json:"pointerType,omitempty"`
-	IsPrimary   bool    `json:"isPrimary,omitempty"`
-	ClientX     float64 `json:"clientX,omitempty"`
-	ClientY     float64 `json:"clientY,omitempty"`
-	CtrlKey     bool    `json:"ctrlKey,omitempty"`
-	ShiftKey    bool    `json:"shiftKey,omitempty"`
-	AltKey      bool    `json:"altKey,omitempty"`
-	MetaKey     bool    `json:"metaKey,omitempty"`
+	PointerID   int    `json:"pointerId,omitempty"`
+	Buttons     int    `json:"buttons,omitempty"`
+	Button      int    `json:"button,omitempty"`
+	PointerType string `json:"pointerType,omitempty"`
+	IsPrimary   bool   `json:"isPrimary,omitempty"`
 }
 
 // KeyboardEvent is the browser keyboard event payload sent to Doors.
@@ -186,8 +180,7 @@ type InputEvent struct {
 
 // InputEmit is the synthetic input event init an [Emitter] sends to the client.
 type InputEmit struct {
-	Data      string `json:"data,omitempty"`
-	InputType string `json:"inputType,omitempty"`
+	Data string `json:"data,omitempty"`
 }
 
 // SubmitEmit is the synthetic submit event init an [Emitter] sends to the client.
