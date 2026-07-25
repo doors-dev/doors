@@ -121,39 +121,37 @@ Use it when the stored content depends on outside state and you want to redraw w
 
 `Unmount` removes the Door from the DOM but keeps its current content for a future mount.
 
-## X Methods
+## Completion Channels
 
-Each mutating method also has an `X*` variant:
+Each mutating method returns a completion channel. The return value is optional to use:
 
 ```go
-XInner(ctx context.Context, content any) <-chan error
-XOuter(ctx context.Context, outer gox.Elem) <-chan error
-XStatic(ctx context.Context, content any) <-chan error
-XReload(ctx context.Context) <-chan error
-XUnmount(ctx context.Context) <-chan error
+Inner(ctx context.Context, content any) <-chan error
+Outer(ctx context.Context, outer gox.Elem) <-chan error
+Static(ctx context.Context, content any) <-chan error
+Reload(ctx context.Context) <-chan error
+Unmount(ctx context.Context) <-chan error
 ```
 
-These report completion. On success:
-
-- `XInner`, `XOuter`, `XStatic`, `XReload`, and `XUnmount` send **two** `nil` values then close the channel — the first means the call was scheduled (render was completed), the second means it was applied to the page.
+On success the channel sends **two** `nil` values then closes — the first means the call was scheduled (render was completed), the second means it was applied to the page.
 
 On failure, the channel sends an error then closes. An error of `context.Canceled` means the operation was overwritten by a newer Door operation, unmount, or related lifecycle change.
 
 A closed channel with no value means the Door was not mounted by the time the operation was observed.
 
-Do not wait on `X*` during rendering.
+Do not wait on the channel during rendering.
 
 If you need to wait, do it in a hook, inside `doors.Go(...)`, or in your own
 goroutine with `doors.DetachedContext(ctx)`.
 
 `doors.DetachedContext(ctx)` keeps the current Doors ownership and lifecycle,
-so it is useful when you want to wait on `X*` safely from that same fragment.
+so it is useful when you want to wait on the channel safely from that same fragment.
 
 If the work should outlive the current dynamic owner, use
 `doors.InstanceContext(ctx)`. It switches Doors ownership to the root of the
 current instance and uses the instance runtime lifecycle.
 
-> Most code should use the regular methods. Reach for `X*` when completion itself matters, such as pacing a fast stream of updates.
+> Most code ignores the returned channel. Read it when completion itself matters, such as pacing a fast stream of updates.
 
 ## Lifecycle
 

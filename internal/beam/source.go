@@ -117,24 +117,14 @@ func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool)
 	return value, !s.equal(*value, *prevValue)
 }
 
-// XUpdate behaves like [Lenser.Update] and returns a completion channel.
-func (s *source[T]) XUpdate(ctx context.Context, v T) <-chan error {
+// Update stores v and starts propagation.
+func (s *source[T]) Update(ctx context.Context, v T) <-chan error {
 	return s.mutateOrUpdate(ctx, nil, &v)
 }
 
-// Update stores v and starts propagation.
-func (s *source[T]) Update(ctx context.Context, v T) {
-	s.mutateOrUpdate(ctx, nil, &v)
-}
-
-// XMutate behaves like [Lenser.Mutate] and returns a completion channel.
-func (s *source[T]) XMutate(ctx context.Context, m func(T) T) <-chan error {
-	return s.mutateOrUpdate(ctx, m, nil)
-}
-
 // Mutate updates the value by applying m to the current value.
-func (s *source[T]) Mutate(ctx context.Context, m func(T) T) {
-	s.mutateOrUpdate(ctx, m, nil)
+func (s *source[T]) Mutate(ctx context.Context, m func(T) T) <-chan error {
+	return s.mutateOrUpdate(ctx, m, nil)
 }
 
 func (s *source[T]) mutateOrUpdate(ctx context.Context, mut func(T) T, value *T) <-chan error {
@@ -167,7 +157,6 @@ retry:
 	if len(s.subs) == 0 {
 		s.cleanBefore(seq)
 		s.mu.Unlock()
-		ch <- nil
 		close(ch)
 		return ch
 	}
@@ -198,11 +187,13 @@ retry:
 	syncFrame.Release()
 	s.mu.Unlock()
 	checkFrame.Run(nil, nil, func(bool) {
-		ch <- nil
-		close(ch)
 		if stopped.Load() {
+			ch <- context.Canceled
+			close(ch)
 			return
 		}
+		ch <- nil
+		close(ch)
 		cleanFrame.Activate()
 	})
 	checkFrame.Release()

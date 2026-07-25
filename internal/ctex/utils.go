@@ -25,7 +25,7 @@ func LogCanceled(ctx context.Context, action string) {
 		return
 	}
 	common.Logger(ctx).Warn(
-		"requested action from a canceled context. For long-running goroutines or awaited X* operations, use doors.DetachedContext(ctx)",
+		"requested action from a canceled context; this may become prohibited in a future release. For long-running goroutines or awaited operations, use doors.InstanceContext(ctx) or doors.SessionContext(ctx)",
 		"action",
 		action,
 	)

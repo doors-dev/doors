@@ -261,7 +261,7 @@ func TestOnReadyFiresAfterRenderCycleScheduled(t *testing.T) {
 		<-updateRelease
 		return cur.Text("v1")
 	})
-	ch := d.XInner(DetachedContext(pageCtx), content)
+	ch := d.Inner(DetachedContext(pageCtx), content)
 	xch <- ch
 	<-updateEntered
 	// While the render is held open, neither the ready callback nor the
@@ -455,7 +455,7 @@ func TestOnFlushWaitsForUnmountDispatch(t *testing.T) {
 			h.events <- "flush-before-unmount-scheduled"
 		}
 	}, func(ctx context.Context) {
-		xch <- d.XUnmount(ctx)
+		xch <- d.Unmount(ctx)
 	})
 	h.waitEvent("flush-after-unmount-scheduled")
 }
@@ -513,7 +513,7 @@ func TestOnFlushRunsOnRenderError(t *testing.T) {
 		OnClean(cur.Context(), func() { h.events <- "clean-error" })
 		return renderErr
 	})
-	ch := d.XInner(DetachedContext(pageCtx), failing)
+	ch := d.Inner(DetachedContext(pageCtx), failing)
 	if err := <-ch; !errors.Is(err, renderErr) {
 		t.Fatalf("expected render error, got %v", err)
 	}
@@ -539,14 +539,14 @@ func TestOnReadySupersededDroppedCleanStillFires(t *testing.T) {
 		<-ctx.Done()
 		return cur.Text("v1")
 	})
-	ch1 := d.XInner(DetachedContext(pageCtx), first)
+	ch1 := d.Inner(DetachedContext(pageCtx), first)
 	<-blocked
 
 	second := gox.Elem(func(cur gox.Cursor) error {
 		OnReady(cur.Context(), func(context.Context) { h.events <- "ready-second" })
 		return cur.Text("v2")
 	})
-	d.XInner(DetachedContext(pageCtx), second)
+	d.Inner(DetachedContext(pageCtx), second)
 
 	h.waitEvents("clean-first", "ready-second")
 	if err := <-ch1; !errors.Is(err, context.Canceled) {
@@ -570,7 +570,7 @@ func TestOnReadyDroppedOnRenderError(t *testing.T) {
 		OnClean(cur.Context(), func() { h.events <- "clean-error" })
 		return renderErr
 	})
-	ch := d.XInner(DetachedContext(pageCtx), failing)
+	ch := d.Inner(DetachedContext(pageCtx), failing)
 	if err := <-ch; !errors.Is(err, renderErr) {
 		t.Fatalf("expected render error, got %v", err)
 	}
@@ -609,7 +609,7 @@ func TestOnCleanReplaceDeferred(t *testing.T) {
 		OnReady(cur.Context(), func(context.Context) { h.events <- "ready-new" })
 		return cur.Text("v1")
 	})
-	ch := d.XInner(DetachedContext(pageCtx), next)
+	ch := d.Inner(DetachedContext(pageCtx), next)
 	if err := <-ch; err != nil {
 		t.Fatalf("expected replacing update to schedule, got %v", err)
 	}
@@ -766,7 +766,7 @@ func TestOnReadyStaticDroppedOnError(t *testing.T) {
 	d := &Door{}
 	pageCtx := h.renderPage(mountDoor(d))
 
-	ch := d.XStatic(DetachedContext(pageCtx), gox.Elem(func(cur gox.Cursor) error {
+	ch := d.Static(DetachedContext(pageCtx), gox.Elem(func(cur gox.Cursor) error {
 		OnReady(cur.Context(), func(context.Context) { h.events <- "ready-static-error" })
 		return errors.New("static boom")
 	}))

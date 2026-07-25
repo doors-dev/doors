@@ -5,7 +5,7 @@ package components
 
 import (
 	"context"
-
+	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
@@ -64,8 +64,8 @@ func ctxHandlerValue(ctx context.Context) string {
 type CtxFragment struct {
 	test.NoBeam
 	inner doors.Door
-	stat  doors.Door
-	deep  doors.Door
+	stat doors.Door
+	deep doors.Door
 }
 
 //line ctx.gox:42
@@ -164,9 +164,9 @@ func (f *CtxFragment) Main() gox.Elem {
 
 type CtxRerenderFragment struct {
 	test.NoBeam
-	wrap         doors.Door
-	dyn          doors.Door
-	repContent   doors.Door
+	wrap doors.Door
+	dyn doors.Door
+	repContent doors.Door
 	repContainer doors.Door
 }
 

@@ -1,4 +1,4 @@
-// Managed by GoX v0.2.2-0.20260623203124-026c8a3b945e+dirty
+// Managed by GoX v0.2.3
 
 //line page.gox:1
 package router
@@ -38,7 +38,7 @@ func pageA(b doors.Source[PathA]) gox.Elem {
 //line page.gox:21
 				__e = (doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call(ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
+					doors.Call[any](ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
 					return false
 				},
 			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -1050,7 +1050,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 //line page.gox:429
 				__e = (doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call(ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
+					doors.Call[any](ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
 					return true
 				},
 			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -1076,7 +1076,7 @@ func pageC(b doors.Source[PathC]) gox.Elem {
 //line page.gox:437
 				__e = (doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call(ctx, doors.ActionLocationReload{})
+					doors.Call[any](ctx, doors.ActionLocationReload{})
 					return false
 				},
 			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
@@ -2335,7 +2335,7 @@ func pageLinkNav(s doors.Source[PathLink]) gox.Elem {
 				return })); if __e != nil { return }
 //line page.gox:866
 				__e = (doors.ALink{
-				Model:          PathLink{Step: LinkC},
+				Model: PathLink{Step: LinkC},
 				HistoryReplace: true,
 			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); _ = ctx
@@ -2350,7 +2350,7 @@ func pageLinkNav(s doors.Source[PathLink]) gox.Elem {
 				return })); if __e != nil { return }
 //line page.gox:870
 				__e = (doors.ALink{
-				Model:          PathLink{Step: LinkA},
+				Model: PathLink{Step: LinkA},
 				HistoryReplace: true,
 			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); _ = ctx
@@ -2365,8 +2365,8 @@ func pageLinkNav(s doors.Source[PathLink]) gox.Elem {
 				return })); if __e != nil { return }
 //line page.gox:874
 				__e = (doors.ALink{
-				Model:          PathLink{Step: LinkA},
-				Fragment:       "sec",
+				Model: PathLink{Step: LinkA},
+				Fragment: "sec",
 				HistoryReplace: true,
 			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); _ = ctx
@@ -2441,9 +2441,7 @@ func pageLastSeen(b doors.Source[doors.Location]) gox.Elem {
 					now := time.Now()
 					inst := doors.InstanceLastSeen(ctx)
 					sess := doors.SessionLastSeen(ctx)
-					ok := !inst.IsZero() && !sess.IsZero() &&
-						!inst.After(now) && !sess.After(now) &&
-						now.Sub(inst) < time.Minute && now.Sub(sess) < time.Minute
+					ok := !inst.IsZero() && !sess.IsZero() && !inst.After(now) && !sess.After(now) && now.Sub(inst) < time.Minute && now.Sub(sess) < time.Minute
 					if ok {
 						result.Update(ctx, "ok")
 					} else {
@@ -2455,7 +2453,7 @@ func pageLastSeen(b doors.Source[doors.Location]) gox.Elem {
 					ctx := __c.Context(); _ = ctx
 					__e = __c.Init("button"); if __e != nil { return }
 					{
-//line page.gox:909
+//line page.gox:907
 						__e = __c.Set("id", "check"); if __e != nil { return }
 						__e = __c.Submit(); if __e != nil { return }
 						__e = __c.Text("check"); if __e != nil { return }
@@ -2467,5 +2465,5 @@ func pageLastSeen(b doors.Source[doors.Location]) gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line page.gox:912
+//line page.gox:910
 }

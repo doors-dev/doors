@@ -71,9 +71,7 @@ func (helperDoor) ID() uint64 {
 	return 1
 }
 
-func (helperDoor) Reload(context.Context) {}
-
-func (helperDoor) XReload(context.Context) <-chan error {
+func (helperDoor) Reload(context.Context) <-chan error {
 	ch := make(chan error)
 	close(ch)
 	return ch
@@ -117,9 +115,7 @@ func (helperDoorWithRoot) ID() uint64 {
 	return 1
 }
 
-func (helperDoorWithRoot) Reload(context.Context) {}
-
-func (helperDoorWithRoot) XReload(context.Context) <-chan error {
+func (helperDoorWithRoot) Reload(context.Context) <-chan error {
 	ch := make(chan error)
 	close(ch)
 	return ch
@@ -435,7 +431,7 @@ func TestInstanceContextSwitchesToRootCoreAndRuntime(t *testing.T) {
 func TestCallUsesSolitaireDisableGzip(t *testing.T) {
 	ctx, inst := helperContext(t)
 
-	Call(ctx, ActionEmit{Name: "plain", Arg: "hello"})
+	Call[json.RawMessage](ctx, ActionEmit{Name: "plain", Arg: "hello"})
 	emit, ok := inst.lastCallAction.(action.Emit)
 	if !ok {
 		t.Fatalf("expected emit action, got %T", inst.lastCallAction)
@@ -445,7 +441,7 @@ func TestCallUsesSolitaireDisableGzip(t *testing.T) {
 	}
 
 	inst.conf.SolitaireDisableGzip = true
-	Call(ctx, ActionEmit{Name: "plain", Arg: "hello"})
+	Call[json.RawMessage](ctx, ActionEmit{Name: "plain", Arg: "hello"})
 	emit, ok = inst.lastCallAction.(action.Emit)
 	if !ok {
 		t.Fatalf("expected emit action, got %T", inst.lastCallAction)
@@ -460,7 +456,7 @@ func TestCallUsesCanceledContext(t *testing.T) {
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
 
-	Call(canceled, ActionEmit{Name: "still-runs", Arg: "hello"})
+	Call[json.RawMessage](canceled, ActionEmit{Name: "still-runs", Arg: "hello"})
 
 	emit, ok := inst.lastCallAction.(action.Emit)
 	if !ok {
@@ -554,7 +550,7 @@ func TestSetterSetValueSemantics(t *testing.T) {
 	var id uint64
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			Call(ctx, setter.Set("data-x", tc.value))
+			Call[any](ctx, setter.Set("data-x", tc.value))
 			act, ok := inst.lastCallAction.(action.AttrSet)
 			if !ok {
 				t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)

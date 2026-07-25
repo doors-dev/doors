@@ -70,17 +70,17 @@ func (f *emitterPointerFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 //line emitter.gox:53
 		__e = __c.Any(test.Button("emit-click", func(ctx context.Context) bool {
-		doors.Call(ctx, f.e.Click(doors.PointerEmit{Button: 2, Buttons: 2}))
+		doors.Call[any](ctx, f.e.Click(doors.PointerEmit{Button: 2, Buttons: 2}))
 		return false
 	})); if __e != nil { return }
 //line emitter.gox:57
 		__e = __c.Any(test.Button("emit-down", func(ctx context.Context) bool {
-		doors.Call(ctx, f.e.PointerDown(doors.PointerEmit{}))
+		doors.Call[any](ctx, f.e.PointerDown(doors.PointerEmit{}))
 		return false
 	})); if __e != nil { return }
 //line emitter.gox:61
 		__e = __c.Any(test.Button("emit-up", func(ctx context.Context) bool {
-		doors.Call(ctx, f.e.PointerUp(doors.PointerEmit{}))
+		doors.Call[any](ctx, f.e.PointerUp(doors.PointerEmit{}))
 		return false
 	})); if __e != nil { return }
 	return })
@@ -142,12 +142,12 @@ func (f *emitterKeyFragment) Main() gox.Elem {
 		__e = __c.Submit(); if __e != nil { return }
 //line emitter.gox:105
 		__e = __c.Any(test.Button("emit-keydown", func(ctx context.Context) bool {
-		doors.Call(ctx, f.e.KeyDown(doors.KeyboardEmit{Key: "a", Code: "KeyA"}))
+		doors.Call[any](ctx, f.e.KeyDown(doors.KeyboardEmit{Key: "a", Code: "KeyA"}))
 		return false
 	})); if __e != nil { return }
 //line emitter.gox:109
 		__e = __c.Any(test.Button("emit-keyup", func(ctx context.Context) bool {
-		doors.Call(ctx, f.e.KeyUp(doors.KeyboardEmit{Key: "A", Code: "KeyA", ShiftKey: true, CtrlKey: true}))
+		doors.Call[any](ctx, f.e.KeyUp(doors.KeyboardEmit{Key: "A", Code: "KeyA", ShiftKey: true, CtrlKey: true}))
 		return false
 	})); if __e != nil { return }
 	return })
@@ -227,22 +227,22 @@ func (f *emitterFocusFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 //line emitter.gox:166
 		__e = __c.Any(test.Button("emit-focus", func(ctx context.Context) bool {
-		doors.Call(ctx, f.e.Focus(doors.FocusEmit{}))
+		doors.Call[any](ctx, f.e.Focus(doors.FocusEmit{}))
 		return false
 	})); if __e != nil { return }
 //line emitter.gox:170
 		__e = __c.Any(test.Button("emit-blur", func(ctx context.Context) bool {
-		doors.Call(ctx, f.e.Blur(doors.FocusEmit{}))
+		doors.Call[any](ctx, f.e.Blur(doors.FocusEmit{}))
 		return false
 	})); if __e != nil { return }
 //line emitter.gox:174
 		__e = __c.Any(test.Button("emit-focusin", func(ctx context.Context) bool {
-		doors.Call(ctx, f.e.FocusIn(doors.FocusEmit{}))
+		doors.Call[any](ctx, f.e.FocusIn(doors.FocusEmit{}))
 		return false
 	})); if __e != nil { return }
 //line emitter.gox:178
 		__e = __c.Any(test.Button("emit-focusout", func(ctx context.Context) bool {
-		doors.Call(ctx, f.e.FocusOut(doors.FocusEmit{}))
+		doors.Call[any](ctx, f.e.FocusOut(doors.FocusEmit{}))
 		return false
 	})); if __e != nil { return }
 	return })
@@ -334,17 +334,17 @@ func (f *emitterFormFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 //line emitter.gox:232
 		__e = __c.Any(test.Button("emit-input", func(ctx context.Context) bool {
-		doors.Call(ctx, f.ei.Input(doors.InputEmit{Data: "hey"}))
+		doors.Call[any](ctx, f.ei.Input(doors.InputEmit{Data: "hey"}))
 		return false
 	})); if __e != nil { return }
 //line emitter.gox:236
 		__e = __c.Any(test.Button("emit-change", func(ctx context.Context) bool {
-		doors.Call(ctx, f.ei.Change(doors.ChangeEmit{}))
+		doors.Call[any](ctx, f.ei.Change(doors.ChangeEmit{}))
 		return false
 	})); if __e != nil { return }
 //line emitter.gox:240
 		__e = __c.Any(test.Button("emit-submit", func(ctx context.Context) bool {
-		doors.Call(ctx, f.es.Submit(doors.SubmitEmit{}))
+		doors.Call[any](ctx, f.es.Submit(doors.SubmitEmit{}))
 		return false
 	})); if __e != nil { return }
 	return })
@@ -405,7 +405,7 @@ func (f *emitterMultiFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 //line emitter.gox:272
 		__e = __c.Any(test.Button("emit-count", func(ctx context.Context) bool {
-		ch := doors.XCall[int](ctx, f.e.Click(doors.PointerEmit{}))
+		ch := doors.Call[int](ctx, f.e.Click(doors.PointerEmit{}))
 		select {
 		case res := <-ch:
 			if res.Err != nil {

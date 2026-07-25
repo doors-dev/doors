@@ -13,8 +13,7 @@ For example, call a JavaScript handler registered with `$on(...)`.
 
 You can schedule actions in five common places:
 
-- `doors.Call(ctx, action)` for fire-and-forget dispatch from Go
-- `doors.XCall[T](ctx, action)` when Go needs the client result
+- `doors.Call[T](ctx, action)` to dispatch from Go; the returned result channel is optional to use
 - `Before` on a request attr such as an event attr or `ALink`, just before the request is sent
 - `r.After(...)` after a successful request
 - `OnError` on a request attr when a client-visible hook error happens
@@ -27,16 +26,16 @@ It does not run for scope cancellations or expired hooks, and a stopped instance
 
 ## Direct
 
-Use `doors.Call` when the result does not matter.
+Ignore the returned channel when the result does not matter.
 
 ```go
-doors.Call(ctx, doors.ActionLocationReload{})
+doors.Call[any](ctx, doors.ActionLocationReload{})
 ```
 
-Use `doors.XCall[T]` when the client handler should return a value to Go.
+Read it when the client handler should return a value to Go.
 
 ```go
-ch := doors.XCall[string](ctx, doors.ActionEmit{
+ch := doors.Call[string](ctx, doors.ActionEmit{
 	Name: "pick",
 	Arg:  "hello",
 })
@@ -47,7 +46,7 @@ if ok && res.Err == nil {
 }
 ```
 
-Do not wait on `XCall` during rendering.
+Do not wait on the result channel during rendering.
 
 If you need to wait for the result, do it in a hook, inside `doors.Go(...)`, or
 in your own goroutine with `doors.DetachedContext(ctx)`.
@@ -58,9 +57,9 @@ If the work should outlive that owner, use `doors.InstanceContext(ctx)`. It
 switches Doors ownership to the root of the current instance and uses the
 instance runtime lifecycle.
 
-Canceling `ctx` requests best-effort cancellation. If a direct `XCall` is canceled, its channel closes without a value.
+Canceling `ctx` requests best-effort cancellation. If a direct `Call` is canceled, its channel closes without a value.
 
-For most actions, use `json.RawMessage` as `T`.
+When ignoring the result, use `any` as `T`. For most actions with a result, use `json.RawMessage`.
 
 `ActionEmit` is the main case where you usually want the real result type.
 
@@ -73,7 +72,7 @@ For most actions, use `json.RawMessage` as `T`.
 	<button
 		(doors.AClick{
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-				doors.Call(ctx, doors.ActionEmit{
+				doors.Call[any](ctx, doors.ActionEmit{
 					Name: "alert",
 					Arg:  "Hello!",
 				})
@@ -158,7 +157,7 @@ It lasts for the `Duration` you give it.
 
 When `ActionIndicate` runs from `Before`, `r.After(...)`, or `OnError`, `SelectorTarget()` can use the current event element.
 
-When it runs from direct `Call` or `XCall`, there is no event target, so use explicit selectors like `SelectorQuery(...)`.
+When it runs from a direct `Call`, there is no event target, so use explicit selectors like `SelectorQuery(...)`.
 
 Indication details are covered in [Indication](./11-indication.md).
 
@@ -189,8 +188,7 @@ The same shape works for `r.After(...)` and `OnError`.
 
 - Prefer rendering and state for durable UI changes.
 - Prefer `Setter` when existing attributes should stay shared without rerendering the elements.
-- Use `doors.Call` when the result does not matter.
-- Use `doors.XCall` mainly with `ActionEmit`.
+- Ignore the `doors.Call` result channel when the result does not matter; read it mainly with `ActionEmit`.
 - Keep `$on(...)` handlers synchronous and scoped intentionally.
 - Prefer `ALink` or updating the `Source` from `RouteModel` for in-app navigation.
 - Use location actions when you intentionally want a full page load.

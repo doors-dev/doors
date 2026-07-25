@@ -101,32 +101,24 @@ type Source[T any] interface {
 
 	// Update sets a new value and propagates it to subscribers and derived
 	// beams through the underlying source. Any context is allowed.
-	Update(context.Context, T)
-
-	// XUpdate behaves like [Source.Update] and returns a channel that reports
-	// when propagation has finished.
 	//
-	// The channel receives nil on successful propagation or an error if the
-	// context is invalid or the instance ends before propagation finishes. Do
-	// not wait on it during rendering. If you need to wait, use [Go] or your
-	// own goroutine with [Free].
-	XUpdate(context.Context, T) <-chan error
+	// The returned channel is optional to use and reports the propagation
+	// outcome: it receives nil when propagation completes, or context.Canceled
+	// when a newer update supersedes it, then closes. It closes without a value
+	// when no propagation happens: the update is suppressed as equal or there
+	// are no subscribers. Do not wait on it during rendering. If you need to
+	// wait, use [Go] or your own goroutine with [DetachedContext].
+	Update(context.Context, T) <-chan error
 
 	// Mutate computes the next value from the current value and propagates it
 	// through the underlying source. The function receives a copy of the
 	// current value and must return the next value. Returning an unchanged copy
 	// is a no-op when the underlying source treats the resulting parent value as
 	// equal. Any context is allowed.
-	Mutate(context.Context, func(T) T)
-
-	// XMutate behaves like [Source.Mutate] and returns a channel that reports
-	// when propagation has finished.
 	//
-	// The channel receives nil on successful propagation or an error if the
-	// context is invalid or the instance ends before propagation finishes. Do
-	// not wait on it during rendering. If you need to wait, use [Go] or your
-	// own goroutine with [Free].
-	XMutate(context.Context, func(T) T) <-chan error
+	// The returned channel is optional to use; see [Source.Update] for the
+	// contract.
+	Mutate(context.Context, func(T) T) <-chan error
 
 	innerLens() beam.Lenser[T]
 }

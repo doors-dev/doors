@@ -144,9 +144,8 @@ func (titleDoor) Cinema() beam.Cinema       { return nil }
 func (titleDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, func(context.Context)) (core.Hook, bool) {
 	return core.Hook{}, false
 }
-func (titleDoor) ID() uint64             { return 7 }
-func (titleDoor) Reload(context.Context) {}
-func (titleDoor) XReload(context.Context) <-chan error {
+func (titleDoor) ID() uint64 { return 7 }
+func (titleDoor) Reload(context.Context) <-chan error {
 	ch := make(chan error)
 	close(ch)
 	return ch
@@ -198,9 +197,8 @@ func (d *hookDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http
 	return core.Hook{HookID: d.nextHook}, true
 }
 
-func (d *hookDoor) ID() uint64             { return d.id }
-func (d *hookDoor) Reload(context.Context) {}
-func (d *hookDoor) XReload(context.Context) <-chan error {
+func (d *hookDoor) ID() uint64 { return d.id }
+func (d *hookDoor) Reload(context.Context) <-chan error {
 	ch := make(chan error)
 	close(ch)
 	return ch

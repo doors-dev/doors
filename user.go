@@ -27,25 +27,18 @@ import (
 
 // Reload rerenders the closest dynamic parent.
 //
-// If ctx belongs to the root page render, nothing is reloaded.
-func Reload(ctx context.Context) {
-	core := ctx.Value(common.KeyCore).(core.Core)
-	core.Door().Reload(ctx)
-}
-
-// XReload tracks completion of [Reload].
-//
-// On success the channel sends two nil values then closes: the first means the
-// call was scheduled (render was completed), the second means it was applied
-// to the page.
+// The returned channel is optional to use and tracks completion.
+// On success it sends two nil values then closes: the first means the call was
+// scheduled (render was completed), the second means it was applied to the
+// page.
 // On failure it sends an error then closes.
 // If ctx belongs to the root page render, it sends an error and closes.
 //
 // Do not wait on it during rendering. If you need to wait, use [Go] or your
 // own goroutine with [DetachedContext].
-func XReload(ctx context.Context) <-chan error {
+func Reload(ctx context.Context) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	return core.Door().XReload(ctx)
+	return core.Door().Reload(ctx)
 }
 
 // SessionExpire sets the maximum lifetime of the current session.
