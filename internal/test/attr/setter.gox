@@ -32,27 +32,27 @@ elem (f *setterFragment) Main() {
 		~(f.content())
 	</>
 	~(test.Button("set-string", func(ctx context.Context) bool {
-		doors.Call(ctx, f.s.Set("data-test", `a&b"c"<d>`))
+		doors.Call[any](ctx, f.s.Set("data-test", `a&b"c"<d>`))
 		return false
 	}))
 	~(test.Button("set-bare", func(ctx context.Context) bool {
-		doors.Call(ctx, f.s.Set("data-test", true))
+		doors.Call[any](ctx, f.s.Set("data-test", true))
 		return false
 	}))
 	~(test.Button("set-int", func(ctx context.Context) bool {
-		doors.Call(ctx, f.s.Set("data-test", 42))
+		doors.Call[any](ctx, f.s.Set("data-test", 42))
 		return false
 	}))
 	~(test.Button("remove-nil", func(ctx context.Context) bool {
-		doors.Call(ctx, f.s.Set("data-test", nil))
+		doors.Call[any](ctx, f.s.Set("data-test", nil))
 		return false
 	}))
 	~(test.Button("remove-false", func(ctx context.Context) bool {
-		doors.Call(ctx, f.s.Set("data-test", false))
+		doors.Call[any](ctx, f.s.Set("data-test", false))
 		return false
 	}))
 	~(test.Button("xset", func(ctx context.Context) bool {
-		ch := doors.XCall[int](ctx, f.s.Set("data-count", "x"))
+		ch := doors.Call[int](ctx, f.s.Set("data-count", "x"))
 		select {
 		case res := <-ch:
 			if res.Err != nil {

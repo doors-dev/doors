@@ -630,9 +630,9 @@ func TestDoorContainerHookStateCanceledAndReboundByReload(t *testing.T) {
 	test.TestReport(t, page, "state read-1-true derived-derived-1-true initial-1-true watch-true value-1 sub-0 watches-2 cancels-2")
 }
 
-func TestDoorXReloadUsesClosestDynamicParent(t *testing.T) {
+func TestDoorTrackedReloadUsesClosestDynamicParent(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
-		return &FragmentClosestXReload{}
+		return &FragmentClosestTrackedReload{}
 	})
 	defer bro.Close()
 	page := bro.Page(t, "/")
@@ -652,9 +652,9 @@ func TestDoorXReloadUsesClosestDynamicParent(t *testing.T) {
 	test.TestContent(t, page, "#x-inner-count", "inner-3")
 }
 
-func TestDoorXReloadFromRootReturnsError(t *testing.T) {
+func TestDoorTrackedReloadFromRootReturnsError(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
-		return &FragmentRootXReload{}
+		return &FragmentRootTrackedReload{}
 	})
 	defer bro.Close()
 	page := bro.Page(t, "/")

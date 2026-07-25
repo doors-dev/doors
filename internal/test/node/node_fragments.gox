@@ -119,7 +119,7 @@ elem (f *FragmentX) Main() {
 	</>
 	~>(f.report) ~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			ch := f.n.XInner(ctx, test.Marker("updated"))
+			ch := f.n.Inner(ctx, test.Marker("updated"))
 			count := 0
 			for err := range ch {
 				count++
@@ -139,7 +139,7 @@ elem (f *FragmentX) Main() {
 	
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			ch := f.n.XStatic(ctx, nil)
+			ch := f.n.Static(ctx, nil)
 			count := 0
 			for err := range ch {
 				count++
@@ -199,29 +199,29 @@ elem (f *FragmentXDoor) Main() {
 	~(&f.report)
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XReload(ctx), "ok reload")
+			return f.wait(ctx, f.n.Reload(ctx), "ok reload")
 		},
 	} <button id="xreload">xreload</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XOuter(ctx, <section id="x-rebased-root">
+			return f.wait(ctx, f.n.Outer(ctx, <section id="x-rebased-root">
 				~(test.Marker("x-rebased"))
 			</section>), "ok rebase")
 		},
 	} <button id="xrebase">xrebase</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XInner(ctx, nil), "ok clear")
+			return f.wait(ctx, f.n.Inner(ctx, nil), "ok clear")
 		},
 	} <button id="xclear">xclear</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XInner(ctx, test.Marker("x-updated")), "ok update")
+			return f.wait(ctx, f.n.Inner(ctx, test.Marker("x-updated")), "ok update")
 		},
 	} <button id="xupdate">xupdate</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XUnmount(ctx), "ok unmount")
+			return f.wait(ctx, f.n.Unmount(ctx), "ok unmount")
 		},
 	} <button id="xunmount">xunmount</button>
 	~(test.Button("xremount", func(ctx context.Context) bool {
@@ -230,7 +230,7 @@ elem (f *FragmentXDoor) Main() {
 	}))
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XStatic(ctx, test.Marker("x-replaced")), "ok replace")
+			return f.wait(ctx, f.n.Static(ctx, test.Marker("x-replaced")), "ok replace")
 		},
 	} <button id="xreplace">xreplace</button>
 }
@@ -1277,7 +1277,7 @@ elem (f *FragmentContainerHookStateReloadLifecycle) Main() {
 	}))
 }
 
-type FragmentClosestXReload struct {
+type FragmentClosestTrackedReload struct {
 	frame doors.Door
 	node doors.Door
 	report doors.Door
@@ -1286,11 +1286,11 @@ type FragmentClosestXReload struct {
 	test.NoBeam
 }
 
-func (f *FragmentClosestXReload) rep(ctx context.Context, s string) {
+func (f *FragmentClosestTrackedReload) rep(ctx context.Context, s string) {
 	f.report.Inner(ctx, test.Report(s))
 }
 
-func (f *FragmentClosestXReload) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+func (f *FragmentClosestTrackedReload) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
 	count := 0
 	for err := range ch {
 		count++
@@ -1307,7 +1307,7 @@ func (f *FragmentClosestXReload) wait(ctx context.Context, ch <-chan error, okMs
 	return false
 }
 
-elem (f *FragmentClosestXReload) innerContent() {
+elem (f *FragmentClosestTrackedReload) innerContent() {
 	~~
 	f.innerRenders++
 	~~
@@ -1316,14 +1316,14 @@ elem (f *FragmentClosestXReload) innerContent() {
 		id="xreload-nearest"
 		(doors.AClick{
 			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-				return f.wait(ctx, doors.XReload(ctx), "ok xreload")
+				return f.wait(ctx, doors.Reload(ctx), "ok xreload")
 			},
 		})>
 		xreload-nearest
 	</button>
 }
 
-elem (f *FragmentClosestXReload) outerContent() {
+elem (f *FragmentClosestTrackedReload) outerContent() {
 	~~
 	f.outerRenders++
 	f.node.Inner(ctx, f.innerContent())
@@ -1332,7 +1332,7 @@ elem (f *FragmentClosestXReload) outerContent() {
 	~(&f.node)
 }
 
-elem (f *FragmentClosestXReload) Main() {
+elem (f *FragmentClosestTrackedReload) Main() {
 	~~
 	f.frame.Inner(ctx, f.outerContent())
 	~~
@@ -1340,22 +1340,22 @@ elem (f *FragmentClosestXReload) Main() {
 	~(&f.report)
 }
 
-type FragmentRootXReload struct {
+type FragmentRootTrackedReload struct {
 	report doors.Door
 	test.NoBeam
 }
 
-func (f *FragmentRootXReload) rep(ctx context.Context, s string) {
+func (f *FragmentRootTrackedReload) rep(ctx context.Context, s string) {
 	f.report.Inner(ctx, test.Report(s))
 }
 
-elem (f *FragmentRootXReload) Main() {
+elem (f *FragmentRootTrackedReload) Main() {
 	~(&f.report)
 	<button
 		id="root-xreload"
 		(doors.AClick{
 			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-				ch := doors.XReload(ctx)
+				ch := doors.Reload(ctx)
 				count := 0
 				for err := range ch {
 					count++
@@ -1417,17 +1417,17 @@ elem (f *FragmentDetachedReplace) Main() {
 	~(&f.report)
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XStatic(ctx, test.Marker("replace-detached")), "ok replace")
+			return f.wait(ctx, f.node.Static(ctx, test.Marker("replace-detached")), "ok replace")
 		},
 	} <button id="replace-detached">replace-detached</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XReload(ctx), "ok reload")
+			return f.wait(ctx, f.node.Reload(ctx), "ok reload")
 		},
 	} <button id="reload-after-replace">reload-after-replace</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XInner(ctx, test.Marker("replace-updated")), "ok update")
+			return f.wait(ctx, f.node.Inner(ctx, test.Marker("replace-updated")), "ok update")
 		},
 	} <button id="update-after-replace">update-after-replace</button>
 	~(test.Button("remount-after-replace", func(ctx context.Context) bool {
@@ -1483,17 +1483,17 @@ elem (f *FragmentDetachedRebase) Main() {
 	~(&f.report)
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XUnmount(ctx), "ok unmount")
+			return f.wait(ctx, f.node.Unmount(ctx), "ok unmount")
 		},
 	} <button id="unmount-detached">unmount-detached</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XReload(ctx), "ok reload")
+			return f.wait(ctx, f.node.Reload(ctx), "ok reload")
 		},
 	} <button id="reload-after-unmount">reload-after-unmount</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XOuter(ctx, f.rebased()), "ok rebase")
+			return f.wait(ctx, f.node.Outer(ctx, f.rebased()), "ok rebase")
 		},
 	} <button id="rebase-after-unmount">rebase-after-unmount</button>
 	~(test.Button("remount-after-rebase", func(ctx context.Context) bool {
@@ -1564,7 +1564,7 @@ elem (f *FragmentProxyMove) Main() {
 	~(&f.report)
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XOuter(ctx, f.rebased()), "ok rebase")
+			return f.wait(ctx, f.node.Outer(ctx, f.rebased()), "ok rebase")
 		},
 	} <button id="rebase-proxy-move">rebase-proxy-move</button>
 	~(test.Button("move-proxy", func(ctx context.Context) bool {
@@ -1641,7 +1641,7 @@ elem (f *FragmentHierarchy) Main() {
 	}))
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.grand.XInner(ctx, test.Marker("grand-updated")), "ok grand")
+			return f.wait(ctx, f.grand.Inner(ctx, test.Marker("grand-updated")), "ok grand")
 		},
 	} <button id="grand-update">grand-update</button>
 	~(test.Button("remove-host2", func(ctx context.Context) bool {
@@ -1697,17 +1697,17 @@ elem (f *FragmentErrorTransitions) Main() {
 	~(&f.report)
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XInner(ctx, f.errElem("update boom")), "ok update")
+			return f.wait(ctx, f.node.Inner(ctx, f.errElem("update boom")), "ok update")
 		},
 	} <button id="update-error">update-error</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XStatic(ctx, f.errElem("replace boom")), "ok replace")
+			return f.wait(ctx, f.node.Static(ctx, f.errElem("replace boom")), "ok replace")
 		},
 	} <button id="replace-error">replace-error</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XOuter(ctx, f.errElem("rebase boom")), "ok rebase")
+			return f.wait(ctx, f.node.Outer(ctx, f.errElem("rebase boom")), "ok rebase")
 		},
 	} <button id="rebase-error">rebase-error</button>
 }

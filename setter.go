@@ -31,7 +31,7 @@ var _ Attr = (*Setter)(nil)
 // Setter sets attributes on the elements it is attached to.
 //
 // Attach it as an attribute to one or more elements, then pass the [Action]
-// returned by [Setter.Set] to [Call], [XCall], or any action-accepting API.
+// returned by [Setter.Set] to [Call] or any action-accepting API.
 // The result is the number of affected elements.
 //
 // Setter is stateless: it changes live elements only. A re-rendered element

@@ -29,7 +29,7 @@ var _ Attr = (*Emitter)(nil)
 // Emitter dispatches synthetic DOM events to the elements it is attached to.
 //
 // Attach it as an attribute to one or more elements, then pass an event
-// method's [Action] to [Call], [XCall], or any action-accepting API. The
+// method's [Action] to [Call] or any action-accepting API. The
 // result is the number of captures the event fired; any capture error fails
 // the call.
 type Emitter struct {

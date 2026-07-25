@@ -89,8 +89,7 @@ type Door interface {
 	Cinema() beam.Cinema
 	ID() uint64
 	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
-	Reload(ctx context.Context)
-	XReload(ctx context.Context) <-chan error
+	Reload(ctx context.Context) <-chan error
 	RootCore() Core
 	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
 	CleanFrame() shredder.SimpleFrame

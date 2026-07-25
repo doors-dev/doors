@@ -1,4 +1,4 @@
-// Managed by GoX v0.2.1
+// Managed by GoX v0.2.3
 
 //line node_fragments.gox:1
 package door
@@ -215,7 +215,7 @@ func (f *FragmentX) Main() gox.Elem {
 //line node_fragments.gox:120
 			__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			ch := f.n.XInner(ctx, test.Marker("updated"))
+			ch := f.n.Inner(ctx, test.Marker("updated"))
 			count := 0
 			for err := range ch {
 				count++
@@ -246,7 +246,7 @@ func (f *FragmentX) Main() gox.Elem {
 //line node_fragments.gox:140
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			ch := f.n.XStatic(ctx, nil)
+			ch := f.n.Static(ctx, nil)
 			count := 0
 			for err := range ch {
 				count++
@@ -330,7 +330,7 @@ func (f *FragmentXDoor) Main() gox.Elem {
 //line node_fragments.gox:200
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XReload(ctx), "ok reload")
+			return f.wait(ctx, f.n.Reload(ctx), "ok reload")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -346,7 +346,7 @@ func (f *FragmentXDoor) Main() gox.Elem {
 //line node_fragments.gox:205
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XOuter(ctx, gox.Elem(func(__c gox.Cursor) (__e error) {
+			return f.wait(ctx, f.n.Outer(ctx, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
 				__e = __c.Init("section"); if __e != nil { return }
 				{
@@ -374,7 +374,7 @@ func (f *FragmentXDoor) Main() gox.Elem {
 //line node_fragments.gox:212
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XInner(ctx, nil), "ok clear")
+			return f.wait(ctx, f.n.Inner(ctx, nil), "ok clear")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -390,7 +390,7 @@ func (f *FragmentXDoor) Main() gox.Elem {
 //line node_fragments.gox:217
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XInner(ctx, test.Marker("x-updated")), "ok update")
+			return f.wait(ctx, f.n.Inner(ctx, test.Marker("x-updated")), "ok update")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -406,7 +406,7 @@ func (f *FragmentXDoor) Main() gox.Elem {
 //line node_fragments.gox:222
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XUnmount(ctx), "ok unmount")
+			return f.wait(ctx, f.n.Unmount(ctx), "ok unmount")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -427,7 +427,7 @@ func (f *FragmentXDoor) Main() gox.Elem {
 //line node_fragments.gox:231
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.n.XStatic(ctx, test.Marker("x-replaced")), "ok replace")
+			return f.wait(ctx, f.n.Static(ctx, test.Marker("x-replaced")), "ok replace")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2171,7 +2171,7 @@ func (f *FragmentContainerHookStateReloadLifecycle) Main() gox.Elem {
 //line node_fragments.gox:1278
 }
 
-type FragmentClosestXReload struct {
+type FragmentClosestTrackedReload struct {
 	frame doors.Door
 	node doors.Door
 	report doors.Door
@@ -2180,11 +2180,11 @@ type FragmentClosestXReload struct {
 	test.NoBeam
 }
 
-func (f *FragmentClosestXReload) rep(ctx context.Context, s string) {
+func (f *FragmentClosestTrackedReload) rep(ctx context.Context, s string) {
 	f.report.Inner(ctx, test.Report(s))
 }
 
-func (f *FragmentClosestXReload) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+func (f *FragmentClosestTrackedReload) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
 	count := 0
 	for err := range ch {
 		count++
@@ -2202,7 +2202,7 @@ func (f *FragmentClosestXReload) wait(ctx context.Context, ch <-chan error, okMs
 }
 
 //line node_fragments.gox:1310
-func (f *FragmentClosestXReload) innerContent() gox.Elem {
+func (f *FragmentClosestTrackedReload) innerContent() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1312
@@ -2224,7 +2224,7 @@ func (f *FragmentClosestXReload) innerContent() gox.Elem {
 //line node_fragments.gox:1317
 			__e = __c.Modify(doors.AClick{
 			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-				return f.wait(ctx, doors.XReload(ctx), "ok xreload")
+				return f.wait(ctx, doors.Reload(ctx), "ok xreload")
 			},
 		}); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
@@ -2236,7 +2236,7 @@ func (f *FragmentClosestXReload) innerContent() gox.Elem {
 }
 
 //line node_fragments.gox:1326
-func (f *FragmentClosestXReload) outerContent() gox.Elem {
+func (f *FragmentClosestTrackedReload) outerContent() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1328
@@ -2259,7 +2259,7 @@ func (f *FragmentClosestXReload) outerContent() gox.Elem {
 }
 
 //line node_fragments.gox:1335
-func (f *FragmentClosestXReload) Main() gox.Elem {
+func (f *FragmentClosestTrackedReload) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1337
@@ -2273,17 +2273,17 @@ func (f *FragmentClosestXReload) Main() gox.Elem {
 //line node_fragments.gox:1341
 }
 
-type FragmentRootXReload struct {
+type FragmentRootTrackedReload struct {
 	report doors.Door
 	test.NoBeam
 }
 
-func (f *FragmentRootXReload) rep(ctx context.Context, s string) {
+func (f *FragmentRootTrackedReload) rep(ctx context.Context, s string) {
 	f.report.Inner(ctx, test.Report(s))
 }
 
 //line node_fragments.gox:1352
-func (f *FragmentRootXReload) Main() gox.Elem {
+func (f *FragmentRootTrackedReload) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:1353
@@ -2295,7 +2295,7 @@ func (f *FragmentRootXReload) Main() gox.Elem {
 //line node_fragments.gox:1356
 			__e = __c.Modify(doors.AClick{
 			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-				ch := doors.XReload(ctx)
+				ch := doors.Reload(ctx)
 				count := 0
 				for err := range ch {
 					count++
@@ -2373,7 +2373,7 @@ func (f *FragmentDetachedReplace) Main() gox.Elem {
 //line node_fragments.gox:1418
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XStatic(ctx, test.Marker("replace-detached")), "ok replace")
+			return f.wait(ctx, f.node.Static(ctx, test.Marker("replace-detached")), "ok replace")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2389,7 +2389,7 @@ func (f *FragmentDetachedReplace) Main() gox.Elem {
 //line node_fragments.gox:1423
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XReload(ctx), "ok reload")
+			return f.wait(ctx, f.node.Reload(ctx), "ok reload")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2405,7 +2405,7 @@ func (f *FragmentDetachedReplace) Main() gox.Elem {
 //line node_fragments.gox:1428
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XInner(ctx, test.Marker("replace-updated")), "ok update")
+			return f.wait(ctx, f.node.Inner(ctx, test.Marker("replace-updated")), "ok update")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2497,7 +2497,7 @@ func (f *FragmentDetachedRebase) Main() gox.Elem {
 //line node_fragments.gox:1484
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XUnmount(ctx), "ok unmount")
+			return f.wait(ctx, f.node.Unmount(ctx), "ok unmount")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2513,7 +2513,7 @@ func (f *FragmentDetachedRebase) Main() gox.Elem {
 //line node_fragments.gox:1489
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XReload(ctx), "ok reload")
+			return f.wait(ctx, f.node.Reload(ctx), "ok reload")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2529,7 +2529,7 @@ func (f *FragmentDetachedRebase) Main() gox.Elem {
 //line node_fragments.gox:1494
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XOuter(ctx, f.rebased()), "ok rebase")
+			return f.wait(ctx, f.node.Outer(ctx, f.rebased()), "ok rebase")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2664,7 +2664,7 @@ func (f *FragmentProxyMove) Main() gox.Elem {
 //line node_fragments.gox:1565
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XOuter(ctx, f.rebased()), "ok rebase")
+			return f.wait(ctx, f.node.Outer(ctx, f.rebased()), "ok rebase")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2806,7 +2806,7 @@ func (f *FragmentHierarchy) Main() gox.Elem {
 //line node_fragments.gox:1642
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.grand.XInner(ctx, test.Marker("grand-updated")), "ok grand")
+			return f.wait(ctx, f.grand.Inner(ctx, test.Marker("grand-updated")), "ok grand")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2887,7 +2887,7 @@ func (f *FragmentErrorTransitions) Main() gox.Elem {
 //line node_fragments.gox:1698
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XInner(ctx, f.errElem("update boom")), "ok update")
+			return f.wait(ctx, f.node.Inner(ctx, f.errElem("update boom")), "ok update")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2903,7 +2903,7 @@ func (f *FragmentErrorTransitions) Main() gox.Elem {
 //line node_fragments.gox:1703
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XStatic(ctx, f.errElem("replace boom")), "ok replace")
+			return f.wait(ctx, f.node.Static(ctx, f.errElem("replace boom")), "ok replace")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -2919,7 +2919,7 @@ func (f *FragmentErrorTransitions) Main() gox.Elem {
 //line node_fragments.gox:1708
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			return f.wait(ctx, f.node.XOuter(ctx, f.errElem("rebase boom")), "ok rebase")
+			return f.wait(ctx, f.node.Outer(ctx, f.errElem("rebase boom")), "ok rebase")
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx

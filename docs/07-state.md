@@ -322,11 +322,11 @@ days.Mutate(ctx, func(days int) int {
 
 When several fields must change as one logical update, mutate the original source directly.
 
-The `XUpdate` and `XMutate` variants return a completion channel. Most code does not need them.
+`Update` and `Mutate` return a completion channel; the return value is optional to use and most code ignores it. It receives `nil` when propagation completes, or `context.Canceled` when a newer update supersedes it, then closes. It closes without a value when no propagation happens: the update is suppressed as equal or there are no subscribers.
 
-They are useful when completion itself matters, especially for backpressure. For example, if updates arrive very quickly, waiting for `XUpdate` lets a producer send the next state only after the previous one finished propagating.
+The channel is useful when completion itself matters, especially for backpressure. For example, if updates arrive very quickly, waiting on it lets a producer send the next state only after the previous one finished propagating.
 
-Do not wait on `XUpdate` or `XMutate` during rendering.
+Do not wait on it during rendering.
 
 If you need to wait for propagation, do it in a hook, inside `doors.Go(...)`, or in your own goroutine with `doors.DetachedContext(ctx)`.
 

@@ -20,7 +20,7 @@ elem pageA(b doors.Source[PathA]) {
 			<div id="path">A</div>
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call(ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
+					doors.Call[any](ctx, doors.ActionLocationAssign{Model: PathC{PathC1: true}})
 					return false
 				},
 			} <button id="assign">assign</button>
@@ -428,7 +428,7 @@ elem pageC(b doors.Source[PathC]) {
 			
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call(ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
+					doors.Call[any](ctx, doors.ActionLocationReplace{Model: PathC{PathC2: true}})
 					return true
 				},
 			} <button id="replace">replace</button>
@@ -436,7 +436,7 @@ elem pageC(b doors.Source[PathC]) {
 			
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-					doors.Call(ctx, doors.ActionLocationReload{})
+					doors.Call[any](ctx, doors.ActionLocationReload{})
 					return false
 				},
 			} <button id="reload">reload</button>
@@ -864,16 +864,16 @@ elem pageLinkNav(s doors.Source[PathLink]) {
 				Model: PathLink{Step: LinkB},
 			} <a id="push-b">push-b</a>
 			~>doors.ALink{
-				Model:          PathLink{Step: LinkC},
+				Model: PathLink{Step: LinkC},
 				HistoryReplace: true,
 			} <a id="replace-c">replace-c</a>
 			~>doors.ALink{
-				Model:          PathLink{Step: LinkA},
+				Model: PathLink{Step: LinkA},
 				HistoryReplace: true,
 			} <a id="replace-self">replace-self</a>
 			~>doors.ALink{
-				Model:          PathLink{Step: LinkA},
-				Fragment:       "sec",
+				Model: PathLink{Step: LinkA},
+				Fragment: "sec",
 				HistoryReplace: true,
 			} <a id="replace-hash">replace-hash</a>
 			<div id="sec" style="margin-top: 3000px">sec</div>
@@ -896,9 +896,7 @@ elem pageLastSeen(b doors.Source[doors.Location]) {
 					now := time.Now()
 					inst := doors.InstanceLastSeen(ctx)
 					sess := doors.SessionLastSeen(ctx)
-					ok := !inst.IsZero() && !sess.IsZero() &&
-						!inst.After(now) && !sess.After(now) &&
-						now.Sub(inst) < time.Minute && now.Sub(sess) < time.Minute
+					ok := !inst.IsZero() && !sess.IsZero() && !inst.After(now) && !sess.After(now) && now.Sub(inst) < time.Minute && now.Sub(sess) < time.Minute
 					if ok {
 						result.Update(ctx, "ok")
 					} else {

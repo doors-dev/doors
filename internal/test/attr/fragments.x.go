@@ -205,10 +205,10 @@ func (f *callFragment) Main() gox.Elem {
 		Name: "myHook",
 		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
 			f.r.Update(ctx, 0, r.Data())
-			ch := doors.XCall[string](ctx, doors.ActionEmit{Name: "myCall", Arg: len(r.Data())})
+			ch := doors.Call[string](ctx, doors.ActionEmit{Name: "myCall", Arg: len(r.Data())})
 			res := <-ch
 			f.r.Update(ctx, 1, res.Ok)
-			asyncRes := <-doors.XCall[string](ctx, doors.ActionEmit{Name: "myAsyncCall", Arg: r.Data()})
+			asyncRes := <-doors.Call[string](ctx, doors.ActionEmit{Name: "myAsyncCall", Arg: r.Data()})
 			f.r.Update(ctx, 2, asyncRes.Ok)
 			return len(r.Data()), true
 		},

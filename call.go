@@ -23,32 +23,27 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 )
 
-// CallResult holds the outcome of [XCall].
+// CallResult holds the outcome of [Call].
 // Either Ok is set with the result, or Err is non-nil.
 type CallResult[T any] struct {
 	Ok  T     // Result value
 	Err error // Error if the call failed
 }
 
-// Call dispatches action to the client without waiting for a result.
+// Call dispatches action to the client.
 //
 // Canceling ctx requests best-effort cancellation of the call.
-func Call(ctx context.Context, action Action) {
-	call[json.RawMessage](ctx, action)
-}
-
-// XCall dispatches action to the client and returns a result channel.
 //
-// The channel receives a [CallResult] when the client returns a result, then
-// closes. Canceling ctx requests best-effort cancellation; if the call is
-// canceled, the channel closes without a value.
+// The returned channel is optional to use. It receives a [CallResult] when the
+// client returns a result, then closes; if the call is canceled, it closes
+// without a value.
 //
 // Do not wait on it during rendering. If you need to wait, use [Go] or your
 // own goroutine with [DetachedContext].
 //
 // T is the expected decoded payload type. For actions other than [ActionEmit],
 // [json.RawMessage] is usually the right choice.
-func XCall[T any](ctx context.Context, action Action) <-chan CallResult[T] {
+func Call[T any](ctx context.Context, action Action) <-chan CallResult[T] {
 	return call[T](ctx, action)
 }
 

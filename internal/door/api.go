@@ -42,14 +42,11 @@ func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
 // Inner replaces the door's current children while keeping the same door
 // container mounted. If the door is not currently mounted, the content change
 // is stored and will be applied when the door is rendered.
-func (d *Door) Inner(ctx context.Context, content any) {
-	d.inner(ctx, content)
-}
-
-// XInner tracks completion of [Door.Inner].
-// On success the channel sends two nil values then closes: the first means the
-// call was scheduled (render was completed), the second means it was applied
-// to the page.
+//
+// The returned channel is optional to use and tracks completion.
+// On success it sends two nil values then closes: the first means the call was
+// scheduled (render was completed), the second means it was applied to the
+// page.
 // On failure it sends an error then closes.
 // It receives context.Canceled if the operation is overwritten by a newer
 // update, unmount, or other door operation.
@@ -57,7 +54,7 @@ func (d *Door) Inner(ctx context.Context, content any) {
 //
 // Do not wait on it during rendering. If you need to wait, use doors.Go(...),
 // or your own goroutine with doors.DetachedContext(ctx).
-func (d *Door) XInner(ctx context.Context, content any) <-chan error {
+func (d *Door) Inner(ctx context.Context, content any) <-chan error {
 	return d.inner(ctx, content)
 }
 
@@ -65,22 +62,9 @@ func (d *Door) XInner(ctx context.Context, content any) <-chan error {
 // handle alive for later updates. Unlike [Door.Static], the result remains a
 // live door that can be updated further. If the door is not currently mounted,
 // the change is stored and will be applied when the door is rendered.
-func (d *Door) Outer(ctx context.Context, outer gox.Elem) {
-	d.outer(ctx, outer)
-}
-
-// XOuter tracks completion of [Door.Outer].
-// On success the channel sends two nil values then closes: the first means the
-// call was scheduled (render was completed), the second means it was applied
-// to the page.
-// On failure it sends an error then closes.
-// It receives context.Canceled if the operation is overwritten by a newer
-// update, unmount, or other door operation.
-// If the door is not mounted, it closes immediately without sending a value.
 //
-// Do not wait on it during rendering. If you need to wait, use doors.Go(...),
-// or your own goroutine with doors.DetachedContext(ctx).
-func (d *Door) XOuter(ctx context.Context, outer gox.Elem) <-chan error {
+// The returned channel is optional to use; see [Door.Inner] for the contract.
+func (d *Door) Outer(ctx context.Context, outer gox.Elem) <-chan error {
 	return d.outer(ctx, outer)
 }
 
@@ -88,64 +72,25 @@ func (d *Door) XOuter(ctx context.Context, outer gox.Elem) <-chan error {
 // Unlike [Door.Outer], this removes the door's DOM element entirely. If the
 // door is not currently mounted, the change is stored and will be applied when
 // the door is rendered.
-func (d *Door) Static(ctx context.Context, content any) {
-	d.static(ctx, content)
-}
-
-// XStatic tracks completion of [Door.Static].
-// On success the channel sends two nil values then closes: the first means the
-// call was scheduled (render was completed), the second means it was applied
-// to the page.
-// On failure it sends an error then closes.
-// It receives context.Canceled if the operation is overwritten by a newer
-// update, unmount, or other door operation.
-// If the door is not mounted, it closes immediately without sending a value.
 //
-// Do not wait on it during rendering. If you need to wait, use doors.Go(...),
-// or your own goroutine with doors.DetachedContext(ctx).
-func (d *Door) XStatic(ctx context.Context, content any) <-chan error {
+// The returned channel is optional to use; see [Door.Inner] for the contract.
+func (d *Door) Static(ctx context.Context, content any) <-chan error {
 	return d.static(ctx, content)
 }
 
 // Reload re-renders the door with its current content.
 // If the door is not currently mounted, the operation completes immediately
 // without a visual effect.
-func (d *Door) Reload(ctx context.Context) {
-	d.reload(ctx)
-}
-
-// XReload tracks completion of [Door.Reload].
-// On success the channel sends two nil values then closes: the first means the
-// call was scheduled (render was completed), the second means it was applied
-// to the page.
-// On failure it sends an error then closes.
-// It receives context.Canceled if the operation is overwritten by a newer
-// update, unmount, or other door operation.
-// If the door is not mounted, it closes immediately without sending a value.
 //
-// Do not wait on it during rendering. If you need to wait, use doors.Go(...),
-// or your own goroutine with doors.DetachedContext(ctx).
-func (d *Door) XReload(ctx context.Context) <-chan error {
+// The returned channel is optional to use; see [Door.Inner] for the contract.
+func (d *Door) Reload(ctx context.Context) <-chan error {
 	return d.reload(ctx)
 }
 
 // Unmount removes the door from the page but keeps its current content for a
 // future mount.
-func (d *Door) Unmount(ctx context.Context) {
-	d.unmount(ctx)
-}
-
-// XUnmount tracks completion of [Door.Unmount].
-// On success the channel sends two nil values then closes: the first means the
-// call was scheduled (render was completed), the second means it was applied
-// to the page.
-// On failure it sends an error then closes.
-// It receives context.Canceled if the operation is overwritten by a newer
-// update, unmount, or other door operation.
-// If the door is not mounted, it closes immediately without sending a value.
 //
-// Do not wait on it during rendering. If you need to wait, use doors.Go(...),
-// or your own goroutine with doors.DetachedContext(ctx).
-func (d *Door) XUnmount(ctx context.Context) <-chan error {
+// The returned channel is optional to use; see [Door.Inner] for the contract.
+func (d *Door) Unmount(ctx context.Context) <-chan error {
 	return d.unmount(ctx)
 }

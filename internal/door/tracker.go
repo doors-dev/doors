@@ -319,14 +319,7 @@ func (t *tracker) removeHook(id uint64) {
 	t.hooks.Remove(id)
 }
 
-func (t *tracker) Reload(ctx context.Context) {
-	if t.node == nil {
-		return
-	}
-	t.node.reload(ctx)
-}
-
-func (t *tracker) XReload(ctx context.Context) <-chan error {
+func (t *tracker) Reload(ctx context.Context) <-chan error {
 	if t.node == nil {
 		ch := make(chan error, 1)
 		ch <- errors.New("root door cannot be reloaded")
@@ -458,16 +451,12 @@ func (t *containerTracker) RegisterHook(onTrigger func(ctx context.Context, w ht
 	}, true
 }
 
-func (t *containerTracker) Reload(ctx context.Context) {
-	t.getTracker().Reload(ctx)
+func (t *containerTracker) Reload(ctx context.Context) <-chan error {
+	return t.getTracker().Reload(ctx)
 }
 
 func (t *containerTracker) RootCore() core.Core {
 	return t.getTracker().RootCore()
-}
-
-func (t *containerTracker) XReload(ctx context.Context) <-chan error {
-	return t.getTracker().XReload(ctx)
 }
 
 type staticTracker struct {
