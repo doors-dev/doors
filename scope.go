@@ -38,16 +38,16 @@ func scopesOrNil(core core.Core, scopes Scopes) []Scope {
 	return scopes.Scopes(core)
 }
 
-type scopes []Scopes
+type joinedScopes []Scopes
 
-func (ss scopes) And(s Scopes) Scopes {
-	c := make(scopes, len(ss), len(ss)+1)
+func (ss joinedScopes) And(s Scopes) Scopes {
+	c := make(joinedScopes, len(ss), len(ss)+1)
 	copy(c, ss)
 	c = append(c, s)
 	return c
 }
 
-func (ss scopes) Scopes(core core.Core) []Scope {
+func (ss joinedScopes) Scopes(core core.Core) []Scope {
 	output := make([]Scope, 0)
 	for _, ind := range ss {
 		if ind == nil {
@@ -66,7 +66,7 @@ type ScopeBlocking struct {
 }
 
 func (sb *ScopeBlocking) And(s Scopes) Scopes {
-	return scopes([]Scopes{sb, s})
+	return joinedScopes([]Scopes{sb, s})
 }
 
 func (sb *ScopeBlocking) Scopes(core core.Core) []Scope {
@@ -81,7 +81,7 @@ type ScopeSerial struct {
 }
 
 func (ss *ScopeSerial) And(s Scopes) Scopes {
-	return scopes([]Scopes{ss, s})
+	return joinedScopes([]Scopes{ss, s})
 }
 
 func (ss *ScopeSerial) Scopes(core core.Core) []Scope {
@@ -101,7 +101,7 @@ type ScopeRate struct {
 }
 
 func (sd *ScopeRate) And(s Scopes) Scopes {
-	return scopes([]Scopes{sd, s})
+	return joinedScopes([]Scopes{sd, s})
 }
 
 func (s *ScopeRate) Scopes(core core.Core) []Scope {
@@ -120,7 +120,7 @@ type ScopeDebounce struct {
 }
 
 func (sd *ScopeDebounce) And(s Scopes) Scopes {
-	return scopes([]Scopes{sd, s})
+	return joinedScopes([]Scopes{sd, s})
 }
 
 func (s *ScopeDebounce) Scopes(core core.Core) []Scope {
@@ -159,7 +159,7 @@ type ScopeLatest struct {
 }
 
 func (sl *ScopeLatest) And(s Scopes) Scopes {
-	return scopes([]Scopes{sl, s})
+	return joinedScopes([]Scopes{sl, s})
 }
 
 func (s *ScopeLatest) Scopes(core core.Core) []Scope {
@@ -171,7 +171,7 @@ var _ Scopes = (*ScopeLatest)(nil)
 type scopeFunc func(core core.Core) []Scope
 
 func (sf scopeFunc) And(s Scopes) Scopes {
-	return scopes([]Scopes{sf, s})
+	return joinedScopes([]Scopes{sf, s})
 }
 
 func (sf scopeFunc) Scopes(core core.Core) []Scope {
@@ -183,7 +183,7 @@ var _ Scopes = scopeFunc(nil)
 type linkScope struct{}
 
 func (ls linkScope) And(s Scopes) Scopes {
-	return scopes([]Scopes{ls, s})
+	return joinedScopes([]Scopes{ls, s})
 }
 
 func (ls linkScope) Scopes(core core.Core) []Scope {

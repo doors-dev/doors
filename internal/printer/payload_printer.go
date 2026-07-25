@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
 )
 
@@ -37,7 +37,7 @@ func (s *sliceWriter) Write(p []byte) (n int, err error) {
 }
 
 type Payload interface {
-	Payload() action.Payload
+	Payload() actions.Payload
 	Release()
 }
 
@@ -62,11 +62,11 @@ func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
 	return b
 }
 
-func (b *PayloadPrinter) Payload() action.Payload {
+func (b *PayloadPrinter) Payload() actions.Payload {
 	if b.gzip != nil {
-		return action.NewTextGZ(b.buf)
+		return actions.NewTextGZ(b.buf)
 	}
-	return action.NewTextBytes(b.buf)
+	return actions.NewTextBytes(b.buf)
 }
 
 func (b *PayloadPrinter) Release() {

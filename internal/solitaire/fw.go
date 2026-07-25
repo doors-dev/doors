@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/solitaire/inner"
 )
 
@@ -158,7 +158,7 @@ type header struct {
 	end uint64
 }
 
-func (h header) writeCard(w *bytes.Buffer, invocation *action.Invocation) error {
+func (h header) writeCard(w *bytes.Buffer, invocation *actions.Invocation) error {
 	if err := w.WriteByte(signalAction); err != nil {
 		return err
 	}
@@ -170,11 +170,11 @@ func (h header) writeCard(w *bytes.Buffer, invocation *action.Invocation) error 
 	} else {
 		tuple = append(tuple, []any{h.beg, h.end})
 	}
-	var write *action.Payload
+	var write *actions.Payload
 	if invocation != nil {
 		tuple = append(tuple, invocation.Func())
 		payload := invocation.Payload()
-		if payload.Type() != action.PayloadNone {
+		if payload.Type() != actions.PayloadNone {
 			write = &payload
 			tuple = append(tuple, []any{payload.Type(), payload.Len()})
 		}

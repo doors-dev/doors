@@ -21,7 +21,7 @@ import (
 	"log/slog"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
 )
 
@@ -50,12 +50,12 @@ func (e Error) Release() {
 
 }
 
-func (e Error) Payload() action.Payload {
+func (e Error) Payload() actions.Payload {
 	buf := &bytes.Buffer{}
 	if err := e.Main().Render(context.Background(), buf); err != nil {
 		panic("error rendering error")
 	}
-	return action.NewTextBytes(buf.Bytes())
+	return actions.NewTextBytes(buf.Bytes())
 }
 
 func (e Error) Main() gox.Elem {

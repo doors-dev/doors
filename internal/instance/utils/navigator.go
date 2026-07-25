@@ -22,7 +22,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/path"
 )
 
@@ -87,9 +87,9 @@ func (n *navigator) call(path string, seq int32, replace bool) {
 		func() bool {
 			return seq == n.seq.Load()
 		},
-		&action.SetPath{Path: path, Replace: replace},
+		&actions.SetPath{Path: path, Replace: replace},
 		nil,
 		nil,
-		action.CallParams{},
+		actions.CallParams{},
 	)
 }

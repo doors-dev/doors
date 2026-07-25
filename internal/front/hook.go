@@ -18,12 +18,12 @@ import (
 	"encoding/json"
 
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 )
 
 type Hook struct {
-	Before   action.Actions
-	OnError  action.Actions
+	Before   actions.Actions
+	OnError  actions.Actions
 	Scope    []Scope
 	Indicate []Indicator
 	core.Hook

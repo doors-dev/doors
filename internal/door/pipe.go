@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -205,8 +205,8 @@ func EmptyPayload() printer.Payload {
 
 type emptyPayload struct{}
 
-func (e emptyPayload) Payload() action.Payload {
-	return action.NewText("")
+func (e emptyPayload) Payload() actions.Payload {
+	return actions.NewText("")
 }
 
 func (e emptyPayload) Release() {}

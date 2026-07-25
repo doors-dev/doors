@@ -39,7 +39,7 @@ Prefer `ActionEmit` with a `$on(...)` handler when the browser should own the DO
 	<button
 		(doors.AClick{
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-				doors.Call[any](ctx, locked.Set("disabled", true))
+				doors.Call(ctx, locked.Set("disabled", true))
 				return false
 			},
 		})>
@@ -52,7 +52,7 @@ Because both buttons share the setter, one call disables both.
 
 ## API
 
-The zero value is ready to use. Attach it like any other attr, then dispatch changes with `Set(name, value)`, which returns an [Action](./12-actions.md) for `doors.Call` or any action-accepting API. `Call[int]` reports the number of affected elements.
+The zero value is ready to use. Attach it like any other attr, then dispatch changes with `Set(name, value)`, which returns an [Action](./12-actions.md) for `doors.Call` or any action-accepting API. `Set(...).Into(&count)` captures the number of affected elements.
 
 The value follows template attribute semantics:
 
@@ -61,9 +61,9 @@ The value follows template attribute semantics:
 - other values serialize as in rendered markup
 
 ```go
-doors.Call[any](ctx, locked.Set("disabled", true))
-doors.Call[any](ctx, s.Set("aria-label", "busy"))
-doors.Call[any](ctx, s.Set("hidden", nil))
+doors.Call(ctx, locked.Set("disabled", true))
+doors.Call(ctx, s.Set("aria-label", "busy"))
+doors.Call(ctx, s.Set("hidden", nil))
 ```
 
 Setter is stateless: it changes live elements only. A rerendered element returns to its template attributes, so keep the source of truth in state and templates when the value must survive rerenders.

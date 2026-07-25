@@ -20,10 +20,10 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 )
 
-func (c Instance) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+func (c Instance) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	logger := c.Logger()
 	call := &call{
 		ctx:      ctx,
@@ -39,26 +39,26 @@ func (c Instance) UserCall(ctx context.Context, check func() bool, action action
 
 type checkCall struct {
 	check    func() bool
-	action   action.Action
+	action   actions.Action
 	onResult func(json.RawMessage, error)
 	onCancel func()
-	params   action.CallParams
+	params   actions.CallParams
 	logger   *slog.Logger
 }
 
-func (c *checkCall) Params() action.CallParams {
+func (c *checkCall) Params() actions.CallParams {
 	return c.params
 }
 
-func (c *checkCall) Action() (action.Action, bool) {
+func (c *checkCall) Action() (actions.Action, bool) {
 	if !c.check() {
 		return nil, false
 	}
 	return c.action, true
 }
 
-func (C *checkCall) Payload() ([]byte, action.PayloadType) {
-	return nil, action.PayloadNone
+func (C *checkCall) Payload() ([]byte, actions.PayloadType) {
+	return nil, actions.PayloadNone
 }
 
 func (c checkCall) Cancel() {
@@ -84,14 +84,14 @@ func (c *checkCall) Result(r json.RawMessage, err error) {
 type call struct {
 	ctx      context.Context
 	check    func() bool
-	action   action.Action
+	action   actions.Action
 	onResult func(json.RawMessage, error)
 	onCancel func()
-	params   action.CallParams
+	params   actions.CallParams
 	logger   *slog.Logger
 }
 
-func (c *call) Params() action.CallParams {
+func (c *call) Params() actions.CallParams {
 	return c.params
 }
 
@@ -102,7 +102,7 @@ func (c *call) canceled() bool {
 	return c.ctx.Err() != nil
 }
 
-func (c *call) Action() (action.Action, bool) {
+func (c *call) Action() (actions.Action, bool) {
 	if c.canceled() {
 		return nil, false
 	}

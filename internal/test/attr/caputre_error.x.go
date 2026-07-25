@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.32
+// Managed by GoX v0.2.3
 
 //line caputre_error.gox:1
 package attr
@@ -38,9 +38,9 @@ func (f *errorFragment) Main() gox.Elem {
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line caputre_error.gox:32
-		__e = __c.Any(f.button("err_1", doors.ActionEmit{Name: "error", Arg: "err_1"})); if __e != nil { return }
+		__e = __c.Any(f.button("err_1", doors.ActionEmit[any]{Name: "error", Arg: "err_1"})); if __e != nil { return }
 //line caputre_error.gox:33
-		__e = __c.Any(f.button("err_2", doors.ActionEmit{Name: "root", Arg: "err_2"})); if __e != nil { return }
+		__e = __c.Any(f.button("err_2", doors.ActionEmit[any]{Name: "root", Arg: "err_2"})); if __e != nil { return }
 //line caputre_error.gox:34
 		__e = (f.n1).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
@@ -73,7 +73,7 @@ func (f *errorFragment) Main() gox.Elem {
 						__e = __c.Close(); if __e != nil { return }
 //line caputre_error.gox:55
 						__e = __c.Any(f.button("err_5", doors.Join[doors.Actions](
-				doors.ActionEmit{
+				doors.ActionEmit[any]{
 					Name: "n2",
 					Arg: "err_5",
 				},
@@ -93,14 +93,14 @@ func (f *errorFragment) Main() gox.Elem {
 				},
 			))); if __e != nil { return }
 //line caputre_error.gox:75
-						__e = __c.Any(f.button("err_6", doors.ActionEmit{Name: "error", Arg: "err_6"})); if __e != nil { return }
+						__e = __c.Any(f.button("err_6", doors.ActionEmit[any]{Name: "error", Arg: "err_6"})); if __e != nil { return }
 					}
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
 //line caputre_error.gox:77
-				__e = __c.Any(f.button("err_3", doors.ActionEmit{Name: "error", Arg: "err_3"})); if __e != nil { return }
+				__e = __c.Any(f.button("err_3", doors.ActionEmit[any]{Name: "error", Arg: "err_3"})); if __e != nil { return }
 //line caputre_error.gox:78
-				__e = __c.Any(f.button("err_4", doors.ActionEmit{Name: "n1", Arg: "err_4"})); if __e != nil { return }
+				__e = __c.Any(f.button("err_4", doors.ActionEmit[any]{Name: "n1", Arg: "err_4"})); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }

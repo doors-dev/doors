@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/solitaire/expirator"
 	"github.com/doors-dev/doors/internal/solitaire/inner"
 )
@@ -234,7 +234,7 @@ func (d *deck) FillGaps(g []gap) error {
 	return nil
 }
 
-func (d *deck) Insert(c action.Call) (err error) {
+func (d *deck) Insert(c actions.Call) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.killed {

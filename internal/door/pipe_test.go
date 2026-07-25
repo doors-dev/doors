@@ -29,7 +29,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -68,11 +68,11 @@ type pipeTestInstance struct {
 	nextID  atomic.Uint64
 }
 
-func (i *pipeTestInstance) Call(action.Call)      {}
+func (i *pipeTestInstance) Call(actions.Call)     {}
 func (i *pipeTestInstance) Session() core.Session { return i.session }
 func (i *pipeTestInstance) Logger() *slog.Logger  { return slog.Default() }
 func (i *pipeTestInstance) Store() ctex.Store     { return ctex.NewStore() }
-func (i *pipeTestInstance) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (i *pipeTestInstance) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (i *pipeTestInstance) CSPCollector() common.CSPCollector {
 	return (&common.CSP{}).NewCollector()

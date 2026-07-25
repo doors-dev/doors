@@ -81,53 +81,54 @@ func (f *setterFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 //line setter.gox:34
 		__e = __c.Any(test.Button("set-string", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", `a&b"c"<d>`))
+		doors.Call(ctx, f.s.Set("data-test", `a&b"c"<d>`))
 		return false
 	})); if __e != nil { return }
 //line setter.gox:38
 		__e = __c.Any(test.Button("set-bare", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", true))
+		doors.Call(ctx, f.s.Set("data-test", true))
 		return false
 	})); if __e != nil { return }
 //line setter.gox:42
 		__e = __c.Any(test.Button("set-int", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", 42))
+		doors.Call(ctx, f.s.Set("data-test", 42))
 		return false
 	})); if __e != nil { return }
 //line setter.gox:46
 		__e = __c.Any(test.Button("remove-nil", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", nil))
+		doors.Call(ctx, f.s.Set("data-test", nil))
 		return false
 	})); if __e != nil { return }
 //line setter.gox:50
 		__e = __c.Any(test.Button("remove-false", func(ctx context.Context) bool {
-		doors.Call[any](ctx, f.s.Set("data-test", false))
+		doors.Call(ctx, f.s.Set("data-test", false))
 		return false
 	})); if __e != nil { return }
 //line setter.gox:54
 		__e = __c.Any(test.Button("xset", func(ctx context.Context) bool {
-		ch := doors.Call[int](ctx, f.s.Set("data-count", "x"))
+		var count int
+		ch := doors.Call(ctx, f.s.Set("data-count", "x").Into(&count))
 		select {
-		case res := <-ch:
-			if res.Err != nil {
+		case err := <-ch:
+			if err != nil {
 				f.r.Update(ctx, 0, "err")
 			} else {
-				f.r.Update(ctx, 0, fmt.Sprint(res.Ok))
+				f.r.Update(ctx, 0, fmt.Sprint(count))
 			}
 		case <-ctx.Done():
 		}
 		return false
 	})); if __e != nil { return }
-//line setter.gox:67
+//line setter.gox:68
 		__e = __c.Any(test.Button("clear", func(ctx context.Context) bool {
 		f.n.Inner(ctx, nil)
 		return false
 	})); if __e != nil { return }
-//line setter.gox:71
+//line setter.gox:72
 		__e = __c.Any(test.Button("show", func(ctx context.Context) bool {
 		f.n.Inner(ctx, f.content())
 		return false
 	})); if __e != nil { return }
 	return })
-//line setter.gox:75
+//line setter.gox:76
 }

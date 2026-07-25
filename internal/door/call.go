@@ -19,18 +19,18 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/printer"
 )
 
 type reportHook uint64
 
-func (c reportHook) Params() action.CallParams {
-	return action.CallParams{}
+func (c reportHook) Params() actions.CallParams {
+	return actions.CallParams{}
 }
 
-func (c reportHook) Action() (action.Action, bool) {
-	return action.ReportHook{HookId: uint64(c)}, true
+func (c reportHook) Action() (actions.Action, bool) {
+	return actions.ReportHook{HookId: uint64(c)}, true
 }
 
 func (c reportHook) Cancel() {}
@@ -70,19 +70,19 @@ func (n *call) send(err error) {
 	n.task.Report(err)
 }
 
-func (c *call) Action() (action.Action, bool) {
+func (c *call) Action() (actions.Action, bool) {
 	if c.ctx.Err() != nil {
 		return nil, false
 	}
 	payload := c.payload.Payload()
 	switch c.kind {
 	case callReplace:
-		return action.DoorReplace{
+		return actions.DoorReplace{
 			ID:      c.id,
 			Payload: payload,
 		}, true
 	case callUpdate:
-		return action.DoorUpdate{
+		return actions.DoorUpdate{
 			ID:      c.id,
 			Payload: payload,
 		}, true
@@ -91,6 +91,6 @@ func (c *call) Action() (action.Action, bool) {
 	}
 }
 
-func (c *call) Params() action.CallParams {
-	return action.CallParams{}
+func (c *call) Params() actions.CallParams {
+	return actions.CallParams{}
 }

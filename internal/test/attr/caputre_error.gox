@@ -29,8 +29,8 @@ elem (f *errorFragment) Main() {
 			r.innerHTML = "root_error/" + arg
 		})
 	</script>
-	~(f.button("err_1", doors.ActionEmit{Name: "error", Arg: "err_1"}))
-	~(f.button("err_2", doors.ActionEmit{Name: "root", Arg: "err_2"}))
+	~(f.button("err_1", doors.ActionEmit[any]{Name: "error", Arg: "err_1"}))
+	~(f.button("err_2", doors.ActionEmit[any]{Name: "root", Arg: "err_2"}))
 	~>(f.n1) <>
 		<script>
 			const r = document.getElementById("report")
@@ -53,7 +53,7 @@ elem (f *errorFragment) Main() {
 			</script>
 			<div id="indicator">init</div>
 			~(f.button("err_5", doors.Join[doors.Actions](
-				doors.ActionEmit{
+				doors.ActionEmit[any]{
 					Name: "n2",
 					Arg: "err_5",
 				},
@@ -72,10 +72,10 @@ elem (f *errorFragment) Main() {
 					),
 				},
 			)))
-			~(f.button("err_6", doors.ActionEmit{Name: "error", Arg: "err_6"}))
+			~(f.button("err_6", doors.ActionEmit[any]{Name: "error", Arg: "err_6"}))
 		</>
-		~(f.button("err_3", doors.ActionEmit{Name: "error", Arg: "err_3"}))
-		~(f.button("err_4", doors.ActionEmit{Name: "n1", Arg: "err_4"}))
+		~(f.button("err_3", doors.ActionEmit[any]{Name: "error", Arg: "err_3"}))
+		~(f.button("err_4", doors.ActionEmit[any]{Name: "n1", Arg: "err_4"}))
 	</>
 }
 

@@ -13,7 +13,7 @@ For example, call a JavaScript handler registered with `$on(...)`.
 
 You can schedule actions in five common places:
 
-- `doors.Call[T](ctx, action)` to dispatch from Go; the returned result channel is optional to use
+- `doors.Call(ctx, action)` to dispatch from Go; the returned error channel is optional to use
 - `Before` on a request attr such as an event attr or `ALink`, just before the request is sent
 - `r.After(...)` after a successful request
 - `OnError` on a request attr when a client-visible hook error happens
@@ -26,25 +26,28 @@ It does not run for scope cancellations or expired hooks, and a stopped instance
 
 ## Direct
 
-Ignore the returned channel when the result does not matter.
+Ignore the returned channel when the outcome does not matter.
 
 ```go
-doors.Call[any](ctx, doors.ActionLocationReload{})
+doors.Call(ctx, doors.ActionLocationReload{})
 ```
 
-Read it when the client handler should return a value to Go.
+When the client handler should return a value to Go, capture it with `Into`:
 
 ```go
-ch := doors.Call[string](ctx, doors.ActionEmit{
+var picked string
+ch := doors.Call(ctx, doors.ActionEmit[string]{
 	Name: "pick",
 	Arg:  "hello",
-})
+}.Into(&picked))
 
-res, ok := <-ch
-if ok && res.Err == nil {
-	println(res.Ok)
+err, ok := <-ch
+if ok && err == nil {
+	println(picked)
 }
 ```
+
+The destination is valid after the channel delivers nil.
 
 Do not wait on the result channel during rendering.
 
@@ -59,9 +62,10 @@ instance runtime lifecycle.
 
 Canceling `ctx` requests best-effort cancellation. If a direct `Call` is canceled, its channel closes without a value.
 
-When ignoring the result, use `any` as `T`. For most actions with a result, use `json.RawMessage`.
-
-`ActionEmit` is the main case where you usually want the real result type.
+`ActionEmit[T]` declares its result type; `T` is what `Into` decodes into. For
+fire-and-forget emits, use `ActionEmit[any]` and skip `Into`. `Emitter` events
+and `Setter.Set` support `Into(&count)` to capture the number of affected
+elements.
 
 ## Emit
 
@@ -72,7 +76,7 @@ When ignoring the result, use `any` as `T`. For most actions with a result, use 
 	<button
 		(doors.AClick{
 			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-				doors.Call[any](ctx, doors.ActionEmit{
+				doors.Call(ctx, doors.ActionEmit[any]{
 					Name: "alert",
 					Arg:  "Hello!",
 				})
@@ -124,10 +128,11 @@ Built-ins:
 - `doors.ActionLocationReplace{Model: ...}` replaces the current history entry and loads that URL
 - `doors.ActionLocationReload{}` reloads the current page
 - `doors.ActionLocationRawAssign{URL: ...}` loads a literal URL
+- `doors.ActionLocationRawReplace{URL: ...}` replaces the current history entry and loads a literal URL
 
 If the target belongs to your **Doors** path model, model-based actions still help you build the URL safely, but they are still hard navigations.
 
-Use `RawAssign` when you already have a full URL or want to leave that model-based routing path.
+Use `RawAssign` or `RawReplace` when you already have a full absolute URL or want to leave that model-based routing path — they are the only way to navigate to another origin (OAuth, external pages). `RawReplace` drops the current page from history, which fits redirects the user should not navigate back to.
 
 Location actions are deferred to the end of the current client turn.
 
@@ -188,7 +193,7 @@ The same shape works for `r.After(...)` and `OnError`.
 
 - Prefer rendering and state for durable UI changes.
 - Prefer `Setter` when existing attributes should stay shared without rerendering the elements.
-- Ignore the `doors.Call` result channel when the result does not matter; read it mainly with `ActionEmit`.
+- Ignore the `doors.Call` error channel when the outcome does not matter; capture results with `Into`.
 - Keep `$on(...)` handlers synchronous and scoped intentionally.
 - Prefer `ALink` or updating the `Source` from `RouteModel` for in-app navigation.
 - Use location actions when you intentionally want a full page load.

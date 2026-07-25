@@ -24,7 +24,7 @@ import (
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -70,7 +70,7 @@ type Instance interface {
 	Session() Session
 	Logger() *slog.Logger
 	Store() ctex.Store
-	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
+	UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
 	CSPCollector() common.CSPCollector
 	ModuleRegistry() ModuleRegistry
 	ID() string
@@ -91,7 +91,7 @@ type Door interface {
 	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
 	Reload(ctx context.Context) <-chan error
 	RootCore() Core
-	UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams)
+	UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
 	CleanFrame() shredder.SimpleFrame
 	ReadyFrame() shredder.SimpleFrame
 }

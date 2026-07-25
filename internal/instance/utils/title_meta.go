@@ -8,7 +8,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
 )
 
@@ -190,13 +190,13 @@ func (t *titleMeta) callRemoveMeta(prop bool, name string) {
 			_, ok := m.Get(name)
 			return !ok
 		},
-		action.RemoveMeta{
+		actions.RemoveMeta{
 			Name:     name,
 			Property: prop,
 		},
 		nil,
 		nil,
-		action.CallParams{},
+		actions.CallParams{},
 	)
 }
 
@@ -216,14 +216,14 @@ func (t *titleMeta) callUpdateMeta(prop bool, id uint, name string, attrs gox.At
 			}
 			return c.isCurrent(id)
 		},
-		action.UpdateMeta{
+		actions.UpdateMeta{
 			Name:     name,
 			Property: prop,
 			Attrs:    common.AttrsToMap(attrs, t.inst.Logger()),
 		},
 		nil,
 		nil,
-		action.CallParams{},
+		actions.CallParams{},
 	)
 }
 
@@ -238,13 +238,13 @@ func (t *titleMeta) callUpdateTitle(id uint, value string, attrs gox.Attrs) {
 			}
 			return t.title.isCurrent(id)
 		},
-		action.UpdateTitle{
+		actions.UpdateTitle{
 			Content: value,
 			Attrs:   common.AttrsToMap(attrs, t.inst.Logger()),
 		},
 		nil,
 		nil,
-		action.CallParams{},
+		actions.CallParams{},
 	)
 }
 
