@@ -1,0 +1,285 @@
+package attr
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+// pointer
+
+type emitterPointerFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	e doors.Emitter
+}
+
+func (f *emitterPointerFragment) attrs() []doors.Attr {
+	return []doors.Attr{
+		doors.AClick{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 0, "click")
+				f.r.Update(ctx, 1, fmt.Sprint(r.Event().Button))
+				f.r.Update(ctx, 2, fmt.Sprint(r.Event().Buttons))
+				return false
+			},
+		},
+		doors.APointerDown{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 0, "pointerdown")
+				return false
+			},
+		},
+		doors.APointerUp{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 0, "pointerup")
+				return false
+			},
+		},
+	}
+}
+
+elem (f *emitterPointerFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	f.r.Update(ctx, 2, "")
+	~~
+	~(f.r)
+	<div id="target" (&f.e) (doors.A(ctx, f.attrs()...))>target</div>
+	~(test.Button("emit-click", func(ctx context.Context) bool {
+		doors.Call(ctx, f.e.Click(doors.PointerEmit{Button: 2, Buttons: 2}))
+		return false
+	}))
+	~(test.Button("emit-down", func(ctx context.Context) bool {
+		doors.Call(ctx, f.e.PointerDown(doors.PointerEmit{}))
+		return false
+	}))
+	~(test.Button("emit-up", func(ctx context.Context) bool {
+		doors.Call(ctx, f.e.PointerUp(doors.PointerEmit{}))
+		return false
+	}))
+}
+
+// keyboard
+
+type emitterKeyFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	e doors.Emitter
+}
+
+func (f *emitterKeyFragment) attrs() []doors.Attr {
+	return []doors.Attr{
+		doors.AKeyDown{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+				f.r.Update(ctx, 0, "keydown")
+				f.r.Update(ctx, 1, r.Event().Key)
+				f.r.Update(ctx, 2, r.Event().Code)
+				return false
+			},
+		},
+		doors.AKeyUp{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+				f.r.Update(ctx, 0, "keyup")
+				f.r.Update(ctx, 1, r.Event().Key)
+				f.r.Update(ctx, 3, fmt.Sprint(r.Event().ShiftKey))
+				f.r.Update(ctx, 4, fmt.Sprint(r.Event().CtrlKey))
+				return false
+			},
+		},
+	}
+}
+
+elem (f *emitterKeyFragment) Main() {
+	~~
+	for i := 0; i < 5; i++ {
+		f.r.Update(ctx, i, "")
+	}
+	~~
+	~(f.r)
+	<input type="text" id="target" (&f.e) (doors.A(ctx, f.attrs()...))/>
+	~(test.Button("emit-keydown", func(ctx context.Context) bool {
+		doors.Call(ctx, f.e.KeyDown(doors.KeyboardEmit{Key: "a", Code: "KeyA"}))
+		return false
+	}))
+	~(test.Button("emit-keyup", func(ctx context.Context) bool {
+		doors.Call(ctx, f.e.KeyUp(doors.KeyboardEmit{Key: "A", Code: "KeyA", ShiftKey: true, CtrlKey: true}))
+		return false
+	}))
+}
+
+// focus
+
+type emitterFocusFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	e doors.Emitter
+}
+
+func (f *emitterFocusFragment) inner() []doors.Attr {
+	return []doors.Attr{
+		doors.AFocus{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 0, "focus")
+				return false
+			},
+		},
+		doors.ABlur{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 0, "blur")
+				return false
+			},
+		},
+	}
+}
+
+func (f *emitterFocusFragment) outer() []doors.Attr {
+	return []doors.Attr{
+		doors.AFocusIn{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 1, "in")
+				return false
+			},
+		},
+		doors.AFocusOut{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.FocusEvent]) bool {
+				f.r.Update(ctx, 1, "out")
+				return false
+			},
+		},
+	}
+}
+
+elem (f *emitterFocusFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	~~
+	~(f.r)
+	<div (doors.A(ctx, f.outer()...))>
+		<input type="text" id="target" (&f.e) (doors.A(ctx, f.inner()...))/>
+	</div>
+	~(test.Button("emit-focus", func(ctx context.Context) bool {
+		doors.Call(ctx, f.e.Focus(doors.FocusEmit{}))
+		return false
+	}))
+	~(test.Button("emit-blur", func(ctx context.Context) bool {
+		doors.Call(ctx, f.e.Blur(doors.FocusEmit{}))
+		return false
+	}))
+	~(test.Button("emit-focusin", func(ctx context.Context) bool {
+		doors.Call(ctx, f.e.FocusIn(doors.FocusEmit{}))
+		return false
+	}))
+	~(test.Button("emit-focusout", func(ctx context.Context) bool {
+		doors.Call(ctx, f.e.FocusOut(doors.FocusEmit{}))
+		return false
+	}))
+}
+
+// input, change, submit
+
+type emitterFormFragment struct {
+	test.NoBeam
+	r  *test.Reporter
+	ei doors.Emitter
+	es doors.Emitter
+}
+
+func (f *emitterFormFragment) fieldAttrs() []doors.Attr {
+	return []doors.Attr{
+		doors.AInput{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
+				f.r.Update(ctx, 0, "input")
+				f.r.Update(ctx, 1, r.Event().Data)
+				return false
+			},
+		},
+		doors.AChange{
+			On: func(ctx context.Context, r doors.RequestEvent[doors.ChangeEvent]) bool {
+				f.r.Update(ctx, 2, "change")
+				f.r.Update(ctx, 3, r.Event().Name)
+				return false
+			},
+		},
+	}
+}
+
+func (f *emitterFormFragment) submit() doors.Attr {
+	return doors.ASubmit[struct{}]{
+		On: func(ctx context.Context, r doors.RequestForm[struct{}]) bool {
+			f.r.Update(ctx, 4, "submit")
+			return false
+		},
+	}
+}
+
+elem (f *emitterFormFragment) Main() {
+	~~
+	for i := 0; i < 5; i++ {
+		f.r.Update(ctx, i, "")
+	}
+	~~
+	~(f.r)
+	<input type="text" id="field" name="field" (&f.ei) (doors.A(ctx, f.fieldAttrs()...))/>
+	~>(f.submit()) <form id="form" (&f.es)>
+		<input type="text" name="field"/>
+	</form>
+	~(test.Button("emit-input", func(ctx context.Context) bool {
+		doors.Call(ctx, f.ei.Input(doors.InputEmit{Data: "hey"}))
+		return false
+	}))
+	~(test.Button("emit-change", func(ctx context.Context) bool {
+		doors.Call(ctx, f.ei.Change(doors.ChangeEmit{}))
+		return false
+	}))
+	~(test.Button("emit-submit", func(ctx context.Context) bool {
+		doors.Call(ctx, f.es.Submit(doors.SubmitEmit{}))
+		return false
+	}))
+}
+
+// multiple elements + capture count
+
+type emitterMultiFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	e doors.Emitter
+}
+
+func (f *emitterMultiFragment) hit(slot int) doors.Attr {
+	return doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, slot, "hit")
+			return false
+		},
+	}
+}
+
+elem (f *emitterMultiFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	f.r.Update(ctx, 2, "")
+	~~
+	~(f.r)
+	<div id="m1" (&f.e) (doors.A(ctx, f.hit(1)))>m1</div>
+	<div id="m2" (&f.e) (doors.A(ctx, f.hit(2)))>m2</div>
+	~(test.Button("emit-count", func(ctx context.Context) bool {
+		ch := doors.XCall[int](ctx, f.e.Click(doors.PointerEmit{}))
+		select {
+		case res := <-ch:
+			if res.Err != nil {
+				f.r.Update(ctx, 0, "err")
+			} else {
+				f.r.Update(ctx, 0, fmt.Sprint(res.Ok))
+			}
+		case <-ctx.Done():
+		}
+		return false
+	}))
+}
