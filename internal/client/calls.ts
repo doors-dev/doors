@@ -15,6 +15,7 @@
 import doors from "./door"
 import navigator from "./navigator"
 import indicator, { IndicatorEntry } from "./indicator"
+import { getEmitter } from "./emitter"
 import { setAttr } from "./setter"
 import { doAfter, scrollInto, Result } from "./lib"
 import { report } from "./scope.ts"
@@ -97,7 +98,7 @@ const actions = {
 	},
 	"emit_event": (ext: Extras, emitterId: number, type: string, capture: string) => {
 		const promises: Promise<Response>[] = []
-		const elements = doors.getEmitter(emitterId)
+		const elements = getEmitter(emitterId)
 		if (elements) {
 			const make = captureEvents[capture]
 			for (const element of elements) {

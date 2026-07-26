@@ -63,9 +63,10 @@ instance runtime lifecycle.
 Canceling `ctx` requests best-effort cancellation. If a direct `Call` is canceled, its channel closes without a value.
 
 `ActionEmit[T]` declares its result type; `T` is what `Into` decodes into. For
-fire-and-forget emits, use `ActionEmit[any]` and skip `Into`. `Emitter` events
-and `Setter.Set` support `Into(&count)` to capture the number of affected
-elements.
+fire-and-forget emits, use `ActionEmit[any]` and skip `Into`. `Setter.Set`
+supports `Into(&count)` to capture the number of affected elements. `Emitter`
+events support `Into(&count)` to capture the number of hook requests the
+emitted events triggered.
 
 ## Emit
 

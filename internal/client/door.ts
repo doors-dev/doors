@@ -16,6 +16,7 @@ import { rootId } from './params'
 import { doorId } from './lib'
 
 import { attach as attachCaptures } from "./capture"
+import { attach as attachEmitter } from "./emitter"
 import { HookErr } from "./hook_err"
 import navigator from "./navigator"
 import { attach as attachSetter } from "./setter"
@@ -25,7 +26,6 @@ type Closure = () => void | Promise<void>
 
 const attr = "data-d0r"
 const tag = "d0-r"
-const emitAttr = "data-d0e"
 
 const doorState = Symbol()
 
@@ -79,7 +79,6 @@ function getParentId(el: Element): number {
 class Doors {
 	private elements = new Map<number, DoorElement>()
 	private handlers = new Map<number, Map<string, Handler>>()
-	private emitters = new Map<number, Set<Element>>()
 	private onClear = new Map<number, Array<Closure>>()
 	private onRemove = new Map<number, Array<Closure>>()
 	private impostors = new Map<number, Set<number>>()
@@ -161,30 +160,9 @@ class Doors {
 		}
 	}
 
-	private scanEmitters(parent: Element | Document | DocumentFragment) {
-		for (const element of parent.querySelectorAll<Element>(`[${emitAttr}]`)) {
-			const id = Number(element.getAttribute(emitAttr))
-			let elements = this.emitters.get(id)
-			if (!elements) {
-				elements = new Set()
-				this.emitters.set(id, elements)
-			}
-			if (elements.has(element)) {
-				continue
-			}
-			elements.add(element)
-			this.onUnmount(element, () => {
-				elements.delete(element)
-				if (elements.size === 0) {
-					this.emitters.delete(id)
-				}
-			})
-		}
-	}
-
 	scan(parent: Element | Document | DocumentFragment) {
 		this.scanImpostors(parent)
-		this.scanEmitters(parent)
+		attachEmitter(parent)
 		attachCaptures(parent)
 		attachSetter(parent)
 		navigator.scan(parent)
@@ -267,10 +245,6 @@ class Doors {
 			return undefined
 		}
 		return this.getHandler(element[doorState].parent, name)
-	}
-
-	getEmitter(id: number): Set<Element> | undefined {
-		return this.emitters.get(id)
 	}
 
 }

@@ -42,16 +42,13 @@ func AttrsAppendSetter(attrs gox.Attrs, id uint64) {
 	attrs.Get("data-d0s").Set(val)
 }
 
-func AttrsSetEmitter(attrs gox.Attrs, id uint64) {
-	attrs.Get("data-d0e").Set(fmt.Sprintf("%d", id))
+func AttrsAppendEmitter(attrs gox.Attrs, id uint64) {
+	val := jsonAttrs([]any{id})
+	attrs.Get("data-d0e").Set(val)
 }
 
 func AttrsSetParent(attrs gox.Attrs, parent uint64) {
-	attr := attrs.Get("data-d0p")
-	if attr.IsSet() {
-		return
-	}
-	attr.Set(fmt.Sprintf("%d", parent))
+	attrs.Get("data-d0p").Set(parentAttr(parent))
 }
 
 func AttrsSetDoor(attrs gox.Attrs, id uint64, container bool) {
@@ -86,6 +83,17 @@ func (j jsonAttrs) Mutate(name string, prev any) any {
 	}
 	arr = append(arr, j...)
 	return arr
+}
+
+type parentAttr uint64
+
+var _ gox.Mutate = parentAttr(0)
+
+func (p parentAttr) Mutate(_ string, prev any) any {
+	if prev != nil {
+		return prev
+	}
+	return p
 }
 
 type jsonAttr struct {
