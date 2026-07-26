@@ -55,15 +55,17 @@ func (s *Setter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 //
 // The value follows template attribute semantics: nil and false remove the
 // attribute, true sets it bare, [gox.Output] values serialize themselves,
-// anything else is formatted with the fmt package.
+// anything else is formatted with the fmt package. A [gox.Mutate] value, such
+// as [Classes], fails the action: composing it needs the previous value, which
+// only a rerender has.
 func (s *Setter) Set(name string, value any) ActionInto[int] {
 	return actionIntoFunc[int](func(ctx context.Context, core core.Core, gz bool) (action, error) {
+		if _, ok := value.(gox.Mutate); ok {
+			return action{}, fmt.Errorf("setter: attribute %s value implements gox.Mutate, which cannot compose on a live element", name)
+		}
 		act := actions.AttrSet{
 			ID:   s.id.ID(core),
 			Name: name,
-		}
-		if m, ok := value.(gox.Mutate); ok {
-			value = m.Mutate(name, nil)
 		}
 		switch v := value.(type) {
 		case nil:
