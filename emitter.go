@@ -32,6 +32,8 @@ var _ Attr = (*Emitter)(nil)
 // method's action to [Call] or any action-accepting API. Each event method
 // returns an [ActionInto]; Into captures the number of captures the event
 // fired. Any capture error fails the call.
+//
+// Several emitters can share an element; each dispatches its own event.
 type Emitter struct {
 	id front.AutoID
 }
@@ -42,7 +44,7 @@ func (e *Emitter) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (e *Emitter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	front.AttrsSetEmitter(attrs, e.id.ID(core))
+	front.AttrsAppendEmitter(attrs, e.id.ID(core))
 	front.AttrsSetParent(attrs, core.Door().ID())
 	return nil
 }

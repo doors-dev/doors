@@ -111,6 +111,60 @@ func TestEmitterForm(t *testing.T) {
 	waitReport(t, page, 4, "submit")
 }
 
+func TestEmitterShared(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &emitterSharedFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.Click(t, page, "#emit-a")
+	waitReport(t, page, 0, "1")
+	waitReport(t, page, 3, "1")
+	test.TestReportId(t, page, 4, "")
+	test.TestReportId(t, page, 5, "")
+
+	test.Click(t, page, "#emit-b")
+	waitReport(t, page, 1, "2")
+	waitReport(t, page, 3, "2")
+	waitReport(t, page, 4, "2")
+	test.TestReportId(t, page, 5, "")
+
+	test.Click(t, page, "#emit-c")
+	waitReport(t, page, 2, "1")
+	waitReport(t, page, 5, "3")
+
+	test.Click(t, page, "#set")
+	waitReport(t, page, 6, "1")
+	test.TestAttr(t, page, "#s1", "data-test", "x")
+	test.TestAttrNo(t, page, "#s2", "data-test")
+}
+
+func TestEmitterContainer(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &emitterContainerFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#c2", "first")
+
+	test.Click(t, page, "#emit")
+	waitReport(t, page, 0, "1")
+	waitReport(t, page, 1, "1")
+
+	test.Click(t, page, "#inner")
+	test.Click(t, page, "#emit2")
+	waitReport(t, page, 1, "2")
+	test.TestContent(t, page, "#c2", "second")
+}
+
 func TestEmitterMulti(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &emitterMultiFragment{

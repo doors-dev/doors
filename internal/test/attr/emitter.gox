@@ -284,3 +284,97 @@ elem (f *emitterMultiFragment) Main() {
 		return false
 	}))
 }
+
+// several emitters per element
+
+func emitterCount(r *test.Reporter, slot int, action doors.ActionInto[int]) func(context.Context) bool {
+	return func(ctx context.Context) bool {
+		var count int
+		ch := doors.Call(ctx, action.Into(&count))
+		select {
+		case err := <-ch:
+			if err != nil {
+				r.Update(ctx, slot, "err")
+			} else {
+				r.Update(ctx, slot, fmt.Sprint(count))
+			}
+		case <-ctx.Done():
+		}
+		return false
+	}
+}
+
+type emitterSharedFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	a doors.Emitter
+	b doors.Emitter
+	c doors.Emitter
+	s doors.Setter
+}
+
+func (f *emitterSharedFragment) hit(slot int) doors.Attr {
+	return doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, slot, fmt.Sprint(r.Event().Button))
+			return false
+		},
+	}
+}
+
+elem (f *emitterSharedFragment) Main() {
+	~~
+	for i := 0; i < 7; i++ {
+		f.r.Update(ctx, i, "")
+	}
+	~~
+	~(f.r)
+	<div id="s1" (&f.a) (&f.b) (&f.s) (doors.A(ctx, f.hit(3)))>s1</div>
+	<div id="s2" (&f.b) (doors.A(ctx, f.hit(4)))>s2</div>
+	<div id="s3" (&f.c) (&f.c) (doors.A(ctx, f.hit(5)))>s3</div>
+	~(test.Button("emit-a", emitterCount(f.r, 0, f.a.Click(doors.PointerEmit{Button: 1}))))
+	~(test.Button("emit-b", emitterCount(f.r, 1, f.b.Click(doors.PointerEmit{Button: 2}))))
+	~(test.Button("emit-c", emitterCount(f.r, 2, f.c.Click(doors.PointerEmit{Button: 3}))))
+	~(test.Button("set", emitterCount(f.r, 6, f.s.Set("data-test", "x"))))
+}
+
+// emitter on a door container element
+
+type emitterContainerFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	d doors.Door
+	e doors.Emitter
+}
+
+func (f *emitterContainerFragment) hit(slot int) doors.Attr {
+	return doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, slot, fmt.Sprint(r.Event().Button))
+			return false
+		},
+	}
+}
+
+elem (f *emitterContainerFragment) body(text string) {
+	<span id="c2">~(text)</span>
+}
+
+elem (f *emitterContainerFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	~~
+	~(f.r)
+	<div id="c0" (doors.A(ctx, f.hit(1)))>
+		~>(f.d) <div id="c1" (doors.A(ctx, &f.e))>
+			~(f.body("first"))
+		</div>
+	</div>
+	~(test.Button("emit", emitterCount(f.r, 0, f.e.Click(doors.PointerEmit{Button: 1}))))
+	~(test.Button("emit2", emitterCount(f.r, 0, f.e.Click(doors.PointerEmit{Button: 2}))))
+	~(test.Button("inner", func(ctx context.Context) bool {
+		f.d.Inner(ctx, f.body("second"))
+		return false
+	}))
+}
