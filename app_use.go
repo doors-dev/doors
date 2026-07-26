@@ -62,10 +62,15 @@ func serveFS(prefix string, fsys http.FileSystem, cacheControl string, w http.Re
 	http.StripPrefix(prefix, http.FileServer(fsys)).ServeHTTP(rw, r)
 }
 
-// UseResource serves a static Doors resource at path.
+// UseResource serves resource as a managed resource at path.
 //
-// path must not be "/" or empty. contentType is passed to the resource
-// registry and should describe the served resource, for example "text/css".
+// path is matched exactly, with a leading slash added if it lacks one, and must
+// be neither empty nor "/". contentType is sent as the Content-Type. Requests
+// that do not match, and non-GET requests, go to the next handler. UseResource
+// panics on an unusable path or resource.
+//
+// Responses carry the ServerCacheControl value from [Conf] and are gzipped
+// unless ServerDisableGzip is set.
 func UseResource(path string, resource ResourceStatic, contentType string) Use {
 	if path == "/" || path == "" {
 		panic(errors.New("ServeResource cannot serve the root path"))
@@ -98,10 +103,12 @@ func UseResource(path string, resource ResourceStatic, contentType string) Use {
 	}
 }
 
-// UseFS serves files from fsys under prefix.
+// UseFS serves fsys under prefix.
 //
-// prefix must not be "/" or empty. cacheControl is written on successful file
-// responses when non-empty.
+// prefix must be neither empty nor "/", and is normalized to have a leading and
+// trailing slash. cacheControl is set on successful responses; empty leaves the
+// header alone. Requests outside prefix, and non-GET requests, go to the next
+// handler.
 func UseFS(prefix string, fsys fs.FS, cacheControl string) Use {
 	if prefix == "/" || prefix == "" {
 		panic(errors.New("ServeFS cannot serve the root prefix"))
@@ -109,10 +116,12 @@ func UseFS(prefix string, fsys fs.FS, cacheControl string) Use {
 	return serveFileSystem(prefix, http.FS(fsys), cacheControl)
 }
 
-// UseDir serves files from a local directory under prefix.
+// UseDir serves the local directory dirPath under prefix.
 //
-// prefix must not be "/" or empty. cacheControl is written on successful file
-// responses when non-empty.
+// prefix must be neither empty nor "/", and is normalized to have a leading and
+// trailing slash. cacheControl is set on successful responses; empty leaves the
+// header alone. Requests outside prefix, and non-GET requests, go to the next
+// handler.
 func UseDir(prefix string, dirPath string, cacheControl string) Use {
 	if prefix == "/" || prefix == "" {
 		panic(errors.New("ServeDir cannot serve the root prefix"))
@@ -133,10 +142,12 @@ func serveFileSystem(prefix string, fsys http.FileSystem, cacheControl string) U
 	}
 }
 
-// UseFile serves one local file at path.
+// UseFile serves the local file filePath at path.
 //
-// path must not be "/" or empty. cacheControl is written on successful file
-// responses when non-empty.
+// path is matched exactly, with a leading slash added if it lacks one, and must
+// be neither empty nor "/". cacheControl is set on successful responses; empty
+// leaves the header alone. Requests that do not match, and non-GET requests, go
+// to the next handler.
 func UseFile(path string, filePath string, cacheControl string) Use {
 	if path == "/" || path == "" {
 		panic(errors.New("ServeFile cannot serve the root path"))
@@ -164,43 +175,35 @@ func UseFile(path string, filePath string, cacheControl string) Use {
 	}
 }
 
-// Cache-Control header presets for common use cases.
+// Cache-Control presets for [UseFS], [UseDir], and [UseFile].
 const (
-	// CacheControlImmutable is for fingerprinted/hashed static assets
-	// (e.g. app.a3f9b2.js, fonts, versioned images) that never change
-	// at a given URL. Cached for 1 year, no revalidation.
+	// CacheControlImmutable caches for a year and never revalidates. Use for
+	// hash-named URLs.
 	CacheControlImmutable = "public, max-age=31536000, immutable"
 
-	// CacheControlStatic is for non-fingerprinted static files
-	// (e.g. /favicon.ico, /robots.txt). Cached for 1 hour, revalidated after.
+	// CacheControlStatic caches for an hour, then revalidates.
 	CacheControlStatic = "public, max-age=3600, must-revalidate"
 
-	// CacheControlStaticShort is for static files that may change occasionally
-	// and where staleness is tolerable for a few minutes.
+	// CacheControlStaticShort caches for five minutes, then revalidates.
 	CacheControlStaticShort = "public, max-age=300, must-revalidate"
 
-	// CacheControlHTML is for HTML entry points (index.html, SSR pages)
-	// where updates should be picked up quickly. Pair with an ETag.
+	// CacheControlHTML lets shared caches store the response but always
+	// revalidates it.
 	CacheControlHTML = "public, max-age=0, must-revalidate"
 
-	// CacheControlCDN splits browser TTL (1h) from shared/CDN TTL (1d).
-	// Useful when you want fast invalidation at the edge.
+	// CacheControlCDN caches for an hour in browsers, a day in shared caches.
 	CacheControlCDN = "public, max-age=3600, s-maxage=86400"
 
-	// CacheControlPrivate is for per-user responses (dashboards, account pages).
-	// Browsers may cache briefly, CDNs/proxies must not.
+	// CacheControlPrivate keeps the response out of shared caches and always
+	// revalidates it.
 	CacheControlPrivate = "private, max-age=0, must-revalidate"
 
-	// CacheControlNoCache forces revalidation on every request, but allows
-	// storage. Use when content changes often but ETag/Last-Modified can
-	// produce cheap 304s.
+	// CacheControlNoCache stores the response but always revalidates it.
 	CacheControlNoCache = "no-cache"
 
-	// CacheControlNoStore disables caching entirely. Use for sensitive
-	// responses (auth tokens, personal data, payment flows).
+	// CacheControlNoStore forbids storing the response anywhere.
 	CacheControlNoStore = "no-store"
 
-	// CacheControlAPI is a sensible default for JSON API responses that
-	// shouldn't be cached by intermediaries but can be revalidated.
+	// CacheControlAPI is CacheControlNoCache restricted to private caches.
 	CacheControlAPI = "private, no-cache"
 )

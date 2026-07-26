@@ -26,25 +26,27 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// AHook exposes a named Go handler to the browser through `$hook(name, ...)`.
+// AHook exposes a Go handler to browser code as $hook(name, ...).
 //
-// Input data is unmarshaled from JSON into type T.
-// The returned value is encoded back to JSON.
+// Attach it to the script element that calls $hook or $fetch. Input is decoded
+// from JSON into T, and the value On returns is encoded back to JSON as the
+// call result.
+//
+// Prefer [ARawHook] when the handler needs the raw body, multipart parsing, or
+// control over the response.
 type AHook[T any] struct {
-	// Name of the hook to call from JavaScript via $hook(name, ...).
-	// Required.
+	// Name is the hook name used from JavaScript as $hook(name, ...). Required.
 	Name string
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how calls to this hook are scheduled on the client.
+	// Optional; without it every call is sent immediately.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while a call is in flight.
+	// A hook call has no event element, so only the Query and QueryAll variants
+	// apply. Optional.
 	Indicator Indicators
-	// Backend handler for the hook.
-	// Receives typed input (T, unmarshaled from JSON) through RequestHook,
-	// and returns any output which will be marshaled to JSON.
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the call and returns the value sent back to the caller. Return
+	// false to keep the hook active, true to remove it. Optional; a nil On
+	// answers with null.
 	On func(ctx context.Context, r RequestHook[T]) (any, bool)
 }
 
@@ -101,24 +103,25 @@ func (h *AHook[T]) handle(core core.Core) func(ctx context.Context, w http.Respo
 
 }
 
-// ARawHook exposes a named Go handler to the browser through `$hook(name, ...)`
-// without JSON decoding or encoding.
+// ARawHook exposes a Go handler to browser code as $hook(name, ...) without
+// JSON decoding or encoding.
 //
-// Use it for streaming, custom protocols, or file uploads.
+// Attach it to the script element that calls $hook or $fetch. The handler owns
+// the request body and the response, which suits streaming, uploads, and
+// custom formats. Prefer [AHook] for plain JSON input and output.
 type ARawHook struct {
-	// Name of the hook to call from JavaScript via $hook(name, ...).
-	// Required.
+	// Name is the hook name used from JavaScript as $hook(name, ...). Required.
 	Name string
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how calls to this hook are scheduled on the client.
+	// Optional; without it every call is sent immediately.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while a call is in flight.
+	// A hook call has no event element, so only the Query and QueryAll variants
+	// apply. Optional.
 	Indicator Indicators
-	// Backend handler for the hook.
-	// Provides raw access via RRawHook (body reader, multipart parser).
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the call with raw access to the request body and the response.
+	// Return false to keep the hook active, true to remove it. Optional; a nil
+	// On answers with an empty response.
 	On func(ctx context.Context, r RequestRawHook) bool
 }
 
@@ -155,16 +158,15 @@ func (h *ARawHook) handle(core core.Core) func(ctx context.Context, w http.Respo
 	}
 }
 
-// AData exposes Value to browser code through `$data(name)`.
+// AData exposes a value to browser code as $data(name).
 //
-// `$data(...)` returns strings and JSON-backed values directly. For `[]byte`,
-// it returns a promise that resolves to an `ArrayBuffer`.
+// Attach it to the script element that reads the value. A []byte value arrives
+// as a promise resolving to an ArrayBuffer; other values arrive directly.
 type AData struct {
-	// Name of the data entry to read via JavaScript with $data(name).
-	// Required.
+	// Name is the entry name used from JavaScript as $data(name). Required.
 	Name string
-	// Value to expose to the client. Marshaled to JSON.
-	// Required.
+	// Value is the exposed value: a string is sent as text, []byte as binary,
+	// anything else as JSON. Required.
 	Value any
 }
 

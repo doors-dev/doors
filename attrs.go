@@ -39,21 +39,18 @@ func (j joinedAttrs) Modify(ctx context.Context, _ string, attrs gox.Attrs) erro
 	return nil
 }
 
-// Attr is a Doors attribute modifier that can be attached directly to an
-// element or applied through a proxy component.
+// Attr is an attribute modifier that can be attached to an element or applied
+// to the next element as a proxy.
 type Attr interface {
 	gox.Modify
 	gox.Proxy
 }
 
-// A combines one or more [Attr] values into a single modifier.
+// A combines attrs into a single [Attr], resolved once against ctx.
 //
-// Example:
-//
-//	attrs := doors.A(ctx,
-//		doors.AClick{On: onClick},
-//		doors.AData{Name: "user", Value: user},
-//	)
+// Call it during render, with the ctx of the surrounding component. Elements
+// sharing the result also share its handlers, so calls to one handler run one
+// at a time.
 func A(ctx context.Context, a ...Attr) Attr {
 	attrs := gox.NewAttrs()
 	for _, mod := range a {

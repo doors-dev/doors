@@ -30,19 +30,16 @@ type action struct {
 	decode func(json.RawMessage) error
 }
 
-// Action performs a client-side operation.
+// Action is a client-side effect triggered from Go. Only Doors implements it.
 type Action interface {
 	action(ctx context.Context, core core.Core, gz bool) (action, error)
 }
 
-// ActionInto is an [Action] with a typed client result.
-//
-// Into returns an action that unmarshals the result into dst. Use it with
-// [Call]: dst is valid after the returned channel delivers nil. Inside action
-// lists such as Before, After, or OnError there is no result transport, so
-// Into has no effect there.
+// ActionInto is an [Action] with a capturable client result.
 type ActionInto[T any] interface {
 	Action
+	// Into returns an action for [Call] that decodes the client result into
+	// dst. dst is valid once the completion channel delivers nil.
 	Into(dst *T) Action
 }
 
@@ -77,9 +74,8 @@ func into[T any](a Action, dst *T) Action {
 	})
 }
 
-// Actions is a composable list of client-side operations.
+// Actions is a composable list of client-side actions.
 type Actions interface {
-	// Actions returns the flattened action list.
 	Actions() []Action
 	Joiner[Actions]
 }
@@ -127,14 +123,19 @@ func (s joinedActions) And(a Actions) Actions {
 
 var _ Actions = joinedActions(nil)
 
-// ActionEmit invokes a client-side handler registered with
-// `$on(name, handler)`.
+// ActionEmit calls the JavaScript handler registered with $on(name, handler).
 //
-// T is the handler's result type; capture it with Into (see [ActionInto]).
-// For fire-and-forget, use ActionEmit[any] and dispatch without Into.
+// Lookup starts at the Door the action is dispatched from and walks out to the
+// root, so the nearest matching handler wins. T is the handler's return type;
+// capture it with [ActionInto.Into], or use ActionEmit[any] to ignore it.
 type ActionEmit[T any] struct {
+	// Name is the handler name passed to $on. The action fails when no handler
+	// with this name is reachable. Required.
 	Name string
-	Arg  any
+	// Arg is the value passed to the handler. A string arrives as a string,
+	// []byte as an ArrayBuffer, anything else as decoded JSON. Optional; nil
+	// arrives as null.
+	Arg any
 }
 
 func (ae ActionEmit[T]) Actions() []Action {
@@ -145,8 +146,8 @@ func (ae ActionEmit[T]) And(a Actions) Actions {
 	return joinedActions([]Actions{ae, a})
 }
 
-// Into returns an action that unmarshals the handler result into dst; see
-// [ActionInto].
+// Into returns an action that decodes the handler result into dst; see
+// [ActionInto.Into].
 func (ae ActionEmit[T]) Into(dst *T) Action {
 	return into(ae, dst)
 }
@@ -169,9 +170,7 @@ var _ Actions = ActionEmit[any]{}
 
 // ActionLocationReload reloads the current page.
 //
-// It performs a full page load and starts a fresh instance: use it for error
-// recovery, session resets, or picking up a new deployment — not for in-app
-// navigation.
+// It is a hard navigation: the page loads again and a fresh instance starts.
 type ActionLocationReload struct{}
 
 func (ar ActionLocationReload) Actions() []Action {
@@ -189,12 +188,14 @@ func (ar ActionLocationReload) action(ctx context.Context, core core.Core, _ boo
 	}, nil
 }
 
-// ActionLocationReplace replaces the current history entry with a model-derived
-// URL.
+// ActionLocationReplace replaces the current history entry with a URL built
+// from Model.
 //
-// It performs a full page load. For in-app navigation, use [ALink] or update
-// the route source instead.
+// It is a hard navigation. Unlike [ALink], the page loads again instead of
+// rerouting the current instance.
 type ActionLocationReplace struct {
+	// Model is the target path model value, a [Location], or a
+	// [LocationEncoder]. Required.
 	Model any
 }
 
@@ -220,11 +221,14 @@ func (a ActionLocationReplace) action(ctx context.Context, core core.Core, _ boo
 	}, nil
 }
 
-// ActionLocationAssign navigates to a model-derived URL.
+// ActionLocationAssign navigates to a URL built from Model, pushing a new
+// history entry.
 //
-// It performs a full page load. For in-app navigation, use [ALink] or update
-// the route source instead.
+// It is a hard navigation. Unlike [ALink], the page loads again instead of
+// rerouting the current instance.
 type ActionLocationAssign struct {
+	// Model is the target path model value, a [Location], or a
+	// [LocationEncoder]. Required.
 	Model any
 }
 
@@ -250,12 +254,12 @@ func (aa ActionLocationAssign) action(ctx context.Context, core core.Core, _ boo
 	}, nil
 }
 
-// ActionLocationRawAssign navigates to url without first encoding a path model.
+// ActionLocationRawAssign navigates to URL, pushing a new history entry.
 //
-// URL must be absolute. It is the escape hatch to other origins (OAuth,
-// external pages); it performs a full page load. For in-app navigation, use
-// [ALink] or update the route source instead.
+// Unlike [ActionLocationAssign], the URL is taken as given, so it can point to
+// another origin.
 type ActionLocationRawAssign struct {
+	// URL is the target URL. Must be absolute. Required.
 	URL string
 }
 
@@ -277,13 +281,12 @@ func (a ActionLocationRawAssign) action(ctx context.Context, core core.Core, _ b
 	}, nil
 }
 
-// ActionLocationRawReplace replaces the current history entry with url without
-// first encoding a path model.
+// ActionLocationRawReplace replaces the current history entry with URL.
 //
-// URL must be absolute. Like [ActionLocationRawAssign] it can leave the
-// current origin, but the current page does not stay in history — use it for
-// redirects the user should not navigate back to, such as OAuth flows.
+// Unlike [ActionLocationRawAssign], the current page is dropped from history,
+// so the user cannot navigate back to it.
 type ActionLocationRawReplace struct {
+	// URL is the target URL. Must be absolute. Required.
 	URL string
 }
 
@@ -307,13 +310,13 @@ func (a ActionLocationRawReplace) action(ctx context.Context, core core.Core, _ 
 
 // ActionScroll scrolls the first element matching Selector into view.
 //
-// Options is passed to the browser scroll call as-is and should match the
-// shape accepted by `Element.scrollIntoView(...)`, for example:
-// `map[string]any{"behavior": "smooth", "block": "center"}`.
+// If no element matches, the action fails; dispatched with [Call], the error
+// arrives on the completion channel.
 type ActionScroll struct {
-	// CSS selector for the element to scroll into view.
+	// Selector is a CSS selector matched against the whole document. Required.
 	Selector string
-	// Browser scroll options forwarded to `scrollIntoView(...)`.
+	// Options is passed to Element.scrollIntoView. Optional; nil uses the
+	// browser default.
 	Options any
 }
 
@@ -334,10 +337,17 @@ func (a ActionScroll) action(ctx context.Context, core core.Core, _ bool) (actio
 	}, nil
 }
 
-// ActionIndicate applies indicators for Duration.
+// ActionIndicate applies Indicator for Duration, independent of any request.
+//
+// Only the Query and QueryAll indicator variants apply without an event
+// element, which exists only in event attr and [ALink] action lists.
 type ActionIndicate struct {
+	// Indicator lists the temporary DOM changes to apply. Required; without it
+	// the action does nothing.
 	Indicator Indicators
-	Duration  time.Duration
+	// Duration is how long the changes stay applied, truncated to
+	// milliseconds. Required; zero removes them immediately.
+	Duration time.Duration
 }
 
 func (ai ActionIndicate) Actions() []Action {

@@ -23,6 +23,7 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// Door renders content that can be updated, replaced, or removed after render.
 type Door struct {
 	node atomic.Pointer[node]
 }

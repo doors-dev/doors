@@ -25,17 +25,18 @@ import (
 
 // Call dispatches action to the client.
 //
-// Canceling ctx requests best-effort cancellation of the call.
-//
-// The returned channel is optional to use: it receives nil on success or an
-// error on client or decode failure, then closes; if the call is canceled, it
-// closes without a value.
+// The returned completion channel is optional to use: it delivers nil on
+// success, or an error if the action cannot be built, the client fails, or
+// the result cannot be decoded, then closes. If the call is canceled, it
+// closes without a value. Canceling ctx requests best-effort cancellation.
 //
 // To capture the client result, arm the action with its Into method before
 // dispatch; see [ActionInto].
 //
 // Do not wait on the channel during rendering. If you need to wait, use [Go]
 // or your own goroutine with [DetachedContext].
+//
+// ctx must belong to a Doors render or handler; otherwise Call panics.
 func Call(ctx context.Context, a Action) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	ch := make(chan error, 1)

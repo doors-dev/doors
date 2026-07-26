@@ -35,9 +35,8 @@ type AShared = *aShared
 
 var _ Attr = &aShared{}
 
-// NewAShared returns an enabled shared attribute handle.
-//
-// Update, Enable, and Disable affect every attached element together.
+// NewAShared returns an enabled shared attribute handle. Update, Enable, and
+// Disable affect every attached element together.
 //
 // Deprecated: use [Setter].
 func NewAShared(name string, value string) AShared {

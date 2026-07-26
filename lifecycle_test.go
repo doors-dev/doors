@@ -315,25 +315,25 @@ func TestOnReadyFromHandlerContextFiresPromptly(t *testing.T) {
 	h.waitEvent("ready-handler")
 }
 
-// OnFlush registered during a render with a trivial batch must not fire while
+// OnSettle registered during a render with a trivial batch must not fire while
 // the producing cycle is in flight; it fires only after the cycle is enqueued,
 // with a detached live context.
-func TestOnFlushRenderCtxWaitsForCycle(t *testing.T) {
+func TestOnSettleRenderCtxWaitsForCycle(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
 	entered := make(chan struct{})
 	release := make(chan struct{})
 	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
-		OnFlush(cur.Context(), func(ctx context.Context) {
+		OnSettle(cur.Context(), func(ctx context.Context) {
 			if !ctex.IsFreeCtx(ctx) {
-				h.events <- "flush-ctx-not-detached"
+				h.events <- "settle-ctx-not-detached"
 				return
 			}
 			if ctx.Err() != nil {
-				h.events <- "flush-ctx-canceled"
+				h.events <- "settle-ctx-canceled"
 				return
 			}
-			h.events <- "flush-render"
+			h.events <- "settle-render"
 		})
 		close(entered)
 		<-release
@@ -347,20 +347,20 @@ func TestOnFlushRenderCtxWaitsForCycle(t *testing.T) {
 	<-entered
 	h.expectNoEvent(50 * time.Millisecond)
 	close(release)
-	h.waitEvent("flush-render")
+	h.waitEvent("settle-render")
 	<-rendered
 }
 
-// OnFlush in a handler joins the handler's whole batch: it must not fire while
+// OnSettle in a handler joins the handler's whole batch: it must not fire while
 // the handler is still open and fires once the batch is dispatched.
-func TestOnFlushHandlerCtxWaitsForBatch(t *testing.T) {
+func TestOnSettleHandlerCtxWaitsForBatch(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	pageCtx := h.renderPage(nil)
 	c := pageCtx.Value(common.KeyCore).(core.Core)
 	entered := make(chan struct{})
 	proceed := make(chan struct{})
 	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		OnFlush(ctx, func(context.Context) { h.events <- "flush-handler" })
+		OnSettle(ctx, func(context.Context) { h.events <- "settle-handler" })
 		close(entered)
 		<-proceed
 		return true
@@ -378,42 +378,42 @@ func TestOnFlushHandlerCtxWaitsForBatch(t *testing.T) {
 	<-entered
 	h.expectNoEvent(50 * time.Millisecond)
 	close(proceed)
-	h.waitEvent("flush-handler")
+	h.waitEvent("settle-handler")
 	<-triggered
 }
 
-// OnFlush on a detached context opens a batch spanning the ops calls: ops run
-// synchronously, a nested OnFlush inside an op reuses the same batch context,
+// OnSettle on a detached context opens a batch spanning the ops calls: ops run
+// synchronously, a nested OnSettle inside an op reuses the same batch context,
 // and on fires after the batch completes.
-func TestOnFlushDetachedCtxOpsAndNestedReuse(t *testing.T) {
+func TestOnSettleDetachedCtxOpsAndNestedReuse(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	pageCtx := h.renderPage(nil)
 	var outer, inner context.Context
 	var synced atomic.Bool
-	OnFlush(DetachedContext(pageCtx), func(context.Context) {
+	OnSettle(DetachedContext(pageCtx), func(context.Context) {
 		if inner == nil || inner != outer {
-			h.events <- "flush-nested-ctx-mismatch"
+			h.events <- "settle-nested-ctx-mismatch"
 			return
 		}
 		if !synced.Load() {
-			h.events <- "flush-ops-not-sync"
+			h.events <- "settle-ops-not-sync"
 			return
 		}
-		h.events <- "flush-detached"
+		h.events <- "settle-detached"
 	}, func(ctx context.Context) {
 		outer = ctx
-		OnFlush(ctx, func(context.Context) {}, func(ctx context.Context) {
+		OnSettle(ctx, func(context.Context) {}, func(ctx context.Context) {
 			inner = ctx
 		})
 	}, func(ctx context.Context) {
 		synced.Store(true)
 	})
-	h.waitEvent("flush-detached")
+	h.waitEvent("settle-detached")
 }
 
 // A reload whose node CAS fails (door updated in the same batch) must not
 // strand the batch counter: on still fires.
-func TestOnFlushReloadCasFailureClosesBatch(t *testing.T) {
+func TestOnSettleReloadCasFailureClosesBatch(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
 	ctxCh := make(chan context.Context, 1)
@@ -424,25 +424,25 @@ func TestOnFlushReloadCasFailureClosesBatch(t *testing.T) {
 	h.renderPage(mountDoor(d))
 	contentCtx := <-ctxCh
 
-	OnFlush(DetachedContext(contentCtx), func(context.Context) {
-		h.events <- "flush-after-stale-reload"
+	OnSettle(DetachedContext(contentCtx), func(context.Context) {
+		h.events <- "settle-after-stale-reload"
 	}, func(ctx context.Context) {
 		d.Inner(ctx, textElem("v1"))
 		Reload(ctx)
 	})
-	h.waitEvent("flush-after-stale-reload")
+	h.waitEvent("settle-after-stale-reload")
 }
 
 // An unmount inside the batch holds it open: on must not fire before the
 // unmount's client call is scheduled.
-func TestOnFlushWaitsForUnmountDispatch(t *testing.T) {
+func TestOnSettleWaitsForUnmountDispatch(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
 	d.Inner(context.Background(), textElem("v0"))
 	pageCtx := h.renderPage(mountDoor(d))
 
 	xch := make(chan (<-chan error), 1)
-	OnFlush(DetachedContext(pageCtx), func(ctx context.Context) {
+	OnSettle(DetachedContext(pageCtx), func(ctx context.Context) {
 		ch := <-xch
 		select {
 		case err := <-ch:
@@ -450,52 +450,52 @@ func TestOnFlushWaitsForUnmountDispatch(t *testing.T) {
 				h.events <- "unmount-error"
 				return
 			}
-			h.events <- "flush-after-unmount-scheduled"
+			h.events <- "settle-after-unmount-scheduled"
 		default:
-			h.events <- "flush-before-unmount-scheduled"
+			h.events <- "settle-before-unmount-scheduled"
 		}
 	}, func(ctx context.Context) {
 		xch <- d.Unmount(ctx)
 	})
-	h.waitEvent("flush-after-unmount-scheduled")
+	h.waitEvent("settle-after-unmount-scheduled")
 }
 
-// A canceled owner context does not drop OnFlush: on still runs once the
+// A canceled owner context does not drop OnSettle: on still runs once the
 // batch point is reached; only render failure or instance shutdown drop it.
-func TestOnFlushRunsOnCanceledContext(t *testing.T) {
+func TestOnSettleRunsOnCanceledContext(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	pageCtx := h.renderPage(nil)
 	cctx, cancel := context.WithCancel(DetachedContext(pageCtx))
 	cancel()
-	OnFlush(cctx, func(ctx context.Context) {
+	OnSettle(cctx, func(ctx context.Context) {
 		if ctx.Err() == nil {
-			h.events <- "flush-ctx-not-canceled"
+			h.events <- "settle-ctx-not-canceled"
 			return
 		}
-		h.events <- "flush-canceled"
+		h.events <- "settle-canceled"
 	})
-	h.waitEvent("flush-canceled")
+	h.waitEvent("settle-canceled")
 }
 
-// OnFlush registered after runtime shutdown still fires, with a canceled
+// OnSettle registered after runtime shutdown still fires, with a canceled
 // context.
-func TestOnFlushRunsOnRuntimeShutdown(t *testing.T) {
+func TestOnSettleRunsOnRuntimeShutdown(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	pageCtx := h.renderPage(nil)
 	h.inst.runtime.Cancel()
-	OnFlush(DetachedContext(pageCtx), func(ctx context.Context) {
+	OnSettle(DetachedContext(pageCtx), func(ctx context.Context) {
 		if ctx.Err() == nil {
-			h.events <- "flush-shutdown-ctx-live"
+			h.events <- "settle-shutdown-ctx-live"
 			return
 		}
-		h.events <- "flush-shutdown"
+		h.events <- "settle-shutdown"
 	})
-	h.waitEvent("flush-shutdown")
+	h.waitEvent("settle-shutdown")
 }
 
-// A failing render still fires OnFlush, with a canceled context reporting the
+// A failing render still fires OnSettle, with a canceled context reporting the
 // drop of the batch; OnClean fires as well.
-func TestOnFlushRunsOnRenderError(t *testing.T) {
+func TestOnSettleRunsOnRenderError(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
 	d.Inner(context.Background(), textElem("v0"))
@@ -503,12 +503,12 @@ func TestOnFlushRunsOnRenderError(t *testing.T) {
 
 	renderErr := errors.New("render failed")
 	failing := gox.Elem(func(cur gox.Cursor) error {
-		OnFlush(cur.Context(), func(ctx context.Context) {
+		OnSettle(cur.Context(), func(ctx context.Context) {
 			if ctx.Err() == nil {
-				h.events <- "flush-error-ctx-live"
+				h.events <- "settle-error-ctx-live"
 				return
 			}
-			h.events <- "flush-error-canceled"
+			h.events <- "settle-error-canceled"
 		})
 		OnClean(cur.Context(), func() { h.events <- "clean-error" })
 		return renderErr
@@ -517,7 +517,7 @@ func TestOnFlushRunsOnRenderError(t *testing.T) {
 	if err := <-ch; !errors.Is(err, renderErr) {
 		t.Fatalf("expected render error, got %v", err)
 	}
-	h.waitEvents("clean-error", "flush-error-canceled")
+	h.waitEvents("clean-error", "settle-error-canceled")
 	h.expectNoEvent(100 * time.Millisecond)
 }
 

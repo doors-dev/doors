@@ -18,13 +18,13 @@ import (
 	"context"
 )
 
-// Watcher receives low-level lifecycle callbacks for a [Beamer].
+// Watcher is a subscriber to a value stream.
 type Watcher[T any] interface {
-	// Cancel is called when the watcher stops because of context cancellation or
-	// an explicit cancel call.
+	// Cancel runs when the subscription ends, whether the context was canceled
+	// or the returned cancel function was called.
 	Cancel()
-	// Watch receives the initial value synchronously and later updates
-	// asynchronously. Returning true stops the watcher.
+	// Watch receives the current value on the calling goroutine, then every
+	// update. Return true to end the subscription.
 	Watch(ctx context.Context, value T) bool
 }
 

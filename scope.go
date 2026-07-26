@@ -21,12 +21,15 @@ import (
 	"github.com/doors-dev/doors/internal/front"
 )
 
-// Scope is the low-level client scheduling scope used by event hooks.
+// Scope is one client-side scheduling policy applied to a hook request.
+//
+// Values come from the [Scopes] types, such as [ScopeBlocking], [ScopeDebounce],
+// or [ScopeLatest].
 type Scope = front.Scope
 
-// Scopes configures how hook requests are scheduled and deduplicated.
+// Scopes is a composable list of client-side scheduling policies for hook
+// requests.
 type Scopes interface {
-	// Scopes returns the low-level client scopes for this app core.
 	Scopes(core core.Core) []Scope
 	Joiner[Scopes]
 }
@@ -58,9 +61,14 @@ func (ss joinedScopes) Scopes(core core.Core) []Scope {
 	return output
 }
 
-// ScopeBlocking allows only one request in this scope to run at a time.
+// ScopeBlocking rejects a hook request while an earlier request in the same
+// scope has not finished.
 //
-// Later requests are rejected while an earlier request is active.
+// Each value is one scope: share one value between attrs to make them
+// coordinate, or use separate values to keep them independent.
+//
+// A rejected request is never sent, so its handler does not run and its
+// indication does not start.
 type ScopeBlocking struct {
 	id front.AutoID
 }
@@ -75,7 +83,11 @@ func (sb *ScopeBlocking) Scopes(core core.Core) []Scope {
 
 var _ Scopes = (*ScopeBlocking)(nil)
 
-// ScopeSerial queues requests in this scope and runs them one after another.
+// ScopeSerial queues hook requests in the same scope and runs them one at a
+// time, in arrival order.
+//
+// Unlike [ScopeBlocking], a later request waits instead of being rejected.
+// One value is one scope; see [ScopeBlocking] for sharing.
 type ScopeSerial struct {
 	id front.AutoID
 }
@@ -90,12 +102,16 @@ func (ss *ScopeSerial) Scopes(core core.Core) []Scope {
 
 var _ Scopes = (*ScopeSerial)(nil)
 
-// ScopeRate enforces a minimum interval between requests in this scope.
+// ScopeRate enforces a minimum interval between hook requests in the same
+// scope.
 //
-// The first event fires immediately. Subsequent events are throttled so
-// that no two requests start closer together than Tick.
+// Unlike [ScopeDebounce], the first request is not delayed. While the interval
+// is open only the newest pending request is kept, and the ones it replaces are
+// rejected.
+//
+// One value is one scope; see [ScopeBlocking] for sharing.
 type ScopeRate struct {
-	// Tick is the minimum interval between events.
+	// Tick is the minimum interval between two requests. Required.
 	Tick time.Duration
 	id   front.AutoID
 }
@@ -110,11 +126,18 @@ func (s *ScopeRate) Scopes(core core.Core) []Scope {
 
 var _ Scopes = (*ScopeRate)(nil)
 
-// ScopeDebounce delays requests until input settles.
+// ScopeDebounce delays a hook request until events stop arriving.
+//
+// A new event in the scope replaces the pending request, and the replaced one
+// is rejected without being sent.
+//
+// One value is one scope; see [ScopeBlocking] for sharing.
 type ScopeDebounce struct {
-	// Duration is the quiet period before a request is sent.
+	// Duration is the quiet period before the pending request is sent. Every
+	// new event restarts it. Required.
 	Duration time.Duration
-	// Limit is the maximum delay before a pending request must be sent.
+	// Limit caps the wait, measured from the first pending event. Optional;
+	// zero means no cap.
 	Limit time.Duration
 	id    front.AutoID
 }
@@ -129,31 +152,53 @@ func (s *ScopeDebounce) Scopes(core core.Core) []Scope {
 
 var _ Scopes = (*ScopeDebounce)(nil)
 
-// ScopeFrame groups requests by frame lifecycle.
+// ScopeFrame separates ordinary hook requests in a scope from a barrier
+// request that runs alone.
+//
+// It does not satisfy [Scopes]; call Scope to obtain a value.
+//
+// One value is one scope; see [ScopeBlocking] for sharing.
 type ScopeFrame struct {
 	id front.AutoID
 }
 
-// Scope returns a scope for either the frame or non-frame group.
+// Scope selects how a request takes part in this scope. With frame true the
+// request is the barrier: it waits for the requests already running in the
+// scope, then runs while every further request in the scope is rejected. With
+// frame false it is an ordinary member, rejected while a barrier is pending or
+// running.
 func (d *ScopeFrame) Scope(frame bool) Scopes {
 	return scopeFunc(func(core core.Core) []Scope {
 		return []Scope{front.FrameScope(d.id.String(core), frame)}
 	})
 }
 
-// ScopeConcurrent allows one request per group to run concurrently.
+// ScopeConcurrent lets hook requests in the same scope overlap only when they
+// share a group.
+//
+// It does not satisfy [Scopes]; call Scope to obtain a value.
+//
+// One value is one scope; see [ScopeBlocking] for sharing.
 type ScopeConcurrent struct {
 	id front.AutoID
 }
 
-// Scope returns a concurrent scheduling group.
+// Scope assigns a request to the group identified by groupID. While the scope
+// holds requests of one group, a request of any other group is rejected.
 func (d *ScopeConcurrent) Scope(groupID int) Scopes {
 	return scopeFunc(func(core core.Core) []Scope {
 		return []Scope{front.ConcurrentScope(d.id.String(core), groupID)}
 	})
 }
 
-// ScopeLatest keeps only the latest request in this scope.
+// ScopeLatest accepts a hook request immediately and cancels the previous one
+// in the same scope.
+//
+// Cancellation is client-side and best-effort: a canceled request may already
+// have reached the server and run its handler. Prefer [ScopeDebounce] when the
+// request must not be sent at all.
+//
+// One value is one scope; see [ScopeBlocking] for sharing.
 type ScopeLatest struct {
 	id front.AutoID
 }

@@ -20,9 +20,10 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// Mod is the required state of a keyboard modifier in a Key match.
+// Mod is the required state of a keyboard modifier in a [Key] match.
 type Mod uint8
 
+// Modifier states for [Key].
 const (
 	// ModAny matches regardless of whether the modifier is held.
 	ModAny Mod = iota
@@ -32,60 +33,53 @@ const (
 	ModOff
 )
 
-// Key describes a single keyboard shortcut to match against a keyboard event.
-// A keyboard hook fires when the event matches any of the entries in Keys.
+// Key is one key and modifier combination matched against a keyboard event.
 type Key struct {
-	// Key is the event.key to match. An empty string matches any key.
+	// Key is the event.key value to match. An empty string matches any key.
 	Key string
-	// CtrlMod is the required ctrl modifier state.
+	// CtrlMod is the required ctrl state. Default: [ModAny].
 	CtrlMod Mod
-	// ShiftMod is the required shift modifier state.
+	// ShiftMod is the required shift state. Default: [ModAny].
 	ShiftMod Mod
-	// AltMod is the required alt modifier state.
+	// AltMod is the required alt state. Default: [ModAny].
 	AltMod Mod
-	// MetaMod is the required meta (cmd/win) modifier state.
+	// MetaMod is the required meta state. Default: [ModAny].
 	MetaMod Mod
 }
 
-// RequestKeyboard is the typed request passed to keyboard event handlers.
+// RequestKeyboard is the request handle passed to [AKeyDown] and [AKeyUp]
+// handlers.
 type RequestKeyboard = RequestEvent[KeyboardEvent]
 
 type keyEventHook struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Filters by event.key and modifier state. The hook fires only when the
-	// event matches at least one entry.
-	// Optional.
+	// Keys filters by key and modifier state; the handler fires when the event
+	// matches any entry. Optional; without entries every event fires.
 	Keys []Key
-	// Filters by event.key.
+	// Filter filters by key name, ignoring modifier state.
 	//
-	// Deprecated: use Keys. Each entry matches its key regardless of modifier
-	// state.
-	// Optional.
+	// Deprecated: use Keys.
 	Filter []string
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Backend event handler.
-	// Receives a typed RequestEvent[KeyboardEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
 }
 
@@ -119,44 +113,43 @@ func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs)
 	}.apply(ctx, attrs)
 }
 
-// AKeyDown prepares a key down event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// AKeyDown handles the browser keydown event on the element it is attached to.
+//
+// Attach it as an attribute to one or more elements. Each matching event sends
+// one request, subject to Scope. Return false from On to keep the handler
+// active, true to remove it. A nil On still installs the hook and still sends
+// the request, so omit the attr rather than nil-ing On.
 type AKeyDown struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Filters by event.key and modifier state. The hook fires only when the
-	// event matches at least one entry.
-	// Optional.
+	// Keys limits the handler to events matching at least one entry.
+	// PreventDefault and StopPropagation apply only to matching
+	// events. Optional; without entries every keydown fires.
 	Keys []Key
-	// Filters by event.key.
+	// Filter limits the handler to the listed event.key values. Optional.
 	//
 	// Deprecated: use Keys. Each entry matches its key regardless of modifier
 	// state.
-	// Optional.
 	Filter []string
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Backend event handler.
-	// Receives a typed RequestEvent[KeyboardEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
 }
 
@@ -168,44 +161,39 @@ func (k AKeyDown) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*keyEventHook)(&k).apply("keydown", ctx, attrs)
 }
 
-// AKeyUp prepares a key up event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// AKeyUp handles the browser keyup event on the element it is attached to.
+// Fields and handler contract follow [AKeyDown].
 type AKeyUp struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Filters by event.key and modifier state. The hook fires only when the
-	// event matches at least one entry.
-	// Optional.
+	// Keys limits the handler to events matching at least one entry.
+	// PreventDefault and StopPropagation apply only to matching
+	// events. Optional; without entries every keyup fires.
 	Keys []Key
-	// Filters by event.key.
+	// Filter limits the handler to the listed event.key values. Optional.
 	//
 	// Deprecated: use Keys. Each entry matches its key regardless of modifier
 	// state.
-	// Optional.
 	Filter []string
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Backend event handler.
-	// Receives a typed RequestEvent[KeyboardEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
 }
 

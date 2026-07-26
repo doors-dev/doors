@@ -404,7 +404,7 @@ See [JavaScript](./15-javascript.md).
 
 - [Navigation](./09-navigation.md) for `doors.ALink`.
 - [JavaScript](./15-javascript.md) for `doors.AHook[...]`, `doors.ARawHook`, and `doors.AData`.
-- [Shared Attr](./17-shared-attr.md) for dynamic shared attributes.
+- [Element Handles](./17-element-handles.md) for setting attributes and emitting events from Go.
 - [Scopes](./10-scopes.md) for request scheduling.
 - [Indication](./11-indication.md) for client-side feedback.
 - [Actions](./12-actions.md) for `Before`, `OnError`, and `After` actions.
