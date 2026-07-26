@@ -545,7 +545,7 @@ func TestSetterSetValueSemantics(t *testing.T) {
 		{"true bare", true, str("")},
 		{"false removes", false, nil},
 		{"nil removes", nil, nil},
-		{"output", Class("a").Add("b"), str("a b")},
+		{"output", rawAttrValue(`a&b"c"`), str(`a&b"c"`)},
 	}
 	var id uint64
 	for _, tc := range cases {
