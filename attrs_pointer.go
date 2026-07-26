@@ -20,35 +20,31 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// RequestPointer is the typed request passed to pointer event handlers.
+// RequestPointer is the request handle passed to pointer event attr handlers.
 type RequestPointer = RequestEvent[PointerEvent]
 
 type pointerEventHook struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -68,34 +64,34 @@ func (p *pointerEventHook) apply(event string, ctx context.Context, attrs gox.At
 	}.apply(ctx, attrs)
 }
 
-// AClick prepares a click event hook for DOM elements,
-// configuring propagation, scheduling, indicators, and handlers.
+// AClick handles the browser click event on the element it is attached to.
+//
+// Attach it as an attribute to one or more elements. Each event sends one
+// request, subject to Scope. Return false from On to keep the handler active,
+// true to remove it. A nil On still installs the hook and still sends the
+// request, so omit the attr rather than nil-ing On.
 type AClick struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -107,34 +103,30 @@ func (p AClick) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*pointerEventHook)(&p).apply("click", ctx, attrs)
 }
 
-// APointerDown prepares a pointer down event hook for DOM elements,
-// configuring propagation, scheduling, indicators, and handlers.
+// APointerDown handles the browser pointerdown event on the element it is
+// attached to. Fields and handler contract follow [AClick].
 type APointerDown struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -146,34 +138,30 @@ func (p APointerDown) Modify(ctx context.Context, _ string, attrs gox.Attrs) err
 	return (*pointerEventHook)(&p).apply("pointerdown", ctx, attrs)
 }
 
-// APointerUp prepares a pointer up event hook for DOM elements,
-// configuring propagation, scheduling, indicators, and handlers.
+// APointerUp handles the browser pointerup event on the element it is attached
+// to. Fields and handler contract follow [AClick].
 type APointerUp struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -185,34 +173,30 @@ func (p APointerUp) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 	return (*pointerEventHook)(&p).apply("pointerup", ctx, attrs)
 }
 
-// APointerMove prepares a pointer move event hook for DOM elements,
-// configuring propagation, scheduling, indicators, and handlers.
+// APointerMove handles the browser pointermove event on the element it is
+// attached to. Fields and handler contract follow [AClick].
 type APointerMove struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -224,34 +208,30 @@ func (p APointerMove) Modify(ctx context.Context, _ string, attrs gox.Attrs) err
 	return (*pointerEventHook)(&p).apply("pointermove", ctx, attrs)
 }
 
-// APointerOver prepares a pointer over event hook for DOM elements,
-// configuring propagation, scheduling, indicators, and handlers.
+// APointerOver handles the browser pointerover event on the element it is
+// attached to. Fields and handler contract follow [AClick].
 type APointerOver struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -263,34 +243,30 @@ func (p APointerOver) Modify(ctx context.Context, _ string, attrs gox.Attrs) err
 	return (*pointerEventHook)(&p).apply("pointerover", ctx, attrs)
 }
 
-// APointerOut prepares a pointer out event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// APointerOut handles the browser pointerout event on the element it is
+// attached to. Fields and handler contract follow [AClick].
 type APointerOut struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -302,34 +278,31 @@ func (p APointerOut) Modify(ctx context.Context, _ string, attrs gox.Attrs) erro
 	return (*pointerEventHook)(&p).apply("pointerout", ctx, attrs)
 }
 
-// APointerEnter prepares a pointer enter event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// APointerEnter handles the browser pointerenter event on the element it is
+// attached to. Unlike [APointerOver], pointerenter does not bubble. Fields and
+// handler contract follow [AClick].
 type APointerEnter struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -341,34 +314,31 @@ func (p APointerEnter) Modify(ctx context.Context, _ string, attrs gox.Attrs) er
 	return (*pointerEventHook)(&p).apply("pointerenter", ctx, attrs)
 }
 
-// APointerLeave prepares a pointer leave event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// APointerLeave handles the browser pointerleave event on the element it is
+// attached to. Unlike [APointerOut], pointerleave does not bubble. Fields and
+// handler contract follow [AClick].
 type APointerLeave struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -380,34 +350,30 @@ func (p APointerLeave) Modify(ctx context.Context, _ string, attrs gox.Attrs) er
 	return (*pointerEventHook)(&p).apply("pointerleave", ctx, attrs)
 }
 
-// APointerCancel prepares a pointer cancel event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// APointerCancel handles the browser pointercancel event on the element it is
+// attached to. Fields and handler contract follow [AClick].
 type APointerCancel struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -419,34 +385,30 @@ func (p APointerCancel) Modify(ctx context.Context, _ string, attrs gox.Attrs) e
 	return (*pointerEventHook)(&p).apply("pointercancel", ctx, attrs)
 }
 
-// AGotPointerCapture prepares a gotpointercapture event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// AGotPointerCapture handles the browser gotpointercapture event on the element
+// it is attached to. Fields and handler contract follow [AClick].
 type AGotPointerCapture struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -458,34 +420,30 @@ func (p AGotPointerCapture) Modify(ctx context.Context, _ string, attrs gox.Attr
 	return (*pointerEventHook)(&p).apply("gotpointercapture", ctx, attrs)
 }
 
-// ALostPointerCapture prepares a lostpointercapture event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// ALostPointerCapture handles the browser lostpointercapture event on the
+// element it is attached to. Fields and handler contract follow [AClick].
 type ALostPointerCapture struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, prevents the browser's default action for the event.
-	// Optional.
+	// PreventDefault suppresses the browser's default action. Optional.
 	PreventDefault bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[PointerEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestPointer) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 

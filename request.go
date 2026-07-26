@@ -22,94 +22,101 @@ import (
 	"net/url"
 )
 
-// RequestAfter schedules client-side actions to run after a successful
-// request.
+// RequestAfter is the part of a request handle that runs client-side actions
+// after a successful response.
 type RequestAfter interface {
-	// After appends client-side actions to the successful response.
+	// After registers actions to run on the client once the response
+	// succeeds. A second call replaces the actions of the first.
 	After(a Actions) error
 }
 
-// RequestCommon exposes the common server-side request helpers available to Doors
-// handlers.
+// RequestCommon is the HTTP-level part of every request handle Doors passes to
+// a handler.
 type RequestCommon interface {
 	// SetCookie adds a cookie to the response.
 	SetCookie(cookie *http.Cookie)
-	// GetCookie retrieves a cookie by name.
+	// GetCookie returns the named request cookie, or [http.ErrNoCookie] if it
+	// is not present.
 	GetCookie(name string) (*http.Cookie, error)
-	// Context returns the underlying HTTP request context.
-	// It is not the Doors runtime context passed to handlers.
+	// Context returns the context of the underlying HTTP request. It is not
+	// the Doors runtime context the handler receives.
 	Context() context.Context
 	// RequestHeader returns the incoming request headers.
 	RequestHeader() http.Header
-	// RemoteAddr returns the network address that sent the request
+	// RemoteAddr returns the address of the direct peer as host:port. Proxy
+	// headers are not applied.
 	RemoteAddr() string
 }
 
-// RequestEvent is the request context passed to event handlers.
+// RequestEvent is the request handle passed to event attr handlers.
 type RequestEvent[E any] interface {
 	RequestCommon
 	RequestAfter
-	// Event returns the event payload.
+	// Event returns the decoded event payload.
 	Event() E
 }
 
-// RequestForm is the request context passed to decoded form handlers.
+// RequestForm is the request handle passed to [ASubmit] handlers.
 type RequestForm[D any] interface {
 	RequestCommon
 	RequestAfter
-	// Data returns the parsed form payload.
+	// Data returns the submitted form decoded into D.
 	Data() D
 }
 
-// RequestRawForm is the request context passed to raw multipart form handlers.
+// RequestRawForm is the request handle passed to [ARawSubmit] handlers, with
+// the multipart body left undecoded.
 type RequestRawForm interface {
 	RequestCommon
 	RequestAfter
-	// SetRequestBodyLimit sets the max request body size in bytes for
-	// ParseForm, Reader, and Body. Negative values disable the limit, zero
-	// forbids body reads. Defaults to the configured server request body
-	// limit.
+	// SetRequestBodyLimit sets the max body size in bytes accepted by later
+	// Body, ParseForm, and Reader calls. A negative limit disables the
+	// check; zero rejects a non-empty body. Default: ServerRequestBodyLimit
+	// of [Conf].
 	SetRequestBodyLimit(limit int)
-	// ResponseWriter returns the HTTP response writer.
+	// ResponseWriter returns the writer for the response.
 	ResponseWriter() http.ResponseWriter
-	// Reader returns a multipart reader for streaming form parts. The body
-	// is bounded by the most recently set request body limit.
+	// Reader returns a multipart reader for streaming the form one part at a
+	// time. Unlike [RequestRawForm.ParseForm], it buffers no part to disk.
 	Reader() (*multipart.Reader, error)
-	// ParseForm parses the form data with a memory limit.
-	// The body is bounded by the request body limit.
+	// ParseForm parses the whole multipart body, keeping up to maxMemory
+	// bytes of file parts in memory and storing the rest in temporary files.
+	// It fails if the body is not a multipart form.
 	ParseForm(maxMemory int) (ParsedForm, error)
 }
 
-// ParsedForm exposes parsed multipart form values and files.
+// ParsedForm is a parsed multipart form.
 type ParsedForm interface {
-	// FormValues returns all parsed form values.
+	// FormValues returns the form fields merged with the URL query values.
 	FormValues() url.Values
-	// FormValue returns the first value for the given key.
+	// FormValue returns the first value for key, empty if there is none.
 	FormValue(key string) string
-	// FormFile returns the uploaded file for the given key.
+	// FormFile returns the first uploaded file for key, or an error if there
+	// is none.
 	FormFile(key string) (multipart.File, *multipart.FileHeader, error)
-	// Form returns the underlying multipart.Form.
+	// Form returns the parsed values and file headers.
 	Form() *multipart.Form
 }
 
-// RequestHook is the request context passed to typed JavaScript hook handlers.
+// RequestHook is the request handle passed to [AHook] handlers.
 type RequestHook[D any] interface {
 	RequestCommon
 	RequestAfter
-	// Data returns the parsed hook payload.
+	// Data returns the hook argument decoded from JSON into D.
 	Data() D
 }
 
-// RequestRawHook is the request context passed to raw JavaScript hook handlers.
+// RequestRawHook is the request handle passed to [ARawHook] handlers, with the
+// body left undecoded.
 type RequestRawHook interface {
 	RequestRawForm
-	// Body returns the raw request body reader.
+	// Body returns the request body, bounded by the limit from
+	// [RequestRawForm.SetRequestBodyLimit].
 	Body() io.ReadCloser
 }
 
-// Request is the request context passed to main app handler.
-//
-// Use it for cookies, request headers, and response headers.
+// Request is the request handle passed to the page factory, for cookies and
+// request or response headers.
 type Request interface {
 	RequestCommon
 	// ResponseHeader returns the outgoing response headers.

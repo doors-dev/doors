@@ -34,6 +34,7 @@ const (
 	SelectModeParentQuery SelectorMode = "parent_query"
 )
 
+// Selector picks the elements an indicator applies to.
 type Selector struct {
 	mode  SelectorMode
 	query string
@@ -67,6 +68,7 @@ func (s Selector) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]string{string(s.mode), s.query})
 }
 
+// Indicator is a single temporary DOM change applied on the client.
 type Indicator struct {
 	selector Selector
 	kind     indicatorKind

@@ -16,7 +16,8 @@ package doors
 
 import "embed"
 
-// DocsFS is the embedded documentation tree.
+// DocsFS is the embedded documentation tree. Guide paths are rooted at docs,
+// such as docs/01-get-started.md.
 //
 //go:embed docs/**
 var DocsFS embed.FS

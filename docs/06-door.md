@@ -180,14 +180,17 @@ After a Door has been made static or unmounted, later calls still update the Doo
 
 ### Lifecycle Hooks
 
-`doors.OnReady` and `doors.OnClean` attach callbacks to the content being rendered:
+`doors.OnReady`, `doors.OnSettle`, and `doors.OnClean` attach callbacks to the content being rendered:
 
 ```go
 doors.OnReady(ctx context.Context, f func(ctx context.Context))
+doors.OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context))
 doors.OnClean(ctx context.Context, f func())
 ```
 
 `OnReady` fires when the render cycle that produced the surrounding content completes — the HTML is rendered and the update is on its way to the client. Called with a `ctx` whose content is already on the page (an event handler, for example), it fires promptly.
+
+`OnSettle` runs `ops` inside the current dispatch batch and fires once that batch settles: every Doors operation the batch started has been processed and its updates are enqueued. Where `OnReady` tracks one render cycle, `OnSettle` tracks everything the batch started, including the Door updates and beam propagation it triggered. Settling is server-side — the updates are queued, not yet written to the connection or acknowledged by the browser.
 
 `OnClean` fires when that content is cleared:
 
@@ -197,7 +200,7 @@ doors.OnClean(ctx context.Context, f func())
 - the render fails
 - the instance ends
 
-The two are not symmetric. `OnReady` is **best-effort**: if the render cycle fails or is superseded by a newer Door operation, it never fires. `OnClean` is **exactly-once**: every rendered piece of content is eventually cleared. So acquire in render code, release in `OnClean`:
+They are not symmetric. `OnReady` is **best-effort**: if the render cycle fails or is superseded by a newer Door operation, it never fires. `OnSettle` and `OnClean` are **exactly-once**: a batch always settles one way or another, and every rendered piece of content is eventually cleared. So acquire in render code, release in `OnClean`:
 
 ```gox
 elem (c Chat) Main() {
@@ -211,7 +214,7 @@ elem (c Chat) Main() {
 }
 ```
 
-Do not block in either callback. `OnReady` runs on the instance goroutine pool with a context equivalent to `doors.DetachedContext`. `OnClean` runs inline on framework goroutines and receives no context — if teardown is slow, start your own goroutine with a context captured beforehand (for example from `doors.InstanceContext(ctx)`).
+Do not block in any of these callbacks. `OnReady` and `OnSettle` run on the instance goroutine pool with a context equivalent to `doors.DetachedContext`; `OnSettle` runs inline on the calling goroutine when the instance is shutting down or the owner is already canceled. `OnClean` runs inline on framework goroutines and receives no context — if teardown is slow, start your own goroutine with a context captured beforehand (for example from `doors.InstanceContext(ctx)`).
 
 ## Use Cases
 

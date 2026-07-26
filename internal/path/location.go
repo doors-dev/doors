@@ -21,19 +21,17 @@ import (
 	"strings"
 )
 
-// Location is a parsed or generated URL path plus query string.
+// Location is a URL path plus query string, held in decoded form.
 type Location struct {
-	// Segments holds the decoded path segments without leading or trailing
-	// slashes.
+	// Segments are the path segments, decoded and without the separating
+	// slashes. Empty means the root path.
 	Segments []string
-	// Query holds the decoded query parameters.
+	// Query holds the query parameters in decoded form. Empty means no query
+	// string.
 	Query url.Values
 }
 
-// Clone returns a deep copy of l.
-//
-// The returned Location has independent Segments and Query slices, so callers
-// can mutate it without changing the original value.
+// Clone returns a deep copy of l with independent Segments and Query.
 func (l Location) Clone() Location {
 	return Location{
 		Segments: slices.Clone(l.Segments),
@@ -49,7 +47,8 @@ func cloneQuery(query url.Values) url.Values {
 	return clone
 }
 
-// Path returns the escaped path portion of l without the query string.
+// Path returns the escaped path with a leading slash and without the query
+// string.
 func (l Location) Path() string {
 	b := strings.Builder{}
 	b.WriteByte('/')
@@ -62,7 +61,8 @@ func (l Location) Path() string {
 	return b.String()
 }
 
-// String returns l encoded as `/<segments>?<query>`.
+// String returns the escaped path with a leading slash, followed by the encoded
+// query string when Query is not empty.
 func (l Location) String() string {
 	b := strings.Builder{}
 	b.WriteByte('/')
@@ -84,7 +84,8 @@ func EqualLocation(a, b Location) bool {
 	return slices.Equal(a.Segments, b.Segments) && maps.EqualFunc(a.Query, b.Query, slices.Equal)
 }
 
-// NewLocationFromEscapedURI parses s into a [Location].
+// NewLocationFromEscapedURI parses s into a [Location]. If s is not a valid
+// URL reference, it returns the zero Location.
 func NewLocationFromEscapedURI(s string) Location {
 	u, err := url.Parse(s)
 	if err != nil {

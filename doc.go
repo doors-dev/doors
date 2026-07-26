@@ -15,11 +15,8 @@
 // Package doors builds server-rendered web apps with typed routing, reactive
 // values, and server-handled browser interactions.
 //
-// Most apps start with [NewApp], route the current [Location] with
-// [Route], and render dynamic fragments with [Door],
-// [Source], and [Beam]. Event attrs such as [AClick], [ASubmit], and [ALink]
-// connect DOM events, forms, and navigation to Go handlers while still
-// producing regular HTML.
-//
-// For a guided introduction, see the documents embedded in [DocsFS].
+// Most apps start with [NewApp], route the current [Location] with [Route], and
+// render dynamic fragments with [Door], [Source], and [Beam]. Event attrs such
+// as [AClick], [ASubmit], and [ALink] connect DOM events, forms, and navigation
+// to Go handlers while still producing regular HTML.
 package doors

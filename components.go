@@ -25,26 +25,20 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// Door is a dynamic placeholder in the DOM tree that can be updated,
-// replaced, or removed after render.
+// Door is a dynamic part of the page that can be updated, replaced, or removed
+// after render.
 //
-// Doors start inactive and become active when rendered. Operations on an
-// inactive door are stored virtually and applied when the door becomes active.
-// If a door is removed or replaced, it becomes inactive again, but operations
-// continue to update that virtual content for future rendering.
+// A Door is not mounted until it is rendered, and [Door.Unmount] or removal by
+// an ancestor returns it to that state. While it is not mounted, operations
+// change its stored state, which the next render puts on the page.
 //
-// The context used while rendering a door's content follows the door's
-// lifecycle, which makes `ctx.Done()` safe to use in background goroutines
-// that depend on the door staying mounted.
-//
-// X-prefixed methods return a channel that reports completion. For inactive
-// doors, that channel closes immediately without sending a value.
+// The context of content rendered inside a Door is canceled when that content
+// leaves the page, which makes ctx.Done() usable in background work.
 type Door = door.Door
 
 // Parallel renders the following element on the instance goroutine pool.
 //
-// Use it for fragments with database queries or external API calls to improve
-// render time.
+// Use it for fragments that wait on a database query or an external API call.
 func Parallel() gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
 		j := parallelJob{
@@ -55,8 +49,10 @@ func Parallel() gox.Proxy {
 	})
 }
 
-// Ctx renders the following element with user values from the provided
-// context. Render scope and cancelation stay with the enclosing render.
+// Ctx renders the following element with the values of ctx.
+//
+// Only value lookups are served from ctx; cancellation and Doors ownership stay
+// with the enclosing render.
 func Ctx(ctx context.Context) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
 		ctx := common.NewRenderCtx(cur.Context(), ctx)
@@ -86,24 +82,17 @@ func (parallelJob) Output(io.Writer) error {
 
 // Go starts f when the surrounding component is rendered.
 //
-// The passed context is canceled when the dynamic owner is unmounted, which
-// makes [Go] a good fit for background loops that should stop with the page.
-// The context is also equivalent to calling [DetachedContext] on the
-// surrounding context, so it is safe to use with X-prefixed operations that
-// should keep the current dynamic ownership.
+// The context passed to f is the surrounding render context through
+// [DetachedContext]: it is canceled when the surrounding content leaves the
+// page and keeps the current dynamic ownership. Waiting on completion channels
+// inside f is safe.
 //
 // Example:
 //
-//	@doors.Go(func(ctx context.Context) {
-//	    for {
-//	        select {
-//	        case <-time.After(time.Second):
-//	            door.Inner(ctx, currentTime())
-//	        case <-ctx.Done():
-//	            return
-//	        }
-//	    }
-//	})
+//	~(doors.Go(func(ctx context.Context) {
+//	    <-time.After(time.Second)
+//	    d.Inner(ctx, currentTime())
+//	}))
 func Go(f func(ctx context.Context)) gox.Editor {
 	return gox.EditorFunc(func(cur gox.Cursor) error {
 		core := cur.Context().Value(common.KeyCore).(core.Core)
@@ -113,7 +102,8 @@ func Go(f func(ctx context.Context)) gox.Editor {
 	})
 }
 
-// Status sets the initial HTTP status code for the current page render.
+// Status sets the HTTP status code of the initial page response, replacing the
+// default 200. Calling it after that response is sent has no effect.
 //
 // Example:
 //

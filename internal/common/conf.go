@@ -16,117 +16,117 @@ package common
 
 import "time"
 
+// DefaultCacheControl is the Cache-Control value used when ServerCacheControl
+// is empty.
 const DefaultCacheControl string = "public, max-age=31536000, immutable"
 
-// Conf defines global configuration for sessions, instances,
-// client-server communication, and performance. Defaults are auto-initialized.
+// Conf is the Doors runtime configuration.
 type Conf struct {
-	// SessionInstanceLimit is the max number of page instances per session.
-	// When exceeded, the oldest inactive ones are suspended.
-	// Default: 12.
+	// SessionInstanceLimit is the max number of live page instances per
+	// session. Above it, the least active instance is suspended and reloads
+	// on the next interaction. Default: 12.
 	SessionInstanceLimit int
-	// SessionTTL controls how long session lives after last activity.
-	// Default behavior (value 0): InstanceTTL
+	// SessionTTL is how long a session survives its last request. Values at
+	// or below InstanceTTL are raised to it.
 	SessionTTL time.Duration
-	// InstanceConnectTimeout controls how long new instance waits
-	// before shutdown for the first client connection.
-	// Default: RequestTimeout
+	// InstanceConnectTimeout is how long a rendered page has to connect back
+	// before its instance is dropped. Default: RequestTimeout.
 	InstanceConnectTimeout time.Duration
-	// InstanceGoroutineLimit is the max goroutines per page instance.
-	// Controls resource use for rendering and reactive updates. Default: 8.
+	// InstanceGoroutineLimit is the max number of goroutines one page
+	// instance uses for rendering and reactive work. Default: 8.
 	InstanceGoroutineLimit int
-	// InstanceTTL is how long an inactive instance is kept before cleanup.
-	// Active = browser connected. Default: 40minutes.
+	// InstanceTTL is how long an instance is kept without a browser
+	// connection before it is dropped. Default: 40m; values below twice
+	// RequestTimeout are raised to that.
 	InstanceTTL time.Duration
-	// ServerCacheControl defines cache control header value for JS and CSS
-	// resources prepared by the framework.
-	// Default "public, max-age=31536000, immutable"
+	// ServerCacheControl is the Cache-Control value for managed resources.
+	// Default: public, max-age=31536000, immutable.
 	ServerCacheControl string
-	// ServerDisableGzip disables gzip compression for HTML, JS, and CSS if true.
+	// ServerDisableGzip disables gzip compression for HTML, Door updates, and
+	// managed resources.
 	ServerDisableGzip bool
-	// ServerSessionCookiePrefix sets the internal Doors session cookie name prefix.
-	// Use it when you want browser-enforced cookie prefix rules, such as
-	// __Host- or __Secure-. Empty by default.
+	// ServerSessionCookiePrefix is prepended to the Doors session cookie name.
+	// Use it for browser-enforced prefixes such as __Host- or __Secure-.
 	ServerSessionCookiePrefix string
-	// ServerRequestBodyLimit is the max size in bytes for server-bound request
-	// bodies in hooks and form submissions.
-	// Default: 8 MB.
+	// ServerRequestBodyLimit is the max size in bytes of a hook or form
+	// submission request body. Default: 8 MB.
 	ServerRequestBodyLimit int
-	// ServerSessionCookieNoSecure disables the Secure attribute on the internal
-	// Doors session cookie. Use only for plain HTTP development.
+	// ServerSessionCookieNoSecure drops the Secure attribute from the cookies
+	// Doors sets. Use it only for plain HTTP development.
 	ServerSessionCookieNoSecure bool
-	// DisconnectHiddenTimer is how long hidden/background instances stay connected.
-	// Default: InstanceTTL/2.
+	// DisconnectHiddenTimer is how long a hidden page stays connected before it
+	// pauses; it reconnects when visible again. Default: InstanceTTL/2.
 	DisconnectHiddenTimer time.Duration
-	// RequestTimeout is the max duration of a client-server request.
-	// Default: 30s.
+	// RequestTimeout is the time limit of one request: page renders on the
+	// server, hook and navigation requests in the browser. Default: 30s.
 	RequestTimeout time.Duration
-	// SolitaireRollTime is the max lifetime of a solitaire sender or report
-	// receiver request before rolling to a replacement request.
-	// Default: 15s.
+	// SolitaireRollTime is how long one live connection request is held open
+	// before it is replaced by a fresh one. Lower it behind proxies that cut
+	// long requests. Default: 15s.
 	SolitaireRollTime time.Duration
-	// SolitaireSyncTimeout is the max pending duration of a server-to-client
-	// sync task, including user calls. Exceeding this kills the instance.
-	// Default: InstanceTTL.
+	// SolitaireSyncTimeout is how long the server waits for the browser to
+	// acknowledge an update before ending the instance. Default: InstanceTTL;
+	// larger values are capped at it.
 	SolitaireSyncTimeout time.Duration
-	// SolitaireFrameTime is the max time to buffer an outgoing server-to-client
-	// frame before forcing a sync flush.
-	// Default: ~33.3ms (30 FPS).
+	// SolitaireFrameTime is how long outgoing updates are batched before they
+	// are sent to the browser. Default: 33.3ms.
 	SolitaireFrameTime time.Duration
-	// SolitaireFrameSize is the max buffered bytes in an outgoing
-	// server-to-client frame before forcing a sync flush.
-	// Default: 32 KB.
+	// SolitaireFrameSize is how many buffered bytes force an immediate send of
+	// outgoing updates. Default: 32 KB.
 	SolitaireFrameSize int
-	// SolitaireDisableGzip disables gzip compression for solitaire sync payloads if true.
+	// SolitaireDisableGzip disables gzip compression of action payloads sent
+	// to the browser.
 	SolitaireDisableGzip bool
-	// SolitaireQueue is the max total queued plus unresolved
-	// server-to-client sync tasks. Exceeding this kills the instance.
-	// Default: 1024.
+	// SolitaireQueue is the max number of updates waiting for delivery or
+	// acknowledgement. Exceeding it ends the instance. Default: 1024.
 	SolitaireQueue int
-	// SolitairePending is the max unresolved server-to-client sync tasks.
-	// Throttles sending when reached. Default: 256.
+	// SolitairePending is the max number of delivered but unacknowledged
+	// updates; at the limit the server stops sending. Default: 256.
 	SolitairePending int
-	// SolitaireDisableReportStreaming disables browser streaming request bodies for
-	// client-to-server reports. When true, each report uses a standalone JSON
-	// POST. Default: false.
+	// SolitaireDisableReportStreaming makes the browser post each message
+	// separately instead of streaming one request body. The browser already
+	// falls back on its own outside HTTP/2 and HTTP/3.
 	SolitaireDisableReportStreaming bool
-	// SolitaireReportLimit is the max size of one client-to-server report
-	// report. Default: 8 MB.
+	// SolitaireReportLimit is the max size in bytes of one message the browser
+	// sends back. Default: 8 MB.
 	SolitaireReportLimit int
-	// SolitaireReportTimeout is the max time to receive and decode one
-	// client-to-server report. Default: min(5s, SolitaireRollTime).
+	// SolitaireReportTimeout is how long the server waits to receive one
+	// message from the browser before dropping the connection. Default: 5s, or
+	// SolitaireRollTime if it is smaller.
 	SolitaireReportTimeout time.Duration
-	// SolitaireMaxRTT caps the RTT estimate used for sync probing while the
-	// server has pending work but no frame ready to flush. Values below
-	// 2*SolitaireFrameTime are raised to that minimum. Default: 1s.
+	// SolitaireMaxRTT caps the round-trip estimate used to pace waiting on the
+	// browser while updates are unacknowledged. Values below twice
+	// SolitaireFrameTime are raised to that. Default: 1s.
 	SolitaireMaxRTT time.Duration
 }
 
+// SolitaireConf holds the effective update stream settings taken from Conf.
 type SolitaireConf struct {
-	// Roll is the effective solitaire request roll interval.
+	// Roll is the effective SolitaireRollTime.
 	Roll time.Duration
-	// FrameSize is the effective outgoing server-to-client frame size limit.
+	// FrameSize is the effective SolitaireFrameSize.
 	FrameSize int
-	// FlushTime is the effective outgoing server-to-client frame time limit.
+	// FlushTime is the effective SolitaireFrameTime.
 	FlushTime time.Duration
-	// DisableGzip is the effective solitaire payload gzip flag.
+	// DisableGzip is the effective SolitaireDisableGzip.
 	DisableGzip bool
-	// DisableReportStreaming is the effective report streaming flag.
+	// DisableReportStreaming is the effective SolitaireDisableReportStreaming.
 	DisableReportStreaming bool
-	// Queue is the effective queued plus unresolved sync task limit.
+	// Queue is the effective SolitaireQueue.
 	Queue int
-	// Pending is the effective unresolved sync task limit.
+	// Pending is the effective SolitairePending.
 	Pending int
-	// SyncTimeout is the effective sync task timeout.
+	// SyncTimeout is the effective SolitaireSyncTimeout.
 	SyncTimeout time.Duration
-	// ReportSize is the effective streaming report message size limit.
+	// ReportSize is the effective SolitaireReportLimit.
 	ReportSize int
-	// ReportTimeout is the effective single-report receive timeout.
+	// ReportTimeout is the effective SolitaireReportTimeout.
 	ReportTimeout time.Duration
-	// MaxRTT is the effective RTT estimate cap after the 2*FlushTime minimum.
+	// MaxRTT is the effective SolitaireMaxRTT.
 	MaxRTT time.Duration
 }
 
+// GetSolitaireConf returns the effective update stream settings of s.
 func GetSolitaireConf(s *Conf) *SolitaireConf {
 	return &SolitaireConf{
 		SyncTimeout:            s.SolitaireSyncTimeout,
@@ -177,7 +177,8 @@ func (s *Conf) solitaireDefaults() {
 	}
 }
 
-// InitDefaults fills zero or invalid values in s with Doors defaults.
+// InitDefaults fills zero or invalid values in s with Doors defaults and
+// applies the documented clamps.
 func InitDefaults(s *Conf) {
 	if s.RequestTimeout <= 0 {
 		s.RequestTimeout = 30 * time.Second

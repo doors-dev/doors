@@ -30,10 +30,11 @@ var _ Attr = (*Setter)(nil)
 
 // Setter sets attributes on the elements it is attached to.
 //
-// Attach it as an attribute to one or more elements, then pass the action
-// returned by [Setter.Set] to [Call] or any action-accepting API.
+// Attach it as an attribute to one or more elements, then dispatch the action
+// returned by [Setter.Set] with [Call]. Prefer [ActionEmit] when the client
+// should own the DOM change.
 //
-// Setter is stateless: it changes live elements only. A re-rendered element
+// Setter is stateless: it changes live elements only. A rerendered element
 // returns to its template attributes.
 type Setter struct {
 	id front.AutoID
@@ -50,10 +51,11 @@ func (s *Setter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return nil
 }
 
-// Set returns an action setting attribute name on attached elements; its
-// Into captures the number of affected elements (see [ActionInto]).
+// Set returns an action setting attribute name to value on attached elements;
+// Into captures the number of live elements it reached, 0 when none is live
+// (see [ActionInto]). An [Emitter] event counts hook requests instead.
 //
-// The value follows template attribute semantics: nil and false remove the
+// value follows template attribute semantics: nil and false remove the
 // attribute, true sets it bare, [gox.Output] values serialize themselves,
 // anything else is formatted with the fmt package. A [gox.Mutate] value, such
 // as [Classes], fails the action: composing it needs the previous value, which

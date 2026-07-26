@@ -12,7 +12,7 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-// With configures [NewApp].
+// With is a [NewApp] option.
 type With interface {
 	apply(*app.Options)
 }
@@ -23,27 +23,38 @@ func (f withFunc) apply(o *app.Options) {
 	f(o)
 }
 
-// Conf is the Doors runtime configuration.
+// Conf tunes session and page instance lifetimes, request limits, resource
+// serving, and the server-to-browser update stream.
+//
+// Every field is optional: zero or invalid timeouts, limits, and sizes take the
+// defaults documented on each field, and the flags default to off.
 type Conf = common.Conf
 
-// WithConf applies runtime configuration to an app.
+// WithConf sets the runtime configuration. Zero and invalid fields take their
+// documented defaults.
 func WithConf(conf Conf) With {
 	return withFunc(func(o *app.Options) {
 		o.Conf = conf
 	})
 }
 
-// CSP is the Content-Security-Policy configuration.
+// CSP is the Content-Security-Policy Doors sends on page responses.
+//
+// A nil slice and an empty non-nil slice mean different things on several
+// fields, as noted on each.
 type CSP = common.CSP
 
-// WithCSP enables Content-Security-Policy header generation for an app.
+// WithCSP makes Doors send a Content-Security-Policy header on page responses.
+// Without it, no such header is sent.
 func WithCSP(csp CSP) With {
 	return withFunc(func(o *app.Options) {
 		o.CSP = &csp
 	})
 }
 
-// WithID sets the stable app id used for generated names and session cookies.
+// WithID sets the app id used in Doors-generated URLs and in the session cookie
+// name. It must survive URL path escaping unchanged; otherwise WithID panics.
+// Default: doors.
 func WithID(id string) With {
 	if id != url.PathEscape(id) {
 		panic("server ID must be URL compatible without escaping")
@@ -53,63 +64,77 @@ func WithID(id string) With {
 	})
 }
 
-// WithIDCookie sets the name of an additional cookie that carries the server ID
-// for sticky session load balancing. When empty, no additional cookie is set.
+// WithIDCookie makes Doors set an extra cookie named name that carries the app
+// id, for sticky load balancing. It is refreshed alongside the session cookie
+// and not while draining. Empty name sets no cookie.
 func WithIDCookie(name string) With {
 	return withFunc(func(o *app.Options) {
 		o.CookieName = name
 	})
 }
 
-// WithESProfiles sets the esbuild options provider used for script resources.
+// WithESProfiles sets the esbuild options provider for managed scripts.
+//
+// profile receives the profile name requested by the script, or an empty string
+// when it names none. A nil provider keeps the Doors defaults.
 func WithESProfiles(profile func(p string) api.BuildOptions) With {
 	return withFunc(func(o *app.Options) {
 		o.ESBuild = profile
 	})
 }
 
-// SessionTracker observes session creation and deletion.
+// SessionTracker observes session creation and removal.
+//
+// id is the Doors session id, which is also the value of the Doors session
+// cookie. Both methods run inline on the goroutine that triggers the change and
+// must not block.
 type SessionTracker = app.SessionTracker
 
-// WithSessionTracker installs a session lifecycle observer.
+// WithSessionTracker installs a session lifecycle observer. A nil tracker
+// observes nothing.
 func WithSessionTracker(t SessionTracker) With {
 	return withFunc(func(o *app.Options) {
 		o.SessionTracker = t
 	})
 }
 
-// ErrorPage renders an app-level error response.
+// ErrorPage renders the body of an app-level error response.
+//
+// It runs when Doors cannot serve a page, with the failed request and the
+// error. Doors has already written status 500, so the returned element cannot
+// change it.
 type ErrorPage = app.ErrorPage
 
-// WithErrorPage installs a custom app-level error page renderer.
+// WithErrorPage installs the renderer for app-level errors. Without it, Doors
+// sends a plain text 500 response.
 func WithErrorPage(ep ErrorPage) With {
 	return withFunc(func(o *app.Options) {
 		o.ErrorPage = ep
 	})
 }
 
-// WithLogger installs the logger used by Doors internals.
-// If l is nil, Doors uses slog.Default().
+// WithLogger sets the logger Doors writes to. If l is nil, Doors uses
+// slog.Default().
 func WithLogger(l *slog.Logger) With {
 	return withFunc(func(o *app.Options) {
 		o.Logger = l
 	})
 }
 
-// WithPrinter installs the printer middleware into an app.
+// WithPrinter wraps the printer that serializes HTML output.
 //
-// The middleware applies to every page render and door render cycle of the
-// app. A nil middleware disables wrapping.
+// p is called once per page render and once per Door render cycle, and must
+// return a non-nil printer. A nil p disables wrapping.
 func WithPrinter(p func(next gox.Printer) gox.Printer) With {
 	return withFunc(func(o *app.Options) {
 		o.PrinterMiddleware = p
 	})
 }
 
-// NewApp creates a Doors HTTP handler from the root page function.
+// NewApp returns an [App] that serves page as its page factory.
 //
-// The page function receives the Doors runtime context and request helpers, and
-// returns the component to render for the current request.
+// page runs once per page instance, on the full page load that creates it. ctx
+// is the render context of that instance and r carries the HTTP request.
 func NewApp[C gox.Comp](page func(ctx context.Context, r Request) C, options ...With) App {
 	os := app.Options{}
 	for _, o := range options {
@@ -124,21 +149,24 @@ func NewApp[C gox.Comp](page func(ctx context.Context, r Request) C, options ...
 	}, os)
 }
 
-// Use is HTTP middleware used by [App.Use].
+// Use is HTTP middleware for [App.Use].
 type Use = func(http.Handler) http.Handler
 
 // App is a Doors application and HTTP handler.
 type App interface {
-	// Use appends middleware around the app handler.
+	// Use wraps the app handler in middleware. The first one registered is
+	// the outermost.
 	Use(middleware ...func(http.Handler) http.Handler)
-	// InstanceCount returns the number of live instances across all sessions.
+	// InstanceCount returns the number of live page instances across all
+	// sessions.
 	InstanceCount() int
-	// SessionCount returns the number of active sessions.
+	// SessionCount returns the number of live sessions.
 	SessionCount() int
-	// Drain switches the app into drain mode. Already-started instances are
-	// hard-reloaded on the next navigation. The callback runs at most once,
-	// fired when the final live instance cleans up (or immediately if none
-	// are live). Drain is one-way for the lifetime of the app.
+	// Drain switches the app into drain mode: the app id cookie stops being
+	// refreshed and in-app navigation ends the instance, so the browser
+	// reloads. callback runs at most once, when the last live instance is
+	// gone or immediately if none are live. Drain is one-way for the
+	// lifetime of the app.
 	Drain(callback func())
 	http.Handler
 }

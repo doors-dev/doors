@@ -47,29 +47,34 @@ func (q pathMatch) pathMatch() pathMatch {
 	return q
 }
 
-// QueryMatcher customizes how query parameters participate in active-link
-// matching. Matchers can be chained with [QueryMatcher.And].
+// QueryMatcher is a query-string comparison step of [Active] matching. Chain
+// steps with [Joiner.And].
 type QueryMatcher interface {
 	queryMatch() queryMatch
 	Joiner[QueryMatcher]
 }
 
-// PathMatcher customizes how the path participates in active-link matching.
+// PathMatcher is the path comparison rule of [Active] matching.
 type PathMatcher interface {
 	pathMatch() pathMatch
 }
 
-// PathMatcherFull matches the full generated path.
+// PathMatcherFull returns a [PathMatcher] that matches when the whole path is
+// equal, ignoring leading and trailing slashes.
 func PathMatcherFull() PathMatcher {
 	return pathMatch([]any{"full"})
 }
 
-// PathMatcherStarts matches when the current path starts with the link path.
+// PathMatcherStarts returns a [PathMatcher] that matches when the current path
+// starts with the link path. The comparison is by string prefix, not by whole
+// segments.
 func PathMatcherStarts() PathMatcher {
 	return pathMatch([]any{"starts"})
 }
 
-// PathMatcherSegments matches only the listed path segment indexes (zero-based).
+// PathMatcherSegments returns a [PathMatcher] that compares only the path
+// segments at the given indexes, counted from zero. Without indexes it matches
+// any path.
 func PathMatcherSegments(i ...int) PathMatcher {
 	if i == nil {
 		i = []int{}
@@ -77,7 +82,8 @@ func PathMatcherSegments(i ...int) PathMatcher {
 	return pathMatch([]any{"parts", i})
 }
 
-// QueryMatcherIgnoreSome excludes the given query parameters from comparison.
+// QueryMatcherIgnoreSome returns a [QueryMatcher] that drops params from the
+// comparison and passes the remaining parameters to the next step.
 func QueryMatcherIgnoreSome(params ...string) QueryMatcher {
 	if params == nil {
 		params = []string{}
@@ -85,12 +91,14 @@ func QueryMatcherIgnoreSome(params ...string) QueryMatcher {
 	return queryMatch([][]any{{"ignore_some", params}})
 }
 
-// QueryMatcherIgnoreAll excludes all remaining query parameters from comparison.
+// QueryMatcherIgnoreAll returns a [QueryMatcher] that ends the chain, leaving
+// every remaining parameter out of the comparison.
 func QueryMatcherIgnoreAll() QueryMatcher {
 	return queryMatch([][]any{{"ignore_all"}})
 }
 
-// QueryMatcherSome compares only the provided query parameters at this step.
+// QueryMatcherSome returns a [QueryMatcher] that compares params at this step
+// and drops them from the comparison of later steps.
 func QueryMatcherSome(params ...string) QueryMatcher {
 	if params == nil {
 		params = []string{}
@@ -98,58 +106,75 @@ func QueryMatcherSome(params ...string) QueryMatcher {
 	return queryMatch([][]any{{"some", params}})
 }
 
-// QueryMatcherIfPresent matches the given parameters only if they are present.
+// QueryMatcherIfPresent returns a [QueryMatcher] that compares params only
+// when the current location carries them, and drops them from the comparison
+// of later steps.
 func QueryMatcherIfPresent(params ...string) QueryMatcher {
 	return queryMatch([][]any{{"if", params}})
 }
 
-// Active configures how [ALink] marks itself as active.
+// Active is the rule that decides when an [ALink] counts as the current
+// location.
 type Active struct {
-	// PathMatcher controls path matching. Defaults to [PathMatcherFull].
+	// PathMatcher compares the link path with the current path. Default:
+	// [PathMatcherFull].
 	PathMatcher PathMatcher
-	// QueryMatcher controls query matching. Matchers are applied sequentially;
-	// any remaining parameters are compared after the configured matcher chain.
+	// QueryMatcher compares query parameters step by step, then any parameter
+	// left over must be equal. Optional; nil compares all of them.
 	QueryMatcher QueryMatcher
-	// FragmentMatch includes the URL fragment in active matching.
+	// FragmentMatch also requires the fragment to be equal. Optional; the
+	// fragment is ignored by default.
 	FragmentMatch bool
 	// Indicator is applied to the link while it matches the current location.
+	// Required; without it the link is never marked active.
 	Indicator Indicators
 }
 
-// ALink builds a real href from Model and adds Doors navigation behavior.
+// ALink turns the element it is attached to into an in-app navigation link.
 //
-// A normal click updates the current instance location source and reroutes the
-// page dynamically. The href remains valid for browser features such as opening
-// in a new tab, copying the link, or navigation without client-side runtime.
+// It sets href from Model and intercepts the click: the click updates the
+// instance location and the page reroutes in place. The href stays a real URL,
+// so it can be copied, opened in another tab, or loaded directly. A click that
+// changes neither path nor query sends no request.
+//
+// Unlike [ActionLocationAssign], the page is not loaded again and the current
+// instance stays alive.
 //
 // Example:
 //
-//	attrs := doors.A(ctx, doors.ALink{
-//		Model: Path{Home: true},
-//	})
+//	~>doors.ALink{
+//		Model: Path{Section: SectionHome},
+//	} <a>Home</a>
 type ALink struct {
-	// Target path model value. Required.
+	// Model is the target path model value, a [Location], or a
+	// [LocationEncoder]. Required; a value that cannot be encoded logs an
+	// error and leaves the element without href or navigation.
 	Model any
-	// Fragment identifier. Optional.
+	// Fragment is appended to href and scrolled into view once the
+	// navigation succeeds. Optional.
 	Fragment string
-	// Active link indicator configuration. Optional.
+	// Active marks the link while it matches the current location. Optional;
+	// it does nothing unless its Indicator is set.
 	Active Active
-	// Stop event propagation (for dynamic links). Optional.
+	// StopPropagation stops the click from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// When true, an optimistic click replaces the current browser history
-	// entry (history.replaceState) instead of pushing a new one, so Back skips
-	// over this navigation. Optional; defaults to push.
+	// HistoryReplace replaces the current history entry instead of pushing a
+	// new one, so Back skips this navigation. Optional.
 	HistoryReplace bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; all links share a
+	// built-in scope, so a new click cancels a pending navigation.
 	Scope Scopes
-	// Visual indicators while the hook is running. Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request. Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Actions to run after the hook request. Optional.
+	// After lists client-side actions to run once the navigation
+	// succeeds. Optional.
 	After Actions
-	// Actions to run on error.
+	// OnError lists client-side actions to run when the request fails.
+	// Optional; a canceled navigation reverts the URL without running it.
 	OnError Actions
 }
 

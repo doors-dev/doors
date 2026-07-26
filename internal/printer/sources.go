@@ -28,11 +28,14 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// SourceHandler is app-owned content that Doors serves under a generated src or
+// href URL.
 type SourceHandler interface {
 	gox.Modify
 	Handler() HandlerFunc
 }
 
+// SourceStatic is content Doors reads up front.
 type SourceStatic interface {
 	SourceHandler
 	StaticEntry() resources.StaticEntry
@@ -40,6 +43,7 @@ type SourceStatic interface {
 	styleEntry() resources.StyleEntry
 }
 
+// SourceFS serves the file at Entry from FS.
 type SourceFS struct {
 	FS    fs.FS
 	Entry string
@@ -85,6 +89,7 @@ func (s SourceFS) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
 
 var _ SourceStatic = SourceFS{}
 
+// SourceLocalFS serves one file from the local filesystem by path.
 type SourceLocalFS string
 
 func (s SourceLocalFS) Handler() HandlerFunc {
@@ -123,6 +128,7 @@ func (s SourceLocalFS) Modify(_ context.Context, tag string, attrs gox.Attrs) er
 
 var _ SourceStatic = SourceLocalFS("")
 
+// SourceBytes serves bytes held in memory.
 type SourceBytes []byte
 
 func (s SourceBytes) Handler() HandlerFunc {
@@ -167,6 +173,10 @@ func (s SourceBytes) Modify(_ context.Context, tag string, attrs gox.Attrs) erro
 
 var _ SourceStatic = SourceBytes(nil)
 
+// SourceHook serves a resource from a handler.
+//
+// Return true to stop serving the resource after that request, false to keep it
+// available. The request body is not limited by ServerRequestBodyLimit.
 type SourceHook func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool
 
 func (s SourceHook) Handler() HandlerFunc {
@@ -179,6 +189,9 @@ func (s SourceHook) Modify(_ context.Context, tag string, attrs gox.Attrs) error
 
 var _ SourceHandler = SourceHook(nil)
 
+// SourceProxy serves a resource by reverse-proxying requests to a URL.
+//
+// If the URL cannot be parsed, requests fail with status 500.
 type SourceProxy string
 
 func (s SourceProxy) Handler() HandlerFunc {
@@ -208,6 +221,7 @@ func (s SourceProxy) Modify(_ context.Context, tag string, attrs gox.Attrs) erro
 
 var _ SourceHandler = SourceProxy("")
 
+// SourceString serves string content held in memory.
 type SourceString string
 
 func (s SourceString) Handler() HandlerFunc {
@@ -252,6 +266,11 @@ func (s SourceString) Modify(_ context.Context, tag string, attrs gox.Attrs) err
 
 var _ SourceStatic = SourceString("")
 
+// SourceExternal is a URL the browser loads directly from another host.
+//
+// Doors writes the URL unchanged. It adds the host to the generated
+// Content-Security-Policy only for script tags and stylesheet or modulepreload
+// links.
 type SourceExternal string
 
 func (s SourceExternal) Output(w io.Writer) error {
@@ -265,7 +284,12 @@ func (s SourceExternal) Modify(_ context.Context, tag string, attrs gox.Attrs) e
 	return modifySource(tag, attrs, s)
 }
 
+// HandlerFunc serves a resource request. Returning true stops serving the
+// resource after that request.
 type HandlerFunc = func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool
+
+// HandlerSimpleFunc serves a resource request and keeps the resource available
+// for later requests.
 type HandlerSimpleFunc = func(w http.ResponseWriter, r *http.Request)
 
 func modifySource(tag string, attrs gox.Attrs, src any) error {

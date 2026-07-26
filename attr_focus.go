@@ -21,32 +21,29 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// RequestFocus is the typed request passed to focus event handlers.
+// RequestFocus is the request handle passed to focus event attr handlers.
 type RequestFocus = RequestEvent[FocusEvent]
 
 type focusIOEventHook struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[FocusEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestFocus) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -66,22 +63,20 @@ func (p *focusIOEventHook) apply(event string, ctx context.Context, attrs gox.At
 }
 
 type focusEventHook struct {
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[FocusEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestEvent[FocusEvent]) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -98,25 +93,30 @@ func (p *focusEventHook) apply(event string, ctx context.Context, attrs gox.Attr
 	}.apply(ctx, attrs)
 }
 
-// AFocus prepares a focus event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// AFocus handles the browser focus event on the element it is attached to.
+//
+// Attach it as an attribute to one or more elements. Each event sends one
+// request, subject to Scope. Return false from On to keep the handler active,
+// true to remove it. A nil On still installs the hook and still sends the
+// request, so omit the attr rather than nil-ing On.
+//
+// Unlike [AFocusIn], the focus event does not bubble, so there are no
+// propagation fields.
 type AFocus struct {
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[FocusEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestFocus) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -128,25 +128,23 @@ func (f AFocus) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusEventHook)(&f).apply("focus", ctx, attrs)
 }
 
-// ABlur prepares a blur event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// ABlur handles the browser blur event on the element it is attached to. Fields
+// and handler contract follow [AFocus].
 type ABlur struct {
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[FocusEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestFocus) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -158,31 +156,28 @@ func (b ABlur) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusEventHook)(&b).apply("blur", ctx, attrs)
 }
 
-// AFocusIn prepares a focusin event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// AFocusIn handles the browser focusin event on the element it is attached to.
+// Unlike focus, focusin bubbles; handler contract follows [AFocus].
 type AFocusIn struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[FocusEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestFocus) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -194,31 +189,28 @@ func (f AFocusIn) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return (*focusIOEventHook)(&f).apply("focusin", ctx, attrs)
 }
 
-// AFocusOut prepares a focusout event hook for DOM elements,
-// with configurable propagation, scheduling, indicators, and handlers.
+// AFocusOut handles the browser focusout event on the element it is attached
+// to. Unlike blur, focusout bubbles; handler contract follows [AFocus].
 type AFocusOut struct {
-	// If true, stops the event from bubbling up the DOM.
-	// Optional.
+	// StopPropagation stops the event from bubbling up the DOM. Optional.
 	StopPropagation bool
-	// If true, only fires when the event occurs on this element itself.
-	// Optional.
+	// ExactTarget limits the handler to events whose target is the element
+	// itself. Optional.
 	ExactTarget bool
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[FocusEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Optional.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestFocus) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 

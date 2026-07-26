@@ -18,12 +18,13 @@ import (
 	"github.com/doors-dev/doors/internal/front"
 )
 
+// Indicator is a single temporary DOM change, applied while a request is in
+// flight or for a fixed duration, and reverted afterwards.
+//
+// Overlapping indicators on the same element queue up.
 type Indicator = front.Indicator
 
-// Indicators is a temporary DOM change applied on the client.
-//
-// Indicators are commonly used for pending UI such as "Loading..." text,
-// temporary classes, or transient attributes while a request is in flight.
+// Indicators is a composable list of temporary DOM changes.
 type Indicators interface {
 	Indicators() []Indicator
 	Joiner[Indicators]
@@ -58,9 +59,16 @@ func (is joinedIndicators) Indicators() []Indicator {
 
 var _ Indicators = joinedIndicators(nil)
 
+// IndicatorContent temporarily replaces the content of the selected elements.
+//
+// WARNING: escaping is not applied.
 type IndicatorContent struct {
-	Selector Selector // Target element
-	Content  string   // Replacement content. WARNING: escaping is not applied.
+	// Selector picks the target elements. Optional; the zero value selects
+	// the event element.
+	Selector Selector
+	// Content is the replacement HTML. Required. WARNING: escaping is not
+	// applied.
+	Content string
 }
 
 // IndicateContent builds an [IndicatorContent] that targets the event element.
@@ -70,19 +78,19 @@ func IndicateContent(content string) IndicatorContent {
 }
 
 // IndicateContentQuery builds an [IndicatorContent] that targets the first
-// element matching query.
+// element matching query. WARNING: escaping is not applied.
 func IndicateContentQuery(query, content string) IndicatorContent {
 	return IndicatorContent{Selector: SelectorQuery(query), Content: content}
 }
 
 // IndicateContentQueryAll builds an [IndicatorContent] that targets every
-// element matching query.
+// element matching query. WARNING: escaping is not applied.
 func IndicateContentQueryAll(query, content string) IndicatorContent {
 	return IndicatorContent{Selector: SelectorQueryAll(query), Content: content}
 }
 
 // IndicateContentQueryParent builds an [IndicatorContent] that targets the
-// closest ancestor matching query.
+// closest ancestor matching query. WARNING: escaping is not applied.
 func IndicateContentQueryParent(query, content string) IndicatorContent {
 	return IndicatorContent{Selector: SelectorQueryParent(query), Content: content}
 }
@@ -97,11 +105,15 @@ func (ic IndicatorContent) Indicators() []Indicator {
 
 var _ Indicators = IndicatorContent{}
 
-// IndicatorAttr temporarily sets an attribute on the selected element.
+// IndicatorAttr temporarily sets an attribute on the selected elements.
 type IndicatorAttr struct {
-	Selector Selector // Target element
-	Name     string   // Attribute name
-	Value    string   // Attribute value
+	// Selector picks the target elements. Optional; the zero value selects
+	// the event element.
+	Selector Selector
+	// Name is the attribute to set. Required.
+	Name string
+	// Value is the attribute value. Required.
+	Value string
 }
 
 // IndicateAttr builds an [IndicatorAttr] that targets the event element.
@@ -137,10 +149,13 @@ func (ia IndicatorAttr) Indicators() []Indicator {
 
 var _ Indicators = IndicatorAttr{}
 
-// IndicatorClass temporarily adds CSS classes to the selected element.
+// IndicatorClass temporarily adds CSS classes to the selected elements.
 type IndicatorClass struct {
-	Selector Selector // Target element
-	Class    string   // Space-separated classes
+	// Selector picks the target elements. Optional; the zero value selects
+	// the event element.
+	Selector Selector
+	// Class is one or more space-separated class names to add. Required.
+	Class string
 }
 
 // IndicateClass builds an [IndicatorClass] that targets the event element.
@@ -176,13 +191,18 @@ func (ic IndicatorClass) Indicators() []Indicator {
 
 var _ Indicators = IndicatorClass{}
 
-// IndicatorClassRemove temporarily removes CSS classes from the selected element.
+// IndicatorClassRemove temporarily removes CSS classes from the selected
+// elements.
 type IndicatorClassRemove struct {
-	Selector Selector // Target element
-	Class    string   // Space-separated classes
+	// Selector picks the target elements. Optional; the zero value selects
+	// the event element.
+	Selector Selector
+	// Class is one or more space-separated class names to remove. Required.
+	Class string
 }
 
-// IndicateClassRemove builds an [IndicatorClassRemove] that targets the event element.
+// IndicateClassRemove builds an [IndicatorClassRemove] that targets the event
+// element.
 func IndicateClassRemove(class string) IndicatorClassRemove {
 	return IndicatorClassRemove{Selector: SelectorTarget(), Class: class}
 }

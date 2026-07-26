@@ -23,25 +23,33 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// Location is a parsed or generated URL path plus query string.
+// Location is a URL path plus query string, held in decoded form, as read from
+// and written to [Router].
+//
+// Copies share Segments and Query, so use Clone before modifying a Location
+// read from a source.
 type Location = path.Location
 
 // NewLocation encodes model into a [Location].
 //
-// model may be a [Location], a path-model struct, a pointer to a path-model
-// struct, or a value implementing [LocationEncoder].
+// model may be a [Location], a path model struct, a pointer to a path model
+// struct, or a value implementing [LocationEncoder]. It returns an error if
+// model is none of these or cannot be encoded.
 func NewLocation(model any) (Location, error) {
 	return path.Encode(model)
 }
 
-// LocationEncoder is implemented by custom navigation models that can encode
-// themselves as a [Location].
+// LocationEncoder is implemented by models that build their own [Location]
+// instead of describing their path with tags.
 type LocationEncoder = path.Encoder
 
-// Router returns the current instance URL as a writable reactive source.
+// Router returns the current URL of the page instance as a writable [Source].
 //
-// Updating the returned source changes the browser location and reroutes the
-// current page.
+// Updating it changes the browser URL without a page reload and reroutes the
+// current page. Updates to a location with the same path and query are
+// suppressed.
+//
+// ctx must belong to a Doors render or handler; otherwise Router panics.
 func Router(ctx context.Context) Source[Location] {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	return source[Location]{
@@ -49,30 +57,22 @@ func Router(ctx context.Context) Source[Location] {
 	}
 }
 
-// HistoryReplaceContext marks ctx so that a routing update made with it replaces
-// the current browser history entry (history.replaceState) instead of pushing a
-// new one (history.pushState).
+// HistoryReplaceContext marks ctx so that a URL update made with it replaces
+// the current browser history entry instead of pushing a new one.
 //
-// It works with any update that changes the URL, because they all write through
-// to the same underlying [Location] state and the mark travels with the write:
-// the top-level [Router] source, a path-model route source (from [RouteModel]),
-// or a derived route source (from RouteDerive(...).Source). Update or Mutate are
-// both honored.
-//
-// The mark only influences the resulting history entry; passing it to an update
-// of a source not backed by the URL has no effect.
-//
-//	// replace instead of push, on a path-model source
-//	path.Update(HistoryReplaceContext(ctx), Path{Section: SectionDocs})
+// [Source.Update] and [Source.Mutate] honor the mark on the [Router] source
+// and on any source derived from it, such as a [RouteModel] source. Passing it
+// to an update of a source not backed by the URL has no effect.
 func HistoryReplaceContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, common.KeyHistoryReplace, true)
 }
 
-// Route returns a renderable component that picks one of several writable
-// route branches based on the current URL.
+// Route returns a component that renders the first matching route branch for
+// the current URL.
 //
-// Routes are tried in order and the first match renders. Use [RouteModel] to
-// match on path-model structs and [RouteDefault] as the fallback.
+// Routes are tried in order, and a branch is rerendered only when the matching
+// route changes. If no route matches, nothing is rendered. Use [RouteModel] to
+// match path models and [RouteDefault] as the fallback.
 func Route(routes ...RouteSource[Location]) gox.EditorComp {
 	return gox.EditorCompFunc(func(cur gox.Cursor) error {
 		path := Router(cur.Context())
@@ -80,39 +80,30 @@ func Route(routes ...RouteSource[Location]) gox.EditorComp {
 	})
 }
 
-// RouteLocationDefault creates a fallback URL route that calls render with a
-// writable [Source] of the current [Location].
+// RouteLocationDefault calls [RouteDefault].
 //
-// This is the URL-specific wrapper around [RouteDefault].
-//
-// Deprecated: use [RouteDefault] instead.
+// Deprecated: use [RouteDefault].
 func RouteLocationDefault[C gox.Comp](render func(s Source[Location]) C) RouteSource[Location] {
 	return RouteDefault(render)
 }
 
-// RouteLocationDefaultBeam creates a fallback URL route that calls render
-// with a read-only [Beam] of the current [Location].
+// RouteLocationDefaultBeam calls [RouteDefaultBeam].
 //
-// This is the URL-specific wrapper around [RouteDefaultBeam].
-//
-// Deprecated: use [RouteDefaultBeam] instead.
+// Deprecated: use [RouteDefaultBeam].
 func RouteLocationDefaultBeam[C gox.Comp](render func(b Beam[Location]) C) RouteBeam[Location] {
 	return RouteDefaultBeam(render)
 }
 
-// RouteLocationDefaultBind creates a fallback URL route that calls render with
-// the raw [Location] value directly — a shorthand for [RouteDefaultBeam]
-// plus bind.
+// RouteLocationDefaultBind calls [RouteDefaultBind].
 //
-// Deprecated: use [RouteDefaultBind] instead.
+// Deprecated: use [RouteDefaultBind].
 func RouteLocationDefaultBind[C gox.Comp](render func(b Location) C) RouteBeam[Location] {
 	return RouteDefaultBind(render)
 }
 
-// RouteLocationDefaultComp creates a fallback URL route that renders a
-// fixed component. The component receives no reactive value.
+// RouteLocationDefaultComp calls [RouteDefaultComp].
 //
-// Deprecated: use [RouteDefaultComp] instead.
+// Deprecated: use [RouteDefaultComp].
 func RouteLocationDefaultComp(comp gox.Comp) RouteBeam[Location] {
 	return RouteDefaultComp[Location](comp)
 }

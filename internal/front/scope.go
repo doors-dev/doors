@@ -40,10 +40,14 @@ type Scoper interface {
 	Scopes() []Scope
 }
 
+// Scope is one client-side scheduling policy applied to a hook request.
 type Scope struct {
+	// Kind is the scheduling policy.
 	Kind scopeKind
-	Id   string
-	Opt  any
+	// Id identifies the scope; requests that share it are scheduled together.
+	Id string
+	// Opt is the policy parameter, or nil when the policy takes none.
+	Opt any
 }
 
 func (s Scope) MarshalJSON() ([]byte, error) {

@@ -15,12 +15,16 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
+// Middleware wraps the app handler.
 type Middleware = func(http.Handler) http.Handler
 
+// Page is the page factory called once per page instance.
 type Page = instance.Page
 
+// App is a Doors application and HTTP handler.
 type App = *app
 
+// NewApp returns an App that serves page, configured by o.
 func NewApp(page Page, o Options) App {
 	o.initDefaults()
 	a := &app{
@@ -39,6 +43,7 @@ func NewApp(page Page, o Options) App {
 	return a
 }
 
+// ErrorPage renders the body of an app-level error response.
 type ErrorPage = func(r *http.Request, err error) gox.Elem
 
 type app struct {

@@ -28,12 +28,15 @@ var _ Attr = (*Emitter)(nil)
 
 // Emitter dispatches synthetic DOM events to the elements it is attached to.
 //
-// Attach it as an attribute to one or more elements, then pass an event
-// method's action to [Call] or any action-accepting API. Each event method
-// returns an [ActionInto]; Into captures the number of captures the event
-// fired. Any capture error fails the call.
+// Attach it as an attribute to one or more elements, then dispatch an event
+// method's action with [Call]. Unset event init fields use the browser
+// defaults. The events bubble, so event attrs on ancestor elements run too.
 //
 // Several emitters can share an element; each dispatches its own event.
+//
+// Into captures the number of hook requests the emitted events triggered, not
+// the number of elements reached; a failure in any of them fails the call (see
+// [ActionInto]).
 type Emitter struct {
 	id front.AutoID
 }

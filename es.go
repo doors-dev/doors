@@ -19,17 +19,30 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-// JSX configures how esbuild should transform JSX input.
+// JSX is the JSX transform configuration for [ESProfile].
 type JSX struct {
-	JSX          api.JSX
-	Factory      string
+	// JSX selects the esbuild JSX mode. Optional; the zero value is
+	// [api.JSXTransform].
+	JSX api.JSX
+	// Factory is the function called for a JSX element outside the automatic
+	// runtime. Optional; esbuild uses React.createElement.
+	Factory string
+	// ImportSource is the base package the automatic runtime imports from.
+	// Optional; esbuild uses react.
 	ImportSource string
-	Fragment     string
-	SideEffects  bool
-	Dev          bool
+	// Fragment is the expression used for a JSX fragment outside the automatic
+	// runtime. Optional; esbuild uses React.Fragment.
+	Fragment string
+	// SideEffects tells esbuild that JSX elements may have side effects, so
+	// unused ones are kept.
+	SideEffects bool
+	// Dev emits jsxDEV calls with source locations. Applies to the automatic
+	// runtime only.
+	Dev bool
 }
 
-// JSXPreact returns JSX settings suitable for classic Preact transforms.
+// JSXPreact returns JSX settings that compile elements to h calls, with
+// Fragment as the fragment expression.
 func JSXPreact() JSX {
 	return JSX{
 		Factory:  "h",
@@ -37,20 +50,22 @@ func JSXPreact() JSX {
 	}
 }
 
-// JSXReact returns JSX settings suitable for React's automatic runtime.
+// JSXReact returns JSX settings that use the automatic runtime and import from
+// react/jsx-runtime.
 func JSXReact() JSX {
 	return JSX{
 		JSX: api.JSXAutomatic,
 	}
 }
 
-// ESProfile is a simple [WithESProfiles] option.
+// ESProfile is a [With] option that applies one set of esbuild options to every
+// script profile. Use [WithESProfiles] to vary options per profile.
 type ESProfile struct {
-	// External lists module specifiers that esbuild should leave external.
+	// External lists import paths esbuild leaves out of the bundle.
 	External []string
 	// Minify enables esbuild syntax, whitespace, and identifier minification.
 	Minify bool
-	// JSX configures JSX transformation.
+	// JSX configures the JSX transform.
 	JSX JSX
 }
 
@@ -60,7 +75,7 @@ func (opt ESProfile) apply(o *app.Options) {
 
 var _ With = ESProfile{}
 
-// Profile returns esbuild options for a named profile.
+// Profile returns the same esbuild options for every profile name.
 func (opt ESProfile) Profile(string) api.BuildOptions {
 	return api.BuildOptions{
 		Target:            api.ES2022,

@@ -7,7 +7,7 @@ Use them when the browser should do something imperative instead of just renderi
 For example, call a JavaScript handler registered with `$on(...)`.
 
 > If the UI should simply render different content, prefer normal rendering.
-> If attributes should stay shared across existing elements, `Setter` from [Setter](./17-shared-attr.md) is often a better fit than a custom action.
+> If attributes should stay shared across existing elements, `Setter` from [Element Handles](./17-element-handles.md) is often a better fit than a custom action.
 
 ## Places
 
