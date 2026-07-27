@@ -184,6 +184,15 @@ func IDBytes(b []byte) string {
 	return common.EncodeId(s[:])
 }
 
+// IDNumber returns a number unique within the current instance. Every call
+// returns a new one, and the values are not sequential.
+//
+// ctx must belong to a [Door]; otherwise IDNumber panics.
+func IDNumber(ctx context.Context) uint64 {
+	core := ctx.Value(common.KeyCore).(core.Core)
+	return core.Instance().NewID()
+}
+
 // InstanceContext returns a context that is detached from the current dynamic
 // owner and bounded by the current instance lifetime.
 //
