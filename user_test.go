@@ -313,6 +313,13 @@ func helperContextWithRoot(t *testing.T) (context.Context, *helperInstance, core
 	return ctx, inst, root
 }
 
+func TestIDNumber(t *testing.T) {
+	ctx, inst := helperContext(t)
+	if got := IDNumber(ctx); got != inst.NewID() {
+		t.Fatalf("expected IDNumber to come from the instance id pool, got %d", got)
+	}
+}
+
 func TestUserHelpers(t *testing.T) {
 	ctx, inst := helperContext(t)
 	SessionExpire(ctx, time.Hour)

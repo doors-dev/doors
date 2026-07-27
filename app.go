@@ -87,14 +87,19 @@ func WithESProfiles(profile func(p string) api.BuildOptions) With {
 //
 // id is the Doors session id, which is also the value of the Doors session
 // cookie. Both methods run inline on the goroutine that triggers the change and
-// must not block.
+// must not block. With several trackers installed, they run one after another
+// in registration order.
 type SessionTracker = app.SessionTracker
 
-// WithSessionTracker installs a session lifecycle observer. A nil tracker
-// observes nothing.
+// WithSessionTracker installs a session lifecycle observer. Repeat it to
+// install several; they run in registration order. A nil tracker installs
+// nothing.
 func WithSessionTracker(t SessionTracker) With {
 	return withFunc(func(o *app.Options) {
-		o.SessionTracker = t
+		if t == nil {
+			return
+		}
+		o.SessionTrackers = append(o.SessionTrackers, t)
 	})
 }
 

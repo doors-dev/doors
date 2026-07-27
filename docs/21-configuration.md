@@ -216,6 +216,13 @@ doors.WithSessionTracker(tracker{})
 
 `Create` receives the new session ID and the request that triggered creation. The request must not be retained beyond the call, and its body must not be read.
 
+Repeat the option to install several trackers. They run one after another in registration order, on the goroutine that triggers the change, so none of them may block.
+
+```go
+doors.WithSessionTracker(audit{}),
+doors.WithSessionTracker(metrics{}),
+```
+
 ## Rules
 
 - Start with defaults and change only the settings you actually need.

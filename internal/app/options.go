@@ -29,8 +29,9 @@ type Options struct {
 	CSP *common.CSP
 	// ESBuild is the esbuild options provider from doors.WithESProfiles.
 	ESBuild func(profile string) api.BuildOptions
-	// SessionTracker is the observer from doors.WithSessionTracker.
-	SessionTracker SessionTracker
+	// SessionTrackers are the observers from doors.WithSessionTracker, in
+	// registration order.
+	SessionTrackers []SessionTracker
 	// ID is the app id from doors.WithID. Default: doors.
 	ID string
 	// CookieName is the app id cookie name from doors.WithIDCookie. Empty
@@ -45,15 +46,21 @@ type Options struct {
 	PrinterMiddleware func(next gox.Printer) gox.Printer
 }
 
-type notracker struct{}
+type trackers []SessionTracker
 
-func (n notracker) Create(id string, r *http.Request) {
+func (t trackers) Create(id string, r *http.Request) {
+	for _, tracker := range t {
+		tracker.Create(id, r)
+	}
 }
 
-func (n notracker) Delete(id string) {
+func (t trackers) Delete(id string) {
+	for _, tracker := range t {
+		tracker.Delete(id)
+	}
 }
 
-var _ SessionTracker = notracker{}
+var _ SessionTracker = trackers(nil)
 
 func (o *Options) initDefaults() {
 	common.InitDefaults(&o.Conf)
@@ -62,9 +69,6 @@ func (o *Options) initDefaults() {
 	}
 	if o.ID == "" {
 		o.ID = "doors"
-	}
-	if o.SessionTracker == nil {
-		o.SessionTracker = notracker{}
 	}
 	if o.Logger == nil {
 		o.Logger = slog.Default()
