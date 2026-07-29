@@ -15,6 +15,7 @@
 package path
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http/httptest"
 	"net/url"
@@ -339,6 +340,42 @@ func TestLocationHelpers(t *testing.T) {
 	invalid := NewLocationFromEscapedURI("/%zz")
 	if len(invalid.Segments) != 0 {
 		t.Fatalf("expected invalid URI parse to return empty location, got %#v", invalid)
+	}
+}
+
+func TestLocationJSONRoundTrip(t *testing.T) {
+	loc := Location{
+		Segments: []string{"docs", "hello world"},
+		Query:    url.Values{"tag": {"x", "y"}},
+	}
+	b, err := json.Marshal(loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != `{"segments":["docs","hello world"],"query":{"tag":["x","y"]}}` {
+		t.Fatalf("unexpected json: %s", b)
+	}
+	var decoded Location
+	if err := json.Unmarshal(b, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !EqualLocation(loc, decoded) {
+		t.Fatalf("round trip mismatch: %#v", decoded)
+	}
+
+	b, err = json.Marshal(Location{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != `{"segments":[],"query":{}}` {
+		t.Fatalf("unexpected zero location json: %s", b)
+	}
+	var zero Location
+	if err := json.Unmarshal(b, &zero); err != nil {
+		t.Fatal(err)
+	}
+	if !EqualLocation(Location{}, zero) {
+		t.Fatalf("zero round trip mismatch: %#v", zero)
 	}
 }
 

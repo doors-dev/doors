@@ -182,7 +182,7 @@ func pageQuery(b doors.Source[PathQuery]) gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:94
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line page.gox:95
@@ -262,7 +262,7 @@ func pageLocation(b doors.Source[doors.Location]) gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:126
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line page.gox:127
@@ -332,7 +332,7 @@ func pageLocationActive(b doors.Source[doors.Location]) gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:148
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line page.gox:149
@@ -773,7 +773,7 @@ func pageCrossA() gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:339
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line page.gox:340
@@ -816,7 +816,7 @@ func pageCrossB() gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:352
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 				__e = __c.Init("div"); if __e != nil { return }
@@ -1183,7 +1183,7 @@ func beamCrossAContent(b doors.Beam[PathCrossA]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:481
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line page.gox:482
@@ -1240,7 +1240,7 @@ func beamCrossBContent(b doors.Beam[PathCrossB]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:494
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line page.gox:495
@@ -1339,7 +1339,7 @@ func crossAContent(l doors.Source[PathCrossA]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:524
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line page.gox:525
@@ -1372,7 +1372,7 @@ func crossBContent(l doors.Source[PathCrossB]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:533
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
@@ -1459,7 +1459,7 @@ func combinedAContent(l doors.Source[PathCrossA]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:588
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
@@ -1540,7 +1540,7 @@ func combinedCustomContent(l doors.Source[CustomRoute]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:616
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line page.gox:617
@@ -1649,7 +1649,7 @@ func combinedQueryContent(l doors.Source[PathQuery]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:651
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line page.gox:652
@@ -1722,7 +1722,7 @@ func combinedRawContent(l doors.Source[doors.Location]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:674
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line page.gox:675
@@ -1804,7 +1804,7 @@ func combinedCustomBeamContent(b doors.Beam[CustomRoute]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:700
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line page.gox:701
@@ -1887,7 +1887,7 @@ func combinedQueryBeamContent(b doors.Beam[PathQuery]) gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line page.gox:720
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line page.gox:721
@@ -2022,7 +2022,7 @@ func routeBindDocument() gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:752
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line page.gox:753
@@ -2098,7 +2098,7 @@ func pageHistoryReplace(b doors.Source[doors.Location]) gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:776
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line page.gox:777
@@ -2191,7 +2191,7 @@ func pageReplaceModel(s doors.Source[PathReplace]) gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:815
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line page.gox:816
@@ -2300,7 +2300,7 @@ func pageLinkNav(s doors.Source[PathLink]) gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:859
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line page.gox:860
@@ -2416,7 +2416,7 @@ func pageLastSeen(b doors.Source[doors.Location]) gox.Elem {
 					__e = __c.Set("id", "instance-id"); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
 //line page.gox:890
-					__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+					__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 //line page.gox:891

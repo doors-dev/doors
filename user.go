@@ -72,21 +72,21 @@ func InstanceEnd(ctx context.Context) {
 	core.Instance().Kill()
 }
 
-// InstanceId returns the ID of the current instance.
+// InstanceID returns the ID of the current instance.
 //
-// ctx must belong to a Doors render or handler; otherwise InstanceId panics.
-func InstanceId(ctx context.Context) string {
+// ctx must belong to a Doors render or handler; otherwise InstanceID panics.
+func InstanceID(ctx context.Context) string {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Instance().ID()
 }
 
-// SessionId returns the ID of the current session.
+// SessionID returns the ID of the current session.
 //
 // Every instance in the same browser shares it, and it is the value of the
 // session cookie.
 //
-// ctx must carry a Doors session; otherwise SessionId panics.
-func SessionId(ctx context.Context) string {
+// ctx must carry a Doors session; otherwise SessionID panics.
+func SessionID(ctx context.Context) string {
 	sess := ctx.Value(common.KeySession).(core.Session)
 	return sess.ID()
 }

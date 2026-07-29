@@ -26,7 +26,7 @@ func (f *InstanceCountFragment) Main() gox.Elem {
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line instance_count.gox:17
-			__e = __c.Any(doors.InstanceId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
@@ -35,7 +35,7 @@ func (f *InstanceCountFragment) Main() gox.Elem {
 			__e = __c.Set("id", "session-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 //line instance_count.gox:18
-			__e = __c.Any(doors.SessionId(ctx)); if __e != nil { return }
+			__e = __c.Any(doors.SessionID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 //line instance_count.gox:19

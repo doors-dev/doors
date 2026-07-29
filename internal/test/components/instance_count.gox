@@ -14,8 +14,8 @@ type InstanceCountFragment struct {
 }
 
 elem (f *InstanceCountFragment) Main() {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
-	<div id="session-id">~(doors.SessionId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
+	<div id="session-id">~(doors.SessionID(ctx))</div>
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			go func() {

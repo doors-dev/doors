@@ -91,7 +91,7 @@ func values(items ...string) url.Values {
 elem pageQuery(b doors.Source[PathQuery]) {
 	<html>
 		<body>
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			~(b.Bind(elem(path PathQuery) {
 				<div id="tag">
 					~(if path.Tag != nil {
@@ -123,7 +123,7 @@ elem pageQuery(b doors.Source[PathQuery]) {
 elem pageLocation(b doors.Source[doors.Location]) {
 	<html>
 		<body>
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			~(b.Bind(elem(location doors.Location) {
 				<div id="location-string">
 					~(location.String())
@@ -145,7 +145,7 @@ elem pageLocation(b doors.Source[doors.Location]) {
 elem pageLocationActive(b doors.Source[doors.Location]) {
 	<html>
 		<body>
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			~(b.Bind(elem(location doors.Location) {
 				<div id="location-string">
 					~(location.String())
@@ -336,7 +336,7 @@ elem pageEscaped(b doors.Source[PathEscaped]) {
 elem pageCrossA() {
 	<html>
 		<body>
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			~>doors.ALink{
 				Model: PathCrossB{
 					Path: true,
@@ -349,7 +349,7 @@ elem pageCrossA() {
 elem pageCrossB() {
 	<html>
 		<body>
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			<div id="page-name">cross-b</div>
 		</body>
 	</html>
@@ -478,7 +478,7 @@ elem routerBeamDocument() {
 }
 
 elem beamCrossAContent(b doors.Beam[PathCrossA]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	~(b.Bind(elem(path PathCrossA) {
 		<div id="route-name">cross-a</div>
 		<div id="route-model">~(fmt.Sprint(path.Path))</div>
@@ -491,7 +491,7 @@ elem beamCrossAContent(b doors.Beam[PathCrossA]) {
 }
 
 elem beamCrossBContent(b doors.Beam[PathCrossB]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	~(b.Bind(elem(path PathCrossB) {
 		<div id="page-name">cross-b</div>
 		<div id="route-model">~(fmt.Sprint(path.Path))</div>
@@ -521,7 +521,7 @@ elem routerLensCrossDocument() {
 }
 
 elem crossAContent(l doors.Source[PathCrossA]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	~>doors.ALink{
 		Model: PathCrossB{
 			Path: true,
@@ -530,7 +530,7 @@ elem crossAContent(l doors.Source[PathCrossA]) {
 }
 
 elem crossBContent(l doors.Source[PathCrossB]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	<div id="page-name">cross-b</div>
 }
 
@@ -585,7 +585,7 @@ elem routerCombinedLensDocument() {
 }
 
 elem combinedAContent(l doors.Source[PathCrossA]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	<div id="route-name">model-a</div>
 	~>doors.ALink{
 		Model: CustomRoute{
@@ -613,7 +613,7 @@ elem combinedAContent(l doors.Source[PathCrossA]) {
 }
 
 elem combinedCustomContent(l doors.Source[CustomRoute]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	~(l.Bind(elem(route CustomRoute) {
 		<div id="route-name">custom</div>
 		<div id="custom-id">~(route.ID)</div>
@@ -648,7 +648,7 @@ elem combinedCustomContent(l doors.Source[CustomRoute]) {
 }
 
 elem combinedQueryContent(l doors.Source[PathQuery]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	~(l.Bind(elem(path PathQuery) {
 		<div id="route-name">query</div>
 		<div id="tag">
@@ -671,7 +671,7 @@ elem combinedQueryContent(l doors.Source[PathQuery]) {
 }
 
 elem combinedRawContent(l doors.Source[doors.Location]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	~(l.Bind(elem(location doors.Location) {
 		<div id="route-name">raw</div>
 		<div id="raw-from">~(location.Query.Get("from"))</div>
@@ -697,7 +697,7 @@ elem routerCombinedBeamDocument() {
 }
 
 elem combinedCustomBeamContent(b doors.Beam[CustomRoute]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	~(b.Bind(elem(route CustomRoute) {
 		<div id="route-name">custom-beam</div>
 		<div id="custom-id">~(route.ID)</div>
@@ -717,7 +717,7 @@ elem combinedCustomBeamContent(b doors.Beam[CustomRoute]) {
 }
 
 elem combinedQueryBeamContent(b doors.Beam[PathQuery]) {
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	~(b.Bind(elem(path PathQuery) {
 		<div id="route-name">query-beam</div>
 		<div id="tag">
@@ -749,7 +749,7 @@ elem routeBindDocument() {
 					<div id="default-path">~(loc.Path())</div>
 				}),
 			))
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			~>doors.ALink{
 				Model: CustomRoute{
 					ID: "bind-test",
@@ -773,7 +773,7 @@ elem routeBindDocument() {
 elem pageHistoryReplace(b doors.Source[doors.Location]) {
 	<html>
 		<body>
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			~(b.Bind(elem(l doors.Location) {
 				<div id="path">~(l.String())</div>
 			}))
@@ -812,7 +812,7 @@ type PathReplace struct {
 elem pageReplaceModel(s doors.Source[PathReplace]) {
 	<html>
 		<body>
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			~(s.Bind(elem(p PathReplace) {
 				<div id="step">~(fmt.Sprint(int(p.Step)))</div>
 			}))
@@ -856,7 +856,7 @@ type PathLink struct {
 elem pageLinkNav(s doors.Source[PathLink]) {
 	<html>
 		<body>
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			~(s.Bind(elem(p PathLink) {
 				<div id="step">~(fmt.Sprint(int(p.Step)))</div>
 			}))
@@ -887,7 +887,7 @@ elem pageLastSeen(b doors.Source[doors.Location]) {
 	~~
 	<html>
 		<body>
-			<div id="instance-id">~(doors.InstanceId(ctx))</div>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
 			~(result.Bind(elem(s string) {
 				<div id="result">~(s)</div>
 			}))

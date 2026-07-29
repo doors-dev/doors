@@ -129,18 +129,18 @@ This ends the current live instance immediately. It does not end the session and
 
 ## IDs
 
-`doors.SessionId(ctx)` returns the ID of the current **Doors** session.
+`doors.SessionID(ctx)` returns the ID of the current **Doors** session.
 
 ```go
-sessionID := doors.SessionId(ctx)
+sessionID := doors.SessionID(ctx)
 ```
 
 All instances in the same session share that value.
 
-`doors.InstanceId(ctx)` returns the ID of the current live page instance.
+`doors.InstanceID(ctx)` returns the ID of the current live page instance.
 
 ```go
-instanceID := doors.InstanceId(ctx)
+instanceID := doors.InstanceID(ctx)
 ```
 
 That value is specific to one live page.
@@ -163,4 +163,4 @@ They are **Doors** runtime IDs, not user IDs or authentication tokens.
 - Use `InstanceContext` for goroutines that should outlive the current dynamic owner but stop with the current instance.
 - Use `SessionEnd` only when you really want to end the whole **Doors** session.
 - Use `InstanceEnd` when only the current live page should stop.
-- Use `SessionId` and `InstanceId` for diagnostics, not as business identifiers.
+- Use `SessionID` and `InstanceID` for diagnostics, not as business identifiers.
