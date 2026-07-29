@@ -17,8 +17,8 @@ type LifecycleFragment struct {
 }
 
 elem (f *LifecycleFragment) Main() {
-	<div id="session-id">~(doors.SessionId(ctx))</div>
-	<div id="instance-id">~(doors.InstanceId(ctx))</div>
+	<div id="session-id">~(doors.SessionID(ctx))</div>
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
 	<div id="session-marker">
 		~(doors.SessionStore(ctx).Init(lifecycleSessionKey{}, func() any {
 			return common.RandId()

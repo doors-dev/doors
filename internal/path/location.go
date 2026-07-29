@@ -15,6 +15,7 @@
 package path
 
 import (
+	"encoding/json"
 	"maps"
 	"net/url"
 	"slices"
@@ -25,10 +26,23 @@ import (
 type Location struct {
 	// Segments are the path segments, decoded and without the separating
 	// slashes. Empty means the root path.
-	Segments []string
+	Segments []string `json:"segments"`
 	// Query holds the query parameters in decoded form. Empty means no query
 	// string.
-	Query url.Values
+	Query url.Values `json:"query"`
+}
+
+// MarshalJSON encodes nil Segments and Query as empty containers instead of
+// null.
+func (l Location) MarshalJSON() ([]byte, error) {
+	type location Location
+	if l.Segments == nil {
+		l.Segments = []string{}
+	}
+	if l.Query == nil {
+		l.Query = url.Values{}
+	}
+	return json.Marshal(location(l))
 }
 
 // Clone returns a deep copy of l with independent Segments and Query.

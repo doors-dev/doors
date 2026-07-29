@@ -31,16 +31,17 @@ import (
 // OnReady is best-effort and fires at most once: if the render cycle fails or
 // is superseded by a newer operation, on never runs. Tie cleanup to [OnClean].
 //
-// on runs on the instance goroutine pool with a context equivalent to
-// [DetachedContext] of ctx. It must not block; if you need to wait, start a
-// goroutine with the provided ctx.
+// on runs inline on the framework goroutine completing the cycle — on the
+// calling goroutine when the content is already on the page — with a context
+// equivalent to [DetachedContext] of ctx. It must not block; if you need to
+// wait, start a goroutine with the provided ctx.
 //
 // ctx must belong to a Doors render or handler; otherwise OnReady panics.
 func OnReady(ctx context.Context, on func(ctx context.Context)) {
 	ctex.LogCanceled(ctx, "OnReady")
 	core := ctx.Value(common.KeyCore).(core.Core)
 	ctx = DetachedContext(ctx)
-	core.Door().ReadyFrame().Submit(ctx, core.Instance().Runtime(), func(ok bool) {
+	core.Door().ReadyFrame().Run(ctx, core.Instance().Runtime(), func(ok bool) {
 		if !ok {
 			return
 		}
@@ -62,10 +63,9 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 //
 // on runs exactly once, even if the owner is canceled, the producing render
 // fails, or the instance is shutting down; the provided context reports such
-// states. It runs on the instance goroutine pool with a context equivalent to
-// [DetachedContext] of ctx and must not block. When the instance is shutting
-// down, or the owner is already canceled, it runs inline on the calling
-// goroutine.
+// states. It runs inline on the goroutine that settles the batch — on the
+// calling goroutine when everything already settled — with a context
+// equivalent to [DetachedContext] of ctx. It must not block.
 //
 // ctx must belong to a Doors render or handler; otherwise OnSettle panics.
 func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context)) {
@@ -81,7 +81,7 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 		defer frame.Activate()
 	}
 	joined := shredder.Join(ctx, false, core.Door().ReadyFrame(), afterFrame)
-	joined.Submit(ctx, core.Instance().Runtime(), func(bool) {
+	joined.Run(ctx, core.Instance().Runtime(), func(bool) {
 		on(detached)
 	})
 	joined.Release()
@@ -95,16 +95,17 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 // render, or the instance ends. Exactly one of these eventually happens to
 // every rendered piece of content, so f runs exactly once per registration.
 //
-// f runs on the instance goroutine pool and receives no context; the
-// registering context is already canceled by then. On a shutting down instance
-// it runs inline. It must not block; fire-and-forget Doors calls with a context
-// captured beforehand, for example from [InstanceContext], are safe.
+// f runs inline on the framework goroutine performing the clean — on the
+// calling goroutine when the content is already cleaned — and receives no
+// context; the registering context is already canceled by then. It must not
+// block; fire-and-forget Doors calls with a context captured beforehand, for
+// example from [InstanceContext], are safe.
 //
 // ctx must belong to a Doors render or handler; otherwise OnClean panics.
 func OnClean(ctx context.Context, f func()) {
 	ctex.LogCanceled(ctx, "OnClean")
 	core := ctx.Value(common.KeyCore).(core.Core)
-	core.Door().CleanFrame().Submit(context.Background(), core.Instance().Runtime(), func(bool) {
+	core.Door().CleanFrame().Run(context.Background(), core.Instance().Runtime(), func(bool) {
 		f()
 	})
 }

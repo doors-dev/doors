@@ -276,14 +276,13 @@ func TestOnReadyFiresAfterRenderCycleScheduled(t *testing.T) {
 	h.waitEvent("ready-after-scheduled")
 }
 
-// OnReady from a real handler context (valve already open) dispatches to the
-// instance pool promptly and never runs synchronously on the calling
-// goroutine.
-func TestOnReadyFromHandlerContextFiresPromptly(t *testing.T) {
+// OnReady from a real handler context (valve already open) runs inline on the
+// calling goroutine before OnReady returns, independent of pool availability.
+func TestOnReadyFromHandlerContextFiresInline(t *testing.T) {
 	h := newLifecycleHarness(t, 1)
 	pageCtx := h.renderPage(nil)
 
-	// Occupy the single pool worker so an async dispatch cannot start yet.
+	// Occupy the single pool worker: inline execution must not need it.
 	release := make(chan struct{})
 	started := make(chan struct{})
 	h.inst.Runtime().Submit(context.Background(), func(b bool) {
@@ -293,11 +292,18 @@ func TestOnReadyFromHandlerContextFiresPromptly(t *testing.T) {
 		close(started)
 		<-release
 	}, nil)
+	defer close(release)
 	<-started
 
 	c := pageCtx.Value(common.KeyCore).(core.Core)
 	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		OnReady(ctx, func(context.Context) { h.events <- "ready-handler" })
+		ran := false
+		OnReady(ctx, func(context.Context) { ran = true })
+		if ran {
+			h.events <- "ready-inline"
+		} else {
+			h.events <- "ready-async"
+		}
 		return true
 	}, nil)
 	if !ok {
@@ -308,11 +314,7 @@ func TestOnReadyFromHandlerContextFiresPromptly(t *testing.T) {
 	if !h.root.TriggerHook(hook.HookID, rec, req, 0) {
 		t.Fatal("expected hook trigger to succeed")
 	}
-	// The worker is still blocked: if OnReady had run inline on the handler
-	// goroutine, the event would already be here.
-	h.expectNoEvent(50 * time.Millisecond)
-	close(release)
-	h.waitEvent("ready-handler")
+	h.waitEvent("ready-inline")
 }
 
 // OnSettle registered during a render with a trivial batch must not fire while
@@ -705,8 +707,9 @@ func TestOnCleanPanicRecovered(t *testing.T) {
 	}
 }
 
-// A panic inside OnReady is recovered on the pool: the instance is killed and
-// the test process survives.
+// A panic inside OnReady is recovered by the runtime: the instance is killed
+// and the test process survives. The inline callback panics within the
+// render-completing task, so the page render itself may report an error.
 func TestOnReadyPanicRecovered(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
@@ -714,7 +717,7 @@ func TestOnReadyPanicRecovered(t *testing.T) {
 		OnReady(cur.Context(), func(context.Context) { panic("boom-ready") })
 		return cur.Text("v0")
 	}))
-	h.renderPage(mountDoor(d))
+	h.renderPageErr(mountDoor(d))
 	select {
 	case <-h.killer.killed:
 	case <-time.After(5 * time.Second):
