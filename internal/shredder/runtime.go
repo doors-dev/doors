@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/gammazero/deque"
 )
 
@@ -78,6 +79,22 @@ func (t task) runUnsafe() {
 	}
 	defer t.callback(nil)
 	t.fun(true)
+}
+
+func (t task) spawn() {
+	go func() {
+		if t.ctx.Err() != nil {
+			t.cancel(nil)
+			return
+		}
+		err := catch(t.fun, true)
+		if err != nil {
+			common.Logger(t.ctx).Error("shredder free task panic", "error", err)
+		}
+		if t.callback != nil {
+			t.callback(err)
+		}
+	}()
 }
 
 func (t task) run(r *runtime) {
@@ -163,10 +180,11 @@ func (r Runtime) Submit(ctx context.Context, fun func(bool), callback func(error
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if r == nil {
-		panic("submit expects runtime")
-	}
 	t := task{ctx, fun, callback}
+	if r == nil {
+		t.spawn()
+		return
+	}
 	if r.ctx.Err() != nil {
 		t.cancel(r)
 		return

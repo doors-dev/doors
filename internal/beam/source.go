@@ -36,6 +36,7 @@ type anySource interface {
 	getID() common.ID
 	addSub(s *screen)
 	removeSub(s *screen)
+	removeFreeSub(s *freeScreen)
 }
 
 type Source[T any] = *source[T]
@@ -44,14 +45,15 @@ var _ anySource = (*source[any])(nil)
 var _ Beamer[any] = (*source[any])(nil)
 
 type source[T any] struct {
-	id     common.ID
-	seq    uint
-	values map[uint]*T
-	equal  func(new T, old T) bool
-	mu     sync.RWMutex
-	noSkip bool
-	subs   common.Set[*screen]
-	null   T
+	id       common.ID
+	seq      uint
+	values   map[uint]*T
+	equal    func(new T, old T) bool
+	mu       sync.RWMutex
+	noSkip   bool
+	subs     common.Set[*screen]
+	freeSubs common.Set[*freeScreen]
+	null     T
 }
 
 func (s *source[T]) getID() common.ID {
@@ -61,9 +63,6 @@ func (s *source[T]) getID() common.ID {
 func (s *source[T]) addSub(sc *screen) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.subs == nil {
-		s.subs = common.NewSet[*screen]()
-	}
 	s.subs.Add(sc)
 	sc.init(s, s.seq)
 }
@@ -84,13 +83,13 @@ func NewSource[T any](init T, equal func(new T, old T) bool, noSkip bool) Source
 		values: map[uint]*T{
 			1: &init,
 		},
-		subs:   common.NewSet[*screen](),
-		equal:  equal,
-		noSkip: noSkip,
+		subs:     common.NewSet[*screen](),
+		freeSubs: common.NewSet[*freeScreen](),
+		equal:    equal,
+		noSkip:   noSkip,
 	}
 }
 
-// Get returns the latest committed value.
 func (s *source[T]) Get() T {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -117,12 +116,10 @@ func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool)
 	return value, !s.equal(*value, *prevValue)
 }
 
-// Update stores v and starts propagation.
 func (s *source[T]) Update(ctx context.Context, v T) <-chan error {
 	return s.mutateOrUpdate(ctx, nil, &v)
 }
 
-// Mutate updates the value by applying m to the current value.
 func (s *source[T]) Mutate(ctx context.Context, m func(T) T) <-chan error {
 	return s.mutateOrUpdate(ctx, m, nil)
 }
@@ -154,7 +151,7 @@ retry:
 	s.seq += 1
 	seq = s.seq
 	s.values[seq] = value
-	if len(s.subs) == 0 {
+	if len(s.subs) == 0 && len(s.freeSubs) == 0 {
 		s.cleanBefore(seq)
 		s.mu.Unlock()
 		close(ch)
@@ -181,8 +178,11 @@ retry:
 	syncFrame := shredder.Join(ctx, true, sh.Frame())
 	checkFrame := shredder.Join(ctx, true, ctxFrame, sh.Frame())
 	cleanFrame := &shredder.ValveFrame{}
-	for _, sub := range s.subs.Slice() {
+	for sub := range s.subs.Iter() {
 		sub.sync(true, ctx, cleanFrame, syncFrame, seq, isStopped)
+	}
+	for sub := range s.freeSubs.Iter() {
+		sub.sync(ctx, cleanFrame, syncFrame, seq, isStopped)
 	}
 	syncFrame.Release()
 	s.mu.Unlock()
@@ -220,8 +220,27 @@ type Core interface {
 
 func (s *source[T]) addWatcher(ctx context.Context, w *watcher) bool {
 	core, ok := ctx.Value(common.KeyCore).(Core)
-	if !ok {
+	if ok {
+		return core.Cinema().addWatcher(s, w)
+	}
+	return s.addFreeSub(ctx, w)
+}
+
+func (s *source[T]) addFreeSub(ctx context.Context, w *watcher) bool {
+	if ctx.Err() != nil {
 		return false
 	}
-	return core.Cinema().addWatcher(s, w)
+	f := newFreeScreen(ctx, s, w)
+	s.mu.Lock()
+	s.freeSubs.Add(f)
+	seq := s.seq
+	s.mu.Unlock()
+	f.init(seq)
+	return true
+}
+
+func (s *source[T]) removeFreeSub(f *freeScreen) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.freeSubs.Remove(f)
 }

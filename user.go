@@ -160,8 +160,9 @@ func InstanceStore(ctx context.Context) Store {
 //
 // It carries the session and nothing else: values of ctx are dropped, and it is
 // tied to no instance or dynamic owner. Session-scoped helpers, Door methods,
-// and Source or Beam updates accept it. [Reload] and instance-scoped helpers
-// panic on it, and Source or Beam reads and subscriptions return false.
+// and Source or Beam reads, subscriptions, and updates accept it; a
+// subscription made with it lives until the session ends. [Reload] and
+// instance-scoped helpers panic on it.
 //
 // ctx must carry a Doors session; otherwise SessionContext panics.
 func SessionContext(ctx context.Context) context.Context {
