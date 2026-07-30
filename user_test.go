@@ -585,3 +585,23 @@ func TestSetterSetValueSemantics(t *testing.T) {
 		})
 	}
 }
+
+func TestHasSessionHasInstance(t *testing.T) {
+	ctx, inst := helperContext(t)
+	if !HasSession(ctx) || !HasInstance(ctx) {
+		t.Fatal("expected render ctx to report session and instance")
+	}
+	if !HasSession(inst.session.ctx) {
+		t.Fatal("expected session ctx to report session")
+	}
+	if HasInstance(inst.session.ctx) {
+		t.Fatal("expected session ctx to not report instance")
+	}
+	if HasSession(context.Background()) || HasInstance(context.Background()) {
+		t.Fatal("expected plain ctx to report nothing")
+	}
+	detached := DetachedContext(ctx)
+	if !HasSession(detached) || !HasInstance(detached) {
+		t.Fatal("expected detached ctx to keep session and instance")
+	}
+}

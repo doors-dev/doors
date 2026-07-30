@@ -41,6 +41,20 @@ func Reload(ctx context.Context) <-chan error {
 	return core.Door().Reload(ctx)
 }
 
+// HasSession reports whether ctx carries a Doors session, meaning
+// session-scoped helpers like [SessionID] and [SessionStore] accept it.
+func HasSession(ctx context.Context) bool {
+	_, ok := ctx.Value(common.KeySession).(core.Session)
+	return ok
+}
+
+// HasInstance reports whether ctx belongs to a Doors render or handler,
+// meaning instance- and door-scoped helpers accept it. Implies [HasSession].
+func HasInstance(ctx context.Context) bool {
+	_, ok := ctx.Value(common.KeyCore).(core.Core)
+	return ok
+}
+
 // SessionExpire caps the remaining lifetime of the current session at d.
 //
 // It is a cap, not a keep-alive: the session still ends earlier if SessionTTL
