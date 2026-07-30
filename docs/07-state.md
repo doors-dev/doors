@@ -372,6 +372,7 @@ The subscription ends when:
 
 - your callback returns `true`
 - the owning dynamic parent is unmounted
+- for a context outside an instance (session or background context) — when the context is canceled, detected on the next update
 
 ### ReadAndSub
 

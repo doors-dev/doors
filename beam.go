@@ -52,29 +52,34 @@ type Beam[T any] interface {
 	// current value on the calling goroutine, then again on every update.
 	//
 	// The subscription ends when onValue returns true or the content that
-	// registered it is cleared.
+	// registered it is cleared. From a context outside an instance, for
+	// example [SessionContext] or a background context, it ends when the
+	// context is canceled, detected on the next propagation.
 	//
-	// It returns false if the context was canceled or does not belong to an
-	// instance runtime.
+	// It returns false if the context was canceled or the instance is shut
+	// down.
 	Sub(ctx context.Context, onValue func(context.Context, T) bool) bool
 
-	// Read returns the current value without subscribing to updates.
+	// Read returns the current value without subscribing to updates. Any
+	// context is allowed.
 	//
-	// It returns false if the context was canceled or does not belong to an
-	// instance runtime.
+	// It returns false if the context was canceled or the instance is shut
+	// down.
 	Read(ctx context.Context) (T, bool)
 
 	// ReadAndSub returns the current value and subscribes to later updates.
 	// Unlike [Beam.Sub], onValue is not called with the current value. If
-	// onValue is nil, no subscription is created.
+	// onValue is nil, no subscription is created. The subscription lives as
+	// described in [Beam.Sub].
 	//
-	// It returns false if the context was canceled or does not belong to an
-	// instance runtime.
+	// It returns false if the context was canceled or the instance is shut
+	// down.
 	ReadAndSub(ctx context.Context, onValue func(context.Context, T) bool) (T, bool)
 
 	// Watch subscribes w to the value stream and returns a function that
-	// cancels the subscription. It returns false if the context was canceled or
-	// does not belong to an instance runtime.
+	// cancels the subscription. The subscription lives as described in
+	// [Beam.Sub]. It returns false if the context was canceled or the
+	// instance is shut down.
 	//
 	// w receives the current value on the calling goroutine, then every update.
 	// Prefer [Beam.Sub] or [Beam.ReadAndSub] unless you need to cancel the
@@ -320,6 +325,10 @@ func (d derivedBeam[T1, T2]) innerBeam() beam.Beamer[T2] {
 }
 
 func effect[T any](b Beam[T], ctx context.Context) (T, bool) {
+	if _, ok := ctx.Value(common.KeyCore).(core.Core); !ok {
+		var zero T
+		return zero, false
+	}
 	return b.ReadAndSub(ctx, func(ctx context.Context, _ T) bool {
 		ctx.Value(common.KeyCore).(core.Core).Door().Reload(ctx)
 		return true
