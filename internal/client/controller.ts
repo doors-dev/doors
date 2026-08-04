@@ -359,6 +359,9 @@ class Controller {
 		}
 		this.reloaded_ = true
 		location.reload()
+		setTimeout(() => {
+			this.reloaded_ = false
+		}, 5000)
 	}
 }
 
