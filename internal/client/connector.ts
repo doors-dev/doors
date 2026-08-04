@@ -286,6 +286,7 @@ class ReportStreamer {
 		let writer: WritableStreamDefaultWriter | null = null
 		let message: Uint8Array | null = null
 		let writerPromise: Promise<ReadableStreamReadResult<WritableStreamDefaultWriter>> | null = null
+		let messagePromise: Promise<ReadableStreamReadResult<Uint8Array>> | null = null
 		let resolved = false
 		while (true) {
 			if (!writerPromise) {
@@ -312,8 +313,18 @@ class ReportStreamer {
 				message = null
 				continue
 			}
-			const { value } = await this.messageReader_.read()
-			message = value!
+			if (!messagePromise) {
+				messagePromise = this.messageReader_.read()
+			}
+			const source = await Promise.race([
+				messagePromise.then(() => "message"),
+				writerPromise.then(() => "writer"),
+			])
+			if (source === "message") {
+				const { value } = await messagePromise
+				messagePromise = null
+				message = value!
+			}
 		}
 	}
 }
