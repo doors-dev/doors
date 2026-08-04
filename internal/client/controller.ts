@@ -378,9 +378,9 @@ class Controller {
 		}
 		this.reloaded_ = true
 		location.reload()
-		new ReliableTimer(requestTimeout, () => {
+		setTimeout(() => {
 			this.reloaded_ = false
-		})
+		}, 5000)
 	}
 }
 
