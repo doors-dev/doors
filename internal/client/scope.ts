@@ -29,7 +29,8 @@ export function NewFetch(params: {
 	event?: Event,
 	scopeQueue: Array<ScopeSet>,
 	indicator: Array<IndicatorEntry>,
-	before: Array<Action>
+	before: Array<Action>,
+	timeout?: number | null
 }): Fetch {
 	const hook = new Hook(params)
 	return hook.fetch
@@ -49,7 +50,8 @@ class Hook {
 		event?: Event,
 		scopeQueue: Array<ScopeSet>,
 		indicator: Array<IndicatorEntry>,
-		before: Array<Action>
+		before: Array<Action>,
+		timeout?: number | null
 	}) {
 		this.promise_ = new Promise((res, rej) => {
 			this.res_ = res
@@ -93,7 +95,7 @@ class Hook {
 			target = this.params_.event.currentTarget as Element
 		}
 		this.indicatorId_ = indicator.start(target, this.params_.indicator)
-		this.abortTimer_ = new AbortTimer(requestTimeout)
+		this.abortTimer_ = new AbortTimer(this.params_.timeout ?? requestTimeout)
 		this.track_ = runtime.hookRegister(this)
 		const track = this.track_
 		this.actions(this.params_.before).then(() => {

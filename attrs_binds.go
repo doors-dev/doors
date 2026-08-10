@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
@@ -44,6 +45,9 @@ type AHook[T any] struct {
 	// A hook call has no event element, so only the Query and QueryAll variants
 	// apply. Optional.
 	Indicator Indicators
+	// RequestTimeout overrides [Conf].RequestTimeout for calls to this hook.
+	// Optional.
+	RequestTimeout time.Duration
 	// On handles the call and returns the value sent back to the caller. Return
 	// false to keep the hook active, true to remove it. Optional; a nil On
 	// answers with null.
@@ -63,6 +67,7 @@ func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	front.AttrsSetHook(attrs, h.Name, front.Hook{
 		Scope:    scopesOrNil(core, h.Scope),
 		Indicate: indicatorsOrNil(h.Indicator),
+		Timeout:  h.RequestTimeout,
 		Hook:     hook,
 	})
 	return nil
@@ -119,6 +124,9 @@ type ARawHook struct {
 	// A hook call has no event element, so only the Query and QueryAll variants
 	// apply. Optional.
 	Indicator Indicators
+	// RequestTimeout overrides [Conf].RequestTimeout for calls to this hook.
+	// Optional.
+	RequestTimeout time.Duration
 	// On handles the call with raw access to the request body and the response.
 	// Return false to keep the hook active, true to remove it. Optional; a nil
 	// On answers with an empty response.
@@ -138,6 +146,7 @@ func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	front.AttrsSetHook(attrs, h.Name, front.Hook{
 		Scope:    scopesOrNil(core, h.Scope),
 		Indicate: indicatorsOrNil(h.Indicator),
+		Timeout:  h.RequestTimeout,
 		Hook:     hook,
 	})
 	return nil
