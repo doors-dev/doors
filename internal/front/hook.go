@@ -16,6 +16,7 @@ package front
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front/actions"
@@ -26,10 +27,15 @@ type Hook struct {
 	OnError  actions.Actions
 	Scope    []Scope
 	Indicate []Indicator
+	Timeout  time.Duration
 	core.Hook
 }
 
 func (h Hook) MarshalJSON() ([]byte, error) {
-	a := []any{h.HookID, h.Scope, h.Indicate, h.Before, h.OnError}
+	var timeout any
+	if h.Timeout > 0 {
+		timeout = h.Timeout.Milliseconds()
+	}
+	a := []any{h.HookID, h.Scope, h.Indicate, h.Before, h.OnError, timeout}
 	return json.Marshal(a)
 }

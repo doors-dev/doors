@@ -135,13 +135,14 @@ export function capture(name: string, opt: any, arg: any, event: Event | undefin
 	if (!captureFunction) {
 		throw new HookErr(hookErrKinds.other, new Error("capture " + name + " not found"))
 	}
-	const [hookId, scopeQueue, indicator, before] = hook
+	const [hookId, scopeQueue, indicator, before, , timeout] = hook
 	const f = NewFetch({
 		hookId,
 		event: event,
 		scopeQueue,
 		indicator,
-		before
+		before,
+		timeout
 	})
 	return captureFunction(f, arg, opt)
 }
@@ -289,11 +290,11 @@ export function attach(parent: Element | DocumentFragment | Document) {
 		const capturesList = JSON.parse(element.getAttribute(attr)!)
 		element.setAttribute(attr, "applied")
 		for (const [event, name, opt, hook] of capturesList) {
-			const [hookId, scopeQueue, indicator, before, onErr] = hook
+			const [hookId, scopeQueue, indicator, before, onErr, timeout] = hook
 			element.addEventListener(event, async (e) => {
 				let p: Promise<Response>
 				try {
-					p = capture(name, opt, e, e, [hookId, scopeQueue, indicator, before])
+					p = capture(name, opt, e, e, [hookId, scopeQueue, indicator, before, null, timeout])
 				} catch (error: any) {
 					p = Promise.reject(error)
 				}

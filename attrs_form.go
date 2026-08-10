@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
@@ -44,6 +45,9 @@ type ARawSubmit struct {
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
+	// RequestTimeout overrides [Conf].RequestTimeout for this form's
+	// requests. Optional.
+	RequestTimeout time.Duration
 	// On handles the submitted form on the server. Return false to keep the
 	// handler active, true to remove it. Optional.
 	On func(context.Context, RequestRawForm) bool
@@ -67,6 +71,7 @@ func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 		Before:   intoActions(ctx, actionsOrNil(s.Before)),
 		Scope:    scopesOrNil(core, s.Scope),
 		Indicate: indicatorsOrNil(s.Indicator),
+		Timeout:  s.RequestTimeout,
 		Hook:     hook,
 	})
 	return nil
@@ -113,6 +118,9 @@ type ASubmit[T any] struct {
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
+	// RequestTimeout overrides [Conf].RequestTimeout for this form's
+	// requests. Optional.
+	RequestTimeout time.Duration
 	// On handles the decoded form on the server. Return false to keep the
 	// handler active, true to remove it. Optional.
 	On func(context.Context, RequestForm[T]) bool
@@ -136,6 +144,7 @@ func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 		Before:   intoActions(ctx, actionsOrNil(s.Before)),
 		Scope:    scopesOrNil(core, s.Scope),
 		Indicate: indicatorsOrNil(s.Indicator),
+		Timeout:  s.RequestTimeout,
 		Hook:     hook,
 	})
 	return nil
