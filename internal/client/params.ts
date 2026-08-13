@@ -20,3 +20,4 @@ export const disconnectAfter: number = Number(document.currentScript!.dataset.di
 export const requestTimeout: number = Number(document.currentScript!.dataset.request)
 export const solitaireRoll: number = Number(document.currentScript!.dataset.roll)
 export const noStream: boolean = !!document.currentScript!.dataset.nostream
+export const boot: string = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("")

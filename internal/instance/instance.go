@@ -59,6 +59,7 @@ type instance struct {
 	importMap  utils.ImportMap
 	pageStatus atomic.Int32
 	titleMeta  core.TitleMeta
+	boot       atomic.Pointer[string]
 }
 
 func (inst Instance) Logger() *slog.Logger {
@@ -85,6 +86,13 @@ func (inst Instance) Connect(w http.ResponseWriter, r *http.Request) {
 	if inst.state.Load() != active {
 		w.WriteHeader(http.StatusGone)
 		return
+	}
+	if b := r.URL.Query().Get("b"); b != "" {
+		inst.boot.CompareAndSwap(nil, &b)
+		if *inst.boot.Load() != b {
+			w.WriteHeader(http.StatusGone)
+			return
+		}
 	}
 	inst.killTimer.KeepAlive()
 	inst.solitaire.Connect(w, r)
