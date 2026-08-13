@@ -1,5 +1,5 @@
 import { Header, Package, Sync, SyncFrame } from "./package";
-import { id, solitaireRoll, prefix, noStream } from "./params"
+import { boot, id, solitaireRoll, prefix, noStream } from "./params"
 import { ProgressiveDelay, AbortTimer, ReliableTimer, Result, result } from "./lib"
 
 
@@ -237,7 +237,7 @@ class ReportSender {
 		this.counter += 1
 		const abortTimer = new AbortTimer(solitaireRoll)
 		const [response, err] = await result(() => {
-			return fetch(`${prefix}/s/${id}?t=${this.counter}`, {
+			return fetch(`${prefix}/s/${id}?t=${this.counter}&b=${boot}`, {
 				signal: abortTimer.signal,
 				method: "POST",
 				headers: {
@@ -286,6 +286,7 @@ class ReportStreamer {
 		let writer: WritableStreamDefaultWriter | null = null
 		let message: Uint8Array | null = null
 		let writerPromise: Promise<ReadableStreamReadResult<WritableStreamDefaultWriter>> | null = null
+		let messagePromise: Promise<ReadableStreamReadResult<Uint8Array>> | null = null
 		let resolved = false
 		while (true) {
 			if (!writerPromise) {
@@ -312,8 +313,18 @@ class ReportStreamer {
 				message = null
 				continue
 			}
-			const { value } = await this.messageReader_.read()
-			message = value!
+			if (!messagePromise) {
+				messagePromise = this.messageReader_.read()
+			}
+			const source = await Promise.race([
+				messagePromise.then(() => "message"),
+				writerPromise.then(() => "writer"),
+			])
+			if (source === "message") {
+				const { value } = await messagePromise
+				messagePromise = null
+				message = value!
+			}
 		}
 	}
 }
@@ -343,7 +354,7 @@ class ReportWriter {
 		})
 	}
 	private loop() {
-		const promise = fetch(`${prefix}/s/${id}?t=${this.id}`, {
+		const promise = fetch(`${prefix}/s/${id}?t=${this.id}&b=${boot}`, {
 			signal: this.abortTimer_.signal,
 			method: "POST",
 			body: this.stream.readable,
@@ -430,7 +441,7 @@ class PackageReceiver {
 
 	private async loop(): Promise<boolean> {
 		const [response, err] = await result(() => {
-			return fetch(`${prefix}/s/${id}?t=${this.id}`, {
+			return fetch(`${prefix}/s/${id}?t=${this.id}&b=${boot}`, {
 				signal: this.abortTimer_.signal,
 				method: "GET",
 				cache: "no-store",
