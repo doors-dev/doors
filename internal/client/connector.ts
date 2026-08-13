@@ -47,6 +47,7 @@ class Conn {
 	private ts: number = 0
 	private pausePromise: Promise<void>
 	private pauseCont: (() => void) | null = null
+	aborts: Set<AbortTimer> = new Set()
 
 	constructor(private ctrl_: Controller) {
 		new PackageReceiver(this, 1)
@@ -72,6 +73,9 @@ class Conn {
 		this.pausePromise = new Promise((res) => {
 			this.pauseCont = res
 		})
+		for (const abort of this.aborts) {
+			abort.abort()
+		}
 	}
 	send(frame: Frame) {
 		this.merge(frame)
@@ -341,6 +345,7 @@ class ReportWriter {
 		this.rollTimer_ = new ReliableTimer(solitaireRoll, () => {
 			this.roll()
 		})
+		conn_.aborts.add(this.abortTimer_)
 		this.loop()
 	}
 	private roll() {
@@ -403,6 +408,7 @@ class ReportWriter {
 	private clear() {
 		this.abortTimer_.cancel()
 		this.rollTimer_.cancel()
+		this.conn_.aborts.delete(this.abortTimer_)
 	}
 }
 
@@ -414,6 +420,7 @@ class PackageReceiver {
 	private packageReader: PackageReader
 	constructor(private conn_: Conn, private id: number) {
 		this.abortTimer_ = new AbortTimer(solitaireRoll * 4 / 3)
+		conn_.aborts.add(this.abortTimer_)
 		this.rollTimer_ = new ReliableTimer(solitaireRoll, () => {
 			this.roll()
 		})
@@ -434,6 +441,7 @@ class PackageReceiver {
 	}
 	private async launch() {
 		if (await this.loop()) {
+			this.clear()
 			return
 		}
 		this.conn_.receiverDone(this.id, false)
@@ -518,6 +526,7 @@ class PackageReceiver {
 	private clear() {
 		this.abortTimer_.cancel()
 		this.rollTimer_.cancel()
+		this.conn_.aborts.delete(this.abortTimer_)
 	}
 }
 
