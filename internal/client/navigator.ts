@@ -263,7 +263,7 @@ export class Navigator {
 			this.counter += 1
 			const id = this.counter
 			history.replaceState({ ...history.state, _d0r: { ...history.state?._d0r, next: id } }, '')
-			history.pushState({ _d0r: { id } }, '', path);
+			history.pushState({ ...history.state, _d0r: { id } }, '', path);
 			if (serverPush) {
 				this.activate(newUrl)
 			}

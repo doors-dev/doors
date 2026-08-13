@@ -17,7 +17,7 @@ import action from "./calls"
 import doors from "./door"
 import { Package } from "./package";
 import { Connector, Frame, Lost, NewConnector, Results, STRESS_MODE } from "./connector";
-import { disconnectAfter, ttl } from "./params";
+import { disconnectAfter, id, ttl, requestTimeout } from "./params";
 import { ReliableTimer } from "./lib";
 
 
@@ -226,6 +226,15 @@ const state = {
 
 type State = typeof state[keyof typeof state]
 
+
+function repeatedLoad(): boolean {
+	if (history.state?._d0ri === id) {
+		return true
+	}
+	history.replaceState({ ...history.state, _d0ri: id }, '')
+	return false
+}
+
 class Controller {
 	private state_: State = state.active
 	private deck_ = new Solitaire()
@@ -235,21 +244,31 @@ class Controller {
 	private loaded_ = false
 	private ttlTimer_ = new ReliableTimer(ttl, () => this.suspend())
 	constructor() {
-		this.ready = new Promise((res) => {
-			document.addEventListener("DOMContentLoaded", () => {
-				this.init()
-				res()
-				if (this.state_ == state.dead) {
-					return
-				}
-				this.flush()
-			})
+		let ready: any = undefined
+		this.ready = new Promise((res) => { ready = res })
+		if (repeatedLoad()) {
+			this.ensureReload()
+			return
+		}
+		document.addEventListener("DOMContentLoaded", () => {
+			this.init()
+			ready()
+			if (this.state_ == state.dead) {
+				return
+			}
+			this.flush()
 		})
 		this.connector_ = NewConnector(this)
 		this.syncVisibility()
 		window.addEventListener("pagehide", () => this.sleep())
 		window.addEventListener("pageshow", () => this.syncVisibility())
 		document.addEventListener("visibilitychange", () => this.syncVisibility())
+	}
+	private ensureReload() {
+		this.state_ = state.dead
+		this.reload()
+		this.reloadOnTouch()
+		window.addEventListener("pageshow", () => this.reload())
 	}
 	resetDelays() {
 		this.connector_.resetDelays()
@@ -359,9 +378,9 @@ class Controller {
 		}
 		this.reloaded_ = true
 		location.reload()
-		setTimeout(() => {
+		new ReliableTimer(requestTimeout, () => {
 			this.reloaded_ = false
-		}, 5000)
+		})
 	}
 }
 
