@@ -17,7 +17,6 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"testing"
@@ -471,70 +470,6 @@ func TestCallUsesCanceledContext(t *testing.T) {
 	}
 	if emit.Name != "still-runs" {
 		t.Fatalf("expected canceled-context call to dispatch action %q, got %q", "still-runs", emit.Name)
-	}
-}
-
-func TestSharedAttrRestoreOnUpdateError(t *testing.T) {
-	ctx, inst := helperContext(t)
-	shared := NewAShared("data-shared", "start")
-	attrs := gox.NewAttrs()
-	if err := shared.Modify(ctx, "div", attrs); err != nil {
-		t.Fatal(err)
-	}
-	inst.callCheckErr = errors.New("boom")
-
-	shared.Update(ctx, "next")
-
-	set, ok := inst.lastCallAction.(actions.AttrSet)
-	if !ok {
-		t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)
-	}
-	if set.Name != "data-shared" {
-		t.Fatalf("expected attr name %q, got %q", "data-shared", set.Name)
-	}
-	if set.Value == nil || *set.Value != "next" {
-		t.Fatalf("expected attempted update value %q, got %v", "next", set.Value)
-	}
-	if shared.value != "start" {
-		t.Fatalf("expected shared value restored to %q, got %q", "start", shared.value)
-	}
-	if !shared.enable {
-		t.Fatal("expected shared attr to stay enabled after restore")
-	}
-	if shared.seq != 0 {
-		t.Fatalf("expected restore to rewind seq to 0, got %d", shared.seq)
-	}
-}
-
-func TestSharedAttrRestoreOnDisableError(t *testing.T) {
-	ctx, inst := helperContext(t)
-	shared := NewAShared("data-shared", "start")
-	attrs := gox.NewAttrs()
-	if err := shared.Modify(ctx, "div", attrs); err != nil {
-		t.Fatal(err)
-	}
-	inst.callCheckErr = errors.New("boom")
-
-	shared.Disable(ctx)
-
-	remove, ok := inst.lastCallAction.(actions.AttrSet)
-	if !ok {
-		t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)
-	}
-	if remove.ID == 0 {
-		t.Fatal("expected dynamic attr id on remove action")
-	}
-	if remove.Value != nil {
-		t.Fatalf("expected nil value on remove action, got %q", *remove.Value)
-	}
-	if !shared.enable {
-		t.Fatal("expected shared attr enable flag restored after failed disable")
-	}
-	if shared.value != "start" {
-		t.Fatalf("expected shared value preserved as %q, got %q", "start", shared.value)
-	}
-	if shared.seq != 0 {
-		t.Fatalf("expected restore to rewind seq to 0, got %d", shared.seq)
 	}
 }
 

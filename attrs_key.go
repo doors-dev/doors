@@ -62,10 +62,6 @@ type keyEventHook struct {
 	// Keys filters by key and modifier state; the handler fires when the event
 	// matches any entry. Optional; without entries every event fires.
 	Keys []Key
-	// Filter filters by key name, ignoring modifier state.
-	//
-	// Deprecated: use Keys.
-	Filter []string
 	// Scope controls how the request is scheduled. Optional; unscoped requests
 	// are sent as soon as the event fires.
 	Scope Scopes
@@ -84,7 +80,7 @@ type keyEventHook struct {
 }
 
 func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
-	keys := make([]front.KeyMatch, 0, len(k.Keys)+len(k.Filter))
+	keys := make([]front.KeyMatch, 0, len(k.Keys))
 	for _, key := range k.Keys {
 		keys = append(keys, front.KeyMatch{
 			Key:   key.Key,
@@ -93,9 +89,6 @@ func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs)
 			Alt:   uint8(key.AltMod),
 			Meta:  uint8(key.MetaMod),
 		})
-	}
-	for _, filter := range k.Filter {
-		keys = append(keys, front.KeyMatch{Key: filter})
 	}
 	return eventAttr[KeyboardEvent]{
 		capture: front.KeyboardEventCapture{
@@ -131,11 +124,6 @@ type AKeyDown struct {
 	// PreventDefault and StopPropagation apply only to matching
 	// events. Optional; without entries every keydown fires.
 	Keys []Key
-	// Filter limits the handler to the listed event.key values. Optional.
-	//
-	// Deprecated: use Keys. Each entry matches its key regardless of modifier
-	// state.
-	Filter []string
 	// Scope controls how the request is scheduled. Optional; unscoped requests
 	// are sent as soon as the event fires.
 	Scope Scopes
@@ -175,11 +163,6 @@ type AKeyUp struct {
 	// PreventDefault and StopPropagation apply only to matching
 	// events. Optional; without entries every keyup fires.
 	Keys []Key
-	// Filter limits the handler to the listed event.key values. Optional.
-	//
-	// Deprecated: use Keys. Each entry matches its key regardless of modifier
-	// state.
-	Filter []string
 	// Scope controls how the request is scheduled. Optional; unscoped requests
 	// are sent as soon as the event fires.
 	Scope Scopes

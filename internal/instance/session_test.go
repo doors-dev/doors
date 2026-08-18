@@ -15,9 +15,11 @@ import (
 )
 
 type sessionTestApp struct {
-	conf       common.Conf
-	cookieName string
-	removed    chan string
+	conf         common.Conf
+	cookieName   string
+	removed      chan string
+	cookieID     string
+	cookieMaxAge time.Duration
 }
 
 func newSessionTestApp() *sessionTestApp {
@@ -56,6 +58,10 @@ func (a *sessionTestApp) Logger() *slog.Logger {
 func (a *sessionTestApp) InstanceCreated() {}
 func (a *sessionTestApp) InstanceDeleted() {}
 func (a *sessionTestApp) Draining() bool   { return false }
+func (a *sessionTestApp) SetCookies(w http.ResponseWriter, id string, maxAge time.Duration) {
+	a.cookieID = id
+	a.cookieMaxAge = maxAge
+}
 
 func (a *sessionTestApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }
@@ -63,7 +69,7 @@ func (a *sessionTestApp) PrinterMiddleware() func(next gox.Printer) gox.Printer 
 
 func TestSessionKillCancelsContext(t *testing.T) {
 	app := newSessionTestApp()
-	sess := NewSession(app)
+	sess := NewSession(app, "test-session")
 	ctx := sess.Context()
 
 	select {
@@ -100,78 +106,19 @@ func TestSessionKillCancelsContext(t *testing.T) {
 	}
 }
 
-func TestSessionRenewCookie(t *testing.T) {
+func TestSessionRenewSetsCookies(t *testing.T) {
 	app := newSessionTestApp()
-	sess := NewSession(app)
+	sess := NewSession(app, "test-session")
+	sess.renewed.Store(0)
 	w := httptest.NewRecorder()
 	if !sess.Renew(w) {
 		t.Fatal("expected live session to renew")
 	}
-	cookies := w.Result().Cookies()
-	if len(cookies) != 1 {
-		t.Fatalf("expected one session cookie, got %d", len(cookies))
+	if app.cookieID != "test-session" {
+		t.Fatalf("unexpected cookie id: %q", app.cookieID)
 	}
-	cookie := cookies[0]
-	if cookie.Name != "test" {
-		t.Fatalf("unexpected cookie name: %q", cookie.Name)
-	}
-	if cookie.Value != sess.ID() {
-		t.Fatalf("unexpected cookie value: %q", cookie.Value)
-	}
-	if !cookie.Secure {
-		t.Fatal("expected session cookie to be secure")
-	}
-	if cookie.Path != "/" {
-		t.Fatalf("unexpected cookie path: %q", cookie.Path)
-	}
-
-	app.conf.ServerSessionCookieNoSecure = true
-	app.conf.ServerSessionCookiePrefix = ""
-	w = httptest.NewRecorder()
-	sess = NewSession(app)
-	if !sess.Renew(w) {
-		t.Fatal("expected live no-secure session to renew")
-	}
-	cookies = w.Result().Cookies()
-	if len(cookies) != 1 {
-		t.Fatalf("expected one no-secure session cookie, got %d", len(cookies))
-	}
-	cookie = cookies[0]
-	if cookie.Name != "test" {
-		t.Fatalf("unexpected no-secure cookie name: %q", cookie.Name)
-	}
-	if cookie.Secure {
-		t.Fatal("expected no-secure session cookie to omit Secure")
-	}
-}
-
-func TestSessionRenewServerIDCookie(t *testing.T) {
-	app := newSessionTestApp()
-	app.cookieName = "server_id"
-	sess := NewSession(app)
-	w := httptest.NewRecorder()
-	if !sess.Renew(w) {
-		t.Fatal("expected live session to renew")
-	}
-	cookies := w.Result().Cookies()
-	if len(cookies) != 2 {
-		t.Fatalf("expected two cookies (session + server ID), got %d", len(cookies))
-	}
-	serverCookie := cookies[1]
-	if serverCookie.Name != "server_id" {
-		t.Fatalf("unexpected server ID cookie name: %q", serverCookie.Name)
-	}
-	if serverCookie.Value != "test" {
-		t.Fatalf("unexpected server ID cookie value: %q", serverCookie.Value)
-	}
-	if !serverCookie.HttpOnly {
-		t.Fatal("expected server ID cookie to be HttpOnly")
-	}
-	if !serverCookie.Secure {
-		t.Fatal("expected server ID cookie to be Secure")
-	}
-	if serverCookie.Path != "/" {
-		t.Fatalf("unexpected server ID cookie path: %q", serverCookie.Path)
+	if app.cookieMaxAge <= 0 || app.cookieMaxAge > app.conf.SessionTTL {
+		t.Fatalf("unexpected cookie max age: %v", app.cookieMaxAge)
 	}
 }
 

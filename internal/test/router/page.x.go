@@ -1163,7 +1163,7 @@ func routerBeamDocument() gox.Elem {
 				__e = __c.Any(doors.Route(
 				doors.RouteModelBeam(beamCrossAContent),
 				doors.RouteModelBeam(beamCrossBContent),
-				doors.RouteLocationDefaultComp(routeDefault404()),
+				doors.RouteDefaultComp[doors.Location](routeDefault404()),
 			)); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
@@ -1319,7 +1319,7 @@ func routerLensCrossDocument() gox.Elem {
 				__e = __c.Any(doors.Route(
 				doors.RouteModel(crossAContent),
 				doors.RouteModel(crossBContent),
-				doors.RouteLocationDefaultComp(routeDefault404()),
+				doors.RouteDefaultComp[doors.Location](routeDefault404()),
 			)); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
@@ -1439,7 +1439,7 @@ func routerCombinedLensDocument() gox.Elem {
 				doors.RouteMatch(func(l doors.Location) bool {
 					return len(l.Segments) == 1 && l.Segments[0] == "raw"
 				}).Source(combinedRawContent),
-				doors.RouteLocationDefaultComp(routeDefault404()),
+				doors.RouteDefaultComp[doors.Location](routeDefault404()),
 			)); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
@@ -1784,7 +1784,7 @@ func routerCombinedBeamDocument() gox.Elem {
 				doors.RouteModelBeam(beamCrossAContent),
 				doors.RouteDerive(deriveCustomRoute).Beam(combinedCustomBeamContent),
 				doors.RouteModelBeam(combinedQueryBeamContent),
-				doors.RouteLocationDefaultComp(routeDefault404()),
+				doors.RouteDefaultComp[doors.Location](routeDefault404()),
 			)); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }

@@ -546,7 +546,7 @@ func (f *captureFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 //line fragments.gox:317
 		__e = (doors.AKeyDown{
-		Filter: []string{"Enter"},
+		Keys: []doors.Key{{Key: "Enter"}},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.filter++
 			f.r.Update(ctx, 4, fmt.Sprint(f.filter))
