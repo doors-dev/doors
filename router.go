@@ -79,31 +79,3 @@ func Route(routes ...RouteSource[Location]) gox.EditorComp {
 		return path.Route(routes...).Edit(cur)
 	})
 }
-
-// RouteLocationDefault calls [RouteDefault].
-//
-// Deprecated: use [RouteDefault].
-func RouteLocationDefault[C gox.Comp](render func(s Source[Location]) C) RouteSource[Location] {
-	return RouteDefault(render)
-}
-
-// RouteLocationDefaultBeam calls [RouteDefaultBeam].
-//
-// Deprecated: use [RouteDefaultBeam].
-func RouteLocationDefaultBeam[C gox.Comp](render func(b Beam[Location]) C) RouteBeam[Location] {
-	return RouteDefaultBeam(render)
-}
-
-// RouteLocationDefaultBind calls [RouteDefaultBind].
-//
-// Deprecated: use [RouteDefaultBind].
-func RouteLocationDefaultBind[C gox.Comp](render func(b Location) C) RouteBeam[Location] {
-	return RouteDefaultBind(render)
-}
-
-// RouteLocationDefaultComp calls [RouteDefaultComp].
-//
-// Deprecated: use [RouteDefaultComp].
-func RouteLocationDefaultComp(comp gox.Comp) RouteBeam[Location] {
-	return RouteDefaultComp[Location](comp)
-}

@@ -315,7 +315,7 @@ elem (f *captureFragment) Main() {
 		},
 	} <a id="prevent-link" href="#jump">prevent-link</a>
 	~>doors.AKeyDown{
-		Filter: []string{"Enter"},
+		Keys: []doors.Key{{Key: "Enter"}},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.filter++
 			f.r.Update(ctx, 4, fmt.Sprint(f.filter))

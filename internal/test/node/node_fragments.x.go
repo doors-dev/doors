@@ -2014,7 +2014,7 @@ func (f *FragmentContainerHookEffectLifecycle) Main() gox.Elem {
 				__e = __c.Set("id", "container-hook-effect-root"); if __e != nil { return }
 //line node_fragments.gox:1156
 				__e = __c.Modify(doors.AKeyDown{
-			Filter: []string{"ContainerEffect"},
+			Keys: []doors.Key{{Key: "ContainerEffect"}},
 			On: func(ctx context.Context, _ doors.RequestEvent[doors.KeyboardEvent]) bool {
 				value, ok := f.source.Effect(ctx)
 				f.registrations.Add(1)

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/instance"
+	"github.com/doors-dev/doors/internal/core"
 )
 
 type responseWriter struct {
@@ -91,10 +91,10 @@ func UseResource(path string, resource ResourceStatic, contentType string) Use {
 				next.ServeHTTP(w, r)
 				return
 			}
-			sess := r.Context().Value(common.KeySession).(instance.Session)
-			res, err := sess.App().ResourceRegistry().Static(entry, contentType)
+			app := r.Context().Value(common.KeySession).(interface{ App() core.App }).App()
+			res, err := app.ResourceRegistry().Static(entry, contentType)
 			if err != nil {
-				sess.Logger().Error("ServeResource failed to prepare the resource", "error", err)
+				app.Logger().Error("ServeResource failed to prepare the resource", "error", err)
 				w.WriteHeader(500)
 				return
 			}

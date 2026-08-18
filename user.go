@@ -216,8 +216,7 @@ func IDNumber(ctx context.Context) uint64 {
 // of the caller. It is safe to use from goroutines that wait on completion
 // channels.
 //
-// Unlike [DetachedContext], it outlives the current dynamic owner. If ctx does
-// not belong to an instance, the two are equivalent.
+// Unlike [DetachedContext], it outlives the current dynamic owner.
 func InstanceContext(ctx context.Context) context.Context {
 	core, ok := ctx.Value(common.KeyCore).(core.Core)
 	if !ok {
@@ -227,13 +226,6 @@ func InstanceContext(ctx context.Context) context.Context {
 	return ctex.NewFreeContext(ctx, core.Instance().Runtime().Context())
 }
 
-// FreeRoot calls [InstanceContext].
-//
-// Deprecated: use [InstanceContext].
-func FreeRoot(ctx context.Context) context.Context {
-	return InstanceContext(ctx)
-}
-
 // DetachedContext returns a context that is detached from the current
 // render/update cycle and bounded by the lifetime of ctx.
 //
@@ -241,16 +233,9 @@ func FreeRoot(ctx context.Context) context.Context {
 // from goroutines that wait on completion channels.
 //
 // Unlike [InstanceContext], work started with it is cleaned up with the current
-// dynamic owner. Any context is allowed.
+// dynamic owner.
 func DetachedContext(ctx context.Context) context.Context {
 	return ctex.NewFreeContext(ctx, ctx)
-}
-
-// Free calls [DetachedContext].
-//
-// Deprecated: use [DetachedContext].
-func Free(ctx context.Context) context.Context {
-	return DetachedContext(ctx)
 }
 
 // Logger returns the Doors logger for ctx.

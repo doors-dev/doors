@@ -34,6 +34,7 @@ import (
 type App interface {
 	CSP() *common.CSP
 	Conf() *common.Conf
+	SetCookies(w http.ResponseWriter, id string, maxAge time.Duration)
 	PathMaker() path.PathMaker
 	RemoveSession(id string)
 	ResourceRegistry() resources.Registry
@@ -46,16 +47,20 @@ type App interface {
 
 type Session = *session
 
-func NewSession(a App) Session {
+func NewSession(a App, id string) Session {
 	ctx, cancel := context.WithCancel(context.Background())
 	sess := &session{
 		store:   ctex.NewStore(),
-		id:      common.RandId(),
+		id:      id,
 		app:     a,
 		limiter: utils.NewLimiter(a.Conf().SessionInstanceLimit),
 		cancel:  cancel,
 	}
 	sess.ctx = context.WithValue(ctx, common.KeySession, sess)
+	now := time.Now()
+	sess.renewed.Store(now.UnixMilli())
+	sess.ttlTime = now.Add(a.Conf().SessionTTL)
+	sess.resetKillTimer()
 	return sess
 }
 
@@ -168,28 +173,7 @@ func (sess *session) Renew(w http.ResponseWriter) bool {
 	if maxAge < sess.app.Conf().RequestTimeout {
 		return false
 	}
-	cookie := &http.Cookie{
-		Name:     sess.app.PathMaker().SessionCookie(),
-		Value:    sess.id,
-		HttpOnly: true,
-		Secure:   !sess.app.Conf().ServerSessionCookieNoSecure,
-		Path:     "/",
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   int(maxAge.Seconds()),
-	}
-	http.SetCookie(w, cookie)
-	if sess.app.PathMaker().SetServerIDCookie() && !sess.app.Draining() {
-		cookie := &http.Cookie{
-			Name:     sess.app.PathMaker().ServerIDCookieName(),
-			Value:    sess.app.PathMaker().ID(),
-			HttpOnly: true,
-			Secure:   !sess.app.Conf().ServerSessionCookieNoSecure,
-			Path:     "/",
-			SameSite: http.SameSiteLaxMode,
-			MaxAge:   int(maxAge.Seconds()),
-		}
-		http.SetCookie(w, cookie)
-	}
+	sess.app.SetCookies(w, sess.id, maxAge)
 	return !sess.killed()
 }
 

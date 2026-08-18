@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"slices"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/instance"
@@ -154,16 +156,53 @@ func (a App) Drain(callback func()) {
 	}
 }
 
-func (a *app) ensureSession(w http.ResponseWriter, r *http.Request) instance.Session {
+func (a *app) injectSession(w http.ResponseWriter, r *http.Request) *http.Request {
 	s := a.getSession(w, r)
 	if s != nil {
-		return s
+		return r.WithContext(context.WithValue(r.Context(), common.KeySession, s))
 	}
-	s = instance.NewSession(a)
+	id := common.RandId()
+	a.SetCookies(w, id, a.conf.SessionTTL)
+	l := &lazySession{
+		id:  id,
+		app: a,
+	}
+	r = r.WithContext(context.WithValue(r.Context(), common.KeySession, l))
+	l.r = r
+	return r
+}
+
+func (a *app) newSession(r *http.Request, id string) instance.Session {
+	s := instance.NewSession(a, id)
 	a.sessions.Store(s.ID(), s)
 	a.tracker.Create(s.ID(), r)
-	s.Renew(w)
 	return s
+}
+
+func (a *app) SetCookies(w http.ResponseWriter, id string, maxAge time.Duration) {
+	cookie := &http.Cookie{
+		Name:     a.pathMaker.SessionCookie(),
+		Value:    id,
+		HttpOnly: true,
+		Secure:   !a.conf.ServerSessionCookieNoSecure,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(maxAge.Seconds()),
+	}
+	http.SetCookie(w, cookie)
+	if !a.pathMaker.SetServerIDCookie() || a.Draining() {
+		return
+	}
+	cookie = &http.Cookie{
+		Name:     a.pathMaker.ServerIDCookieName(),
+		Value:    a.pathMaker.ID(),
+		HttpOnly: true,
+		Secure:   !a.conf.ServerSessionCookieNoSecure,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(maxAge.Seconds()),
+	}
+	http.SetCookie(w, cookie)
 }
 
 func (a *app) getSession(w http.ResponseWriter, r *http.Request) instance.Session {

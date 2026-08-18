@@ -110,11 +110,6 @@ type Source[T any] interface {
 	// [Beam.RouteBeam], routes receive a writable [Source].
 	Route(routes ...RouteSource[T]) gox.EditorComp
 
-	// RouteSource renders the first matching writable route for this source.
-	//
-	// Deprecated: use [Source.Route].
-	RouteSource(routes ...RouteSource[T]) gox.EditorComp
-
 	// Update sets a new value and propagates it to subscribers and derived beams
 	// through the underlying source. Any context is allowed.
 	//
@@ -188,10 +183,6 @@ func (s source[T]) Route(routes ...RouteSource[T]) gox.EditorComp {
 	return routeSource(s, routes)
 }
 
-func (s source[T]) RouteSource(routes ...RouteSource[T]) gox.EditorComp {
-	return s.Route(routes...)
-}
-
 func (s source[T]) RouteBeam(routes ...RouteBeam[T]) gox.EditorComp {
 	return routeBeam(s, routes)
 }
@@ -252,10 +243,6 @@ type derivedSource[T1, T2 any] struct {
 
 func (l derivedSource[T1, T2]) Route(routes ...RouteSource[T2]) gox.EditorComp {
 	return routeSource(l, routes)
-}
-
-func (l derivedSource[T1, T2]) RouteSource(routes ...RouteSource[T2]) gox.EditorComp {
-	return l.Route(routes...)
 }
 
 func (l derivedSource[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.EditorComp {
