@@ -74,21 +74,26 @@ func sub[T any](b Beamer[T], ctx context.Context, onValue func(context.Context, 
 }
 
 func readAndSub[T any](b Beamer[T], ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (*T, context.CancelFunc, bool) {
-	var initVal *T
+	var init *T
+	started := false
 	cancel, ok := b.Watch(ctx, &genericWatcher[T]{
 		watch: func(ctx context.Context, v T) bool {
-			if initVal == nil {
-				initVal = &v
-				return onValue == nil
+			if started {
+				return onValue(ctx, v)
 			}
-			return onValue(ctx, v)
+			started = true
+			init = new(T)
+			*init = v
+			return onValue == nil
 		},
 		cancel: onCancel,
 	})
 	if !ok {
 		return nil, cancel, false
 	}
-	return initVal, cancel, true
+	v := init
+	init = nil
+	return v, cancel, true
 }
 
 func (b *beam[T1, T2]) ReadAndSub(ctx context.Context, onValue func(context.Context, T2) bool) (T2, bool) {

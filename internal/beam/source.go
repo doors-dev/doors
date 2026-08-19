@@ -45,15 +45,16 @@ var _ anySource = (*source[any])(nil)
 var _ Beamer[any] = (*source[any])(nil)
 
 type source[T any] struct {
-	id       common.ID
-	seq      uint
-	values   map[uint]*T
-	equal    func(new T, old T) bool
-	mu       sync.RWMutex
-	noSkip   bool
-	subs     common.Set[*screen]
-	freeSubs common.Set[*freeScreen]
-	null     T
+	id        common.ID
+	seq       uint
+	oldestSeq uint
+	values    map[uint]*T
+	equal     func(new T, old T) bool
+	mu        sync.RWMutex
+	noSkip    bool
+	subs      common.Set[*screen]
+	freeSubs  common.Set[*freeScreen]
+	null      T
 }
 
 func (s *source[T]) getID() common.ID {
@@ -206,12 +207,18 @@ retry:
 }
 
 func (s *source[T]) cleanBefore(seq uint) {
+	s.oldestSeq = seq
 	for oldSeq := range s.values {
 		if oldSeq < seq {
 			delete(s.values, oldSeq)
 		}
 	}
+}
 
+func (s *source[T]) oldest() uint {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.oldestSeq
 }
 
 type Core interface {
