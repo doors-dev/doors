@@ -44,7 +44,7 @@ var _ nodeTask = nodeInner{}
 
 type nodeOuter struct {
 	*userTask
-	outer gox.Elem
+	outer any
 }
 
 func (t nodeOuter) apply(next *node, prev *node) {

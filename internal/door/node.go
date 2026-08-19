@@ -42,7 +42,7 @@ type node struct {
 	mode          nodeMode
 	tracker       *tracker
 	staticTracker *staticTracker
-	outer         gox.Elem
+	outer         any
 	content       any
 }
 
@@ -240,8 +240,10 @@ func (n *node) renderBlend(pip *pipe) (err error) {
 	printer := &nodePrinter{
 		pipe: pip,
 	}
-	cur := gox.NewCursor(n.getContext(), printer)
-	err = n.outer(cur)
+	if n.outer != nil {
+		cur := gox.NewCursor(n.getContext(), printer)
+		err = cur.Any(n.outer)
+	}
 	if err != nil {
 		return err
 	}
@@ -260,7 +262,7 @@ func (n *node) renderOuter(pip *pipe) (err error) {
 	}
 	if n.outer != nil {
 		cur := gox.NewCursor(n.getContext(), printer)
-		err = n.outer(cur)
+		err = cur.Any(n.outer)
 	}
 	if err != nil {
 		return err
@@ -280,7 +282,7 @@ func (n *node) renderInnerOuter(pip *pipe) (err error) {
 	}
 	if n.outer != nil {
 		cur := gox.NewCursor(n.getContext(), printer)
-		err = n.outer(cur)
+		err = cur.Any(n.outer)
 	}
 	if err != nil {
 		return err

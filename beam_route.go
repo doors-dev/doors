@@ -393,9 +393,9 @@ func routeRender[T any, R RouteSource[T]](
 				return false
 			}
 			r := routes[index]
-			door.Outer(ctx, func(cur gox.Cursor) error {
+			door.Outer(ctx, gox.Elem(func(cur gox.Cursor) error {
 				return cur.Editor(render(r))
-			})
+			}))
 			return false
 		})
 		return cur.Editor(door)

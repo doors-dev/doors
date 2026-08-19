@@ -47,7 +47,7 @@ func (d *Door) render(p *pipe, ctx context.Context) {
 	d.schedule(p.tracker.Context(), task, p.renderFrame)
 }
 
-func (d *Door) outer(ctx context.Context, outer gox.Elem) <-chan error {
+func (d *Door) outer(ctx context.Context, outer any) <-chan error {
 	ctex.LogCanceled(ctx, "Door outer")
 	userTask, ch := newUserTask(ctx)
 	task := nodeOuter{

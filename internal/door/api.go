@@ -55,7 +55,7 @@ func (d *Door) Inner(ctx context.Context, content any) <-chan error {
 // Door that can be updated further.
 //
 // The returned channel is optional to use; see [Door.Inner] for the contract.
-func (d *Door) Outer(ctx context.Context, outer gox.Elem) <-chan error {
+func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
 	return d.outer(ctx, outer)
 }
 
