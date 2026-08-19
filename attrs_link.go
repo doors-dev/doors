@@ -205,24 +205,27 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		return nil
 	}
 	h.Scope = linkScope{}.And(h.Scope)
+	after := h.After
+	if h.Fragment != "" {
+		scroll := ActionScroll{Selector: "#" + h.Fragment}
+		if after == nil {
+			after = scroll
+		} else {
+			after = after.And(scroll)
+		}
+	}
+	historyReplace := h.HistoryReplace
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 		if core.Instance().Session().App().Draining() {
 			w.WriteHeader(http.StatusGone)
 			InstanceEnd(ctx)
 			return false
 		}
-		if h.Fragment != "" {
-			if h.After == nil {
-				h.After = ActionScroll{Selector: "#" + h.Fragment}
-			} else {
-				h.After = h.After.And(ActionScroll{Selector: "#" + h.Fragment})
-			}
-		}
-		if h.After != nil {
+		if after != nil {
 			req := request{w: w, r: r, ctx: ctx}
-			req.After(h.After)
+			req.After(after)
 		}
-		if h.HistoryReplace {
+		if historyReplace {
 			ctx = HistoryReplaceContext(ctx)
 		}
 		core.Instance().Location().Update(ctx, loc)

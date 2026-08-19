@@ -85,13 +85,15 @@ func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 	return nil
 }
 
-func (p *eventAttr[E]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+func (p eventAttr[E]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	on := p.on
+	limit := int64(core.App().Conf().ServerRequestBodyLimit)
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		if p.on == nil {
+		if on == nil {
 			r.Body.Close()
 			return false
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, int64(core.App().Conf().ServerRequestBodyLimit))
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		var e E
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&e)
@@ -100,7 +102,7 @@ func (p *eventAttr[E]) handle(core core.Core) func(ctx context.Context, w http.R
 			w.WriteHeader(400)
 			return false
 		}
-		return p.on(ctx, &eventRequest[E]{
+		return on(ctx, &eventRequest[E]{
 			request: request{
 				r:   r,
 				w:   w,
