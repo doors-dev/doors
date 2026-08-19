@@ -25,12 +25,14 @@ type freeScreen struct {
 	ctx    context.Context
 	source anySource
 	w      *watcher
+	stop   func() bool
 	thread shredder.Thread
 }
 
 func newFreeScreen(ctx context.Context, source anySource, w *watcher) *freeScreen {
 	f := &freeScreen{ctx: ctx, source: source, w: w}
 	w.register(f)
+	f.stop = context.AfterFunc(ctx, w.Cancel)
 	return f
 }
 
@@ -45,6 +47,7 @@ func (f *freeScreen) init(seq uint) {
 }
 
 func (f *freeScreen) removeWatcher(*watcher) {
+	f.stop()
 	f.source.removeFreeSub(f)
 }
 
