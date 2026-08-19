@@ -77,17 +77,19 @@ func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 	return nil
 }
 
-func (s *ARawSubmit) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+func (s ARawSubmit) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	on := s.On
+	limit := core.App().Conf().ServerRequestBodyLimit
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		if s.On == nil {
+		if on == nil {
 			r.Body.Close()
 			return false
 		}
-		return s.On(ctx, &request{
+		return on(ctx, &request{
 			w:     w,
 			r:     r,
 			ctx:   ctx,
-			limit: core.App().Conf().ServerRequestBodyLimit,
+			limit: limit,
 		})
 	}
 }
@@ -150,13 +152,14 @@ func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 	return nil
 }
 
-func (s *ASubmit[V]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+func (s ASubmit[V]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	on := s.On
+	limit := core.App().Conf().ServerRequestBodyLimit
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		if s.On == nil {
+		if on == nil {
 			r.Body.Close()
 			return false
 		}
-		limit := core.App().Conf().ServerRequestBodyLimit
 		r.Body = http.MaxBytesReader(w, r.Body, int64(limit))
 		err := r.ParseMultipartForm(int64(limit))
 		if err != nil {
@@ -171,7 +174,7 @@ func (s *ASubmit[V]) handle(core core.Core) func(ctx context.Context, w http.Res
 			w.Write([]byte("Form decoding error"))
 			return false
 		}
-		return s.On(ctx, &formHookRequest[V]{
+		return on(ctx, &formHookRequest[V]{
 			data: &v,
 			request: request{
 				w:   w,

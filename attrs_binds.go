@@ -73,9 +73,11 @@ func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return nil
 }
 
-func (h *AHook[T]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+func (h AHook[T]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	on := h.On
+	limit := int64(core.App().Conf().ServerRequestBodyLimit)
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, int64(core.App().Conf().ServerRequestBodyLimit)))
+		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
 		var input T
 		err := dec.Decode(&input)
 		r.Body.Close()
@@ -86,8 +88,8 @@ func (h *AHook[T]) handle(core core.Core) func(ctx context.Context, w http.Respo
 		}
 		var output any
 		var done bool
-		if h.On != nil {
-			output, done = h.On(ctx, &formHookRequest[T]{
+		if on != nil {
+			output, done = on(ctx, &formHookRequest[T]{
 				data: &input,
 				request: request{
 					w:   w,
@@ -152,17 +154,19 @@ func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	return nil
 }
 
-func (h *ARawHook) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+func (h ARawHook) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	on := h.On
+	limit := core.App().Conf().ServerRequestBodyLimit
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		if h.On == nil {
+		if on == nil {
 			r.Body.Close()
 			return false
 		}
-		return h.On(ctx, &request{
+		return on(ctx, &request{
 			r:     r,
 			w:     w,
 			ctx:   ctx,
-			limit: core.App().Conf().ServerRequestBodyLimit,
+			limit: limit,
 		})
 	}
 }
