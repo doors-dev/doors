@@ -26,6 +26,7 @@ type Beamer[T any] interface {
 	Watch(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool)
 	addWatcher(ctx context.Context, w *watcher) bool
 	sync(uint, uint, shredder.SimpleFrame) (*T, bool)
+	oldest() uint
 }
 
 type entry[T any] struct {
@@ -95,6 +96,13 @@ func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (v 
 				}
 			}
 		})
+	} else {
+		oldest := b.beam.oldest()
+		for s := range b.values {
+			if s < oldest {
+				delete(b.values, s)
+			}
+		}
 	}
 	sourceVal, updated := b.beam.sync(prev, seq, after)
 	if sourceVal == nil {
@@ -144,4 +152,8 @@ func (b *beam[T1, T2]) sync(prev uint, seq uint, after shredder.SimpleFrame) (*T
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.syncEntry(prev, seq, after)
+}
+
+func (b *beam[T1, T2]) oldest() uint {
+	return b.beam.oldest()
 }

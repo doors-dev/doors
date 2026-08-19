@@ -54,6 +54,10 @@ func (s *stubSyncSource[T]) addWatcher(context.Context, *watcher) bool {
 	return false
 }
 
+func (s *stubSyncSource[T]) oldest() uint {
+	return 0
+}
+
 func (s *stubSyncSource[T]) sync(prev, seq uint, after shredder.SimpleFrame) (*T, bool) {
 	s.syncCalls++
 	if s.syncFunc == nil {

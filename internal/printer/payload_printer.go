@@ -43,6 +43,7 @@ type Payload interface {
 
 type PayloadPrinter struct {
 	buf     sliceWriter
+	gz      bool
 	gzip    *gzip.Writer
 	printer gox.Printer
 }
@@ -52,8 +53,9 @@ var _ Payload = (*PayloadPrinter)(nil)
 func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
 	b := &PayloadPrinter{
 		buf: bufferPrinterPool.Get().(sliceWriter),
+		gz:  !disableGzip,
 	}
-	if !disableGzip {
+	if b.gz {
 		b.gzip = common.GetGzipWriter(&b.buf)
 		b.printer = defaultPrinter{b.gzip}
 	} else {
@@ -63,7 +65,7 @@ func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
 }
 
 func (b *PayloadPrinter) Payload() actions.Payload {
-	if b.gzip != nil {
+	if b.gz {
 		return actions.NewTextGZ(b.buf)
 	}
 	return actions.NewTextBytes(b.buf)
@@ -87,6 +89,9 @@ func (b *PayloadPrinter) Finalize() {
 		return
 	}
 	b.gzip.Close()
+	common.PutGzipWriter(b.gzip)
+	b.gzip = nil
+	b.printer = nil
 }
 
 func (b *PayloadPrinter) Send(job gox.Job) error {
