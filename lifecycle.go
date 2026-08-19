@@ -109,3 +109,29 @@ func OnClean(ctx context.Context, f func()) {
 		f()
 	})
 }
+
+// HoldSettle keeps the current dispatch batch open after the handler returns,
+// until release is called. While held, the batch does not settle: [OnSettle]
+// callbacks wait, and in a hook the client keeps the indicator, the scope, and
+// the $hook promise pending. Use it to hand the batch over to a goroutine.
+//
+// Call it synchronously in the handler; release is idempotent and may run
+// settle callbacks inline. Operations started with the handler ctx join the
+// batch, operations started with [DetachedContext] do not. Always call release,
+// typically deferred in the goroutine; a held batch settles otherwise only when
+// the instance ends.
+//
+// Outside a batch, release is a no-op.
+func HoldSettle(ctx context.Context) (release func()) {
+	ctex.LogCanceled(ctx, "HoldSettle")
+	after, ok := ctex.AfterFrame(ctx)
+	if !ok {
+		return func() {}
+	}
+	frameRelease := shredder.Join(ctx, false, after).Release
+	stop := context.AfterFunc(InstanceContext(ctx), frameRelease)
+	return func() {
+		stop()
+		frameRelease()
+	}
+}
