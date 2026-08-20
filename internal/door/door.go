@@ -90,6 +90,16 @@ func (d *Door) unmount(ctx context.Context) <-chan error {
 	return ch
 }
 
+func (d *Door) freeze(ctx context.Context) <-chan error {
+	ctex.LogCanceled(ctx, "Door freeze")
+	userTask, ch := newUserTask(ctx)
+	task := nodeFreeze{
+		userTask: userTask,
+	}
+	d.schedule(ctx, task, userTask.InitFrame())
+	return ch
+}
+
 func (d *Door) reload(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door reload")
 	userTask, ch := newUserTask(ctx)

@@ -42,6 +42,7 @@ type callKind int
 const (
 	callReplace callKind = iota
 	callUpdate
+	callFreeze
 )
 
 type call struct {
@@ -85,6 +86,10 @@ func (c *call) Action() (actions.Action, bool) {
 		return actions.DoorUpdate{
 			ID:      c.id,
 			Payload: payload,
+		}, true
+	case callFreeze:
+		return actions.DoorFreeze{
+			ID: c.id,
 		}, true
 	default:
 		panic("unsupported door call type")

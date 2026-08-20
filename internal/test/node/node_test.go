@@ -715,6 +715,51 @@ func TestDoorDetachedUnmountRebaseTransitions(t *testing.T) {
 	test.TestMust(t, page, "#rebased-detached")
 }
 
+func TestDoorFreeze(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentFreeze{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#freeze-base")
+	test.TestMust(t, page, "#freeze-child")
+	test.TestContent(t, page, "#freeze-clean", "live")
+
+	test.Click(t, page, "#freeze-inner-hook")
+	test.Click(t, page, "#freeze-hits")
+	test.TestReport(t, page, "hits 1")
+
+	test.Click(t, page, "#freeze")
+	test.TestReport(t, page, "ok freeze")
+	test.TestMust(t, page, "#freeze-base")
+	test.TestMust(t, page, "#freeze-child")
+	test.TestContent(t, page, "#freeze-clean", "cleaned")
+
+	test.Click(t, page, "#freeze-inner-hook")
+	test.Click(t, page, "#freeze-hits")
+	test.TestReport(t, page, "hits 1")
+
+	test.Click(t, page, "#reload-after-freeze")
+	test.TestReport(t, page, "channel closed")
+	test.TestMust(t, page, "#freeze-base")
+
+	test.Click(t, page, "#child-update-after-freeze")
+	test.TestReport(t, page, "channel closed")
+	test.TestMustNot(t, page, "#freeze-child-updated")
+	test.TestMust(t, page, "#freeze-child")
+
+	test.Click(t, page, "#update-after-freeze")
+	test.TestReport(t, page, "channel closed")
+	test.TestMustNot(t, page, "#freeze-updated")
+	test.TestMust(t, page, "#freeze-base")
+
+	test.Click(t, page, "#remount-after-freeze")
+	test.TestMust(t, page, "#freeze-updated")
+	test.TestMustNot(t, page, "#freeze-base")
+}
+
 func TestDoorProxyMoveBetweenParents(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &FragmentProxyMove{}

@@ -52,6 +52,14 @@ func trackerShutdown(prev *tracker) {
 }
 
 func trackerRemove(prev *tracker, task *userTask) {
+	trackerUnmount(prev, task, callReplace)
+}
+
+func trackerFreeze(prev *tracker, task *userTask) {
+	trackerUnmount(prev, task, callFreeze)
+}
+
+func trackerUnmount(prev *tracker, task *userTask, kind callKind) {
 	prev.container.clean(shredder.FreeFrame{})
 	prev.clean(false, shredder.FreeFrame{})
 	callFrame := shredder.Join(prev.parent.ctx, true, task.CallFrame(), prev.outerCallGuard)
@@ -64,7 +72,7 @@ func trackerRemove(prev *tracker, task *userTask) {
 		task.Scheduled()
 		prev.root.inst.Call(&call{
 			ctx:     prev.parent.ctx,
-			kind:    callReplace,
+			kind:    kind,
 			id:      prev.id,
 			payload: emptyPayload{},
 			task:    task,
