@@ -33,7 +33,6 @@ type DoorElement = Element & {
 	[doorState]: {
 		id: number
 		parent: number
-		impostor: boolean
 	}
 }
 
@@ -81,22 +80,21 @@ class Doors {
 	private handlers = new Map<number, Map<string, Handler>>()
 	private onClear = new Map<number, Array<Closure>>()
 	private onRemove = new Map<number, Array<Closure>>()
-	private impostors = new Map<number, Set<number>>()
+	private children = new Map<number, Set<number>>()
 
-	private scanImpostors(parent: Element | Document | DocumentFragment) {
-		for (const element of parent.querySelectorAll<Element>(`[${attr}]`)) {
+	private scanDoors(parent: Element | Document | DocumentFragment) {
+		for (const element of parent.querySelectorAll<Element>(`${tag}, [${attr}]`)) {
 			if (doorState in element) {
 				continue
 			}
-			const id = element.getAttribute(attr)
-			this.register(element, { impostorId: id! })
+			this.register(element)
 		}
 	}
 
 	private clear(id: number) {
 		this.handlers.delete(id)
 		this.clearClosures(id)
-		this.clearImpostors(id)
+		this.clearChildren(id)
 	}
 
 	private clearClosures(id: number) {
@@ -108,37 +106,31 @@ class Doors {
 		closures.forEach(c => execute(c))
 	}
 
-	private clearImpostors(id: number) {
-		const impostors = this.impostors.get(id)
-		if (!impostors) {
+	private clearChildren(id: number) {
+		const children = this.children.get(id)
+		if (!children) {
 			return
 		}
-		for (const impostor of impostors) {
-			const element = this.elements.get(impostor)!
+		this.children.delete(id)
+		for (const child of children) {
+			const element = this.elements.get(child)!
 			this.unregister(element)
 		}
 	}
 
-	register(element: Element, info: { impostorId?: string }) {
-		const impostor = info.impostorId !== undefined;
-
+	register(element: Element) {
 		const door = element as DoorElement
-		const id = impostor ? Number(info.impostorId) : doorId(element.id);
 		door[doorState] = {
-			id: id,
+			id: getSelfId(element)!,
 			parent: getParentId(element),
-			impostor: impostor,
 		}
-		this.elements.set(id, door)
-		if (!impostor) {
-			return
-		}
-		let siblings = this.impostors.get(door[doorState].parent)
+		this.elements.set(door[doorState].id, door)
+		let siblings = this.children.get(door[doorState].parent)
 		if (!siblings) {
 			siblings = new Set()
-			this.impostors.set(door[doorState].parent, siblings)
+			this.children.set(door[doorState].parent, siblings)
 		}
-		siblings.add(id)
+		siblings.add(door[doorState].id)
 	}
 
 	unregister(element: Element): void {
@@ -150,18 +142,18 @@ class Doors {
 			this.onRemove.delete(door[doorState].id)
 			onRemove.forEach(c => execute(c))
 		}
-		if (!door[doorState].impostor) {
+		const siblings = this.children.get(door[doorState].parent)
+		if (!siblings) {
 			return
 		}
-		const siblings = this.impostors.get(door[doorState].parent)!
 		siblings.delete(door[doorState].id)
 		if (siblings.size == 0) {
-			this.impostors.delete(door[doorState].parent)
+			this.children.delete(door[doorState].parent)
 		}
 	}
 
 	scan(parent: Element | Document | DocumentFragment) {
-		this.scanImpostors(parent)
+		this.scanDoors(parent)
 		attachEmitter(parent)
 		attachCaptures(parent)
 		attachSetter(parent)
@@ -188,15 +180,21 @@ class Doors {
 		if (!door) {
 			throw new Error(`door ${id} not found`)
 		}
-		if (door[doorState].impostor) {
-			this.unregister(door)
-		}
+		this.unregister(door)
 		const range = document.createRange()
 		range.selectNode(door)
 		range.deleteContents()
 		const fragment = range.createContextualFragment(content)
 		this.scan(fragment)
 		range.insertNode(fragment)
+	}
+
+	freeze(id: number) {
+		const door = this.elements.get(id)
+		if (!door) {
+			throw new Error(`door ${id} not found`)
+		}
+		this.unregister(door)
 	}
 
 	on(
@@ -250,19 +248,5 @@ class Doors {
 }
 
 const doors = new Doors()
-
-customElements.define(tag,
-	class extends HTMLElement {
-		constructor() {
-			super()
-		}
-		connectedCallback() {
-			doors.register(this, {})
-		}
-		disconnectedCallback() {
-			doors.unregister(this)
-		}
-	}
-)
 
 export default doors

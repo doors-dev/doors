@@ -155,6 +155,20 @@ func (a DoorUpdate) Invocation() Invocation {
 	}
 }
 
+type DoorFreeze struct {
+	ID uint64
+}
+
+func (a DoorFreeze) Log() string {
+	return "door_freeze"
+}
+func (a DoorFreeze) Invocation() Invocation {
+	return Invocation{
+		name: "door_freeze",
+		arg:  []any{a.ID},
+	}
+}
+
 type Indicate struct {
 	Duration time.Duration
 	Indicate any

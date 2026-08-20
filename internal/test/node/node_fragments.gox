@@ -1502,6 +1502,95 @@ elem (f *FragmentDetachedRebase) Main() {
 	}))
 }
 
+type FragmentFreeze struct {
+	report doors.Door
+	frame doors.Door
+	node doors.Door
+	child doors.Door
+	hits atomic.Int64
+	test.NoBeam
+}
+
+func (f *FragmentFreeze) rep(ctx context.Context, s string) {
+	f.report.Inner(ctx, test.Report(s))
+}
+
+func (f *FragmentFreeze) wait(ctx context.Context, ch <-chan error, okMsg string) bool {
+	count := 0
+	for err := range ch {
+		count++
+		if err != nil {
+			f.rep(ctx, "channel err: " + err.Error())
+			return false
+		}
+	}
+	if count == 0 {
+		f.rep(ctx, "channel closed")
+		return false
+	}
+	f.rep(ctx, okMsg)
+	return false
+}
+
+elem (f *FragmentFreeze) mount() {
+	~(&f.node)
+}
+
+elem (f *FragmentFreeze) content() {
+	~(test.Marker("freeze-base"))
+	<span id="freeze-clean">live</span>
+	<script>
+		$sys.clean(() => {
+			document.getElementById("freeze-clean").textContent = "cleaned"
+		})
+	</script>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.hits.Add(1)
+			return false
+		},
+	} <button id="freeze-inner-hook">freeze-inner-hook</button>
+	~>(&f.child) <div id="freeze-child-wrap"></div>
+}
+
+elem (f *FragmentFreeze) Main() {
+	~~
+	f.child.Inner(ctx, test.Marker("freeze-child"))
+	f.node.Inner(ctx, f.content())
+	f.frame.Inner(ctx, f.mount())
+	~~
+	~(&f.frame)
+	~(&f.report)
+	~(test.Button("freeze-hits", func(ctx context.Context) bool {
+		f.rep(ctx, fmt.Sprintf("hits %d", f.hits.Load()))
+		return false
+	}))
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.Freeze(ctx), "ok freeze")
+		},
+	} <button id="freeze">freeze</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.Reload(ctx), "ok reload")
+		},
+	} <button id="reload-after-freeze">reload-after-freeze</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.child.Inner(ctx, test.Marker("freeze-child-updated")), "ok child update")
+		},
+	} <button id="child-update-after-freeze">child-update-after-freeze</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.wait(ctx, f.node.Inner(ctx, test.Marker("freeze-updated")), "ok update")
+		},
+	} <button id="update-after-freeze">update-after-freeze</button>
+	~(test.Button("remount-after-freeze", func(ctx context.Context) bool {
+		f.frame.Inner(ctx, f.mount())
+		return false
+	}))
+}
+
 type FragmentProxyMove struct {
 	report doors.Door
 	frame1 doors.Door

@@ -134,6 +134,14 @@ func TestActionLogsAndInvocations(t *testing.T) {
 			expectedPayload: textPayload,
 		},
 		{
+			name:            "door freeze",
+			action:          DoorFreeze{ID: 12},
+			log:             "door_freeze",
+			invocationName:  "door_freeze",
+			args:            []any{uint64(12)},
+			expectedPayload: NewNone(),
+		},
+		{
 			name:            "indicate",
 			action:          Indicate{Duration: 1500 * time.Millisecond, Indicate: map[string]any{"selector": "#id"}},
 			log:             "indicate",

@@ -95,6 +95,23 @@ func (t nodeUnmount) apply(next *node, prev *node) {
 
 var _ nodeTask = nodeUnmount{}
 
+type nodeFreeze struct {
+	*userTask
+}
+
+func (t nodeFreeze) apply(next *node, prev *node) {
+	next.mode = prev.mode
+	next.outer = prev.outer
+	next.content = prev.content
+	if !prev.isMounted() {
+		t.userTask.Accept()
+		return
+	}
+	trackerFreeze(prev.tracker, t.userTask)
+}
+
+var _ nodeTask = nodeFreeze{}
+
 type nodeStatic struct {
 	*userTask
 	content any
