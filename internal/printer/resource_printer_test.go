@@ -36,10 +36,6 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-type testComp struct{}
-
-func (testComp) Main() gox.Elem { return nil }
-
 type titleInstance struct {
 	title      string
 	titleAttrs gox.Attrs
@@ -371,13 +367,6 @@ func TestProcessTitleErrors(t *testing.T) {
 	if err := rp.processTitle(gox.NewJobHeadOpen(context.Background(), 11, gox.KindRegular, "span", gox.NewAttrs()), tit); err == nil || !strings.Contains(err.Error(), "cannot contain nested tags") {
 		t.Fatalf("unexpected nested-title error: %v", err)
 	}
-
-	defer func() {
-		if recover() == nil {
-			t.Fatal("processTitle should panic on components")
-		}
-	}()
-	_ = rp.processTitle(gox.NewJobComp(context.Background(), testComp{}), tit)
 }
 
 func TestProcessTitleWrongClose(t *testing.T) {

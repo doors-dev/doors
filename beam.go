@@ -42,11 +42,11 @@ type Beam[T any] interface {
 
 	// Bind renders f with the current value and rerenders only that fragment
 	// when the value changes. If f returns nil, the fragment renders nothing.
-	Bind(func(T) gox.Elem) gox.EditorComp
+	Bind(func(T) gox.Elem) gox.Elem
 
 	// RouteBeam renders the first matching read-only route for the current
 	// value. The fragment swaps only when the matching route changes.
-	RouteBeam(routes ...RouteBeam[T]) gox.EditorComp
+	RouteBeam(routes ...RouteBeam[T]) gox.Elem
 
 	// Sub subscribes to the value stream. onValue is called immediately with the
 	// current value on the calling goroutine, then again on every update.
@@ -108,7 +108,7 @@ type Source[T any] interface {
 	// Route renders the first matching writable route for the current value.
 	// The fragment swaps only when the matching route changes. Unlike
 	// [Beam.RouteBeam], routes receive a writable [Source].
-	Route(routes ...RouteSource[T]) gox.EditorComp
+	Route(routes ...RouteSource[T]) gox.Elem
 
 	// Update sets a new value and propagates it to subscribers and derived beams
 	// through the underlying source. Any context is allowed.
@@ -179,11 +179,11 @@ type source[T any] struct {
 	beam.Source[T]
 }
 
-func (s source[T]) Route(routes ...RouteSource[T]) gox.EditorComp {
+func (s source[T]) Route(routes ...RouteSource[T]) gox.Elem {
 	return routeSource(s, routes)
 }
 
-func (s source[T]) RouteBeam(routes ...RouteBeam[T]) gox.EditorComp {
+func (s source[T]) RouteBeam(routes ...RouteBeam[T]) gox.Elem {
 	return routeBeam(s, routes)
 }
 
@@ -191,7 +191,7 @@ func (s source[T]) Effect(ctx context.Context) (T, bool) {
 	return effect(s, ctx)
 }
 
-func (s source[T]) Bind(f func(v T) gox.Elem) gox.EditorComp {
+func (s source[T]) Bind(f func(v T) gox.Elem) gox.Elem {
 	return bind(s, f)
 }
 
@@ -241,15 +241,15 @@ type derivedSource[T1, T2 any] struct {
 	beam.Lens[T1, T2]
 }
 
-func (l derivedSource[T1, T2]) Route(routes ...RouteSource[T2]) gox.EditorComp {
+func (l derivedSource[T1, T2]) Route(routes ...RouteSource[T2]) gox.Elem {
 	return routeSource(l, routes)
 }
 
-func (l derivedSource[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.EditorComp {
+func (l derivedSource[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.Elem {
 	return routeBeam(l, routes)
 }
 
-func (l derivedSource[T1, T2]) Bind(f func(v T2) gox.Elem) gox.EditorComp {
+func (l derivedSource[T1, T2]) Bind(f func(v T2) gox.Elem) gox.Elem {
 	return bind(l, f)
 }
 
@@ -295,11 +295,11 @@ type derivedBeam[T1, T2 any] struct {
 	beam.Beam[T1, T2]
 }
 
-func (b derivedBeam[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.EditorComp {
+func (b derivedBeam[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.Elem {
 	return routeBeam(b, routes)
 }
 
-func (b derivedBeam[T1, T2]) Bind(f func(v T2) gox.Elem) gox.EditorComp {
+func (b derivedBeam[T1, T2]) Bind(f func(v T2) gox.Elem) gox.Elem {
 	return bind(b, f)
 }
 
@@ -322,8 +322,8 @@ func effect[T any](b Beam[T], ctx context.Context) (T, bool) {
 	})
 }
 
-func bind[T any](b Beam[T], f func(T) gox.Elem) gox.EditorComp {
-	return gox.EditorCompFunc(func(cur gox.Cursor) error {
+func bind[T any](b Beam[T], f func(T) gox.Elem) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		door := &Door{}
 		ok := b.Sub(cur.Context(), func(ctx context.Context, v T) bool {
 			door.Outer(ctx, gox.Elem(func(cur gox.Cursor) error {
@@ -338,6 +338,6 @@ func bind[T any](b Beam[T], f func(T) gox.Elem) gox.EditorComp {
 		if !ok {
 			return nil
 		}
-		return cur.Editor(door)
+		return cur.Comp(door)
 	})
 }

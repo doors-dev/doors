@@ -142,9 +142,6 @@ func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
 	if _, ok := j.(*gox.JobHeadOpen); ok {
 		return errors.New("<title> cannot contain nested tags")
 	}
-	if _, ok := j.(*gox.JobComp); ok {
-		panic("internal error: title content should be flattened before it reaches the resource printer")
-	}
 	if closeJob, ok := j.(*gox.JobHeadClose); ok {
 		if closeJob.ID != tit.openJob.ID {
 			return errors.New("title close tag does not match the open tag")

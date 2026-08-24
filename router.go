@@ -73,9 +73,9 @@ func HistoryReplaceContext(ctx context.Context) context.Context {
 // Routes are tried in order, and a branch is rerendered only when the matching
 // route changes. If no route matches, nothing is rendered. Use [RouteModel] to
 // match path models and [RouteDefault] as the fallback.
-func Route(routes ...RouteSource[Location]) gox.EditorComp {
-	return gox.EditorCompFunc(func(cur gox.Cursor) error {
+func Route(routes ...RouteSource[Location]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		path := Router(cur.Context())
-		return path.Route(routes...).Edit(cur)
+		return cur.Comp(path.Route(routes...))
 	})
 }

@@ -15,7 +15,6 @@
 package doors
 
 import (
-	"context"
 	"errors"
 
 	"github.com/doors-dev/gox"
@@ -58,12 +57,6 @@ func (m *modPrinter) Send(j gox.Job) error {
 		m.mod = nil
 		return m.printParallel(mod, par)
 	}
-	comp, ok := j.(*gox.JobComp)
-	if ok {
-		mod := m.mod
-		m.mod = nil
-		return m.printComp(mod, comp)
-	}
 	open, ok := j.(*gox.JobHeadOpen)
 	if ok {
 		if open.Kind == gox.KindContainer {
@@ -85,25 +78,6 @@ func (m *modPrinter) printParallel(mod gox.Modify, job parallelJob) error {
 		return el(cur)
 	})
 	return m.printer.Send(job)
-}
-
-func (m *modPrinter) printComp(mod gox.Modify, job *gox.JobComp) error {
-	ctx := job.Ctx
-	comp := job.Comp
-	gox.Release(job)
-	return m.submitComp(mod, ctx, comp)
-}
-
-func (m *modPrinter) submitComp(mod gox.Modify, ctx context.Context, comp gox.Comp) error {
-	return m.printer.Send(gox.NewJobComp(ctx, gox.Elem(func(cur gox.Cursor) error {
-		el := comp.Main()
-		if el == nil {
-			return nil
-		}
-		p := &modPrinter{mod: mod, printer: cur.Printer()}
-		cur = gox.NewCursor(cur.Context(), p)
-		return el(cur)
-	})))
 }
 
 func (m *modPrinter) printHead(mod gox.Modify, job *gox.JobHeadOpen) error {

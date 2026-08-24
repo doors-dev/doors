@@ -1,4 +1,4 @@
-// Managed by GoX v0.2.3
+// Managed by GoX v0.2.4
 
 //line node_fragments.gox:1
 package door
@@ -119,7 +119,7 @@ func (f *FragmentProxyWrappedSiblings) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line node_fragments.gox:60
-		__e = __c.Any(gox.EditorFunc(func(cur gox.Cursor) error {
+		__e = __c.Any(gox.Elem(func(cur gox.Cursor) error {
 		return f.n.Proxy(cur, gox.Elem(func(cur gox.Cursor) error {
 			if err := cur.Init("div"); err != nil {
 				return err

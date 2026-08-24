@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-func NewPagePrinter(w io.Writer, static bool, include gox.Elem, importMap []byte, meta gox.Editor) gox.Printer {
+func NewPagePrinter(w io.Writer, static bool, include gox.Elem, importMap []byte, meta gox.Comp) gox.Printer {
 	cur := gox.NewCursor(context.Background(), defaultPrinter{w})
 	return &pagePrinter{cur: cur, static: static, include: include, importMap: importMap, meta: meta}
 }
@@ -40,7 +40,7 @@ type pagePrinter struct {
 	include   gox.Elem
 	importMap []byte
 	state     pagePrinterState
-	meta      gox.Editor
+	meta      gox.Comp
 	headID    uint64
 }
 
@@ -128,7 +128,7 @@ func (p *pagePrinter) insert() error {
 			return err
 		}
 	}
-	if err := p.meta.Edit(p.cur); err != nil {
+	if err := p.cur.Comp(p.meta); err != nil {
 		return err
 	}
 	if len(p.importMap) > 0 {
