@@ -1,4 +1,4 @@
-// Managed by GoX v0.2.3
+// Managed by GoX v0.2.4
 
 //line page.gox:1
 package router
@@ -846,7 +846,7 @@ func pageSlow() gox.Elem {
 			{
 				__e = __c.Submit(); if __e != nil { return }
 //line page.gox:361
-				__e = __c.Any(gox.EditorFunc(func(cur gox.Cursor) error {
+				__e = __c.Any(gox.Elem(func(cur gox.Cursor) error {
 				<-time.After(1100 * time.Millisecond)
 				return nil
 			})); if __e != nil { return }

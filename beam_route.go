@@ -46,8 +46,8 @@ type modelSource[M any, C gox.Comp] struct {
 	render  func(Source[M]) C
 }
 
-func (ml modelSource[M, C]) sourceRender(l Source[Location]) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func (ml modelSource[M, C]) sourceRender(l Source[Location]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		nl := DeriveSourceEqual(l, func(l Location) M {
 			m, ok := ml.adapter.Decode(l)
 			if !ok {
@@ -102,12 +102,12 @@ type modelBeam[M any, C gox.Comp] struct {
 	render  func(Beam[M]) C
 }
 
-func (ml modelBeam[M, C]) sourceRender(l Source[Location]) gox.Editor {
+func (ml modelBeam[M, C]) sourceRender(l Source[Location]) gox.Elem {
 	return ml.beamRender(l)
 }
 
-func (ml modelBeam[M, C]) beamRender(l Beam[Location]) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func (ml modelBeam[M, C]) beamRender(l Beam[Location]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		nl := DeriveBeamEqual(l, func(l Location) M {
 			m, ok := ml.adapter.Decode(l)
 			if !ok {
@@ -322,24 +322,24 @@ const (
 // RouteSource is a writable route branch for values of type T1.
 type RouteSource[T1 any] interface {
 	match(v T1) routeMatch
-	sourceRender(l Source[T1]) gox.Editor
+	sourceRender(l Source[T1]) gox.Elem
 }
 
 // RouteBeam is a read-only route branch for values of type T1. It is accepted
 // wherever [RouteSource] is.
 type RouteBeam[T1 any] interface {
 	RouteSource[T1]
-	beamRender(l Beam[T1]) gox.Editor
+	beamRender(l Beam[T1]) gox.Elem
 }
 
-func routeSource[T any](l Source[T], routes []RouteSource[T]) gox.EditorComp {
-	return routeRender(l, routes, func(r RouteSource[T]) gox.Editor {
+func routeSource[T any](l Source[T], routes []RouteSource[T]) gox.Elem {
+	return routeRender(l, routes, func(r RouteSource[T]) gox.Elem {
 		return r.sourceRender(l)
 	})
 }
 
-func routeBeam[T any](b Beam[T], routes []RouteBeam[T]) gox.EditorComp {
-	return routeRender(b, routes, func(r RouteBeam[T]) gox.Editor {
+func routeBeam[T any](b Beam[T], routes []RouteBeam[T]) gox.Elem {
+	return routeRender(b, routes, func(r RouteBeam[T]) gox.Elem {
 		return r.beamRender(b)
 	})
 }
@@ -347,9 +347,9 @@ func routeBeam[T any](b Beam[T], routes []RouteBeam[T]) gox.EditorComp {
 func routeRender[T any, R RouteSource[T]](
 	source Beam[T],
 	routes []R,
-	render func(R) gox.Editor,
-) gox.EditorComp {
-	return gox.EditorCompFunc(func(cur gox.Cursor) error {
+	render func(R) gox.Elem,
+) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		index := -1
 		defaultActive := false
 		door := &Door{}
@@ -394,11 +394,11 @@ func routeRender[T any, R RouteSource[T]](
 			}
 			r := routes[index]
 			door.Outer(ctx, gox.Elem(func(cur gox.Cursor) error {
-				return cur.Editor(render(r))
+				return cur.Comp(render(r))
 			}))
 			return false
 		})
-		return cur.Editor(door)
+		return cur.Comp(door)
 	})
 }
 
@@ -424,8 +424,8 @@ func (r deriveRouteSource[T1, T2]) sourceGet(sourceV T1) T2 {
 	return v
 }
 
-func (r deriveRouteSource[T1, T2]) sourceRender(l Source[T1]) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func (r deriveRouteSource[T1, T2]) sourceRender(l Source[T1]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		l := DeriveSourceEqual(l, r.sourceGet, r.sourceSet, r.equal)
 		el := r.render(l)
 		if el == nil {
@@ -446,8 +446,8 @@ var _ RouteSource[any] = deriveRouteSource[any, any]{}
 
 type defaultRouteSource[T1 any] func(l Source[T1]) gox.Elem
 
-func (r defaultRouteSource[T1]) sourceRender(l Source[T1]) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func (r defaultRouteSource[T1]) sourceRender(l Source[T1]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		el := r(l)
 		if el == nil {
 			return nil
@@ -476,12 +476,12 @@ func (r deriveRouteBeam[T1, T2]) get(sourceV T1) T2 {
 	return v
 }
 
-func (r deriveRouteBeam[T1, T2]) sourceRender(l Source[T1]) gox.Editor {
+func (r deriveRouteBeam[T1, T2]) sourceRender(l Source[T1]) gox.Elem {
 	return r.beamRender(l)
 }
 
-func (r deriveRouteBeam[T1, T2]) beamRender(l Beam[T1]) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func (r deriveRouteBeam[T1, T2]) beamRender(l Beam[T1]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		l := DeriveBeamEqual(l, r.get, r.equal)
 		el := r.render(l)
 		if el == nil {
@@ -502,12 +502,12 @@ var _ RouteBeam[any] = deriveRouteBeam[any, any]{}
 
 type defaultRouteBeam[T1 any] func(l Beam[T1]) gox.Elem
 
-func (r defaultRouteBeam[T1]) sourceRender(l Source[T1]) gox.Editor {
+func (r defaultRouteBeam[T1]) sourceRender(l Source[T1]) gox.Elem {
 	return r.beamRender(l)
 }
 
-func (r defaultRouteBeam[T1]) beamRender(l Beam[T1]) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func (r defaultRouteBeam[T1]) beamRender(l Beam[T1]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		el := r(l)
 		if el == nil {
 			return nil
@@ -534,12 +534,12 @@ func (r matchRouteBeam[T]) match(v T) routeMatch {
 	return routeMatchFalse
 }
 
-func (r matchRouteBeam[T]) sourceRender(b Source[T]) gox.Editor {
+func (r matchRouteBeam[T]) sourceRender(b Source[T]) gox.Elem {
 	return r.beamRender(b)
 }
 
-func (r matchRouteBeam[T]) beamRender(b Beam[T]) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func (r matchRouteBeam[T]) beamRender(b Beam[T]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		el := r.render(b)
 		if el == nil {
 			return nil
@@ -562,8 +562,8 @@ func (r matchRouteSource[T]) match(v T) routeMatch {
 	return routeMatchFalse
 }
 
-func (r matchRouteSource[T]) sourceRender(b Source[T]) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func (r matchRouteSource[T]) sourceRender(b Source[T]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		el := r.render(b)
 		if el == nil {
 			return nil

@@ -391,17 +391,6 @@ func (r *nodePrinter) Send(job gox.Job) error {
 
 func (r *nodePrinter) init(job gox.Job) error {
 	switch job := job.(type) {
-	case *gox.JobComp:
-		comp := job.Comp
-		ctx := job.Ctx
-		gox.Release(job)
-		el := comp.Main()
-		if el == nil {
-			r.ready = true
-			return nil
-		}
-		cur := gox.NewCursor(ctx, r)
-		return el(cur)
 	case *gox.JobHeadOpen:
 		r.ready = true
 		return r.initOpenJob(job)

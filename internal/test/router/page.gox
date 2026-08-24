@@ -358,7 +358,7 @@ elem pageCrossB() {
 elem pageSlow() {
 	<html>
 		<body>
-			~(gox.EditorFunc(func(cur gox.Cursor) error {
+			~(gox.Elem(func(cur gox.Cursor) error {
 				<-time.After(1100 * time.Millisecond)
 				return nil
 			}))

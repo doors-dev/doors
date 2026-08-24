@@ -20,11 +20,13 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// Edit renders the Door directly in GoX:
+// Main renders the Door directly in GoX:
 //
 //	~(&doors.Door{})
-func (d *Door) Edit(cur gox.Cursor) error {
-	return cur.Printer().Send(renderJob{door: d, fakeJob: fakeJob{cur.Context()}})
+func (d *Door) Main() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		return cur.Printer().Send(renderJob{door: d, fakeJob: fakeJob{cur.Context()}})
+	})
 }
 
 // Proxy renders the Door in GoX with the following element as its container:

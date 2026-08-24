@@ -32,8 +32,8 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-func noMeta() gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func noMeta() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		return nil
 	})
 }
@@ -65,7 +65,7 @@ func (s pagePrinterSettings) Logger() *slog.Logger {
 
 func TestPagePrinterInsertsHeadBeforeBody(t *testing.T) {
 	var out bytes.Buffer
-	meta := gox.EditorFunc(func(cur gox.Cursor) error {
+	meta := gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.InitVoid("meta"); err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ func TestPagePrinterInsertsHeadBeforeBody(t *testing.T) {
 
 func TestPagePrinterInsertsIntoExplicitHead(t *testing.T) {
 	var out bytes.Buffer
-	meta := gox.EditorFunc(func(cur gox.Cursor) error {
+	meta := gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.InitVoid("meta"); err != nil {
 			return err
 		}
@@ -225,7 +225,7 @@ func TestPagePrinterIncludesFrontAssetsWhenNotStatic(t *testing.T) {
 
 func TestPagePrinterInsertedHeadPropagatesMetaError(t *testing.T) {
 	expected := errors.New("meta boom")
-	p := NewPagePrinter(&bytes.Buffer{}, true, nil, nil, gox.EditorFunc(func(gox.Cursor) error {
+	p := NewPagePrinter(&bytes.Buffer{}, true, nil, nil, gox.Elem(func(gox.Cursor) error {
 		return expected
 	}))
 

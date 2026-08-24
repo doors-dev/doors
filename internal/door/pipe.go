@@ -80,7 +80,10 @@ func (p *pipe) Render(disableGzip bool, printerMiddleware func(next gox.Printer)
 
 func (p *pipe) error(err error) {
 	p.buffer.Clear()
-	p.buffer.PushBack(gox.NewJobComp(context.Background(), newError(err, p.tracker.Instance().Logger())))
+	e := newError(err, p.tracker.Instance().Logger())
+	if err := e.Main().Print(context.Background(), (*pushBackPrinter)(p.buffer)); err != nil {
+		panic("error rendering error")
+	}
 }
 
 func (p *pipe) branch() *deque.Deque[any] {
@@ -130,16 +133,6 @@ func (p *pipe) Send(j gox.Job) error {
 			return err
 		}
 		return p.printBack.Send(j)
-	case *gox.JobComp:
-		ctx := j.Ctx
-		comp := j.Comp
-		gox.Release(j)
-		el := comp.Main()
-		if el == nil {
-			return nil
-		}
-		cur := gox.NewCursor(ctx, p)
-		return el(cur)
 	default:
 		return p.printBack.Send(j)
 	}

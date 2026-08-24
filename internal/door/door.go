@@ -173,4 +173,4 @@ func (d *Door) atomicSchedule(ctx context.Context, prev *node, task nodeTask, ex
 }
 
 var _ gox.Proxy = &Door{}
-var _ gox.Editor = &Door{}
+var _ gox.Comp = &Door{}

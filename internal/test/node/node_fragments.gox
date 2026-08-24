@@ -57,7 +57,7 @@ type FragmentProxyWrappedSiblings struct {
 }
 
 elem (f *FragmentProxyWrappedSiblings) Main() {
-	~(gox.EditorFunc(func(cur gox.Cursor) error {
+	~(gox.Elem(func(cur gox.Cursor) error {
 		return f.n.Proxy(cur, gox.Elem(func(cur gox.Cursor) error {
 			if err := cur.Init("div"); err != nil {
 				return err

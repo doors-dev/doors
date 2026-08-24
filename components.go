@@ -68,7 +68,8 @@ type parallelJob struct {
 
 func (pj parallelJob) Render(pip door.Pipe) {
 	pip.Submit(func(cur gox.Cursor) error {
-		return cur.CompCtx(pj.ctx, pj.el)
+		cur = gox.NewCursor(pj.ctx, cur.Printer())
+		return cur.Comp(pj.el)
 	})
 }
 
@@ -80,12 +81,16 @@ func (parallelJob) Output(io.Writer) error {
 	return errors.New("Parallel can only be used during a Doors render")
 }
 
-// Go starts f when the surrounding component is rendered.
+// Go runs f in a goroutine, meant for background work that updates the page
+// through [Door] methods. f starts only after the render cycle
+// producing the surrounding content completes and is enqueued for delivery,
+// so updates made by f always land after the markup that hosts them. It is
+// best-effort: if the render cycle fails or is superseded, f never runs.
 //
-// The context passed to f is the surrounding render context through
-// [DetachedContext]: it is canceled when the surrounding content leaves the
-// page and keeps the current dynamic ownership. Waiting on completion channels
-// inside f is safe.
+// The context passed to f is equivalent to [DetachedContext] of the render
+// context: it is canceled when the surrounding content leaves the page and
+// keeps the current dynamic ownership. Waiting on completion channels inside
+// f is safe.
 //
 // Example:
 //
@@ -93,11 +98,12 @@ func (parallelJob) Output(io.Writer) error {
 //	    <-time.After(time.Second)
 //	    d.Inner(ctx, currentTime())
 //	}))
-func Go(f func(ctx context.Context)) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func Go(f func(ctx context.Context)) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		core := cur.Context().Value(common.KeyCore).(core.Core)
-		ctx := DetachedContext(cur.Context())
-		core.Instance().Runtime().Go(ctx, f)
+		OnReady(cur.Context(), func(ctx context.Context) {
+			core.Instance().Runtime().Go(ctx, f)
+		})
 		return nil
 	})
 }
@@ -108,8 +114,8 @@ func Go(f func(ctx context.Context)) gox.Editor {
 // Example:
 //
 //	~(doors.Status(http.StatusNotFound))
-func Status(statusCode int) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func Status(statusCode int) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		core := cur.Context().Value(common.KeyCore).(core.Core)
 		core.Instance().SetStatus(statusCode)
 		return nil

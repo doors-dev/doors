@@ -61,7 +61,7 @@ type Session interface {
 }
 
 type TitleMeta interface {
-	gox.Editor
+	gox.Comp
 	UpdateTitle(value string, attrs gox.Attrs) context.CancelFunc
 	UpdateMeta(prop bool, name string, attrs gox.Attrs) context.CancelFunc
 }

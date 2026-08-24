@@ -187,7 +187,7 @@ func (h *lifecycleHarness) expectNoEvent(d time.Duration) {
 
 func mountDoor(d *Door) gox.Elem {
 	return func(cur gox.Cursor) error {
-		return d.Edit(cur)
+		return cur.Comp(d)
 	}
 }
 
@@ -673,7 +673,7 @@ func TestFreezeReleasesAndKeepsMarkup(t *testing.T) {
 	}))
 	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
 		OnClean(cur.Context(), func() { h.events <- "clean-freeze" })
-		return child.Edit(cur)
+		return cur.Comp(child)
 	}))
 	pageCtx := h.renderPage(mountDoor(d))
 	childCtx := <-childCtxCh
@@ -727,7 +727,7 @@ func TestOnCleanCascadeFires(t *testing.T) {
 	}))
 	parent.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
 		OnClean(cur.Context(), func() { h.events <- "clean-parent" })
-		return child.Edit(cur)
+		return cur.Comp(child)
 	}))
 	pageCtx := h.renderPage(mountDoor(parent))
 
