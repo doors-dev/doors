@@ -33,8 +33,9 @@ By default, **Doors** manages session and instance lifetime automatically.
 
 At a high level:
 
-- a session is created when the request does not have a live **Doors** session cookie
-- that session is renewed on later requests and uses a timer-based lifetime
+- a request without a live **Doors** session cookie gets a new session cookie on that response right away, but the session itself is created lazily, when something first uses it
+- rendering a page uses the session; requests fully handled by `app.Use` middleware or `doors.UseResource` do not create one
+- a session is renewed on later requests and uses a timer-based lifetime that starts at creation
 - a page gets its own live instance
 
 The internal **Doors** session cookie is `HttpOnly`, `Secure`, scoped to `/`, and named from `ServerSessionCookiePrefix + WithID`. By default, the prefix is empty and the app ID defaults to `doors`, so the cookie is named `doors`.
@@ -103,9 +104,9 @@ sessionCtx := doors.SessionContext(ctx)
 
 Use it for goroutines or external work that should live for the whole browser session and stop on `SessionEnd`, session expiration, or session cleanup.
 
-It is broader than the current instance or dynamic owner context. It is suitable for session-scoped helpers, Door methods, and Source or Beam mutations. Use an instance or render context for instance-scoped helpers, `doors.Reload(ctx)`, and Source or Beam reads/subscriptions.
+It is broader than the current instance or dynamic owner context. It is suitable for session-scoped helpers, Door methods, and Source or Beam reads, subscriptions, and updates; a subscription made with it lives until the session ends. `doors.Reload(ctx)` and instance-scoped helpers panic on it, so they still need an instance or render context.
 
-For work that should stay scoped to the current dynamic owner, keep using the current `ctx` or use `doors.DetachedContext(ctx)` from a goroutine that needs to wait on X-prefixed operations.
+For work that should stay scoped to the current dynamic owner, keep using the current `ctx`, or use `doors.DetachedContext(ctx)` from a goroutine that needs to wait on completion channels.
 
 For work that should outlive the current dynamic owner but stay bounded by the current page instance, use `doors.InstanceContext(ctx)`.
 

@@ -54,7 +54,7 @@ type Beam[T any] interface {
 	// The subscription ends when onValue returns true or the content that
 	// registered it is cleared. From a context outside an instance, for
 	// example [SessionContext] or a background context, it ends when the
-	// context is canceled, detected on the next propagation.
+	// context is canceled.
 	//
 	// It returns false if the context was canceled or the instance is shut
 	// down.

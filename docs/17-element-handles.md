@@ -23,7 +23,7 @@ Prefer `ActionEmit` with a `$on(...)` handler when the browser should own the lo
 
 ## Setter
 
-The zero value is ready to use. Attach it like any other attr, then dispatch `Set(name, value)`, which returns an [Action](./12-actions.md) for `doors.Call` or any action-accepting API.
+The zero value is ready to use. Attach it like any other attr, then dispatch `Set(name, value)`, which returns an [Action](./12-actions.md) for `doors.Call`.
 
 ```gox
 <>

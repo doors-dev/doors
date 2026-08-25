@@ -1,6 +1,6 @@
 # Printer Middleware
 
-`doors.WithPrinterMiddleware` lets you observe or adjust the HTML **Doors** emits, at the point where render jobs are serialized.
+`doors.WithPrinter` lets you observe or adjust the HTML **Doors** emits, at the point where render jobs are serialized.
 
 Use it for cross-cutting output concerns: stamping elements with extra attributes, collecting render metrics, or auditing produced markup.
 
@@ -8,7 +8,7 @@ Use it for cross-cutting output concerns: stamping elements with extra attribute
 
 ```go
 app := doors.NewApp(page,
-	doors.WithPrinterMiddleware(func(next gox.Printer) gox.Printer {
+	doors.WithPrinter(func(next gox.Printer) gox.Printer {
 		return &stamp{next: next}
 	}),
 )
@@ -27,7 +27,7 @@ The returned printer must be non-nil. It receives that drain's jobs as sequentia
 
 Rules:
 
-- forward each job to `next` exactly once; jobs are pooled, so never retain a job or its `Attrs` after `Send` returns
+- forward each job to `next` exactly once; jobs are pooled and single-use, so never retain a job or its `Attrs` after `Send` returns — use `Attrs.Clone` to keep an independent copy
 - read `job.Context()` for scope information: each job carries the context of the render scope that produced it, so helpers like `doors.SessionContext` work on it
 - `gox.JobHeadOpen` attrs can be inspected or changed until the job is serialized; they may be `nil` on container heads that emit no HTML
 - do not modify **Doors**-managed output: `d0*` elements and attributes, and rewritten resource URLs
@@ -52,7 +52,7 @@ func (s *stamp) Send(j gox.Job) error {
 	return s.next.Send(j)
 }
 
-app := doors.NewApp(page, doors.WithPrinterMiddleware(
+app := doors.NewApp(page, doors.WithPrinter(
 	func(next gox.Printer) gox.Printer {
 		return &stamp{next: next}
 	},

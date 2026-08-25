@@ -209,9 +209,9 @@ It is enough to check only the last `ok`. `Effect` fails only when the context w
 `RouteBeam` and `source.Route` pick one of several views based on a reactive value:
 
 ```go
-beam.RouteBeam(routes...)      // gox.EditorComp
-source.RouteBeam(routes...)    // gox.EditorComp
-source.Route(routes...)        // gox.EditorComp
+beam.RouteBeam(routes...)      // gox.Elem
+source.RouteBeam(routes...)    // gox.Elem
+source.Route(routes...)        // gox.Elem
 ```
 
 The routed fragment only swaps when the active route changes. Value changes that keep the same route matched do not rerender the route fragment. Instead, the route's render function receives a live `Beam` or `Source` and reacts inside with normal state primitives (`Bind`, `Effect`, derived values).
@@ -336,7 +336,7 @@ If that work should outlive the current dynamic owner, use `doors.InstanceContex
 
 ## Read
 
-Reading and subscribing need a valid **Doors** context, such as the `ctx` you get in render code, handlers, subscriptions, or `doors.Go(...)`.
+Reading and subscribing work from any context. With a **Doors** context, such as the `ctx` you get in render code, handlers, subscriptions, or `doors.Go(...)`, subscriptions are owned by the surrounding dynamic content. With a context outside an instance (session or background context), a subscription lives until that context is canceled.
 
 Updating a `Source` can be done from any context.
 
@@ -372,7 +372,7 @@ The subscription ends when:
 
 - your callback returns `true`
 - the owning dynamic parent is unmounted
-- for a context outside an instance (session or background context) — when the context is canceled, detected on the next update
+- for a context outside an instance (session or background context) — when the context is canceled
 
 ### ReadAndSub
 
