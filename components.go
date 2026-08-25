@@ -88,8 +88,9 @@ func (parallelJob) Output(io.Writer) error {
 // best-effort: if the render cycle fails or is superseded, f never runs.
 //
 // The context passed to f is equivalent to [DetachedContext] of the render
-// context: it is canceled when the surrounding content leaves the page and
-// keeps the current dynamic ownership. Waiting on completion channels inside
+// context: it is canceled when the surrounding content is released (replaced,
+// unmounted, or frozen) and keeps the current dynamic ownership. Waiting on
+// completion channels inside
 // f is safe.
 //
 // Example:

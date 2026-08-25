@@ -213,7 +213,7 @@ type Path struct {
 
 Query fields don't decide which path variant matches — they're decoded after the path variant is fixed. Only fields tagged with `query` are encoded back into URLs.
 
-The exact tag-based encoding rules come from [go-playground/form v4](https://github.com/go-playground/form/tree/v4.2.1) with the `query` tag in explicit mode.
+The exact tag-based encoding rules come from [go-playground/form v4](https://github.com/go-playground/form/tree/v4.3.0) with the `query` tag in explicit mode.
 
 #### Raw Query Values
 

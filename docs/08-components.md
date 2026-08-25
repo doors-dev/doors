@@ -2,7 +2,7 @@
 
 Components are Go values that implement `gox.Comp` by having a `Main() gox.Elem` method.
 
-There is no virtual DOM in **Doors**. A component is static by default: `Main()` renders once and stays. Re-rendering is explicit and local. `Bind` and `Effect` re-render dynamic fragments, subscriptions can update Doors, and direct Door methods replace only the Door region. The rest of the tree is untouched.
+There is no virtual DOM in **Doors**. A component is static by default: `Main()` renders once and stays. Re-rendering is explicit and local. `Bind` and `Effect` re-render dynamic fragments, subscriptions can update Doors, and direct Door methods replace only the Door region. 
 
 ## Model
 
@@ -128,35 +128,75 @@ elem (p *panel) Main() {
 
 See [Door](./06-door.md) for the low-level API.
 
-## Fields
+## Markup Encapsulation
 
-Keep component fields tied to ownership and reuse. Use an `elem` function for markup that does not need state or methods. Use a struct component when a value must persist after `Main()` returns: state handles, Door handles, dependencies called by handlers, or configuration shared by methods.
+A struct component's main job is to own a piece of markup — the tags, classes, and layout — and expose what varies as fields. Callers assemble pages from data-shaped literals; presentation stays in one place.
 
-Model data with concrete types. If a component needs a content slot, make that slot explicit and document what callers may pass.
-
-When a repeated block has one template shape plus data, make one component per item:
+GoX renders any type, so a slot field is just `any`: it accepts a string, an element, another component, or a fragment of components.
 
 ```gox
-type ContentBlock struct {
-	Title       string
-	Description string
-	Items       []string
+type Bubble struct {
+	Content any
+	Accent  bool
 }
 
-elem (b ContentBlock) Main() {
-	<section>
-		<h2>~(b.Title)</h2>
-		<p>~(b.Description)</p>
-		<ul>
-			~(for _, item := range b.Items {
-				<li>~(item)</li>
-			})
-		</ul>
-	</section>
+elem (b Bubble) Main() {
+	<div class=({
+		if b.Accent {
+			return "bubble accent"
+		}
+		return "bubble"
+	})>~(b.Content)</div>
 }
 ```
 
-For many items, prefer an explicit `for` loop that renders one component per item. It keeps wrappers, classes, IDs, and per-item attributes local to each item.
+The same slot takes plain text or a markup tree:
+
+```gox
+elem examples() {
+	~Bubble{Content: "Hello!"}
+	~Bubble{Accent: true, Content: <>
+		<h4>Links</h4>
+		<a href="https://doors.dev">doors.dev</a>
+	</>}
+}
+```
+
+A nil slot renders nothing. Wrap dependent markup in `~(if ...)` when it should disappear together with the slot:
+
+```gox
+type Message struct {
+	Avatar  any
+	Content any
+}
+
+elem (m Message) Main() {
+	<li class="message">
+		~(if m.Avatar != nil {
+			<div class="message-avatar">~(m.Avatar)</div>
+		})
+		<div class="message-body">~(m.Content)</div>
+	</li>
+}
+```
+
+Composition then reads as data:
+
+```gox
+elem conversation() {
+	<ul class="chat">
+		~Message{
+			Avatar:  Avatar{Initials: "AZ"},
+			Content: Bubble{Accent: true, Content: "What's Doors?"},
+		}
+		~Message{
+			Content: Bubble{Content: "A Go framework for server-side interactive apps."},
+		}
+	</ul>
+}
+```
+
+For repeated blocks, make one component per item and render them with an explicit `for` loop — wrappers, classes, IDs, and per-item attributes stay local to each item.
 
 ## State
 
@@ -189,21 +229,57 @@ When a dynamic parent unmounts, **Doors** cancels everything inside it:
 - mounted Doors
 - scoped background work started with `doors.Go(...)`
 
-Components can be reused across route switches when the same Go value is passed to `.Comp(...)`. Wrap construction in an element when you want fresh state each time the route enters:
+Start timing and context semantics of `doors.Go(f)` are covered in [Core Concepts](./02-core-concepts.md).
+
+### Disposable Components
+
+Give `Main` a value receiver and initialize state inside it — every render then works on a fresh copy of the component value, and the declared value itself is never mutated:
+
+```gox
+type Counter struct {
+	count doors.Source[int]
+}
+
+elem (c Counter) Main() {
+	~~
+	c.count = doors.NewSource(0)
+	~~
+	<div>
+		~(c.count.Bind(func(v int) gox.Elem {
+			return <span>~(v)</span>
+		}))
+		<button (doors.AClick{On: c.increment})>+</button>
+	</div>
+}
+
+func (c *Counter) increment(ctx context.Context, _ doors.RequestPointer) bool {
+	c.count.Mutate(ctx, func(v int) int { return v + 1 })
+	return false
+}
+```
+
+Three receivers working together:
+
+- `Main` on a value: each render gets its own copy, so the top `~~ ~~` block acts as a constructor — no `NewCounter` needed.
+- Handlers and helpers on a pointer: inside `Main`, `c.increment` binds to this render's copy — the one whose fields were just initialized. Everything in one mount shares that instance; two mounts share nothing.
+- The declared value is a prototype: `~Counter{}` — or one shared `var counter Counter` — can be dropped anywhere, any number of times, with no stale state and no races through the shared value.
+
+Where it pays off — a component value handed to a route branch is one Go value that renders again every time the route re-enters:
 
 ```gox
 <>
 	~(path.Route(
-		doors.RouteMatch(func(p Path) bool { return p.Section == SectionSelector }).
-			Comp(<>
-				~(LocationSelector(applyPlace))
-			</>),
+		doors.RouteMatch(func(p Path) bool { 
+           return p.Section == SectionCounter 
+        }).Comp(Counter{}),
 		doors.RouteDefaultComp[Path](Dashboard{}),
 	))
 </>
 ```
 
-Without the wrapper, the component value can be reused and its fields can keep their previous state.
+A stateful component constructed outside the render would come back with its previous state; the disposable `Counter` re-initializes on every entry.
+
+The flip side: state lives for one render of that fragment. Every re-render resets it. State that must survive re-renders needs an owner above the component — a pointer receiver and external construction.
 
 ## Rules
 

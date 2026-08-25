@@ -96,6 +96,8 @@ Do not swap it for `context.Background()` when calling **Doors** APIs like beam 
 
 `ctx.Done()` is also meaningful here. It closes when the related subtree or lifecycle scope goes away, which makes it the right cleanup signal for work attached to rendered UI.
 
+A render context may even be canceled mid-render, when the content being produced is already superseded. That is deliberate — it lets the runtime stop wasted work early. There is no need to check for cancellation in render code; it surfaces through the APIs the context is passed to — a database query, an HTTP request, `beam.Effect`. When such a call fails, return the error or nil; discarded output never reaches the page, so nothing is left torn.
+
 
 ```gox
 <>
@@ -134,6 +136,14 @@ Keep render work tied to producing the current page. For background loops,
 timers, pubsub listeners, or other work that should continue after rendering,
 start your own goroutine or use `doors.Go(...)` when it should follow the
 lifetime of a rendered subtree.
+
+`doors.Go(f)` starts `f` only after the render cycle that produced the
+surrounding content completes and is enqueued for delivery, so `Door` updates
+made from `f` always land after the markup that hosts them. It is best-effort:
+if that render fails or is superseded, `f` never runs. The context passed to
+`f` is detached from the render cycle and canceled when the surrounding
+dynamic content is released: replaced, unmounted, or frozen (see
+[Door](./06-door.md)).
 
 ## Security
 

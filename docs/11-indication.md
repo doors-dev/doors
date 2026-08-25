@@ -73,6 +73,7 @@ Indicator: doors.JoinIndicators(
 
 - Indication starts when the request actually begins on the client. Scopes can delay or cancel the request — indication follows that decision.
 - When the request ends, **Doors** restores what the indicator changed: temporary attributes removed, added classes removed, removed classes restored, content put back.
+- A hook handler can keep the request — and its indication — pending after it returns with `doors.HoldSettle`; the indicator is restored when the hold is released. See [Door](./06-door.md).
 - Overlapping indications on the same element queue. When one ends, the next takes over. Fields the next indication doesn't touch fall back to the original value, not the previous indication's value.
 
 ## Example

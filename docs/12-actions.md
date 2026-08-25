@@ -13,9 +13,10 @@ For example, call a JavaScript handler registered with `$on(...)`.
 
 You can schedule actions in five common places:
 
-- `doors.Call(ctx, action)` to dispatch from Go; the returned error channel is optional to use
+- `doors.Call(ctx, action)` to dispatch from Go; the returned completion channel is optional to use
 - `Before` on a request attr such as an event attr or `ALink`, just before the request is sent
 - `r.After(...)` after a successful request
+- `After` on `ALink`, once the navigation succeeds
 - `OnError` on a request attr when a client-visible hook error happens
 
 Action lists run in the order you give them.
@@ -149,7 +150,7 @@ It is useful for:
 - bringing a changed region into view
 - moving the user back to a result block or top section
 
-If nothing matches, nothing happens.
+If nothing matches, the action fails — with `doors.Call`, the error arrives on the completion channel.
 
 ## Indicate
 
@@ -163,7 +164,7 @@ It lasts for the `Duration` you give it.
 
 When `ActionIndicate` runs from `Before`, `r.After(...)`, or `OnError`, `SelectorTarget()` can use the current event element.
 
-When it runs from a direct `Call`, there is no event target, so use explicit selectors like `SelectorQuery(...)`.
+When it runs from a direct `Call`, there is no event element, so only the `SelectorQuery(...)` and `SelectorQueryAll(...)` selector variants apply.
 
 Indication details are covered in [Indication](./11-indication.md).
 
@@ -194,7 +195,7 @@ The same shape works for `r.After(...)` and `OnError`.
 
 - Prefer rendering and state for durable UI changes.
 - Prefer `Setter` when existing attributes should stay shared without rerendering the elements.
-- Ignore the `doors.Call` error channel when the outcome does not matter; capture results with `Into`.
+- Ignore the `doors.Call` completion channel when the outcome does not matter; capture results with `Into`.
 - Keep `$on(...)` handlers synchronous and scoped intentionally.
 - Prefer `ALink` or updating the `Source` from `RouteModel` for in-app navigation.
 - Use location actions when you intentionally want a full page load.

@@ -292,6 +292,8 @@ Use:
 
 These are not a 1:1 pair. For example, `$hook(...)` can call `ARawHook`.
 
+Both hook attrs also take optional `Scope`, `Indicator`, and `RequestTimeout` fields. `RequestTimeout` overrides the `RequestTimeout` from [Configuration](./21-configuration.md) for calls to that hook.
+
 For `AHook[T]`, the handler receives `doors.RequestHook[T]`, so it can:
 
 - read `r.Data()`
@@ -319,6 +321,8 @@ Return `true` to remove it after the call.
 ```
 
 > The handler's `ctx` parameter is the **Doors** runtime context. Use it with **Doors** APIs. `r.Context()` is the underlying HTTP request context.
+
+A handler can keep the call open past its own return with `doors.HoldSettle`: the client keeps the `$hook(...)` promise, the scope, and the indication pending until the hold is released. See [Door](./06-door.md).
 
 ### Raw Variant
 

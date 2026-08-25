@@ -6,7 +6,7 @@ That pattern is especially useful for authentication. The same idea also works f
 
 ## Start
 
-You usually access storage in one of three places:
+You usually access storage in one of two places:
 
 - `doors.SessionStore(ctx)` for session-scoped storage
 - `doors.InstanceStore(ctx)` for instance-scoped storage
@@ -38,7 +38,7 @@ Use it for state that should be shared across pages or tabs in that browser sess
 
 If several pages subscribe to the same source from session storage, they can all react to the same update.
 
-`doors.SessionContext(ctx)` returns a context tied to that same session lifetime. Use it for goroutines or external work that should stop when the **Doors** session ends, rather than when the current instance or dynamic owner is cleaned up. It is suitable for session-scoped helpers, Door methods, and Source or Beam mutations; use an instance or render context for instance-scoped helpers and Source or Beam reads.
+`doors.SessionContext(ctx)` returns a context tied to that same session lifetime. Use it for goroutines or external work that should stop when the **Doors** session ends, rather than when the current instance or dynamic owner is cleaned up. It is suitable for session-scoped helpers, Door methods, and Source or Beam reads, subscriptions, and updates; a subscription made with it lives until the session ends. Instance-scoped helpers still need an instance or render context.
 
 ## Instance
 
