@@ -1,3 +1,197 @@
+# Doors `0.15` Release Notes — "Cadence"
+
+Doors `0.15` rebuilds the event and lifecycle machinery: server-driven synthetic events, precise lifecycle hooks, one unified action API, optimized memory usage, and the move to GoX v0.3.0.
+
+> Most of the changes of this release are based on development and production feedback from a social platform with live feeds, comments, notifications, and moderation plus paid professional services. The services lean on what is unique to Doors: external systems integrate directly into the stateful session process — no API endpoints, no wrapping of stateful work into stateless logic.
+>
+> The other driver of this release is preparation for native agentic integration — stay tuned.
+
+## Highlights
+
+### Emitter — synthetic events from the server
+
+`doors.Emitter` is a zero-value attribute handle that dispatches synthetic DOM events — pointer, keyboard, focus, input, change, submit — to its attached elements from server code. One emitter can attach to several elements, and one element can carry several emitters. Emitted events bubble, so event attrs on ancestor elements run too.
+
+Each event method returns `ActionInto[int]`; `Into` captures how many hook requests the emitted events triggered (any failure fails the call).
+
+```go
+var e doors.Emitter
+// template: <button (&e) (doors.AClick{On: onClick})>Save</button>
+
+var n int
+err := <-doors.Call(ctx, e.Click(doors.PointerEmit{}).Into(&n))
+// n = hook requests the emitted events triggered
+```
+
+Emit structs (`PointerEmit`, `KeyboardEmit`, `FocusEmit`, `InputEmit`, `ChangeEmit`, `SubmitEmit`) carry only fields that round-trip through dispatch and capture.
+
+Related: the `On` callback on all event, form, and hook attrs is now optional. With nil `On` the request is still accepted (its body discarded unread) and the hook stays registered, so an attr can be attached purely for its client-side effects or as an Emitter round-trip target.
+
+See [Element Handles](./docs/17-element-handles.md).
+
+### Lifecycle hooks: OnReady, OnSettle, OnClean
+
+- `doors.OnReady(ctx, on)` fires at most once when the render cycle that produced the current content completes and its page/update is enqueued for the client. Best-effort: dropped if the cycle fails or is superseded. Use it to start work that must not outrun the markup it targets — e.g. launch the goroutine that streams live updates into freshly rendered content only once that content is on its way to the client.
+- `doors.OnClean(ctx, f)` fires exactly once when the content is cleared, on any teardown path. On replacement, old content's `OnClean` runs before new content's `OnReady`.
+- `doors.OnSettle(ctx, on, ops...)` runs ops within the current dispatch batch and fires once when everything the batch started — door updates, beam propagation — is processed and enqueued. In a handler, the batch spans the whole handler. Two practical uses: a reliable point to collect information gathered during render, and controlled batched UI updates — issuing the next batch from the `on` callback guarantees it lands after the previous one.
+
+`doors.HoldSettle(ctx)` keeps the current dispatch batch open after the handler returns: `OnSettle` callbacks, indicators, scopes, and the `$hook` promise wait until the returned release func is called. Use it when a handler hands work to another goroutine or subsystem — loading indicators and the client's hook promise stay pending until the work actually finishes, not until the handler returns.
+
+Callbacks execute inline on the goroutine firing the frame (or the calling goroutine when the frame already fired); the must-not-block rule is unchanged.
+
+`doors.Go` now starts its function only after the surrounding render cycle is enqueued for delivery, so Door updates made inside always land after their host markup.
+
+See [Door](./docs/06-door.md).
+
+### Unified Call and completion channels
+
+`doors.Call(ctx, action)` returns a plain `<-chan error`: nil on success, an error on failure, closed without a value on cancel. Client results are captured by arming the action with `Into` instead of a generic call variant.
+
+```go
+var res string
+ch := doors.Call(ctx, doors.ActionEmit[string]{Name: "toast", Arg: msg}.Into(&res))
+// res is valid once ch delivers nil
+```
+
+`$on(...)` action handlers may now return a `Promise`: the client awaits it, the action settles when it does, and the resolved value is delivered to `Into` — the old `async actions are prohibited` error is gone.
+
+In the same spirit, all mutating operations return their completion channel directly: door operations, `doors.Reload`, and `Source` updates now return `<-chan error`, optional to use; the `X*` variants are gone — see [Breaking Changes](#breaking-changes). The `Source` completion contract is refined: nil means propagated, `context.Canceled` means superseded by a newer update, closed without a value means suppressed (equal value or no subscribers).
+
+### Setter — stateless attribute control
+
+`doors.Setter` replaces the removed `AShared`: a zero-value attribute handle whose `Set(name, value)` returns an action that sets the attribute on every attached live element.
+
+```go
+var locked doors.Setter
+// attach: <button (&locked)>Save</button> <button (&locked)>Publish</button>
+
+doors.Call(ctx, locked.Set("disabled", true))
+doors.Call(ctx, locked.Set("hidden", nil)) // removes the attribute
+```
+
+Values follow template attribute semantics (nil/false remove, true sets bare). Setter is stateless: a rerendered element returns to its template attributes. `Set(...).Into(&n)` captures the number of live elements reached.
+
+### Door: Freeze and flexible Outer
+
+- `Door.Freeze(ctx)` keeps the Door's current markup on the page while releasing hooks, subscriptions, and nested Doors on the server. Meant for feed-like content that goes final; the Door keeps its stored state and can be mounted again.
+- `Door.Outer` accepts `any` renderable content instead of only `gox.Elem` — comps, strings, slices all work; nil leaves an empty live container, and a typed-nil `Elem` no longer panics.
+
+### Context and sessions
+
+`doors.Ctx(ctx)` propagates user `context.WithValue` values through the render subtree — visible in nested renders, event handlers, and later door updates — while cancelation, deadlines, and Doors ownership stay with the enclosing render:
+
+```gox
+~>(doors.Ctx(context.WithValue(ctx, themeKey{}, "dark"))) <>
+    // subtree sees ctx.Value(themeKey{})
+</>
+```
+
+- `doors.HasSession` / `doors.HasInstance` report which Doors API level a context supports.
+- `Beam.Sub`, `Read`, `ReadAndSub`, and `Watch` now work outside an instance (e.g. on `SessionContext` or a background context); such subscriptions attach directly to the source and end when their context is canceled.
+- `doors.Logger(ctx)` returns the configured `*slog.Logger`, falling back to `slog.Default`.
+- `doors.IDNumber(ctx)` returns an instance-unique `uint64`.
+- `WithSessionTracker` accumulates: repeating the option installs several observers, run in registration order.
+- Sessions are created lazily on first actual touch — requests that never use the session (static resources, crawlers) allocate no session state. Cookies and expiry semantics are unchanged.
+
+### App and platform
+
+- `doors.WithPrinter(func(next gox.Printer) gox.Printer)` wraps the HTML output printer once per drain unit, after all framework transforms. See [Printer Middleware](./docs/22-printer-middleware.md).
+- `AHook`, `ARawHook`, `ASubmit`, and `ARawSubmit` gain `RequestTimeout time.Duration`, overriding `Conf.RequestTimeout` per hook.
+- `ActionLocationRawReplace{URL}` replaces the current history entry with a literal URL, complementing `ActionLocationRawAssign`.
+- Exported error sentinels for `errors.Is`: `ErrPathModel`, `ErrPathEncode`, `ErrExecution` (action reached the browser and failed there), `ErrTerminated` (instance ended first). Hook registration on a released door now yields `context.Canceled`.
+- `Location` marshals to JSON with `segments`/`query` tags; nil encodes as `[]`/`{}` instead of null.
+- The `doors.css` resource and its head `<link>` are removed: the `d0-r` rule is applied via a constructed stylesheet in the blocking head script, so it holds at first paint and a strict `style-src` CSP no longer needs the doors resource origin.
+
+### Lower per-instance memory
+
+Registered hooks no longer pin their attr structs: trigger closures capture only the handler and body limit, so serialized attribute config (scopes, indicators, actions) is garbage-collectable right after render. On top of that, pooled gzip writers are returned on finalize instead of held until client ack.
+
+Real-life data from a heavy page with 500+ interactive elements: per-instance memory dropped from ~800 KB to ~300 KB.
+
+### GoX v0.3.0
+
+Doors now requires GoX v0.3.0, which merges `Editor`/`EditorComp` into `Comp`/`Elem`. `Door` is a plain `gox.Comp`; template usage `~(&doors.Door{})` is unchanged. Direct-render and signature changes are listed under [Breaking Changes](#breaking-changes).
+
+### Documentation
+
+Godocs across the public API were rewritten as contracts. `docs/17-shared-attr.md` became [docs/17-element-handles.md](./docs/17-element-handles.md), covering Setter and Emitter together. `ALink` docs no longer claim a nil `OnError` defaults to `ActionLocationReload`; a failed navigation reverts to the previous history entry.
+
+## Fixes
+
+- `doors.A` on a door's container element no longer overwrites the door's parent marker, which broke the door's next update on the client.
+- `Setter.Set` rejects `gox.Mutate` values (such as `doors.Class`) instead of silently replacing the attribute; plain values like `Set("class", "hl")` remain the supported form.
+- The client aborts its open long-poll and report stream when the connector pauses (pagehide, hidden-tab disconnect), freeing server connections immediately and unblocking back/forward cache.
+- Closed an unlocked-read race in door container tracking.
+
+## Breaking Changes
+
+### GoX v0.3.0 (Editor merged into Comp)
+
+| Old | New |
+|---|---|
+| `github.com/doors-dev/gox` v0.2.3 | `github.com/doors-dev/gox` v0.3.0 |
+| `Door.Edit(cur gox.Cursor) error` | `Door.Main() gox.Elem` (or `cur.Comp(door)`) |
+| `Beam.Bind(...) gox.EditorComp` | `Beam.Bind(...) gox.Elem` |
+| `Beam.RouteBeam(...) gox.EditorComp` | `Beam.RouteBeam(...) gox.Elem` |
+| `Source.Route(...) gox.EditorComp` | `Source.Route(...) gox.Elem` |
+| `doors.Route(...) gox.EditorComp` | `doors.Route(...) gox.Elem` |
+| `doors.Go(f) gox.Editor` | `doors.Go(f) gox.Elem` |
+| `doors.Status(code) gox.Editor` | `doors.Status(code) gox.Elem` |
+
+```go
+// old
+return door.Edit(cur)
+// new
+return cur.Comp(door)
+```
+
+### X* variants merged into base methods
+
+All return `<-chan error`; ignore the channel for fire-and-forget.
+
+| Old | New |
+|---|---|
+| `Door.XInner` / `XOuter` / `XStatic` / `XReload` / `XUnmount` | `Door.Inner` / `Outer` / `Static` / `Reload` / `Unmount` |
+| `doors.XReload` | `doors.Reload` |
+| `Source.XUpdate` / `Source.XMutate` | `Source.Update` / `Source.Mutate` |
+
+### Call rework
+
+| Old | New |
+|---|---|
+| `XCall[T](ctx, action) <-chan CallResult[T]` | `Call(ctx, action.Into(&dst)) <-chan error` |
+| `Call(ctx, action)` (no return) | `Call(ctx, action) <-chan error` |
+| `CallResult[T]` | removed |
+| `ActionEmit{Name, Arg}` | `ActionEmit[T]{Name, Arg}` (`ActionEmit[any]` to ignore the result) |
+
+### Renames
+
+| Old | New |
+|---|---|
+| `doors.InstanceId` | `doors.InstanceID` |
+| `doors.SessionId` | `doors.SessionID` |
+
+### Removed APIs
+
+| Old | New |
+|---|---|
+| `AShared` / `NewAShared` | `doors.Setter` |
+| `AKeyDown.Filter` / `AKeyUp.Filter` | `AKeyDown.Keys` / `AKeyUp.Keys` |
+| `Free` | `DetachedContext` |
+| `FreeRoot` | `InstanceContext` |
+| `Source.RouteSource` | `Source.Route` |
+| `RouteLocationDefault{,Beam,Bind,Comp}` | `RouteDefault{,Beam,Bind,Comp}` |
+
+## Migration
+
+```sh
+go get github.com/doors-dev/doors@v0.15.0-rc2
+```
+
+Update GoX to v0.3.0 alongside, then apply the renames in the tables above — all mechanical. The only behavioral shifts to review are the completion-channel contracts on `Call`, door operations, and `Source` updates.
+
+---
+
 # Doors `0.14` Release Notes — "Altitude"
 
 Doors `0.14` is a focused ergonomics release. The changes are small in surface area, but they make daily Doors code feel more coherent for developers and users.
