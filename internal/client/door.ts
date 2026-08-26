@@ -27,6 +27,18 @@ type Closure = () => void | Promise<void>
 const attr = "data-d0r"
 const tag = "d0-r"
 
+const containerSheet = new CSSStyleSheet()
+containerSheet.replaceSync(":host{display:contents}")
+
+customElements.define(tag, class extends HTMLElement {
+	constructor() {
+		super()
+		const root = this.attachShadow({ mode: "open" })
+		root.adoptedStyleSheets = [containerSheet]
+		root.append(document.createElement("slot"))
+	}
+})
+
 const doorState = Symbol()
 
 type DoorElement = Element & {

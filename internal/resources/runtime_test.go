@@ -198,7 +198,7 @@ func TestRegistryServeAndScriptModes(t *testing.T) {
 	common.InitDefaults(&conf)
 	rg := NewRegistry(resourceTestSettings{conf: &conf})
 
-	if rg.MainScript() == nil || rg.MainStyle() == nil {
+	if rg.MainScript() == nil {
 		t.Fatal("expected main resources to be initialized")
 	}
 

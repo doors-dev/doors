@@ -849,3 +849,29 @@ func TestDoorRebaseErrorTransition(t *testing.T) {
 	test.Click(t, page, "#rebase-error")
 	test.TestReport(t, page, "channel err: rebase boom")
 }
+
+func TestDoorContainerShadowStyle(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentMany{}
+	})
+	page := bro.Page(t, "/")
+	defer bro.Close()
+	defer page.Close()
+	result := page.MustEval(`() => {
+		const el = document.querySelector("d0-r")
+		if (!el) {
+			return "no d0-r on page"
+		}
+		const display = getComputedStyle(el).display
+		if (display !== "contents") {
+			return "display: " + display
+		}
+		if (!el.shadowRoot || !el.shadowRoot.querySelector("slot")) {
+			return "no shadow slot"
+		}
+		return "ok"
+	}`).Str()
+	if result != "ok" {
+		t.Fatal(result)
+	}
+}

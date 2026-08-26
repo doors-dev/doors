@@ -46,7 +46,6 @@ type registry struct {
 	cache      sync.Map
 	lookup     sync.Map
 	mainScript *Resource
-	mainStyle  *Resource
 }
 
 func (rs *registry) init() {
@@ -71,8 +70,6 @@ func (rs *registry) init() {
 	}
 	rs.mainScript = NewResource(content, "application/javascript", rs.defaultSettings())
 	rs.lookup.Store(rs.mainScript.id, rs.mainScript)
-	rs.mainStyle = NewResource(internal.ClientStyles, "text/css", rs.defaultSettings())
-	rs.lookup.Store(rs.mainStyle.id, rs.mainStyle)
 }
 
 func (rs *registry) defaultSettings() resourceSettings {
@@ -80,11 +77,6 @@ func (rs *registry) defaultSettings() resourceSettings {
 		cacheControl: rs.app.Conf().ServerCacheControl,
 		disableGzip:  rs.app.Conf().ServerDisableGzip,
 	}
-}
-
-func (rs Registry) MainStyle() *Resource {
-	rs.initGuard.Do(rs.init)
-	return rs.mainStyle
 }
 
 func (rs Registry) MainScript() *Resource {
