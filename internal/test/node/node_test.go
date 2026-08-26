@@ -850,7 +850,7 @@ func TestDoorRebaseErrorTransition(t *testing.T) {
 	test.TestReport(t, page, "channel err: rebase boom")
 }
 
-func TestDoorContainerShadowStyle(t *testing.T) {
+func TestDoorContainerStyle(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &FragmentMany{}
 	})
@@ -865,9 +865,6 @@ func TestDoorContainerShadowStyle(t *testing.T) {
 		const display = getComputedStyle(el).display
 		if (display !== "contents") {
 			return "display: " + display
-		}
-		if (!el.shadowRoot || !el.shadowRoot.querySelector("slot")) {
-			return "no shadow slot"
 		}
 		return "ok"
 	}`).Str()

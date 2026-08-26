@@ -28,16 +28,8 @@ const attr = "data-d0r"
 const tag = "d0-r"
 
 const containerSheet = new CSSStyleSheet()
-containerSheet.replaceSync(":host{display:contents}")
-
-customElements.define(tag, class extends HTMLElement {
-	constructor() {
-		super()
-		const root = this.attachShadow({ mode: "open" })
-		root.adoptedStyleSheets = [containerSheet]
-		root.append(document.createElement("slot"))
-	}
-})
+containerSheet.replaceSync(`${tag}{display:contents}`)
+document.adoptedStyleSheets.push(containerSheet)
 
 const doorState = Symbol()
 
