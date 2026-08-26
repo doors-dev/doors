@@ -15,12 +15,13 @@
 package path
 
 import (
-	"errors"
+	"fmt"
 	"log/slog"
 	"net/url"
 	"reflect"
 	"sync"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/go-playground/form/v4"
 )
 
@@ -72,13 +73,13 @@ func GetModelAdapter[M any]() (ModelAdapter[M], error) {
 func get(sample any) (adapter, error) {
 	t := reflect.TypeOf(sample)
 	if t == nil {
-		return adapter{}, errors.New("model must be struct")
+		return adapter{}, fmt.Errorf("%w: not a struct", common.ErrPathModel)
 	}
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
-		return adapter{}, errors.New("model must be struct")
+		return adapter{}, fmt.Errorf("%w: not a struct", common.ErrPathModel)
 	}
 	adapter, ok := adapters.get(t)
 	if ok {
@@ -199,7 +200,7 @@ func (a adapter) encode(m any) (Location, error) {
 		if a.queryField == -1 {
 			query, err = queryEncoder.Encode(m)
 			if err != nil {
-				return Location{}, err
+				return Location{}, fmt.Errorf("%w: query: %w", common.ErrPathEncode, err)
 			}
 		} else {
 			query = v.Field(a.queryField).Interface().(url.Values)
@@ -209,7 +210,7 @@ func (a adapter) encode(m any) (Location, error) {
 			Query:    query,
 		}, nil
 	}
-	return Location{}, errors.New("no path variant selected")
+	return Location{}, fmt.Errorf("%w: no path variant selected", common.ErrPathEncode)
 }
 
 var queryDecoder *form.Decoder

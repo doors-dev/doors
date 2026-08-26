@@ -17,7 +17,6 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"time"
 
@@ -62,7 +61,7 @@ func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(h.handle(core), nil)
 	if !ok {
-		return errors.New("door: hook registration failed")
+		return context.Canceled
 	}
 	front.AttrsSetHook(attrs, h.Name, front.Hook{
 		Scope:    scopesOrNil(core, h.Scope),
@@ -143,7 +142,7 @@ func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(h.handle(core), nil)
 	if !ok {
-		return errors.New("door: hook registration failed")
+		return context.Canceled
 	}
 	front.AttrsSetHook(attrs, h.Name, front.Hook{
 		Scope:    scopesOrNil(core, h.Scope),

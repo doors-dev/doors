@@ -299,7 +299,7 @@ func TestPrimeIDAndEndCause(t *testing.T) {
 		t.Fatalf("unexpected prime generator output: %d %d", v1, v2)
 	}
 
-	if got := EndCauseSuspend.Error(); got != "cause: 1" {
+	if got := EndCauseSuspend.Error(); got != "instance suspended" {
 		t.Fatalf("unexpected end cause error: %q", got)
 	}
 }

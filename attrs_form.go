@@ -16,7 +16,6 @@ package doors
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -64,7 +63,7 @@ func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(s.handle(core), nil)
 	if !ok {
-		return errors.New("door: hook registration failed")
+		return context.Canceled
 	}
 	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
 		OnError:  intoActions(ctx, actionsOrNil(s.OnError)),
@@ -139,7 +138,7 @@ func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(s.handle(core), nil)
 	if !ok {
-		return errors.New("door: hook registration failed")
+		return context.Canceled
 	}
 	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
 		OnError:  intoActions(ctx, actionsOrNil(s.OnError)),

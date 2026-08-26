@@ -73,17 +73,17 @@ func serveFS(prefix string, fsys http.FileSystem, cacheControl string, w http.Re
 // unless ServerDisableGzip is set.
 func UseResource(path string, resource ResourceStatic, contentType string) Use {
 	if path == "/" || path == "" {
-		panic(errors.New("ServeResource cannot serve the root path"))
+		panic(errors.New("UseResource cannot serve the root path"))
 	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
 	if resource == nil {
-		panic(errors.New("ServeResource requires a static resource"))
+		panic(errors.New("UseResource requires a static resource"))
 	}
 	entry := resource.StaticEntry()
 	if entry == nil {
-		panic(errors.New("ServeResource returned a nil static entry"))
+		panic(errors.New("UseResource received a nil static entry"))
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +94,7 @@ func UseResource(path string, resource ResourceStatic, contentType string) Use {
 			app := r.Context().Value(common.KeySession).(interface{ App() core.App }).App()
 			res, err := app.ResourceRegistry().Static(entry, contentType)
 			if err != nil {
-				app.Logger().Error("ServeResource failed to prepare the resource", "error", err)
+				app.Logger().Error("UseResource failed to prepare the resource", "error", err)
 				w.WriteHeader(500)
 				return
 			}
@@ -111,7 +111,7 @@ func UseResource(path string, resource ResourceStatic, contentType string) Use {
 // handler.
 func UseFS(prefix string, fsys fs.FS, cacheControl string) Use {
 	if prefix == "/" || prefix == "" {
-		panic(errors.New("ServeFS cannot serve the root prefix"))
+		panic(errors.New("UseFS cannot serve the root prefix"))
 	}
 	return serveFileSystem(prefix, http.FS(fsys), cacheControl)
 }
@@ -124,7 +124,7 @@ func UseFS(prefix string, fsys fs.FS, cacheControl string) Use {
 // handler.
 func UseDir(prefix string, dirPath string, cacheControl string) Use {
 	if prefix == "/" || prefix == "" {
-		panic(errors.New("ServeDir cannot serve the root prefix"))
+		panic(errors.New("UseDir cannot serve the root prefix"))
 	}
 	return serveFileSystem(prefix, http.Dir(dirPath), cacheControl)
 }
@@ -150,7 +150,7 @@ func serveFileSystem(prefix string, fsys http.FileSystem, cacheControl string) U
 // to the next handler.
 func UseFile(path string, filePath string, cacheControl string) Use {
 	if path == "/" || path == "" {
-		panic(errors.New("ServeFile cannot serve the root path"))
+		panic(errors.New("UseFile cannot serve the root path"))
 	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path

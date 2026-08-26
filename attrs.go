@@ -17,7 +17,6 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -73,7 +72,7 @@ func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(p.handle(core), nil)
 	if !ok {
-		return errors.New("door: hook registration failed")
+		return context.Canceled
 	}
 	front.AttrsAppendCapture(attrs, p.capture, front.Hook{
 		OnError:  intoActions(ctx, actionsOrNil(p.onError)),

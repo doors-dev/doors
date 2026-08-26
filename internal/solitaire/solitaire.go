@@ -256,7 +256,7 @@ func (rv *receiver) onReport(rep report) {
 	rv.sync.Report(rep.ID, rep.TS)
 	err := rv.deck.CollectResults(rep.Results)
 	if err != nil {
-		if err == context.Canceled {
+		if errors.Is(err, context.Canceled) {
 			return
 		}
 		rv.inst.SyncError(err)
@@ -264,7 +264,7 @@ func (rv *receiver) onReport(rep report) {
 	}
 	err = rv.deck.FillGaps(rep.Gaps)
 	if err != nil {
-		if err == context.Canceled {
+		if errors.Is(err, context.Canceled) {
 			return
 		}
 		rv.inst.SyncError(err)

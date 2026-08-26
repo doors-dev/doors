@@ -15,10 +15,12 @@
 package path
 
 import (
-	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/doors-dev/doors/internal/common"
 )
 
 func newFieldBranch(index int, patternIndex int, path string, fields map[string]field) (fieldBranch, error) {
@@ -64,42 +66,42 @@ func newBranch(path string, fields map[string]field, tail bool) (branch, error) 
 		name, both = strings.CutSuffix(name, "*")
 		if both {
 			if optional || multiple {
-				return branch{}, errors.New("path parameter cannot combine '*' with '?' or '+'")
+				return branch{}, fmt.Errorf("%w: path parameter cannot combine '*' with '?' or '+'", common.ErrPathModel)
 			}
 			optional = both
 			multiple = both
 		}
 		if optional && !last {
-			return branch{}, errors.New("optional path parameter must be the last segment")
+			return branch{}, fmt.Errorf("%w: optional path parameter must be the last segment", common.ErrPathModel)
 		}
 		if multiple && !last {
-			return branch{}, errors.New("multi-segment path parameter must be the last segment")
+			return branch{}, fmt.Errorf("%w: multi-segment path parameter must be the last segment", common.ErrPathModel)
 		}
 		field, ok := fields[name]
 		if !ok {
-			return branch{}, errors.New("path parameter :" + name + " has no matching exported field; path marker fields cannot be used as captures")
+			return branch{}, fmt.Errorf("%w: path parameter %q has no matching exported field; path marker fields cannot be used as captures", common.ErrPathModel, name)
 		}
 		if multiple {
 			multiField, ok := field.multi()
 			if !ok {
-				return branch{}, errors.New("multi-segment path parameter field " + name + " must have type []string")
+				return branch{}, fmt.Errorf("%w: multi-segment path parameter field %q must have type []string", common.ErrPathModel, name)
 			}
-			b.segments = append(b.segments, newMultiSegment(multiField, optional))
+			b.segments = append(b.segments, newMultiSegment(name, multiField, optional))
 		} else {
 			singleField, ok := field.single()
 			if !ok {
-				return branch{}, errors.New("single-segment path parameter field " + name + " cannot be a slice")
+				return branch{}, fmt.Errorf("%w: single-segment path parameter field %q cannot be a slice", common.ErrPathModel, name)
 			}
 			if optional {
 				if !singleField.kind.isPtr() {
-					return branch{}, errors.New("optional single-segment path parameter field " + name + " must be a pointer")
+					return branch{}, fmt.Errorf("%w: optional single-segment path parameter field %q must be a pointer", common.ErrPathModel, name)
 				}
 			} else {
 				if singleField.kind.isPtr() {
-					return branch{}, errors.New("required single-segment path parameter field " + name + " must not be a pointer")
+					return branch{}, fmt.Errorf("%w: required single-segment path parameter field %q must not be a pointer", common.ErrPathModel, name)
 				}
 			}
-			b.segments = append(b.segments, newSingleSegment(singleField, optional))
+			b.segments = append(b.segments, newSingleSegment(name, singleField, optional))
 		}
 	}
 	return b, nil
@@ -149,7 +151,7 @@ func (b branch) encode(m reflect.Value) ([]string, error) {
 			v, ok := s.get(m)
 			if !ok {
 				if !s.optional {
-					return nil, errors.New("no value provided for a required field")
+					return nil, fmt.Errorf("%w: no value provided for required field %q", common.ErrPathEncode, s.name)
 				}
 				continue
 			}
@@ -163,11 +165,11 @@ func (b branch) encode(m reflect.Value) ([]string, error) {
 			v := s.get(m)
 			if len(v) == 0 {
 				if !s.optional {
-					return nil, errors.New("no value provided for a required field")
+					return nil, fmt.Errorf("%w: no value provided for required field %q", common.ErrPathEncode, s.name)
 				}
 			}
 			if slices.Contains(v, "") {
-				return nil, errors.New("empty value in a multi-segment field")
+				return nil, fmt.Errorf("%w: empty value in multi-segment field %q", common.ErrPathEncode, s.name)
 			}
 			parts = append(parts, v...)
 			continue

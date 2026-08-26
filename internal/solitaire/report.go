@@ -115,7 +115,7 @@ func (m *gap) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if len(parts) == 0 {
-		return errors.New("empty result array")
+		return errors.New("empty gap array")
 	}
 	err = json.Unmarshal(parts[0], &m.beg)
 	if err != nil {
@@ -146,10 +146,10 @@ func (m *report) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("report must be an array: %w", err)
 	}
 	if len(arr) < 2 {
-		return fmt.Errorf("report array must contain at least [ID, TS]")
+		return errors.New("report array must contain at least [ID, TS]")
 	}
 	if len(arr) > 4 {
-		return fmt.Errorf("report array must contain at most [ID, TS, Results, Gaps]")
+		return errors.New("report array must contain at most [ID, TS, Results, Gaps]")
 	}
 	if err := json.Unmarshal(arr[0], &m.ID); err != nil {
 		return fmt.Errorf("invalid report ID: %w", err)

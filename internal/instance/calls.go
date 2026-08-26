@@ -18,8 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/actions"
 )
 
@@ -35,50 +37,6 @@ func (c Instance) UserCall(ctx context.Context, check func() bool, action action
 		logger:   logger,
 	}
 	c.solitaire.Call(call)
-}
-
-type checkCall struct {
-	check    func() bool
-	action   actions.Action
-	onResult func(json.RawMessage, error)
-	onCancel func()
-	params   actions.CallParams
-	logger   *slog.Logger
-}
-
-func (c *checkCall) Params() actions.CallParams {
-	return c.params
-}
-
-func (c *checkCall) Action() (actions.Action, bool) {
-	if !c.check() {
-		return nil, false
-	}
-	return c.action, true
-}
-
-func (C *checkCall) Payload() ([]byte, actions.PayloadType) {
-	return nil, actions.PayloadNone
-}
-
-func (c checkCall) Cancel() {
-	if c.onCancel == nil {
-		return
-	}
-	c.onCancel()
-}
-func (c *checkCall) Result(r json.RawMessage, err error) {
-	if err != nil {
-		c.logger.Error("Call failed", "action", c.action.Log(), "error", err)
-	}
-	if c.onResult == nil {
-		return
-	}
-	if err != nil {
-		c.onResult(r, errors.Join(errors.New("execution error"), err))
-		return
-	}
-	c.onResult(r, err)
 }
 
 type call struct {
@@ -123,9 +81,8 @@ func (c *call) Result(r json.RawMessage, err error) {
 	if c.onResult == nil {
 		return
 	}
-	if err != nil {
-		c.onResult(r, errors.Join(errors.New("execution error"), err))
-		return
+	if err != nil && !errors.Is(err, common.ErrTerminated) {
+		err = fmt.Errorf("%w: %w", common.ErrExecution, err)
 	}
 	c.onResult(r, err)
 }

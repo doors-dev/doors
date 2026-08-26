@@ -36,9 +36,9 @@ func (a *app) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	contextWithTimeout, cancel := context.WithTimeout(r.Context(), a.conf.RequestTimeout)
 	requestWithTimeout := r.WithContext(contextWithTimeout)
-	err, handeled := inst.Serve(w, requestWithTimeout, a.page)
+	err, handled := inst.Serve(w, requestWithTimeout, a.page)
 	cancel()
-	if !handeled {
+	if !handled {
 		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
 		return
 	}

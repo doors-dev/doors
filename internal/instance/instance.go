@@ -189,7 +189,7 @@ func (i instanceComp) Main() gox.Elem {
 	})
 }
 
-func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (err error, handeled bool) {
+func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (err error, handled bool) {
 	if !inst.state.CompareAndSwap(zero, initializing) {
 		return nil, false
 	}

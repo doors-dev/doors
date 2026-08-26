@@ -22,18 +22,20 @@ func newLiteralSegment(value string) segment {
 	}
 }
 
-func newSingleSegment(field singleField, optional bool) segment {
+func newSingleSegment(name string, field singleField, optional bool) segment {
 	return segment{
 		entity: singleSegment{
+			name:     name,
 			field:    field,
 			optional: optional,
 		},
 	}
 }
 
-func newMultiSegment(field multiField, optional bool) segment {
+func newMultiSegment(name string, field multiField, optional bool) segment {
 	return segment{
 		entity: multiSegment{
+			name:     name,
 			field:    field,
 			optional: optional,
 		},
@@ -62,6 +64,7 @@ func (a segment) multi() (multiSegment, bool) {
 type literalSegment string
 
 type singleSegment struct {
+	name     string
 	field    singleField
 	optional bool
 }
@@ -75,6 +78,7 @@ func (c singleSegment) set(m reflect.Value, v string) (func(), bool) {
 }
 
 type multiSegment struct {
+	name     string
 	field    multiField
 	optional bool
 }

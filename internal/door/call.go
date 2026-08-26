@@ -17,8 +17,11 @@ package door
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/printer"
 )
@@ -63,6 +66,9 @@ func (n *call) Result(_ json.RawMessage, err error) {
 	n.payload.Release()
 	if err != nil {
 		n.logger.Error("door rendering call failed", "error", err)
+		if !errors.Is(err, common.ErrTerminated) {
+			err = fmt.Errorf("%w: %w", common.ErrExecution, err)
+		}
 	}
 	n.send(err)
 }

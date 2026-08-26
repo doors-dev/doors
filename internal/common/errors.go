@@ -14,24 +14,11 @@
 
 package common
 
-import "fmt"
+import "errors"
 
-type EndCause int
-
-const (
-	EndCauseKilled EndCause = iota
-	EndCauseSuspend
-	EndCauseSyncError
+var (
+	ErrPathModel  = errors.New("invalid path model")
+	ErrPathEncode = errors.New("location encode failed")
+	ErrExecution  = errors.New("client execution failed")
+	ErrTerminated = errors.New("instance terminated")
 )
-
-func (c EndCause) Error() string {
-	switch c {
-	case EndCauseKilled:
-		return "instance killed"
-	case EndCauseSuspend:
-		return "instance suspended"
-	case EndCauseSyncError:
-		return "instance sync error"
-	}
-	return fmt.Sprint("cause: ", int(c))
-}

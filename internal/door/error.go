@@ -17,6 +17,7 @@ package door
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -26,7 +27,8 @@ import (
 )
 
 func newError(err error, logger *slog.Logger) Error {
-	if e, ok := err.(Error); ok {
+	var e Error
+	if errors.As(err, &e) {
 		return e
 	}
 	id := common.RandId()
@@ -44,6 +46,10 @@ type Error struct {
 
 func (e Error) Error() string {
 	return e.err.Error()
+}
+
+func (e Error) Unwrap() error {
+	return e.err
 }
 
 func (e Error) Release() {
