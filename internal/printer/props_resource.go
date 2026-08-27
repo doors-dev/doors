@@ -109,6 +109,7 @@ func (r *resourceProps) Validate() error {
 }
 
 func (r *resourceProps) Submit(openJob *gox.JobOpen, p *resourcePrinter) error {
+	r.cleanAttrs()
 	r.setDefaultMode(resources.ModeNoCache)
 	sourceHandler := r.source.(SourceHandler)
 	sourceStatic, isStatic := r.source.(SourceStatic)
