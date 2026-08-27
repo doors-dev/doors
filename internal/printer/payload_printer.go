@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
 )
 
@@ -37,12 +37,13 @@ func (s *sliceWriter) Write(p []byte) (n int, err error) {
 }
 
 type Payload interface {
-	Payload() action.Payload
+	Payload() actions.Payload
 	Release()
 }
 
 type PayloadPrinter struct {
 	buf     sliceWriter
+	gz      bool
 	gzip    *gzip.Writer
 	printer gox.Printer
 }
@@ -52,8 +53,9 @@ var _ Payload = (*PayloadPrinter)(nil)
 func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
 	b := &PayloadPrinter{
 		buf: bufferPrinterPool.Get().(sliceWriter),
+		gz:  !disableGzip,
 	}
-	if !disableGzip {
+	if b.gz {
 		b.gzip = common.GetGzipWriter(&b.buf)
 		b.printer = defaultPrinter{b.gzip}
 	} else {
@@ -62,11 +64,11 @@ func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
 	return b
 }
 
-func (b *PayloadPrinter) Payload() action.Payload {
-	if b.gzip != nil {
-		return action.NewTextGZ(b.buf)
+func (b *PayloadPrinter) Payload() actions.Payload {
+	if b.gz {
+		return actions.NewTextGZ(b.buf)
 	}
-	return action.NewTextBytes(b.buf)
+	return actions.NewTextBytes(b.buf)
 }
 
 func (b *PayloadPrinter) Release() {
@@ -87,6 +89,9 @@ func (b *PayloadPrinter) Finalize() {
 		return
 	}
 	b.gzip.Close()
+	common.PutGzipWriter(b.gzip)
+	b.gzip = nil
+	b.printer = nil
 }
 
 func (b *PayloadPrinter) Send(job gox.Job) error {

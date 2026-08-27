@@ -18,12 +18,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/actions"
 )
 
-func (c Instance) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+func (c Instance) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	logger := c.Logger()
 	call := &call{
 		ctx:      ctx,
@@ -37,61 +39,17 @@ func (c Instance) UserCall(ctx context.Context, check func() bool, action action
 	c.solitaire.Call(call)
 }
 
-type checkCall struct {
-	check    func() bool
-	action   action.Action
-	onResult func(json.RawMessage, error)
-	onCancel func()
-	params   action.CallParams
-	logger   *slog.Logger
-}
-
-func (c *checkCall) Params() action.CallParams {
-	return c.params
-}
-
-func (c *checkCall) Action() (action.Action, bool) {
-	if !c.check() {
-		return nil, false
-	}
-	return c.action, true
-}
-
-func (C *checkCall) Payload() ([]byte, action.PayloadType) {
-	return nil, action.PayloadNone
-}
-
-func (c checkCall) Cancel() {
-	if c.onCancel == nil {
-		return
-	}
-	c.onCancel()
-}
-func (c *checkCall) Result(r json.RawMessage, err error) {
-	if err != nil {
-		c.logger.Error("Call failed", "action", c.action.Log(), "error", err)
-	}
-	if c.onResult == nil {
-		return
-	}
-	if err != nil {
-		c.onResult(r, errors.Join(errors.New("execution error"), err))
-		return
-	}
-	c.onResult(r, err)
-}
-
 type call struct {
 	ctx      context.Context
 	check    func() bool
-	action   action.Action
+	action   actions.Action
 	onResult func(json.RawMessage, error)
 	onCancel func()
-	params   action.CallParams
+	params   actions.CallParams
 	logger   *slog.Logger
 }
 
-func (c *call) Params() action.CallParams {
+func (c *call) Params() actions.CallParams {
 	return c.params
 }
 
@@ -102,7 +60,7 @@ func (c *call) canceled() bool {
 	return c.ctx.Err() != nil
 }
 
-func (c *call) Action() (action.Action, bool) {
+func (c *call) Action() (actions.Action, bool) {
 	if c.canceled() {
 		return nil, false
 	}
@@ -123,9 +81,8 @@ func (c *call) Result(r json.RawMessage, err error) {
 	if c.onResult == nil {
 		return
 	}
-	if err != nil {
-		c.onResult(r, errors.Join(errors.New("execution error"), err))
-		return
+	if err != nil && !errors.Is(err, common.ErrTerminated) {
+		err = fmt.Errorf("%w: %w", common.ErrExecution, err)
 	}
 	c.onResult(r, err)
 }

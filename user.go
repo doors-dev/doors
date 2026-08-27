@@ -16,6 +16,7 @@ package doors
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -26,86 +27,129 @@ import (
 
 // Reload rerenders the closest dynamic parent.
 //
-// If ctx belongs to the root page render, nothing is reloaded.
-func Reload(ctx context.Context) {
+// The returned channel is optional to use and tracks completion. On success it
+// sends nil when the rerender is scheduled and nil again when it is applied to
+// the page, then closes. On failure it sends an error then closes. If ctx
+// belongs to the root page render, it sends an error and closes.
+//
+// Do not wait on the channel during rendering. If you need to wait, use [Go] or
+// your own goroutine with [DetachedContext].
+//
+// ctx must belong to a Doors render or handler; otherwise Reload panics.
+func Reload(ctx context.Context) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	core.Door().Reload(ctx)
+	return core.Door().Reload(ctx)
 }
 
-// XReload tracks completion of [Reload].
-//
-// On success the channel sends two nil values then closes: the first means the
-// call was scheduled (render was completed), the second means it was applied
-// to the page.
-// On failure it sends an error then closes.
-// If ctx belongs to the root page render, it sends an error and closes.
-//
-// Do not wait on it during rendering. If you need to wait, use [Go] or your
-// own goroutine with [DetachedContext].
-func XReload(ctx context.Context) <-chan error {
-	core := ctx.Value(common.KeyCore).(core.Core)
-	return core.Door().XReload(ctx)
+// HasSession reports whether ctx carries a Doors session, meaning
+// session-scoped helpers like [SessionID] and [SessionStore] accept it.
+func HasSession(ctx context.Context) bool {
+	_, ok := ctx.Value(common.KeySession).(core.Session)
+	return ok
 }
 
-// SessionExpire sets the maximum lifetime of the current session.
+// HasInstance reports whether ctx belongs to a Doors render or handler,
+// meaning instance- and door-scoped helpers accept it. Implies [HasSession].
+func HasInstance(ctx context.Context) bool {
+	_, ok := ctx.Value(common.KeyCore).(core.Core)
+	return ok
+}
+
+// SessionExpire caps the remaining lifetime of the current session at d.
+//
+// It is a cap, not a keep-alive: the session still ends earlier if SessionTTL
+// runs out first. Passing zero removes the cap.
+//
+// ctx must carry a Doors session; otherwise SessionExpire panics.
 func SessionExpire(ctx context.Context, d time.Duration) {
 	sess := ctx.Value(common.KeySession).(core.Session)
 	sess.Expire(d)
 }
 
-// SessionEnd immediately ends the current session and all instances.
-// Use it during logout to close authorized pages and free server resources.
+// SessionEnd ends the current session and every instance in it immediately.
+//
+// Use it for a hard logout that must close every open page.
+//
+// ctx must carry a Doors session; otherwise SessionEnd panics.
 func SessionEnd(ctx context.Context) {
 	sess := ctx.Value(common.KeySession).(core.Session)
 	sess.Kill()
 }
 
-// InstanceEnd ends the current instance (tab/window) but keeps the session and
-// other instances active.
+// InstanceEnd ends the current instance immediately.
+//
+// Unlike [SessionEnd], the session and its other instances stay live.
+//
+// ctx must belong to a Doors render or handler; otherwise InstanceEnd panics.
 func InstanceEnd(ctx context.Context) {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	core.Instance().Kill()
 }
 
-// InstanceId returns the unique ID of the current instance.
-// Useful for logging, debugging, and tracking connections.
-func InstanceId(ctx context.Context) string {
+// InstanceID returns the ID of the current instance.
+//
+// ctx must belong to a Doors render or handler; otherwise InstanceID panics.
+func InstanceID(ctx context.Context) string {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Instance().ID()
 }
 
-// SessionId returns the unique ID of the current session.
-// All instances in the same browser share this ID via a session cookie.
-func SessionId(ctx context.Context) string {
+// SessionID returns the ID of the current session.
+//
+// Every instance in the same browser shares it, and it is the value of the
+// session cookie.
+//
+// ctx must carry a Doors session; otherwise SessionID panics.
+func SessionID(ctx context.Context) string {
 	sess := ctx.Value(common.KeySession).(core.Session)
 	return sess.ID()
 }
 
-// InstanceLastSeen returns the time of the most recent client contact with the
-// current instance (its latest live keep-alive).
+// InstanceLastSeen returns the time the current instance last saw its client on
+// the live connection.
+//
+// Event and hook requests do not advance it, and it is the zero time during the
+// initial page render.
+//
+// ctx must belong to a Doors render or handler; otherwise InstanceLastSeen
+// panics.
 func InstanceLastSeen(ctx context.Context) time.Time {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Instance().LastSeen()
 }
 
-// SessionLastSeen returns the time of the most recent client contact with the
-// current session (its latest renewal).
+// SessionLastSeen returns the time of the most recent renewal of the current
+// session.
+//
+// Renewals are throttled, so the value can lag behind the last request.
+//
+// ctx must carry a Doors session; otherwise SessionLastSeen panics.
 func SessionLastSeen(ctx context.Context) time.Time {
 	sess := ctx.Value(common.KeySession).(core.Session)
 	return sess.LastSeen()
 }
 
-// Store is goroutine-safe key-value storage used for session and instance
-// data.
+// Store is goroutine-safe key-value storage, returned by [SessionStore] and
+// [InstanceStore].
+//
+// Keys must be comparable; values may be of any type. A stored nil is
+// indistinguishable from an absent key.
 type Store = ctex.Store
 
-// SessionStore returns storage shared by all instances in the current session.
+// SessionStore returns the [Store] shared by every instance in the current
+// session.
+//
+// ctx must carry a Doors session; otherwise SessionStore panics.
 func SessionStore(ctx context.Context) Store {
 	sess := ctx.Value(common.KeySession).(core.Session)
 	return sess.Store()
 }
 
-// InstanceStore returns storage scoped to the current instance only.
+// InstanceStore returns the [Store] scoped to the current instance.
+//
+// Unlike [SessionStore], its contents are not visible to other instances.
+//
+// ctx must belong to a Doors render or handler; otherwise InstanceStore panics.
 func InstanceStore(ctx context.Context) Store {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Instance().Store()
@@ -114,24 +158,29 @@ func InstanceStore(ctx context.Context) Store {
 // SessionContext returns a context that is canceled when the current session
 // ends.
 //
-// It is useful for goroutines or external work that should live for the whole
-// browser session, not just the current instance or dynamic owner.
+// It carries the session and nothing else: values of ctx are dropped, and it is
+// tied to no instance or dynamic owner. Session-scoped helpers, Door methods,
+// and Source or Beam reads, subscriptions, and updates accept it; a
+// subscription made with it lives until the session ends. [Reload] and
+// instance-scoped helpers panic on it.
 //
-// The returned context carries the current session value. It is suitable for
-// session-scoped helpers, Door methods, and Source or Beam mutations. It is not
-// tied to the current instance or dynamic owner, so it must not be used with
-// instance-scoped helpers, [Reload], or Source and Beam reads/subscriptions.
+// ctx must carry a Doors session; otherwise SessionContext panics.
 func SessionContext(ctx context.Context) context.Context {
 	sess := ctx.Value(common.KeySession).(core.Session)
 	return sess.Context()
 }
 
-// IDRand returns a cryptographically secure, URL-safe identifier.
+// IDRand returns a cryptographically random, URL-safe identifier.
+//
+// Unlike [IDString] and [IDBytes], every call returns a new value.
 func IDRand() string {
 	return common.RandId()
 }
 
-// IDString returns a stable URL-safe identifier derived from string.
+// IDString returns a URL-safe identifier derived from the given string. Equal
+// inputs always produce the same identifier.
+//
+// WARNING: it is not a cryptographic hash; do not use it to hide the input.
 func IDString(string string) string {
 	h := xxh3.New()
 	h.WriteString(string)
@@ -139,7 +188,10 @@ func IDString(string string) string {
 	return common.EncodeId(s[:])
 }
 
-// IDBytes returns a stable URL-safe identifier derived from b.
+// IDBytes returns a URL-safe identifier derived from b. Equal inputs always
+// produce the same identifier.
+//
+// WARNING: it is not a cryptographic hash; do not use it to hide the input.
 func IDBytes(b []byte) string {
 	h := xxh3.New()
 	h.Write(b)
@@ -147,15 +199,24 @@ func IDBytes(b []byte) string {
 	return common.EncodeId(s[:])
 }
 
+// IDNumber returns a number unique within the current instance. Every call
+// returns a new one, and the values are not sequential.
+//
+// ctx must belong to a Doors render or handler; otherwise IDNumber panics.
+func IDNumber(ctx context.Context) uint64 {
+	core := ctx.Value(common.KeyCore).(core.Core)
+	return core.Instance().NewID()
+}
+
 // InstanceContext returns a context that is detached from the current dynamic
 // owner and bounded by the current instance lifetime.
 //
-// The returned context keeps the original context values, clears the current
-// render frame, and switches Doors ownership to the root of the current
-// instance. It is safe to use with X-prefixed methods from goroutines.
+// It keeps the values of ctx and moves Doors ownership to the root of the
+// current instance, so subscriptions and hooks made with it survive rerenders
+// of the caller. It is safe to use from goroutines that wait on completion
+// channels.
 //
-// Use it for long-running goroutines and work that should outlive the current
-// dynamic owner.
+// Unlike [DetachedContext], it outlives the current dynamic owner.
 func InstanceContext(ctx context.Context) context.Context {
 	core, ok := ctx.Value(common.KeyCore).(core.Core)
 	if !ok {
@@ -165,26 +226,22 @@ func InstanceContext(ctx context.Context) context.Context {
 	return ctex.NewFreeContext(ctx, core.Instance().Runtime().Context())
 }
 
-// FreeRoot calls [InstanceContext].
+// DetachedContext returns a context that is detached from the current
+// render/update cycle and bounded by the lifetime of ctx.
 //
-// Deprecated: use [InstanceContext].
-func FreeRoot(ctx context.Context) context.Context {
-	return InstanceContext(ctx)
-}
-
-// DetachedContext returns a context that is detached from the current render
-// frame and bounded by the current context lifetime.
+// It keeps the values of ctx and the current Doors ownership. It is safe to use
+// from goroutines that wait on completion channels.
 //
-// The returned context keeps the original context values and Doors ownership.
-// It is safe to use with X-prefixed methods from goroutines when the work
-// should stay scoped to the current dynamic owner.
+// Unlike [InstanceContext], work started with it is cleaned up with the current
+// dynamic owner.
 func DetachedContext(ctx context.Context) context.Context {
 	return ctex.NewFreeContext(ctx, ctx)
 }
 
-// Free calls [DetachedContext].
+// Logger returns the Doors logger for ctx.
 //
-// Deprecated: use [DetachedContext].
-func Free(ctx context.Context) context.Context {
-	return DetachedContext(ctx)
+// Any context is allowed; one that carries no Doors session falls back to
+// [slog.Default].
+func Logger(ctx context.Context) *slog.Logger {
+	return common.Logger(ctx)
 }

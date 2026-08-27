@@ -15,17 +15,29 @@
 import doors from "./door"
 import navigator from "./navigator"
 import indicator, { IndicatorEntry } from "./indicator"
-import { removeAttr, setAttr } from "./dyna"
-import { doAfter, scrollInto } from "./lib"
+import { getEmitter } from "./emitter"
+import { setAttr } from "./setter"
+import { doAfter, scrollInto, Result } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
 import { HookErr } from "./hook_err.ts"
+import { putTrigger } from "./trigger"
 
 
 type Extras = {
 	error?: HookErr,
 	payload?: Payload,
 	element?: Element,
+}
+
+const captureEvents: { [key: string]: (type: string, init: any) => Event } = {
+	"pointer": (type, init) => new PointerEvent(type, init),
+	"keyboard": (type, init) => new KeyboardEvent(type, init),
+	"focus": (type, init) => new FocusEvent(type, init),
+	"focus_io": (type, init) => new FocusEvent(type, init),
+	"input": (type, init) => new InputEvent(type, init),
+	"change": (type, init) => new Event(type, init),
+	"submit": (type, init) => new Event(type, init),
 }
 
 function syncAttributes(el: Element, attrs: {[key:string]:string}) {
@@ -84,6 +96,33 @@ const actions = {
 	"report_hook": (_: Extras, track: number) => {
 		report(track)
 	},
+	"emit_event": (ext: Extras, emitterId: number, type: string, capture: string) => {
+		const promises: Promise<Response>[] = []
+		const elements = getEmitter(emitterId)
+		if (elements) {
+			const make = captureEvents[capture]
+			for (const element of elements) {
+				let event: Event
+				if (make) {
+					event = make(type, { bubbles: true, cancelable: true, ...ext.payload?.any })
+				} else {
+					event = new CustomEvent(type, { bubbles: true, cancelable: true, detail: ext.payload?.any })
+				}
+				const meta = putTrigger(event)
+				element.dispatchEvent(event)
+				promises.push(...meta.promises)
+			}
+		}
+		return Promise.all(promises).then(
+			() => promises.length,
+			(err) => {
+				if (err instanceof HookErr) {
+					throw new Error(err.message ? `${err.kind}: ${err.message}` : err.kind)
+				}
+				throw err
+			},
+		)
+	},
 	"location_replace": (_: Extras, href: string, origin: boolean) => {
 		let url: URL
 		if (origin) {
@@ -118,11 +157,8 @@ const actions = {
 		}
 		return handler(ext.payload!.any, ext.error as any)
 	},
-	"dyna_set": (_: Extras, id: number, value: string) => {
-		setAttr(id, value)
-	},
-	"dyna_remove": (_: Extras, id: number) => {
-		removeAttr(id)
+	"attr_set": (_: Extras, id: number, name: string, value: string | null) => {
+		return setAttr(id, name, value)
 	},
 	"set_path": (_: Extras, path: string, replace: boolean) => {
 		if (replace) {
@@ -137,19 +173,26 @@ const actions = {
 	"door_update": (ext: Extras, doorId: number) => {
 		doors.update(doorId, ext.payload!.text!)
 	},
+	"door_freeze": (_: Extras, doorId: number) => {
+		doors.freeze(doorId)
+	},
 }
 
-type Output = Exclude<any, undefined>;
 type Err = {
 	message: string;
 	[key: string]: any;
 };
 
-export type CallResult = ([Output, undefined] | [undefined, Err])
-
 export type Action = [string, Array<any>, EncodedPayload] | [string, Array<any>]
 
-export default function action(name: string, args: Array<any>, extras: Extras = {}): CallResult {
+function normalizeErr(e: any): Err {
+	if (e && typeof e === "object" && typeof e.message === "string") {
+		return e
+	}
+	return new Error("unknown error")
+}
+
+export default function action(name: string, args: Array<any>, extras: Extras = {}): Result<any, Err> | Promise<Result<any, Err>> {
 	try {
 		const fn = actions[name]
 		if (!fn) {
@@ -157,16 +200,16 @@ export default function action(name: string, args: Array<any>, extras: Extras = 
 		}
 		let output = fn(extras, ...args)
 		if (output instanceof Promise) {
-			throw new Error("async actions are prohibited")
+			return output.then(
+				(o): Result<any, Err> => [o ?? null, undefined],
+				(e): Result<any, Err> => [undefined, normalizeErr(e)],
+			)
 		}
 		if (output === undefined) {
 			output = null
 		}
 		return [output, undefined]
 	} catch (e) {
-		if (e && typeof e === "object" && typeof e.message === "string") {
-			return [undefined, e]
-		}
-		return [undefined, new Error("unknown error")]
+		return [undefined, normalizeErr(e)]
 	}
 }

@@ -17,7 +17,6 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"testing"
@@ -27,7 +26,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -38,7 +37,7 @@ type helperDoor struct {
 	inst *helperInstance
 }
 
-func (h helperDoor) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+func (h helperDoor) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	h.inst.UserCall(ctx, check, action, onResult, onCancel, params)
 }
 
@@ -51,7 +50,13 @@ func (h helperDoor) Instance() core.Instance {
 	return h.inst
 }
 
-func (helperDoor) Clean(func()) {}
+func (helperDoor) CleanFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
+
+func (helperDoor) ReadyFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
 func (helperDoor) Cinema() beam.Cinema {
 	return nil
@@ -65,9 +70,7 @@ func (helperDoor) ID() uint64 {
 	return 1
 }
 
-func (helperDoor) Reload(context.Context) {}
-
-func (helperDoor) XReload(context.Context) <-chan error {
+func (helperDoor) Reload(context.Context) <-chan error {
 	ch := make(chan error)
 	close(ch)
 	return ch
@@ -86,10 +89,16 @@ func (h helperDoorWithRoot) Instance() core.Instance {
 	return h.inst
 }
 
-func (helperDoorWithRoot) Clean(func()) {}
+func (helperDoorWithRoot) CleanFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
+
+func (helperDoorWithRoot) ReadyFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
 // UserCall implements [core.Door].
-func (h helperDoorWithRoot) UserCall(ctx context.Context, check func() bool, action action.Action, onResult func(json.RawMessage, error), onCancel func(), params action.CallParams) {
+func (h helperDoorWithRoot) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	panic("unimplemented")
 }
 
@@ -105,9 +114,7 @@ func (helperDoorWithRoot) ID() uint64 {
 	return 1
 }
 
-func (helperDoorWithRoot) Reload(context.Context) {}
-
-func (helperDoorWithRoot) XReload(context.Context) <-chan error {
+func (helperDoorWithRoot) Reload(context.Context) <-chan error {
 	ch := make(chan error)
 	close(ch)
 	return ch
@@ -120,21 +127,21 @@ func (h helperDoorWithRoot) RootCore() core.Core {
 type helperInstance struct {
 	expire         time.Duration
 	conf           common.Conf
-	lastCallAction action.Action
-	lastCallParams action.CallParams
+	lastCallAction actions.Action
+	lastCallParams actions.CallParams
 	callCheckErr   error
 	runtime        shredder.Runtime
 	session        *helperSession
 	location       beam.Source[path.Location]
 }
 
-func (h *helperInstance) CallCtx(_ context.Context, act action.Action, _ func(json.RawMessage, error), _ func(), params action.CallParams) context.CancelFunc {
+func (h *helperInstance) CallCtx(_ context.Context, act actions.Action, _ func(json.RawMessage, error), _ func(), params actions.CallParams) context.CancelFunc {
 	h.lastCallAction = act
 	h.lastCallParams = params
 	return func() {}
 }
 
-func (h *helperInstance) CallCheck(_ func() bool, act action.Action, onResult func(json.RawMessage, error), _ func(), params action.CallParams) {
+func (h *helperInstance) CallCheck(_ func() bool, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
 	h.lastCallAction = act
 	h.lastCallParams = params
 	if onResult != nil && h.callCheckErr != nil {
@@ -142,7 +149,7 @@ func (h *helperInstance) CallCheck(_ func() bool, act action.Action, onResult fu
 	}
 }
 
-func (h *helperInstance) UserCall(_ context.Context, _ func() bool, act action.Action, onResult func(json.RawMessage, error), _ func(), params action.CallParams) {
+func (h *helperInstance) UserCall(_ context.Context, _ func() bool, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
 	h.lastCallAction = act
 	h.lastCallParams = params
 	if onResult != nil && h.callCheckErr != nil {
@@ -230,6 +237,10 @@ func (h *helperApp) Draining() bool {
 	return false
 }
 
+func (h *helperApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
+	return func(next gox.Printer) gox.Printer { return next }
+}
+
 type helperSession struct {
 	inst   *helperInstance
 	app    *helperApp
@@ -299,6 +310,13 @@ func helperContextWithRoot(t *testing.T) (context.Context, *helperInstance, core
 	root := core.NewCore(helperDoor{inst: inst})
 	ctx = context.WithValue(ctx, common.KeyCore, core.NewCore(helperDoorWithRoot{inst: inst, root: root}))
 	return ctx, inst, root
+}
+
+func TestIDNumber(t *testing.T) {
+	ctx, inst := helperContext(t)
+	if got := IDNumber(ctx); got != inst.NewID() {
+		t.Fatalf("expected IDNumber to come from the instance id pool, got %d", got)
+	}
 }
 
 func TestUserHelpers(t *testing.T) {
@@ -419,22 +437,22 @@ func TestInstanceContextSwitchesToRootCoreAndRuntime(t *testing.T) {
 func TestCallUsesSolitaireDisableGzip(t *testing.T) {
 	ctx, inst := helperContext(t)
 
-	Call(ctx, ActionEmit{Name: "plain", Arg: "hello"})
-	emit, ok := inst.lastCallAction.(action.Emit)
+	Call(ctx, ActionEmit[any]{Name: "plain", Arg: "hello"})
+	emit, ok := inst.lastCallAction.(actions.Emit)
 	if !ok {
 		t.Fatalf("expected emit action, got %T", inst.lastCallAction)
 	}
-	if emit.Payload.Type() != action.PayloadTextGZ {
+	if emit.Payload.Type() != actions.PayloadTextGZ {
 		t.Fatalf("expected gzip text payload by default, got %v", emit.Payload.Type())
 	}
 
 	inst.conf.SolitaireDisableGzip = true
-	Call(ctx, ActionEmit{Name: "plain", Arg: "hello"})
-	emit, ok = inst.lastCallAction.(action.Emit)
+	Call(ctx, ActionEmit[any]{Name: "plain", Arg: "hello"})
+	emit, ok = inst.lastCallAction.(actions.Emit)
 	if !ok {
 		t.Fatalf("expected emit action, got %T", inst.lastCallAction)
 	}
-	if emit.Payload.Type() != action.PayloadText {
+	if emit.Payload.Type() != actions.PayloadText {
 		t.Fatalf("expected plain text payload when solitaire gzip is disabled, got %v", emit.Payload.Type())
 	}
 }
@@ -444,9 +462,9 @@ func TestCallUsesCanceledContext(t *testing.T) {
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
 
-	Call(canceled, ActionEmit{Name: "still-runs", Arg: "hello"})
+	Call(canceled, ActionEmit[any]{Name: "still-runs", Arg: "hello"})
 
-	emit, ok := inst.lastCallAction.(action.Emit)
+	emit, ok := inst.lastCallAction.(actions.Emit)
 	if !ok {
 		t.Fatalf("expected emit action from canceled context, got %T", inst.lastCallAction)
 	}
@@ -455,60 +473,70 @@ func TestCallUsesCanceledContext(t *testing.T) {
 	}
 }
 
-func TestSharedAttrRestoreOnUpdateError(t *testing.T) {
+func TestSetterSetValueSemantics(t *testing.T) {
 	ctx, inst := helperContext(t)
-	shared := NewAShared("data-shared", "start")
-	attrs := gox.NewAttrs()
-	if err := shared.Modify(ctx, "div", attrs); err != nil {
-		t.Fatal(err)
+	setter := &Setter{}
+	str := func(s string) *string { return &s }
+	cases := []struct {
+		name  string
+		value any
+		want  *string
+	}{
+		{"string", "v", str("v")},
+		{"int", 42, str("42")},
+		{"true bare", true, str("")},
+		{"false removes", false, nil},
+		{"nil removes", nil, nil},
+		{"output", rawAttrValue(`a&b"c"`), str(`a&b"c"`)},
 	}
-	inst.callCheckErr = errors.New("boom")
-
-	shared.Update(ctx, "next")
-
-	set, ok := inst.lastCallAction.(*action.DynaSet)
-	if !ok {
-		t.Fatalf("expected DynaSet action, got %T", inst.lastCallAction)
-	}
-	if set.Value != "next" {
-		t.Fatalf("expected attempted update value %q, got %q", "next", set.Value)
-	}
-	if shared.value != "start" {
-		t.Fatalf("expected shared value restored to %q, got %q", "start", shared.value)
-	}
-	if !shared.enable {
-		t.Fatal("expected shared attr to stay enabled after restore")
-	}
-	if shared.seq != 0 {
-		t.Fatalf("expected restore to rewind seq to 0, got %d", shared.seq)
+	var id uint64
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			Call(ctx, setter.Set("data-x", tc.value))
+			act, ok := inst.lastCallAction.(actions.AttrSet)
+			if !ok {
+				t.Fatalf("expected AttrSet action, got %T", inst.lastCallAction)
+			}
+			if act.Name != "data-x" {
+				t.Fatalf("expected attr name %q, got %q", "data-x", act.Name)
+			}
+			if id == 0 {
+				id = act.ID
+			} else if act.ID != id {
+				t.Fatalf("expected stable setter id %d, got %d", id, act.ID)
+			}
+			if tc.want == nil {
+				if act.Value != nil {
+					t.Fatalf("expected remove (nil value), got %q", *act.Value)
+				}
+				return
+			}
+			if act.Value == nil {
+				t.Fatalf("expected value %q, got remove (nil value)", *tc.want)
+			}
+			if *act.Value != *tc.want {
+				t.Fatalf("expected value %q, got %q", *tc.want, *act.Value)
+			}
+		})
 	}
 }
 
-func TestSharedAttrRestoreOnDisableError(t *testing.T) {
+func TestHasSessionHasInstance(t *testing.T) {
 	ctx, inst := helperContext(t)
-	shared := NewAShared("data-shared", "start")
-	attrs := gox.NewAttrs()
-	if err := shared.Modify(ctx, "div", attrs); err != nil {
-		t.Fatal(err)
+	if !HasSession(ctx) || !HasInstance(ctx) {
+		t.Fatal("expected render ctx to report session and instance")
 	}
-	inst.callCheckErr = errors.New("boom")
-
-	shared.Disable(ctx)
-
-	remove, ok := inst.lastCallAction.(*action.DynaRemove)
-	if !ok {
-		t.Fatalf("expected DynaRemove action, got %T", inst.lastCallAction)
+	if !HasSession(inst.session.ctx) {
+		t.Fatal("expected session ctx to report session")
 	}
-	if remove.ID == 0 {
-		t.Fatal("expected dynamic attr id on remove action")
+	if HasInstance(inst.session.ctx) {
+		t.Fatal("expected session ctx to not report instance")
 	}
-	if !shared.enable {
-		t.Fatal("expected shared attr enable flag restored after failed disable")
+	if HasSession(context.Background()) || HasInstance(context.Background()) {
+		t.Fatal("expected plain ctx to report nothing")
 	}
-	if shared.value != "start" {
-		t.Fatalf("expected shared value preserved as %q, got %q", "start", shared.value)
-	}
-	if shared.seq != 0 {
-		t.Fatalf("expected restore to rewind seq to 0, got %d", shared.seq)
+	detached := DetachedContext(ctx)
+	if !HasSession(detached) || !HasInstance(detached) {
+		t.Fatal("expected detached ctx to keep session and instance")
 	}
 }

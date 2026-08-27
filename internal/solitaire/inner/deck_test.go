@@ -19,22 +19,22 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 )
 
 type stubActionCall struct {
-	act         action.Action
+	act         actions.Action
 	cancelCount int
 	resultCount int
 	lastResult  json.RawMessage
 	lastErr     error
 }
 
-func (s *stubActionCall) Params() action.CallParams {
-	return action.CallParams{}
+func (s *stubActionCall) Params() actions.CallParams {
+	return actions.CallParams{}
 }
 
-func (s *stubActionCall) Action() (action.Action, bool) {
+func (s *stubActionCall) Action() (actions.Action, bool) {
 	return s.act, true
 }
 
@@ -49,7 +49,7 @@ func (s *stubActionCall) Result(result json.RawMessage, err error) {
 }
 
 func newStubInnerCall(id int) (*Call, *stubActionCall) {
-	call := &stubActionCall{act: action.Test{Arg: id}}
+	call := &stubActionCall{act: actions.Test{Arg: id}}
 	return &Call{
 		Call: call,
 	}, call
@@ -57,7 +57,7 @@ func newStubInnerCall(id int) (*Call, *stubActionCall) {
 
 func TestCallLifecycle(t *testing.T) {
 	optimisticCall, optimisticStub := newStubInnerCall(1)
-	optimisticCall.Params = action.CallParams{Optimistic: true}
+	optimisticCall.Params = actions.CallParams{Optimistic: true}
 	optimisticCall.Written()
 	optimisticCall.Written()
 	if optimisticStub.resultCount != 1 {

@@ -32,8 +32,8 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-func noMeta() gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func noMeta() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		return nil
 	})
 }
@@ -65,7 +65,7 @@ func (s pagePrinterSettings) Logger() *slog.Logger {
 
 func TestPagePrinterInsertsHeadBeforeBody(t *testing.T) {
 	var out bytes.Buffer
-	meta := gox.EditorFunc(func(cur gox.Cursor) error {
+	meta := gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.InitVoid("meta"); err != nil {
 			return err
 		}
@@ -80,10 +80,10 @@ func TestPagePrinterInsertsHeadBeforeBody(t *testing.T) {
 
 	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"app":"/app.js"}}`), meta)
 
-	if err := p.Send(gox.NewJobHeadOpen(context.Background(), 1, gox.KindRegular, "body", gox.NewAttrs())); err != nil {
+	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "body", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Send(gox.NewJobHeadClose(context.Background(), 1, gox.KindRegular, "body")); err != nil {
+	if err := p.Send(gox.NewJobClose(context.Background(), 1, gox.KindRegular, "body")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -112,7 +112,7 @@ func TestPagePrinterInsertsHeadBeforeBody(t *testing.T) {
 
 func TestPagePrinterInsertsIntoExplicitHead(t *testing.T) {
 	var out bytes.Buffer
-	meta := gox.EditorFunc(func(cur gox.Cursor) error {
+	meta := gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.InitVoid("meta"); err != nil {
 			return err
 		}
@@ -127,10 +127,10 @@ func TestPagePrinterInsertsIntoExplicitHead(t *testing.T) {
 
 	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"extra":"/extra.js"}}`), meta)
 
-	if err := p.Send(gox.NewJobHeadOpen(context.Background(), 1, gox.KindRegular, "head", gox.NewAttrs())); err != nil {
+	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "head", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Send(gox.NewJobHeadClose(context.Background(), 1, gox.KindRegular, "head")); err != nil {
+	if err := p.Send(gox.NewJobClose(context.Background(), 1, gox.KindRegular, "head")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -157,10 +157,10 @@ func TestPagePrinterInsertsBeforeFirstScript(t *testing.T) {
 	var out bytes.Buffer
 	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"boot":"/boot.js"}}`), noMeta())
 
-	if err := p.Send(gox.NewJobHeadOpen(context.Background(), 1, gox.KindRegular, "script", gox.NewAttrs())); err != nil {
+	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "script", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Send(gox.NewJobHeadClose(context.Background(), 1, gox.KindRegular, "script")); err != nil {
+	if err := p.Send(gox.NewJobClose(context.Background(), 1, gox.KindRegular, "script")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -174,13 +174,13 @@ func TestPagePrinterInsertsInsideHeadBeforeNestedScript(t *testing.T) {
 	var out bytes.Buffer
 	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"head":"/head.js"}}`), noMeta())
 
-	if err := p.Send(gox.NewJobHeadOpen(context.Background(), 1, gox.KindRegular, "head", gox.NewAttrs())); err != nil {
+	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "head", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Send(gox.NewJobHeadOpen(context.Background(), 2, gox.KindRegular, "script", gox.NewAttrs())); err != nil {
+	if err := p.Send(gox.NewJobOpen(context.Background(), 2, gox.KindRegular, "script", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Send(gox.NewJobHeadClose(context.Background(), 2, gox.KindRegular, "script")); err != nil {
+	if err := p.Send(gox.NewJobClose(context.Background(), 2, gox.KindRegular, "script")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -204,16 +204,16 @@ func TestPagePrinterIncludesFrontAssetsWhenNotStatic(t *testing.T) {
 
 	var out bytes.Buffer
 	p := NewPagePrinter(&out, false, front.Include(inst), nil, noMeta())
-	if err := p.Send(gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "body", gox.NewAttrs())); err != nil {
+	if err := p.Send(gox.NewJobOpen(ctx, 1, gox.KindRegular, "body", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Send(gox.NewJobHeadClose(ctx, 1, gox.KindRegular, "body")); err != nil {
+	if err := p.Send(gox.NewJobClose(ctx, 1, gox.KindRegular, "body")); err != nil {
 		t.Fatal(err)
 	}
 
 	got := out.String()
-	if !strings.Contains(got, "doors.css") || !strings.Contains(got, "doors.js") {
-		t.Fatalf("expected front assets in non-static head, got %q", got)
+	if !strings.Contains(got, "doors.js") || strings.Contains(got, "doors.css") {
+		t.Fatalf("expected only script asset in non-static head, got %q", got)
 	}
 	if !strings.Contains(got, `id="instance"`) {
 		t.Fatalf("expected instance id attribute, got %q", got)
@@ -225,11 +225,11 @@ func TestPagePrinterIncludesFrontAssetsWhenNotStatic(t *testing.T) {
 
 func TestPagePrinterInsertedHeadPropagatesMetaError(t *testing.T) {
 	expected := errors.New("meta boom")
-	p := NewPagePrinter(&bytes.Buffer{}, true, nil, nil, gox.EditorFunc(func(gox.Cursor) error {
+	p := NewPagePrinter(&bytes.Buffer{}, true, nil, nil, gox.Elem(func(gox.Cursor) error {
 		return expected
 	}))
 
-	err := p.Send(gox.NewJobHeadOpen(context.Background(), 1, gox.KindRegular, "body", gox.NewAttrs()))
+	err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "body", gox.NewAttrs()))
 	if !errors.Is(err, expected) {
 		t.Fatalf("expected meta error propagation, got %v", err)
 	}
@@ -239,16 +239,16 @@ func TestPagePrinterWaitsForMatchingHeadClose(t *testing.T) {
 	var out bytes.Buffer
 	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"late":"/late.js"}}`), noMeta())
 
-	if err := p.Send(gox.NewJobHeadOpen(context.Background(), 1, gox.KindRegular, "head", gox.NewAttrs())); err != nil {
+	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "head", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Send(gox.NewJobHeadClose(context.Background(), 2, gox.KindRegular, "div")); err != nil {
+	if err := p.Send(gox.NewJobClose(context.Background(), 2, gox.KindRegular, "div")); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(out.String(), `late`) {
 		t.Fatalf("importmap should not be inserted before matching head close, got %q", out.String())
 	}
-	if err := p.Send(gox.NewJobHeadClose(context.Background(), 1, gox.KindRegular, "head")); err != nil {
+	if err := p.Send(gox.NewJobClose(context.Background(), 1, gox.KindRegular, "head")); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), `{"imports":{"late":"/late.js"}}`) {

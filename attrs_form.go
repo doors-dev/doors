@@ -16,8 +16,8 @@ package doors
 
 import (
 	"context"
-	"errors"
 	"net/http"
+	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
@@ -26,23 +26,32 @@ import (
 	"github.com/go-playground/form/v4"
 )
 
-// ARawSubmit handles a form submission with raw multipart access.
+// ARawSubmit handles the browser submit event on the form it is attached to
+// and gives On raw multipart access.
+//
+// The native submission is always prevented and the form is sent as
+// multipart/form-data. Return false from On to keep the handler active, true
+// to remove it. A nil On still installs the hook and still sends the request.
+//
+// Prefer [ASubmit] when the form decodes into a Go type.
 type ARawSubmit struct {
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend form handler.
-	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// RequestTimeout overrides [Conf].RequestTimeout for this form's
+	// requests. Optional.
+	RequestTimeout time.Duration
+	// On handles the submitted form on the server. Return false to keep the
+	// handler active, true to remove it. Optional.
 	On func(context.Context, RequestRawForm) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -54,25 +63,32 @@ func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(s.handle(core), nil)
 	if !ok {
-		return errors.New("door: hook registration failed")
+		return context.Canceled
 	}
 	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
 		OnError:  intoActions(ctx, actionsOrNil(s.OnError)),
 		Before:   intoActions(ctx, actionsOrNil(s.Before)),
 		Scope:    scopesOrNil(core, s.Scope),
 		Indicate: indicatorsOrNil(s.Indicator),
+		Timeout:  s.RequestTimeout,
 		Hook:     hook,
 	})
 	return nil
 }
 
-func (s *ARawSubmit) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+func (s ARawSubmit) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	on := s.On
+	limit := core.App().Conf().ServerRequestBodyLimit
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		return s.On(ctx, &request{
+		if on == nil {
+			r.Body.Close()
+			return false
+		}
+		return on(ctx, &request{
 			w:     w,
 			r:     r,
 			ctx:   ctx,
-			limit: core.App().Conf().ServerRequestBodyLimit,
+			limit: limit,
 		})
 	}
 }
@@ -83,24 +99,34 @@ func init() {
 	formDecoder = form.NewDecoder()
 }
 
-// ASubmit handles a form submission by decoding it into T with
-// go-playground/form.
+// ASubmit handles the browser submit event on the form it is attached to and
+// decodes the submitted values into T.
+//
+// The native submission is always prevented and the form is sent as
+// multipart/form-data. Field names come from form struct tags, or the Go field
+// name when the tag is absent. A parse or decode failure skips On and runs
+// OnError. File parts are not decoded; use [ARawSubmit] for uploads.
+//
+// Return false from On to keep the handler active, true to remove it. A nil On
+// still installs the hook and still sends the request.
 type ASubmit[T any] struct {
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend form handler.
-	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// RequestTimeout overrides [Conf].RequestTimeout for this form's
+	// requests. Optional.
+	RequestTimeout time.Duration
+	// On handles the decoded form on the server. Return false to keep the
+	// handler active, true to remove it. Optional.
 	On func(context.Context, RequestForm[T]) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -112,21 +138,27 @@ func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(s.handle(core), nil)
 	if !ok {
-		return errors.New("door: hook registration failed")
+		return context.Canceled
 	}
 	front.AttrsAppendCapture(attrs, front.FormCapture{}, front.Hook{
 		OnError:  intoActions(ctx, actionsOrNil(s.OnError)),
 		Before:   intoActions(ctx, actionsOrNil(s.Before)),
 		Scope:    scopesOrNil(core, s.Scope),
 		Indicate: indicatorsOrNil(s.Indicator),
+		Timeout:  s.RequestTimeout,
 		Hook:     hook,
 	})
 	return nil
 }
 
-func (s *ASubmit[V]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+func (s ASubmit[V]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	on := s.On
+	limit := core.App().Conf().ServerRequestBodyLimit
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		limit := core.App().Conf().ServerRequestBodyLimit
+		if on == nil {
+			r.Body.Close()
+			return false
+		}
 		r.Body = http.MaxBytesReader(w, r.Body, int64(limit))
 		err := r.ParseMultipartForm(int64(limit))
 		if err != nil {
@@ -141,7 +173,7 @@ func (s *ASubmit[V]) handle(core core.Core) func(ctx context.Context, w http.Res
 			w.Write([]byte("Form decoding error"))
 			return false
 		}
-		return s.On(ctx, &formHookRequest[V]{
+		return on(ctx, &formHookRequest[V]{
 			data: &v,
 			request: request{
 				w:   w,
@@ -152,30 +184,33 @@ func (s *ASubmit[V]) handle(core core.Core) func(ctx context.Context, w http.Res
 	}
 }
 
-// RequestChange is the typed request passed to [AChange] handlers.
+// RequestChange is the request handle passed to [AChange] handlers.
 type RequestChange = RequestEvent[ChangeEvent]
 
-// AChange handles the browser `change` event.
+// AChange handles the browser change event on the element it is attached to,
+// which fires on a committed value: on blur for text inputs, immediately for
+// checkboxes and selects.
 //
-// Use it for committed values such as blur-triggered input changes or select
-// changes.
+// Attach it as an attribute to one or more elements. Each event sends one
+// request carrying the target's current value, subject to Scope. Return false
+// from On to keep the handler active, true to remove it. A nil On still
+// installs the hook and still sends the request, so omit the attr rather than
+// nil-ing On.
 type AChange struct {
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[ChangeEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestChange) bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 
@@ -194,32 +229,30 @@ func (p AChange) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}.apply(ctx, attrs)
 }
 
-// RequestInput is the typed request passed to [AInput] handlers.
+// RequestInput is the request handle passed to [AInput] handlers.
 type RequestInput = RequestEvent[InputEvent]
 
-// AInput handles the browser `input` event.
-//
-// Use it for live updates while the user is still editing a value.
+// AInput handles the browser input event on the element it is attached to.
+// Unlike [AChange], it fires on every edit rather than on the committed
+// value. The handler contract follows [AChange].
 type AInput struct {
-	// Defines how the hook is scheduled (e.g. blocking, debounce).
-	// Optional.
+	// Scope controls how the request is scheduled. Optional; unscoped requests
+	// are sent as soon as the event fires.
 	Scope Scopes
-	// Visual indicators while the hook is running.
-	// Optional.
+	// Indicator lists temporary DOM changes applied while the request is
+	// in flight. Optional.
 	Indicator Indicators
-	// Actions to run before the hook request.
-	// Optional.
+	// Before lists client-side actions to run before the request is
+	// sent. Optional.
 	Before Actions
-	// Backend event handler.
-	// Receives a typed RequestEvent[InputEvent].
-	// Should return true when the hook is complete and can be removed.
-	// Required.
+	// On handles the event on the server. Return false to keep the handler
+	// active, true to remove it. Optional.
 	On func(context.Context, RequestInput) bool
-	// If true, does not include value in event
-	// Optional.
+	// ExcludeValue omits the input value from the payload, leaving Name,
+	// Value, Number, Date, Selected, and Checked unset. Optional.
 	ExcludeValue bool
-	// Actions to run on error.
-	// Optional.
+	// OnError lists client-side actions to run when the request
+	// fails. Optional.
 	OnError Actions
 }
 

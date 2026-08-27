@@ -17,20 +17,23 @@ package door
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/printer"
 )
 
 type reportHook uint64
 
-func (c reportHook) Params() action.CallParams {
-	return action.CallParams{}
+func (c reportHook) Params() actions.CallParams {
+	return actions.CallParams{}
 }
 
-func (c reportHook) Action() (action.Action, bool) {
-	return action.ReportHook{HookId: uint64(c)}, true
+func (c reportHook) Action() (actions.Action, bool) {
+	return actions.ReportHook{HookId: uint64(c)}, true
 }
 
 func (c reportHook) Cancel() {}
@@ -42,6 +45,7 @@ type callKind int
 const (
 	callReplace callKind = iota
 	callUpdate
+	callFreeze
 )
 
 type call struct {
@@ -62,6 +66,9 @@ func (n *call) Result(_ json.RawMessage, err error) {
 	n.payload.Release()
 	if err != nil {
 		n.logger.Error("door rendering call failed", "error", err)
+		if !errors.Is(err, common.ErrTerminated) {
+			err = fmt.Errorf("%w: %w", common.ErrExecution, err)
+		}
 	}
 	n.send(err)
 }
@@ -70,27 +77,31 @@ func (n *call) send(err error) {
 	n.task.Report(err)
 }
 
-func (c *call) Action() (action.Action, bool) {
+func (c *call) Action() (actions.Action, bool) {
 	if c.ctx.Err() != nil {
 		return nil, false
 	}
 	payload := c.payload.Payload()
 	switch c.kind {
 	case callReplace:
-		return action.DoorReplace{
+		return actions.DoorReplace{
 			ID:      c.id,
 			Payload: payload,
 		}, true
 	case callUpdate:
-		return action.DoorUpdate{
+		return actions.DoorUpdate{
 			ID:      c.id,
 			Payload: payload,
+		}, true
+	case callFreeze:
+		return actions.DoorFreeze{
+			ID: c.id,
 		}, true
 	default:
 		panic("unsupported door call type")
 	}
 }
 
-func (c *call) Params() action.CallParams {
-	return action.CallParams{}
+func (c *call) Params() actions.CallParams {
+	return actions.CallParams{}
 }

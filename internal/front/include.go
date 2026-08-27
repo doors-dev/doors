@@ -24,20 +24,6 @@ func Include(inst core.Instance) gox.Elem {
 		conf := inst.Session().App().Conf()
 		registry := inst.Session().App().ResourceRegistry()
 		pathMaker := inst.Session().App().PathMaker()
-		if err := cur.InitVoid("link"); err != nil {
-			return err
-		}
-		{
-			if err := cur.Set("rel", "stylesheet"); err != nil {
-				return err
-			}
-			if err := cur.Set("href", pathMaker.Resource(registry.MainStyle(), "doors.css")); err != nil {
-				return err
-			}
-		}
-		if err := cur.Submit(); err != nil {
-			return err
-		}
 		if err := cur.Init("script"); err != nil {
 			return err
 		}

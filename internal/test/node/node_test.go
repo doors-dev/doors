@@ -630,9 +630,9 @@ func TestDoorContainerHookStateCanceledAndReboundByReload(t *testing.T) {
 	test.TestReport(t, page, "state read-1-true derived-derived-1-true initial-1-true watch-true value-1 sub-0 watches-2 cancels-2")
 }
 
-func TestDoorXReloadUsesClosestDynamicParent(t *testing.T) {
+func TestDoorTrackedReloadUsesClosestDynamicParent(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
-		return &FragmentClosestXReload{}
+		return &FragmentClosestTrackedReload{}
 	})
 	defer bro.Close()
 	page := bro.Page(t, "/")
@@ -652,9 +652,9 @@ func TestDoorXReloadUsesClosestDynamicParent(t *testing.T) {
 	test.TestContent(t, page, "#x-inner-count", "inner-3")
 }
 
-func TestDoorXReloadFromRootReturnsError(t *testing.T) {
+func TestDoorTrackedReloadFromRootReturnsError(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
-		return &FragmentRootXReload{}
+		return &FragmentRootTrackedReload{}
 	})
 	defer bro.Close()
 	page := bro.Page(t, "/")
@@ -713,6 +713,51 @@ func TestDoorDetachedUnmountRebaseTransitions(t *testing.T) {
 	test.Click(t, page, "#remount-after-rebase")
 	test.TestMust(t, page, "#rebased-detached-root")
 	test.TestMust(t, page, "#rebased-detached")
+}
+
+func TestDoorFreeze(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentFreeze{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestMust(t, page, "#freeze-base")
+	test.TestMust(t, page, "#freeze-child")
+	test.TestContent(t, page, "#freeze-clean", "live")
+
+	test.Click(t, page, "#freeze-inner-hook")
+	test.Click(t, page, "#freeze-hits")
+	test.TestReport(t, page, "hits 1")
+
+	test.Click(t, page, "#freeze")
+	test.TestReport(t, page, "ok freeze")
+	test.TestMust(t, page, "#freeze-base")
+	test.TestMust(t, page, "#freeze-child")
+	test.TestContent(t, page, "#freeze-clean", "cleaned")
+
+	test.Click(t, page, "#freeze-inner-hook")
+	test.Click(t, page, "#freeze-hits")
+	test.TestReport(t, page, "hits 1")
+
+	test.Click(t, page, "#reload-after-freeze")
+	test.TestReport(t, page, "channel closed")
+	test.TestMust(t, page, "#freeze-base")
+
+	test.Click(t, page, "#child-update-after-freeze")
+	test.TestReport(t, page, "channel closed")
+	test.TestMustNot(t, page, "#freeze-child-updated")
+	test.TestMust(t, page, "#freeze-child")
+
+	test.Click(t, page, "#update-after-freeze")
+	test.TestReport(t, page, "channel closed")
+	test.TestMustNot(t, page, "#freeze-updated")
+	test.TestMust(t, page, "#freeze-base")
+
+	test.Click(t, page, "#remount-after-freeze")
+	test.TestMust(t, page, "#freeze-updated")
+	test.TestMustNot(t, page, "#freeze-base")
 }
 
 func TestDoorProxyMoveBetweenParents(t *testing.T) {
@@ -803,4 +848,27 @@ func TestDoorRebaseErrorTransition(t *testing.T) {
 	test.TestMust(t, page, "#error-base")
 	test.Click(t, page, "#rebase-error")
 	test.TestReport(t, page, "channel err: rebase boom")
+}
+
+func TestDoorContainerStyle(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &FragmentMany{}
+	})
+	page := bro.Page(t, "/")
+	defer bro.Close()
+	defer page.Close()
+	result := page.MustEval(`() => {
+		const el = document.querySelector("d0-r")
+		if (!el) {
+			return "no d0-r on page"
+		}
+		const display = getComputedStyle(el).display
+		if (display !== "contents") {
+			return "display: " + display
+		}
+		return "ok"
+	}`).Str()
+	if result != "ok" {
+		t.Fatal(result)
+	}
 }

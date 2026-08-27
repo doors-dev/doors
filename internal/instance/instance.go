@@ -15,7 +15,7 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/instance/utils"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/printer"
@@ -102,7 +102,7 @@ func (inst Instance) CSPCollector() common.CSPCollector {
 	return inst.csp
 }
 
-func (inst *instance) Call(call action.Call) {
+func (inst *instance) Call(call actions.Call) {
 	inst.solitaire.Call(call)
 }
 
@@ -189,7 +189,7 @@ func (i instanceComp) Main() gox.Elem {
 	})
 }
 
-func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (err error, handeled bool) {
+func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (err error, handled bool) {
 	if !inst.state.CompareAndSwap(zero, initializing) {
 		return nil, false
 	}
@@ -243,7 +243,7 @@ func (inst *instance) render(w http.ResponseWriter, r *http.Request, pipe door.S
 		writer = wgz
 	}
 	pr := printer.NewPagePrinter(writer, static, front.Include(inst), importMap, inst.titleMeta)
-	return pipe.Print(pr)
+	return pipe.Print(inst.session.App().PrinterMiddleware()(pr))
 }
 
 func (inst *instance) renderHeaders(w http.ResponseWriter, gz bool, importHash []byte) {

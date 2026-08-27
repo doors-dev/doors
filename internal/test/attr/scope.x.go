@@ -1,4 +1,4 @@
-// Managed by GoX v0.2.1
+// Managed by GoX v0.3.0
 
 //line scope.gox:1
 package attr

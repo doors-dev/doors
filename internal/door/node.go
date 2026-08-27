@@ -37,12 +37,62 @@ const (
 )
 
 type node struct {
-	guard   shredder.ValveFrame
-	door    *Door
-	mode    nodeMode
-	tracker *tracker
-	outer   gox.Elem
-	content any
+	guard         shredder.ValveFrame
+	door          *Door
+	mode          nodeMode
+	tracker       *tracker
+	staticTracker *staticTracker
+	outer         any
+	content       any
+}
+
+func (n *node) getID() uint64 {
+	if n.staticTracker != nil {
+		return n.staticTracker.id
+	}
+	return n.tracker.id
+}
+
+func (n *node) getWriteFrame() shredder.Frame {
+	if n.staticTracker != nil {
+		return n.staticTracker.writeFrame()
+	}
+	return n.tracker.writeFrame()
+}
+
+func (n *node) getContext() context.Context {
+	if n.staticTracker != nil {
+		return n.staticTracker.Context()
+	}
+	return n.tracker.Context()
+}
+
+func (n *node) getParentCtx() context.Context {
+	if n.staticTracker != nil {
+		return n.staticTracker.ctx
+	}
+	return n.tracker.parent.ctx
+}
+
+func (n *node) getOuterCallGuard() *shredder.ValveFrame {
+	if n.staticTracker != nil {
+		return n.staticTracker.outerCallGuard
+	}
+	return n.tracker.outerCallGuard
+}
+
+func (n *node) getInnerCallGuard() *shredder.ValveFrame {
+	if n.staticTracker != nil {
+		return n.staticTracker.innerCallGuard
+	}
+	return n.tracker.innerCallGuard
+}
+
+func (n *node) getTracker() *tracker {
+	if n.staticTracker != nil {
+		return n.staticTracker.tracker
+	}
+	return n.tracker
 }
 
 func (n *node) reload(ctx context.Context) <-chan error {
@@ -54,6 +104,9 @@ func (n *node) unmountedSelf() {
 }
 
 func (n *node) onErr(err error) {
+	if n.staticTracker != nil {
+		n.staticTracker.cancel()
+	}
 	if !n.isMounted() {
 		return
 	}
@@ -67,23 +120,17 @@ func (n *node) isMounted() bool {
 
 func (n *node) sync(task *userTask) {
 	thread := shredder.Thread{}
-	ownerTracker := n.tracker
-	callGuard := n.tracker.innerCallGuard
-	if n.mode == modeStatic {
-		ownerTracker = n.tracker.parent
-		callGuard = &shredder.ValveFrame{}
-	}
-	renderFrame := shredder.Join(ownerTracker.Context(), true, thread.Frame(), ownerTracker.writeFrame(ownerTracker.Context()), task.RenderFrame())
+	renderFrame := shredder.Join(n.getContext(), true, thread.Frame(), n.getWriteFrame(), task.RenderFrame())
 	defer renderFrame.Release()
 	pip := newPipe(
-		ownerTracker,
+		n.getTracker(),
 		common.GetDequeBuffer(),
 		renderFrame,
-		callGuard,
+		n.getInnerCallGuard(),
 	)
 	var err error
 	var callKind callKind
-	pip.renderFrame.Submit(ownerTracker.ctx, ownerTracker.root.runtime(), func(b bool) {
+	pip.renderFrame.Submit(n.getContext(), n.getTracker().root.runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -104,10 +151,10 @@ func (n *node) sync(task *userTask) {
 			panic("unknown node mode")
 		}
 	})
-	callFrame := shredder.Join(ownerTracker.Context(), true, thread.Frame(), n.tracker.outerCallGuard, task.CallFrame())
+	callFrame := shredder.Join(n.getContext(), true, thread.Frame(), n.getOuterCallGuard(), task.CallFrame())
 	defer callFrame.Release()
-	callFrame.Run(ownerTracker.ctx, ownerTracker.root.runtime(), func(b bool) {
-		defer callGuard.Activate()
+	callFrame.Run(n.getContext(), n.getTracker().root.runtime(), func(b bool) {
+		defer n.getInnerCallGuard().Activate()
 		if !b {
 			pip.Release()
 			task.Cancel()
@@ -115,22 +162,23 @@ func (n *node) sync(task *userTask) {
 		}
 		var payload printer.Payload
 		if err == nil {
-			payload, err = pip.Render(ownerTracker.Instance().Session().App().Conf().ServerDisableGzip)
+			app := n.getTracker().Instance().Session().App()
+			payload, err = pip.Render(app.Conf().ServerDisableGzip, app.PrinterMiddleware())
 		}
-		logger := ownerTracker.root.inst.Logger()
-		callCtx := ownerTracker.ctx
+		logger := n.getTracker().root.inst.Logger()
+		callCtx := n.getTracker().ctx
 		if err != nil {
 			n.onErr(err)
 			task.Report(err)
 			payload = newError(err, logger)
-			callCtx = n.tracker.parent.ctx
+			callCtx = n.getParentCtx()
 		} else {
 			task.Scheduled()
 		}
-		ownerTracker.root.inst.Call(&call{
+		n.getTracker().root.inst.Call(&call{
 			ctx:     callCtx,
 			kind:    callKind,
-			id:      n.tracker.id,
+			id:      n.getID(),
 			task:    task,
 			payload: payload,
 			logger:  logger,
@@ -140,21 +188,19 @@ func (n *node) sync(task *userTask) {
 
 func (n *node) render(parentPipe *pipe, buffer *deque.Deque[any]) {
 	thread := shredder.Thread{}
-	ownerTracker := parentPipe.tracker
 	renderFrame := shredder.Join(parentPipe.tracker.Context(), true, parentPipe.renderFrame, thread.Frame())
 	if n.isMounted() {
-		ownerTracker = n.tracker
-		renderFrame = shredder.Join(ownerTracker.Context(), true, renderFrame, n.tracker.writeFrame(ownerTracker.Context()))
+		renderFrame = shredder.Join(n.getContext(), true, renderFrame, n.getWriteFrame())
 	}
 	defer renderFrame.Release()
 	pip := newPipe(
-		ownerTracker,
+		n.getTracker(),
 		buffer,
 		renderFrame,
 		parentPipe.callGuard,
 	)
 	var err error
-	pip.renderFrame.Submit(parentPipe.tracker.ctx, ownerTracker.root.runtime(), func(b bool) {
+	pip.renderFrame.Submit(parentPipe.tracker.ctx, n.getTracker().root.runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -173,7 +219,7 @@ func (n *node) render(parentPipe *pipe, buffer *deque.Deque[any]) {
 	})
 	finalFrame := shredder.Join(parentPipe.tracker.Context(), true, parentPipe.renderFrame, thread.Frame())
 	defer finalFrame.Release()
-	finalFrame.Run(parentPipe.tracker.ctx, ownerTracker.root.runtime(), func(b bool) {
+	finalFrame.Run(parentPipe.tracker.ctx, n.getTracker().root.runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -186,7 +232,7 @@ func (n *node) render(parentPipe *pipe, buffer *deque.Deque[any]) {
 }
 
 func (n *node) renderStatic(pip *pipe) (err error) {
-	cur := gox.NewCursor(pip.tracker.Context(), pip)
+	cur := gox.NewCursor(n.getContext(), pip)
 	return cur.Any(n.content)
 }
 
@@ -194,8 +240,10 @@ func (n *node) renderBlend(pip *pipe) (err error) {
 	printer := &nodePrinter{
 		pipe: pip,
 	}
-	cur := gox.NewCursor(n.tracker.Context(), printer)
-	err = n.outer(cur)
+	if n.outer != nil {
+		cur := gox.NewCursor(n.getContext(), printer)
+		err = cur.Any(n.outer)
+	}
 	if err != nil {
 		return err
 	}
@@ -213,8 +261,8 @@ func (n *node) renderOuter(pip *pipe) (err error) {
 		pipe: pip,
 	}
 	if n.outer != nil {
-		cur := gox.NewCursor(n.tracker.Context(), printer)
-		err = n.outer(cur)
+		cur := gox.NewCursor(n.getContext(), printer)
+		err = cur.Any(n.outer)
 	}
 	if err != nil {
 		return err
@@ -223,7 +271,7 @@ func (n *node) renderOuter(pip *pipe) (err error) {
 }
 
 func (n *node) renderInner(pip *pipe) (err error) {
-	cur := gox.NewCursor(n.tracker.Context(), pip)
+	cur := gox.NewCursor(n.getContext(), pip)
 	return cur.Any(n.content)
 }
 
@@ -233,8 +281,8 @@ func (n *node) renderInnerOuter(pip *pipe) (err error) {
 		skipContent: true,
 	}
 	if n.outer != nil {
-		cur := gox.NewCursor(n.tracker.Context(), printer)
-		err = n.outer(cur)
+		cur := gox.NewCursor(n.getContext(), printer)
+		err = cur.Any(n.outer)
 	}
 	if err != nil {
 		return err
@@ -252,8 +300,8 @@ type nodePrinter struct {
 	pipe        *pipe
 	skipContent bool
 	ready       bool
-	open        *gox.JobHeadOpen
-	close       *gox.JobHeadClose
+	open        *gox.JobOpen
+	close       *gox.JobClose
 }
 
 func (r *nodePrinter) submitContainer() error {
@@ -261,8 +309,8 @@ func (r *nodePrinter) submitContainer() error {
 		return errors.New("door container tag was not closed")
 	}
 	ctx := r.pipe.tracker.container.Context()
-	var openJob *gox.JobHeadOpen
-	var closeJob *gox.JobHeadClose
+	var openJob *gox.JobOpen
+	var closeJob *gox.JobClose
 	if r.open != nil && r.open.Kind == gox.KindContainer {
 		gox.Release(r.open)
 		gox.Release(r.close)
@@ -273,8 +321,8 @@ func (r *nodePrinter) submitContainer() error {
 		attrs := gox.NewAttrs()
 		front.AttrsSetDoor(attrs, r.pipe.tracker.id, true)
 		front.AttrsSetParent(attrs, r.pipe.tracker.parent.id)
-		openJob = gox.NewJobHeadOpen(ctx, 0, gox.KindRegular, "d0-r", attrs)
-		closeJob = gox.NewJobHeadClose(ctx, 0, gox.KindRegular, "d0-r")
+		openJob = gox.NewJobOpen(ctx, 0, gox.KindRegular, "d0-r", attrs)
+		closeJob = gox.NewJobClose(ctx, 0, gox.KindRegular, "d0-r")
 	} else {
 		r.open.Ctx = ctx
 		r.close.Ctx = ctx
@@ -304,7 +352,7 @@ func (r *nodePrinter) pipeSend(job gox.Job) error {
 	return r.pipe.Send(job)
 }
 
-func (r *nodePrinter) pipePresend(job *gox.JobHeadOpen) error {
+func (r *nodePrinter) pipePresend(job *gox.JobOpen) error {
 	if r.skipContent {
 		gox.Release(job)
 		return nil
@@ -332,7 +380,7 @@ func (r *nodePrinter) Send(job gox.Job) error {
 		}
 		return r.pipeSend(job)
 	}
-	if closeJob, ok := job.(*gox.JobHeadClose); ok {
+	if closeJob, ok := job.(*gox.JobClose); ok {
 		if closeJob.ID == r.open.ID {
 			r.close = closeJob
 			return nil
@@ -343,18 +391,7 @@ func (r *nodePrinter) Send(job gox.Job) error {
 
 func (r *nodePrinter) init(job gox.Job) error {
 	switch job := job.(type) {
-	case *gox.JobComp:
-		comp := job.Comp
-		ctx := job.Ctx
-		gox.Release(job)
-		el := comp.Main()
-		if el == nil {
-			r.ready = true
-			return nil
-		}
-		cur := gox.NewCursor(ctx, r)
-		return el(cur)
-	case *gox.JobHeadOpen:
+	case *gox.JobOpen:
 		r.ready = true
 		return r.initOpenJob(job)
 	default:
@@ -363,7 +400,7 @@ func (r *nodePrinter) init(job gox.Job) error {
 	}
 }
 
-func (r *nodePrinter) initOpenJob(openJob *gox.JobHeadOpen) error {
+func (r *nodePrinter) initOpenJob(openJob *gox.JobOpen) error {
 	switch openJob.Kind {
 	case gox.KindRegular:
 		if strings.EqualFold(openJob.Tag, "head") {

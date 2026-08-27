@@ -509,8 +509,8 @@ func TestReportId(t *testing.T, page *rod.Page, id int, content string) {
 	TestContent(t, page, fmt.Sprintf("#report-%d", id), content)
 }
 
-func Text(s string) gox.Editor {
-	return gox.EditorFunc(func(cur gox.Cursor) error {
+func Text(s string) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
 		return cur.Text(s)
 	})
 }

@@ -41,7 +41,7 @@ type styleProps struct {
 	rel bool
 }
 
-func (s *styleProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
+func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 	s.cleanAttrs()
 	s.setDefaultMode(resources.ModeHost)
 	if !s.rel && s.output == styleRaw {
@@ -87,7 +87,7 @@ func (s *styleProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
 		return p.printer.Send(job)
 	default:
 		common.Logger(job.Ctx).Error(
-			"non-compatibile src/href value",
+			"non-compatible src/href value",
 			"source_kind",
 			s.sourceKind,
 			"source_type",

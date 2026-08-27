@@ -17,11 +17,12 @@ package solitaire
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/solitaire/expirator"
 	"github.com/doors-dev/doors/internal/solitaire/inner"
 )
@@ -99,7 +100,7 @@ func (d *deck) Restore(beg uint64, end uint64) error {
 	return nil
 }
 
-var errorKilled = errors.New("killed")
+var errorKilled = fmt.Errorf("%w: killed", common.ErrTerminated)
 var errorLimit = errors.New("limit")
 
 func (d *deck) Dump(s Stasher) (err error) {
@@ -234,12 +235,12 @@ func (d *deck) FillGaps(g []gap) error {
 	return nil
 }
 
-func (d *deck) Insert(c action.Call) (err error) {
+func (d *deck) Insert(c actions.Call) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.killed {
 		c.Cancel()
-		return errors.New("killed")
+		return errorKilled
 	}
 	d.seq += 1
 	dc := &inner.Call{
@@ -260,7 +261,7 @@ func (d *deck) checkQueueLength() error {
 	if d.inner.Len()+len(d.issued) < d.conf.Queue {
 		return nil
 	}
-	return errors.New("call queue limit reached")
+	return fmt.Errorf("%w: call queue limit reached", common.ErrTerminated)
 }
 
 func (d *deck) restore(seq uint64, c *inner.Call) error {

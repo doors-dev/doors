@@ -29,7 +29,8 @@ export function NewFetch(params: {
 	event?: Event,
 	scopeQueue: Array<ScopeSet>,
 	indicator: Array<IndicatorEntry>,
-	before: Array<Action>
+	before: Array<Action>,
+	timeout?: number | null
 }): Fetch {
 	const hook = new Hook(params)
 	return hook.fetch
@@ -49,7 +50,8 @@ class Hook {
 		event?: Event,
 		scopeQueue: Array<ScopeSet>,
 		indicator: Array<IndicatorEntry>,
-		before: Array<Action>
+		before: Array<Action>,
+		timeout?: number | null
 	}) {
 		this.promise_ = new Promise((res, rej) => {
 			this.res_ = res
@@ -79,7 +81,8 @@ class Hook {
 				console.error("hook action payload decode error", decodeErr)
 				continue
 			}
-			const [_, err] = action(name, arg, { element: this.params_.event?.target as any, payload: decoded })
+			const res = action(name, arg, { element: this.params_.event?.target as any, payload: decoded })
+			const [_, err] = res instanceof Promise ? await res : res
 			if (err) {
 				console.error("hook action error", err)
 			}
@@ -92,7 +95,7 @@ class Hook {
 			target = this.params_.event.currentTarget as Element
 		}
 		this.indicatorId_ = indicator.start(target, this.params_.indicator)
-		this.abortTimer_ = new AbortTimer(requestTimeout)
+		this.abortTimer_ = new AbortTimer(this.params_.timeout ?? requestTimeout)
 		this.track_ = runtime.hookRegister(this)
 		const track = this.track_
 		this.actions(this.params_.before).then(() => {

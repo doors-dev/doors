@@ -24,26 +24,32 @@ import (
 	"github.com/doors-dev/doors/internal/printer"
 )
 
-// Resource describes content or a URL that can be attached to HTML resource
-// attrs such as `src` and `href`.
+// Resource is app-owned content that Doors serves under a generated src or
+// href URL.
 //
-// Managed resources may be hosted by Doors when the tag and attrs require it.
+// Assign it to a src or href attribute, or attach it as a modifier to a tag
+// that takes one of them; a modifier on any other tag fails the render.
+//
+// Unless the resource is a [ResourceStatic] served from a cache, the generated
+// URL is private to the current page instance and stops working once the
+// content around it is cleared.
 type Resource = printer.SourceHandler
 
-// ResourceStatic is a [Resource] whose content is known up front.
+// ResourceStatic is a [Resource] whose content Doors reads up front.
 //
-// Static resources can be shared through cached public URLs and mounted at
-// fixed public routes with [UseResource].
+// Unlike other resources, it accepts the cache, private, and nocache
+// attributes. With cache, Doors keeps the content in RAM and serves it from a
+// shared, publicly reachable URL derived from its hash. It can also be mounted
+// at a fixed path with [UseResource].
 type ResourceStatic = printer.SourceStatic
 
-// ResourceExternal is a direct external URL.
+// ResourceExternal is a URL the browser loads directly from another host.
 //
-// Use it when the browser should load the resource from another host without
-// proxying it through Doors, while still letting Doors collect the host for
-// Content-Security-Policy generation.
+// Doors adds the host to the generated Content-Security-Policy only for script
+// tags and stylesheet or modulepreload links.
 type ResourceExternal = printer.SourceExternal
 
-// ResourceFS serves one file from fsys as a [ResourceStatic].
+// ResourceFS returns a [ResourceStatic] that serves entry from fsys.
 func ResourceFS(fsys fs.FS, entry string) ResourceStatic {
 	return printer.SourceFS{
 		FS:    fsys,
@@ -51,33 +57,39 @@ func ResourceFS(fsys fs.FS, entry string) ResourceStatic {
 	}
 }
 
-// ResourceLocalFS serves one local file from path as a [ResourceStatic].
+// ResourceLocalFS returns a [ResourceStatic] that serves the local file at
+// path.
 func ResourceLocalFS(path string) ResourceStatic {
 	return printer.SourceLocalFS(path)
 }
 
-// ResourceBytes serves in-memory bytes as a [ResourceStatic].
+// ResourceBytes returns a [ResourceStatic] that serves content from memory.
 func ResourceBytes(content []byte) ResourceStatic {
 	return printer.SourceBytes(content)
 }
 
-// ResourceString serves in-memory string content as a [ResourceStatic].
+// ResourceString returns a [ResourceStatic] that serves content from memory.
 func ResourceString(content string) ResourceStatic {
 	return printer.SourceString(content)
 }
 
-// ResourceHook serves content through a custom resource handler.
+// ResourceHook returns a [Resource] served by handler.
 //
-// Use it for dynamic or request-dependent content that should be exposed
-// through a managed Doors resource URL.
+// Return true from handler to stop serving the resource after that request,
+// false to keep it available.
 //
-// Returning true tells Doors it may remove the generated private resource after
-// the request.
+// WARNING: the request body is not limited by the ServerRequestBodyLimit of
+// [Conf].
 func ResourceHook(handler func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool) Resource {
 	return printer.SourceHook(handler)
 }
 
-// ResourceHandler serves content through a standard library-style handler.
+// ResourceHandler returns a [Resource] served by handler.
+//
+// Unlike [ResourceHook], the resource keeps serving every request.
+//
+// WARNING: the request body is not limited by the ServerRequestBodyLimit of
+// [Conf].
 func ResourceHandler(handler func(w http.ResponseWriter, r *http.Request)) Resource {
 	return printer.SourceHook(func(_ context.Context, w http.ResponseWriter, r *http.Request) bool {
 		handler(w, r)
@@ -85,25 +97,25 @@ func ResourceHandler(handler func(w http.ResponseWriter, r *http.Request)) Resou
 	})
 }
 
-// ResourceProxy serves a resource by reverse-proxying requests to url.
+// ResourceProxy returns a [Resource] that reverse-proxies requests to url.
 //
-// Unlike [ResourceExternal], the browser still loads the resource from a
-// Doors-managed URL.
+// Unlike [ResourceExternal], the browser loads it from a Doors-generated URL.
+// If url cannot be parsed, requests fail with status 500.
 func ResourceProxy(url string) Resource {
 	return printer.SourceProxy(url)
 }
 
-// NewHook registers a resource handler as a hook and returns a URL path
-// that triggers it.
+// NewHook registers r on the closest dynamic parent and returns the URL path
+// that serves it. The path stops working once the current content is cleared.
 //
-// You can safely append "/filename.ext" to the generated link.
+// Appending a slash and a file name to the returned path is safe.
 //
-// The returned bool is false if the hook could not be registered (e.g., the
-// parent door is unmounted).
+// It returns false if the closest dynamic parent has already been cleared.
 //
-// Request body is not bounded by the configured server request body limit;
-// apply a safe limit yourself if you read the body in a [ResourceHandler]
-// or [ResourceHook] callback.
+// ctx must belong to a Doors render or handler; otherwise NewHook panics.
+//
+// WARNING: the request body is not limited by the ServerRequestBodyLimit of
+// [Conf].
 func NewHook(ctx context.Context, r Resource) (string, bool) {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(r.Handler(), nil)

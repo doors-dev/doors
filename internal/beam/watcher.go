@@ -48,19 +48,30 @@ const (
 	watcherDone
 )
 
+type anyScreen interface {
+	removeWatcher(w *watcher)
+}
+
 type watcher struct {
 	state     atomic.Int32
 	inner     innerWatcher
 	initGuard shredder.ValveFrame
-	screen    *screen
+	screen    anyScreen
 }
 
-func (w *watcher) register(screen *screen) {
+func (w *watcher) register(screen anyScreen) {
 	w.screen = screen
 }
 
 func (w *watcher) unregister() {
 	w.screen.removeWatcher(w)
+}
+
+func (w *watcher) abort() {
+	w.state.Store(watcherDone)
+	w.initGuard.Activate()
+	w.unregister()
+	w.inner.cancel()
 }
 
 func (w *watcher) Cancel() {

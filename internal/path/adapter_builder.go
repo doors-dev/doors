@@ -15,7 +15,7 @@
 package path
 
 import (
-	"errors"
+	"fmt"
 	"net/url"
 	"reflect"
 	"strings"
@@ -43,7 +43,7 @@ func (a adapterBuilder) build() (adapter, error) {
 		return adapter{}, err
 	}
 	if len(a.path) == 0 {
-		return adapter{}, errors.New("no path patterns provided in the path model struct")
+		return adapter{}, fmt.Errorf("%w: no path patterns provided in the path model struct", common.ErrPathModel)
 	}
 	branches := make([]fieldBranch, 0, len(a.path))
 	for _, path := range a.path {
@@ -74,7 +74,7 @@ func (a *adapterBuilder) scanFields() error {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
-		return errors.New("path model must be a struct")
+		return fmt.Errorf("%w: not a struct", common.ErrPathModel)
 	}
 	hasQuery := false
 	for i := range t.NumField() {
@@ -93,10 +93,10 @@ func (a *adapterBuilder) scanFields() error {
 				continue
 			}
 			if a.multiPattern {
-				return errors.New("only single multipattern is allowed")
+				return fmt.Errorf("%w: only single multipattern is allowed", common.ErrPathModel)
 			}
 			if !f.IsExported() {
-				return errors.New("path field " + f.Name + " must be exported")
+				return fmt.Errorf("%w: path field %q must be exported", common.ErrPathModel, f.Name)
 			}
 			if f.Type.Kind() == reflect.Bool {
 				a.addBoolPath(f, name, value)
@@ -105,14 +105,14 @@ func (a *adapterBuilder) scanFields() error {
 			}
 			if f.Type.Kind() == reflect.Int {
 				if len(a.path) != 0 {
-					return errors.New("only single multipattern is allowed")
+					return fmt.Errorf("%w: only single multipattern is allowed", common.ErrPathModel)
 				}
 				a.multiPattern = true
 				a.addIntPath(f, name, value)
 				pathTag = true
 				continue
 			}
-			return errors.New("path field " + f.Name + " must have type bool or int")
+			return fmt.Errorf("%w: path field %q must have type bool or int", common.ErrPathModel, f.Name)
 		}
 		if pathTag {
 			continue
@@ -120,12 +120,12 @@ func (a *adapterBuilder) scanFields() error {
 		if queryTag {
 			hasQuery = true
 			if !f.IsExported() {
-				return errors.New("query field " + f.Name + " must be exported")
+				return fmt.Errorf("%w: query field %q must be exported", common.ErrPathModel, f.Name)
 			}
 		}
 		if f.Type == reflect.TypeFor[url.Values]() {
 			if !f.IsExported() {
-				return errors.New("path field " + f.Name + " must be exported")
+				return fmt.Errorf("%w: query values field %q must be exported", common.ErrPathModel, f.Name)
 			}
 			a.queryField = i
 			continue
@@ -133,7 +133,7 @@ func (a *adapterBuilder) scanFields() error {
 		a.addField(f, i)
 	}
 	if hasQuery && a.queryField != -1 {
-		return errors.New("path struct contains both url.Values field and `query` tagged field, you can't have both")
+		return fmt.Errorf("%w: url.Values field and `query` tagged fields cannot be combined", common.ErrPathModel)
 	}
 	return nil
 }

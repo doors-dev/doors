@@ -21,13 +21,13 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
 
 type Instance interface {
-	Call(call action.Call)
+	Call(call actions.Call)
 	core.Instance
 }
 
@@ -112,7 +112,7 @@ func (r Root) IsStatic() bool {
 
 func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 	thread := shredder.Thread{}
-	renderFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), r.tracker.writeFrame(r.tracker.Context()))
+	renderFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), r.tracker.writeFrame())
 	pipe := newPipe(
 		r.tracker,
 		common.GetDequeBuffer(),

@@ -14,22 +14,26 @@
 
 package doors
 
-// JoinScopes combines several scope declarations into one value.
+// JoinScopes returns one [Scopes] value that applies every value in order.
+// Without arguments it returns nil.
 func JoinScopes(values ...Scopes) Scopes {
 	return Join(values...)
 }
 
-// JoinActions combines several client actions into one value.
+// JoinActions returns one [Actions] value that runs every value in order.
+// Without arguments it returns nil.
 func JoinActions(values ...Actions) Actions {
 	return Join(values...)
 }
 
-// JoinIndicators combines several indicators into one value.
+// JoinIndicators returns one [Indicators] value that applies every value in
+// order. Without arguments it returns nil.
 func JoinIndicators(values ...Indicators) Indicators {
 	return Join(values...)
 }
 
-// Join combines values that support [Joiner.And].
+// Join combines values that support [Joiner.And] into one value, in argument
+// order.
 //
 // It returns the zero value when called without arguments.
 func Join[T Joiner[T]](values ...T) T {
@@ -44,8 +48,8 @@ func Join[T Joiner[T]](values ...T) T {
 	return result
 }
 
-// Joiner is implemented by composable option-like values.
+// Joiner is implemented by values that combine with another value of the same
+// type, applying the receiver first and then the argument.
 type Joiner[T any] interface {
-	// And returns a value that applies the receiver followed by T.
 	And(T) T
 }

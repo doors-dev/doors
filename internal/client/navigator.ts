@@ -40,8 +40,10 @@ export type LinkData = {
 	settings: any
 }
 
+const linkState = Symbol()
+
 export type LinkElement = Element & {
-	_d0r: LinkData
+	[linkState]: LinkData
 }
 
 
@@ -165,7 +167,7 @@ export class Navigator {
 
 	private newLink(el: Element, settings: any): LinkElement {
 		const linkEl = el as LinkElement
-		linkEl._d0r = {
+		linkEl[linkState] = {
 			url: urls.new(el.getAttribute("href")!),
 			settings: settings,
 			state: {
@@ -176,7 +178,7 @@ export class Navigator {
 		return linkEl
 	}
 	private activateLink(el: LinkElement, newUrl: URL): LinkElement {
-		const data = el._d0r
+		const data = el[linkState]
 		const [pathMatchTuple, queryMatchers, matchFragment, indicators]: any = data.settings
 		if (data.state.url && urls.equal(data.state.url, newUrl, matchFragment)) {
 			return el

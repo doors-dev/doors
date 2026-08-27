@@ -15,23 +15,28 @@
 import { rootId } from './params'
 import { doorId } from './lib'
 
-import { attach as attachCaptures, HookErr } from "./capture"
+import { attach as attachCaptures } from "./capture"
+import { attach as attachEmitter } from "./emitter"
+import { HookErr } from "./hook_err"
 import navigator from "./navigator"
-import { attach as attachDyna } from "./dyna"
+import { attach as attachSetter } from "./setter"
 
 type Handler = ((arg: any) => any) | ((arg: any, err: HookErr) => any)
 type Closure = () => void | Promise<void>
 
-
 const attr = "data-d0r"
-const attrIndexed = "data-d0"
 const tag = "d0-r"
 
+const containerSheet = new CSSStyleSheet()
+containerSheet.replaceSync(`${tag}{display:contents}`)
+document.adoptedStyleSheets.push(containerSheet)
+
+const doorState = Symbol()
+
 type DoorElement = Element & {
-	_d0r: {
+	[doorState]: {
 		id: number
 		parent: number
-		impostor: boolean
 	}
 }
 
@@ -79,20 +84,21 @@ class Doors {
 	private handlers = new Map<number, Map<string, Handler>>()
 	private onClear = new Map<number, Array<Closure>>()
 	private onRemove = new Map<number, Array<Closure>>()
-	private impostors = new Map<number, Set<number>>()
+	private children = new Map<number, Set<number>>()
 
-	private scanImpostors(parent: Element | Document | DocumentFragment) {
-		for (const element of parent.querySelectorAll<Element>(`[${attr}]:not([${attrIndexed}="indexed"])`)) {
-			const id = element.getAttribute(attr)
-			element.setAttribute(attrIndexed, "indexed")
-			this.register(element, { impostorId: id! })
+	private scanDoors(parent: Element | Document | DocumentFragment) {
+		for (const element of parent.querySelectorAll<Element>(`${tag}, [${attr}]`)) {
+			if (doorState in element) {
+				continue
+			}
+			this.register(element)
 		}
 	}
 
 	private clear(id: number) {
 		this.handlers.delete(id)
 		this.clearClosures(id)
-		this.clearImpostors(id)
+		this.clearChildren(id)
 	}
 
 	private clearClosures(id: number) {
@@ -104,62 +110,57 @@ class Doors {
 		closures.forEach(c => execute(c))
 	}
 
-	private clearImpostors(id: number) {
-		const impostors = this.impostors.get(id)
-		if (!impostors) {
+	private clearChildren(id: number) {
+		const children = this.children.get(id)
+		if (!children) {
 			return
 		}
-		for (const impostor of impostors) {
-			const element = this.elements.get(impostor)!
+		this.children.delete(id)
+		for (const child of children) {
+			const element = this.elements.get(child)!
 			this.unregister(element)
 		}
 	}
 
-	register(element: Element, info: { impostorId?: string }) {
-		const impostor = info.impostorId !== undefined;
-
+	register(element: Element) {
 		const door = element as DoorElement
-		const id = impostor ? Number(info.impostorId) : doorId(element.id);
-		door._d0r = {
-			id: id,
+		door[doorState] = {
+			id: getSelfId(element)!,
 			parent: getParentId(element),
-			impostor: impostor,
 		}
-		this.elements.set(id, door)
-		if (!impostor) {
-			return
-		}
-		let siblings = this.impostors.get(door._d0r.parent)
+		this.elements.set(door[doorState].id, door)
+		let siblings = this.children.get(door[doorState].parent)
 		if (!siblings) {
 			siblings = new Set()
-			this.impostors.set(door._d0r.parent, siblings)
+			this.children.set(door[doorState].parent, siblings)
 		}
-		siblings.add(id)
+		siblings.add(door[doorState].id)
 	}
 
 	unregister(element: Element): void {
 		const door = element as DoorElement
-		this.elements.delete(door._d0r.id)
-		this.clear(door._d0r.id)
-		const onRemove = this.onRemove.get(door._d0r.id)
+		this.elements.delete(door[doorState].id)
+		this.clear(door[doorState].id)
+		const onRemove = this.onRemove.get(door[doorState].id)
 		if (onRemove !== undefined) {
-			this.onRemove.delete(door._d0r.id)
+			this.onRemove.delete(door[doorState].id)
 			onRemove.forEach(c => execute(c))
 		}
-		if (!door._d0r.impostor) {
+		const siblings = this.children.get(door[doorState].parent)
+		if (!siblings) {
 			return
 		}
-		const siblings = this.impostors.get(door._d0r.parent)!
-		siblings.delete(door._d0r.id)
+		siblings.delete(door[doorState].id)
 		if (siblings.size == 0) {
-			this.impostors.delete(door._d0r.parent)
+			this.children.delete(door[doorState].parent)
 		}
 	}
 
 	scan(parent: Element | Document | DocumentFragment) {
-		this.scanImpostors(parent)
+		this.scanDoors(parent)
+		attachEmitter(parent)
 		attachCaptures(parent)
-		attachDyna(parent)
+		attachSetter(parent)
 		navigator.scan(parent)
 	}
 
@@ -168,7 +169,7 @@ class Doors {
 		if (!door) {
 			throw new Error(`door ${id} not found`)
 		}
-		this.clear(door._d0r.id)
+		this.clear(door[doorState].id)
 
 		const range = document.createRange()
 		range.selectNodeContents(door)
@@ -183,15 +184,21 @@ class Doors {
 		if (!door) {
 			throw new Error(`door ${id} not found`)
 		}
-		if (door._d0r.impostor) {
-			this.unregister(door)
-		}
+		this.unregister(door)
 		const range = document.createRange()
 		range.selectNode(door)
 		range.deleteContents()
 		const fragment = range.createContextualFragment(content)
 		this.scan(fragment)
 		range.insertNode(fragment)
+	}
+
+	freeze(id: number) {
+		const door = this.elements.get(id)
+		if (!door) {
+			throw new Error(`door ${id} not found`)
+		}
+		this.unregister(door)
 	}
 
 	on(
@@ -211,22 +218,19 @@ class Doors {
 		handlers.set(name, handler)
 	}
 
-	onUnmount(element: Element, handler: () => void | Promise<void>): void {
+	onUnmount(element: Element, handler: Closure): void {
 		let id = getSelfId(element)
-		if (id !== undefined) {
-			if (!this.onRemove.has(id)) {
-				this.onRemove.set(id, [handler])
-				return
-			}
-			this.onRemove.get(id)!.push(handler)
+		let index = this.onRemove
+		if (id === undefined) {
+			id = getParentId(element)
+			index = this.onClear
+		}
+		const closures = index.get(id)
+		if (!closures) {
+			index.set(id, [handler])
 			return
 		}
-		id = getParentId(element)
-		if (!this.onClear.has(id)) {
-			this.onClear.set(id, [handler])
-			return
-		}
-		this.onClear.get(id)!.push(handler)
+		closures.push(handler)
 	}
 
 	getHandler(id: number, name: string): Handler | undefined {
@@ -242,25 +246,11 @@ class Doors {
 			console.error(`unexpected behavior: door [${id}] not found for call [${name}]`)
 			return undefined
 		}
-		return this.getHandler(element._d0r.parent, name)
+		return this.getHandler(element[doorState].parent, name)
 	}
 
 }
 
 const doors = new Doors()
-
-customElements.define(tag,
-	class extends HTMLElement {
-		constructor() {
-			super()
-		}
-		connectedCallback() {
-			doors.register(this, {})
-		}
-		disconnectedCallback() {
-			doors.unregister(this)
-		}
-	}
-)
 
 export default doors

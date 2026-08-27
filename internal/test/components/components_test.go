@@ -104,6 +104,16 @@ func TestActionHelpers(t *testing.T) {
 	test.ClickNow(t, page, "#raw-assign")
 	<-time.After(300 * time.Millisecond)
 	test.TestContent(t, page, "title", "s")
+
+	page.NavigateBack()
+	<-time.After(300 * time.Millisecond)
+	histLen := page.MustEval("() => history.length").Num()
+	test.ClickNow(t, page, "#raw-replace")
+	<-time.After(300 * time.Millisecond)
+	test.TestContent(t, page, "title", "s")
+	if got := page.MustEval("() => history.length").Num(); got != histLen {
+		t.Fatalf("expected RawReplace to keep history length %v, got %v", histLen, got)
+	}
 }
 
 func proxyPage(t *testing.T) *rod.Page {

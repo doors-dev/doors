@@ -13,12 +13,10 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-// Class returns a Classes value from one or more class strings.
+// Class returns a [Classes] value holding the given class names.
 //
-// Each argument is split with strings.Fields, so Class("a", "b c") and
-// Class("a b c") produce the same classes. The returned value can be used as a
-// class attribute value, as an attribute modifier, or as a proxy before an
-// element/component.
+// Each argument is split on whitespace, so Class("a", "b c") and
+// Class("a b c") produce the same classes.
 func Class(classes ...string) Classes {
 	c := Classes{}
 	for _, class := range classes {
@@ -29,18 +27,17 @@ func Class(classes ...string) Classes {
 	return c
 }
 
-// Classes describes class names to add and filter out.
+// Classes is an immutable list of class names, plus names to omit from output.
 //
-// Classes values are immutable: Add, Remove, Filter, Join, and Clone return a
-// new value and leave the receiver unchanged.
+// Use it as a class attribute value, as an attribute modifier, or as a proxy
+// before an element or component. Every operation returns a new value and
+// leaves the receiver unchanged.
 type Classes struct {
 	add    []string
 	filter []string
 }
 
-// Add returns a new Classes value with classes appended.
-//
-// Arguments are split like Class, so Add("a", "b c") adds three classes.
+// Add returns a new value with classes appended, split like [Class].
 func (c Classes) Add(classes ...string) Classes {
 	c = c.Clone()
 	for _, class := range classes {
@@ -51,12 +48,10 @@ func (c Classes) Add(classes ...string) Classes {
 	return c
 }
 
-// Remove returns a new Classes value with matching currently-added classes
-// removed.
+// Remove returns a new value without the listed classes.
 //
-// Removed classes are not remembered: the same class can be added again later.
-// Use Filter when matching classes should be omitted from final output even if
-// they are added later or come from a joined Classes value.
+// Unlike [Classes.Filter], the names are not remembered, so the same class can
+// be added again afterwards.
 func (c Classes) Remove(classes ...string) Classes {
 	add := make([]string, 0, len(c.add))
 main:
@@ -77,10 +72,10 @@ main:
 	}
 }
 
-// Filter returns a new Classes value that omits matching classes from output.
+// Filter returns a new value that omits matching classes from output.
 //
-// Removed classes are filtered regardless of whether they were added before or
-// after Filter was called.
+// Unlike [Classes.Remove], the names stay omitted even when added later or
+// joined in from another value.
 func (c Classes) Filter(classes ...string) Classes {
 	c = c.Clone()
 	for _, removeClass := range classes {
@@ -91,10 +86,10 @@ func (c Classes) Filter(classes ...string) Classes {
 	return c
 }
 
-// Join returns a new Classes value that combines several class modifiers.
+// Join returns a new value that merges classes into the current one.
 //
-// Both added and filtered class names are preserved, so filters from joined
-// values still affect the final rendered class list.
+// Names to omit are merged too, so a filter from any joined value applies to
+// the whole result.
 func (c Classes) Join(classes ...Classes) Classes {
 	c = c.Clone()
 	for _, classes := range classes {
@@ -126,7 +121,7 @@ func (c Classes) Mutate(name string, prev any) any {
 	return c
 }
 
-// Clone returns an independent copy of c.
+// Clone returns an independent copy.
 func (c Classes) Clone() Classes {
 	c.add = slices.Clone(c.add)
 	c.filter = slices.Clone(c.filter)
@@ -142,7 +137,7 @@ func (c Classes) Proxy(cur gox.Cursor, el gox.Elem) error {
 	return ProxyMod(c).Proxy(cur, el)
 }
 
-// String returns the class list as it would be rendered in a class attribute.
+// String returns the class list as it is rendered in a class attribute.
 func (c Classes) String() string {
 	buf := bytes.Buffer{}
 	if err := c.Output(&buf); err != nil {

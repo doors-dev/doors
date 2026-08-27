@@ -29,16 +29,12 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
-
-type testComp struct{}
-
-func (testComp) Main() gox.Elem { return nil }
 
 type titleInstance struct {
 	title      string
@@ -52,12 +48,12 @@ type titleInstance struct {
 	location   beam.Source[path.Location]
 }
 
-func (t *titleInstance) CallCtx(context.Context, action.Action, func(json.RawMessage, error), func(), action.CallParams) context.CancelFunc {
+func (t *titleInstance) CallCtx(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) context.CancelFunc {
 	return func() {}
 }
-func (t *titleInstance) CallCheck(func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (t *titleInstance) CallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
-func (t *titleInstance) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (t *titleInstance) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (t *titleInstance) CSPCollector() common.CSPCollector {
 	if t.csp != nil {
@@ -116,6 +112,10 @@ func (a titleApp) Draining() bool {
 	return false
 }
 
+func (a titleApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
+	return func(next gox.Printer) gox.Printer { return next }
+}
+
 type titleSession struct {
 	app titleApp
 }
@@ -140,9 +140,8 @@ func (titleDoor) Cinema() beam.Cinema       { return nil }
 func (titleDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, func(context.Context)) (core.Hook, bool) {
 	return core.Hook{}, false
 }
-func (titleDoor) ID() uint64             { return 7 }
-func (titleDoor) Reload(context.Context) {}
-func (titleDoor) XReload(context.Context) <-chan error {
+func (titleDoor) ID() uint64 { return 7 }
+func (titleDoor) Reload(context.Context) <-chan error {
 	ch := make(chan error)
 	close(ch)
 	return ch
@@ -150,9 +149,14 @@ func (titleDoor) XReload(context.Context) <-chan error {
 func (titleDoor) RootCore() core.Core {
 	return nil
 }
-func (titleDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (titleDoor) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
-func (titleDoor) Clean(func()) {}
+func (titleDoor) CleanFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
+func (titleDoor) ReadyFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
 type testMetaUpdate struct {
 	name     string
@@ -189,9 +193,8 @@ func (d *hookDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http
 	return core.Hook{HookID: d.nextHook}, true
 }
 
-func (d *hookDoor) ID() uint64             { return d.id }
-func (d *hookDoor) Reload(context.Context) {}
-func (d *hookDoor) XReload(context.Context) <-chan error {
+func (d *hookDoor) ID() uint64 { return d.id }
+func (d *hookDoor) Reload(context.Context) <-chan error {
 	ch := make(chan error)
 	close(ch)
 	return ch
@@ -199,9 +202,14 @@ func (d *hookDoor) XReload(context.Context) <-chan error {
 func (d *hookDoor) RootCore() core.Core {
 	return nil
 }
-func (d *hookDoor) UserCall(context.Context, func() bool, action.Action, func(json.RawMessage, error), func(), action.CallParams) {
+func (d *hookDoor) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
-func (d *hookDoor) Clean(func()) {}
+func (d *hookDoor) CleanFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
+func (d *hookDoor) ReadyFrame() shredder.SimpleFrame {
+	return &shredder.ValveFrame{}
+}
 
 func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstance, *hookDoor, *testModuleRegistry) {
 	t.Helper()
@@ -248,13 +256,13 @@ type recordingPrinter struct {
 }
 
 func (p *recordingPrinter) Send(job gox.Job) error {
-	if open, ok := job.(*gox.JobHeadOpen); ok {
+	if open, ok := job.(*gox.JobOpen); ok {
 		p.opens = append(p.opens, recordedOpen{
 			tag:   open.Tag,
 			attrs: open.Attrs.Clone(),
 		})
 	}
-	if _, ok := job.(*gox.JobHeadClose); ok {
+	if _, ok := job.(*gox.JobClose); ok {
 		p.closes++
 	}
 	if raw, ok := job.(*gox.JobRaw); ok {
@@ -339,8 +347,8 @@ func TestResourceEntryHelpers(t *testing.T) {
 func TestResourceDump(t *testing.T) {
 	var out bytes.Buffer
 	r := &embeddedResource{
-		openJob:  gox.NewJobHeadOpen(context.Background(), 1, gox.KindRegular, "script", gox.NewAttrs()),
-		closeJob: gox.NewJobHeadClose(context.Background(), 1, gox.KindRegular, "script"),
+		openJob:  gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "script", gox.NewAttrs()),
+		closeJob: gox.NewJobClose(context.Background(), 1, gox.KindRegular, "script"),
 	}
 	if err := r.dump(defaultPrinter{&out}); err != nil {
 		t.Fatal(err)
@@ -353,27 +361,20 @@ func TestResourceDump(t *testing.T) {
 func TestProcessTitleErrors(t *testing.T) {
 	rp := &resourcePrinter{}
 	tit := &title{
-		openJob: gox.NewJobHeadOpen(context.Background(), 10, gox.KindRegular, "title", gox.NewAttrs()),
+		openJob: gox.NewJobOpen(context.Background(), 10, gox.KindRegular, "title", gox.NewAttrs()),
 	}
 
-	if err := rp.processTitle(gox.NewJobHeadOpen(context.Background(), 11, gox.KindRegular, "span", gox.NewAttrs()), tit); err == nil || !strings.Contains(err.Error(), "cannot contain nested tags") {
+	if err := rp.processTitle(gox.NewJobOpen(context.Background(), 11, gox.KindRegular, "span", gox.NewAttrs()), tit); err == nil || !strings.Contains(err.Error(), "cannot contain nested tags") {
 		t.Fatalf("unexpected nested-title error: %v", err)
 	}
-
-	defer func() {
-		if recover() == nil {
-			t.Fatal("processTitle should panic on components")
-		}
-	}()
-	_ = rp.processTitle(gox.NewJobComp(context.Background(), testComp{}), tit)
 }
 
 func TestProcessTitleWrongClose(t *testing.T) {
 	rp := &resourcePrinter{}
 	tit := &title{
-		openJob: gox.NewJobHeadOpen(context.Background(), 10, gox.KindRegular, "title", gox.NewAttrs()),
+		openJob: gox.NewJobOpen(context.Background(), 10, gox.KindRegular, "title", gox.NewAttrs()),
 	}
-	err := rp.processTitle(gox.NewJobHeadClose(context.Background(), 11, gox.KindRegular, "title"), tit)
+	err := rp.processTitle(gox.NewJobClose(context.Background(), 11, gox.KindRegular, "title"), tit)
 	if err == nil || !strings.Contains(err.Error(), "does not match the open tag") {
 		t.Fatalf("wrong close error = %v", err)
 	}
@@ -383,7 +384,7 @@ func TestProcessTitleSuccess(t *testing.T) {
 	inst := &titleInstance{}
 	inst.session = &titleSession{app: titleApp{conf: &inst.conf}}
 	ctx := context.WithValue(context.Background(), common.KeyCore, core.NewCore(titleDoor{inst: inst}))
-	open := gox.NewJobHeadOpen(ctx, 10, gox.KindRegular, "title", gox.NewAttrs())
+	open := gox.NewJobOpen(ctx, 10, gox.KindRegular, "title", gox.NewAttrs())
 	open.Attrs.Get("data-id").Set("hero")
 
 	rp := &resourcePrinter{}
@@ -392,7 +393,7 @@ func TestProcessTitleSuccess(t *testing.T) {
 	if err := rp.processTitle(gox.NewJobText(ctx, "Hello"), tit); err != nil {
 		t.Fatal(err)
 	}
-	if err := rp.processTitle(gox.NewJobHeadClose(ctx, 10, gox.KindRegular, "title"), tit); err != nil {
+	if err := rp.processTitle(gox.NewJobClose(ctx, 10, gox.KindRegular, "title"), tit); err != nil {
 		t.Fatal(err)
 	}
 	if inst.title != "Hello" {
@@ -414,7 +415,7 @@ func TestProcessMetaBranches(t *testing.T) {
 	ctx, inst, _, _ := newPrinterCore(t, true)
 	rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
 
-	err := rp.processMeta(gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "meta", gox.NewAttrs()))
+	err := rp.processMeta(gox.NewJobOpen(ctx, 1, gox.KindRegular, "meta", gox.NewAttrs()))
 	if err == nil || !strings.Contains(err.Error(), "must be a void element") {
 		t.Fatalf("non-void meta error = %v", err)
 	}
@@ -422,14 +423,14 @@ func TestProcessMetaBranches(t *testing.T) {
 	nameAttrs := gox.NewAttrs()
 	nameAttrs.Get("name").Set("description")
 	nameAttrs.Get("content").Set("hello")
-	if err := rp.processMeta(gox.NewJobHeadOpen(ctx, 2, gox.KindVoid, "meta", nameAttrs)); err != nil {
+	if err := rp.processMeta(gox.NewJobOpen(ctx, 2, gox.KindVoid, "meta", nameAttrs)); err != nil {
 		t.Fatal(err)
 	}
 
 	propertyAttrs := gox.NewAttrs()
 	propertyAttrs.Get("property").Set("og:title")
 	propertyAttrs.Get("content").Set("hero")
-	if err := rp.processMeta(gox.NewJobHeadOpen(ctx, 3, gox.KindVoid, "meta", propertyAttrs)); err != nil {
+	if err := rp.processMeta(gox.NewJobOpen(ctx, 3, gox.KindVoid, "meta", propertyAttrs)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -450,7 +451,7 @@ func TestProcessMetaBranches(t *testing.T) {
 	rp = &resourcePrinter{printer: defaultPrinter{&out}}
 	passAttrs := gox.NewAttrs()
 	passAttrs.Get("charset").Set("utf-8")
-	if err := rp.processMeta(gox.NewJobHeadOpen(ctx, 4, gox.KindVoid, "meta", passAttrs)); err != nil {
+	if err := rp.processMeta(gox.NewJobOpen(ctx, 4, gox.KindVoid, "meta", passAttrs)); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), `charset="utf-8"`) {
@@ -464,7 +465,7 @@ func TestScanGenericSrcBranches(t *testing.T) {
 	t.Run("passes through missing attrs", func(t *testing.T) {
 		var out bytes.Buffer
 		rp := &resourcePrinter{printer: defaultPrinter{&out}}
-		job := gox.NewJobHeadOpen(ctx, 1, gox.KindVoid, "img", gox.NewAttrs())
+		job := gox.NewJobOpen(ctx, 1, gox.KindVoid, "img", gox.NewAttrs())
 		if err := rp.scanGenericSrc(job); err != nil {
 			t.Fatal(err)
 		}
@@ -480,7 +481,7 @@ func TestScanGenericSrcBranches(t *testing.T) {
 		attrs.Get("src").Set(HandlerSimpleFunc(func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = w.Write([]byte("ok"))
 		}))
-		job := gox.NewJobHeadOpen(ctx, 4, gox.KindVoid, "script", attrs)
+		job := gox.NewJobOpen(ctx, 4, gox.KindVoid, "script", attrs)
 		if err := rp.scanGenericSrc(job); err != nil {
 			t.Fatal(err)
 		}
@@ -497,7 +498,7 @@ func TestScanGenericSrcBranches(t *testing.T) {
 		attrs.Get("cache").Set(true)
 		attrs.Get("type").Set("text/plain")
 		attrs.Get("name").Set("asset.txt")
-		job := gox.NewJobHeadOpen(ctx, 5, gox.KindVoid, "img", attrs)
+		job := gox.NewJobOpen(ctx, 5, gox.KindVoid, "img", attrs)
 		if err := rp.scanGenericSrc(job); err != nil {
 			t.Fatal(err)
 		}
@@ -512,7 +513,7 @@ func TestScanGenericSrcBranches(t *testing.T) {
 		rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
 		attrs := gox.NewAttrs()
 		attrs.Get("src").Set(SourceString("hello"))
-		err := rp.scanGenericSrc(gox.NewJobHeadOpen(failCtx, 6, gox.KindVoid, "iframe", attrs))
+		err := rp.scanGenericSrc(gox.NewJobOpen(failCtx, 6, gox.KindVoid, "iframe", attrs))
 		if err != context.Canceled {
 			t.Fatalf("expected context canceled, got %v", err)
 		}
@@ -528,7 +529,7 @@ func TestPrepareLinkStyleBranches(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("rel").Set("stylesheet")
 		attrs.Get("href").Set(SourceExternal("https://cdn.example/app.css"))
-		if err := rp.prepareLinkStyle(gox.NewJobHeadOpen(ctx, 3, gox.KindVoid, "link", attrs)); err != nil {
+		if err := rp.prepareLinkStyle(gox.NewJobOpen(ctx, 3, gox.KindVoid, "link", attrs)); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(out.String(), `https://cdn.example/app.css`) {
@@ -550,7 +551,7 @@ func TestPrepareScriptAndSendBranches(t *testing.T) {
 	attrs.Get("name").Set("prepared-module.js")
 	prepareRecorder := &recordingPrinter{}
 	rp := &resourcePrinter{printer: prepareRecorder}
-	if err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "script", attrs)); err != nil {
+	if err := rp.prepareScript(gox.NewJobOpen(ctx, 1, gox.KindRegular, "script", attrs)); err != nil {
 		t.Fatal(err)
 	}
 	if len(prepareRecorder.opens) != 1 {
@@ -599,13 +600,13 @@ func TestPrepareScriptAndSendBranches(t *testing.T) {
 	printer := NewResourcePrinter(sendRecorder)
 	inlineAttrs := gox.NewAttrs()
 	inlineAttrs.Get("name").Set("embedded.js")
-	if err := printer.Send(gox.NewJobHeadOpen(ctx, 2, gox.KindRegular, "script", inlineAttrs)); err != nil {
+	if err := printer.Send(gox.NewJobOpen(ctx, 2, gox.KindRegular, "script", inlineAttrs)); err != nil {
 		t.Fatal(err)
 	}
 	if err := printer.Send(gox.NewJobRaw(ctx, `window.__embedded = "ok"`)); err != nil {
 		t.Fatal(err)
 	}
-	if err := printer.Send(gox.NewJobHeadClose(ctx, 2, gox.KindRegular, "script")); err != nil {
+	if err := printer.Send(gox.NewJobClose(ctx, 2, gox.KindRegular, "script")); err != nil {
 		t.Fatal(err)
 	}
 	if len(sendRecorder.opens) != 1 || sendRecorder.closes != 1 {
@@ -656,7 +657,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("bundle").Set(true)
 		attrs.Get("inline").Set(true)
-		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 2, gox.KindRegular, "script", attrs))
+		err := rp.prepareScript(gox.NewJobOpen(ctx, 2, gox.KindRegular, "script", attrs))
 		if err == nil || !strings.Contains(err.Error(), "only one of raw, inline, or bundle") {
 			t.Fatalf("unexpected script output error: %v", err)
 		}
@@ -665,7 +666,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 	t.Run("inline bundle script is rejected", func(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("bundle").Set(true)
-		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 3, gox.KindRegular, "script", attrs))
+		err := rp.prepareScript(gox.NewJobOpen(ctx, 3, gox.KindRegular, "script", attrs))
 		if err == nil || !strings.Contains(err.Error(), "cannot be bundled") {
 			t.Fatalf("unexpected inline bundle error: %v", err)
 		}
@@ -674,7 +675,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 	t.Run("inline module is rejected", func(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("type").Set("module")
-		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 4, gox.KindRegular, "script", attrs))
+		err := rp.prepareScript(gox.NewJobOpen(ctx, 4, gox.KindRegular, "script", attrs))
 		if err == nil || !strings.Contains(err.Error(), "do not support modules") {
 			t.Fatalf("unexpected inline module error: %v", err)
 		}
@@ -683,7 +684,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 	t.Run("inline typescript is rejected", func(t *testing.T) {
 		attrs := gox.NewAttrs()
 		attrs.Get("type").Set("text/typescript")
-		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 5, gox.KindRegular, "script", attrs))
+		err := rp.prepareScript(gox.NewJobOpen(ctx, 5, gox.KindRegular, "script", attrs))
 		if err == nil || !strings.Contains(err.Error(), "do not support TypeScript") {
 			t.Fatalf("unexpected inline ts error: %v", err)
 		}
@@ -694,7 +695,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		attrs.Get("src").Set(SourceString("let x: number = 1"))
 		attrs.Get("raw").Set(true)
 		attrs.Get("type").Set("text/typescript")
-		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 7, gox.KindRegular, "script", attrs))
+		err := rp.prepareScript(gox.NewJobOpen(ctx, 7, gox.KindRegular, "script", attrs))
 		if err == nil || !strings.Contains(err.Error(), "raw output does not support TypeScript") {
 			t.Fatalf("unexpected raw ts error: %v", err)
 		}
@@ -704,7 +705,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		bundleAttrs := gox.NewAttrs()
 		bundleAttrs.Get("src").Set("/plain.js")
 		bundleAttrs.Get("bundle").Set(true)
-		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 8, gox.KindRegular, "script", bundleAttrs))
+		err := rp.prepareScript(gox.NewJobOpen(ctx, 8, gox.KindRegular, "script", bundleAttrs))
 		if err == nil || !strings.Contains(err.Error(), "only support raw output") {
 			t.Fatalf("unexpected regular src bundle error: %v", err)
 		}
@@ -712,7 +713,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		inlineAttrs := gox.NewAttrs()
 		inlineAttrs.Get("src").Set("/plain.js")
 		inlineAttrs.Get("inline").Set(true)
-		err = rp.prepareScript(gox.NewJobHeadOpen(ctx, 9, gox.KindRegular, "script", inlineAttrs))
+		err = rp.prepareScript(gox.NewJobOpen(ctx, 9, gox.KindRegular, "script", inlineAttrs))
 		if err == nil || !strings.Contains(err.Error(), "only support raw output") {
 			t.Fatalf("unexpected regular src inline error: %v", err)
 		}
@@ -722,7 +723,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		externalAttrs := gox.NewAttrs()
 		externalAttrs.Get("src").Set(SourceExternal("https://cdn.example/app.js"))
 		externalAttrs.Get("inline").Set(true)
-		err := rp.prepareScript(gox.NewJobHeadOpen(ctx, 10, gox.KindRegular, "script", externalAttrs))
+		err := rp.prepareScript(gox.NewJobOpen(ctx, 10, gox.KindRegular, "script", externalAttrs))
 		if err == nil || !strings.Contains(err.Error(), "only support raw output") {
 			t.Fatalf("unexpected external inline error: %v", err)
 		}
@@ -732,7 +733,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		unknownAttrs.Get("bundle").Set(true)
 		var out bytes.Buffer
 		unknownRP := &resourcePrinter{printer: defaultPrinter{&out}}
-		err = unknownRP.prepareScript(gox.NewJobHeadOpen(ctx, 11, gox.KindRegular, "script", unknownAttrs))
+		err = unknownRP.prepareScript(gox.NewJobOpen(ctx, 11, gox.KindRegular, "script", unknownAttrs))
 		if err != nil {
 			t.Fatalf("expected unknown script source to pass through, got %v", err)
 		}
@@ -742,7 +743,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		unknownHref.Get("bundle").Set(true)
 		out.Reset()
 		unknownRP = &resourcePrinter{printer: defaultPrinter{&out}}
-		err = unknownRP.prepareLinkModule(gox.NewJobHeadOpen(ctx, 12, gox.KindVoid, "link", unknownHref))
+		err = unknownRP.prepareLinkModule(gox.NewJobOpen(ctx, 12, gox.KindVoid, "link", unknownHref))
 		if err != nil {
 			t.Fatalf("expected unknown modulepreload href to pass through, got %v", err)
 		}
@@ -814,7 +815,7 @@ func TestResourcePropsUnexpectedSourceFallback(t *testing.T) {
 			output: scriptDefault,
 		}
 
-		err := props.Submit(gox.NewJobHeadOpen(ctx, 13, gox.KindRegular, "script", attrs), &resourcePrinter{printer: recorder})
+		err := props.Submit(gox.NewJobOpen(ctx, 13, gox.KindRegular, "script", attrs), &resourcePrinter{printer: recorder})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -842,7 +843,7 @@ func TestResourcePropsUnexpectedSourceFallback(t *testing.T) {
 			rel:    true,
 		}
 
-		err := props.Submit(gox.NewJobHeadOpen(ctx, 14, gox.KindVoid, "link", attrs), &resourcePrinter{printer: recorder})
+		err := props.Submit(gox.NewJobOpen(ctx, 14, gox.KindVoid, "link", attrs), &resourcePrinter{printer: recorder})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -859,10 +860,10 @@ func TestProcessResErrors(t *testing.T) {
 	ctx, _, _, _ := newPrinterCore(t, true)
 	rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
 	res := &embeddedResource{
-		openJob: gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "style", gox.NewAttrs()),
+		openJob: gox.NewJobOpen(ctx, 1, gox.KindRegular, "style", gox.NewAttrs()),
 		kind:    embeddedStyle,
 	}
-	if err := rp.processRes(gox.NewJobHeadClose(ctx, 2, gox.KindRegular, "style"), res); err == nil || !strings.Contains(err.Error(), "does not match the open tag") {
+	if err := rp.processRes(gox.NewJobClose(ctx, 2, gox.KindRegular, "style"), res); err == nil || !strings.Contains(err.Error(), "does not match the open tag") {
 		t.Fatalf("unexpected mismatch error: %v", err)
 	}
 	if err := rp.processRes(gox.NewJobText(ctx, "bad"), res); err == nil || !strings.Contains(err.Error(), "only text or byte jobs") {
@@ -876,8 +877,8 @@ func TestResourceRenderFallbackAndDumpError(t *testing.T) {
 
 		var scriptOut bytes.Buffer
 		script := &embeddedResource{
-			openJob:  gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "script", gox.NewAttrs()),
-			closeJob: gox.NewJobHeadClose(ctx, 1, gox.KindRegular, "script"),
+			openJob:  gox.NewJobOpen(ctx, 1, gox.KindRegular, "script", gox.NewAttrs()),
+			closeJob: gox.NewJobClose(ctx, 1, gox.KindRegular, "script"),
 			kind:     embeddedScript,
 			props:    &resourceProps{mode: resources.ModeHost},
 		}
@@ -890,8 +891,8 @@ func TestResourceRenderFallbackAndDumpError(t *testing.T) {
 
 		var styleOut bytes.Buffer
 		style := &embeddedResource{
-			openJob:  gox.NewJobHeadOpen(ctx, 2, gox.KindRegular, "style", gox.NewAttrs()),
-			closeJob: gox.NewJobHeadClose(ctx, 2, gox.KindRegular, "style"),
+			openJob:  gox.NewJobOpen(ctx, 2, gox.KindRegular, "style", gox.NewAttrs()),
+			closeJob: gox.NewJobClose(ctx, 2, gox.KindRegular, "style"),
 			kind:     embeddedStyle,
 			props:    &resourceProps{mode: resources.ModeHost},
 		}
@@ -906,8 +907,8 @@ func TestResourceRenderFallbackAndDumpError(t *testing.T) {
 	t.Run("dump returns printer error", func(t *testing.T) {
 		ctx, _, _, _ := newPrinterCore(t, true)
 		res := &embeddedResource{
-			openJob:  gox.NewJobHeadOpen(ctx, 3, gox.KindRegular, "script", gox.NewAttrs()),
-			closeJob: gox.NewJobHeadClose(ctx, 3, gox.KindRegular, "script"),
+			openJob:  gox.NewJobOpen(ctx, 3, gox.KindRegular, "script", gox.NewAttrs()),
+			closeJob: gox.NewJobClose(ctx, 3, gox.KindRegular, "script"),
 		}
 		printer := &failPrinter{fail: 2}
 		if err := res.dump(printer); err != context.Canceled {
@@ -921,7 +922,7 @@ func TestResourcePrinterScanAndModulePreloadBranches(t *testing.T) {
 
 	t.Run("scan captures title resource", func(t *testing.T) {
 		rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
-		if err := rp.scan(gox.NewJobHeadOpen(ctx, 1, gox.KindRegular, "title", gox.NewAttrs())); err != nil {
+		if err := rp.scan(gox.NewJobOpen(ctx, 1, gox.KindRegular, "title", gox.NewAttrs())); err != nil {
 			t.Fatal(err)
 		}
 		if _, ok := rp.resource.(*title); !ok {
@@ -934,7 +935,7 @@ func TestResourcePrinterScanAndModulePreloadBranches(t *testing.T) {
 		rp := &resourcePrinter{printer: defaultPrinter{&out}}
 		attrs := gox.NewAttrs()
 		attrs.Get("href").Set(SourceString("hi"))
-		if err := rp.scan(gox.NewJobHeadOpen(ctx, 2, gox.KindVoid, "link", attrs)); err != nil {
+		if err := rp.scan(gox.NewJobOpen(ctx, 2, gox.KindVoid, "link", attrs)); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(out.String(), `/h/instance/1`) {
@@ -951,11 +952,11 @@ func TestResourcePrinterScanAndModulePreloadBranches(t *testing.T) {
 		attrs.Get("specifier").Set("kept")
 		attrs.Get("data:mode").Set("fast")
 		attrs.Get("async").Set(true)
-		open := gox.NewJobHeadOpen(ctx, 5, gox.KindRegular, "script", attrs)
+		open := gox.NewJobOpen(ctx, 5, gox.KindRegular, "script", attrs)
 		if err := rp.Send(open); err != nil {
 			t.Fatal(err)
 		}
-		if err := rp.Send(gox.NewJobHeadClose(ctx, 5, gox.KindRegular, "script")); err != nil {
+		if err := rp.Send(gox.NewJobClose(ctx, 5, gox.KindRegular, "script")); err != nil {
 			t.Fatal(err)
 		}
 		got := out.String()
@@ -975,19 +976,19 @@ func plainAttrWithValue(value any) gox.Attr {
 	return attr
 }
 
-func (rp *resourcePrinter) prepareLinkStyle(open *gox.JobHeadOpen) error {
+func (rp *resourcePrinter) prepareLinkStyle(open *gox.JobOpen) error {
 	return rp.processProps(open, newStyleProps(true))
 }
 
-func (rp *resourcePrinter) prepareStyle(open *gox.JobHeadOpen) error {
+func (rp *resourcePrinter) prepareStyle(open *gox.JobOpen) error {
 	return rp.processProps(open, newStyleProps(false))
 }
 
-func (rp *resourcePrinter) prepareScript(open *gox.JobHeadOpen) error {
+func (rp *resourcePrinter) prepareScript(open *gox.JobOpen) error {
 	return rp.processProps(open, newScriptProps(false))
 }
 
-func (rp *resourcePrinter) prepareLinkModule(open *gox.JobHeadOpen) error {
+func (rp *resourcePrinter) prepareLinkModule(open *gox.JobOpen) error {
 	return rp.processProps(open, newScriptProps(true))
 }
 

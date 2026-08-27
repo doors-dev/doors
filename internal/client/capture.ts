@@ -13,12 +13,13 @@
 // limitations under the License.
 
 import action from "./calls";
-import { fetchOpt, fetchOptJson, fetchOptForm, date, FetchOpt, result } from "./lib";
+import { fetchOpt, fetchOptJson, fetchOptForm, date, result } from "./lib";
 import navigator from "./navigator";
 import { Fetch, NewFetch } from "./scope";
 import { decodePayload } from "./package";
 import { HookErr, hookErrKinds } from "./hook_err";
 import controller from "./controller";
+import { getTrigger } from "./trigger";
 
 // KeyMatch mirrors front.KeyMatch: a key + modifier constraints (0 any, 1 on, 2 off).
 interface KeyMatch {
@@ -134,13 +135,14 @@ export function capture(name: string, opt: any, arg: any, event: Event | undefin
 	if (!captureFunction) {
 		throw new HookErr(hookErrKinds.other, new Error("capture " + name + " not found"))
 	}
-	const [hookId, scopeQueue, indicator, before] = hook
+	const [hookId, scopeQueue, indicator, before, , timeout] = hook
 	const f = NewFetch({
 		hookId,
 		event: event,
 		scopeQueue,
 		indicator,
-		before
+		before,
+		timeout
 	})
 	return captureFunction(f, arg, opt)
 }
@@ -288,10 +290,17 @@ export function attach(parent: Element | DocumentFragment | Document) {
 		const capturesList = JSON.parse(element.getAttribute(attr)!)
 		element.setAttribute(attr, "applied")
 		for (const [event, name, opt, hook] of capturesList) {
-			const [hookId, scopeQueue, indicator, before, onErr] = hook
+			const [hookId, scopeQueue, indicator, before, onErr, timeout] = hook
 			element.addEventListener(event, async (e) => {
+				let p: Promise<Response>
 				try {
-					await capture(name, opt, e, e, [hookId, scopeQueue, indicator, before])
+					p = capture(name, opt, e, e, [hookId, scopeQueue, indicator, before, null, timeout])
+				} catch (error: any) {
+					p = Promise.reject(error)
+				}
+				getTrigger(e)?.promises.push(p)
+				try {
+					await p
 				} catch (error: any) {
 					if (!(error instanceof HookErr)) {
 						console.error("unknown error in capture:", error)
@@ -309,7 +318,16 @@ export function attach(parent: Element | DocumentFragment | Document) {
 						return
 					}
 					for (const [name, arg, payload] of onErr) {
-						const [_, e] = action(name, arg, { element, error: error, payload: await decodePayload(payload) })
+						const res = action(name, arg, { element, error: error, payload: await decodePayload(payload) })
+						if (res instanceof Promise) {
+							res.then(([_, e]) => {
+								if (e) {
+									console.error("error action " + name + " failed", e)
+								}
+							})
+							continue
+						}
+						const [_, e] = res
 						if (e) {
 							console.error("error action " + name + " failed", e)
 						}

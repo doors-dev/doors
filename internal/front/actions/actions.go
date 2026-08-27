@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package action
+package actions
 
 import (
 	"time"
@@ -92,32 +92,19 @@ func (a Emit) Invocation() Invocation {
 	}
 }
 
-type DynaSet struct {
+type AttrSet struct {
 	ID    uint64
-	Value string
+	Name  string
+	Value *string
 }
 
-func (a DynaSet) Log() string {
-	return "dyna_set"
+func (a AttrSet) Log() string {
+	return "attr_set"
 }
-func (a DynaSet) Invocation() Invocation {
+func (a AttrSet) Invocation() Invocation {
 	return Invocation{
-		name: "dyna_set",
-		arg:  []any{a.ID, a.Value},
-	}
-}
-
-type DynaRemove struct {
-	ID uint64
-}
-
-func (a DynaRemove) Log() string {
-	return "dyna_remove"
-}
-func (a DynaRemove) Invocation() Invocation {
-	return Invocation{
-		name: "dyna_remove",
-		arg:  []any{a.ID},
+		name: "attr_set",
+		arg:  []any{a.ID, a.Name, a.Value},
 	}
 }
 
@@ -168,6 +155,20 @@ func (a DoorUpdate) Invocation() Invocation {
 	}
 }
 
+type DoorFreeze struct {
+	ID uint64
+}
+
+func (a DoorFreeze) Log() string {
+	return "door_freeze"
+}
+func (a DoorFreeze) Invocation() Invocation {
+	return Invocation{
+		name: "door_freeze",
+		arg:  []any{a.ID},
+	}
+}
+
 type Indicate struct {
 	Duration time.Duration
 	Indicate any
@@ -180,6 +181,24 @@ func (a Indicate) Invocation() Invocation {
 	return Invocation{
 		name: "indicate",
 		arg:  []any{a.Duration.Milliseconds(), a.Indicate},
+	}
+}
+
+type EmitEvent struct {
+	EmitterID uint64
+	Type      string
+	Capture   string
+	Payload   Payload
+}
+
+func (a EmitEvent) Log() string {
+	return "emit_event"
+}
+func (a EmitEvent) Invocation() Invocation {
+	return Invocation{
+		name:    "emit_event",
+		arg:     []any{a.EmitterID, a.Type, a.Capture},
+		payload: a.Payload,
 	}
 }
 

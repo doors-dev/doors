@@ -23,28 +23,31 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+// Door renders content that can be updated, replaced, or removed after render.
 type Door struct {
 	node atomic.Pointer[node]
 }
 
-func (d *Door) proxy(p *pipe, el gox.Elem) {
+func (d *Door) proxy(p *pipe, el gox.Elem, ctx context.Context) {
 	task := nodeProxy{
 		pipe:   p,
 		buffer: p.branch(),
 		el:     el,
+		ctx:    ctx,
 	}
 	d.schedule(p.tracker.Context(), task, p.renderFrame)
 }
 
-func (d *Door) render(p *pipe) {
+func (d *Door) render(p *pipe, ctx context.Context) {
 	task := nodeRender{
 		pipe:   p,
 		buffer: p.branch(),
+		ctx:    ctx,
 	}
 	d.schedule(p.tracker.Context(), task, p.renderFrame)
 }
 
-func (d *Door) outer(ctx context.Context, outer gox.Elem) <-chan error {
+func (d *Door) outer(ctx context.Context, outer any) <-chan error {
 	ctex.LogCanceled(ctx, "Door outer")
 	userTask, ch := newUserTask(ctx)
 	task := nodeOuter{
@@ -87,6 +90,16 @@ func (d *Door) unmount(ctx context.Context) <-chan error {
 	return ch
 }
 
+func (d *Door) freeze(ctx context.Context) <-chan error {
+	ctex.LogCanceled(ctx, "Door freeze")
+	userTask, ch := newUserTask(ctx)
+	task := nodeFreeze{
+		userTask: userTask,
+	}
+	d.schedule(ctx, task, userTask.InitFrame())
+	return ch
+}
+
 func (d *Door) reload(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door reload")
 	userTask, ch := newUserTask(ctx)
@@ -103,7 +116,9 @@ func (d *Door) reloadSelf(ctx context.Context, prev *node) <-chan error {
 	task := nodeReload{
 		userTask: userTask,
 	}
-	if !d.atomicSchedule(ctx, prev, task, userTask.InitFrame()) {
+	frame := userTask.InitFrame()
+	if !d.atomicSchedule(ctx, prev, task, frame) {
+		frame.Release()
 		userTask.Cancel()
 	}
 	return ch
@@ -158,4 +173,4 @@ func (d *Door) atomicSchedule(ctx context.Context, prev *node, task nodeTask, ex
 }
 
 var _ gox.Proxy = &Door{}
-var _ gox.Editor = &Door{}
+var _ gox.Comp = &Door{}

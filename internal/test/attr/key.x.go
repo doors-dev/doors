@@ -1,4 +1,4 @@
-// Managed by GoX v0.2.2-0.20260623203124-026c8a3b945e+dirty
+// Managed by GoX v0.3.0
 
 //line key.gox:1
 package attr

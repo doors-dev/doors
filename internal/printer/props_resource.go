@@ -28,7 +28,7 @@ import (
 type props interface {
 	Read(gox.Attrs) (bool, error)
 	Validate() error
-	Submit(*gox.JobHeadOpen, *resourcePrinter) error
+	Submit(*gox.JobOpen, *resourcePrinter) error
 }
 
 func newResourceProps() props {
@@ -108,7 +108,7 @@ func (r *resourceProps) Validate() error {
 	return nil
 }
 
-func (r *resourceProps) Submit(openJob *gox.JobHeadOpen, p *resourcePrinter) error {
+func (r *resourceProps) Submit(openJob *gox.JobOpen, p *resourcePrinter) error {
 	r.setDefaultMode(resources.ModeNoCache)
 	sourceHandler := r.source.(SourceHandler)
 	sourceStatic, isStatic := r.source.(SourceStatic)

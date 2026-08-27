@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package action
+package actions
 
 import (
 	"bytes"
@@ -36,6 +36,10 @@ func gunzipBytes(t *testing.T, data []byte) []byte {
 		t.Fatal(err)
 	}
 	return buf.Bytes()
+}
+
+func strPtr(s string) *string {
+	return &s
 }
 
 func TestActionLogsAndInvocations(t *testing.T) {
@@ -90,19 +94,19 @@ func TestActionLogsAndInvocations(t *testing.T) {
 			expectedPayload: textPayload,
 		},
 		{
-			name:            "dyna set",
-			action:          DynaSet{ID: 7, Value: "value"},
-			log:             "dyna_set",
-			invocationName:  "dyna_set",
-			args:            []any{uint64(7), "value"},
+			name:            "attr set",
+			action:          AttrSet{ID: 7, Name: "data-x", Value: strPtr("value")},
+			log:             "attr_set",
+			invocationName:  "attr_set",
+			args:            []any{uint64(7), "data-x", strPtr("value")},
 			expectedPayload: NewNone(),
 		},
 		{
-			name:            "dyna remove",
-			action:          DynaRemove{ID: 8},
-			log:             "dyna_remove",
-			invocationName:  "dyna_remove",
-			args:            []any{uint64(8)},
+			name:            "attr remove",
+			action:          AttrSet{ID: 8, Name: "data-x"},
+			log:             "attr_set",
+			invocationName:  "attr_set",
+			args:            []any{uint64(8), "data-x", (*string)(nil)},
 			expectedPayload: NewNone(),
 		},
 		{
@@ -128,6 +132,14 @@ func TestActionLogsAndInvocations(t *testing.T) {
 			invocationName:  "door_update",
 			args:            []any{uint64(11)},
 			expectedPayload: textPayload,
+		},
+		{
+			name:            "door freeze",
+			action:          DoorFreeze{ID: 12},
+			log:             "door_freeze",
+			invocationName:  "door_freeze",
+			args:            []any{uint64(12)},
+			expectedPayload: NewNone(),
 		},
 		{
 			name:            "indicate",

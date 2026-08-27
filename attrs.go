@@ -17,7 +17,6 @@ package doors
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -39,21 +38,18 @@ func (j joinedAttrs) Modify(ctx context.Context, _ string, attrs gox.Attrs) erro
 	return nil
 }
 
-// Attr is a Doors attribute modifier that can be attached directly to an
-// element or applied through a proxy component.
+// Attr is an attribute modifier that can be attached to an element or applied
+// to the next element as a proxy.
 type Attr interface {
 	gox.Modify
 	gox.Proxy
 }
 
-// A combines one or more [Attr] values into a single modifier.
+// A combines attrs into a single [Attr], resolved once against ctx.
 //
-// Example:
-//
-//	attrs := doors.A(ctx,
-//		doors.AClick{On: onClick},
-//		doors.AData{Name: "user", Value: user},
-//	)
+// Call it during render, with the ctx of the surrounding component. Elements
+// sharing the result also share its handlers, so calls to one handler run one
+// at a time.
 func A(ctx context.Context, a ...Attr) Attr {
 	attrs := gox.NewAttrs()
 	for _, mod := range a {
@@ -76,7 +72,7 @@ func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	hook, ok := core.Door().RegisterHook(p.handle(core), nil)
 	if !ok {
-		return errors.New("door: hook registration failed")
+		return context.Canceled
 	}
 	front.AttrsAppendCapture(attrs, p.capture, front.Hook{
 		OnError:  intoActions(ctx, actionsOrNil(p.onError)),
@@ -88,9 +84,15 @@ func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 	return nil
 }
 
-func (p *eventAttr[E]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+func (p eventAttr[E]) handle(core core.Core) func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	on := p.on
+	limit := int64(core.App().Conf().ServerRequestBodyLimit)
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		r.Body = http.MaxBytesReader(w, r.Body, int64(core.App().Conf().ServerRequestBodyLimit))
+		if on == nil {
+			r.Body.Close()
+			return false
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		var e E
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&e)
@@ -99,7 +101,7 @@ func (p *eventAttr[E]) handle(core core.Core) func(ctx context.Context, w http.R
 			w.WriteHeader(400)
 			return false
 		}
-		return p.on(ctx, &eventRequest[E]{
+		return on(ctx, &eventRequest[E]{
 			request: request{
 				r:   r,
 				w:   w,

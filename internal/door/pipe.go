@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -66,10 +66,10 @@ func (p *pipe) Release() {
 	stack.Release()
 }
 
-func (p *pipe) Render(disableGzip bool) (printer.Payload, error) {
+func (p *pipe) Render(disableGzip bool, printerMiddleware func(next gox.Printer) gox.Printer) (printer.Payload, error) {
 	stack := p.Collect()
 	pr := printer.NewPayloadPrinter(disableGzip)
-	err := stack.Print(pr)
+	err := stack.Print(printerMiddleware(pr))
 	if err != nil {
 		pr.Release()
 		return nil, err
@@ -80,7 +80,10 @@ func (p *pipe) Render(disableGzip bool) (printer.Payload, error) {
 
 func (p *pipe) error(err error) {
 	p.buffer.Clear()
-	p.buffer.PushBack(gox.NewJobComp(context.Background(), newError(err, p.tracker.Instance().Logger())))
+	e := newError(err, p.tracker.Instance().Logger())
+	if err := e.Main().Print(context.Background(), (*pushBackPrinter)(p.buffer)); err != nil {
+		panic("error rendering error")
+	}
 }
 
 func (p *pipe) branch() *deque.Deque[any] {
@@ -107,7 +110,7 @@ func (p *pipe) Submit(f func(cur gox.Cursor) error) {
 	})
 }
 
-func (p *pipe) presend(open *gox.JobHeadOpen) error {
+func (p *pipe) presend(open *gox.JobOpen) error {
 	if err := open.Attrs.ApplyMods(open.Ctx, open.Tag); err != nil {
 		return err
 	}
@@ -125,21 +128,11 @@ func (p *pipe) Send(j gox.Job) error {
 	case renderer:
 		j.Render(p)
 		return nil
-	case *gox.JobHeadOpen:
+	case *gox.JobOpen:
 		if err := j.Attrs.ApplyMods(j.Ctx, j.Tag); err != nil {
 			return err
 		}
 		return p.printBack.Send(j)
-	case *gox.JobComp:
-		ctx := j.Ctx
-		comp := j.Comp
-		gox.Release(j)
-		el := comp.Main()
-		if el == nil {
-			return nil
-		}
-		cur := gox.NewCursor(ctx, p)
-		return el(cur)
 	default:
 		return p.printBack.Send(j)
 	}
@@ -205,8 +198,8 @@ func EmptyPayload() printer.Payload {
 
 type emptyPayload struct{}
 
-func (e emptyPayload) Payload() action.Payload {
-	return action.NewText("")
+func (e emptyPayload) Payload() actions.Payload {
+	return actions.NewText("")
 }
 
 func (e emptyPayload) Release() {}

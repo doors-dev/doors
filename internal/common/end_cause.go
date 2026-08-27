@@ -25,5 +25,13 @@ const (
 )
 
 func (c EndCause) Error() string {
+	switch c {
+	case EndCauseKilled:
+		return "instance killed"
+	case EndCauseSuspend:
+		return "instance suspended"
+	case EndCauseSyncError:
+		return "instance sync error"
+	}
 	return fmt.Sprint("cause: ", int(c))
 }

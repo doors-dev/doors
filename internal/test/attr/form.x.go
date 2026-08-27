@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.36
+// Managed by GoX v0.3.0
 
 //line form.gox:1
 package attr

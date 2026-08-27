@@ -146,12 +146,17 @@ elem Items() {
 }
 ```
 
-Values are rendered using the default formatter, with special handling for:
+Values are rendered using the default formatter, with special handling tried in this order:
 
-- `gox.Comp` and `gox.Elem`
+- `string` / `[]string`
+- `gox.Elem` / `[]gox.Elem`
+- `gox.Comp` / `[]gox.Comp`
+- `gox.Job` / `[]gox.Job` — advanced GoX primitives
+- `func(cur gox.Cursor) error` — rendered as `gox.Elem`
 - [templ.Component](https://github.com/a-h/templ)
-- `gox.Job` and `gox.Editor` — advanced GoX primitives
-- `[]string`, `[]gox.Comp`, `[]gox.Elem`, `[]any`, `[]gox.Job` — rendered item by item
+- `[]any` — each item dispatched the same way
+
+Slices are rendered item by item, and nil interface values render nothing.
 
 ## Conditions and Loops
 
@@ -187,7 +192,7 @@ A `for` loop is written in a similar way:
 Use parentheses to provide a Go expression as an attribute value:
 
 ```gox
-elem block(id: string) {
+elem block(id string) {
     <div id=(id)>Content</div>
 }
 ```
@@ -228,7 +233,7 @@ To compute a new attribute value from the previous one, or to take the attribute
 
 ```go
 type Mutate interface {
-    Mutate(attributeName string, attributeValue any) (new any)
+    Mutate(name string, value any) any
 }
 ```
 
@@ -318,7 +323,7 @@ A proxy must implement:
 
 ```gox
 type Proxy interface {
-    Proxy(cur gox.Cursor, elem gox.Elem) error
+    Proxy(cur gox.Cursor, el gox.Elem) error
 }
 ```
 
@@ -372,19 +377,15 @@ To output HTML verbatim, without escaping or template processing, wrap it in the
 
 This is recommended for large static fragments, especially inline SVG, to reduce rendering overhead.
 
-Alternatively, you can implement the `gox.Editor` interface over the underlying `gox.Cursor`, which controls the printing process:
+Alternatively, you can write a `gox.Elem` by hand over the underlying `gox.Cursor`, which controls the printing process:
 
 ```go
-type Editor interface {
-    Edit(cur gox.Cursor) error
-}
+type Elem func(cur gox.Cursor) error
 ```
-
-Or use the `gox.EditorFunc` helper:
 
 ```gox
 <div>
-    ~(gox.EditorFunc(func(cur gox.Cursor) error {
+    ~(gox.Elem(func(cur gox.Cursor) error {
         return cur.Raw("<span>Unescaped HTML</span>")
     }))
 </div>

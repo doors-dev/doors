@@ -49,7 +49,7 @@ type scriptProps struct {
 	resourceProps
 }
 
-func (s *scriptProps) Submit(job *gox.JobHeadOpen, p *resourcePrinter) error {
+func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 	s.cleanAttrs()
 	s.setDefaultMode(resources.ModeHost)
 	if s.sourceKind == sourceUnset && s.output == scriptRaw {

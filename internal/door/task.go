@@ -44,7 +44,7 @@ var _ nodeTask = nodeInner{}
 
 type nodeOuter struct {
 	*userTask
-	outer gox.Elem
+	outer any
 }
 
 func (t nodeOuter) apply(next *node, prev *node) {
@@ -95,6 +95,23 @@ func (t nodeUnmount) apply(next *node, prev *node) {
 
 var _ nodeTask = nodeUnmount{}
 
+type nodeFreeze struct {
+	*userTask
+}
+
+func (t nodeFreeze) apply(next *node, prev *node) {
+	next.mode = prev.mode
+	next.outer = prev.outer
+	next.content = prev.content
+	if !prev.isMounted() {
+		t.userTask.Accept()
+		return
+	}
+	trackerFreeze(prev.tracker, t.userTask)
+}
+
+var _ nodeTask = nodeFreeze{}
+
 type nodeStatic struct {
 	*userTask
 	content any
@@ -108,7 +125,7 @@ func (t nodeStatic) apply(next *node, prev *node) {
 		return
 	}
 	trackerShutdown(prev.tracker)
-	next.tracker = prev.tracker
+	next.staticTracker = trackerStaticInherit(prev.tracker)
 	next.sync(t.userTask)
 }
 
@@ -118,13 +135,14 @@ type nodeProxy struct {
 	el     gox.Elem
 	pipe   *pipe
 	buffer *deque.Deque[any]
+	ctx    context.Context
 }
 
 func (t nodeProxy) apply(next *node, prev *node) {
 	next.mode = modeBlend
 	next.outer = t.el
 	next.content = prev.content
-	next.tracker = trackerCreate(next, t.pipe)
+	next.tracker = trackerCreate(next, t.pipe, t.ctx)
 	if prev.isMounted() {
 		trackerRemove(prev.tracker, nil)
 	}
@@ -136,6 +154,7 @@ var _ nodeTask = nodeProxy{}
 type nodeRender struct {
 	pipe   *pipe
 	buffer *deque.Deque[any]
+	ctx    context.Context
 }
 
 func (t nodeRender) apply(next *node, prev *node) {
@@ -146,7 +165,9 @@ func (t nodeRender) apply(next *node, prev *node) {
 		trackerRemove(prev.tracker, nil)
 	}
 	if next.mode != modeStatic {
-		next.tracker = trackerCreate(next, t.pipe)
+		next.tracker = trackerCreate(next, t.pipe, t.ctx)
+	} else {
+		next.staticTracker = trackerStatic(t.pipe, t.ctx)
 	}
 	next.render(t.pipe, t.buffer)
 }

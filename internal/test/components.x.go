@@ -1,4 +1,4 @@
-// Managed by GoX v0.1.32
+// Managed by GoX v0.3.0
 
 //line components.gox:1
 package test

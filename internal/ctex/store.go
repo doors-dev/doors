@@ -21,7 +21,7 @@ import (
 // Store is goroutine-safe key-value storage.
 type Store = *store
 
-// NewStore creates an empty [Store].
+// NewStore returns an empty [Store].
 func NewStore() Store {
 	return &store{}
 }
@@ -30,7 +30,8 @@ type store struct {
 	storage sync.Map
 }
 
-// Load returns the value stored under key or nil if key is absent.
+// Load returns the value stored under key, or nil if key is absent. It blocks
+// while a concurrent [Store.Init] for the same key is still running.
 func (s Store) Load(key any) any {
 	v, ok := s.storage.Load(key)
 	if !ok {
@@ -46,7 +47,9 @@ func (s Store) Load(key any) any {
 	return v
 }
 
-// Save stores value under key and returns the previous value.
+// Save stores value under key and returns the previous value, or nil if key was
+// absent. It blocks while a concurrent [Store.Init] for the same key is still
+// running.
 func (s Store) Save(key any, value any) any {
 	v, ok := s.storage.Swap(key, value)
 	if !ok {
@@ -62,7 +65,9 @@ func (s Store) Save(key any, value any) any {
 	return v
 }
 
-// Remove deletes the value stored under key and returns it.
+// Remove deletes the value stored under key and returns it, or nil if key was
+// absent. It blocks while a concurrent [Store.Init] for the same key is still
+// running.
 func (s Store) Remove(key any) any {
 	v, ok := s.storage.LoadAndDelete(key)
 	if !ok {
@@ -78,7 +83,11 @@ func (s Store) Remove(key any) any {
 	return v
 }
 
-// Init returns the value stored under key, creating it with new if needed.
+// Init returns the value stored under key, creating it with new if key is
+// absent.
+//
+// Init is single-flight: concurrent callers for the same key block until new
+// returns. If new panics, the key is left absent.
 func (s Store) Init(key any, new func() any) any {
 beg:
 	stored, ok := s.storage.Load(key)

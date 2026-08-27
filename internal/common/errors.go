@@ -12,4 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package front
+package common
+
+import "errors"
+
+var (
+	ErrPathModel  = errors.New("invalid path model")
+	ErrPathEncode = errors.New("location encode failed")
+	ErrExecution  = errors.New("client execution failed")
+	ErrTerminated = errors.New("instance terminated")
+)

@@ -40,6 +40,7 @@ Common app options are:
 - `doors.WithIDCookie(...)` — sticky session cookie name
 - `doors.WithSessionTracker(...)` — observe session create/delete
 - `doors.WithErrorPage(...)` — custom error page
+- `doors.WithPrinter(...)` — observe or adjust emitted HTML, covered in [Printer Middleware](./22-printer-middleware.md)
 
 **Doors** fills in defaults automatically, so you usually set only the values you want to change.
 
@@ -93,7 +94,7 @@ The fields that matter most in practice are:
 - `InstanceTTL`: how long an inactive instance is kept. Default `40m`, and never below `2 * RequestTimeout`.
 - `InstanceGoroutineLimit`: max goroutines per page instance for runtime work. Default `8`.
 - `DisconnectHiddenTimer`: how long hidden pages stay connected before disconnecting. Default `InstanceTTL / 2`.
-- `RequestTimeout`: max duration of a client request or hook call. Default `30s`.
+- `RequestTimeout`: max duration of a client request or hook call. Default `30s`. `AHook`, `ARawHook`, `ASubmit`, and `ARawSubmit` can override it per hook or form with their own `RequestTimeout` field.
 - `ServerCacheControl`: cache header for **Doors**-served JS and CSS resources. Default `public, max-age=31536000, immutable`.
 - `ServerDisableGzip`: disables gzip for HTML, JS, and CSS.
 - `ServerSessionCookiePrefix`: optional prefix for the internal **Doors** session cookie name. Empty by default, so with `doors.WithID("blue")` the cookie is named `blue`. Set it explicitly when you want browser-enforced cookie prefix rules such as `__Host-` or `__Secure-`.
@@ -152,7 +153,7 @@ The field groups behave like this:
 | --- | --- | --- | --- |
 | `ScriptSources`, `StyleSources`, `ConnectSources` | keep only the **Doors** defaults | keep only the **Doors** defaults | append your values |
 | `DefaultSources` | use the built-in default | omit the directive | emit your values |
-| `FormActions`, `ObjectSources`, `FrameSources`, `FrameAcestors`, `BaseURIAllow` | default to `'none'` | omit the directive | emit your values |
+| `FormActions`, `ObjectSources`, `FrameSources`, `FrameAncestors`, `BaseURIAllow` | default to `'none'` | omit the directive | emit your values |
 | `ImgSources`, `FontSources`, `MediaSources`, `Sandbox`, `WorkerSources` | omit the directive | omit the directive | emit your values |
 
 `ReportTo` only emits the `report-to` directive. You still need to send the matching `Report-To` response header yourself.
@@ -213,7 +214,14 @@ func (tracker) Delete(id string) {
 doors.WithSessionTracker(tracker{})
 ```
 
-`Create` receives the new session ID and the request that triggered creation. The request must not be retained beyond the call, and its body must not be read.
+`Create` receives the new session ID and the request that triggered creation. Sessions are created lazily, so `Create` fires when a session is first actually used — for example, by a page render — not when the session cookie is set. The request must not be retained beyond the call, and its body must not be read.
+
+Repeat the option to install several trackers. They run one after another in registration order, on the goroutine that triggers the change, so none of them may block.
+
+```go
+doors.WithSessionTracker(audit{}),
+doors.WithSessionTracker(metrics{}),
+```
 
 ## Rules
 

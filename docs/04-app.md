@@ -82,7 +82,7 @@ See [Configuration](./21-configuration.md) for the full list.
 
 ## Middleware
 
-`app.Use(...)` adds standard `func(http.Handler) http.Handler` middleware in front of all handlers, including system endpoints under `/~/...`. It can short-circuit static files, set headers, gate access, log, or hand off to another mux before **Doors** handles a request. Middleware runs after internal session initiation.
+`app.Use(...)` adds standard `func(http.Handler) http.Handler` middleware in front of all handlers, including system endpoints under `/~/...`. It can short-circuit static files, set headers, gate access, log, or hand off to another mux before **Doors** handles a request. Middleware runs after internal session cookie handling, but sessions are created lazily on first use — a request fully handled by middleware never allocates one.
 
 ### UseFS
 
@@ -131,7 +131,7 @@ app.Use(
 )
 ```
 
-The `contentType` argument is optional — pass an empty string to let the registry detect it.
+The `contentType` argument is sent as the `Content-Type` header of the response.
 
 ### Cache-Control Presets
 
@@ -186,7 +186,7 @@ For request matching, **Doors** uses the URL it sees, so mount it at `/` unless 
 n := app.InstanceCount()
 ```
 
-`app.SessionCount()` returns the total number of active sessions.
+`app.SessionCount()` returns the total number of live sessions. Sessions are created lazily on first actual use (any page render does), so a visitor whose requests were fully handled by middleware has a session cookie but no counted session yet.
 
 ```go
 n := app.SessionCount()

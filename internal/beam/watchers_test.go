@@ -54,6 +54,10 @@ func (s *stubSyncSource[T]) addWatcher(context.Context, *watcher) bool {
 	return false
 }
 
+func (s *stubSyncSource[T]) oldest() uint {
+	return 0
+}
+
 func (s *stubSyncSource[T]) sync(prev, seq uint, after shredder.SimpleFrame) (*T, bool) {
 	s.syncCalls++
 	if s.syncFunc == nil {
@@ -65,14 +69,14 @@ func (s *stubSyncSource[T]) sync(prev, seq uint, after shredder.SimpleFrame) (*T
 func TestSourceXUpdateAndXMutate(t *testing.T) {
 	source := NewSource(0, nil, false)
 
-	if err := <-source.XUpdate(context.Background(), 1); err != nil {
+	if err := <-source.Update(context.Background(), 1); err != nil {
 		t.Fatal(err)
 	}
 	if got := source.Get(); got != 1 {
 		t.Fatal("unexpected source value after XUpdate:", got)
 	}
 
-	if err := <-source.XMutate(context.Background(), func(v int) int {
+	if err := <-source.Mutate(context.Background(), func(v int) int {
 		return v + 1
 	}); err != nil {
 		t.Fatal(err)

@@ -23,68 +23,48 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 )
 
-// CallResult holds the outcome of [XCall].
-// Either Ok is set with the result, or Err is non-nil.
-type CallResult[T any] struct {
-	Ok  T     // Result value
-	Err error // Error if the call failed
-}
-
-// Call dispatches action to the client without waiting for a result.
+// Call dispatches action to the client.
 //
-// Canceling ctx requests best-effort cancellation of the call.
-func Call(ctx context.Context, action Action) {
-	call[json.RawMessage](ctx, action)
-}
-
-// XCall dispatches action to the client and returns a result channel.
+// The returned completion channel is optional to use: it delivers nil on
+// success, or an error if the action cannot be built, the client fails, or
+// the result cannot be decoded, then closes. If the call is canceled, it
+// closes without a value. Canceling ctx requests best-effort cancellation.
 //
-// The channel receives a [CallResult] when the client returns a result, then
-// closes. Canceling ctx requests best-effort cancellation; if the call is
-// canceled, the channel closes without a value.
+// To capture the client result, arm the action with its Into method before
+// dispatch; see [ActionInto].
 //
-// Do not wait on it during rendering. If you need to wait, use [Go] or your
-// own goroutine with [DetachedContext].
+// Do not wait on the channel during rendering. If you need to wait, use [Go]
+// or your own goroutine with [DetachedContext].
 //
-// T is the expected decoded payload type. For actions other than [ActionEmit],
-// [json.RawMessage] is usually the right choice.
-func XCall[T any](ctx context.Context, action Action) <-chan CallResult[T] {
-	ctex.LogFreeWarning(ctx, "action", "XCall")
-	return call[T](ctx, action)
-}
-
-func call[T any](ctx context.Context, action Action) <-chan CallResult[T] {
+// ctx must belong to a Doors render or handler; otherwise Call panics.
+func Call(ctx context.Context, a Action) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	ch := make(chan CallResult[T], 1)
-	a, params, err := action.action(ctx, core, !core.App().Conf().SolitaireDisableGzip)
-	res := CallResult[T]{}
+	ch := make(chan error, 1)
+	prep, err := a.action(ctx, core, !core.App().Conf().SolitaireDisableGzip)
 	if err != nil {
 		core.App().Logger().Error("Action preparation error", "error", err)
-		res.Err = err
-		ch <- res
+		ch <- err
 		close(ch)
 		return ch
 	}
 	if ctx.Err() != nil {
-		ctex.LogCanceled(ctx, "call "+a.Log())
+		ctex.LogCanceled(ctx, "call "+prep.action.Log())
 	}
 	core.Door().UserCall(
 		ctx,
 		nil,
-		a,
+		prep.action,
 		func(rm json.RawMessage, err error) {
-			if err != nil {
-				res.Err = err
-			} else {
-				res.Err = json.Unmarshal(rm, &res.Ok)
+			if err == nil && prep.decode != nil {
+				err = prep.decode(rm)
 			}
-			ch <- res
+			ch <- err
 			close(ch)
 		},
 		func() {
 			close(ch)
 		},
-		params,
+		prep.params,
 	)
 	return ch
 }

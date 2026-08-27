@@ -148,6 +148,12 @@ elem (f *LinksFragment) Main() {
 	} <button id="raw-assign">raw-assign</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			r.After(doors.ActionLocationRawReplace{URL: test.Host + "/s"})
+			return false
+		},
+	} <button id="raw-replace">raw-replace</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			r.After(doors.ActionIndicate{
 				Indicator: doors.IndicateAttrQuery("#action-target", "data-indicated", "true"),
 				Duration: 200 * time.Millisecond,
@@ -163,7 +169,7 @@ elem (f *LinksFragment) Main() {
 	} <button id="action-scroll">action-scroll</button>
 	~>doors.AClick{
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			r.After(doors.ActionEmit{Name: "alert", Arg: "Hello!"})
+			r.After(doors.ActionEmit[any]{Name: "alert", Arg: "Hello!"})
 			return false
 		},
 	} <button>

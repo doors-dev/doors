@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/solitaire/expirator"
 )
 
@@ -59,7 +59,7 @@ type solitaire struct {
 	receiver atomic.Pointer[receiver]
 }
 
-func (s Solitaire) Call(call action.Call) {
+func (s Solitaire) Call(call actions.Call) {
 	err := s.deck.Insert(call)
 	if err != nil {
 		s.inst.SyncError(err)
@@ -256,7 +256,7 @@ func (rv *receiver) onReport(rep report) {
 	rv.sync.Report(rep.ID, rep.TS)
 	err := rv.deck.CollectResults(rep.Results)
 	if err != nil {
-		if err == context.Canceled {
+		if errors.Is(err, context.Canceled) {
 			return
 		}
 		rv.inst.SyncError(err)
@@ -264,7 +264,7 @@ func (rv *receiver) onReport(rep report) {
 	}
 	err = rv.deck.FillGaps(rep.Gaps)
 	if err != nil {
-		if err == context.Canceled {
+		if errors.Is(err, context.Canceled) {
 			return
 		}
 		rv.inst.SyncError(err)

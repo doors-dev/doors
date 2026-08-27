@@ -18,13 +18,13 @@ import (
 	"context"
 )
 
-// Watcher receives low-level lifecycle callbacks for a [Beamer].
+// Watcher is a subscriber to a value stream.
 type Watcher[T any] interface {
-	// Cancel is called when the watcher stops because of context cancellation or
-	// an explicit cancel call.
+	// Cancel runs when the subscription ends, whether the context was canceled
+	// or the returned cancel function was called.
 	Cancel()
-	// Watch receives the initial value synchronously and later updates
-	// asynchronously. Returning true stops the watcher.
+	// Watch receives the current value on the calling goroutine, then every
+	// update. Return true to end the subscription.
 	Watch(ctx context.Context, value T) bool
 }
 
@@ -74,21 +74,26 @@ func sub[T any](b Beamer[T], ctx context.Context, onValue func(context.Context, 
 }
 
 func readAndSub[T any](b Beamer[T], ctx context.Context, onValue func(context.Context, T) bool, onCancel func()) (*T, context.CancelFunc, bool) {
-	var initVal *T
+	var init *T
+	started := false
 	cancel, ok := b.Watch(ctx, &genericWatcher[T]{
 		watch: func(ctx context.Context, v T) bool {
-			if initVal == nil {
-				initVal = &v
-				return onValue == nil
+			if started {
+				return onValue(ctx, v)
 			}
-			return onValue(ctx, v)
+			started = true
+			init = new(T)
+			*init = v
+			return onValue == nil
 		},
 		cancel: onCancel,
 	})
 	if !ok {
 		return nil, cancel, false
 	}
-	return initVal, cancel, true
+	v := init
+	init = nil
+	return v, cancel, true
 }
 
 func (b *beam[T1, T2]) ReadAndSub(ctx context.Context, onValue func(context.Context, T2) bool) (T2, bool) {

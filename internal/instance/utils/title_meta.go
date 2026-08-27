@@ -8,7 +8,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
 )
 
@@ -34,52 +34,54 @@ type titleMeta struct {
 	metaNames metaMap
 }
 
-func (t *titleMeta) Edit(cur gox.Cursor) error {
-	t.mu.Lock()
-	if t.rendered {
-		t.mu.Unlock()
-		panic("title meta rendered twice")
-	}
-	t.rendered = true
-	titleID, title := t.title.current()
-	metas := make([]metaEditor, 0, t.metaProps.Len()+t.metaNames.Len())
-	t.dumpMeta(&metas, t.metaNames, false)
-	t.dumpMeta(&metas, t.metaProps, true)
-	t.mu.Unlock()
-	if titleID != 0 {
-		if err := cur.Init("title"); err != nil {
-			return err
+func (t *titleMeta) Main() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		t.mu.Lock()
+		if t.rendered {
+			t.mu.Unlock()
+			panic("title meta rendered twice")
 		}
-		if title.attrs != nil {
-			if err := cur.Modify(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
-				attrs.Inherit(title.attrs)
-				return nil
-			})); err != nil {
+		t.rendered = true
+		titleID, title := t.title.current()
+		metas := make([]metaComp, 0, t.metaProps.Len()+t.metaNames.Len())
+		t.dumpMeta(&metas, t.metaNames, false)
+		t.dumpMeta(&metas, t.metaProps, true)
+		t.mu.Unlock()
+		if titleID != 0 {
+			if err := cur.Init("title"); err != nil {
+				return err
+			}
+			if title.attrs != nil {
+				if err := cur.Modify(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
+					attrs.Inherit(title.attrs)
+					return nil
+				})); err != nil {
+					return err
+				}
+			}
+			if err := cur.Submit(); err != nil {
+				return err
+			}
+			if err := cur.Raw(title.text); err != nil {
+				return err
+			}
+			if err := cur.Close(); err != nil {
 				return err
 			}
 		}
-		if err := cur.Submit(); err != nil {
-			return err
+		for _, m := range metas {
+			if err := cur.Comp(m); err != nil {
+				return err
+			}
 		}
-		if err := cur.Raw(title.text); err != nil {
-			return err
-		}
-		if err := cur.Close(); err != nil {
-			return err
-		}
-	}
-	for _, m := range metas {
-		if err := m.Edit(cur); err != nil {
-			return err
-		}
-	}
-	return nil
+		return nil
+	})
 }
 
-func (t *titleMeta) dumpMeta(s *[]metaEditor, m metaMap, property bool) {
+func (t *titleMeta) dumpMeta(s *[]metaComp, m metaMap, property bool) {
 	for name, c := range m.Iter() {
 		_, attrs := c.current()
-		*s = append(*s, metaEditor{
+		*s = append(*s, metaComp{
 			name:     name,
 			property: property,
 			attrs:    attrs,
@@ -190,13 +192,13 @@ func (t *titleMeta) callRemoveMeta(prop bool, name string) {
 			_, ok := m.Get(name)
 			return !ok
 		},
-		action.RemoveMeta{
+		actions.RemoveMeta{
 			Name:     name,
 			Property: prop,
 		},
 		nil,
 		nil,
-		action.CallParams{},
+		actions.CallParams{},
 	)
 }
 
@@ -216,14 +218,14 @@ func (t *titleMeta) callUpdateMeta(prop bool, id uint, name string, attrs gox.At
 			}
 			return c.isCurrent(id)
 		},
-		action.UpdateMeta{
+		actions.UpdateMeta{
 			Name:     name,
 			Property: prop,
 			Attrs:    common.AttrsToMap(attrs, t.inst.Logger()),
 		},
 		nil,
 		nil,
-		action.CallParams{},
+		actions.CallParams{},
 	)
 }
 
@@ -238,42 +240,44 @@ func (t *titleMeta) callUpdateTitle(id uint, value string, attrs gox.Attrs) {
 			}
 			return t.title.isCurrent(id)
 		},
-		action.UpdateTitle{
+		actions.UpdateTitle{
 			Content: value,
 			Attrs:   common.AttrsToMap(attrs, t.inst.Logger()),
 		},
 		nil,
 		nil,
-		action.CallParams{},
+		actions.CallParams{},
 	)
 }
 
-type metaEditor struct {
+type metaComp struct {
 	name     string
 	property bool
 	attrs    gox.Attrs
 }
 
-func (m metaEditor) Edit(cur gox.Cursor) error {
-	if err := cur.InitVoid("meta"); err != nil {
-		return err
-	}
-	if m.property {
-		if err := cur.Set("property", m.name); err != nil {
+func (m metaComp) Main() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		if err := cur.InitVoid("meta"); err != nil {
 			return err
 		}
-	} else {
-		if err := cur.Set("name", m.name); err != nil {
+		if m.property {
+			if err := cur.Set("property", m.name); err != nil {
+				return err
+			}
+		} else {
+			if err := cur.Set("name", m.name); err != nil {
+				return err
+			}
+		}
+		if err := cur.Modify(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
+			attrs.Inherit(m.attrs)
+			return nil
+		})); err != nil {
 			return err
 		}
-	}
-	if err := cur.Modify(gox.ModifyFunc(func(ctx context.Context, tag string, attrs gox.Attrs) error {
-		attrs.Inherit(m.attrs)
-		return nil
-	})); err != nil {
-		return err
-	}
-	return cur.Submit()
+		return cur.Submit()
+	})
 }
 
 type layer[T any] struct {

@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-func NewPagePrinter(w io.Writer, static bool, include gox.Elem, importMap []byte, meta gox.Editor) gox.Printer {
+func NewPagePrinter(w io.Writer, static bool, include gox.Elem, importMap []byte, meta gox.Comp) gox.Printer {
 	cur := gox.NewCursor(context.Background(), defaultPrinter{w})
 	return &pagePrinter{cur: cur, static: static, include: include, importMap: importMap, meta: meta}
 }
@@ -40,7 +40,7 @@ type pagePrinter struct {
 	include   gox.Elem
 	importMap []byte
 	state     pagePrinterState
-	meta      gox.Editor
+	meta      gox.Comp
 	headID    uint64
 }
 
@@ -58,7 +58,7 @@ func (p *pagePrinter) Send(j gox.Job) error {
 }
 
 func (p *pagePrinter) scan(j gox.Job) error {
-	openJob, ok := j.(*gox.JobHeadOpen)
+	openJob, ok := j.(*gox.JobOpen)
 	if !ok {
 		return p.cur.Printer().Send(j)
 	}
@@ -85,7 +85,7 @@ func (p *pagePrinter) scan(j gox.Job) error {
 }
 
 func (p *pagePrinter) head(j gox.Job) error {
-	if openJob, ok := j.(*gox.JobHeadOpen); ok {
+	if openJob, ok := j.(*gox.JobOpen); ok {
 		if strings.EqualFold(openJob.Tag, "script") || strings.EqualFold(openJob.Tag, "link") {
 			p.state = pageDone
 			if err := p.insert(); err != nil {
@@ -94,7 +94,7 @@ func (p *pagePrinter) head(j gox.Job) error {
 		}
 		return p.cur.Printer().Send(j)
 	}
-	if closeJob, ok := j.(*gox.JobHeadClose); ok {
+	if closeJob, ok := j.(*gox.JobClose); ok {
 		if closeJob.ID == p.headID {
 			p.state = pageDone
 			if err := p.insert(); err != nil {
@@ -128,7 +128,7 @@ func (p *pagePrinter) insert() error {
 			return err
 		}
 	}
-	if err := p.meta.Edit(p.cur); err != nil {
+	if err := p.cur.Comp(p.meta); err != nil {
 		return err
 	}
 	if len(p.importMap) > 0 {

@@ -118,6 +118,8 @@ Some event families also add browser-event options such as:
 
 Not every event family supports every one of these options.
 
+Form and custom-hook attrs — `ASubmit[T]`, `ARawSubmit`, `AHook[...]`, and `ARawHook` — also accept `RequestTimeout`, which overrides the configured `RequestTimeout` for that attr's requests, for example when uploads need longer than the default. Regular event attrs such as `AClick` do not have it.
+
 ## Flow
 
 When an event fires, the client/runtime flow is roughly:
@@ -133,6 +135,8 @@ When an event fires, the client/runtime flow is roughly:
 9. run `OnError` actions if the request fails
 
 That is why scopes and indication feel immediate: they start on the client before the server finishes the request.
+
+A handler that hands work to a goroutine can keep the request pending past its return with `doors.HoldSettle(ctx)`: the client keeps the indicator and the scope until the returned release function is called. See [Door](./06-door.md).
 
 ## Pointer
 
@@ -157,8 +161,8 @@ Example:
 	(doors.AClick{
 		PreventDefault: true,
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-			x := r.Event().PageX
-			y := r.Event().PageY
+			x := r.Event().PageX()
+			y := r.Event().PageY()
 			_ = x
 			_ = y
 			return false
@@ -168,7 +172,7 @@ Example:
 </button>
 ```
 
-The pointer payload includes the usual browser pointer fields, including coordinates, button state, pointer type, pressure, and timestamp.
+The pointer payload includes the usual browser pointer fields — button state, pointer type, pressure, and timestamp — plus geometry rectangles. Coordinate accessors such as `PageX()`, `ClientX()`, `OffsetX()`, and `ScreenX()`, with their `Y` counterparts, derive the usual coordinates from them.
 
 ## Keyboard
 
@@ -280,7 +284,7 @@ type LoginForm struct {
 
 Use `ARawSubmit` when you want direct multipart access for streaming, custom parsing, or uploads.
 
-For form decoding, **Doors** uses [go-playground/form v4](https://github.com/go-playground/form/tree/v4.2.1).
+For form decoding, **Doors** uses [go-playground/form v4](https://github.com/go-playground/form/tree/v4.3.0).
 
 ## Reuse
 
@@ -404,7 +408,7 @@ See [JavaScript](./15-javascript.md).
 
 - [Navigation](./09-navigation.md) for `doors.ALink`.
 - [JavaScript](./15-javascript.md) for `doors.AHook[...]`, `doors.ARawHook`, and `doors.AData`.
-- [Shared Attr](./17-shared-attr.md) for dynamic shared attributes.
+- [Element Handles](./17-element-handles.md) for setting attributes and emitting events from Go.
 - [Scopes](./10-scopes.md) for request scheduling.
 - [Indication](./11-indication.md) for client-side feedback.
 - [Actions](./12-actions.md) for `Before`, `OnError`, and `After` actions.

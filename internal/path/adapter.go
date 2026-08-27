@@ -15,12 +15,13 @@
 package path
 
 import (
-	"errors"
+	"fmt"
 	"log/slog"
 	"net/url"
 	"reflect"
 	"sync"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/go-playground/form/v4"
 )
 
@@ -40,6 +41,11 @@ func (a *modelAdapters) set(t reflect.Type, ad adapter) {
 	(*sync.Map)(a).Store(t, ad)
 }
 
+// Encode returns the [Location] for m.
+//
+// m may be a Location, a value implementing [Encoder], a path model struct, or
+// a pointer to one. It returns an error if m is none of these, if its path tags
+// are invalid, or if it does not encode to a complete path.
 func Encode(m any) (Location, error) {
 	switch m := (any)(m).(type) {
 	case Location:
@@ -54,6 +60,8 @@ func Encode(m any) (Location, error) {
 	return adapter.encode(m)
 }
 
+// GetModelAdapter returns the [ModelAdapter] for path model M. It returns an
+// error if M is not a struct or its path tags are missing or invalid.
 func GetModelAdapter[M any]() (ModelAdapter[M], error) {
 	adapter, err := get(new(M))
 	if err != nil {
@@ -65,13 +73,13 @@ func GetModelAdapter[M any]() (ModelAdapter[M], error) {
 func get(sample any) (adapter, error) {
 	t := reflect.TypeOf(sample)
 	if t == nil {
-		return adapter{}, errors.New("model must be struct")
+		return adapter{}, fmt.Errorf("%w: not a struct", common.ErrPathModel)
 	}
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
-		return adapter{}, errors.New("model must be struct")
+		return adapter{}, fmt.Errorf("%w: not a struct", common.ErrPathModel)
 	}
 	adapter, ok := adapters.get(t)
 	if ok {
@@ -89,7 +97,10 @@ func get(sample any) (adapter, error) {
 	return adapter, nil
 }
 
+// Encoder is implemented by models that build their own [Location] instead of
+// describing their path with tags.
 type Encoder interface {
+	// Encode returns the location the model points to.
 	Encode() (Location, error)
 }
 
@@ -97,8 +108,11 @@ type AnyModelAdapter interface {
 	EncodeAny(any) (Location, error, bool)
 }
 
+// ModelAdapter decodes locations into path model M and encodes M back.
 type ModelAdapter[M any] adapter
 
+// Decode returns the model decoded from l, and false if l matches no path
+// variant of M.
 func (ma ModelAdapter[M]) Decode(l Location) (*M, bool) {
 	m := new(M)
 	if (adapter)(ma).decode(l, m) {
@@ -107,6 +121,8 @@ func (ma ModelAdapter[M]) Decode(l Location) (*M, bool) {
 	return nil, false
 }
 
+// Encode returns the location for m, or an error if m selects no path variant
+// or leaves a path capture empty.
 func (ma ModelAdapter[M]) Encode(m *M) (Location, error) {
 	return (adapter)(ma).encode(m)
 }
@@ -184,7 +200,7 @@ func (a adapter) encode(m any) (Location, error) {
 		if a.queryField == -1 {
 			query, err = queryEncoder.Encode(m)
 			if err != nil {
-				return Location{}, err
+				return Location{}, fmt.Errorf("%w: query: %w", common.ErrPathEncode, err)
 			}
 		} else {
 			query = v.Field(a.queryField).Interface().(url.Values)
@@ -194,7 +210,7 @@ func (a adapter) encode(m any) (Location, error) {
 			Query:    query,
 		}, nil
 	}
-	return Location{}, errors.New("no path variant selected")
+	return Location{}, fmt.Errorf("%w: no path variant selected", common.ErrPathEncode)
 }
 
 var queryDecoder *form.Decoder

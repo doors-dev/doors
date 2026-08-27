@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"slices"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/instance"
@@ -15,51 +17,61 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
+// Middleware wraps the app handler.
 type Middleware = func(http.Handler) http.Handler
 
+// Page is the page factory called once per page instance.
 type Page = instance.Page
 
+// App is a Doors application and HTTP handler.
 type App = *app
 
+// NewApp returns an App that serves page, configured by o.
 func NewApp(page Page, o Options) App {
 	o.initDefaults()
 	a := &app{
-		page:       page,
-		conf:       o.Conf,
-		csp:        o.CSP,
-		pathMaker:  path.NewPathMaker(o.Conf.ServerSessionCookiePrefix, o.ID, o.CookieName),
-		tracker:    o.SessionTracker,
-		esProfiles: o.ESBuild,
-		errPage:    o.ErrorPage,
-		logger:     o.Logger,
+		page:              page,
+		conf:              o.Conf,
+		csp:               o.CSP,
+		pathMaker:         path.NewPathMaker(o.Conf.ServerSessionCookiePrefix, o.ID, o.CookieName),
+		tracker:           trackers(o.SessionTrackers),
+		esProfiles:        o.ESBuild,
+		errPage:           o.ErrorPage,
+		logger:            o.Logger,
+		printerMiddleware: o.PrinterMiddleware,
 	}
 	a.registry = resources.NewRegistry(a)
 	a.Use()
 	return a
 }
 
+// ErrorPage renders the body of an app-level error response.
 type ErrorPage = func(r *http.Request, err error) gox.Elem
 
 type app struct {
-	page       Page
-	conf       common.Conf
-	csp        *common.CSP
-	registry   resources.Registry
-	pathMaker  path.PathMaker
-	tracker    SessionTracker
-	esProfiles func(profile string) api.BuildOptions
-	sessions   sync.Map
-	use        []Middleware
-	handler    http.Handler
-	errPage    ErrorPage
-	logger     *slog.Logger
-
-	instanceCount atomic.Int64
-	drainCallback atomic.Pointer[func()]
+	page              Page
+	conf              common.Conf
+	csp               *common.CSP
+	registry          resources.Registry
+	pathMaker         path.PathMaker
+	tracker           SessionTracker
+	esProfiles        func(profile string) api.BuildOptions
+	sessions          sync.Map
+	use               []Middleware
+	handler           http.Handler
+	errPage           ErrorPage
+	logger            *slog.Logger
+	printerMiddleware func(next gox.Printer) gox.Printer
+	instanceCount     atomic.Int64
+	drainCallback     atomic.Pointer[func()]
 }
 
 func (a *app) Logger() *slog.Logger {
 	return a.logger
+}
+
+func (a *app) PrinterMiddleware() func(next gox.Printer) gox.Printer {
+	return a.printerMiddleware
 }
 
 func (a *app) ResourceRegistry() resources.Registry {
@@ -144,16 +156,53 @@ func (a App) Drain(callback func()) {
 	}
 }
 
-func (a *app) ensureSession(w http.ResponseWriter, r *http.Request) instance.Session {
+func (a *app) injectSession(w http.ResponseWriter, r *http.Request) *http.Request {
 	s := a.getSession(w, r)
 	if s != nil {
-		return s
+		return r.WithContext(context.WithValue(r.Context(), common.KeySession, s))
 	}
-	s = instance.NewSession(a)
+	id := common.RandId()
+	a.SetCookies(w, id, a.conf.SessionTTL)
+	l := &lazySession{
+		id:  id,
+		app: a,
+	}
+	r = r.WithContext(context.WithValue(r.Context(), common.KeySession, l))
+	l.r = r
+	return r
+}
+
+func (a *app) newSession(r *http.Request, id string) instance.Session {
+	s := instance.NewSession(a, id)
 	a.sessions.Store(s.ID(), s)
 	a.tracker.Create(s.ID(), r)
-	s.Renew(w)
 	return s
+}
+
+func (a *app) SetCookies(w http.ResponseWriter, id string, maxAge time.Duration) {
+	cookie := &http.Cookie{
+		Name:     a.pathMaker.SessionCookie(),
+		Value:    id,
+		HttpOnly: true,
+		Secure:   !a.conf.ServerSessionCookieNoSecure,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(maxAge.Seconds()),
+	}
+	http.SetCookie(w, cookie)
+	if !a.pathMaker.SetServerIDCookie() || a.Draining() {
+		return
+	}
+	cookie = &http.Cookie{
+		Name:     a.pathMaker.ServerIDCookieName(),
+		Value:    a.pathMaker.ID(),
+		HttpOnly: true,
+		Secure:   !a.conf.ServerSessionCookieNoSecure,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(maxAge.Seconds()),
+	}
+	http.SetCookie(w, cookie)
 }
 
 func (a *app) getSession(w http.ResponseWriter, r *http.Request) instance.Session {

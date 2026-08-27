@@ -6,10 +6,8 @@ import (
 
 type Lenser[T any] interface {
 	Beamer[T]
-	Update(context.Context, T)
-	XUpdate(context.Context, T) <-chan error
-	Mutate(context.Context, func(T) T)
-	XMutate(context.Context, func(T) T) <-chan error
+	Update(context.Context, T) <-chan error
+	Mutate(context.Context, func(T) T) <-chan error
 }
 
 type Lens[T1, T2 any] = *lens[T1, T2]
@@ -36,30 +34,16 @@ type lens[T1 any, T2 any] struct {
 	set    func(T1, T2) T1
 }
 
-func (l *lens[T1, T2]) Mutate(ctx context.Context, m func(T2) T2) {
-	l.source.Mutate(ctx, func(sourceV T1) T1 {
+func (l *lens[T1, T2]) Mutate(ctx context.Context, m func(T2) T2) <-chan error {
+	return l.source.Mutate(ctx, func(sourceV T1) T1 {
 		v := l.get(sourceV)
 		v = m(v)
 		return l.set(sourceV, v)
 	})
 }
 
-func (l *lens[T1, T2]) Update(ctx context.Context, v T2) {
-	l.source.Mutate(ctx, func(sourceV T1) T1 {
-		return l.set(sourceV, v)
-	})
-}
-
-func (l *lens[T1, T2]) XMutate(ctx context.Context, m func(T2) T2) <-chan error {
-	return l.source.XMutate(ctx, func(sourceV T1) T1 {
-		v := l.get(sourceV)
-		v = m(v)
-		return l.set(sourceV, v)
-	})
-}
-
-func (l *lens[T1, T2]) XUpdate(ctx context.Context, v T2) <-chan error {
-	return l.source.XMutate(ctx, func(sourceV T1) T1 {
+func (l *lens[T1, T2]) Update(ctx context.Context, v T2) <-chan error {
+	return l.source.Mutate(ctx, func(sourceV T1) T1 {
 		return l.set(sourceV, v)
 	})
 }

@@ -17,16 +17,18 @@ package door
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/action"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
 )
 
 func newError(err error, logger *slog.Logger) Error {
-	if e, ok := err.(Error); ok {
+	var e Error
+	if errors.As(err, &e) {
 		return e
 	}
 	id := common.RandId()
@@ -46,16 +48,20 @@ func (e Error) Error() string {
 	return e.err.Error()
 }
 
+func (e Error) Unwrap() error {
+	return e.err
+}
+
 func (e Error) Release() {
 
 }
 
-func (e Error) Payload() action.Payload {
+func (e Error) Payload() actions.Payload {
 	buf := &bytes.Buffer{}
 	if err := e.Main().Render(context.Background(), buf); err != nil {
 		panic("error rendering error")
 	}
-	return action.NewTextBytes(buf.Bytes())
+	return actions.NewTextBytes(buf.Bytes())
 }
 
 func (e Error) Main() gox.Elem {

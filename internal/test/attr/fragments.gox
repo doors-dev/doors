@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"time"
 	
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
@@ -115,9 +116,12 @@ elem (f *callFragment) Main() {
 		Name: "myHook",
 		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
 			f.r.Update(ctx, 0, r.Data())
-			ch := doors.XCall[string](ctx, doors.ActionEmit{Name: "myCall", Arg: len(r.Data())})
-			res := <-ch
-			f.r.Update(ctx, 1, res.Ok)
+			var res string
+			<-doors.Call(ctx, doors.ActionEmit[string]{Name: "myCall", Arg: len(r.Data())}.Into(&res))
+			f.r.Update(ctx, 1, res)
+			var asyncRes string
+			<-doors.Call(ctx, doors.ActionEmit[string]{Name: "myAsyncCall", Arg: r.Data()}.Into(&asyncRes))
+			f.r.Update(ctx, 2, asyncRes)
 			return len(r.Data()), true
 		},
 	} ~>doors.AData{
@@ -128,6 +132,11 @@ elem (f *callFragment) Main() {
 			document.getElementById("target").innerHTML = `${data}`
 			return "response"
 		})
+		$on(
+			"myAsyncCall",
+			(data) =>
+				new Promise((resolve) => setTimeout(() => resolve(`async:${data}`), 100)),
+		)
 		await $hook("myHook", await $data("myData"))
 	</script>
 }
@@ -180,6 +189,63 @@ elem (f *hookFragment) Main() {
 	</script>
 }
 
+type timeoutFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+elem (f *timeoutFragment) Main() {
+	~(f.r)
+	<div id="slow-default"></div>
+	<div id="slow-long"></div>
+	~>doors.AHook[string]{
+		Name: "slowDefault",
+		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
+			time.Sleep(2 * time.Second)
+			return "late", true
+		},
+	} ~>doors.AHook[string]{
+		Name: "slowLong",
+		RequestTimeout: 3 * time.Second,
+		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
+			time.Sleep(2 * time.Second)
+			return "done", true
+		},
+	} <script>
+		$hook("slowLong", "x").then(
+			(res) => {
+				document.getElementById("slow-long").innerHTML = `ok:${res}`
+			},
+			() => {
+				document.getElementById("slow-long").innerHTML = "err"
+			},
+		)
+		$hook("slowDefault", "x").then(
+			() => {
+				document.getElementById("slow-default").innerHTML = "ok"
+			},
+			() => {
+				document.getElementById("slow-default").innerHTML = "err"
+			},
+		)
+	</script>
+	~>doors.ASubmit[timeoutForm]{
+		RequestTimeout: 3 * time.Second,
+		On: func(ctx context.Context, r doors.RequestForm[timeoutForm]) bool {
+			time.Sleep(2 * time.Second)
+			f.r.Update(ctx, 0, r.Data().Value)
+			return true
+		},
+	} <form id="slow-form">
+		<input type="text" name="Value" value="submitted"/>
+		<button id="slow-form-submit" type="submit">go</button>
+	</form>
+}
+
+type timeoutForm struct {
+	Value string
+}
+
 type dataFragment struct {
 	data string
 	test.NoBeam
@@ -194,13 +260,13 @@ elem (f *dataFragment) Main() {
 
 type captureFragment struct {
 	test.NoBeam
-	r       *test.Reporter
-	filter  int
-	ctrlOn  int
+	r *test.Reporter
+	filter int
+	ctrlOn int
 	ctrlOff int
-	metaOn  int
-	multi   int
-	anyKey  int
+	metaOn int
+	multi int
+	anyKey int
 }
 
 elem (f *captureFragment) Main() {
@@ -249,7 +315,7 @@ elem (f *captureFragment) Main() {
 		},
 	} <a id="prevent-link" href="#jump">prevent-link</a>
 	~>doors.AKeyDown{
-		Filter: []string{"Enter"},
+		Keys: []doors.Key{{Key: "Enter"}},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.filter++
 			f.r.Update(ctx, 4, fmt.Sprint(f.filter))

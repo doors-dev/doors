@@ -16,6 +16,7 @@ package printer
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -48,7 +49,7 @@ func (r *resourcePrinter) Send(job gox.Job) error {
 }
 
 func (p *resourcePrinter) scan(job gox.Job) error {
-	openJob, ok := job.(*gox.JobHeadOpen)
+	openJob, ok := job.(*gox.JobOpen)
 	if !ok {
 		return p.printer.Send(job)
 	}
@@ -90,7 +91,7 @@ func (p *resourcePrinter) scan(job gox.Job) error {
 	}
 }
 
-func (p *resourcePrinter) processProps(open *gox.JobHeadOpen, props props) error {
+func (p *resourcePrinter) processProps(open *gox.JobOpen, props props) error {
 	match, err := props.Read(open.Attrs)
 	if err != nil {
 		return err
@@ -104,12 +105,12 @@ func (p *resourcePrinter) processProps(open *gox.JobHeadOpen, props props) error
 	return props.Submit(open, p)
 }
 
-func (p *resourcePrinter) scanGenericSrc(openJob *gox.JobHeadOpen) error {
+func (p *resourcePrinter) scanGenericSrc(openJob *gox.JobOpen) error {
 	props := newResourceProps()
 	return p.processProps(openJob, props)
 }
 
-func (p *resourcePrinter) processMeta(openJob *gox.JobHeadOpen) error {
+func (p *resourcePrinter) processMeta(openJob *gox.JobOpen) error {
 	if openJob.Kind != gox.KindVoid {
 		return errors.New("<meta> must be a void element")
 	}
@@ -130,19 +131,18 @@ func (p *resourcePrinter) processMeta(openJob *gox.JobHeadOpen) error {
 	name := b.String()
 	core := openJob.Context().Value(common.KeyCore).(core.Core)
 	cancel := core.Instance().TitleMeta().UpdateMeta(property, name, openJob.Attrs.Clone())
-	core.Door().Clean(cancel)
+	core.Door().CleanFrame().Run(context.Background(), nil, func(bool) {
+		cancel()
+	})
 	gox.Release(openJob)
 	return nil
 }
 
 func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
-	if _, ok := j.(*gox.JobHeadOpen); ok {
+	if _, ok := j.(*gox.JobOpen); ok {
 		return errors.New("<title> cannot contain nested tags")
 	}
-	if _, ok := j.(*gox.JobComp); ok {
-		panic("internal error: title content should be flattened before it reaches the resource printer")
-	}
-	if closeJob, ok := j.(*gox.JobHeadClose); ok {
+	if closeJob, ok := j.(*gox.JobClose); ok {
 		if closeJob.ID != tit.openJob.ID {
 			return errors.New("title close tag does not match the open tag")
 		}
@@ -150,7 +150,9 @@ func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
 		content := tit.buf.String()
 		attrs := tit.openJob.Attrs.Clone()
 		cancel := core.Instance().TitleMeta().UpdateTitle(content, attrs)
-		core.Door().Clean(cancel)
+		core.Door().CleanFrame().Run(context.Background(), nil, func(bool) {
+			cancel()
+		})
 		gox.Release(tit.openJob)
 		gox.Release(closeJob)
 		r.resource = nil
@@ -160,7 +162,7 @@ func (r *resourcePrinter) processTitle(j gox.Job, tit *title) error {
 }
 
 func (p *resourcePrinter) processRes(job gox.Job, res *embeddedResource) error {
-	closeJob, ok := job.(*gox.JobHeadClose)
+	closeJob, ok := job.(*gox.JobClose)
 	if ok {
 		if closeJob.ID != res.openJob.ID {
 			return errors.New("embedded resource close tag does not match the open tag")
@@ -185,7 +187,7 @@ func (p *resourcePrinter) processRes(job gox.Job, res *embeddedResource) error {
 }
 
 type title struct {
-	openJob *gox.JobHeadOpen
+	openJob *gox.JobOpen
 	buf     bytes.Buffer
 }
 
@@ -197,8 +199,8 @@ const (
 )
 
 type embeddedResource struct {
-	openJob  *gox.JobHeadOpen
-	closeJob *gox.JobHeadClose
+	openJob  *gox.JobOpen
+	closeJob *gox.JobClose
 	kind     embeddedKind
 	content  []any
 	props    *resourceProps
