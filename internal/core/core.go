@@ -70,7 +70,8 @@ type Instance interface {
 	Session() Session
 	Logger() *slog.Logger
 	Store() ctex.Store
-	UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
+	UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
+	UserCallCheck(check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
 	CSPCollector() common.CSPCollector
 	ModuleRegistry() ModuleRegistry
 	ID() string
@@ -91,7 +92,7 @@ type Door interface {
 	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
 	Reload(ctx context.Context) <-chan error
 	RootCore() Core
-	UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
+	UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
 	CleanFrame() shredder.SimpleFrame
 	ReadyFrame() shredder.SimpleFrame
 }

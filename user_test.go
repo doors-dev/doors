@@ -37,8 +37,8 @@ type helperDoor struct {
 	inst *helperInstance
 }
 
-func (h helperDoor) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
-	h.inst.UserCall(ctx, check, action, onResult, onCancel, params)
+func (h helperDoor) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+	h.inst.UserCall(ctx, action, onResult, onCancel, params)
 }
 
 type helperShutdown struct{}
@@ -98,7 +98,7 @@ func (helperDoorWithRoot) ReadyFrame() shredder.SimpleFrame {
 }
 
 // UserCall implements [core.Door].
-func (h helperDoorWithRoot) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (h helperDoorWithRoot) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	panic("unimplemented")
 }
 
@@ -149,7 +149,11 @@ func (h *helperInstance) CallCheck(_ func() bool, act actions.Action, onResult f
 	}
 }
 
-func (h *helperInstance) UserCall(_ context.Context, _ func() bool, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
+func (h *helperInstance) UserCallCheck(_ func() bool, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
+	h.UserCall(context.Background(), act, onResult, nil, params)
+}
+
+func (h *helperInstance) UserCall(_ context.Context, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
 	h.lastCallAction = act
 	h.lastCallParams = params
 	if onResult != nil && h.callCheckErr != nil {

@@ -82,8 +82,7 @@ func (n *navigator) push(ctx context.Context, l path.Location, replace bool) {
 }
 
 func (n *navigator) call(path string, seq int32, replace bool) {
-	n.inst.UserCall(
-		context.Background(),
+	n.inst.UserCallCheck(
 		func() bool {
 			return seq == n.seq.Load()
 		},

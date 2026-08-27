@@ -120,10 +120,11 @@ func (f *writeController) Stash(card *inner.Card) stashResult {
 		}
 		return stashFiller
 	}
-	action, ok := card.Call.Action()
+	action, free, ok := card.Call.Action()
 	if !ok {
 		return stashCancel
 	}
+	defer free()
 	f.stash(h)
 	invocation := action.Invocation()
 	if err := h.writeCard(&f.buffer, &invocation); err != nil {

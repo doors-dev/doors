@@ -62,7 +62,7 @@ func (l *lifecycleInstance) NewID() uint64 {
 
 func (l *lifecycleInstance) Call(c actions.Call) {
 	if l.calls != nil {
-		if action, ok := c.Action(); ok {
+		if action, _, ok := c.Action(); ok {
 			l.calls <- action
 		}
 	}

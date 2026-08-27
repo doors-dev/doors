@@ -32,13 +32,23 @@ func (c reportHook) Params() actions.CallParams {
 	return actions.CallParams{}
 }
 
-func (c reportHook) Action() (actions.Action, bool) {
-	return actions.ReportHook{HookId: uint64(c)}, true
+func (c reportHook) Action() (actions.Action, func(), bool) {
+	return actions.ReportHook{HookId: uint64(c)}, func() {}, true
 }
 
 func (c reportHook) Cancel() {}
 
 func (c reportHook) Result(r json.RawMessage, err error) {}
+
+type trackedPayload struct {
+	*printer.PayloadPrinter
+	tracker *tracker
+}
+
+func (t trackedPayload) Release() {
+	t.tracker.removePrinter(t.PayloadPrinter)
+	t.PayloadPrinter.Release()
+}
 
 type callKind int
 
@@ -77,26 +87,29 @@ func (n *call) send(err error) {
 	n.task.Report(err)
 }
 
-func (c *call) Action() (actions.Action, bool) {
+func (c *call) Action() (actions.Action, func(), bool) {
 	if c.ctx.Err() != nil {
-		return nil, false
+		return nil, nil, false
 	}
-	payload := c.payload.Payload()
+	payload, ok := c.payload.Payload()
+	if !ok {
+		return nil, nil, false
+	}
 	switch c.kind {
 	case callReplace:
 		return actions.DoorReplace{
 			ID:      c.id,
 			Payload: payload,
-		}, true
+		}, c.payload.Free, true
 	case callUpdate:
 		return actions.DoorUpdate{
 			ID:      c.id,
 			Payload: payload,
-		}, true
+		}, c.payload.Free, true
 	case callFreeze:
 		return actions.DoorFreeze{
 			ID: c.id,
-		}, true
+		}, c.payload.Free, true
 	default:
 		panic("unsupported door call type")
 	}

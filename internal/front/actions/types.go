@@ -55,7 +55,7 @@ type CallParams struct {
 
 type Call interface {
 	Params() CallParams
-	Action() (Action, bool)
+	Action() (action Action, free func(), ok bool)
 	Cancel()
 	Result(json.RawMessage, error)
 }

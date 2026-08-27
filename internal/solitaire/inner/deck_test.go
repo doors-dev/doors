@@ -34,8 +34,8 @@ func (s *stubActionCall) Params() actions.CallParams {
 	return actions.CallParams{}
 }
 
-func (s *stubActionCall) Action() (actions.Action, bool) {
-	return s.act, true
+func (s *stubActionCall) Action() (actions.Action, func(), bool) {
+	return s.act, func() {}, true
 }
 
 func (s *stubActionCall) Cancel() {
@@ -68,7 +68,7 @@ func TestCallLifecycle(t *testing.T) {
 	}
 
 	plainCall, plainStub := newStubInnerCall(2)
-	gotAction, ok := plainCall.Action()
+	gotAction, _, ok := plainCall.Action()
 	if !ok {
 		t.Fatal("expected action to be available")
 	}

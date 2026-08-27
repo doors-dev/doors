@@ -66,9 +66,8 @@ func (p *pipe) Release() {
 	stack.Release()
 }
 
-func (p *pipe) Render(disableGzip bool, printerMiddleware func(next gox.Printer) gox.Printer) (printer.Payload, error) {
+func (p *pipe) Render(pr *printer.PayloadPrinter, printerMiddleware func(next gox.Printer) gox.Printer) (printer.Payload, error) {
 	stack := p.Collect()
-	pr := printer.NewPayloadPrinter(disableGzip)
 	err := stack.Print(printerMiddleware(pr))
 	if err != nil {
 		pr.Release()
@@ -198,11 +197,17 @@ func EmptyPayload() printer.Payload {
 
 type emptyPayload struct{}
 
-func (e emptyPayload) Payload() actions.Payload {
-	return actions.NewText("")
+func (e emptyPayload) Payload() (actions.Payload, bool) {
+	return actions.NewText(""), true
 }
 
 func (e emptyPayload) Release() {}
+
+func (e emptyPayload) Free() {}
+
+func (e emptyPayload) Lock() bool {
+	return true
+}
 
 type pushFrontPrinter deque.Deque[any]
 

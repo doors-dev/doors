@@ -20,29 +20,45 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/actions"
 )
 
-func (c Instance) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
-	logger := c.Logger()
+func (c Instance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	call := &call{
 		ctx:      ctx,
-		action:   action,
+		onResult: onResult,
+		onCancel: onCancel,
+		params:   params,
+		logger:   c.Logger(),
+	}
+	call.action.Store(&action)
+	call.stop = context.AfterFunc(ctx, func() {
+		call.action.Store(nil)
+	})
+	c.solitaire.Call(call)
+}
+
+func (c Instance) UserCallCheck(check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+	call := &call{
+		ctx:      context.Background(),
 		check:    check,
 		onResult: onResult,
 		onCancel: onCancel,
 		params:   params,
-		logger:   logger,
+		logger:   c.Logger(),
 	}
+	call.action.Store(&action)
 	c.solitaire.Call(call)
 }
 
 type call struct {
 	ctx      context.Context
 	check    func() bool
-	action   actions.Action
+	action   atomic.Pointer[actions.Action]
+	stop     func() bool
 	onResult func(json.RawMessage, error)
 	onCancel func()
 	params   actions.CallParams
@@ -60,14 +76,26 @@ func (c *call) canceled() bool {
 	return c.ctx.Err() != nil
 }
 
-func (c *call) Action() (actions.Action, bool) {
-	if c.canceled() {
-		return nil, false
+func (c *call) finish() *actions.Action {
+	if c.stop != nil {
+		c.stop()
 	}
-	return c.action, true
+	return c.action.Swap(nil)
 }
 
-func (c call) Cancel() {
+func (c *call) Action() (actions.Action, func(), bool) {
+	if c.canceled() {
+		return nil, nil, false
+	}
+	action := c.action.Load()
+	if action == nil {
+		return nil, nil, false
+	}
+	return *action, func() {}, true
+}
+
+func (c *call) Cancel() {
+	c.finish()
 	if c.onCancel == nil {
 		return
 	}
@@ -75,8 +103,13 @@ func (c call) Cancel() {
 }
 
 func (c *call) Result(r json.RawMessage, err error) {
+	action := c.finish()
 	if err != nil {
-		c.logger.Error("Call failed", "action", c.action.Log(), "error", err)
+		if action != nil {
+			c.logger.Error("Call failed", "action", (*action).Log(), "error", err)
+		} else {
+			c.logger.Error("Call failed", "error", err)
+		}
 	}
 	if c.onResult == nil {
 		return

@@ -53,7 +53,10 @@ func (t *titleInstance) CallCtx(context.Context, actions.Action, func(json.RawMe
 }
 func (t *titleInstance) CallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
-func (t *titleInstance) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (t *titleInstance) UserCallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+}
+
+func (t *titleInstance) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (t *titleInstance) CSPCollector() common.CSPCollector {
 	if t.csp != nil {
@@ -149,7 +152,7 @@ func (titleDoor) Reload(context.Context) <-chan error {
 func (titleDoor) RootCore() core.Core {
 	return nil
 }
-func (titleDoor) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (titleDoor) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (titleDoor) CleanFrame() shredder.SimpleFrame {
 	return &shredder.ValveFrame{}
@@ -202,7 +205,7 @@ func (d *hookDoor) Reload(context.Context) <-chan error {
 func (d *hookDoor) RootCore() core.Core {
 	return nil
 }
-func (d *hookDoor) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (d *hookDoor) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (d *hookDoor) CleanFrame() shredder.SimpleFrame {
 	return &shredder.ValveFrame{}

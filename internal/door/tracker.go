@@ -26,6 +26,7 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/actions"
+	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
@@ -174,13 +175,37 @@ type tracker struct {
 	hooks          common.Set[uint64]
 	children       common.Set[*tracker]
 	cleanValve     shredder.ValveFrame
+	printers       common.Set[*printer.PayloadPrinter]
+}
+
+func (t *tracker) createPrinter() (*printer.PayloadPrinter, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.ctx.Err() != nil {
+		return nil, false
+	}
+	if t.printers == nil {
+		t.printers = common.NewSet[*printer.PayloadPrinter]()
+	}
+	p := printer.NewPayloadPrinter(t.Instance().Session().App().Conf().ServerDisableGzip)
+	t.printers.Add(p)
+	return p, true
+}
+
+func (t *tracker) removePrinter(p *printer.PayloadPrinter) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.printers == nil {
+		return
+	}
+	t.printers.Remove(p)
 }
 
 func (t *tracker) Instance() core.Instance {
 	return t.root.instance()
 }
 
-func (t *tracker) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (t *tracker) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	frames := ctex.GetFrames(ctx)
 	callFrame := shredder.Join(ctx, true, frames.Call(), t.innerCallGuard)
 	defer callFrame.Release()
@@ -191,7 +216,7 @@ func (t *tracker) UserCall(ctx context.Context, check func() bool, action action
 			}
 			return
 		}
-		t.inst().UserCall(ctx, check, action, onResult, onCancel, params)
+		t.inst().UserCall(ctx, action, onResult, onCancel, params)
 	})
 }
 
@@ -249,9 +274,14 @@ func (t *tracker) clean(cascade bool, cleanGuard shredder.SimpleFrame) {
 	t.mu.Lock()
 	hooks := t.hooks
 	children := t.children
+	printers := t.printers
 	t.hooks = nil
 	t.children = nil
+	t.printers = nil
 	t.mu.Unlock()
+	for p := range printers {
+		p.Release()
+	}
 	for child := range children {
 		child.clean(true, cleanGuard)
 	}
@@ -375,8 +405,8 @@ func (t *containerTracker) Instance() core.Instance {
 	return t.getTracker().Instance()
 }
 
-func (t *containerTracker) UserCall(ctx context.Context, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
-	t.getTracker().UserCall(ctx, check, action, onResult, onCancel, params)
+func (t *containerTracker) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+	t.getTracker().UserCall(ctx, action, onResult, onCancel, params)
 }
 
 func (t *containerTracker) getTracker() *tracker {

@@ -56,12 +56,20 @@ func (e Error) Release() {
 
 }
 
-func (e Error) Payload() actions.Payload {
+func (e Error) Free() {
+
+}
+
+func (e Error) Lock() bool {
+	return true
+}
+
+func (e Error) Payload() (actions.Payload, bool) {
 	buf := &bytes.Buffer{}
 	if err := e.Main().Render(context.Background(), buf); err != nil {
 		panic("error rendering error")
 	}
-	return actions.NewTextBytes(buf.Bytes())
+	return actions.NewTextBytes(buf.Bytes()), true
 }
 
 func (e Error) Main() gox.Elem {

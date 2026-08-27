@@ -34,7 +34,7 @@ func (p *Call) Written() {
 	p.Result([]byte("null"), nil)
 }
 
-func (c *Call) Action() (actions.Action, bool) {
+func (c *Call) Action() (action actions.Action, free func(), ok bool) {
 	return c.Call.Action()
 }
 

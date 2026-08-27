@@ -75,11 +75,11 @@ func (s *stubSyncCall) Params() actions.CallParams {
 	return s.params
 }
 
-func (s *stubSyncCall) Action() (actions.Action, bool) {
+func (s *stubSyncCall) Action() (actions.Action, func(), bool) {
 	if s.act == nil {
-		return nil, false
+		return nil, nil, false
 	}
-	return s.act, true
+	return s.act, func() {}, true
 }
 
 func (s *stubSyncCall) Cancel() {

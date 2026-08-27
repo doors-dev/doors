@@ -52,7 +52,6 @@ func Call(ctx context.Context, a Action) <-chan error {
 	}
 	core.Door().UserCall(
 		ctx,
-		nil,
 		prep.action,
 		func(rm json.RawMessage, err error) {
 			if err == nil && prep.decode != nil {

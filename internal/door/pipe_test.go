@@ -31,6 +31,7 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/path"
+	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -72,7 +73,10 @@ func (i *pipeTestInstance) Call(actions.Call)     {}
 func (i *pipeTestInstance) Session() core.Session { return i.session }
 func (i *pipeTestInstance) Logger() *slog.Logger  { return slog.Default() }
 func (i *pipeTestInstance) Store() ctex.Store     { return ctex.NewStore() }
-func (i *pipeTestInstance) UserCall(context.Context, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (i *pipeTestInstance) UserCallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+}
+
+func (i *pipeTestInstance) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (i *pipeTestInstance) CSPCollector() common.CSPCollector {
 	return (&common.CSP{}).NewCollector()
@@ -131,16 +135,21 @@ func (s *fragmentStamp) Send(j gox.Job) error {
 func TestPipeRenderPrinterMiddlewareObservesAndMutates(t *testing.T) {
 	p := newRenderPipe(t)
 	fillFragment(p)
-	payload, err := p.Render(true, func(next gox.Printer) gox.Printer {
+	payload, err := p.Render(printer.NewPayloadPrinter(true), func(next gox.Printer) gox.Printer {
 		return &fragmentStamp{next: next}
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	pl, ok := payload.Payload()
+	if !ok {
+		t.Fatal("expected payload")
+	}
 	var out bytes.Buffer
-	if err := payload.Payload().Output(&out); err != nil {
+	if err := pl.Output(&out); err != nil {
 		t.Fatal(err)
 	}
+	payload.Free()
 	payload.Release()
 	got := out.String()
 	if !strings.Contains(got, `data-stamped="yes"`) {
@@ -155,7 +164,7 @@ func TestPipeRenderPrinterMiddlewareSendErrorFailsRender(t *testing.T) {
 	sendErr := errors.New("send failed")
 	p := newRenderPipe(t)
 	fillFragment(p)
-	payload, err := p.Render(true, func(next gox.Printer) gox.Printer {
+	payload, err := p.Render(printer.NewPayloadPrinter(true), func(next gox.Printer) gox.Printer {
 		return &fragmentStamp{next: next, sendErr: sendErr}
 	})
 	if err != sendErr {
@@ -169,14 +178,19 @@ func TestPipeRenderPrinterMiddlewareSendErrorFailsRender(t *testing.T) {
 func TestPipeRenderWithoutMiddleware(t *testing.T) {
 	p := newRenderPipe(t)
 	fillFragment(p)
-	payload, err := p.Render(true, func(next gox.Printer) gox.Printer { return next })
+	payload, err := p.Render(printer.NewPayloadPrinter(true), func(next gox.Printer) gox.Printer { return next })
 	if err != nil {
 		t.Fatal(err)
 	}
+	pl, ok := payload.Payload()
+	if !ok {
+		t.Fatal("expected payload")
+	}
 	var out bytes.Buffer
-	if err := payload.Payload().Output(&out); err != nil {
+	if err := pl.Output(&out); err != nil {
 		t.Fatal(err)
 	}
+	payload.Free()
 	payload.Release()
 	if !strings.Contains(out.String(), "fragment") {
 		t.Fatalf("expected plain render to succeed, got %q", out.String())

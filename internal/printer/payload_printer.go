@@ -17,6 +17,7 @@ package printer
 import (
 	"compress/gzip"
 	"sync"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/actions"
@@ -37,15 +38,28 @@ func (s *sliceWriter) Write(p []byte) (n int, err error) {
 }
 
 type Payload interface {
-	Payload() actions.Payload
+	Free()
+	Lock() bool
+	Payload() (actions.Payload, bool)
 	Release()
 }
 
+const (
+	unlockedPayload int32 = iota
+	lockedPayload
+	releasedPayload
+)
+
 type PayloadPrinter struct {
+	state   atomic.Int32
 	buf     sliceWriter
 	gz      bool
 	gzip    *gzip.Writer
 	printer gox.Printer
+}
+
+func (b *PayloadPrinter) Lock() bool {
+	return b.state.CompareAndSwap(unlockedPayload, lockedPayload)
 }
 
 var _ Payload = (*PayloadPrinter)(nil)
@@ -64,14 +78,40 @@ func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
 	return b
 }
 
-func (b *PayloadPrinter) Payload() actions.Payload {
-	if b.gz {
-		return actions.NewTextGZ(b.buf)
+func (b *PayloadPrinter) Free() {
+	swapped := b.state.CompareAndSwap(lockedPayload, unlockedPayload)
+	if swapped {
+		return
 	}
-	return actions.NewTextBytes(b.buf)
+	if b.state.Load() != releasedPayload {
+		panic("payload state conflict")
+	}
+	b.release()
+}
+
+func (b *PayloadPrinter) Payload() (actions.Payload, bool) {
+	swapped := b.state.CompareAndSwap(unlockedPayload, lockedPayload)
+	if !swapped {
+		if b.state.Load() != releasedPayload {
+			panic("payload state conflict")
+		}
+		return actions.Payload{}, false
+	}
+	if b.gz {
+		return actions.NewTextGZ(b.buf), true
+	}
+	return actions.NewTextBytes(b.buf), true
 }
 
 func (b *PayloadPrinter) Release() {
+	prev := b.state.Swap(releasedPayload)
+	if prev != unlockedPayload {
+		return
+	}
+	b.release()
+}
+
+func (b *PayloadPrinter) release() {
 	if b.gzip != nil {
 		common.PutGzipWriter(b.gzip)
 		b.gzip = nil

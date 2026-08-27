@@ -88,6 +88,13 @@ func (n *node) getInnerCallGuard() *shredder.ValveFrame {
 	return n.tracker.innerCallGuard
 }
 
+func (n *node) payloadTracker() *tracker {
+	if n.staticTracker != nil {
+		return n.staticTracker.tracker
+	}
+	return n.tracker
+}
+
 func (n *node) getTracker() *tracker {
 	if n.staticTracker != nil {
 		return n.staticTracker.tracker
@@ -163,7 +170,20 @@ func (n *node) sync(task *userTask) {
 		var payload printer.Payload
 		if err == nil {
 			app := n.getTracker().Instance().Session().App()
-			payload, err = pip.Render(app.Conf().ServerDisableGzip, app.PrinterMiddleware())
+			target := n.payloadTracker()
+			pr, ok := target.createPrinter()
+			if !ok || !pr.Lock() {
+				pip.Release()
+				task.Cancel()
+				return
+			}
+			payload, err = pip.Render(pr, app.PrinterMiddleware())
+			pr.Free()
+			if err == nil {
+				payload = trackedPayload{PayloadPrinter: pr, tracker: target}
+			} else {
+				target.removePrinter(pr)
+			}
 		}
 		logger := n.getTracker().root.inst.Logger()
 		callCtx := n.getTracker().ctx
