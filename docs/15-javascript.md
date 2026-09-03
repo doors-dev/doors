@@ -363,6 +363,7 @@ The main client-side helpers are:
 - `$sys.ready(): Promise<void>`
 - `$sys.clean(fn: () => void | Promise<void>): void`
 - `$sys.activateLinks(): void`
+- `$sys.emit(target: EventTarget, event: Event): Promise<number>`
 - `HookErr`
 
 Manual `$hook(...)` and `$fetch(...)` calls throw `HookErr`. Catch it when failure is part of the normal flow.
@@ -400,3 +401,19 @@ Use `$sys.clean(...)` for timers, global listeners, and embedded widgets that ne
 	})
 </script>
 ```
+
+### Dispatch events and wait for hooks
+
+`$sys.emit(target, event)` is the client-side counterpart of `doors.Emitter`: it dispatches a DOM event and resolves only after every hook request the event triggered has finished — including `HoldSettle` and the hook's `After` actions. The resolved value is the number of hook requests triggered: an element with no matching event attr adds nothing, a bubbling event adds one per event attr it reaches.
+
+```gox
+<button id="save" (doors.AClick{On: onSave})>Save</button>
+
+<script>
+	const save = document.getElementById("save")
+	const n = await $sys.emit(save, new PointerEvent("click", { bubbles: true }))
+	console.log("handlers ran:", n)
+</script>
+```
+
+You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. Any failed hook request rejects the promise with `HookErr`; a hook canceled by a scope or filtered out by `Keys` counts as a failure as well. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.

@@ -139,10 +139,11 @@ Attaching the same handle to one element twice is harmless; it counts once.
 - Use normal rendering and state when the UI itself should change.
 - Keep the source of truth in state and templates — handles do not survive a rerender.
 - Remember which unit `Into` reports: live elements for `Setter`, hook requests for `Emitter`.
+- From JavaScript, `$sys.emit(target, event)` dispatches an event and waits for the triggered hooks the same way.
 
 ## Related
 
 - [Events](./08-events.md) for the event attrs an emitted event triggers.
 - [Actions](./12-actions.md) for `doors.Call`, `Into`, and action lists.
-- [JavaScript](./15-javascript.md) for `ActionEmit` and `$on(...)`.
+- [JavaScript](./15-javascript.md) for `ActionEmit`, `$on(...)`, and `$sys.emit(...)`.
 - [State](./07-state.md) for changes that should survive a rerender.

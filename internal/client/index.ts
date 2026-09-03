@@ -18,6 +18,7 @@ import controller from './controller'
 import navigator from './navigator'
 import { decodePayload } from './package'
 import { HookErr, hookErrKinds } from './hook_err'
+import { dispatch } from './trigger'
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
 	const attrName = `data-d0h-${name}`
@@ -61,6 +62,13 @@ class $D {
 		return await res.json()
 	}
 
+	emit = async (target: EventTarget, event: Event): Promise<number> => {
+		await controller.ready
+		const promises = dispatch(target, event)
+		await Promise.all(promises)
+		return promises.length
+	}
+
 	data = (name: string): Promise<any> | any => {
 		const attrName = `data-d0d-${name}`
 		const encodedPayload = this.anchor_.getAttribute(attrName)
@@ -91,6 +99,7 @@ function init(
 			ready: $D['ready'],
 			clean: $D['clean'],
 			activateLinks: () => void,
+			emit: $D['emit'],
 		},
 		HookErr: HookErrType,
 	) => Promise<void> | void
@@ -105,6 +114,7 @@ function init(
 		ready: $d.ready,
 		clean: $d.clean,
 		activateLinks: () => navigator.activateCurrent(),
+		emit: $d.emit,
 	}
 	return f($on, $data, $hook, $fetch, $G, $sys, HookErr)
 }

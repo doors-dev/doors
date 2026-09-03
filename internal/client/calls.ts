@@ -21,7 +21,7 @@ import { doAfter, scrollInto, Result } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
 import { HookErr } from "./hook_err.ts"
-import { putTrigger } from "./trigger"
+import { dispatch } from "./trigger"
 
 
 type Extras = {
@@ -108,9 +108,7 @@ const actions = {
 				} else {
 					event = new CustomEvent(type, { bubbles: true, cancelable: true, detail: ext.payload?.any })
 				}
-				const meta = putTrigger(event)
-				element.dispatchEvent(event)
-				promises.push(...meta.promises)
+				promises.push(...dispatch(element, event))
 			}
 		}
 		return Promise.all(promises).then(

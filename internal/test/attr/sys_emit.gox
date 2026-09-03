@@ -1,0 +1,55 @@
+package attr
+
+import (
+	"context"
+	"fmt"
+	"sync/atomic"
+	"time"
+	
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type sysEmitFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	done atomic.Int32
+}
+
+func (f *sysEmitFragment) hit(slot int) doors.Attr {
+	return doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			time.Sleep(200 * time.Millisecond)
+			f.done.Add(1)
+			f.r.Update(ctx, slot, fmt.Sprint(r.Event().Button))
+			return false
+		},
+	}
+}
+
+elem (f *sysEmitFragment) Main() {
+	~~
+	for i := 0; i < 4; i++ {
+		f.r.Update(ctx, i, "")
+	}
+	~~
+	~(f.r)
+	<div id="outer" (doors.A(ctx, f.hit(0)))>
+		<div id="inner" (doors.A(ctx, f.hit(1)))>target</div>
+	</div>
+	~>doors.AHook[int]{
+		Name: "count",
+		On: func(ctx context.Context, r doors.RequestHook[int]) (any, bool) {
+			f.r.Update(ctx, 2, fmt.Sprint(r.Data()))
+			f.r.Update(ctx, 3, fmt.Sprint(f.done.Load()))
+			return nil, true
+		},
+	} <script>
+		const n = await $sys.emit(
+			document.getElementById("inner"),
+			new PointerEvent("click", { bubbles: true, button: 2 }),
+		)
+		await $hook("count", n)
+	</script>
+}

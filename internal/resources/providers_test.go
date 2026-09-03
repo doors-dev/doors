@@ -178,6 +178,9 @@ func TestScriptEntries(t *testing.T) {
 		if !strings.Contains(tsOpt.Stdin.Contents, "$data: <T = any>(name: string) => T | Promise<ArrayBuffer>") {
 			t.Fatalf("ScriptInlineFS TS contents = %q", tsOpt.Stdin.Contents)
 		}
+		if !strings.Contains(tsOpt.Stdin.Contents, "emit: (target: EventTarget, event: Event) => Promise<number>") {
+			t.Fatalf("ScriptInlineFS TS contents = %q", tsOpt.Stdin.Contents)
+		}
 		if got := entryIDString(t, ts); got != "inline_fsindex.ts/inline" {
 			t.Fatalf("ScriptInlineFS TS entryID got %q", got)
 		}

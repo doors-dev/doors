@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const trigger = Symbol()
+package attr
 
-export type TriggerMeta = {
-	promises: Promise<Response>[]
-}
+import (
+	"testing"
 
-export function putTrigger(event: Event): TriggerMeta {
-	const meta: TriggerMeta = { promises: [] };
-	(event as any)[trigger] = meta
-	return meta
-}
+	"github.com/doors-dev/doors/internal/test"
+)
 
-export function getTrigger(event: Event): TriggerMeta | undefined {
-	return (event as any)[trigger]
-}
+func TestSysEmit(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &sysEmitFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
 
-export function dispatch(target: EventTarget, event: Event): Promise<Response>[] {
-	const meta = putTrigger(event)
-	target.dispatchEvent(event)
-	return meta.promises
+	waitReport(t, page, 0, "2")
+	waitReport(t, page, 1, "2")
+	waitReport(t, page, 2, "2")
+	waitReport(t, page, 3, "2")
 }
