@@ -217,6 +217,8 @@ func (h *helperInstance) TitleMeta() core.TitleMeta {
 	return nil
 }
 
+func (h *helperInstance) TabState(core.TabStateDeriver) {}
+
 type helperApp struct {
 	conf *common.Conf
 }

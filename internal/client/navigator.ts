@@ -104,7 +104,7 @@ export class Navigator {
 		}
 		const blockPop = this.blockPop
 		this.blockPop = []
-		const id = history.state?._d0r?.next
+		const id = history.state?._d0rN?.next
 		let blocked = false
 		for (const block of blockPop) {
 			if (Date.now() - block.time > 1000) {
@@ -119,6 +119,7 @@ export class Navigator {
 		return blocked
 	}
 	private pop = async (): Promise<void> => {
+		this.syncState()
 		if (this.isPopBlocked()) {
 			return
 		}
@@ -254,7 +255,17 @@ export class Navigator {
 		indicator.end(prevIndicator)
 		return el
 	}
-
+	private state: any = history.state?._d0rS ?? {}
+	public getState(): any {
+		return this.state
+	}
+	public setState(state: any) {
+		this.state = state
+		history.replaceState({ ...history.state, _d0rS: state }, '')
+	}
+	private syncState() {
+		history.replaceState({ ...history.state, _d0rS: this.state }, '')
+	}
 	private counter = 0
 	public push(path: string, serverPush: boolean): (() => void) | null {
 		const newUrl = urls.new(path)
@@ -262,13 +273,13 @@ export class Navigator {
 		if (!urls.equal(currentUrl, newUrl)) {
 			this.counter += 1
 			const id = this.counter
-			history.replaceState({ ...history.state, _d0r: { ...history.state?._d0r, next: id } }, '')
-			history.pushState({ _d0ri: history.state?._d0ri, _d0r: { id } }, '', path);
+			history.replaceState({ ...history.state, _d0rN: { ...history.state?._d0rN, next: id } }, '')
+			history.pushState({ _d0rI: history.state?._d0rI, _d0rS: this.state, _d0rN: { id } }, '', path);
 			if (serverPush) {
 				this.activate(newUrl)
 			}
 			return () => {
-				if (history.state?._d0r?.id !== id) {
+				if (history.state?._d0rN?.id !== id) {
 					return;
 				}
 				this.blockPop.push({ id, time: Date.now() })
@@ -276,14 +287,14 @@ export class Navigator {
 			}
 		}
 		if (serverPush) {
-			history.replaceState({ ...history.state, _d0r: { ...history.state?._d0r, id: undefined } }, '')
+			history.replaceState({ ...history.state, _d0rN: { ...history.state?._d0rN, id: undefined } }, '')
 			this.activateCurrent()
 			return null
 		}
 		if (newUrl.hash == currentUrl.hash) {
 			return null
 		}
-		history.replaceState({ ...history.state, _d0r: undefined }, '', path);
+		history.replaceState({ ...history.state, _d0rN: undefined }, '', path);
 		this.activateCurrent()
 		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
 		if (hash) {
@@ -296,7 +307,7 @@ export class Navigator {
 		const currentUrl = urls.current()
 		if (!urls.equal(currentUrl, newUrl)) {
 			if (serverPush) {
-				history.replaceState({ ...history.state, _d0r: undefined }, '', path)
+				history.replaceState({ ...history.state, _d0rN: undefined }, '', path)
 				this.activate(newUrl)
 				return null
 			}
@@ -304,23 +315,23 @@ export class Navigator {
 			const id = this.counter
 			const priorHref = window.location.href
 			const priorState = history.state
-			history.replaceState({ ...priorState, _d0r: { ...priorState?._d0r, id } }, '', path)
+			history.replaceState({ ...priorState, _d0rN: { ...priorState?._d0rN, id } }, '', path)
 			return () => {
-				if (history.state?._d0r?.id !== id) {
+				if (history.state?._d0rN?.id !== id) {
 					return
 				}
-				history.replaceState(priorState, '', priorHref)
+				history.replaceState({ ...priorState, _d0rS: this.state }, '', priorHref)
 			}
 		}
 		if (serverPush) {
-			history.replaceState({ ...history.state, _d0r: { ...history.state?._d0r, id: undefined } }, '')
+			history.replaceState({ ...history.state, _d0rN: { ...history.state?._d0rN, id: undefined } }, '')
 			this.activateCurrent()
 			return null
 		}
 		if (newUrl.hash == currentUrl.hash) {
 			return null
 		}
-		history.replaceState({ ...history.state, _d0r: undefined }, '', path)
+		history.replaceState({ ...history.state, _d0rN: undefined }, '', path)
 		this.activateCurrent()
 		const hash = newUrl.hash != "" && newUrl.hash != "#" ? newUrl.hash : undefined
 		if (hash) {

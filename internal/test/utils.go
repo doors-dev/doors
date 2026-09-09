@@ -87,6 +87,9 @@ func (s *Bro) PageStatus(t *testing.T, path string, status int) *rod.Page {
 			return true
 		},
 		func(e *proto.NetworkLoadingFailed) bool {
+			if e.Canceled {
+				return false
+			}
 			err = fmt.Sprintf("[request-failed] %s – %s", e.RequestID, e.ErrorText)
 			return true
 		},
@@ -114,6 +117,9 @@ func (s *Bro) Page(t *testing.T, path string) *rod.Page {
 			return false
 		},
 		func(e *proto.NetworkLoadingFailed) bool {
+			if e.Canceled {
+				return false
+			}
 			err = fmt.Sprintf("[request-failed] %s – %s", e.RequestID, e.ErrorText)
 			return true
 		},

@@ -76,6 +76,7 @@ func (t *titleInstance) Store() ctex.Store                    { return ctex.NewS
 func (t *titleInstance) Location() beam.Source[path.Location] { return t.location }
 func (t *titleInstance) Kill()                                {}
 func (t *titleInstance) TitleMeta() core.TitleMeta            { return t }
+func (t *titleInstance) TabState(core.TabStateDeriver)  {}
 func (t *titleInstance) Logger() *slog.Logger                 { return slog.Default() }
 func (t *titleInstance) PathMaker() path.PathMaker            { return t.session.app.PathMaker() }
 func (t *titleInstance) Edit(cur gox.Cursor) error            { return nil }

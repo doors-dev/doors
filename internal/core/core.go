@@ -67,7 +67,12 @@ type TitleMeta interface {
 	UpdateMeta(prop bool, name string, attrs gox.Attrs) context.CancelFunc
 }
 
+type TabStateDeriver interface {
+	Derive()
+}
+
 type Instance interface {
+	TabState(TabStateDeriver)
 	Session() Session
 	Logger() *slog.Logger
 	Store() ctex.Store

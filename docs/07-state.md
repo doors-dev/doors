@@ -98,6 +98,35 @@ Use `doors.DeriveSourceEqual(...)` when you need custom equality for the derived
 
 Updating a derived source writes back through its parent. The parent source remains the single stored value; the derived source only describes how to read and replace one piece of it.
 
+## Tab State
+
+Use `doors.TabState` for small per-tab UI state that must survive a reload but does not belong in the URL: an open panel, a draft filter, a wizard step.
+
+It returns a `Source[*T]` whose value is kept by the browser tab. It survives reloads and in-app navigation, back and forward keep the latest value, other tabs do not see it, and it never appears in the URL.
+
+The stored state reaches the server only after the page has been rendered, so during the initial render the value is `nil`. Render a placeholder and let the update fill it in:
+
+```gox
+elem (w Wizard) Main() {
+	~~
+	step := doors.TabState[int](ctx, "step")
+	~~
+	~(step.Bind(elem(v *int) {
+		~(if v == nil {
+			<div class="skeleton"></div>
+		} else {
+			~(Steps{Current: *v})
+		})
+	}))
+}
+```
+
+After the sync the value is never `nil`: a missing key reads as the zero value. Update with `nil` to remove the key. A value set before the sync wins over the stored one.
+
+Values are stored as JSON. Keep them small: browsers cap history state size, and the whole tab state travels on every page load and update.
+
+Use `doors.TabStateEqual(...)` when you need custom equality. `ctx` must belong to a **Doors** render or handler.
+
 ## Beams
 
 Use a `Beam` when a part of the page only needs a smaller read-only view of state.
@@ -432,6 +461,7 @@ Use NoSkip when an already-committed update should keep propagating even if a ne
 - Use `Get()` only when you explicitly want the latest stored value outside render guarantees.
 - Return a fresh value from `Mutate` or pass a fresh value to `Update` instead of mutating reference-type state in place.
 - Use NoSkip constructors only when already-committed in-progress updates must finish.
+- Use `TabState` for per-tab state that must survive a reload without going into the URL.
 
 ## Example
 

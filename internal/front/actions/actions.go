@@ -15,6 +15,7 @@
 package actions
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -262,6 +263,20 @@ func (u UpdateMeta) Invocation() Invocation {
 	return Invocation{
 		name: "update_meta",
 		arg:  []any{u.Name, u.Property, u.Attrs},
+	}
+}
+
+type UpdateState struct {
+	State map[string]json.RawMessage
+}
+
+func (a UpdateState) Log() string {
+	return "update_state"
+}
+func (a UpdateState) Invocation() Invocation {
+	return Invocation{
+		name: "update_state",
+		arg:  []any{a.State},
 	}
 }
 

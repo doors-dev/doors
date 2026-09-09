@@ -54,6 +54,8 @@ type resourceEnt string
 
 type syncEnt string
 
+type tabStateEnt string
+
 type Match struct {
 	entity any
 }
@@ -78,10 +80,16 @@ func (m Match) Undo() (UndoPath, bool) {
 	return e, ok
 }
 
+func (m Match) TabState() (instanceID string, ok bool) {
+	e, ok := m.entity.(tabStateEnt)
+	return string(e), ok
+}
+
 var hookRegexp = regexp.MustCompile(`^/h/([0-9a-zA-Z]+)/(\d+)(\?.*|/.*)?$`)
 var resourceRegexp = regexp.MustCompile(`^/r/([0-9a-zA-Z]+)(\.[^/]+)?$`)
 var syncPath = regexp.MustCompile(`^/s/([0-9a-zA-Z]+)(\?.*)?$`)
 var undoPath = regexp.MustCompile(`^/u/([0-9a-zA-Z]+)(/.*)$`)
+var tabStatePath = regexp.MustCompile(`^/t/([0-9a-zA-Z]+)(\?.*)?$`)
 
 func (pm PathMaker) SetServerIDCookie() bool {
 	return pm.serverIDCookieName != ""
@@ -166,6 +174,13 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 				Instance: instanceID,
 				Location: l,
 			},
+		}, true
+	}
+	matches = tabStatePath.FindStringSubmatch(path)
+	if len(matches) != 0 {
+		instanceID := matches[1]
+		return Match{
+			entity: tabStateEnt(instanceID),
 		}, true
 	}
 	return Match{}, false

@@ -15,10 +15,11 @@
 import action from "./calls"
 
 import doors from "./door"
+import navigator from "./navigator"
 import { Package } from "./package";
 import { Connector, Frame, Lost, NewConnector, Results, STRESS_MODE } from "./connector";
-import { disconnectAfter, id, ttl, requestTimeout } from "./params";
-import { ReliableTimer } from "./lib";
+import { disconnectAfter, id, ttl, requestTimeout, prefix } from "./params";
+import { ReliableTimer, ProgressiveDelay, AbortTimer, result } from "./lib";
 
 
 class Solitaire {
@@ -228,10 +229,10 @@ type State = typeof state[keyof typeof state]
 
 
 function repeatedLoad(): boolean {
-	if (history.state?._d0ri === id) {
+	if (history.state?._d0rI === id) {
 		return true
 	}
-	history.replaceState({ ...history.state, _d0ri: id }, '')
+	history.replaceState({ ...history.state, _d0rI: id }, '')
 	return false
 }
 
@@ -250,6 +251,7 @@ class Controller {
 			this.ensureReload()
 			return
 		}
+		this.pushState()
 		document.addEventListener("DOMContentLoaded", () => {
 			this.init()
 			ready()
@@ -263,6 +265,30 @@ class Controller {
 		window.addEventListener("pagehide", () => this.sleep())
 		window.addEventListener("pageshow", () => this.syncVisibility())
 		document.addEventListener("visibilitychange", () => this.syncVisibility())
+	}
+	private async pushState() {
+		const delay = new ProgressiveDelay()
+		const body = JSON.stringify(navigator.getState())
+		while (this.state_ != state.dead) {
+			const abortTimer = new AbortTimer(requestTimeout)
+			const [response, err] = await result(() => fetch(`${prefix}/t/${id}`, {
+				method: "POST",
+				signal: abortTimer.signal,
+				headers: {
+					'Content-Type': 'application/json;charset=UTF-8',
+				},
+				body,
+			}))
+			abortTimer.cancel()
+			if (!err && response.ok) {
+				return
+			}
+			if (!err && response.status === 410) {
+				this.kill()
+				return
+			}
+			await delay.wait()
+		}
 	}
 	private ensureReload() {
 		this.state_ = state.dead

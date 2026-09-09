@@ -857,13 +857,13 @@ func waitHistoryStateIdCleared(t *testing.T, page *rod.Page) {
 	t.Helper()
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
-		obj, err := page.Eval("() => (history.state && history.state._d0r && history.state._d0r.id) ?? null")
+		obj, err := page.Eval("() => (history.state && history.state._d0rN && history.state._d0rN.id) ?? null")
 		if err == nil && obj.Value.Nil() {
 			return
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatal("expected history.state._d0r.id to be cleared after replace confirm")
+	t.Fatal("expected history.state._d0rN.id to be cleared after replace confirm")
 }
 
 func waitHash(t *testing.T, page *rod.Page, hash string) {

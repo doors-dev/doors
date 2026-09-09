@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -71,7 +72,43 @@ func (a *app) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
 		a.restoreLocation(w, r, match.Instance, match.Location)
 		return true
 	}
+	if instanceID, ok := match.TabState(); ok {
+		a.serveTabState(w, r, instanceID)
+		return true
+	}
 	return false
+}
+
+func (a *app) serveTabState(w http.ResponseWriter, r *http.Request, instanceID string) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	ses, ok := getSession(r.Context())
+	if !ok {
+		a.Logger().Error("Session is removed from the request context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	inst, found := ses.GetInstance(instanceID)
+	if !found {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, int64(a.conf.ServerRequestBodyLimit)))
+	var data map[string]json.RawMessage
+	err := dec.Decode(&data)
+	r.Body.Close()
+	if err != nil {
+		a.Logger().Error("Tab state decoding error", "error", err, "instance_id", instanceID)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !inst.InitializeTabState(data) {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (a *app) serveSync(w http.ResponseWriter, r *http.Request, instanceId string) {

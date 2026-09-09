@@ -96,6 +96,9 @@ const actions = {
 	"report_hook": (_: Extras, track: number) => {
 		report(track)
 	},
+	"update_state": (_: Extras, state: any) => {
+		navigator.setState(state)
+	},
 	"emit_event": (ext: Extras, emitterId: number, type: string, capture: string) => {
 		const promises: Promise<Response>[] = []
 		const elements = getEmitter(emitterId)

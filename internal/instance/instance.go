@@ -2,6 +2,7 @@ package instance
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -54,6 +55,7 @@ type instance struct {
 	solitaire  solitaire.Solitaire
 	root       door.Root
 	navigator  utils.Navigator
+	tabState   utils.TabStateManager
 	killTimer  utils.KillTimer
 	csp        common.CSPCollector
 	importMap  utils.ImportMap
@@ -68,6 +70,14 @@ func (inst Instance) Logger() *slog.Logger {
 
 func (inst Instance) UpdateLocation(l path.Location) bool {
 	return inst.navigator.Update(l)
+}
+
+func (inst Instance) InitializeTabState(data map[string]json.RawMessage) bool {
+	if inst.state.Load() != active {
+		return false
+	}
+	inst.tabState.Initialize(data)
+	return true
 }
 
 func (inst Instance) TriggerHook(hookID uint64, w http.ResponseWriter, r *http.Request, track uint64) bool {
@@ -179,6 +189,7 @@ func (i instanceComp) Main() gox.Elem {
 	return gox.Elem(func(cur gox.Cursor) error {
 		ctx := cur.Context()
 		i.inst.navigator = utils.NewNavigator(i.inst, ctx)
+		i.inst.tabState = utils.NewTabStateManager(i.inst, ctx)
 		comp := i.page(ctx, i.w, i.r)
 		i.inst.navigator.Sync()
 		el := comp.Main()

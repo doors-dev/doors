@@ -1,0 +1,72 @@
+package tabstate
+
+import (
+	"context"
+	"fmt"
+	
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+const (
+	modePlain = "plain"
+	modePre = "pre"
+	modePreNil = "pre-nil"
+)
+
+type tabStateFragment struct {
+	test.NoBeam
+	mode string
+}
+
+func ptr(v int) *int {
+	return &v
+}
+
+func show(v *int) string {
+	if v == nil {
+		return "nil"
+	}
+	return fmt.Sprint(*v)
+}
+
+elem (f *tabStateFragment) Main() {
+	~~
+	n := doors.TabState[int](ctx, "n")
+	switch f.mode {
+	case modePre:
+		n.Update(ctx, ptr(5))
+	case modePreNil:
+		n.Update(ctx, ptr(5))
+		n.Update(ctx, nil)
+	}
+	~~
+	<div id="instance-id">~(doors.InstanceID(ctx))</div>
+	~(n.Bind(elem(v *int) {
+		<div id="value">~(show(v))</div>
+	}))
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			n.Mutate(ctx, func(v *int) *int {
+				if v == nil {
+					return ptr(1)
+				}
+				return ptr(*v + 1)
+			})
+			return false
+		},
+	} <button id="inc">inc</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			n.Update(ctx, nil)
+			return false
+		},
+	} <button id="clear">clear</button>
+	~>doors.ALink{
+		Model: test.Path{Vs: true},
+	} <a id="go-s">s</a>
+	~>doors.ALink{
+		Model: test.Path{Vh: true},
+	} <a id="go-h">h</a>
+}

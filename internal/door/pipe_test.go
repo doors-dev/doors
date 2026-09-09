@@ -92,6 +92,7 @@ func (i *pipeTestInstance) SetStatus(int)                        {}
 func (i *pipeTestInstance) Location() beam.Source[path.Location] { return nil }
 func (i *pipeTestInstance) Kill()                                {}
 func (i *pipeTestInstance) TitleMeta() core.TitleMeta            { return nil }
+func (i *pipeTestInstance) TabState(core.TabStateDeriver)  {}
 
 type pipeTestShutdown struct{}
 

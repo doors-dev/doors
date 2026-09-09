@@ -435,6 +435,21 @@ func TestPathMakerAndMatch(t *testing.T) {
 		t.Fatalf("unexpected undo match: %#v", undo)
 	}
 
+	match, ok = pm.Match(httptest.NewRequest("POST", pm.Prefix()+"/t/inst1", nil))
+	if !ok {
+		t.Fatal("expected tab state path to match")
+	}
+	instanceID, ok = match.TabState()
+	if !ok || instanceID != "inst1" {
+		t.Fatalf("unexpected tab state match: %q", instanceID)
+	}
+	if _, ok := match.Hook(); ok {
+		t.Fatal("expected tab state match not to be a hook match")
+	}
+	if _, ok := pm.Match(httptest.NewRequest("POST", pm.Prefix()+"/t/inst1/extra", nil)); ok {
+		t.Fatal("expected tab state path with trailing segment to fail matching")
+	}
+
 	if _, ok := pm.Match(httptest.NewRequest("GET", hookPath+"?t=bad", nil)); ok {
 		t.Fatal("expected bad hook track to fail matching")
 	}

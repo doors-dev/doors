@@ -234,6 +234,8 @@ This works well for open-ended query parameters, preserving unknown keys, or pag
 
 Don't mix a `url.Values` field with `query` tags in the same model. Pick one style per model.
 
+Query is for state that belongs in the address bar. For per-tab state that should survive a reload without showing in the URL, use `doors.TabState`. See [State](./07-state.md).
+
 ## Multiple Models
 
 A page can route on more than one path model — list them in order of specificity:
