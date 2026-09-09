@@ -1,6 +1,6 @@
 module github.com/doors-dev/doors
 
-go 1.27.1
+go 1.25.1
 
 require (
 	github.com/doors-dev/gox v0.3.1

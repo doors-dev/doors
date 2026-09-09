@@ -45,7 +45,6 @@ type App interface {
 	PathMaker() path.PathMaker
 	ResourceRegistry() resources.Registry
 	Conf() *common.Conf
-	Draining() bool
 	Migrating() bool
 	PrinterMiddleware() func(next gox.Printer) gox.Printer
 }

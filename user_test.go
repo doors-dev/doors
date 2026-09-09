@@ -239,10 +239,6 @@ func (h *helperApp) Logger() *slog.Logger {
 	return slog.Default()
 }
 
-func (h *helperApp) Draining() bool {
-	return false
-}
-
 func (h *helperApp) Migrating() bool {
 	return false
 }

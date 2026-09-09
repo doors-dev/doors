@@ -138,10 +138,6 @@ func (a App) SessionCount() (n int) {
 	return
 }
 
-func (a App) Draining() bool {
-	return a.drain.Load() != nil
-}
-
 func (a App) Migrating() bool {
 	state := a.drain.Load()
 	return state != nil && state.migrate
@@ -210,7 +206,7 @@ func (a *app) SetCookies(w http.ResponseWriter, id string, maxAge time.Duration)
 		MaxAge:   int(maxAge.Seconds()),
 	}
 	http.SetCookie(w, cookie)
-	if !a.pathMaker.SetServerIDCookie() || a.Draining() {
+	if !a.pathMaker.SetServerIDCookie() || a.Migrating() {
 		return
 	}
 	cookie = &http.Cookie{

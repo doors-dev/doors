@@ -92,3 +92,20 @@ func TestSetCookiesServerIDCookie(t *testing.T) {
 		t.Fatalf("unexpected server ID cookie max age: %d", serverCookie.MaxAge)
 	}
 }
+
+func TestSetCookiesServerIDCookieDrain(t *testing.T) {
+	a := newCookieTestApp("", "server_id")
+	a.Drain(false, func() {})
+	w := httptest.NewRecorder()
+	a.SetCookies(w, "sid", time.Minute)
+	if got := len(w.Result().Cookies()); got != 2 {
+		t.Fatalf("expected natural drain to keep the server ID cookie, got %d cookies", got)
+	}
+	a = newCookieTestApp("", "server_id")
+	a.Drain(true, func() {})
+	w = httptest.NewRecorder()
+	a.SetCookies(w, "sid", time.Minute)
+	if got := len(w.Result().Cookies()); got != 1 {
+		t.Fatalf("expected migrate drain to skip the server ID cookie, got %d cookies", got)
+	}
+}

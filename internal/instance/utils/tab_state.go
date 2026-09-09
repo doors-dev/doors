@@ -126,9 +126,9 @@ func (t TabStateManager) Initialize(data map[string]json.RawMessage) {
 	})
 }
 
-func (t TabStateManager) Derive[T any](key string, equal func(new T, old T) bool) beam.Lens[TabState, *T] {
-	logger := common.Logger(t.ctx)
-	return beam.NewLens(t.source, func(s TabState) *T {
+func DeriveTabState[T any](m TabStateManager, key string, equal func(new T, old T) bool) beam.Lens[TabState, *T] {
+	logger := common.Logger(m.ctx)
+	return beam.NewLens(m.source, func(s TabState) *T {
 		raw, ok := s.get()[key]
 		if !ok {
 			if s.state == initial {

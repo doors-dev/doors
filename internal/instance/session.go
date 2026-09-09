@@ -41,7 +41,6 @@ type App interface {
 	Logger() *slog.Logger
 	InstanceCreated()
 	InstanceDeleted()
-	Draining() bool
 	Migrating() bool
 	PrinterMiddleware() func(next gox.Printer) gox.Printer
 }

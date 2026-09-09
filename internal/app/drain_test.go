@@ -21,14 +21,11 @@ func waitDrainCallback(t *testing.T, called <-chan struct{}) {
 
 func TestDrainNatural(t *testing.T) {
 	a := newDrainTestApp()
-	if a.Draining() || a.Migrating() {
-		t.Fatal("expected app not draining before Drain")
+	if a.Migrating() {
+		t.Fatal("expected app not migrating before Drain")
 	}
 	called := make(chan struct{})
 	a.Drain(false, func() { close(called) })
-	if !a.Draining() {
-		t.Fatal("expected Draining after Drain")
-	}
 	if a.Migrating() {
 		t.Fatal("expected Migrating false for natural drain")
 	}

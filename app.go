@@ -168,11 +168,11 @@ type App interface {
 	// SessionCount returns the number of live sessions.
 	SessionCount() int
 	// Drain switches the app into drain mode. With migrate true, in-app
-	// navigation ends the instance so the browser reloads; with migrate
-	// false, instances are left to end naturally. The app id cookie stops
-	// being refreshed in both. callback runs at most once, on its own
-	// goroutine, when the last live instance is gone or immediately if
-	// none are live. Drain is one-way for the lifetime of the app.
+	// navigation ends the instance so the browser reloads, and the app id
+	// cookie stops being refreshed; with migrate false, instances are left
+	// to end naturally. callback runs at most once, on its own goroutine,
+	// when the last live instance is gone or immediately if none are live.
+	// Drain is one-way for the lifetime of the app.
 	Drain(migrate bool, callback func())
 	http.Handler
 }

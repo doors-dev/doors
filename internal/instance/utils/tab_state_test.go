@@ -106,7 +106,7 @@ func expectNoPush(t *testing.T, inst *tabStateInstance) {
 
 func TestTabStateNilBeforeInit(t *testing.T) {
 	m, inst := newTabStateTest()
-	n := m.Derive("n", intEqual)
+	n := DeriveTabState(m, "n", intEqual)
 	expectValue(t, n.Get(), nil)
 	m.Initialize(nil)
 	expectValue(t, n.Get(), ptr(0))
@@ -115,7 +115,7 @@ func TestTabStateNilBeforeInit(t *testing.T) {
 
 func TestTabStateInitFromClient(t *testing.T) {
 	m, inst := newTabStateTest()
-	n := m.Derive("n", intEqual)
+	n := DeriveTabState(m, "n", intEqual)
 	m.Initialize(map[string]json.RawMessage{"n": raw(t, 7)})
 	expectValue(t, n.Get(), ptr(7))
 	expectNoPush(t, inst)
@@ -126,7 +126,7 @@ func TestTabStateInitFromClient(t *testing.T) {
 
 func TestTabStateUpdateBeforeInit(t *testing.T) {
 	m, inst := newTabStateTest()
-	n := m.Derive("n", intEqual)
+	n := DeriveTabState(m, "n", intEqual)
 	<-n.Update(context.Background(), ptr(5))
 	expectValue(t, n.Get(), ptr(5))
 	<-n.Update(context.Background(), nil)
@@ -138,7 +138,7 @@ func TestTabStateUpdateBeforeInit(t *testing.T) {
 
 func TestTabStateServerWinsOnInit(t *testing.T) {
 	m, inst := newTabStateTest()
-	n := m.Derive("n", intEqual)
+	n := DeriveTabState(m, "n", intEqual)
 	<-n.Update(context.Background(), ptr(5))
 	m.Initialize(map[string]json.RawMessage{"n": raw(t, 7), "other": raw(t, true)})
 	expectValue(t, n.Get(), ptr(5))
@@ -152,7 +152,7 @@ func TestTabStateServerWinsOnInit(t *testing.T) {
 
 func TestTabStateServerValueWithEmptyClientPushes(t *testing.T) {
 	m, inst := newTabStateTest()
-	n := m.Derive("n", intEqual)
+	n := DeriveTabState(m, "n", intEqual)
 	<-n.Update(context.Background(), ptr(5))
 	m.Initialize(nil)
 	expectValue(t, n.Get(), ptr(5))
@@ -161,7 +161,7 @@ func TestTabStateServerValueWithEmptyClientPushes(t *testing.T) {
 
 func TestTabStateUpdateAfterInitPushes(t *testing.T) {
 	m, inst := newTabStateTest()
-	n := m.Derive("n", intEqual)
+	n := DeriveTabState(m, "n", intEqual)
 	m.Initialize(nil)
 	expectNoPush(t, inst)
 	<-n.Update(context.Background(), ptr(1))
@@ -175,7 +175,7 @@ func TestTabStateUpdateAfterInitPushes(t *testing.T) {
 
 func TestTabStateBadStoredValue(t *testing.T) {
 	m, inst := newTabStateTest()
-	n := m.Derive("n", intEqual)
+	n := DeriveTabState(m, "n", intEqual)
 	m.Initialize(map[string]json.RawMessage{"n": raw(t, "x")})
 	expectValue(t, n.Get(), ptr(0))
 	expectNoPush(t, inst)
@@ -183,7 +183,7 @@ func TestTabStateBadStoredValue(t *testing.T) {
 
 func TestTabStateNilBeforeInitYieldsToClient(t *testing.T) {
 	m, inst := newTabStateTest()
-	n := m.Derive("n", intEqual)
+	n := DeriveTabState(m, "n", intEqual)
 	<-n.Update(context.Background(), ptr(5))
 	<-n.Update(context.Background(), nil)
 	expectValue(t, n.Get(), nil)

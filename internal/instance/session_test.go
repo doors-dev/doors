@@ -57,7 +57,6 @@ func (a *sessionTestApp) Logger() *slog.Logger {
 
 func (a *sessionTestApp) InstanceCreated() {}
 func (a *sessionTestApp) InstanceDeleted() {}
-func (a *sessionTestApp) Draining() bool   { return false }
 func (a *sessionTestApp) Migrating() bool  { return false }
 func (a *sessionTestApp) SetCookies(w http.ResponseWriter, id string, maxAge time.Duration) {
 	a.cookieID = id

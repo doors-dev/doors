@@ -45,7 +45,6 @@ func (a *pipeTestApp) Logger() *slog.Logger                 { return slog.Defaul
 func (a *pipeTestApp) PathMaker() path.PathMaker            { return path.NewPathMaker("__Host-", "test", "") }
 func (a *pipeTestApp) ResourceRegistry() resources.Registry { return nil }
 func (a *pipeTestApp) Conf() *common.Conf                   { return &a.conf }
-func (a *pipeTestApp) Draining() bool                       { return false }
 func (a *pipeTestApp) Migrating() bool                      { return false }
 func (a *pipeTestApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }
@@ -92,7 +91,7 @@ func (i *pipeTestInstance) SetStatus(int)                        {}
 func (i *pipeTestInstance) Location() beam.Source[path.Location] { return nil }
 func (i *pipeTestInstance) Kill()                                {}
 func (i *pipeTestInstance) TitleMeta() core.TitleMeta            { return nil }
-func (i *pipeTestInstance) TabState(core.TabStateDeriver)  {}
+func (i *pipeTestInstance) TabState(core.TabStateDeriver)        {}
 
 type pipeTestShutdown struct{}
 

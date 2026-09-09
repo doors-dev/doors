@@ -16,7 +16,7 @@ type TabStateDerive[T any] struct {
 }
 
 func (s *TabStateDerive[T]) Derive() {
-	s.source = s.tab.Derive(s.Key, s.Equal)
+	s.source = utils.DeriveTabState(s.tab, s.Key, s.Equal)
 }
 
 func (s *TabStateDerive[T]) Get() beam.Lens[TabState, *T] {
