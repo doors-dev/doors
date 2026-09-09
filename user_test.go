@@ -241,6 +241,10 @@ func (h *helperApp) Draining() bool {
 	return false
 }
 
+func (h *helperApp) Migrating() bool {
+	return false
+}
+
 func (h *helperApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }
 }

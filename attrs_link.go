@@ -216,7 +216,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	}
 	historyReplace := h.HistoryReplace
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		if core.Instance().Session().App().Draining() {
+		if core.Instance().Session().App().Migrating() {
 			w.WriteHeader(http.StatusGone)
 			InstanceEnd(ctx)
 			return false

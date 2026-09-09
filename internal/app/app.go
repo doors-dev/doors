@@ -63,7 +63,19 @@ type app struct {
 	logger            *slog.Logger
 	printerMiddleware func(next gox.Printer) gox.Printer
 	instanceCount     atomic.Int64
-	drainCallback     atomic.Pointer[func()]
+	drain             atomic.Pointer[drain]
+}
+
+type drain struct {
+	callback func()
+	migrate  bool
+	once     sync.Once
+}
+
+func (c *drain) do() {
+	c.once.Do(func() {
+		go c.callback()
+	})
 }
 
 func (a *app) Logger() *slog.Logger {
@@ -127,7 +139,12 @@ func (a App) SessionCount() (n int) {
 }
 
 func (a App) Draining() bool {
-	return a.drainCallback.Load() != nil
+	return a.drain.Load() != nil
+}
+
+func (a App) Migrating() bool {
+	state := a.drain.Load()
+	return state != nil && state.migrate
 }
 
 func (a App) InstanceCreated() {
@@ -139,20 +156,23 @@ func (a App) InstanceDeleted() {
 	if n != 0 {
 		return
 	}
-	callback := a.drainCallback.Load()
-	if callback != nil {
-		(*callback)()
+	drain := a.drain.Load()
+	if drain != nil {
+		drain.do()
 	}
 }
 
-func (a App) Drain(callback func()) {
-	once := sync.OnceFunc(callback)
-	if !a.drainCallback.CompareAndSwap(nil, &once) {
+func (a App) Drain(migrate bool, callback func()) {
+	drain := &drain{
+		callback: callback,
+		migrate:  migrate,
+	}
+	if !a.drain.CompareAndSwap(nil, drain) {
 		a.logger.Error("Drain called more than once")
 		return
 	}
 	if a.instanceCount.Load() == 0 {
-		once()
+		drain.do()
 	}
 }
 

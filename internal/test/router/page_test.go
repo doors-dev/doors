@@ -465,7 +465,7 @@ func TestBrowserBackRestoresQueryWithDrainReload(t *testing.T) {
 
 	page := bro.Page(t, "/q")
 	defer page.Close()
-	bro.App().Drain(func() {})
+	bro.App().Drain(true, func() {})
 
 	initialInstance := test.GetContent(t, page, "#instance-id")
 	test.Click(t, page, "#query-next")
@@ -488,6 +488,38 @@ func TestBrowserBackRestoresQueryWithDrainReload(t *testing.T) {
 	restoredInstance := test.GetContent(t, page, "#instance-id")
 	if restoredInstance == nextInstance {
 		t.Fatalf("expected drain browser back to full-reload, got same instance %q", restoredInstance)
+	}
+}
+
+func TestBrowserBackRestoresQueryWithDrainNatural(t *testing.T) {
+	bro := routeBro(doors.RouteModel(pageQuery))
+	defer bro.Close()
+
+	page := bro.Page(t, "/q")
+	defer page.Close()
+	bro.App().Drain(false, func() {})
+
+	initialInstance := test.GetContent(t, page, "#instance-id")
+	test.Click(t, page, "#query-next")
+	waitQueryValue(t, page, "tag", "next")
+	waitQueryValue(t, page, "page", "2")
+	waitContent(t, page, "#tag", "next")
+	waitContent(t, page, "#page-value", "2")
+
+	nextInstance := test.GetContent(t, page, "#instance-id")
+	if nextInstance != initialInstance {
+		t.Fatalf("expected natural drain navigation to keep same instance, got %q then %q", initialInstance, nextInstance)
+	}
+
+	page.NavigateBack()
+	waitNoQueryValue(t, page, "tag")
+	waitNoQueryValue(t, page, "page")
+	waitContent(t, page, "#tag", "")
+	waitContent(t, page, "#page-value", "")
+
+	restoredInstance := test.GetContent(t, page, "#instance-id")
+	if restoredInstance != initialInstance {
+		t.Fatalf("expected natural drain browser back to keep same instance, got %q then %q", initialInstance, restoredInstance)
 	}
 }
 

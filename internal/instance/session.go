@@ -42,6 +42,7 @@ type App interface {
 	InstanceCreated()
 	InstanceDeleted()
 	Draining() bool
+	Migrating() bool
 	PrinterMiddleware() func(next gox.Printer) gox.Printer
 }
 

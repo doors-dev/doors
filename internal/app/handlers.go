@@ -120,7 +120,7 @@ func (a *app) restoreLocation(w http.ResponseWriter, r *http.Request, instId str
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	if a.Draining() {
+	if a.Migrating() {
 		inst.Kill()
 		w.WriteHeader(http.StatusGone)
 		return
