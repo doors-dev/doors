@@ -111,6 +111,11 @@ func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (v 
 	if !updated {
 		prevValue, has := b.values[prev]
 		if has {
+			b.values[seq] = entry[T2]{
+				value:   prevValue.value,
+				prev:    prev,
+				updated: false,
+			}
 			return prevValue.value, false
 		}
 		value := b.get(*sourceVal)

@@ -263,8 +263,12 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 		if updated {
 			t.Fatal("expected stale equal sync to report no update")
 		}
-		if _, has := b.values[5]; has {
-			t.Fatal("expected no new cached entry when previous beam value can be reused")
+		entry, has := b.values[5]
+		if !has {
+			t.Fatal("expected stale equal sync to cache the current seq")
+		}
+		if entry.value != &prevValue || entry.prev != 2 || entry.updated {
+			t.Fatal("unexpected cached entry state:", entry.prev, entry.updated)
 		}
 	})
 
@@ -375,6 +379,54 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 		}
 		if entry.value == nil || *entry.value != "v:10" {
 			t.Fatal("unexpected cached entry value")
+		}
+	})
+
+	t.Run("unchanged source with previous beam value caches current seq", func(t *testing.T) {
+		sourceValue := 12
+		sourceUpdated := false
+		source := &stubSyncSource[int]{
+			syncFunc: func(prev, seq uint, after shredder.SimpleFrame) (*int, bool) {
+				return &sourceValue, sourceUpdated
+			},
+		}
+		prevValue := "v:12"
+		b := &beam[int, string]{
+			beam: source,
+			values: map[uint]entry[string]{
+				3: {
+					value:   &prevValue,
+					prev:    2,
+					updated: true,
+				},
+			},
+			get: func(v int) string {
+				return fmt.Sprintf("v:%d", v)
+			},
+			equal: func(new string, old string) bool {
+				return new == old
+			},
+		}
+
+		got, updated := b.syncEntry(3, 8, nil)
+		if got != &prevValue || updated {
+			t.Fatal("expected unchanged source to reuse previous pointer without update")
+		}
+		entry, has := b.values[8]
+		if !has {
+			t.Fatal("expected unchanged source to cache current seq")
+		}
+		if entry.value != &prevValue || entry.prev != 3 || entry.updated {
+			t.Fatal("unexpected cached entry state:", entry.prev, entry.updated)
+		}
+
+		sourceUpdated = true
+		got, updated = b.syncEntry(8, 9, nil)
+		if got != &prevValue {
+			t.Fatal("expected equal derived value to reuse previous pointer")
+		}
+		if updated {
+			t.Fatal("expected equal derived value after cached seq to report no update")
 		}
 	})
 
