@@ -292,7 +292,7 @@ Use:
 
 These are not a 1:1 pair. For example, `$hook(...)` can call `ARawHook`.
 
-Both hook attrs also take optional `Scope`, `Indicator`, and `RequestTimeout` fields. `RequestTimeout` overrides the `RequestTimeout` from [Configuration](./21-configuration.md) for calls to that hook.
+Both hook attrs also take optional `Scope`, `Indicator`, `RequestTimeout`, and `Parallel` fields. `RequestTimeout` overrides the `RequestTimeout` from [Configuration](./21-configuration.md) for calls to that hook.
 
 For `AHook[T]`, the handler receives `doors.RequestHook[T]`, so it can:
 
@@ -304,6 +304,8 @@ For `AHook[T]`, the handler receives `doors.RequestHook[T]`, so it can:
 Return `false` to keep the hook active.
 
 Return `true` to remove it after the call.
+
+Calls to the same hook are serialized on the backend: one runs at a time, in order of arrival. Set `Parallel` to lift that; see [Parallel](#parallel).
 
 ```gox
 <script
@@ -341,6 +343,33 @@ The handler receives `doors.RequestRawHook`, which adds:
 - `r.Body()` for raw request bodies
 - `r.Reader()` or `r.ParseForm(...)` for multipart forms
 - `r.ResponseWriter()` when you want to write the response yourself
+
+### Parallel
+
+Set `Parallel: true` on `AHook[T]` or `ARawHook` when calls to the same hook must overlap instead of waiting for each other. Event attrs take the same field; see [Events](./08-events.md).
+
+- calls run concurrently, so the handler must synchronize any shared state itself
+- returning `true` stops new calls; the hook is removed once the calls already running finish
+- returning `false` keeps the hook active, as usual
+
+That is the right fit for streaming responses held open for a long time, and for independent requests fired in parallel from one script.
+
+```gox
+<script
+	(doors.ARawHook{
+		Name:     "stream",
+		Parallel: true,
+		On: func(ctx context.Context, r doors.RequestRawHook) bool {
+			w := r.ResponseWriter()
+			w.Header().Set("Content-Type", "text/event-stream")
+			// write until ctx is done
+			return false
+		},
+	})>
+	const a = $fetch("stream")
+	const b = $fetch("stream")
+</script>
+```
 
 When `$hook(...)` or `$fetch(...)` sends data, the client chooses the request body shape automatically:
 

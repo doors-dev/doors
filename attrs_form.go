@@ -41,6 +41,9 @@ type ARawSubmit struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -61,7 +64,7 @@ func (s ARawSubmit) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(s.handle(core), nil)
+	hook, ok := core.Door().RegisterHook(s.handle(core), s.Parallel)
 	if !ok {
 		return context.Canceled
 	}
@@ -116,6 +119,9 @@ type ASubmit[T any] struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -136,7 +142,7 @@ func (s ASubmit[V]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(s.handle(core), nil)
+	hook, ok := core.Door().RegisterHook(s.handle(core), s.Parallel)
 	if !ok {
 		return context.Canceled
 	}
@@ -203,6 +209,9 @@ type AChange struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -225,6 +234,7 @@ func (p AChange) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		before:    p.Before,
 		onError:   p.OnError,
 		indicator: p.Indicator,
+		parallel:  p.Parallel,
 		on:        p.On,
 	}.apply(ctx, attrs)
 }
@@ -242,6 +252,9 @@ type AInput struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -269,6 +282,7 @@ func (p AInput) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		before:    p.Before,
 		onError:   p.OnError,
 		indicator: p.Indicator,
+		parallel:  p.Parallel,
 		on:        p.On,
 	}.apply(ctx, attrs)
 }

@@ -175,8 +175,9 @@ var _ SourceStatic = SourceBytes(nil)
 
 // SourceHook serves a resource from a handler.
 //
-// Return true to stop serving the resource after that request, false to keep it
-// available. The request body is not limited by ServerRequestBodyLimit.
+// Requests are handled concurrently. Return true to stop serving the resource
+// after that request, false to keep it available. The request body is not
+// limited by ServerRequestBodyLimit.
 type SourceHook func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool
 
 func (s SourceHook) Handler() HandlerFunc {

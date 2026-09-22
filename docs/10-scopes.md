@@ -95,7 +95,7 @@ Use it for:
 
 This is the simplest "prevent double-submit" scope.
 
-`ScopeBlocking` is client-side interaction policy, not a backend permission or one-shot guarantee. Calls to the same hook instance are already serialized on the backend. If a hook should run once and then disappear, return `true` from its handler.
+`ScopeBlocking` is client-side interaction policy, not a backend permission or one-shot guarantee. Calls to the same hook instance are already serialized on the backend unless the hook sets `Parallel`. If a hook should run once and then disappear, return `true` from its handler.
 
 ## Serial
 

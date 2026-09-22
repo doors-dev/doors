@@ -27,7 +27,6 @@ type Done = bool
 
 const (
 	hookActive int32 = iota
-	hookProgress
 	hookDone
 	hookCanceled
 	hookErrored
@@ -36,10 +35,12 @@ const (
 type hook struct {
 	id          uint64
 	triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done
-	cancelFunc  func(ctx context.Context)
 	state       atomic.Int32
 	ch          atomic.Pointer[chan struct{}]
 	tracker     hookTracker
+	parallel    bool
+	inflight    atomic.Int64
+	once        atomic.Bool
 }
 
 type hookTracker interface {
@@ -49,12 +50,12 @@ type hookTracker interface {
 	Context() context.Context
 }
 
-func newHook(id uint64, tracker hookTracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, cancelFunc func(ctx context.Context)) *hook {
+func newHook(id uint64, tracker hookTracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, parallel bool) *hook {
 	return &hook{
 		id:          id,
 		triggerFunc: triggerFunc,
-		cancelFunc:  cancelFunc,
 		tracker:     tracker,
+		parallel:    parallel,
 	}
 }
 
@@ -63,7 +64,9 @@ func (h *hook) cancel() {
 	if state != hookActive && state != hookErrored {
 		return
 	}
-	h.performCancel()
+	if h.inflight.Load() == 0 && h.once.CompareAndSwap(false, true) {
+		h.tracker.removeHook(h.id)
+	}
 }
 
 func (h *hook) wait() chan struct{} {
@@ -76,13 +79,16 @@ func (h *hook) wait() chan struct{} {
 }
 
 func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) bool {
-	ch := h.wait()
+	if !h.parallel {
+		ch := h.wait()
+		defer close(ch)
+	}
 	if h.tracker.Context().Err() != nil {
-		close(ch)
 		return false
 	}
-	if !h.state.CompareAndSwap(hookActive, hookProgress) {
-		close(ch)
+	h.inflight.Add(1)
+	if h.state.Load() != hookActive {
+		h.release()
 		return false
 	}
 	ctx, frame := ctex.AfterFrameInsert(h.tracker.Context())
@@ -93,29 +99,24 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) boo
 		})
 	}
 	done, err := h.tracker.Runtime().SafeHook(ctx, w, r, h.triggerFunc)
-	ok := false
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		ok = h.state.CompareAndSwap(hookProgress, hookErrored)
+		h.state.CompareAndSwap(hookActive, hookErrored)
 	} else if done {
-		ok = h.state.CompareAndSwap(hookProgress, hookDone)
-	} else {
-		ok = h.state.CompareAndSwap(hookProgress, hookActive)
+		h.state.CompareAndSwap(hookActive, hookDone)
 	}
-	if !ok {
-		h.performCancel()
-	}
-	close(ch)
-	if done {
-		h.tracker.removeHook(h.id)
-	}
+	h.release()
 	return true
 }
 
-func (h *hook) performCancel() {
-	h.tracker.removeHook(h.id)
-	if h.cancelFunc == nil {
+func (h *hook) release() {
+	if h.inflight.Add(-1) != 0 {
 		return
 	}
-	h.tracker.Runtime().SafeCtxFun(h.tracker.Context(), h.cancelFunc)
+	switch h.state.Load() {
+	case hookCanceled, hookDone:
+		if h.once.CompareAndSwap(false, true) {
+			h.tracker.removeHook(h.id)
+		}
+	}
 }

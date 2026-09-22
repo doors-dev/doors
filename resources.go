@@ -108,7 +108,8 @@ func ResourceProxy(url string) Resource {
 // NewHook registers r on the closest dynamic parent and returns the URL path
 // that serves it. The path stops working once the current content is cleared.
 //
-// Appending a slash and a file name to the returned path is safe.
+// Appending a slash and a file name to the returned path is safe. Requests
+// are handled concurrently.
 //
 // It returns false if the closest dynamic parent has already been cleared.
 //
@@ -118,7 +119,7 @@ func ResourceProxy(url string) Resource {
 // [Conf].
 func NewHook(ctx context.Context, r Resource) (string, bool) {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(r.Handler(), nil)
+	hook, ok := core.Door().RegisterHook(r.Handler(), true)
 	if !ok {
 		return "", false
 	}

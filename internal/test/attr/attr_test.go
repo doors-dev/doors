@@ -53,6 +53,24 @@ func TestAttrHook(t *testing.T) {
 	test.TestReport(t, page, data)
 	test.TestReportId(t, page, 1, data)
 }
+
+func TestAttrParallelHook(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &multiHookFragment{
+			r:    test.NewReporter(4),
+			gate: make(chan struct{}),
+		}
+	})
+	page := bro.Page(t, "/")
+	defer bro.Close()
+	defer page.Close()
+	<-time.After(time.Second)
+	test.TestContent(t, page, "#target", "abc")
+	test.TestContent(t, page, "#target2", "d")
+	test.TestContent(t, page, "#target3", "gone")
+	test.TestReportId(t, page, 3, "d")
+}
+
 func TestAttrRequestTimeout(t *testing.T) {
 	conf := doors.Conf{}
 	conf.RequestTimeout = time.Second

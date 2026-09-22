@@ -311,7 +311,7 @@ func TestOnReadyFromHandlerContextFiresInline(t *testing.T) {
 			h.events <- "ready-async"
 		}
 		return true
-	}, nil)
+	}, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -372,7 +372,7 @@ func TestOnSettleHandlerCtxWaitsForBatch(t *testing.T) {
 		close(entered)
 		<-proceed
 		return true
-	}, nil)
+	}, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}

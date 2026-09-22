@@ -329,7 +329,7 @@ func (t *tracker) Cinema() beam.Cinema {
 	return t.cinema
 }
 
-func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
+func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, parallel bool) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.ctx.Err() != nil {
@@ -338,7 +338,7 @@ func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.Respon
 	if t.hooks == nil {
 		t.hooks = common.NewSet[uint64]()
 	}
-	h := newHook(t.root.instance().NewID(), t, onTrigger, onCancel)
+	h := newHook(t.root.instance().NewID(), t, onTrigger, parallel)
 	t.hooks.Add(h.id)
 	t.root.addHook(h)
 	return core.Hook{
@@ -471,7 +471,7 @@ func (t *containerTracker) Cinema() beam.Cinema {
 	return t.cinema
 }
 
-func (t *containerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (core.Hook, bool) {
+func (t *containerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, parallel bool) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.ctx.Err() != nil {
@@ -480,7 +480,7 @@ func (t *containerTracker) RegisterHook(onTrigger func(ctx context.Context, w ht
 	if t.hooks == nil {
 		t.hooks = common.NewSet[uint64]()
 	}
-	h := newHook(t.tracker.Instance().NewID(), t, onTrigger, onCancel)
+	h := newHook(t.tracker.Instance().NewID(), t, onTrigger, parallel)
 	t.hooks.Add(h.id)
 	t.tracker.root.addHook(h)
 	return core.Hook{

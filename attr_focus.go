@@ -36,6 +36,9 @@ type focusIOEventHook struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -58,6 +61,7 @@ func (p *focusIOEventHook) apply(event string, ctx context.Context, attrs gox.At
 		before:    p.Before,
 		onError:   p.OnError,
 		indicator: p.Indicator,
+		parallel:  p.Parallel,
 		on:        p.On,
 	}.apply(ctx, attrs)
 }
@@ -69,6 +73,9 @@ type focusEventHook struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -89,6 +96,7 @@ func (p *focusEventHook) apply(event string, ctx context.Context, attrs gox.Attr
 		before:    p.Before,
 		onError:   p.OnError,
 		indicator: p.Indicator,
+		parallel:  p.Parallel,
 		on:        p.On,
 	}.apply(ctx, attrs)
 }
@@ -109,6 +117,9 @@ type AFocus struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -137,6 +148,9 @@ type ABlur struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -170,6 +184,9 @@ type AFocusIn struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -203,6 +220,9 @@ type AFocusOut struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions

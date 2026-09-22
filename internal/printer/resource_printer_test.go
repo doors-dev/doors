@@ -141,7 +141,7 @@ type titleDoor struct {
 
 func (d titleDoor) Instance() core.Instance { return d.inst }
 func (titleDoor) Cinema() beam.Cinema       { return nil }
-func (titleDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, func(context.Context)) (core.Hook, bool) {
+func (titleDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, bool) (core.Hook, bool) {
 	return core.Hook{}, false
 }
 func (titleDoor) ID() uint64 { return 7 }
@@ -189,7 +189,7 @@ type hookDoor struct {
 func (d *hookDoor) Instance() core.Instance { return d.inst }
 func (d *hookDoor) Cinema() beam.Cinema     { return nil }
 
-func (d *hookDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, func(context.Context)) (core.Hook, bool) {
+func (d *hookDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, bool) (core.Hook, bool) {
 	if !d.allowHook {
 		return core.Hook{}, false
 	}

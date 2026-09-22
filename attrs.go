@@ -65,12 +65,13 @@ type eventAttr[E any] struct {
 	before    Actions
 	scope     Scopes
 	indicator Indicators
+	parallel  bool
 	on        func(context.Context, RequestEvent[E]) bool
 }
 
 func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(p.handle(core), nil)
+	hook, ok := core.Door().RegisterHook(p.handle(core), p.parallel)
 	if !ok {
 		return context.Canceled
 	}

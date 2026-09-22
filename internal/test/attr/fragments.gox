@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 	
 	"github.com/doors-dev/doors"
@@ -186,6 +187,64 @@ elem (f *hookFragment) Main() {
 		document.getElementById("target").innerHTML = `${a}`
 		const b = await $hook("rawHook", await $data("myData"))
 		document.getElementById("target2").innerHTML = `${b}`
+	</script>
+}
+
+type multiHookFragment struct {
+	test.NoBeam
+	r    *test.Reporter
+	mu   sync.Mutex
+	gate chan struct{}
+	n    int
+}
+
+func (d *multiHookFragment) attr() []gox.Modify {
+	return []gox.Modify{
+		doors.ARawHook{
+			Name:     "multiHook",
+			Parallel: true,
+			On: func(ctx context.Context, r doors.RequestRawHook) bool {
+				body, _ := io.ReadAll(r.Body())
+				var str string
+				json.Unmarshal(body, &str)
+				d.mu.Lock()
+				d.n++
+				n := d.n
+				if n == 3 {
+					close(d.gate)
+				}
+				d.mu.Unlock()
+				if n <= 3 {
+					select {
+					case <-d.gate:
+					case <-time.After(3 * time.Second):
+						json.NewEncoder(r.ResponseWriter()).Encode("timeout")
+						return false
+					}
+				}
+				d.r.Update(ctx, n-1, str)
+				json.NewEncoder(r.ResponseWriter()).Encode(str)
+				return str == "d"
+			},
+		},
+	}
+}
+
+elem (f *multiHookFragment) Main() {
+	~(f.r)
+	<div id="target"></div>
+	<div id="target2"></div>
+	<div id="target3"></div>
+	<script (f.attr()...)>
+		const res = await Promise.all([$hook("multiHook", "a"), $hook("multiHook", "b"), $hook("multiHook", "c")])
+		document.getElementById("target").innerHTML = res.sort().join("")
+		document.getElementById("target2").innerHTML = await $hook("multiHook", "d")
+		try {
+			await $hook("multiHook", "e")
+			document.getElementById("target3").innerHTML = "alive"
+		} catch (e) {
+			document.getElementById("target3").innerHTML = "gone"
+		}
 	</script>
 }
 

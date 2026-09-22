@@ -105,6 +105,7 @@ Most event attrs share the same request-lifecycle fields:
 - `Indicator`: temporary client-side feedback, covered in [Indication](./11-indication.md)
 - `Before`: client-side actions before the request
 - `OnError`: client-side actions if the request fails
+- `Parallel`: lets calls to the handler run concurrently instead of one at a time; a `true` result then stops new calls, and the handler is removed once running calls finish
 
 `After` is different: it is not an attribute field. You schedule it from inside the handler with `r.After(...)`.
 
@@ -309,7 +310,7 @@ For a one-off attribute on one element, you usually do not need `doors.A(...)`.
 
 Each activated event attr has its own backend hook instance.
 
-Calls to that same instance are serialized, so rapid repeated events on one active handler do not run concurrently on the backend.
+Calls to that same instance are serialized, so rapid repeated events on one active handler do not run concurrently on the backend, unless the attr sets `Parallel`.
 
 If you reuse one activated attr across several elements, those elements also share the same hook instance and the same execution queue.
 

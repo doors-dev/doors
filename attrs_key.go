@@ -68,6 +68,9 @@ type keyEventHook struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// On handles the event on the server. Return false to keep the handler
 	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool
@@ -102,6 +105,7 @@ func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs)
 		scope:     k.Scope,
 		onError:   k.OnError,
 		indicator: k.Indicator,
+		parallel:  k.Parallel,
 		on:        k.On,
 	}.apply(ctx, attrs)
 }
@@ -130,6 +134,9 @@ type AKeyDown struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// On handles the event on the server. Return false to keep the handler
 	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool
@@ -169,6 +176,9 @@ type AKeyUp struct {
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// On handles the event on the server. Return false to keep the handler
 	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool

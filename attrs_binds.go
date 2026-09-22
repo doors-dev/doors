@@ -47,6 +47,9 @@ type AHook[T any] struct {
 	// RequestTimeout overrides [Conf].RequestTimeout for calls to this hook.
 	// Optional.
 	RequestTimeout time.Duration
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// On handles the call and returns the value sent back to the caller. Return
 	// false to keep the hook active, true to remove it. Optional; a nil On
 	// answers with null.
@@ -59,7 +62,7 @@ func (h AHook[T]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(h.handle(core), nil)
+	hook, ok := core.Door().RegisterHook(h.handle(core), h.Parallel)
 	if !ok {
 		return context.Canceled
 	}
@@ -128,6 +131,9 @@ type ARawHook struct {
 	// RequestTimeout overrides [Conf].RequestTimeout for calls to this hook.
 	// Optional.
 	RequestTimeout time.Duration
+	// Parallel lets calls to this handler run concurrently instead of one at
+	// a time. Leave it false unless overlapping calls are required. Optional.
+	Parallel bool
 	// On handles the call with raw access to the request body and the response.
 	// Return false to keep the hook active, true to remove it. Optional; a nil
 	// On answers with an empty response.
@@ -140,7 +146,7 @@ func (h ARawHook) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(h.handle(core), nil)
+	hook, ok := core.Door().RegisterHook(h.handle(core), h.Parallel)
 	if !ok {
 		return context.Canceled
 	}

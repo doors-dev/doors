@@ -136,14 +136,6 @@ func (r *runtime) onPanic(err error) {
 	r.Cancel()
 }
 
-func (r Runtime) SafeCtxFun(ctx context.Context, fun func(context.Context)) {
-	err := catch(fun, ctx)
-	if err == nil {
-		return
-	}
-	r.onPanic(err)
-}
-
 func (r Runtime) SafeHook(ctx context.Context, w http.ResponseWriter, req *http.Request, handler func(context.Context, http.ResponseWriter, *http.Request) bool) (bool, error) {
 	done, err := catchHook(ctx, w, req, handler)
 	if err != nil {

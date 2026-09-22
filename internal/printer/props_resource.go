@@ -122,7 +122,7 @@ func (r *resourceProps) Submit(openJob *gox.JobOpen, p *resourcePrinter) error {
 				w.Header().Set("Content-Type", contentType)
 			}
 			return handler(ctx, w, r)
-		}, nil)
+		}, true)
 		if !ok {
 			return context.Canceled
 		}
@@ -201,7 +201,7 @@ func (r *resourceProps) resourceURL(core core.Core, res *resources.Resource) (st
 		hook, ok := core.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			res.Serve(w, r)
 			return false
-		}, nil)
+		}, true)
 		if !ok {
 			return "", context.Canceled
 		}

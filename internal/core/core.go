@@ -94,7 +94,7 @@ type Door interface {
 	Instance() Instance
 	Cinema() beam.Cinema
 	ID() uint64
-	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, onCancel func(ctx context.Context)) (Hook, bool)
+	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, parallel bool) (Hook, bool)
 	Reload(ctx context.Context) <-chan error
 	RootCore() Core
 	UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
