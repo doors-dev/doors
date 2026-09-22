@@ -27,6 +27,8 @@ Emit structs (`PointerEmit`, `KeyboardEmit`, `FocusEmit`, `InputEmit`, `ChangeEm
 
 Related: the `On` callback on all event, form, and hook attrs is now optional. With nil `On` the request is still accepted (its body discarded unread) and the hook stays registered, so an attr can be attached purely for its client-side effects or as an Emitter round-trip target.
 
+On the client, `$sys.emit(target, event)` is the counterpart: it dispatches a DOM event and resolves after every hook request it triggered has finished, with the request count.
+
 See [Element Handles](./docs/17-element-handles.md).
 
 ### Lifecycle hooks: OnReady, OnSettle, OnClean
@@ -71,6 +73,29 @@ doors.Call(ctx, locked.Set("hidden", nil)) // removes the attribute
 
 Values follow template attribute semantics (nil/false remove, true sets bare). Setter is stateless: a rerendered element returns to its template attributes. `Set(...).Into(&n)` captures the number of live elements reached.
 
+### TabState — per-tab state that survives reload
+
+`doors.TabState[T](ctx, key)` returns a `Source[*T]` kept by the browser tab: it survives reload and in-app navigation, back and forward keep the latest value, other tabs do not see it, and it never appears in the URL. Meant for small UI state that does not belong in the address bar: an open panel, a draft filter, a wizard step.
+
+```gox
+~~
+step := doors.TabState[int](ctx, "step")
+~~
+~(step.Bind(elem(v *int) {
+	~(if v == nil {
+		<div class="skeleton"></div>
+	} else {
+		~(Steps{Current: *v})
+	})
+}))
+```
+
+The stored value reaches the server after the first render, so it is `nil` until then; after the sync a missing key reads as the zero value, and updating with `nil` removes the key. `doors.TabStateEqual` takes a custom comparator.
+
+### Parallel hooks
+
+Calls to one handler were always serialized. `AHook`, `ARawHook`, `ASubmit`, and others gain `Parallel bool`: with it, calls to the same handler overlap, and a `true` result stops new calls while the running ones finish. Resource hooks (`NewHook`, script and style sources) always run parallel. Leave it false unless overlapping calls are required.
+
 ### Door: Freeze and flexible Outer
 
 - `Door.Freeze(ctx)` keeps the Door's current markup on the page while releasing hooks, subscriptions, and nested Doors on the server. Meant for feed-like content that goes final; the Door keeps its stored state and can be mounted again.
@@ -96,6 +121,8 @@ Values follow template attribute semantics (nil/false remove, true sets bare). S
 ### App and platform
 
 - `doors.WithPrinter(func(next gox.Printer) gox.Printer)` wraps the HTML output printer once per drain unit, after all framework transforms. See [Printer Middleware](./docs/22-printer-middleware.md).
+- `App.Drain(migrate bool, callback)`: with `true`, live instances end on link navigation and history restore with a forced page load, and the server id cookie stops refreshing so sticky routing releases the browser to the new process; with `false`, instances end on their own. The callback runs on its own goroutine, so `server.Shutdown` inside it no longer deadlocks. `App.Migrating()` reports the state.
+- `IndicatorAttr.Value` and the `IndicateAttr*` helpers take `any` with the same template attribute semantics as `Setter.Set`: nil and false remove the attribute for the duration, true sets it bare.
 - `AHook`, `ARawHook`, `ASubmit`, and `ARawSubmit` gain `RequestTimeout time.Duration`, overriding `Conf.RequestTimeout` per hook.
 - `ActionLocationRawReplace{URL}` replaces the current history entry with a literal URL, complementing `ActionLocationRawAssign`.
 - Replace-instead-of-push navigation: `ALink.HistoryReplace` for links, `doors.HistoryReplaceContext(ctx)` for programmatic `Source` updates backed by the URL.
@@ -171,6 +198,7 @@ All return `<-chan error`; ignore the channel for fire-and-forget.
 |---|---|
 | `doors.InstanceId` | `doors.InstanceID` |
 | `doors.SessionId` | `doors.SessionID` |
+| `App.Drain(callback)` | `App.Drain(migrate bool, callback)` |
 
 ### Removed APIs
 
@@ -186,7 +214,7 @@ All return `<-chan error`; ignore the channel for fire-and-forget.
 ## Migration
 
 ```sh
-go get github.com/doors-dev/doors@v0.15.0
+go get github.com/doors-dev/doors@v0.15.5
 ```
 
 Update GoX to v0.3.0 alongside, then apply the renames in the tables above — all mechanical. The only behavioral shifts to review are the completion-channel contracts on `Call`, door operations, and `Source` updates.
