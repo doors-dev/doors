@@ -17,6 +17,21 @@ elem (f *indicatorFragment) Main() {
 	~(f.selectors())
 	~(f.restore())
 	~(f.queue())
+	~(f.values())
+}
+
+elem (f *indicatorFragment) values() {
+	<div id="v-target" data-remove="keep" data-off="keep">values</div>
+	~(f.button("values-1", doors.Join[doors.Indicators](
+		doors.IndicateAttrQuery("#v-target", "data-remove", nil),
+		doors.IndicateAttrQuery("#v-target", "data-off", false),
+		doors.IndicateAttrQuery("#v-target", "data-bare", true),
+		doors.IndicateAttrQuery("#v-target", "data-num", 42),
+	)))
+	<div id="v2-target">values</div>
+	~(f.button("values-set", doors.IndicateAttrQuery("#v2-target", "data-x", "X")))
+	~(f.button("values-change", doors.IndicateAttrQuery("#v2-target", "data-x", "Y")))
+	~(f.button("values-remove", doors.IndicateAttrQuery("#v2-target", "data-x", nil)))
 }
 
 // elem: extend to cover attributes and partial updates

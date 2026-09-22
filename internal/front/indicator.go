@@ -73,10 +73,10 @@ type Indicator struct {
 	selector Selector
 	kind     indicatorKind
 	param1   string
-	param2   string
+	param2   *string
 }
 
-func IndicatorAttr(s Selector, name string, value string) Indicator {
+func IndicatorAttr(s Selector, name string, value *string) Indicator {
 	return Indicator{
 		selector: s,
 		kind:     indicatorAttr,

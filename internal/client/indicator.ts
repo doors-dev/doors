@@ -19,10 +19,10 @@ type SelectorType = "target" | "query" | "query_all" | "parent_query"
 type Kind = "attr" | "class" | "remove_class" | "content"
 
 
-export type IndicatorEntry = [[SelectorType, string | null], Kind, string, string | undefined]
+export type IndicatorEntry = [[SelectorType, string | null], Kind, string, string | null | undefined]
 
 interface Indication {
-    attrs_: Map<string, string>
+    attrs_: Map<string, string | null>
     classes_: Set<string>
     removeClasses_: Set<string>
     content_: string | null
@@ -57,7 +57,7 @@ function newIndicator(
             let indication = indications.get(el)
             if (!indication) {
                 indication = {
-                    attrs_: new Map<string, string>(),
+                    attrs_: new Map<string, string | null>(),
                     classes_: new Set(),
                     removeClasses_: new Set(),
                     content_: null,
@@ -66,7 +66,7 @@ function newIndicator(
             }
             switch (kind) {
                 case "attr":
-                    indication.attrs_.set(param1, param2!)
+                    indication.attrs_.set(param1, param2 ?? null)
                     break
                 case "class":
                     splitClass(param1).forEach(c => indication.classes_.add(c))
@@ -87,7 +87,7 @@ function newIndicator(
 class ElementIndicator {
     private saved_ = {
         content_: null as string | null,
-        attrs_: new Map<string, string>(),
+        attrs_: new Map<string, string | null>(),
     }
 
     private active_: [number, Indication] | null = null
@@ -110,24 +110,30 @@ class ElementIndicator {
             this.el_.classList.add(add)
         }
         for (const reset of attrsToReset) {
-            const saved = this.saved_.attrs_.get(reset)
-            if (saved === undefined) {
-                this.el_.removeAttribute(reset)
-            } else {
-                this.saved_.attrs_.delete(reset)
-                this.el_.setAttribute(reset, saved)
-            }
+            this.restoreAttr(reset)
         }
         for (const set of attrsToSet) {
             if (!this.saved_.attrs_.has(set)) {
-                const toSave = this.el_.getAttribute(set)
-                if (toSave !== null) {
-                    this.saved_.attrs_.set(set, toSave)
-                }
+                this.saved_.attrs_.set(set, this.el_.getAttribute(set))
             }
-            this.el_.setAttribute(set, indication.attrs_.get(set)!)
+            const value = indication.attrs_.get(set)
+            if (value === null) {
+                this.el_.removeAttribute(set)
+            } else {
+                this.el_.setAttribute(set, value!)
+            }
         }
         this.active_ = [id, indication]
+    }
+
+    private restoreAttr(name: string) {
+        const saved = this.saved_.attrs_.get(name)
+        this.saved_.attrs_.delete(name)
+        if (saved === undefined || saved === null) {
+            this.el_.removeAttribute(name)
+        } else {
+            this.el_.setAttribute(name, saved)
+        }
     }
 
     start(id: number, indication: Indication) {
@@ -155,15 +161,8 @@ class ElementIndicator {
                 this.el_.innerHTML = this.saved_.content_ ?? ""
             }
 
-            if (activeIndication.attrs_.size !== 0) {
-                for (const name of activeIndication.attrs_.keys()) {
-                    const saved = this.saved_.attrs_.get(name)
-                    if (saved === undefined) {
-                        this.el_.removeAttribute(name)
-                    } else {
-                        this.el_.setAttribute(name, saved)
-                    }
-                }
+            for (const name of activeIndication.attrs_.keys()) {
+                this.restoreAttr(name)
             }
 
             for (const remove of activeIndication.classes_) {

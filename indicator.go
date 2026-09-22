@@ -15,6 +15,8 @@
 package doors
 
 import (
+	"log/slog"
+
 	"github.com/doors-dev/doors/internal/front"
 )
 
@@ -106,36 +108,41 @@ func (ic IndicatorContent) Indicators() []Indicator {
 var _ Indicators = IndicatorContent{}
 
 // IndicatorAttr temporarily sets an attribute on the selected elements.
+//
+// Value follows template attribute semantics: nil and false remove the
+// attribute, true sets it bare, [gox.Output] values serialize themselves,
+// anything else is formatted with the fmt package. A [gox.Mutate] value or a
+// failing [gox.Output] is logged and skipped.
 type IndicatorAttr struct {
 	// Selector picks the target elements. Optional; the zero value selects
 	// the event element.
 	Selector Selector
 	// Name is the attribute to set. Required.
 	Name string
-	// Value is the attribute value. Required.
-	Value string
+	// Value is the attribute value; nil or false removes the attribute.
+	Value any
 }
 
 // IndicateAttr builds an [IndicatorAttr] that targets the event element.
-func IndicateAttr(name, value string) IndicatorAttr {
+func IndicateAttr(name string, value any) IndicatorAttr {
 	return IndicatorAttr{Selector: SelectorTarget(), Name: name, Value: value}
 }
 
 // IndicateAttrQuery builds an [IndicatorAttr] that targets the first
 // element matching query.
-func IndicateAttrQuery(query, name, value string) IndicatorAttr {
+func IndicateAttrQuery(query, name string, value any) IndicatorAttr {
 	return IndicatorAttr{Selector: SelectorQuery(query), Name: name, Value: value}
 }
 
 // IndicateAttrQueryAll builds an [IndicatorAttr] that targets every
 // element matching query.
-func IndicateAttrQueryAll(query, name, value string) IndicatorAttr {
+func IndicateAttrQueryAll(query, name string, value any) IndicatorAttr {
 	return IndicatorAttr{Selector: SelectorQueryAll(query), Name: name, Value: value}
 }
 
 // IndicateAttrQueryParent builds an [IndicatorAttr] that targets the
 // closest ancestor matching query.
-func IndicateAttrQueryParent(query, name, value string) IndicatorAttr {
+func IndicateAttrQueryParent(query, name string, value any) IndicatorAttr {
 	return IndicatorAttr{Selector: SelectorQueryParent(query), Name: name, Value: value}
 }
 
@@ -144,7 +151,12 @@ func (ia IndicatorAttr) And(i Indicators) Indicators {
 }
 
 func (ia IndicatorAttr) Indicators() []Indicator {
-	return []Indicator{front.IndicatorAttr(ia.Selector, ia.Name, ia.Value)}
+	value, err := liveAttrValue(ia.Name, ia.Value)
+	if err != nil {
+		slog.Error("Indicator skipped", "error", err)
+		return nil
+	}
+	return []Indicator{front.IndicatorAttr(ia.Selector, ia.Name, value)}
 }
 
 var _ Indicators = IndicatorAttr{}

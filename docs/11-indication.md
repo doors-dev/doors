@@ -27,6 +27,13 @@ The `Indicate*` family covers four indicator kinds:
 
 > `IndicateContent` writes to `innerHTML` without applying escaping. Pass only trusted HTML.
 
+`IndicateAttr` takes `any` and follows template attribute semantics: `nil` and `false` remove the attribute for the duration, `true` sets it bare, `gox.Output` values serialize themselves, anything else is formatted with `fmt`. The previous value is restored afterwards. A `gox.Mutate` value or a failing `gox.Output` is logged and the indicator skipped.
+
+```go
+doors.IndicateAttr("disabled", true)
+doors.IndicateAttrQuery("#hint", "hidden", nil)
+```
+
 ## Targets
 
 By default the helper acts on the event source. A suffix redirects it:

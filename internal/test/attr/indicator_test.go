@@ -84,6 +84,52 @@ func TestIndicatorRestore(t *testing.T) {
 	waitAttrNo(t, page, "#indicator-1", "data-attr2", time.Second)
 }
 
+func TestIndicatorValues(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &indicatorFragment{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestAttr(t, page, "#v-target", "data-remove", "keep")
+	test.TestAttr(t, page, "#v-target", "data-off", "keep")
+	test.TestAttrNo(t, page, "#v-target", "data-bare")
+	test.TestAttrNo(t, page, "#v-target", "data-num")
+
+	test.ClickNow(t, page, "#values-1")
+	<-time.After(20 * time.Millisecond)
+	test.TestAttrNo(t, page, "#v-target", "data-remove")
+	test.TestAttrNo(t, page, "#v-target", "data-off")
+	test.TestAttr(t, page, "#v-target", "data-bare", "")
+	test.TestAttr(t, page, "#v-target", "data-num", "42")
+
+	<-time.After(500 * time.Millisecond)
+	waitAttr(t, page, "#v-target", "data-remove", "keep", time.Second)
+	test.TestAttr(t, page, "#v-target", "data-off", "keep")
+	test.TestAttrNo(t, page, "#v-target", "data-bare")
+	test.TestAttrNo(t, page, "#v-target", "data-num")
+
+	// absent -> X -> Y -> absent
+	test.ClickNow(t, page, "#values-set")
+	<-time.After(20 * time.Millisecond)
+	test.TestAttr(t, page, "#v2-target", "data-x", "X")
+	<-time.After(300 * time.Millisecond)
+	test.ClickNow(t, page, "#values-change")
+	waitAttr(t, page, "#v2-target", "data-x", "Y", time.Second)
+	waitAttrNo(t, page, "#v2-target", "data-x", 2*time.Second)
+
+	// absent -> X -> removed -> absent
+	test.ClickNow(t, page, "#values-set")
+	<-time.After(20 * time.Millisecond)
+	test.TestAttr(t, page, "#v2-target", "data-x", "X")
+	<-time.After(300 * time.Millisecond)
+	test.ClickNow(t, page, "#values-remove")
+	waitAttrNo(t, page, "#v2-target", "data-x", time.Second)
+	<-time.After(600 * time.Millisecond)
+	test.TestAttrNo(t, page, "#v2-target", "data-x")
+}
+
 func TestIndicatorQueue(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &indicatorFragment{}

@@ -62,32 +62,39 @@ func (s *Setter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 // only a rerender has.
 func (s *Setter) Set(name string, value any) ActionInto[int] {
 	return actionIntoFunc[int](func(ctx context.Context, core core.Core, gz bool) (action, error) {
-		if _, ok := value.(gox.Mutate); ok {
-			return action{}, fmt.Errorf("setter: attribute %s value implements gox.Mutate, which cannot compose on a live element", name)
+		str, err := liveAttrValue(name, value)
+		if err != nil {
+			return action{}, err
 		}
-		act := actions.AttrSet{
-			ID:   s.id.ID(core),
-			Name: name,
-		}
-		switch v := value.(type) {
-		case nil:
-			return action{action: act}, nil
-		case bool:
-			if !v {
-				return action{action: act}, nil
-			}
-			act.Value = new(string)
-		case gox.Output:
-			var b strings.Builder
-			if err := v.Output(&b); err != nil {
-				return action{}, err
-			}
-			str := b.String()
-			act.Value = &str
-		default:
-			str := fmt.Sprint(v)
-			act.Value = &str
-		}
-		return action{action: act}, nil
+		return action{action: actions.AttrSet{
+			ID:    s.id.ID(core),
+			Name:  name,
+			Value: str,
+		}}, nil
 	})
+}
+
+func liveAttrValue(name string, value any) (*string, error) {
+	if _, ok := value.(gox.Mutate); ok {
+		return nil, fmt.Errorf("attribute %s value implements gox.Mutate, which cannot compose on a live element", name)
+	}
+	switch v := value.(type) {
+	case nil:
+		return nil, nil
+	case bool:
+		if !v {
+			return nil, nil
+		}
+		return new(string), nil
+	case gox.Output:
+		var b strings.Builder
+		if err := v.Output(&b); err != nil {
+			return nil, err
+		}
+		str := b.String()
+		return &str, nil
+	default:
+		str := fmt.Sprint(v)
+		return &str, nil
+	}
 }
