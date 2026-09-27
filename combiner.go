@@ -32,6 +32,12 @@ func JoinIndicators(values ...Indicators) Indicators {
 	return Join(values...)
 }
 
+// JoinKeys returns one [Keys] value that matches any key of every value.
+// Without arguments it returns nil.
+func JoinKeys(values ...Keys) Keys {
+	return Join(values...)
+}
+
 // Join combines values that support [Joiner.And] into one value, in argument
 // order.
 //

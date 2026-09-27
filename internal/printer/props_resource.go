@@ -113,28 +113,28 @@ func (r *resourceProps) Submit(openJob *gox.JobOpen, p *resourcePrinter) error {
 	r.setDefaultMode(resources.ModeNoCache)
 	sourceHandler := r.source.(SourceHandler)
 	sourceStatic, isStatic := r.source.(SourceStatic)
-	core := openJob.Context().Value(common.KeyCore).(core.Core)
+	c := openJob.Context().Value(common.KeyCore).(core.Core)
 	if r.mode == resources.ModeNoCache || !isStatic {
 		handler := sourceHandler.Handler()
 		contentType := r.contentType
-		hook, ok := core.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			if contentType != "" {
 				w.Header().Set("Content-Type", contentType)
 			}
 			return handler(ctx, w, r)
-		}, true)
+		}, core.RaceParallel)
 		if !ok {
 			return context.Canceled
 		}
-		path := core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, r.name)
+		path := c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, r.name)
 		r.sourceAttr.Set(path)
 		return p.printer.Send(openJob)
 	}
-	res, err := core.App().ResourceRegistry().Static(sourceStatic.StaticEntry(), r.contentType)
+	res, err := c.App().ResourceRegistry().Static(sourceStatic.StaticEntry(), r.contentType)
 	if err != nil {
 		return err
 	}
-	path := core.App().PathMaker().Resource(res, r.name)
+	path := c.App().PathMaker().Resource(res, r.name)
 	r.sourceAttr.Set(path)
 	return p.printer.Send(openJob)
 }
@@ -192,20 +192,20 @@ func (r *resourceProps) readSource(attr gox.Attr) {
 	}
 }
 
-func (r *resourceProps) resourceURL(core core.Core, res *resources.Resource) (string, error) {
+func (r *resourceProps) resourceURL(c core.Core, res *resources.Resource) (string, error) {
 	mode := r.mode
 	switch mode {
 	case resources.ModeHost:
-		return core.App().PathMaker().Resource(res, r.name), nil
+		return c.App().PathMaker().Resource(res, r.name), nil
 	case resources.ModeNoHost, resources.ModeNoCache:
-		hook, ok := core.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			res.Serve(w, r)
 			return false
-		}, true)
+		}, core.RaceParallel)
 		if !ok {
 			return "", context.Canceled
 		}
-		return core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, r.name), nil
+		return c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, r.name), nil
 	default:
 		panic("internal error: unexpected resource mode")
 	}

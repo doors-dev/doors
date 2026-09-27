@@ -55,20 +55,20 @@ func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		}
 		return nil
 	}
-	core := job.Ctx.Value(common.KeyCore).(core.Core)
+	c := job.Ctx.Value(common.KeyCore).(core.Core)
 	switch src := s.source.(type) {
 	case string:
 		return p.printer.Send(job)
 	case SourceExternal:
-		core.Instance().CSPCollector().StyleSource(string(src))
+		c.Instance().CSPCollector().StyleSource(string(src))
 		return p.printer.Send(job)
 	case SourceStatic:
 		entry := src.styleEntry()
-		res, err := core.App().ResourceRegistry().Style(entry, s.output == styleDefault, s.mode)
+		res, err := c.App().ResourceRegistry().Style(entry, s.output == styleDefault, s.mode)
 		if err != nil {
 			return err
 		}
-		path, err := s.resourceURL(core, res)
+		path, err := s.resourceURL(c, res)
 		if err != nil {
 			return err
 		}
@@ -76,13 +76,13 @@ func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		return p.printer.Send(job)
 	case SourceHandler:
 		hander := src.Handler()
-		hook, ok := core.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			return hander(ctx, w, r)
-		}, true)
+		}, core.RaceParallel)
 		if !ok {
 			return context.Canceled
 		}
-		path := core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, s.name)
+		path := c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, s.name)
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	default:

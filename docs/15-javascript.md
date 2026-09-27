@@ -292,7 +292,7 @@ Use:
 
 These are not a 1:1 pair. For example, `$hook(...)` can call `ARawHook`.
 
-Both hook attrs also take optional `Scope`, `Indicator`, `RequestTimeout`, and `Parallel` fields. `RequestTimeout` overrides the `RequestTimeout` from [Configuration](./21-configuration.md) for calls to that hook.
+Both hook attrs also take optional `Scope`, `Indicator`, `RequestTimeout`, and `Race` fields. `RequestTimeout` overrides the `RequestTimeout` from [Configuration](./21-configuration.md) for calls to that hook.
 
 For `AHook[T]`, the handler receives `doors.RequestHook[T]`, so it can:
 
@@ -305,7 +305,7 @@ Return `false` to keep the hook active.
 
 Return `true` to remove it after the call.
 
-Calls to the same hook are serialized on the backend: one runs at a time, in order of arrival. Set `Parallel` to lift that; see [Parallel](#parallel).
+By default, calls to the same hook run one at a time on the backend, in order of arrival. `Race` changes that; see [Race](#race).
 
 ```gox
 <script
@@ -344,9 +344,11 @@ The handler receives `doors.RequestRawHook`, which adds:
 - `r.Reader()` or `r.ParseForm(...)` for multipart forms
 - `r.ResponseWriter()` when you want to write the response yourself
 
-### Parallel
+### Race
 
-Set `Parallel: true` on `AHook[T]` or `ARawHook` when calls to the same hook must overlap instead of waiting for each other. Event attrs take the same field; see [Events](./08-events.md).
+`AHook[T]` and `ARawHook` take the same `Race` field as event attrs; see [Events](./08-events.md#race) for the modes.
+
+Set `Race: doors.RaceParallel` when calls to the same hook must overlap instead of waiting for each other.
 
 - calls run concurrently, so the handler must synchronize any shared state itself
 - returning `true` stops new calls; the hook is removed once the calls already running finish
@@ -357,8 +359,8 @@ That is the right fit for streaming responses held open for a long time, and for
 ```gox
 <script
 	(doors.ARawHook{
-		Name:     "stream",
-		Parallel: true,
+		Name: "stream",
+		Race: doors.RaceParallel,
 		On: func(ctx context.Context, r doors.RequestRawHook) bool {
 			w := r.ResponseWriter()
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -370,6 +372,8 @@ That is the right fit for streaming responses held open for a long time, and for
 	const b = $fetch("stream")
 </script>
 ```
+
+With `Race: doors.RaceStrict`, a call that arrives out of order is not run, and its `$hook(...)` or `$fetch(...)` rejects with a canceled `HookErr`.
 
 When `$hook(...)` or `$fetch(...)` sends data, the client chooses the request body shape automatically:
 
@@ -445,4 +449,4 @@ Use `$sys.clean(...)` for timers, global listeners, and embedded widgets that ne
 </script>
 ```
 
-You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. Any failed hook request rejects the promise with `HookErr`; a hook canceled by a scope or filtered out by `Keys` counts as a failure as well. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.
+You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. Any failed hook request rejects the promise with `HookErr`; a hook canceled by a scope or by `RaceStrict`, or filtered out by `Keys`, counts as a failure as well. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.

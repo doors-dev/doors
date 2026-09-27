@@ -21,6 +21,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -311,7 +312,7 @@ func TestOnReadyFromHandlerContextFiresInline(t *testing.T) {
 			h.events <- "ready-async"
 		}
 		return true
-	}, false)
+	}, RaceSerial)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -372,7 +373,7 @@ func TestOnSettleHandlerCtxWaitsForBatch(t *testing.T) {
 		close(entered)
 		<-proceed
 		return true
-	}, false)
+	}, RaceSerial)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -841,4 +842,51 @@ func TestOnReadyStaticDroppedOnError(t *testing.T) {
 		t.Fatal("expected static render error")
 	}
 	h.expectNoEvent(100 * time.Millisecond)
+}
+
+// RaceStrict answers 412 to a call whose track is older than the last one it
+// ran and skips the handler; RaceSerial runs every call.
+func TestHookRaceStrictCancelsOutOfOrder(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx := h.renderPage(nil)
+	c := pageCtx.Value(common.KeyCore).(core.Core)
+	tracks := []uint64{5, 7, 6}
+	run := func(race Race) ([]uint64, []int) {
+		t.Helper()
+		var track uint64
+		var ran []uint64
+		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+			ran = append(ran, track)
+			return false
+		}, race)
+		if !ok {
+			t.Fatal("expected hook registration to succeed")
+		}
+		codes := make([]int, 0, len(tracks))
+		for _, track = range tracks {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/", nil)
+			if !h.root.TriggerHook(hook.HookID, rec, req, track) {
+				t.Fatalf("expected hook trigger with track %d to be found", track)
+			}
+			codes = append(codes, rec.Code)
+		}
+		return ran, codes
+	}
+
+	ran, codes := run(RaceStrict)
+	if !slices.Equal(ran, []uint64{5, 7}) {
+		t.Fatalf("expected strict hook to run tracks [5 7], ran %v", ran)
+	}
+	if !slices.Equal(codes, []int{http.StatusOK, http.StatusOK, http.StatusPreconditionFailed}) {
+		t.Fatalf("expected strict hook statuses [200 200 412], got %v", codes)
+	}
+
+	ran, codes = run(RaceSerial)
+	if !slices.Equal(ran, tracks) {
+		t.Fatalf("expected serial hook to run tracks %v, ran %v", tracks, ran)
+	}
+	if !slices.Equal(codes, []int{http.StatusOK, http.StatusOK, http.StatusOK}) {
+		t.Fatalf("expected serial hook statuses [200 200 200], got %v", codes)
+	}
 }

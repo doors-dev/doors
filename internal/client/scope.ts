@@ -116,6 +116,8 @@ class Hook {
 					runtime.hookErr(track, new HookErr(hookErrKinds.bad_request))
 				} else if (r.status === 404) {
 					runtime.hookErr(track, new HookErr(hookErrKinds.not_found))
+				} else if (r.status === 412) {
+					runtime.hookErr(track, new HookErr(hookErrKinds.canceled))
 				} else if (r.status >= 500 && r.status < 600) {
 					runtime.hookErr(track, new HookErr(hookErrKinds.server, r))
 				} else {

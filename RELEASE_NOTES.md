@@ -1,3 +1,68 @@
+# Doors `0.15.6` Release Notes
+
+A small release around hook calls: race modes replace the `Parallel` flag, key filters become joinable, and `doors.Once` lets a Door drop its content after rendering it.
+
+## Highlights
+
+### Race modes
+
+Requests to one handler can overlap, and they can overtake each other on the way to the server. The `Race` field on all event, form, and hook attrs sets how the backend handles that:
+
+- `doors.RaceSerial` (default): calls run one at a time, in order of arrival
+- `doors.RaceParallel`: calls run concurrently
+- `doors.RaceStrict`: calls run one at a time, and out-of-order calls are canceled
+
+`RaceStrict` is the new one: a call that arrives after a newer one is canceled instead of run, so an older call never overwrites the result of a newer one. Nothing is reordered, and calls that arrive in order all run. Made for handlers where only the newest input matters — live search, autosave, selection.
+
+```gox
+<input
+	(doors.AInput{
+		Race: doors.RaceStrict,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
+			return false
+		},
+	})/>
+```
+
+A canceled call is silent on event attrs; `$hook`, `$fetch`, and `$sys.emit` reject with a canceled `HookErr`. `ALink` hooks are strict.
+
+See [Events](./docs/08-events.md#race).
+
+### Joinable Keys
+
+`Keys` on `AKeyDown` and `AKeyUp` joins the same way scopes, indicators, and actions do. A `doors.Key` is a `doors.Keys` value on its own; combine several with `.And(...)` or `doors.JoinKeys(...)`, and the handler fires when the event matches any of them.
+
+```go
+Keys: doors.Key{Key: "Enter"}.And(doors.Key{Key: "s", CtrlMod: doors.ModOn})
+```
+
+### Once
+
+A Door stores its content until replaced, so a large value passed to `Inner` or `Outer` stays in memory while the Door holds it. `doors.Once(v)` renders `v` on the first render only and drops its reference. The trade-off: a Door rendered again comes back empty.
+
+```go
+door.Outer(ctx, doors.Once(&UserList{users: users}))
+```
+
+See [Door](./docs/06-door.md#once).
+
+## Breaking Changes
+
+| Old | New |
+|---|---|
+| `Parallel: true` | `Race: doors.RaceParallel` |
+| `Keys: []doors.Key{a, b}` | `Keys: a.And(b)` or `Keys: doors.JoinKeys(a, b)` |
+
+## Migration
+
+```sh
+go get github.com/doors-dev/doors@v0.15.6
+```
+
+Both changes are mechanical.
+
+---
+
 # Doors `0.15` Release Notes — "Solidity"
 
 Doors `0.15` rebuilds the event and lifecycle machinery: server-driven synthetic events, precise lifecycle hooks, one unified action API, optimized memory usage, and the move to GoX v0.3.0.

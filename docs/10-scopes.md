@@ -95,7 +95,7 @@ Use it for:
 
 This is the simplest "prevent double-submit" scope.
 
-`ScopeBlocking` is client-side interaction policy, not a backend permission or one-shot guarantee. Calls to the same hook instance are already serialized on the backend unless the hook sets `Parallel`. If a hook should run once and then disappear, return `true` from its handler.
+`ScopeBlocking` is client-side interaction policy, not a backend permission or one-shot guarantee. Calls to the same hook instance already run one at a time on the backend by default, see [Race](./08-events.md#race). If a hook should run once and then disappear, return `true` from its handler.
 
 ## Serial
 
@@ -289,6 +289,8 @@ Compared to debounce:
 - latest can replace work that is already in progress
 
 Canceling an in-flight hook is a client-side effect. The request may already have reached the server, so do not rely on `ScopeLatest` to prevent handler execution or protect writes. It is most useful for ending previous indication, ignoring stale results, and keeping the newest interaction in control of the UI.
+
+To keep an older call from running after a newer one on the backend, set `Race: doors.RaceStrict` on the attr, see [Race](./08-events.md#race).
 
 ## Pipelines
 

@@ -70,7 +70,7 @@ The element is also a real anchor — `href` is set from the encoded model. That
 On a normal dynamic click, the client updates the browser URL to the link `href`
 **before** the hook request runs. If an error occurs:
 
-- **Canceled** (blocked by scope) or **Not found (404)** (hook removed on server):
+- **Canceled** (blocked by scope or arrived out of order) or **Not found (404)** (hook removed on server):
   The URL reverts to its previous value. Silent — `OnError` does not run.
 - **Gone (410)** (instance stopped): The page reloads to the new URL. `OnError`
   does not run; the reload supersedes it.

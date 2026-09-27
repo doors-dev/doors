@@ -105,7 +105,7 @@ Most event attrs share the same request-lifecycle fields:
 - `Indicator`: temporary client-side feedback, covered in [Indication](./11-indication.md)
 - `Before`: client-side actions before the request
 - `OnError`: client-side actions if the request fails
-- `Parallel`: lets calls to the handler run concurrently instead of one at a time; a `true` result then stops new calls, and the handler is removed once running calls finish
+- `Race`: how overlapping calls to the handler are handled on the backend, covered in [Race](#race)
 
 `After` is different: it is not an attribute field. You schedule it from inside the handler with `r.After(...)`.
 
@@ -182,15 +182,15 @@ Keyboard attributes are:
 - `doors.AKeyDown`
 - `doors.AKeyUp`
 
-Use `Keys` to fire only for specific keys and modifier combinations. The hook fires when the event matches any entry:
+Use `Keys` to fire only for specific keys and modifier combinations.
+
+`Keys` is a single `doors.Keys` value, and a `doors.Key` is one on its own. Combine several with `.And(...)` or `doors.JoinKeys(...)`; the hook fires when the event matches any of them:
 
 ```gox
 <input
 	(doors.AKeyDown{
-		Keys: []doors.Key{
-			{Key: "Enter"},
-			{Key: "s", CtrlMod: doors.ModOn},
-		},
+		Keys: doors.Key{Key: "Enter"}.
+			And(doors.Key{Key: "s", CtrlMod: doors.ModOn}),
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			return false
 		},
@@ -203,7 +203,7 @@ Each `doors.Key` matches `event.key` (an empty string matches any key) plus a re
 - `doors.ModOn` — modifier must be held
 - `doors.ModOff` — modifier must not be held
 
-So `{Key: "Enter"}` matches Enter with any modifiers, and `{Key: "s", CtrlMod: doors.ModOn}` matches Ctrl+S regardless of Shift, Alt, or Meta. To require an exact combination, set the other modifiers to `doors.ModOff`.
+So `doors.Key{Key: "Enter"}` matches Enter with any modifiers, and `doors.Key{Key: "s", CtrlMod: doors.ModOn}` matches Ctrl+S regardless of Shift, Alt, or Meta. To require an exact combination, set the other modifiers to `doors.ModOff`.
 
 The keyboard payload includes `Key`, `Code`, `Repeat`, and modifier state such as `CtrlKey`, `ShiftKey`, `AltKey`, and `MetaKey`.
 
@@ -310,9 +310,35 @@ For a one-off attribute on one element, you usually do not need `doors.A(...)`.
 
 Each activated event attr has its own backend hook instance.
 
-Calls to that same instance are serialized, so rapid repeated events on one active handler do not run concurrently on the backend, unless the attr sets `Parallel`.
+By default, calls to that same instance run one at a time, so rapid repeated events on one active handler do not run concurrently on the backend. `Race` changes that.
 
 If you reuse one activated attr across several elements, those elements also share the same hook instance and the same execution queue.
+
+## Race
+
+Requests to one handler can overlap, and they can overtake each other on the way to the server. `Race` sets how the backend handles that:
+
+- `doors.RaceSerial` (default): calls run one at a time, in order of arrival
+- `doors.RaceParallel`: calls run concurrently
+- `doors.RaceStrict`: calls run one at a time, and out-of-order calls are canceled
+
+With `RaceParallel` the handler must synchronize any shared state itself. Returning `true` stops new calls, and the handler is removed once the calls already running finish.
+
+With `RaceStrict` a call that arrives after a newer one is canceled instead of run, so an older call never overwrites the result of a newer one. Nothing is reordered, and calls that arrive in order all run. Use it when only the newest input matters: live search, autosave, selection.
+
+```gox
+<input
+	(doors.AInput{
+		Race: doors.RaceStrict,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
+			return false
+		},
+	})/>
+```
+
+A canceled call is silent on event attrs: `OnError` does not run.
+
+`Race` acts on the backend, after a request arrives. [Scopes](./10-scopes.md) act on the client, before it is sent. They combine: `ScopeLatest` keeps the newest interaction in control of the UI, `RaceStrict` keeps an older call from running after a newer one.
 
 ## Event Presets
 

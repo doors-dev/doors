@@ -59,19 +59,32 @@ func A(ctx context.Context, a ...Attr) Attr {
 	return joinedAttrs{attrs: attrs}
 }
 
+// Race is how overlapping calls to one handler are handled on the server.
+type Race = core.Race
+
+// Race modes for event attrs and hooks.
+const (
+	// RaceSerial runs calls one at a time, in order of arrival.
+	RaceSerial = core.RaceSerial
+	// RaceParallel lets calls run concurrently.
+	RaceParallel = core.RaceParallel
+	// RaceStrict runs calls one at a time and cancels out-of-order calls.
+	RaceStrict = core.RaceStrict
+)
+
 type eventAttr[E any] struct {
 	capture   front.Capture
 	onError   Actions
 	before    Actions
 	scope     Scopes
 	indicator Indicators
-	parallel  bool
+	race      Race
 	on        func(context.Context, RequestEvent[E]) bool
 }
 
 func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(p.handle(core), p.parallel)
+	hook, ok := core.Door().RegisterHook(p.handle(core), p.race)
 	if !ok {
 		return context.Canceled
 	}

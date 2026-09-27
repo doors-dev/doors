@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
@@ -120,5 +121,30 @@ func Status(statusCode int) gox.Elem {
 		core := cur.Context().Value(common.KeyCore).(core.Core)
 		core.Instance().SetStatus(statusCode)
 		return nil
+	})
+}
+
+// Once renders v on the first render only and drops its reference to v.
+// Later renders produce nothing.
+//
+// A [Door] stores its content until replaced. Wrapped in Once, that content
+// can be garbage collected after it is rendered; a Door rendered again is
+// then empty.
+//
+// Hooks keep what their handlers capture: a component whose methods serve as
+// handlers stays in memory until its hooks are removed.
+//
+// Example:
+//
+//	door.Outer(ctx, doors.Once(&UserList{users: users}))
+func Once(v any) gox.Elem {
+	cell := atomic.Pointer[any]{}
+	cell.Store(&v)
+	return gox.Elem(func(cur gox.Cursor) error {
+		p := cell.Swap(nil)
+		if p == nil {
+			return nil
+		}
+		return cur.Any(*p)
 	})
 }

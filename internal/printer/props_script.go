@@ -63,18 +63,18 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		}
 		return nil
 	}
-	core := job.Ctx.Value(common.KeyCore).(core.Core)
+	c := job.Ctx.Value(common.KeyCore).(core.Core)
 	switch src := s.source.(type) {
 	case string:
 		if s.specifier != "" {
-			core.Instance().ModuleRegistry().Add(s.specifier, src)
+			c.Instance().ModuleRegistry().Add(s.specifier, src)
 		}
 		return p.printer.Send(job)
 	case SourceExternal:
 		if s.specifier != "" {
-			core.Instance().ModuleRegistry().Add(s.specifier, string(src))
+			c.Instance().ModuleRegistry().Add(s.specifier, string(src))
 		}
-		core.Instance().CSPCollector().ScriptSource(string(src))
+		c.Instance().CSPCollector().ScriptSource(string(src))
 		return p.printer.Send(job)
 	case SourceStatic:
 		entry := src.scriptEntry(s.output == scriptInline, s.ts)
@@ -82,30 +82,30 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		if err != nil {
 			return err
 		}
-		res, err := core.App().ResourceRegistry().Script(entry, format, s.profile, s.mode)
+		res, err := c.App().ResourceRegistry().Script(entry, format, s.profile, s.mode)
 		if err != nil {
 			return err
 		}
-		path, err := s.resourceURL(core, res)
+		path, err := s.resourceURL(c, res)
 		if err != nil {
 			return err
 		}
 		if s.specifier != "" {
-			core.Instance().ModuleRegistry().Add(s.specifier, path)
+			c.Instance().ModuleRegistry().Add(s.specifier, path)
 		}
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	case SourceHandler:
 		handler := src.Handler()
-		hook, ok := core.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			return handler(ctx, w, r)
-		}, true)
+		}, core.RaceParallel)
 		if !ok {
 			return context.Canceled
 		}
-		path := core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, s.name)
+		path := c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, s.name)
 		if s.specifier != "" {
-			core.Instance().ModuleRegistry().Add(s.specifier, path)
+			c.Instance().ModuleRegistry().Add(s.specifier, path)
 		}
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)

@@ -231,7 +231,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		core.Instance().Location().Update(ctx, loc)
 		return false
 	}
-	hook, ok := core.Door().RegisterHook(handler, false)
+	hook, ok := core.Door().RegisterHook(handler, RaceStrict)
 	if !ok {
 		return nil
 	}

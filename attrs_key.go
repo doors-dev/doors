@@ -33,6 +33,42 @@ const (
 	ModOff
 )
 
+// Keys is a composable list of key matches. An event passes when it matches
+// any of them.
+type Keys interface {
+	Keys() []Key
+	Joiner[Keys]
+}
+
+func keysOrNil(keys Keys) []Key {
+	if keys == nil {
+		return nil
+	}
+	return keys.Keys()
+}
+
+type joinedKeys []Keys
+
+func (ks joinedKeys) And(k Keys) Keys {
+	c := make(joinedKeys, len(ks), len(ks)+1)
+	copy(c, ks)
+	c = append(c, k)
+	return c
+}
+
+func (ks joinedKeys) Keys() []Key {
+	output := make([]Key, 0)
+	for _, k := range ks {
+		if k == nil {
+			continue
+		}
+		output = append(output, k.Keys()...)
+	}
+	return output
+}
+
+var _ Keys = joinedKeys(nil)
+
 // Key is one key and modifier combination matched against a keyboard event.
 type Key struct {
 	// Key is the event.key value to match. An empty string matches any key.
@@ -47,6 +83,16 @@ type Key struct {
 	MetaMod Mod
 }
 
+func (k Key) And(keys Keys) Keys {
+	return joinedKeys([]Keys{k, keys})
+}
+
+func (k Key) Keys() []Key {
+	return []Key{k}
+}
+
+var _ Keys = Key{}
+
 // RequestKeyboard is the request handle passed to [AKeyDown] and [AKeyUp]
 // handlers.
 type RequestKeyboard = RequestEvent[KeyboardEvent]
@@ -60,17 +106,17 @@ type keyEventHook struct {
 	// itself. Optional.
 	ExactTarget bool
 	// Keys filters by key and modifier state; the handler fires when the event
-	// matches any entry. Optional; without entries every event fires.
-	Keys []Key
+	// matches any key. Optional; without keys every event fires.
+	Keys Keys
 	// Scope controls how the request is scheduled. Optional; unscoped requests
 	// are sent as soon as the event fires.
 	Scope Scopes
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
-	// Parallel lets calls to this handler run concurrently instead of one at
-	// a time. Leave it false unless overlapping calls are required. Optional.
-	Parallel bool
+	// Race sets how overlapping calls to this handler are handled. Default:
+	// [RaceSerial].
+	Race Race
 	// On handles the event on the server. Return false to keep the handler
 	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool
@@ -83,8 +129,9 @@ type keyEventHook struct {
 }
 
 func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
-	keys := make([]front.KeyMatch, 0, len(k.Keys))
-	for _, key := range k.Keys {
+	matches := keysOrNil(k.Keys)
+	keys := make([]front.KeyMatch, 0, len(matches))
+	for _, key := range matches {
 		keys = append(keys, front.KeyMatch{
 			Key:   key.Key,
 			Ctrl:  uint8(key.CtrlMod),
@@ -105,7 +152,7 @@ func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs)
 		scope:     k.Scope,
 		onError:   k.OnError,
 		indicator: k.Indicator,
-		parallel:  k.Parallel,
+		race:      k.Race,
 		on:        k.On,
 	}.apply(ctx, attrs)
 }
@@ -124,19 +171,19 @@ type AKeyDown struct {
 	// ExactTarget limits the handler to events whose target is the element
 	// itself. Optional.
 	ExactTarget bool
-	// Keys limits the handler to events matching at least one entry.
+	// Keys limits the handler to events matching at least one key.
 	// PreventDefault and StopPropagation apply only to matching
-	// events. Optional; without entries every keydown fires.
-	Keys []Key
+	// events. Optional; without keys every keydown fires.
+	Keys Keys
 	// Scope controls how the request is scheduled. Optional; unscoped requests
 	// are sent as soon as the event fires.
 	Scope Scopes
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
-	// Parallel lets calls to this handler run concurrently instead of one at
-	// a time. Leave it false unless overlapping calls are required. Optional.
-	Parallel bool
+	// Race sets how overlapping calls to this handler are handled. Default:
+	// [RaceSerial].
+	Race Race
 	// On handles the event on the server. Return false to keep the handler
 	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool
@@ -166,19 +213,19 @@ type AKeyUp struct {
 	// ExactTarget limits the handler to events whose target is the element
 	// itself. Optional.
 	ExactTarget bool
-	// Keys limits the handler to events matching at least one entry.
+	// Keys limits the handler to events matching at least one key.
 	// PreventDefault and StopPropagation apply only to matching
-	// events. Optional; without entries every keyup fires.
-	Keys []Key
+	// events. Optional; without keys every keyup fires.
+	Keys Keys
 	// Scope controls how the request is scheduled. Optional; unscoped requests
 	// are sent as soon as the event fires.
 	Scope Scopes
 	// Indicator lists temporary DOM changes applied while the request is
 	// in flight. Optional.
 	Indicator Indicators
-	// Parallel lets calls to this handler run concurrently instead of one at
-	// a time. Leave it false unless overlapping calls are required. Optional.
-	Parallel bool
+	// Race sets how overlapping calls to this handler are handled. Default:
+	// [RaceSerial].
+	Race Race
 	// On handles the event on the server. Return false to keep the handler
 	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool

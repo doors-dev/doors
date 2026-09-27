@@ -200,6 +200,20 @@ next := new(doors.Door)
 next.Outer(ctx, <tr></tr>)
 ```
 
+## Once
+
+A Door stores the content it is given until that content is replaced. A large value passed to `Inner` or `Outer` therefore stays in memory for as long as the Door holds it.
+
+`doors.Once(v)` renders `v` on the first render only and drops its reference to it, so the Door keeps an empty shell instead of the content:
+
+```go
+p.list.Outer(ctx, doors.Once(&UserList{users: users}))
+```
+
+The trade-off: a Door rendered again, for example by `Reload` or an ancestor re-render, comes back empty. Use `Once` for content that is rendered and then left alone, or replaced with fresh content on every update.
+
+Hooks keep what their handlers capture, so a component whose methods serve as handlers stays in memory until its hooks are removed.
+
 ## Completion Channels
 
 Each mutating method returns a completion channel. The return value is optional to use:
@@ -320,6 +334,7 @@ Do not block in any of these callbacks. `OnReady` and `OnSettle` run on the inst
 - Use `Reload` when you want to redraw the current content.
 - Use `Unmount` when the Door should disappear for now but keep its internal state for reuse.
 - Use `Freeze` when finished content should stay visible but no longer consume server resources.
+- Use `doors.Once` when the Door should not keep its content in memory after rendering it.
 - Use a `Static` chain when the page should accumulate items — feeds, logs, chats, streams — while the server keeps only the growth edge.
 
 ## Related

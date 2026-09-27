@@ -21,7 +21,7 @@ export class HookErr extends Error {
 				message = `hook not found on server, may be done`
 				break
 			case hookErrKinds.canceled:
-				message = `hook is blocked by scope`
+				message = `hook is canceled`
 				break
 			case hookErrKinds.gone:
 				message = `instance is stopped`

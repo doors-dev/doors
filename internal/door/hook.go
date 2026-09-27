@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
 )
@@ -38,7 +39,8 @@ type hook struct {
 	state       atomic.Int32
 	ch          atomic.Pointer[chan struct{}]
 	tracker     hookTracker
-	parallel    bool
+	race        core.Race
+	last        uint64
 	inflight    atomic.Int64
 	once        atomic.Bool
 }
@@ -50,12 +52,12 @@ type hookTracker interface {
 	Context() context.Context
 }
 
-func newHook(id uint64, tracker hookTracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, parallel bool) *hook {
+func newHook(id uint64, tracker hookTracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, race core.Race) *hook {
 	return &hook{
 		id:          id,
 		triggerFunc: triggerFunc,
 		tracker:     tracker,
-		parallel:    parallel,
+		race:        race,
 	}
 }
 
@@ -79,7 +81,7 @@ func (h *hook) wait() chan struct{} {
 }
 
 func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) bool {
-	if !h.parallel {
+	if h.race != core.RaceParallel {
 		ch := h.wait()
 		defer close(ch)
 	}
@@ -90,6 +92,14 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) boo
 	if h.state.Load() != hookActive {
 		h.release()
 		return false
+	}
+	if h.race == core.RaceStrict {
+		if track < h.last {
+			h.release()
+			w.WriteHeader(http.StatusPreconditionFailed)
+			return true
+		}
+		h.last = track
 	}
 	ctx, frame := ctex.AfterFrameInsert(h.tracker.Context())
 	defer frame.Activate()
