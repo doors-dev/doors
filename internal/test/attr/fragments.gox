@@ -142,6 +142,26 @@ elem (f *callFragment) Main() {
 	</script>
 }
 
+type timeFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+elem (f *timeFragment) Main() {
+	~(f.r)
+	~(doors.Go(func(ctx context.Context) {
+		var now time.Time
+		err := <-doors.Call(ctx, doors.ActionTime{}.Into(&now))
+		if err != nil {
+			f.r.Update(ctx, 0, err.Error())
+			return
+		}
+		_, clientOffset := now.Zone()
+		_, serverOffset := time.Now().Zone()
+		f.r.Update(ctx, 0, fmt.Sprint(time.Since(now).Abs() < 5*time.Second, clientOffset == serverOffset))
+	}))
+}
+
 type hookFragment struct {
 	data string
 	test.NoBeam

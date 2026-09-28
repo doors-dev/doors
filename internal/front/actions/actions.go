@@ -280,6 +280,18 @@ func (a UpdateState) Invocation() Invocation {
 	}
 }
 
+type Time struct{}
+
+func (a Time) Log() string {
+	return "time"
+}
+func (a Time) Invocation() Invocation {
+	return Invocation{
+		name: "time",
+		arg:  []any{},
+	}
+}
+
 type Test struct {
 	Arg any
 }

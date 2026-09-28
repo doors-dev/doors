@@ -71,6 +71,18 @@ func TestAttrParallelHook(t *testing.T) {
 	test.TestReportId(t, page, 3, "d")
 }
 
+func TestActionTime(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &timeFragment{
+			r: test.NewReporter(1),
+		}
+	})
+	page := bro.Page(t, "/")
+	defer bro.Close()
+	defer page.Close()
+	waitReportId(t, page, 0, "true true", 2*time.Second)
+}
+
 func TestAttrRequestTimeout(t *testing.T) {
 	conf := doors.Conf{}
 	conf.RequestTimeout = time.Second

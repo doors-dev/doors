@@ -366,3 +366,24 @@ func (ai ActionIndicate) action(ctx context.Context, core core.Core, _ bool) (ac
 		},
 	}, nil
 }
+
+// ActionTime reads the client clock. The reading keeps the client's UTC
+// offset.
+//
+// Example:
+//
+//	var now time.Time
+//	err := <-doors.Call(ctx, doors.ActionTime{}.Into(&now))
+type ActionTime struct{}
+
+// Into returns an action that stores the reading into dst; see
+// [ActionInto.Into].
+func (a ActionTime) Into(dst *time.Time) Action {
+	return into(a, dst)
+}
+
+func (a ActionTime) action(ctx context.Context, core core.Core, _ bool) (action, error) {
+	return action{action: actions.Time{}}, nil
+}
+
+var _ ActionInto[time.Time] = ActionTime{}

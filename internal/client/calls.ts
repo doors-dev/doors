@@ -17,7 +17,7 @@ import navigator from "./navigator"
 import indicator, { IndicatorEntry } from "./indicator"
 import { getEmitter } from "./emitter"
 import { setAttr } from "./setter"
-import { doAfter, scrollInto, Result } from "./lib"
+import { date, doAfter, scrollInto, Result } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
 import { HookErr } from "./hook_err.ts"
@@ -176,6 +176,9 @@ const actions = {
 	},
 	"door_freeze": (_: Extras, doorId: number) => {
 		doors.freeze(doorId)
+	},
+	"time": (_: Extras) => {
+		return date(new Date())
 	},
 }
 
