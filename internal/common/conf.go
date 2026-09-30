@@ -45,6 +45,10 @@ type Conf struct {
 	// ServerDisableGzip disables gzip compression for HTML, Door updates, and
 	// managed resources.
 	ServerDisableGzip bool
+	// ServerDisableHead answers HEAD requests for pages with 405. By default a
+	// page HEAD renders the page to get its status and headers, and sends no
+	// body. Static files and resources always answer HEAD.
+	ServerDisableHead bool
 	// ServerSessionCookiePrefix is prepended to the Doors session cookie name.
 	// Use it for browser-enforced prefixes such as __Host- or __Secure-.
 	ServerSessionCookiePrefix string

@@ -25,6 +25,9 @@ func (a *app) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
+	if a.conf.ServerDisableHead && !allowMethods(w, r, http.MethodGet) {
+		return
+	}
 	sess, ok := getSession(r.Context())
 	if !ok {
 		a.serveError(w, r, errors.New("Session is removed from the request context"))

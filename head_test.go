@@ -436,6 +436,50 @@ func TestHeadSystemPaths(t *testing.T) {
 	})
 }
 
+func TestHeadDisabled(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file.txt")
+	if err := os.WriteFile(file, []byte(strings.Repeat("f", 3000)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	headProtos(t, func(t *testing.T, h2 bool) {
+		app := newHeadApp("plain", Conf{ServerDisableHead: true})
+		app.Use(UseFile("file.txt", file, CacheControlStatic))
+		srv := headServer(t, app, h2)
+		c := headClient(t, srv, false)
+		sessions, instances := app.SessionCount(), app.InstanceCount()
+		head, headBody := headDo(t, c, http.MethodHead, srv.URL+"/", true)
+		headCheckProto(t, head, h2)
+		if head.StatusCode != http.StatusMethodNotAllowed {
+			t.Fatalf("HEAD page: status %d, want 405", head.StatusCode)
+		}
+		if head.Header.Get("Allow") != http.MethodGet {
+			t.Fatalf("HEAD page: Allow %q, want GET", head.Header.Get("Allow"))
+		}
+		if len(headBody) != 0 {
+			t.Fatalf("HEAD page: body has %d bytes", len(headBody))
+		}
+		// The page is rejected before the session is resolved or an
+		// instance is created.
+		if app.SessionCount() != sessions || app.InstanceCount() != instances {
+			t.Fatalf("HEAD page: %d sessions, %d instances, want %d, %d", app.SessionCount(), app.InstanceCount(), sessions, instances)
+		}
+		get, page := headDo(t, c, http.MethodGet, srv.URL+"/", false)
+		if get.StatusCode != http.StatusOK {
+			t.Fatalf("GET page: status %d, want 200", get.StatusCode)
+		}
+		script := headScriptRegexp.FindSubmatch(page)
+		if script == nil {
+			t.Fatal("no registry resource in page body")
+		}
+		for _, path := range []string{"/file.txt", string(script[1])} {
+			resp, body := headDo(t, c, http.MethodHead, srv.URL+path, true)
+			if resp.StatusCode != http.StatusOK || len(body) != 0 {
+				t.Fatalf("HEAD %s: status %d, %d body bytes, want 200 and none", path, resp.StatusCode, len(body))
+			}
+		}
+	})
+}
+
 func TestHeadErrorPage(t *testing.T) {
 	errorPage := WithErrorPage(func(r *http.Request, err error) gox.Elem {
 		return func(cur gox.Cursor) error { return cur.Text("error page") }
