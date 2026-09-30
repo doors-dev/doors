@@ -27,13 +27,14 @@ import (
 
 type Instance = *instance
 
-func newInstance(sess *session, loc path.Location) Instance {
+func newInstance(sess *session, loc path.Location, head bool) Instance {
 	return &instance{
 		id:       common.RandId(),
 		session:  sess,
 		store:    ctex.NewStore(),
 		location: beam.NewSource(loc, path.EqualLocation, false),
 		prime:    common.NewPrime(),
+		head:     head,
 	}
 }
 
@@ -62,6 +63,7 @@ type instance struct {
 	pageStatus atomic.Int32
 	titleMeta  core.TitleMeta
 	boot       atomic.Pointer[string]
+	head       bool
 }
 
 func (inst Instance) Logger() *slog.Logger {
@@ -201,6 +203,9 @@ func (i instanceComp) Main() gox.Elem {
 }
 
 func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (err error, handled bool) {
+	if inst.head != (r.Method == http.MethodHead) {
+		panic("instance served in a different mode than created")
+	}
 	if !inst.state.CompareAndSwap(zero, initializing) {
 		return nil, false
 	}
@@ -228,16 +233,11 @@ func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (e
 		return nil, false
 	}
 	static := inst.root.IsStatic()
-	if !static {
+	if !static && !inst.head {
 		inst.killTimer.KeepAlive()
 	}
-	if err := inst.render(w, r, stack, static); err != nil {
+	if err := inst.render(w, r, stack, static); err != nil || static || inst.head {
 		inst.end(common.EndCauseKilled)
-		return nil, true
-	}
-	if static {
-		inst.end(common.EndCauseKilled)
-		return nil, true
 	}
 	return nil, true
 }
@@ -246,6 +246,10 @@ func (inst *instance) render(w http.ResponseWriter, r *http.Request, pipe door.S
 	gz := !inst.session.App().Conf().ServerDisableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 	importMap, importHash := inst.importMap.Generate()
 	inst.renderHeaders(w, gz, importHash)
+	if inst.head {
+		pipe.Release()
+		return nil
+	}
 	var writer io.Writer = w
 	if gz {
 		wgz := common.GetGzipWriter(w)

@@ -121,11 +121,14 @@ func (sess *session) LastSeen() time.Time {
 	return time.UnixMilli(sess.renewed.Load())
 }
 
-func (sess Session) Instance(loc path.Location) (Instance, bool) {
+func (sess Session) Instance(loc path.Location, head bool) (Instance, bool) {
 	if sess.killed() {
 		return nil, false
 	}
-	inst := newInstance(sess, loc)
+	inst := newInstance(sess, loc, head)
+	if head {
+		return inst, true
+	}
 	sess.instances.Store(inst.ID(), inst)
 	toSuspend := sess.limiter.Add(inst.ID())
 	if toSuspend == "" {

@@ -98,7 +98,7 @@ func TestSessionKillCancelsContext(t *testing.T) {
 		t.Fatal("expected Kill to remove session from app")
 	}
 
-	if _, ok := sess.Instance(path.Location{}); ok {
+	if _, ok := sess.Instance(path.Location{}, false); ok {
 		t.Fatal("expected killed session to reject new instances")
 	}
 	if sess.Renew(noopResponseWriter{}) {

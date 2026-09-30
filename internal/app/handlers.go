@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
+	"strings"
 
 	"github.com/doors-dev/doors/internal/path"
 )
@@ -18,7 +20,8 @@ func (a *app) serve(w http.ResponseWriter, r *http.Request) {
 	if a.tryServeUtility(w, r) {
 		return
 	}
-	if r.Method != http.MethodGet || a.pathMaker.IsSystem(r) {
+	head := r.Method == http.MethodHead
+	if (r.Method != http.MethodGet && !head) || a.pathMaker.IsSystem(r) {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
@@ -30,7 +33,7 @@ func (a *app) serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Content-Type", "text/html")
 	loc := path.NewLocationFromURL(r.URL)
-	inst, ok := sess.Instance(loc)
+	inst, ok := sess.Instance(loc, head)
 	if !ok {
 		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
 		return
@@ -54,7 +57,7 @@ func (a *app) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	if id, ok := match.Resource(); ok {
-		if r.Method != http.MethodGet {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			return false
 		}
 		a.registry.Serve(id, w, r)
@@ -65,11 +68,15 @@ func (a *app) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	if instanceID, ok := match.Sync(); ok {
-		a.serveSync(w, r, instanceID)
+		if allowMethods(w, r, http.MethodGet, http.MethodPost) {
+			a.serveSync(w, r, instanceID)
+		}
 		return true
 	}
 	if match, ok := match.Undo(); ok {
-		a.restoreLocation(w, r, match.Instance, match.Location)
+		if allowMethods(w, r, http.MethodGet) {
+			a.restoreLocation(w, r, match.Instance, match.Location)
+		}
 		return true
 	}
 	if instanceID, ok := match.TabState(); ok {
@@ -176,5 +183,17 @@ func (a *app) serveError(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	w.WriteHeader(http.StatusInternalServerError)
+	if r.Method == http.MethodHead {
+		return
+	}
 	a.errPage(r, err).Render(r.Context(), w)
+}
+
+func allowMethods(w http.ResponseWriter, r *http.Request, methods ...string) bool {
+	if slices.Contains(methods, r.Method) {
+		return true
+	}
+	w.Header().Set("Allow", strings.Join(methods, ", "))
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	return false
 }

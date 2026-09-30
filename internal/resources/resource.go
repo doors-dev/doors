@@ -16,6 +16,7 @@ package resources
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -64,16 +65,20 @@ func (s *Resource) ServeCache(w http.ResponseWriter, r *http.Request, cache bool
 	} else {
 		w.Header().Set("Cache-Control", "no-cache")
 	}
+	body := s.content
 	if !s.settings.disableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		s.once.Do(func() {
 			s.gzipped = common.Zip(s.content)
 		})
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Vary", "Accept-Encoding")
-		w.Write(s.gzipped)
+		body = s.gzipped
+	}
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	if r.Method == http.MethodHead {
 		return
 	}
-	w.Write(s.content)
+	w.Write(body)
 }
 func (s *Resource) Serve(w http.ResponseWriter, r *http.Request) {
 	s.ServeCache(w, r, true)

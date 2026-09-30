@@ -49,6 +49,10 @@ func normalizePrefix(prefix string) string {
 	return prefix
 }
 
+func readMethod(r *http.Request) bool {
+	return r.Method == http.MethodGet || r.Method == http.MethodHead
+}
+
 func serveFS(prefix string, fsys http.FileSystem, cacheControl string, w http.ResponseWriter, r *http.Request) {
 	rw := &responseWriter{
 		w: w,
@@ -66,8 +70,8 @@ func serveFS(prefix string, fsys http.FileSystem, cacheControl string, w http.Re
 //
 // path is matched exactly, with a leading slash added if it lacks one, and must
 // be neither empty nor "/". contentType is sent as the Content-Type. Requests
-// that do not match, and non-GET requests, go to the next handler. UseResource
-// panics on an unusable path or resource.
+// that do not match, and requests other than GET and HEAD, go to the next
+// handler. UseResource panics on an unusable path or resource.
 //
 // Responses carry the ServerCacheControl value from [Conf] and are gzipped
 // unless ServerDisableGzip is set.
@@ -87,7 +91,7 @@ func UseResource(path string, resource ResourceStatic, contentType string) Use {
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodGet || r.URL.Path != path {
+			if !readMethod(r) || r.URL.Path != path {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -107,8 +111,8 @@ func UseResource(path string, resource ResourceStatic, contentType string) Use {
 //
 // prefix must be neither empty nor "/", and is normalized to have a leading and
 // trailing slash. cacheControl is set on successful responses; empty leaves the
-// header alone. Requests outside prefix, and non-GET requests, go to the next
-// handler.
+// header alone. Requests outside prefix, and requests other than GET and HEAD,
+// go to the next handler.
 func UseFS(prefix string, fsys fs.FS, cacheControl string) Use {
 	if prefix == "/" || prefix == "" {
 		panic(errors.New("UseFS cannot serve the root prefix"))
@@ -120,8 +124,8 @@ func UseFS(prefix string, fsys fs.FS, cacheControl string) Use {
 //
 // prefix must be neither empty nor "/", and is normalized to have a leading and
 // trailing slash. cacheControl is set on successful responses; empty leaves the
-// header alone. Requests outside prefix, and non-GET requests, go to the next
-// handler.
+// header alone. Requests outside prefix, and requests other than GET and HEAD,
+// go to the next handler.
 func UseDir(prefix string, dirPath string, cacheControl string) Use {
 	if prefix == "/" || prefix == "" {
 		panic(errors.New("UseDir cannot serve the root prefix"))
@@ -133,7 +137,7 @@ func serveFileSystem(prefix string, fsys http.FileSystem, cacheControl string) U
 	prefix = normalizePrefix(prefix)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodGet || !strings.HasPrefix(r.URL.Path, prefix) {
+			if !readMethod(r) || !strings.HasPrefix(r.URL.Path, prefix) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -146,8 +150,8 @@ func serveFileSystem(prefix string, fsys http.FileSystem, cacheControl string) U
 //
 // path is matched exactly, with a leading slash added if it lacks one, and must
 // be neither empty nor "/". cacheControl is set on successful responses; empty
-// leaves the header alone. Requests that do not match, and non-GET requests, go
-// to the next handler.
+// leaves the header alone. Requests that do not match, and requests other than
+// GET and HEAD, go to the next handler.
 func UseFile(path string, filePath string, cacheControl string) Use {
 	if path == "/" || path == "" {
 		panic(errors.New("UseFile cannot serve the root path"))
@@ -157,7 +161,7 @@ func UseFile(path string, filePath string, cacheControl string) Use {
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodGet || r.URL.Path != path {
+			if !readMethod(r) || r.URL.Path != path {
 				next.ServeHTTP(w, r)
 				return
 			}
