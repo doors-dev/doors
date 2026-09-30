@@ -15,8 +15,11 @@
 package ctex
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"reflect"
+	"regexp"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -244,9 +247,21 @@ func TestFrameHelpers(t *testing.T) {
 }
 
 func TestLogCanceled(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(prev)
+
 	LogCanceled(context.Background(), "update")
+	if buf.Len() != 0 {
+		t.Fatalf("expected no log for a live context, got %q", buf.String())
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	LogCanceled(ctx, "update")
+	// the first frame outside the doors module is the test runner
+	if !regexp.MustCompile(`caller=\S*testing/testing\.go:\d+`).MatchString(buf.String()) {
+		t.Fatalf("expected caller outside the doors module, got %q", buf.String())
+	}
 }
