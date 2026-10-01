@@ -193,14 +193,6 @@ class Doors {
 		range.insertNode(fragment)
 	}
 
-	freeze(id: number) {
-		const door = this.elements.get(id)
-		if (!door) {
-			throw new Error(`door ${id} not found`)
-		}
-		this.unregister(door)
-	}
-
 	on(
 		element: Element,
 		name: string,

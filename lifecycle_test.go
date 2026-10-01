@@ -53,8 +53,7 @@ func (k *lifecycleKiller) Logger() *slog.Logger { return slog.Default() }
 
 type lifecycleInstance struct {
 	*helperInstance
-	ids   atomic.Uint64
-	calls chan actions.Action
+	ids atomic.Uint64
 }
 
 func (l *lifecycleInstance) NewID() uint64 {
@@ -62,11 +61,6 @@ func (l *lifecycleInstance) NewID() uint64 {
 }
 
 func (l *lifecycleInstance) Call(c actions.Call) {
-	if l.calls != nil {
-		if action, _, ok := c.Action(); ok {
-			l.calls <- action
-		}
-	}
 	c.Result(nil, nil)
 }
 
@@ -656,64 +650,6 @@ func TestOnCleanUnmountAndCleanedOwner(t *testing.T) {
 
 	OnReady(contentCtx, func(context.Context) { h.events <- "ready-late" })
 	h.expectNoEvent(100 * time.Millisecond)
-}
-
-// Freeze releases the subtree like Unmount (OnClean fires, nested content ctx
-// is canceled), reports two nils then closes, issues a door freeze call, and
-// later operations only store state.
-func TestFreezeReleasesAndKeepsMarkup(t *testing.T) {
-	h := newLifecycleHarness(t, 8)
-	h.inst.calls = make(chan actions.Action, 8)
-	d := &Door{}
-	child := &Door{}
-	childCtxCh := make(chan context.Context, 1)
-	child.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
-		childCtxCh <- cur.Context()
-		OnClean(cur.Context(), func() { h.events <- "clean-child" })
-		return cur.Text("child")
-	}))
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
-		OnClean(cur.Context(), func() { h.events <- "clean-freeze" })
-		return cur.Comp(child)
-	}))
-	pageCtx := h.renderPage(mountDoor(d))
-	childCtx := <-childCtxCh
-
-	ch := d.Freeze(pageCtx)
-	h.waitEvents("clean-child", "clean-freeze")
-	count := 0
-	for err := range ch {
-		count++
-		if err != nil {
-			t.Fatalf("freeze reported %v", err)
-		}
-	}
-	if count != 2 {
-		t.Fatalf("expected two nil values from freeze, got %d", count)
-	}
-	if childCtx.Err() == nil {
-		t.Fatal("expected nested content context to be canceled")
-	}
-	select {
-	case action := <-h.inst.calls:
-		if _, ok := action.(actions.DoorFreeze); !ok {
-			t.Fatalf("expected door freeze call, got %T", action)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("expected door freeze call")
-	}
-
-	for err := range d.Inner(pageCtx, textElem("v1")) {
-		t.Fatalf("expected inner on frozen door to close without value, got %v", err)
-	}
-	for err := range d.Freeze(pageCtx) {
-		t.Fatalf("expected repeated freeze to close without value, got %v", err)
-	}
-	select {
-	case action := <-h.inst.calls:
-		t.Fatalf("unexpected call after freeze: %T", action)
-	case <-time.After(100 * time.Millisecond):
-	}
 }
 
 // In a nested-door cascade, both children's and parents' OnClean callbacks

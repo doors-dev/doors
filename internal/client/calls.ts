@@ -174,9 +174,6 @@ const actions = {
 	"door_update": (ext: Extras, doorId: number) => {
 		doors.update(doorId, ext.payload!.text!)
 	},
-	"door_freeze": (_: Extras, doorId: number) => {
-		doors.freeze(doorId)
-	},
 	"time": (_: Extras) => {
 		return date(new Date())
 	},
