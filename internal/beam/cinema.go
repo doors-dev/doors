@@ -26,7 +26,7 @@ import (
 type Door interface {
 	Runtime() shredder.Runtime
 	ReadFrame() shredder.Frame
-	Context() context.Context
+	RenderContext() context.Context
 }
 
 type parentScreen interface {

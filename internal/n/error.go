@@ -1,0 +1,119 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package n
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/front/actions"
+	"github.com/doors-dev/gox"
+)
+
+func newError(err error, logger *slog.Logger) Error {
+	var e Error
+	if errors.As(err, &e) {
+		return e
+	}
+	id := common.RandId()
+	logger.Error("door rendering/printing error", "error", err, "error_id", id)
+	return Error{
+		id:  id,
+		err: err,
+	}
+}
+
+type Error struct {
+	err error
+	id  string
+}
+
+func (e Error) Error() string {
+	return e.err.Error()
+}
+
+func (e Error) Unwrap() error {
+	return e.err
+}
+
+func (e Error) Release() {
+
+}
+
+func (e Error) Free() {
+
+}
+
+func (e Error) Lock() bool {
+	return true
+}
+
+func (e Error) Payload() (actions.Payload, bool) {
+	buf := &bytes.Buffer{}
+	if err := e.Main().Render(context.Background(), buf); err != nil {
+		panic("error rendering error")
+	}
+	return actions.NewTextBytes(buf.Bytes()), true
+}
+
+func (e Error) Main() gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		if err := cur.Init("div"); err != nil {
+			return err
+		}
+		{
+			if err := cur.Set("role", "alert"); err != nil {
+				return err
+			}
+			if err := cur.Set("aria-live", "polite"); err != nil {
+				return err
+			}
+			if err := cur.Set("data-fw", "error"); err != nil {
+				return err
+			}
+			if err := cur.Submit(); err != nil {
+				return err
+			}
+			if err := cur.Text(`Component Error. `); err != nil {
+				return err
+			}
+			if err := cur.Init("span"); err != nil {
+				return err
+			}
+			{
+				if err := cur.Set("data-fw", "error-id"); err != nil {
+					return err
+				}
+				if err := cur.Submit(); err != nil {
+					return err
+				}
+				if err := cur.Text(fmt.Sprintf(`ID: %s`, e.id)); err != nil {
+					return err
+				}
+			}
+			if err := cur.Close(); err != nil {
+				return err
+			}
+		}
+		if err := cur.Close(); err != nil {
+			return err
+		}
+		return nil
+	})
+}

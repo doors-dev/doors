@@ -1,0 +1,54 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package n
+
+import (
+	"context"
+	"errors"
+	"io"
+
+	"github.com/doors-dev/gox"
+)
+
+type fakeJob struct {
+	ctx context.Context
+}
+
+func (d fakeJob) Context() context.Context {
+	return d.ctx
+}
+
+func (d fakeJob) Output(w io.Writer) error {
+	return errors.New("door used outside the Doors rendering pipeline")
+}
+
+type renderJob struct {
+	door *Door
+	fakeJob
+}
+
+func (d renderJob) Render(p *pipe) {
+	d.door.render(d.Context(), p)
+}
+
+type proxyJob struct {
+	door *Door
+	el   gox.Elem
+	fakeJob
+}
+
+func (d proxyJob) Render(p *pipe) {
+	d.door.proxy(p, d.el, d.Context())
+}
