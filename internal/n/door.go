@@ -26,9 +26,8 @@ func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredd
 	prev := d.node.Swap(next)
 	if prev == nil {
 		prev = &node{
-			door:       d,
-			mode:       modeOuter,
-			placeGuard: shredder.FreeFrame{},
+			door: d,
+			mode: modeOuter,
 		}
 		prev.initGuard.Activate()
 	}

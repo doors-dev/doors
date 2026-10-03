@@ -22,6 +22,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
+	"golang.org/x/tools/go/analysis/passes/defers"
 )
 
 var bufferPrinterPool = sync.Pool{
@@ -51,11 +52,12 @@ const (
 )
 
 type PayloadPrinter struct {
-	state   atomic.Int32
-	buf     sliceWriter
-	gz      bool
-	gzip    *gzip.Writer
-	printer gox.Printer
+	state     atomic.Int32
+	buf       sliceWriter
+	gz        bool
+	gzip      *gzip.Writer
+	printer   gox.Printer
+	onRelease func(*PayloadPrinter)
 }
 
 func (b *PayloadPrinter) Lock() bool {
@@ -64,7 +66,7 @@ func (b *PayloadPrinter) Lock() bool {
 
 var _ Payload = (*PayloadPrinter)(nil)
 
-func NewPayloadPrinter(disableGzip bool) *PayloadPrinter {
+func NewPayloadPrinter(disableGzip bool, onRelease func(*PayloadPrinter)) *PayloadPrinter {
 	b := &PayloadPrinter{
 		buf: bufferPrinterPool.Get().(sliceWriter),
 		gz:  !disableGzip,
@@ -112,6 +114,9 @@ func (b *PayloadPrinter) Release() {
 }
 
 func (b *PayloadPrinter) release() {
+	if b.onRelease != nil {
+		defer b.onRelease(b)
+	}
 	if b.gzip != nil {
 		common.PutGzipWriter(b.gzip)
 		b.gzip = nil

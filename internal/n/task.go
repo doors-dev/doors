@@ -21,7 +21,7 @@ func (n renderNode) apply(_ shredder.SimpleFrame, next *node, prev *node) {
 	next.outer = prev.outer
 	next.inner = prev.inner
 	if next.mode == modeStatic {
-		next.renderStatic(n.pipe, n.buffer)
+		next.placeRenderStatic(n.pipe, n.buffer)
 		return
 	}
 	if prev.isMounted() {
@@ -29,8 +29,7 @@ func (n renderNode) apply(_ shredder.SimpleFrame, next *node, prev *node) {
 	}
 	outer := newOuterTracker2(n.pipe.tracker, n.pipe.callGuard)
 	next.tracker = outer.newTracker()
-	next.placeGuard = &outer.outerGuard
-	next.render(n.pipe, n.buffer)
+	next.placeRender(n.pipe, n.buffer)
 }
 
 type nodeProxy struct {
@@ -49,7 +48,7 @@ func (n nodeProxy) apply(next *node, prev *node) {
 	}
 	outer := newOuterTracker2(n.pipe.tracker, n.pipe.callGuard)
 	next.tracker = outer.newTracker()
-	next.render(n.pipe, n.buffer)
+	next.placeRender(n.pipe, n.buffer)
 }
 
 type innerNode struct {
@@ -67,8 +66,8 @@ func (n innerNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node)
 	}
 	next.tracker = prev.tracker.outer.newTracker()
 	var thread shredder.Thread
-	if prev.inner == modeInner {
-		placeFrame := shredder.Join(prev.runtimeContext(), true, initFrame, prev.placeGuard, thread.Frame())
+	if prev.mode == modeInner {
+		placeFrame := shredder.Join(prev.runtimeContext(), true, initFrame, prev.tracker.outer.placeGuard, thread.Frame())
 		placeFrame.Run(nil, prev.runtime(), func(b bool) {
 			prev.tracker.clean()
 		})
@@ -77,18 +76,24 @@ func (n innerNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node)
 	outerFrame := shredder.Join(prev.runtimeContext(), true, initFrame, &prev.tracker.outer.outerGuard, thread.Frame())
 	defer outerFrame.Release()
 	outerFrame.Run(next.tracker.ctx, prev.runtime(), func(b bool) {
-		if prev.inner != modeInner {
+		if prev.mode != modeInner {
 			prev.tracker.clean()
+		}
+		if next.tracker.outer.placementError != nil {
+			next.tracker.clean()
+			n.Report(fmt.Errorf("placement error: %w", next.tracker.outer.placementError))
+			return
+		}
+		if next.tracker.outer.outerError != nil {
+			next.tracker.clean()
+			n.Report(fmt.Errorf("outer error: %w", next.tracker.outer.outerError))
+			return
 		}
 		if !b {
 			n.Cancel()
 			return
 		}
-		if next.tracker.outer.placementError != nil {
-			next.tracker.clean()
-			n.Report(fmt.Errorf("placement error: %v", next.tracker.outer.placementError))
-			return
-		}
+		next.sync(n.userTask)
 	})
 }
 
@@ -107,7 +112,8 @@ func (n outerNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node)
 	}
 	outer := newOuterTracker1(prev.tracker.outer)
 	next.tracker = outer.newTracker()
-	placeFrame := shredder.Join(prev.runtimeContext(), false, initFrame, prev.placeGuard)
+	placeFrame := shredder.Join(prev.runtimeContext(), false, initFrame, prev.tracker.outer.placeGuard)
+	defer placeFrame.Release()
 	placeFrame.Run(next.tracker.outer.ctx, prev.runtime(), func(b bool) {
 		next.tracker.outer.placementError = prev.tracker.outer.placementError
 		prev.tracker.outer.clean()
@@ -121,19 +127,19 @@ func (n outerNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node)
 			defer next.tracker.outer.outerGuard.Activate()
 			next.tracker.outer.clean()
 			next.tracker.clean()
-			n.Report(fmt.Errorf("placement error: %v", next.tracker.outer.placementError))
+			n.Report(fmt.Errorf("placement error: %w", next.tracker.outer.placementError))
 			return
 		}
 		next.sync(n.userTask)
 	})
 }
 
-type staticNide struct {
+type staticNode struct {
 	*userTask
 	outer any
 }
 
-func (n staticNide) apply(initFrame shredder.SimpleFrame, next *node, prev *node) {
+func (n staticNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node) {
 	next.mode = modeStatic
 	next.outer = n.outer
 	if !prev.isMounted() {
@@ -143,7 +149,8 @@ func (n staticNide) apply(initFrame shredder.SimpleFrame, next *node, prev *node
 	next.tracker = prev.tracker.outer.parent
 	next.static.id = prev.tracker.outer.id
 	next.static.callGuard = new(shredder.ValveFrame)
-	placeFrame := shredder.Join(prev.runtimeContext(), false, initFrame, prev.placeGuard)
+	placeFrame := shredder.Join(prev.runtimeContext(), false, initFrame, prev.tracker.outer.placeGuard)
+	defer placeFrame.Release()
 	placeFrame.Run(next.tracker.ctx, prev.runtime(), func(b bool) {
 		prev.tracker.outer.clean()
 		prev.tracker.clean()
@@ -152,10 +159,10 @@ func (n staticNide) apply(initFrame shredder.SimpleFrame, next *node, prev *node
 			return
 		}
 		if prev.tracker.outer.placementError != nil {
-			n.Report(fmt.Errorf("placement error: %v", next.tracker.outer.placementError))
+			n.Report(fmt.Errorf("placement error: %w", prev.tracker.outer.placementError))
 			return
 		}
-		next.syncStatic(n.userTask)
+		next.sync(n.userTask)
 	})
 }
 
@@ -174,7 +181,8 @@ func (n nodeReload) apply(initFrame shredder.SimpleFrame, next *node, prev *node
 	if prev.mode != modeInner {
 		outer := newOuterTracker1(prev.tracker.outer)
 		next.tracker = outer.newTracker()
-		placeFrame := shredder.Join(prev.runtimeContext(), false, initFrame, prev.placeGuard)
+		placeFrame := shredder.Join(prev.runtimeContext(), false, initFrame, prev.tracker.outer.placeGuard)
+		defer placeFrame.Release()
 		placeFrame.Run(next.tracker.outer.ctx, prev.runtime(), func(b bool) {
 			next.tracker.outer.placementError = prev.tracker.outer.placementError
 			prev.tracker.outer.clean()
@@ -188,7 +196,7 @@ func (n nodeReload) apply(initFrame shredder.SimpleFrame, next *node, prev *node
 				defer next.tracker.outer.outerGuard.Activate()
 				next.tracker.outer.clean()
 				next.tracker.clean()
-				n.Report(fmt.Errorf("placement error: %v", next.tracker.outer.placementError))
+				n.Report(fmt.Errorf("placement error: %w", next.tracker.outer.placementError))
 				return
 			}
 			next.sync(n.userTask)
@@ -197,7 +205,7 @@ func (n nodeReload) apply(initFrame shredder.SimpleFrame, next *node, prev *node
 	}
 	next.tracker = prev.tracker.outer.newTracker()
 	var thread shredder.Thread
-	placeFrame := shredder.Join(prev.runtimeContext(), true, initFrame, prev.placeGuard, thread.Frame())
+	placeFrame := shredder.Join(prev.runtimeContext(), true, initFrame, prev.tracker.outer.placeGuard, thread.Frame())
 	placeFrame.Run(nil, prev.runtime(), func(b bool) {
 		prev.tracker.clean()
 	})
@@ -205,15 +213,21 @@ func (n nodeReload) apply(initFrame shredder.SimpleFrame, next *node, prev *node
 	outerFrame := shredder.Join(prev.runtimeContext(), true, initFrame, &prev.tracker.outer.outerGuard, thread.Frame())
 	defer outerFrame.Release()
 	outerFrame.Run(next.tracker.ctx, prev.runtime(), func(b bool) {
+		if next.tracker.outer.placementError != nil {
+			next.tracker.clean()
+			n.Report(fmt.Errorf("placement error: %w", next.tracker.outer.placementError))
+			return
+		}
+		if next.tracker.outer.outerError != nil {
+			next.tracker.clean()
+			n.Report(fmt.Errorf("outer error: %w", next.tracker.outer.outerError))
+			return
+		}
 		if !b {
 			n.Cancel()
 			return
 		}
-		if next.tracker.outer.placementError != nil {
-			next.tracker.clean()
-			n.Report(fmt.Errorf("placement error: %v", next.tracker.outer.placementError))
-			return
-		}
+		next.sync(n.userTask)
 	})
 }
 
@@ -221,28 +235,40 @@ type unmountNode struct {
 	*userTask
 }
 
-func (t unmountNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node) {
+func (n unmountNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node) {
 	next.mode = prev.mode
 	next.outer = prev.outer
 	next.inner = prev.inner
 	if !prev.isMounted() {
-		t.userTask.Accept()
+		n.userTask.Accept()
 		return
 	}
 	var thread shredder.Thread
-	placeFrame := shredder.Join(prev.runtimeContext(), true, initFrame, prev.placeGuard, thread.Frame())
+	placeFrame := shredder.Join(prev.runtimeContext(), true, initFrame, prev.tracker.outer.placeGuard, thread.Frame())
 	placeFrame.Run(nil, prev.runtime(), func(b bool) {
 		prev.tracker.outer.clean()
 		prev.tracker.clean()
 	})
 	placeFrame.Release()
-	callFrame := shredder.Join(prev.runtimeContext(), false, prev.tracker.outer.callGuard, t.CallFrame(), thread.Frame())
+	callFrame := shredder.Join(prev.runtimeContext(), false, prev.tracker.outer.callGuard, n.CallFrame(), thread.Frame())
+	defer callFrame.Release()
 	callFrame.Run(prev.tracker.outer.parent.ctx, prev.runtime(), func(b bool) {
 		if !b {
-			t.Cancel()
+			n.Cancel()
 			return
 		}
-		// call remove
+		if prev.tracker.outer.placementError != nil {
+			n.Report(fmt.Errorf("placement error: %w", prev.tracker.outer.placementError))
+			return
+		}
+		prev.call(&call{
+			ctx:     prev.tracker.outer.parent.ctx,
+			kind:    callReplace,
+			id:      prev.tracker.outer.id,
+			payload: emptyPayload{},
+			task:    n.userTask,
+			logger:  prev.logger(),
+		})
 	})
 }
 

@@ -15,6 +15,7 @@
 package n
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -151,6 +152,13 @@ func (p *pipe) Send(j gox.Job) error {
 			return err
 		}
 		return p.printBack.Send(j)
+	case *gox.JobTempl:
+		ctx := j.Ctx
+		var buf bytes.Buffer
+		if err := j.Output(&buf); err != nil {
+			return err
+		}
+		return p.printBack.Send(gox.NewJobBytes(ctx, buf.Bytes()))
 	default:
 		return p.printBack.Send(j)
 	}
