@@ -36,12 +36,9 @@ func (t *ReadStarveWriteThread) Read() ReleaseFrame {
 		}
 	}
 	frame := t.appendRead()
+	frame.active = t.queue.Len() == 1
 	read := Join(context.Background(), false, frame)
-	activate := t.queue.Len() == 1
 	t.mu.Unlock()
-	if activate {
-		frame.activate()
-	}
 	return read
 }
 

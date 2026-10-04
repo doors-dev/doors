@@ -30,11 +30,8 @@ func (t *ReadBlockingWriteThread) init() {
 	if t.read != nil {
 		return
 	}
-	read := t.newReadFrame()
-	t.read = read
-	t.mu.Unlock()
-	read.activate()
-	t.mu.Lock()
+	t.read = t.newReadFrame()
+	t.read.active = true
 }
 
 func (t *ReadBlockingWriteThread) newReadFrame() *ownedFrame {

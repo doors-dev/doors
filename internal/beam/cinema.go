@@ -74,12 +74,12 @@ func (c *cinema) isKilled() bool {
 
 func (c *cinema) Clean() {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	for _, screen := range c.screens {
+	screens := c.screens
+	c.screens = nil
+	c.mu.Unlock()
+	for _, screen := range screens {
 		screen.cancel()
 	}
-	clear(c.screens)
-
 }
 
 func (c *cinema) ctx() context.Context {
@@ -88,29 +88,30 @@ func (c *cinema) ctx() context.Context {
 
 func (c *cinema) tryRemove(sourceId common.ID) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	scr, ok := c.screens[sourceId]
-	if !ok {
+	if !ok || !scr.tryRemove() {
+		c.mu.Unlock()
 		return
 	}
-	if scr.tryRemove() {
-		delete(c.screens, sourceId)
-	}
+	delete(c.screens, sourceId)
+	c.mu.Unlock()
+	scr.unsub()
 }
 
 func (c *cinema) addWatcher(src anySource, w *watcher) bool {
+	read := c.ReadFrame()
 	c.mu.Lock()
 	s, ok := c.getScreen(src)
 	if !ok {
 		c.mu.Unlock()
+		read.Release()
 		return false
 	}
-	seq, frame := s.addWatcher(w)
+	seq, frame := s.addWatcher(w, read)
 	defer frame.Release()
 	c.mu.Unlock()
 	ctx := ctex.SyncFrameInsert(c.ctx(), frame, nil)
-	w.init(ctx, seq)
-	return true
+	return w.init(ctx, seq)
 }
 
 func (c *cinema) getScreen(src anySource) (*screen, bool) {

@@ -176,7 +176,8 @@ retry:
 		return true
 	}
 	sh := shredder.Thread{}
-	syncFrame := shredder.Join(ctx, true, sh.Frame())
+	gate := &shredder.ValveFrame{}
+	syncFrame := shredder.Join(ctx, true, sh.Frame(), gate)
 	checkFrame := shredder.Join(ctx, true, ctxFrame, sh.Frame())
 	cleanFrame := &shredder.ValveFrame{}
 	for sub := range s.subs.Iter() {
@@ -187,6 +188,7 @@ retry:
 	}
 	syncFrame.Release()
 	s.mu.Unlock()
+	gate.Activate()
 	checkFrame.Run(nil, nil, func(bool) {
 		if stopped.Load() {
 			ch <- context.Canceled
@@ -242,8 +244,7 @@ func (s *source[T]) addFreeSub(ctx context.Context, w *watcher) bool {
 	s.freeSubs.Add(f)
 	seq := s.seq
 	s.mu.Unlock()
-	f.init(seq)
-	return true
+	return f.init(seq)
 }
 
 func (s *source[T]) removeFreeSub(f *freeScreen) {

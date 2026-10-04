@@ -41,8 +41,8 @@ func (s *screen) init(parent parentScreen, seq uint) {
 	s.seq = seq
 }
 
-func (s *screen) addWatcher(w *watcher) (uint, shredder.ReleaseFrame) {
-	frame := shredder.Join(s.cinema.ctx(), true, s.watcherSyncGuard.Read(), s.cinema.ReadFrame())
+func (s *screen) addWatcher(w *watcher, cinemaRead shredder.ReleaseFrame) (uint, shredder.ReleaseFrame) {
+	frame := shredder.Join(s.cinema.ctx(), true, s.watcherSyncGuard.Read(), cinemaRead)
 	s.mu.Lock()
 	seq := s.seq
 	if s.watchers == nil {
@@ -96,7 +96,12 @@ func (s *screen) removeSub(sub *screen) {
 
 func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Frame, sourceFrame shredder.Frame, seq uint, isStopped func() bool) {
 	cinemaRead := s.cinema.ReadFrame()
-	syncFrame := shredder.Join(ctx, true, sourceFrame, s.cinema.door.ReadFrame(), s.thread.Frame(), cinemaRead)
+	doorRead := s.cinema.door.ReadFrame()
+	threadFrame := s.thread.Frame()
+	syncFrame := shredder.Join(ctx, false, sourceFrame, doorRead, threadFrame, cinemaRead)
+	doorRead.Release()
+	threadFrame.Release()
+	cinemaRead.Release()
 	defer syncFrame.Release()
 	schedule := syncFrame.Run
 	if init {
@@ -193,10 +198,22 @@ func (s *screen) tryRemove() bool {
 		s.removeScheduled = false
 		return false
 	}
+	return true
+}
+
+func (s *screen) unsub() {
 	if s.parent != nil {
 		s.parent.removeSub(s)
 	}
-	return true
+}
+
+func (s *screen) isKilled() bool {
+	for c := s.cinema; c != nil; c = c.parent {
+		if c.isKilled() {
+			return true
+		}
+	}
+	return s.cinema.runtime().Context().Err() != nil
 }
 
 func (s *screen) cancel() {
@@ -208,7 +225,5 @@ func (s *screen) cancel() {
 	for _, w := range w {
 		w.Cancel()
 	}
-	if s.parent != nil {
-		s.parent.removeSub(s)
-	}
+	s.unsub()
 }

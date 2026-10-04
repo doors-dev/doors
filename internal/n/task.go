@@ -307,7 +307,7 @@ func (t *userTask) RenderFrame() shredder.Frame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}
-	return t.frames.Render()
+	return shredder.Join(t.ctx, false, t.frames.Render())
 }
 
 func (t *userTask) Scheduled() {
