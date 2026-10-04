@@ -49,7 +49,7 @@ func (j *joinedFrame) execute(callback func(error)) {
 	j.register(callback)
 }
 
-func Join(ctx context.Context, release bool, frames ...AnyFrame) Frame {
+func Join(ctx context.Context, release bool, frames ...frame) ReleaseFrame {
 	if len(frames) == 0 {
 		panic("join must have frames")
 	}
@@ -60,7 +60,7 @@ func Join(ctx context.Context, release bool, frames ...AnyFrame) Frame {
 	for _, frame := range frames {
 		frame.schedule(joined, common.Logger(ctx))
 		if release {
-			if g, ok := frame.(Guard); ok {
+			if g, ok := frame.(Releaser); ok {
 				g.Release()
 			}
 		}

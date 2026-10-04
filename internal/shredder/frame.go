@@ -26,22 +26,22 @@ type executable interface {
 	execute(callback func(error))
 }
 
-type Guard interface {
+type Releaser interface {
 	Release()
 }
 
-type Frame interface {
-	Guard
-	SimpleFrame
+type ReleaseFrame interface {
+	Releaser
+	Frame
 }
 
-type SimpleFrame interface {
+type Frame interface {
 	Run(ctx context.Context, r Runtime, fun func(bool))
 	Submit(ctx context.Context, r Runtime, fun func(bool))
-	AnyFrame
+	frame
 }
 
-type AnyFrame interface {
+type frame interface {
 	schedule(executable, *slog.Logger)
 }
 
@@ -90,7 +90,7 @@ func (f *baseFrame) schedule(e executable, logger *slog.Logger) {
 	if f.isCompleted() {
 		f.mu.Unlock()
 		logger.Warn(
-			"attempted to schedule on completed frame; use ctx := doors.DetachedContext(ctx) for background operations and Doors API calls from goroutines",
+			"attempted to schedule on completed frame",
 		)
 		e.execute(func(error) {})
 		return

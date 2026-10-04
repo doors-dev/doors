@@ -72,9 +72,6 @@ func (r *root) cancelHook(id uint64) {
 	hook.cancel()
 }
 
-func (r *root) runtime() shredder.Runtime {
-	return r.inst.Runtime()
-}
 
 func (r *root) addHook(h *hook) {
 	r.mu.Lock()

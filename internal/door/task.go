@@ -172,21 +172,21 @@ type userTask struct {
 	frames ctex.Frames
 }
 
-func (t *userTask) InitFrame() shredder.Frame {
+func (t *userTask) InitFrame() shredder.ReleaseFrame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}
 	return t.frames.InitFrame(t.ctx)
 }
 
-func (t *userTask) CallFrame() shredder.SimpleFrame {
+func (t *userTask) CallFrame() shredder.Frame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}
 	return t.frames.Call()
 }
 
-func (t *userTask) RenderFrame() shredder.SimpleFrame {
+func (t *userTask) RenderFrame() shredder.Frame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}

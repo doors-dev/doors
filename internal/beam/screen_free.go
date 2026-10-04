@@ -51,7 +51,7 @@ func (f *freeScreen) removeWatcher(*watcher) {
 	f.source.removeFreeSub(f)
 }
 
-func (f *freeScreen) sync(ctx context.Context, cleanFrame shredder.SimpleFrame, sourceFrame shredder.SimpleFrame, seq uint, isStopped func() bool) {
+func (f *freeScreen) sync(ctx context.Context, cleanFrame shredder.Frame, sourceFrame shredder.Frame, seq uint, isStopped func() bool) {
 	frame := shredder.Join(ctx, true, sourceFrame, f.thread.Frame(), f.w.syncFrame())
 	defer frame.Release()
 	frame.Submit(f.ctx, nil, func(ok bool) {

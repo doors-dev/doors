@@ -97,7 +97,7 @@ func (s *source[T]) Get() T {
 	return *s.values[s.seq]
 }
 
-func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool) {
+func (s *source[T]) sync(prev uint, seq uint, _ shredder.Frame) (*T, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	value, ok := s.values[seq]

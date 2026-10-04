@@ -253,7 +253,7 @@ func (t *tracker) removeChild(child *tracker) {
 	t.children.Remove(child)
 }
 
-func (t *tracker) clean(cascade bool, cleanGuard shredder.SimpleFrame) {
+func (t *tracker) clean(cascade bool, cleanGuard shredder.Frame) {
 	t.cancel()
 	t.cinema.Cancel()
 	if !cascade && t.parent != nil {
@@ -285,26 +285,26 @@ func (t *tracker) clean(cascade bool, cleanGuard shredder.SimpleFrame) {
 	})
 }
 
-func (t *tracker) CleanFrame() shredder.SimpleFrame {
+func (t *tracker) CleanFrame() shredder.Frame {
 	return shredder.Join(t.ctx, false, &t.cleanValve)
 }
 
-func (t *tracker) ReadyFrame() shredder.SimpleFrame {
+func (t *tracker) ReadyFrame() shredder.Frame {
 	return shredder.Join(t.ctx, false, t.innerCallGuard)
 }
 
-func (t *tracker) ReadFrame() shredder.Frame {
+func (t *tracker) ReadFrame() shredder.ReleaseFrame {
 	return t.thread.Read()
 }
 
-func (t *tracker) containerCinemaFrame() shredder.AnyFrame {
+func (t *tracker) containerCinemaFrame() shredder.Frame {
 	if t.container == nil {
 		return shredder.FreeFrame{}
 	}
 	return t.container.cinema.ReadFrame()
 }
 
-func (t *tracker) writeFrame() shredder.Frame {
+func (t *tracker) writeFrame() shredder.ReleaseFrame {
 	write := t.thread.Write()
 	return shredder.Join(t.renderCtx, true, write, t.cinema.ReadFrame(), t.containerCinemaFrame())
 }
@@ -385,11 +385,11 @@ type containerTracker struct {
 	cleanValve shredder.ValveFrame
 }
 
-func (t *containerTracker) CleanFrame() shredder.SimpleFrame {
+func (t *containerTracker) CleanFrame() shredder.Frame {
 	return shredder.Join(t.ctx, false, &t.cleanValve)
 }
 
-func (t *containerTracker) ReadyFrame() shredder.SimpleFrame {
+func (t *containerTracker) ReadyFrame() shredder.Frame {
 	return t.getTracker().ReadyFrame()
 }
 
@@ -440,11 +440,11 @@ func (t *containerTracker) Context() context.Context {
 	return common.NewRenderCtx(t.ctx, t.getTracker().renderCtx.User())
 }
 
-func (t *containerTracker) ReadFrame() shredder.Frame {
+func (t *containerTracker) ReadFrame() shredder.ReleaseFrame {
 	return t.getTracker().ReadFrame()
 }
 
-func (t *containerTracker) clean(cleanGuard shredder.SimpleFrame) {
+func (t *containerTracker) clean(cleanGuard shredder.Frame) {
 	t.cancel()
 	t.mu.Lock()
 	hooks := t.hooks
@@ -498,7 +498,7 @@ type staticTracker struct {
 	cancel         context.CancelFunc
 }
 
-func (t *staticTracker) ReadyFrame() shredder.SimpleFrame {
+func (t *staticTracker) ReadyFrame() shredder.Frame {
 	return shredder.Join(t.renderCtx, false, t.innerCallGuard)
 }
 

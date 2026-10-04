@@ -142,7 +142,7 @@ func (n *node) onSyncError(err error) {
 	}
 }
 
-func (n *node) syncRenderFrame(task *userTask, threadFrame shredder.Frame, writeFrame shredder.Frame) shredder.Frame {
+func (n *node) syncRenderFrame(task *userTask, threadFrame shredder.ReleaseFrame, writeFrame shredder.ReleaseFrame) shredder.ReleaseFrame {
 	switch n.mode {
 	case modeOuter, modeInner, modeBlend:
 		return shredder.Join(n.runtimeContext(), true, threadFrame, writeFrame, task.RenderFrame())

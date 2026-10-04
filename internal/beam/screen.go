@@ -41,7 +41,7 @@ func (s *screen) init(parent parentScreen, seq uint) {
 	s.seq = seq
 }
 
-func (s *screen) addWatcher(w *watcher) (uint, shredder.Frame) {
+func (s *screen) addWatcher(w *watcher) (uint, shredder.ReleaseFrame) {
 	frame := shredder.Join(s.cinema.ctx(), true, s.watcherSyncGuard.Read(), s.cinema.ReadFrame())
 	s.mu.Lock()
 	seq := s.seq
@@ -94,7 +94,7 @@ func (s *screen) removeSub(sub *screen) {
 	s.scheduleRemove()
 }
 
-func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.SimpleFrame, sourceFrame shredder.SimpleFrame, seq uint, isStopped func() bool) {
+func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Frame, sourceFrame shredder.Frame, seq uint, isStopped func() bool) {
 	cinemaRead := s.cinema.ReadFrame()
 	syncFrame := shredder.Join(ctx, true, sourceFrame, s.cinema.door.ReadFrame(), s.thread.Frame(), cinemaRead)
 	defer syncFrame.Release()

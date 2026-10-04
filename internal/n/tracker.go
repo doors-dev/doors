@@ -23,31 +23,42 @@ type tracker struct {
 	rw        shredder.ReadWriteThread
 	renderCtx context.Context
 	printers  common.Set[*printer.PayloadPrinter]
+	cinema    beam.Cinema
 }
 
-// Cinema implements [core.Door].
+func (t *tracker) Context() context.Context {
+	return t.renderCtx
+}
+
+func (t *tracker) ReadFrame() shredder.ReleaseFrame {
+	return t.rw.Read()
+}
+
+func (t *tracker) Runtime() shredder.Runtime {
+	return t.outer.Runtime()
+}
+
+var _ beam.Door = (*tracker)(nil)
+
 func (t *tracker) Cinema() beam.Cinema {
-	panic("unimplemented")
+	return t.cinema
 }
 
 // CleanFrame implements [core.Door].
-func (t *tracker) CleanFrame() shredder.SimpleFrame {
+func (t *tracker) CleanFrame() shredder.Frame {
 	panic("unimplemented")
 }
 
-// ID implements [core.Door].
 func (t *tracker) ID() uint64 {
-	panic("unimplemented")
+	return t.outer.ID()
 }
 
-// Instance implements [core.Door].
 func (t *tracker) Instance() core.Instance {
-	panic("unimplemented")
+	return t.outer.Instance()
 }
 
-// ReadyFrame implements [core.Door].
-func (t *tracker) ReadyFrame() shredder.SimpleFrame {
-	panic("unimplemented")
+func (t *tracker) ReadyFrame() shredder.ReleaseFrame {
+	return shredder.Join(t.ctx, true, t.outer.callGuard, t.rw.Read())
 }
 
 // RegisterHook implements [core.Door].
@@ -70,7 +81,7 @@ func (t *tracker) UserCall(ctx context.Context, action actions.Action, onResult 
 	panic("unimplemented")
 }
 
-func (t *tracker) callFrame(ctx context.Context) shredder.Frame {
+func (t *tracker) callFrame(ctx context.Context) shredder.ReleaseFrame {
 	frames := ctex.GetFrames(ctx)
 	return shredder.Join(ctx, true, frames.Call(), t.outer.callGuard, t.rw.Read())
 }
@@ -100,6 +111,7 @@ func (t *tracker) newPrinter() (*printer.PayloadPrinter, bool) {
 
 func (t *tracker) clean() {
 	t.cancel()
+	t.cinema.Clean()
 	t.mu.Lock()
 	printers := t.printers
 	t.printers = nil
@@ -120,6 +132,7 @@ func newOuterTracker1(prev *outerTracker) *outerTracker {
 		callGuard:  prev.callGuard,
 		placeGuard: prev.placeGuard,
 	}
+	tracker.cinema = beam.NewCinema(prev.parent.Cinema(), tracker)
 	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, tracker)
 	return tracker
 }
@@ -134,6 +147,7 @@ func newOuterTracker2(parent *tracker, callGuard *shredder.ValveFrame) *outerTra
 		cancel:    cancel,
 		callGuard: callGuard,
 	}
+	tracker.cinema = beam.NewCinema(parent.Cinema(), tracker)
 	tracker.placeGuard = &tracker.outerGuard
 	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, tracker)
 	return tracker
@@ -151,28 +165,43 @@ type outerTracker struct {
 	renderCtx      context.Context
 	placementError error
 	outerError     error
+	cinema         beam.Cinema
 	mu             sync.Mutex
 	printers       common.Set[*printer.PayloadPrinter]
 }
 
-func (t *outerTracker) Cinema() beam.Cinema {
-	panic("unimplemented")
+func (t *outerTracker) Context() context.Context {
+	return t.renderCtx
 }
 
-func (t *outerTracker) CleanFrame() shredder.SimpleFrame {
+func (t *outerTracker) ReadFrame() shredder.ReleaseFrame {
+	return shredder.Join(t.ctx, false, &t.outerGuard)
+}
+
+func (t *outerTracker) Runtime() shredder.Runtime {
+	return t.root.inst.Runtime()
+}
+
+var _ beam.Door = (*outerTracker)(nil)
+
+func (t *outerTracker) Cinema() beam.Cinema {
+	return t.cinema
+}
+
+func (t *outerTracker) CleanFrame() shredder.Frame {
 	panic("unimplemented")
 }
 
 func (t *outerTracker) ID() uint64 {
-	panic("unimplemented")
+	return t.id
 }
 
 func (t *outerTracker) Instance() core.Instance {
-	panic("unimplemented")
+	return t.root.inst
 }
 
-func (t *outerTracker) ReadyFrame() shredder.SimpleFrame {
-	panic("unimplemented")
+func (t *outerTracker) ReadyFrame() shredder.ReleaseFrame {
+	return shredder.Join(t.ctx, false, t.callGuard, &t.outerGuard)
 }
 
 func (t *outerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race) (core.Hook, bool) {
@@ -191,7 +220,7 @@ func (t *outerTracker) UserCall(ctx context.Context, action actions.Action, onRe
 	panic("unimplemented")
 }
 
-func (t *outerTracker) callFrame(ctx context.Context) shredder.Frame {
+func (t *outerTracker) callFrame(ctx context.Context) shredder.ReleaseFrame {
 	frames := ctex.GetFrames(ctx)
 	return shredder.Join(ctx, true, frames.Call(), t.callGuard, &t.outerGuard)
 }
@@ -221,6 +250,7 @@ func (t *outerTracker) newPrinter() (*printer.PayloadPrinter, bool) {
 
 func (t *outerTracker) clean() {
 	t.cancel()
+	t.cinema.Clean()
 	t.mu.Lock()
 	printers := t.printers
 	t.printers = nil
@@ -237,6 +267,7 @@ func (t *outerTracker) newTracker() *tracker {
 		cancel: cancel,
 		outer:  t,
 	}
+	tracker.cinema = beam.NewCinema(t.parent.Cinema(), tracker)
 	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, tracker)
 	return tracker
 }

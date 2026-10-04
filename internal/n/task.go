@@ -16,7 +16,7 @@ type renderNode struct {
 	ctx    context.Context
 }
 
-func (n renderNode) apply(_ shredder.SimpleFrame, next *node, prev *node) {
+func (n renderNode) apply(_ shredder.Frame, next *node, prev *node) {
 	next.mode = prev.mode
 	next.outer = prev.outer
 	next.inner = prev.inner
@@ -56,7 +56,7 @@ type innerNode struct {
 	inner any
 }
 
-func (n innerNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node) {
+func (n innerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.mode = modeInner
 	next.outer = prev.outer
 	next.inner = n.inner
@@ -102,7 +102,7 @@ type outerNode struct {
 	inner any
 }
 
-func (n outerNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node) {
+func (n outerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.mode = modeOuter
 	next.outer = prev.outer
 	next.inner = nil
@@ -139,7 +139,7 @@ type staticNode struct {
 	outer any
 }
 
-func (n staticNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node) {
+func (n staticNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.mode = modeStatic
 	next.outer = n.outer
 	if !prev.isMounted() {
@@ -170,7 +170,7 @@ type nodeReload struct {
 	*userTask
 }
 
-func (n nodeReload) apply(initFrame shredder.SimpleFrame, next *node, prev *node) {
+func (n nodeReload) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.mode = prev.mode
 	next.outer = prev.outer
 	next.inner = prev.inner
@@ -235,7 +235,7 @@ type unmountNode struct {
 	*userTask
 }
 
-func (n unmountNode) apply(initFrame shredder.SimpleFrame, next *node, prev *node) {
+func (n unmountNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.mode = prev.mode
 	next.outer = prev.outer
 	next.inner = prev.inner
@@ -275,7 +275,7 @@ func (n unmountNode) apply(initFrame shredder.SimpleFrame, next *node, prev *nod
 var _ nodeTask = renderNode{}
 
 type nodeTask interface {
-	apply(initFrame shredder.SimpleFrame, next *node, prev *node)
+	apply(initFrame shredder.Frame, next *node, prev *node)
 }
 
 func newUserTask(ctx context.Context) (*userTask, <-chan error) {
@@ -289,21 +289,21 @@ type userTask struct {
 	frames ctex.Frames
 }
 
-func (t *userTask) InitFrame() shredder.Frame {
+func (t *userTask) InitFrame() shredder.ReleaseFrame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}
 	return t.frames.InitFrame(t.ctx)
 }
 
-func (t *userTask) CallFrame() shredder.SimpleFrame {
+func (t *userTask) CallFrame() shredder.Frame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}
 	return t.frames.Call()
 }
 
-func (t *userTask) RenderFrame() shredder.SimpleFrame {
+func (t *userTask) RenderFrame() shredder.Frame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}

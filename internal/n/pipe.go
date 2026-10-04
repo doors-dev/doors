@@ -29,7 +29,7 @@ import (
 func newPipe(
 	tracker *tracker,
 	buffer *deque.Deque[any],
-	renderFrame shredder.Frame,
+	renderFrame shredder.ReleaseFrame,
 	callGuard *shredder.ValveFrame,
 ) *pipe {
 	p := &pipe{
@@ -46,7 +46,7 @@ func newPipe(
 type pipe struct {
 	tracker     *tracker
 	buffer      *deque.Deque[any]
-	renderFrame shredder.Frame
+	renderFrame shredder.ReleaseFrame
 	callGuard   *shredder.ValveFrame
 	printFront  gox.Printer
 	printBack   gox.Printer

@@ -52,11 +52,11 @@ type Thread struct {
 	frame atomic.Pointer[threadFrame]
 }
 
-func (s *Thread) Guard() Guard {
+func (s *Thread) Guard() Releaser {
 	return s.Frame()
 }
 
-func (s *Thread) Frame() Frame {
+func (s *Thread) Frame() ReleaseFrame {
 	frame := &threadFrame{}
 	frame.baseFrame.onComplete = frame.onComplete
 	prev := s.frame.Swap(frame)

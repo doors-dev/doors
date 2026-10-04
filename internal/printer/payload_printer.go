@@ -22,7 +22,6 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/gox"
-	"golang.org/x/tools/go/analysis/passes/defers"
 )
 
 var bufferPrinterPool = sync.Pool{

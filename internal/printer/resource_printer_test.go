@@ -155,10 +155,10 @@ func (titleDoor) RootCore() core.Core {
 }
 func (titleDoor) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
-func (titleDoor) CleanFrame() shredder.SimpleFrame {
+func (titleDoor) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
-func (titleDoor) ReadyFrame() shredder.SimpleFrame {
+func (titleDoor) ReadyFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
 
@@ -208,10 +208,10 @@ func (d *hookDoor) RootCore() core.Core {
 }
 func (d *hookDoor) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
-func (d *hookDoor) CleanFrame() shredder.SimpleFrame {
+func (d *hookDoor) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
-func (d *hookDoor) ReadyFrame() shredder.SimpleFrame {
+func (d *hookDoor) ReadyFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
 

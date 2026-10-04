@@ -53,7 +53,7 @@ func (n *node) getID() uint64 {
 	return n.tracker.id
 }
 
-func (n *node) getWriteFrame() shredder.Frame {
+func (n *node) getWriteFrame() shredder.ReleaseFrame {
 	if n.staticTracker != nil {
 		return n.staticTracker.writeFrame()
 	}

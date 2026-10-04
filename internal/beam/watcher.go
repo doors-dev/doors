@@ -31,7 +31,7 @@ const (
 
 type innerWatcher interface {
 	init(ctx context.Context, seq uint) watcherResult
-	sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) watcherResult
+	sync(ctx context.Context, seq uint, cleanFrame shredder.Frame) watcherResult
 	cancel()
 }
 
@@ -83,7 +83,7 @@ func (w *watcher) Cancel() {
 	w.inner.cancel()
 }
 
-func (w *watcher) syncFrame() shredder.AnyFrame {
+func (w *watcher) syncFrame() shredder.Frame {
 	return &w.initGuard
 }
 
@@ -105,7 +105,7 @@ func (w *watcher) init(ctx context.Context, seq uint) {
 	}
 }
 
-func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) {
+func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame shredder.Frame) {
 	ok := w.state.CompareAndSwap(watcherReady, wathcherSync)
 	if !ok {
 		return
@@ -152,7 +152,7 @@ func (s *singleWatcher[T]) init(ctx context.Context, seq uint) watcherResult {
 	return watch
 }
 
-func (s *singleWatcher[T]) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) watcherResult {
+func (s *singleWatcher[T]) sync(ctx context.Context, seq uint, cleanFrame shredder.Frame) watcherResult {
 	v, updated := s.beam.sync(s.seq, seq, cleanFrame)
 	s.seq = seq
 	if v == nil {

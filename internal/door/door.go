@@ -125,7 +125,7 @@ func (d *Door) unmountedSelf(prev *node) {
 	d.node.CompareAndSwap(prev, node)
 }
 
-func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredder.Frame) {
+func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredder.ReleaseFrame) {
 	next := &node{
 		door: d,
 	}
@@ -145,7 +145,7 @@ func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredd
 	})
 }
 
-func (d *Door) atomicSchedule(ctx context.Context, prev *node, task nodeTask, externalFrame shredder.Frame) bool {
+func (d *Door) atomicSchedule(ctx context.Context, prev *node, task nodeTask, externalFrame shredder.ReleaseFrame) bool {
 	next := &node{
 		door: d,
 	}

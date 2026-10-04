@@ -19,7 +19,7 @@ func (d *Door) render(ctx context.Context, p *pipe) {
 	}, p.renderFrame)
 }
 
-func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredder.Frame) {
+func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredder.ReleaseFrame) {
 	next := &node{
 		door: d,
 	}

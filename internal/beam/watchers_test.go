@@ -24,7 +24,7 @@ import (
 
 type stubSyncSource[T any] struct {
 	syncCalls int
-	syncFunc  func(prev, seq uint, after shredder.SimpleFrame) (*T, bool)
+	syncFunc  func(prev, seq uint, after shredder.Frame) (*T, bool)
 }
 
 func (s *stubSyncSource[T]) Sub(context.Context, func(context.Context, T) bool) bool {
@@ -58,7 +58,7 @@ func (s *stubSyncSource[T]) oldest() uint {
 	return 0
 }
 
-func (s *stubSyncSource[T]) sync(prev, seq uint, after shredder.SimpleFrame) (*T, bool) {
+func (s *stubSyncSource[T]) sync(prev, seq uint, after shredder.Frame) (*T, bool) {
 	s.syncCalls++
 	if s.syncFunc == nil {
 		return nil, false
@@ -229,7 +229,7 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 	t.Run("stale source equal reuses previous cached value", func(t *testing.T) {
 		sourceValue := 8
 		source := &stubSyncSource[int]{
-			syncFunc: func(prev, seq uint, after shredder.SimpleFrame) (*int, bool) {
+			syncFunc: func(prev, seq uint, after shredder.Frame) (*int, bool) {
 				if prev != 2 || seq != 5 {
 					t.Fatalf("unexpected sync request prev=%d seq=%d", prev, seq)
 				}
@@ -275,7 +275,7 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 	t.Run("stale source equal rebuilds value when previous beam entry is gone", func(t *testing.T) {
 		sourceValue := 9
 		source := &stubSyncSource[int]{
-			syncFunc: func(prev, seq uint, after shredder.SimpleFrame) (*int, bool) {
+			syncFunc: func(prev, seq uint, after shredder.Frame) (*int, bool) {
 				if prev != 3 || seq != 6 {
 					t.Fatalf("unexpected sync request prev=%d seq=%d", prev, seq)
 				}
@@ -317,7 +317,7 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 func TestBeamSyncEntrySourceBranches(t *testing.T) {
 	t.Run("missing source value returns nil", func(t *testing.T) {
 		source := &stubSyncSource[int]{
-			syncFunc: func(prev, seq uint, after shredder.SimpleFrame) (*int, bool) {
+			syncFunc: func(prev, seq uint, after shredder.Frame) (*int, bool) {
 				return nil, false
 			},
 		}
@@ -345,7 +345,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 	t.Run("updated source without previous beam value stores new entry", func(t *testing.T) {
 		sourceValue := 10
 		source := &stubSyncSource[int]{
-			syncFunc: func(prev, seq uint, after shredder.SimpleFrame) (*int, bool) {
+			syncFunc: func(prev, seq uint, after shredder.Frame) (*int, bool) {
 				if prev != 2 || seq != 7 {
 					t.Fatalf("unexpected sync request prev=%d seq=%d", prev, seq)
 				}
@@ -386,7 +386,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 		sourceValue := 12
 		sourceUpdated := false
 		source := &stubSyncSource[int]{
-			syncFunc: func(prev, seq uint, after shredder.SimpleFrame) (*int, bool) {
+			syncFunc: func(prev, seq uint, after shredder.Frame) (*int, bool) {
 				return &sourceValue, sourceUpdated
 			},
 		}
@@ -433,7 +433,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 	t.Run("updated source equal to previous beam value reuses previous pointer", func(t *testing.T) {
 		sourceValue := 12
 		source := &stubSyncSource[int]{
-			syncFunc: func(prev, seq uint, after shredder.SimpleFrame) (*int, bool) {
+			syncFunc: func(prev, seq uint, after shredder.Frame) (*int, bool) {
 				return &sourceValue, true
 			},
 		}
@@ -474,7 +474,7 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 	t.Run("updated source changed from previous beam value stores new pointer", func(t *testing.T) {
 		sourceValue := 13
 		source := &stubSyncSource[int]{
-			syncFunc: func(prev, seq uint, after shredder.SimpleFrame) (*int, bool) {
+			syncFunc: func(prev, seq uint, after shredder.Frame) (*int, bool) {
 				return &sourceValue, true
 			},
 		}

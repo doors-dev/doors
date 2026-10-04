@@ -25,7 +25,7 @@ import (
 
 type Door interface {
 	Runtime() shredder.Runtime
-	ReadFrame() shredder.Frame
+	ReadFrame() shredder.ReleaseFrame
 	Context() context.Context
 }
 
@@ -54,11 +54,11 @@ func (c Cinema) runtime() shredder.Runtime {
 	return c.door.Runtime()
 }
 
-func (c Cinema) ReadFrame() shredder.Frame {
+func (c Cinema) ReadFrame() shredder.ReleaseFrame {
 	return c.removeGuard.Read()
 }
 
-func (c Cinema) writeFrame() shredder.Frame {
+func (c Cinema) writeFrame() shredder.ReleaseFrame {
 	return c.removeGuard.Write()
 }
 
@@ -72,7 +72,7 @@ func (c *cinema) isKilled() bool {
 	return c.door.Context().Err() != nil
 }
 
-func (c *cinema) Cancel() {
+func (c *cinema) Clean() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, screen := range c.screens {

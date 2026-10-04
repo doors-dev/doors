@@ -50,11 +50,11 @@ func (h helperDoor) Instance() core.Instance {
 	return h.inst
 }
 
-func (helperDoor) CleanFrame() shredder.SimpleFrame {
+func (helperDoor) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
 
-func (helperDoor) ReadyFrame() shredder.SimpleFrame {
+func (helperDoor) ReadyFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
 
@@ -89,11 +89,11 @@ func (h helperDoorWithRoot) Instance() core.Instance {
 	return h.inst
 }
 
-func (helperDoorWithRoot) CleanFrame() shredder.SimpleFrame {
+func (helperDoorWithRoot) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
 
-func (helperDoorWithRoot) ReadyFrame() shredder.SimpleFrame {
+func (helperDoorWithRoot) ReadyFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
 
