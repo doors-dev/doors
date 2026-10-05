@@ -78,6 +78,10 @@ func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
 // a live Door; later operations change the stored state without putting the
 // Door back on the page.
 //
+// The content belongs to the parent Door: hooks, subscriptions, calls, and
+// lifecycle callbacks it registers attach to the parent, even if the render
+// fails.
+//
 // The returned channel is optional to use. On success it sends two nil values
 // then closes: the first means the call was scheduled, the second means it was
 // applied to the page. On failure it sends an error then closes;

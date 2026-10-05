@@ -29,7 +29,9 @@ import (
 // event handler, on fires promptly.
 //
 // OnReady is best-effort and fires at most once: if the render cycle fails or
-// is superseded by a newer operation, on never runs. Tie cleanup to [OnClean].
+// is superseded by a newer operation, on never runs. [Door.Static] content is
+// the exception: it belongs to the parent Door, so on still runs if the static
+// render fails. Tie cleanup to [OnClean].
 //
 // on runs inline on the framework goroutine completing the cycle — on the
 // calling goroutine when the content is already on the page — with a context
@@ -98,6 +100,8 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 // enclosing Door is updated, removed, rerendered by an ancestor, fails to
 // render, or the instance ends. Exactly one of these eventually happens to
 // every rendered piece of content, so f runs exactly once per registration.
+// [Door.Static] content belongs to the parent Door, so f runs when the
+// parent's content is cleared, even if the static render fails.
 //
 // f runs inline on the framework goroutine performing the clean — on the
 // calling goroutine when the content is already cleaned — and receives no

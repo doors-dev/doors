@@ -115,7 +115,7 @@ Passing `nil` removes the mounted Door without rendering replacement content.
 
 Static content may mount new **Doors** of its own — that makes `Static` the building block for unbounded feeds and streams, see [Growing Content](#growing-content).
 
-Static content belongs to the Door's parent. Hooks, subscriptions, `doors.Go(...)`, and lifecycle callbacks registered while rendering it attach to the parent and live until the parent's content is cleared, even if the static render fails.
+Static content belongs to the Door's parent. Hooks, subscriptions, `doors.Go(...)`, and lifecycle callbacks registered while rendering it attach to the parent and live until the parent's content is cleared, even if the static render fails. Calls it makes during render, such as `doors.Call(...)`, go through the parent too and are sent even if the static render fails.
 
 ### Reload
 
@@ -245,7 +245,7 @@ Render errors are a marginal case. Element render functions do not return errors
 
 When rendering a Door's content fails, nothing is sent to the browser, and the error is logged as `door rendering error` with the call site. A render that fails because it was superseded is not logged.
 
-- **A Door operation** (`Inner`, `Outer`, `Static`, `Reload`) sends the error on its completion channel. The page keeps the previous content, but it no longer responds: its hooks and subscriptions were released when the operation started. The next successful operation replaces it. After a failed `Outer`, `Inner` fails until an `Outer`, a `Reload`, or the parent renders the Door again. A failed `Static` still makes the Door static: later operations only update its stored state.
+- **A Door operation** (`Inner`, `Outer`, `Static`, `Reload`) sends the error on its completion channel. The page keeps the previous content, but it no longer responds: its hooks and subscriptions were released when the operation started. The next successful operation replaces it. After a failed `Outer`, `Inner` fails until a new `Outer` succeeds or the parent renders the Door again. A failed `Static` still makes the Door static: later operations only update its stored state.
 - **A Door rendered by its parent**, on the initial page or in a parent update, is left out of the parent's output. Operations on it fail with a placement error until the parent renders it again.
 
 ## Lifecycle
@@ -304,12 +304,12 @@ While held, the batch does not settle: `OnSettle` callbacks wait, and in a hook 
 - the enclosing Door is updated (`Inner`, `Outer`, `Reload`)
 - the Door is removed (`Static`, `Unmount`)
 - an ancestor Door re-renders
-- the render fails
+- the render fails (not for `Static` content, which belongs to the parent)
 - the instance ends
 
-When a Door operation replaces content, the replaced content's `OnClean` runs before the replacing content renders, and so before its `OnReady`.
+The only ordering guarantee is per piece of content: its `OnClean` runs after its `OnReady` has run or been dropped. The replaced content's `OnClean` is not ordered with the replacing content's render or `OnReady`.
 
-They are not symmetric. `OnReady` is **best-effort**: if the render cycle fails or is superseded by a newer Door operation, it never fires. `OnSettle` and `OnClean` are **exactly-once**: a batch always settles one way or another, and every rendered piece of content is eventually cleared. So acquire in render code, release in `OnClean`:
+They are not symmetric. `OnReady` is **best-effort**: if the render cycle fails or is superseded by a newer Door operation, it never fires. A failed `Static` render is the exception: its content belongs to the parent, see [Static](#static). `OnSettle` and `OnClean` are **exactly-once**: a batch always settles one way or another, and every rendered piece of content is eventually cleared. So acquire in render code, release in `OnClean`:
 
 ```gox
 elem (c Chat) Main() {

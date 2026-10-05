@@ -88,7 +88,9 @@ func (parallelJob) Output(io.Writer) error {
 // through [Door] methods. f starts only after the render cycle
 // producing the surrounding content completes and is enqueued for delivery,
 // so updates made by f always land after the markup that hosts them. It is
-// best-effort: if the render cycle fails or is superseded, f never runs.
+// best-effort: if the render cycle fails or is superseded, f never runs. In
+// [Door.Static] content, f belongs to the parent Door, so a failed static
+// render does not drop it.
 //
 // The context passed to f is equivalent to [DetachedContext] of the render
 // context: it is canceled when the surrounding content is released (replaced

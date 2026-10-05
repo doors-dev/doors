@@ -4,8 +4,6 @@
 
 Event handlers and dynamic fragments registered while rendering belong to that instance and are cleaned up when their part of the rendered tree goes away.
 
-> If your page is fully static, **Doors** can serve it and be done. As soon as you use dynamic features, the page becomes a long-lived part of the app.
-
 ## Mental Model
 
 Most apps in **Doors** are built from a few ideas working together:
@@ -140,10 +138,11 @@ lifetime of a rendered subtree.
 `doors.Go(f)` starts `f` only after the render cycle that produced the
 surrounding content completes and is enqueued for delivery, so `Door` updates
 made from `f` always land after the markup that hosts them. It is best-effort:
-if that render fails or is superseded, `f` never runs. The context passed to
-`f` is detached from the render cycle and canceled when the surrounding
-dynamic content is released: replaced or unmounted (see
-[Door](./06-door.md)).
+if that render fails or is superseded, `f` never runs. Inside `Door.Static`
+content, `f` belongs to the parent Door, so a failed static render does not
+drop it. The context passed to `f` is detached from the render cycle and
+canceled when the surrounding dynamic content is released: replaced or
+unmounted (see [Door](./06-door.md)).
 
 ## Security
 

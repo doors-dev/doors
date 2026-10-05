@@ -20,7 +20,7 @@ The middleware is a `func(next gox.Printer) gox.Printer`. It applies to every pa
 
 **Doors** calls the middleware once per *drain*:
 
-- the initial page render — the whole document, including fully static pages
+- the initial page render — the whole document
 - a Door render cycle — the updated Door plus all descendant Doors rendered in that cycle, delivered as one payload
 
 The returned printer must be non-nil. It receives that drain's jobs as sequential `Send` calls on a single goroutine, in document order, and is never reused across drains. The middleware function itself can be called concurrently — separate pages and Door updates can print at the same time — so keep per-drain state in the returned printer, not in shared variables.

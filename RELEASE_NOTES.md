@@ -84,11 +84,11 @@ The warning for an action requested from a canceled context carries a `caller` a
 
 - **Render errors stay on the server.**
   - When an operation's render fails, nothing is sent. Its channel delivers the error, and the error is logged as `door rendering error`.
-  - The page keeps the previous content, but that content is detached: its handlers and subscriptions no longer run. After a failed `Outer`, `Inner` fails until an `Outer`, a `Reload`, or the parent renders the Door again.
+  - The page keeps the previous content, but that content is detached: its handlers and subscriptions no longer run. After a failed `Outer`, `Inner` fails until a new `Outer` succeeds or the parent renders the Door again.
   - A Door whose render fails while its parent renders it is left out of the parent's output. Operations on it fail with a placement error until the parent renders it again.
   - The `Component Error` element is gone. It also carried the raw error text in an HTML comment, which reached the browser.
-- **`OnClean` runs earlier on replacement.** The replaced content's `OnClean` runs before the replacing content renders (it used to wait until the replacement was enqueued). It still runs before the new `OnReady`.
-- **`Door.Static` content belongs to the parent Door.** Callbacks, hooks, and subscriptions it registers live with the parent, including when the static render fails.
+- **`OnClean` of replaced content no longer waits for the replacement.** It can run as soon as the replacing operation starts, before the replacing content renders. The only ordering guarantee is per piece of content: its `OnClean` runs after its `OnReady` has run or been dropped.
+- **`Door.Static` content belongs to the parent Door.** Callbacks, hooks, subscriptions, and calls it registers live with the parent, including when the static render fails.
 - **`Door.Static` from a beam subscription renders current state.** The static content sees a consistent snapshot, which can be newer than the value that triggered the subscription. Pass the value in if the content must match it.
 - **templ components render during the render pass.** Their output is buffered when the component renders, not when the page or update is printed, so a templ error is a render error. It costs one buffer per templ component.
 
