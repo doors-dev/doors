@@ -174,19 +174,24 @@ cycle:
 		return nil
 	}
 	common.FreezeDequeBuffer(next)
+	var err error
+loop:
 	for item := range next.IterPopFront() {
 		switch item := item.(type) {
 		case *deque.Deque[any]:
 			p.push(item)
 			goto cycle
 		case gox.Job:
-			if err := pr.Send(item); err != nil {
-				p.Release()
-				return err
+			if err = pr.Send(item); err != nil {
+				break loop
 			}
 		default:
 			panic("unknown item type in the render buffer")
 		}
+	}
+	if err != nil {
+		p.Release()
+		return err
 	}
 	p.pop()
 	goto cycle
