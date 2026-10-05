@@ -1,8 +1,23 @@
-# Doors `0.15.6` Release Notes
+# Doors `0.16` Release Notes
 
-A small release around hook calls: race modes replace the `Parallel` flag, key filters become joinable, and `doors.Once` lets a Door drop its content after rendering it.
+Doors `0.16` rebuilds the Door layer to close ordering edge cases and stop `Door.Static` append chains from growing memory. Door operations were already applied in order, with the calls they trigger queued after their markup, but rare races between overlapping operations, render errors, and parent re-renders could break that. Render errors no longer reach the browser. Also in this release: race modes for hook calls, joinable key filters, `doors.Once`, a client clock read, and HEAD support for pages.
 
 ## Highlights
+
+### Door ordering edge cases
+
+These cases broke the ordering in earlier versions and now hold:
+
+- `Outer` (or `Reload` of an outer Door) followed immediately by `Inner`, before the `Outer` was sent: the update now lands in the new container instead of the old one.
+- Calls made while rendering `Door.Static` content (Setter, Emitter, `doors.Call`, scroll) now reach the browser after the static markup.
+- A render error that races a newer operation on the same Door can no longer overwrite the newer update, take down its handlers, or leave the Door unreachable (`door N not found`).
+- Updating a Door while its parent is still being sent no longer fails the parent when the Door's content holds templ components. On the initial page this used to truncate the response and send the browser into a reload loop.
+
+The rebuild also changes how render errors and a few lifecycle details behave; see [Behavior Changes](#behavior-changes).
+
+### Flat memory for Static append chains
+
+The [Growing Content](./docs/06-door.md#growing-content) pattern replaces the tail Door with `Static(ctx, <>{item}{~(&next)}</>)` on every append. Each `Door.Static` used to leave a context attached to the parent Door until the parent was cleared, so a long feed grew the heap with every item. A static render now leaves nothing behind on the parent except what the item content registers itself, such as hooks and subscriptions.
 
 ### Race modes
 
@@ -46,20 +61,63 @@ door.Outer(ctx, doors.Once(&UserList{users: users}))
 
 See [Door](./docs/06-door.md#once).
 
+### Client clock
+
+`doors.ActionTime` reads the browser's clock. The reading keeps the client's UTC offset, formatted the same way as event timestamps.
+
+```go
+var now time.Time
+err := <-doors.Call(ctx, doors.ActionTime{}.Into(&now))
+```
+
+### HEAD requests
+
+A HEAD request for a page renders the page in full to learn its final status, answers with the same headers as GET, and sends no body. The instance ends at once and is not tracked by the session, so it can't suspend live tabs. Static files and resources answer HEAD with an exact `Content-Length`.
+
+`Conf.ServerDisableHead` answers page HEAD requests with 405 instead. Static files and resources always answer HEAD.
+
+### Call sites in logs
+
+The warning for an action requested from a canceled context carries a `caller` attribute: the file and line of the first frame outside Doors, with generated templates resolved to their `.gox` source. Door rendering errors are logged with the call site of the operation or render that failed.
+
+## Behavior Changes
+
+- **Render errors stay on the server.**
+  - When an operation's render fails, nothing is sent. Its channel delivers the error, and the error is logged as `door rendering error`.
+  - The page keeps the previous content, but that content is detached: its handlers and subscriptions no longer run. After a failed `Outer`, `Inner` fails until an `Outer`, a `Reload`, or the parent renders the Door again.
+  - A Door whose render fails while its parent renders it is left out of the parent's output. Operations on it fail with a placement error until the parent renders it again.
+  - The `Component Error` element is gone. It also carried the raw error text in an HTML comment, which reached the browser.
+- **`OnClean` runs earlier on replacement.** The replaced content's `OnClean` runs before the replacing content renders (it used to wait until the replacement was enqueued). It still runs before the new `OnReady`.
+- **`Door.Static` content belongs to the parent Door.** Callbacks, hooks, and subscriptions it registers live with the parent, including when the static render fails.
+- **`Door.Static` from a beam subscription renders current state.** The static content sees a consistent snapshot, which can be newer than the value that triggered the subscription. Pass the value in if the content must match it.
+- **templ components render during the render pass.** Their output is buffered when the component renders, not when the page or update is printed, so a templ error is a render error. It costs one buffer per templ component.
+
+## Fixes
+
+Besides the [ordering edge cases](#door-ordering-edge-cases):
+
+- A `Door.Static` issued from a beam subscription on its parent's content could stall beam updates on the parent for good, and on the whole page when the parent was the page.
+- Beam: lock-order deadlocks between `Source` updates and Door or instance teardown, and a panic when a subscription started while its value was being cleaned up.
+- A print error, such as a client disconnecting mid-page, could hand a render buffer still in use back to the pool.
+
 ## Breaking Changes
 
 | Old | New |
 |---|---|
 | `Parallel: true` | `Race: doors.RaceParallel` |
 | `Keys: []doors.Key{a, b}` | `Keys: a.And(b)` or `Keys: doors.JoinKeys(a, b)` |
+| `door.Freeze(ctx)` | Removed: use `door.Static(ctx, content)` to make content final, or `door.Unmount(ctx)` to remove it |
+| `Component Error` element for a failed render | Nothing is rendered; the error goes to the operation's channel and the log |
+
+`Door.Freeze` could not be kept consistent with the ordering guarantees above.
 
 ## Migration
 
 ```sh
-go get github.com/doors-dev/doors@v0.15.6
+go get github.com/doors-dev/doors@v0.16.0
 ```
 
-Both changes are mechanical.
+`Race`, `Keys`, and `Freeze` are mechanical. If you styled or tested for the `Component Error` element, watch the operation's channel or the log instead.
 
 ---
 

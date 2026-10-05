@@ -75,7 +75,6 @@ Outer(ctx context.Context, outer any)
 Static(ctx context.Context, content any)
 Reload(ctx context.Context)
 Unmount(ctx context.Context)
-Freeze(ctx context.Context)
 ```
 
 ### Inner
@@ -116,6 +115,8 @@ Passing `nil` removes the mounted Door without rendering replacement content.
 
 Static content may mount new **Doors** of its own — that makes `Static` the building block for unbounded feeds and streams, see [Growing Content](#growing-content).
 
+Static content belongs to the Door's parent. Hooks, subscriptions, `doors.Go(...)`, and lifecycle callbacks registered while rendering it attach to the parent and live until the parent's content is cleared, even if the static render fails.
+
 ### Reload
 
 `Reload` re-renders the Door's current content.
@@ -125,14 +126,6 @@ Use it when the stored content depends on outside state and you want to redraw w
 ### Unmount
 
 `Unmount` removes the Door from the DOM but keeps its current content for a future mount.
-
-### Freeze
-
-`Freeze` keeps the Door's current markup on the page but releases everything behind it: hooks, subscriptions, nested Doors, and scoped background work started with `doors.Go(...)`. Interactive elements inside stay visible but silently stop working.
-
-Unlike `Static`, no content is sent — the page keeps what is already there. The Door keeps its stored state and can be mounted again.
-
-Made for content that is dynamic only for a while and then becomes final: blocks in a growing feed, log or chat entries, streamed output. Freeze the finished block, drop the reference, and server memory stays flat as the page grows. For the append side of that pattern, see [Growing Content](#growing-content).
 
 ## Growing Content
 
@@ -189,7 +182,7 @@ One mutex guards `seed` and `tail` across both paths — Door methods are safe f
 
 The edge's position sets the growth direction: edge after the item grows the chain down (append), edge before the item grows it up (prepend).
 
-For items that stay dynamic for a while — streamed output, edit-in-place entries — mount the item's dynamic part through its own Door and `Freeze` it when the item becomes final.
+For items that stay dynamic for a while — streamed output, edit-in-place entries — mount the item's dynamic part through its own Door, and call `Static` on that Door with the final content when the item is done. Keep the final content free of hooks and subscriptions: static content registers them on the parent, where they live as long as the feed does.
 
 To pace a fast producer, read the completion channel `Static` returns before appending the next item — see [Completion Channels](#completion-channels).
 
@@ -224,12 +217,11 @@ Outer(ctx context.Context, outer any) <-chan error
 Static(ctx context.Context, content any) <-chan error
 Reload(ctx context.Context) <-chan error
 Unmount(ctx context.Context) <-chan error
-Freeze(ctx context.Context) <-chan error
 ```
 
 On success the channel sends **two** `nil` values then closes — the first means the call was scheduled (render was completed), the second means it was applied to the page.
 
-On failure, the channel sends an error then closes. An error of `context.Canceled` means the operation was overwritten by a newer Door operation, unmount, or related lifecycle change.
+On failure, the channel sends an error then closes. A failed render sends its error, see [Render Errors](#render-errors). An error of `context.Canceled` means the operation was overwritten by a newer Door operation, unmount, or related lifecycle change.
 
 A closed channel with no value means the Door was not mounted by the time the operation was observed.
 
@@ -246,6 +238,15 @@ If the work should outlive the current dynamic owner, use
 current instance and uses the instance runtime lifecycle.
 
 > Most code ignores the returned channel. Read it when completion itself matters, such as pacing a fast stream of updates.
+
+## Render Errors
+
+Render errors are a marginal case. Element render functions do not return errors unless you return one yourself, and that is rarely right: loading failures, missing data, and other render states belong in the page, so handle them and render them as content. This section covers what happens when an error does come back.
+
+When rendering a Door's content fails, nothing is sent to the browser, and the error is logged as `door rendering error` with the call site. A render that fails because it was superseded is not logged.
+
+- **A Door operation** (`Inner`, `Outer`, `Static`, `Reload`) sends the error on its completion channel. The page keeps the previous content, but it no longer responds: its hooks and subscriptions were released when the operation started. The next successful operation replaces it. After a failed `Outer`, `Inner` fails until an `Outer`, a `Reload`, or the parent renders the Door again. A failed `Static` still makes the Door static: later operations only update its stored state.
+- **A Door rendered by its parent**, on the initial page or in a parent update, is left out of the parent's output. Operations on it fail with a placement error until the parent renders it again.
 
 ## Lifecycle
 
@@ -269,9 +270,8 @@ This means:
 - `Static` before mount stores static content instead of a live Door container
 - `Static(ctx, nil)` before mount stores an absent state
 - `Unmount` removes the Door now but keeps its content for a later mount
-- `Freeze` before mount leaves the stored state unchanged
 
-After a Door has been made static, frozen, or unmounted, later calls still update the Door's stored state. They do not automatically put that Door back into the DOM, but they do affect what will happen if the Door is rendered again later.
+After a Door has been made static or unmounted, later calls still update the Door's stored state. They do not automatically put that Door back into the DOM, but they do affect what will happen if the Door is rendered again later.
 
 ### Lifecycle Hooks
 
@@ -302,10 +302,12 @@ While held, the batch does not settle: `OnSettle` callbacks wait, and in a hook 
 `OnClean` fires when that content is cleared:
 
 - the enclosing Door is updated (`Inner`, `Outer`, `Reload`)
-- the Door is removed (`Static`, `Unmount`) or frozen (`Freeze`)
+- the Door is removed (`Static`, `Unmount`)
 - an ancestor Door re-renders
 - the render fails
 - the instance ends
+
+When a Door operation replaces content, the replaced content's `OnClean` runs before the replacing content renders, and so before its `OnReady`.
 
 They are not symmetric. `OnReady` is **best-effort**: if the render cycle fails or is superseded by a newer Door operation, it never fires. `OnSettle` and `OnClean` are **exactly-once**: a batch always settles one way or another, and every rendered piece of content is eventually cleared. So acquire in render code, release in `OnClean`:
 
@@ -333,7 +335,6 @@ Do not block in any of these callbacks. `OnReady` and `OnSettle` run on the inst
 - Use `Static(ctx, nil)` when the Door should disappear without replacement content.
 - Use `Reload` when you want to redraw the current content.
 - Use `Unmount` when the Door should disappear for now but keep its internal state for reuse.
-- Use `Freeze` when finished content should stay visible but no longer consume server resources.
 - Use `doors.Once` when the Door should not keep its content in memory after rendering it.
 - Use a `Static` chain when the page should accumulate items — feeds, logs, chats, streams — while the server keeps only the growth edge.
 

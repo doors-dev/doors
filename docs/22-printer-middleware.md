@@ -64,7 +64,6 @@ app := doors.NewApp(page, doors.WithPrinter(
 The middleware only sees **Doors** render output. It does not wrap:
 
 - error pages rendered through `doors.WithErrorPage`
-- the error replacement HTML of a failed Door render cycle
 - static files and resources served through `app.Use(...)` middleware or resource URLs
 
 ## Related

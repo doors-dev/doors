@@ -142,7 +142,7 @@ surrounding content completes and is enqueued for delivery, so `Door` updates
 made from `f` always land after the markup that hosts them. It is best-effort:
 if that render fails or is superseded, `f` never runs. The context passed to
 `f` is detached from the render cycle and canceled when the surrounding
-dynamic content is released: replaced, unmounted, or frozen (see
+dynamic content is released: replaced or unmounted (see
 [Door](./06-door.md)).
 
 ## Security

@@ -97,6 +97,7 @@ The fields that matter most in practice are:
 - `RequestTimeout`: max duration of a client request or hook call. Default `30s`. `AHook`, `ARawHook`, `ASubmit`, and `ARawSubmit` can override it per hook or form with their own `RequestTimeout` field.
 - `ServerCacheControl`: cache header for **Doors**-served JS and CSS resources. Default `public, max-age=31536000, immutable`.
 - `ServerDisableGzip`: disables gzip for HTML, JS, and CSS.
+- `ServerDisableHead`: answers HEAD requests for pages with 405. By default a page HEAD renders the page to get its status and headers and sends no body. Static files and resources always answer HEAD.
 - `ServerSessionCookiePrefix`: optional prefix for the internal **Doors** session cookie name. Empty by default, so with `doors.WithID("blue")` the cookie is named `blue`. Set it explicitly when you want browser-enforced cookie prefix rules such as `__Host-` or `__Secure-`.
 - `ServerSessionCookieNoSecure`: omits the `Secure` attribute from the internal **Doors** session cookie. Use only for plain HTTP development.
 - `ServerRequestBodyLimit`: max request body size in bytes for hook and form submission handlers. Default `8 MB`. Applies to all `doors.A...` event handlers, hooks, and form submissions. Also used as the max memory limit for automatically parsed form data (e.g. `ASubmit`).
