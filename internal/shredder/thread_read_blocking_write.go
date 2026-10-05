@@ -62,7 +62,7 @@ func (t *ReadBlockingWriteThread) Read() ReleaseFrame {
 	t.mu.Lock()
 	t.init()
 	defer t.mu.Unlock()
-	return Join(context.Background(), false, t.read)
+	return Join(context.Background(), t.read)
 }
 
 func (t *ReadBlockingWriteThread) Write() (write ReleaseFrame, read ReleaseFrame) {
@@ -80,7 +80,7 @@ func (t *ReadBlockingWriteThread) Write() (write ReleaseFrame, read ReleaseFrame
 			t.read.activate()
 		},
 	}
-	read = Join(context.Background(), false, t.nextRead)
+	read = Join(context.Background(), t.nextRead)
 	write = t.write
 	t.mu.Unlock()
 	t.read.Release()

@@ -40,16 +40,6 @@ func (c reportHook) Cancel() {}
 
 func (c reportHook) Result(r json.RawMessage, err error) {}
 
-type trackedPayload struct {
-	*printer.PayloadPrinter
-	tracker *tracker
-}
-
-func (t trackedPayload) Release() {
-	t.tracker.removePrinter(t.PayloadPrinter)
-	t.PayloadPrinter.Release()
-}
-
 type callKind int
 
 const (

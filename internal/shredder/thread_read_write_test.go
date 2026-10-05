@@ -64,7 +64,7 @@ func TestJoinCompletedFrameDoesNotPanic(t *testing.T) {
 	source.activate()
 	source.Release()
 
-	joined := Join(context.Background(), false, source)
+	joined := Join(context.Background(), source)
 	joined.Release()
 }
 

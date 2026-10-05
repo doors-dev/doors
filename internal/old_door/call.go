@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package n
+package door
 
 import (
 	"context"
@@ -39,6 +39,16 @@ func (c reportHook) Action() (actions.Action, func(), bool) {
 func (c reportHook) Cancel() {}
 
 func (c reportHook) Result(r json.RawMessage, err error) {}
+
+type trackedPayload struct {
+	*printer.PayloadPrinter
+	tracker *tracker
+}
+
+func (t trackedPayload) Release() {
+	t.tracker.removePrinter(t.PayloadPrinter)
+	t.PayloadPrinter.Release()
+}
 
 type callKind int
 

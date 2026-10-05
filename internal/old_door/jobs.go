@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package n
+package door
 
 import (
 	"context"
@@ -40,7 +40,7 @@ type renderJob struct {
 }
 
 func (d renderJob) Render(p *pipe) {
-	d.door.render(d.Context(), p)
+	d.door.render(p, d.Context())
 }
 
 type proxyJob struct {

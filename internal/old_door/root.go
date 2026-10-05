@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package n
+package door
 
 import (
 	"context"
@@ -38,15 +38,12 @@ func NewRoot(inst Instance) Root {
 		inst:  inst,
 		hooks: make(map[uint64]*hook),
 	}
-	r.outer = newRootOuterTracker(r)
-	r.tracker = r.outer.newTracker(nil)
-	r.core = core.NewCore(r.tracker)
+	r.tracker, r.core = trackerRoot(r)
 	return r
 }
 
 type root struct {
 	core    core.Core
-	outer   *outerTracker
 	tracker *tracker
 	mu      sync.Mutex
 	hooks   map[uint64]*hook
@@ -54,19 +51,15 @@ type root struct {
 }
 
 func (r Root) Kill() {
-	r.outer.clean()
+	r.tracker.clean(false, shredder.FreeFrame{})
 }
 
 func (r Root) ID() uint64 {
-	return r.outer.id
+	return r.tracker.id
 }
 
 func (r Root) instance() Instance {
 	return r.inst
-}
-
-func (r *root) runtime() shredder.Runtime {
-	return r.inst.Runtime()
 }
 
 func (r *root) cancelHook(id uint64) {
@@ -77,6 +70,10 @@ func (r *root) cancelHook(id uint64) {
 		return
 	}
 	hook.cancel()
+}
+
+func (r *root) runtime() shredder.Runtime {
+	return r.inst.Runtime()
 }
 
 func (r *root) addHook(h *hook) {
@@ -105,7 +102,7 @@ func (r Root) IsStatic() bool {
 	if !r.tracker.isEmpty() {
 		return false
 	}
-	if !r.tracker.cinema.IsEmpty() || !r.outer.cinema.IsEmpty() {
+	if !r.tracker.cinema.IsEmpty() {
 		return false
 	}
 	r.mu.Lock()
@@ -115,14 +112,12 @@ func (r Root) IsStatic() bool {
 
 func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 	thread := shredder.Thread{}
-	writeFrame := r.tracker.rw.Write()
-	renderFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), writeFrame, r.tracker.cinemaFrame())
-	passGuard := new(shredder.ValveFrame)
+	renderFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), r.tracker.writeFrame())
 	pipe := newPipe(
 		r.tracker,
 		common.GetDequeBuffer(),
 		renderFrame,
-		passGuard,
+		r.tracker.innerCallGuard,
 	)
 	ch := make(chan struct{})
 	var err error
@@ -134,14 +129,11 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 		cur := gox.NewCursor(r.tracker.Context(), pipe)
 		err = cur.Comp(comp)
 	})
-	callFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), writeFrame)
-	callFrame.Run(r.tracker.ctx, r.runtime(), func(bool) {
-		defer close(ch)
-		defer passGuard.Activate()
-		r.outer.outerGuard.Activate()
-	})
-	callFrame.Release()
 	renderFrame.Release()
+	thread.Frame().Run(r.tracker.ctx, r.runtime(), func(b bool) {
+		r.tracker.innerCallGuard.Activate()
+		close(ch)
+	})
 	select {
 	case <-ch:
 		if err != nil {

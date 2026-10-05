@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package n
+package door
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -52,22 +51,6 @@ type pipe struct {
 	printBack   gox.Printer
 }
 
-func (p *pipe) id() uint64 {
-	return p.tracker.outer.id
-}
-
-func (p *pipe) parentID() uint64 {
-	return p.tracker.outer.parent.outer.id
-}
-
-func (p *pipe) innerContext() context.Context {
-	return p.tracker.renderCtx
-}
-
-func (p *pipe) outerContext() context.Context {
-	return p.tracker.outer.renderCtx
-}
-
 func (p *pipe) isEmpty() bool {
 	return p.buffer.Len() == 0
 }
@@ -96,7 +79,7 @@ func (p *pipe) Render(pr *printer.PayloadPrinter, printerMiddleware func(next go
 
 func (p *pipe) error(err error) {
 	p.buffer.Clear()
-	e := newError(err, common.Logger(p.tracker.ctx))
+	e := newError(err, p.tracker.Instance().Logger())
 	if err := e.Main().Print(context.Background(), (*pushBackPrinter)(p.buffer)); err != nil {
 		panic("error rendering error")
 	}
@@ -115,7 +98,7 @@ func (p *pipe) Submit(f func(cur gox.Cursor) error) {
 		p.renderFrame,
 		p.callGuard,
 	)
-	pip.renderFrame.Submit(p.tracker.outerCtx, p.tracker.Runtime(), func(b bool) {
+	pip.renderFrame.Submit(p.tracker.ctx, p.tracker.Runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -140,9 +123,6 @@ type renderer interface {
 }
 
 func (p *pipe) Send(j gox.Job) error {
-	if j.Context().Err() != nil {
-		return j.Context().Err()
-	}
 	switch j := j.(type) {
 	case renderer:
 		j.Render(p)
@@ -152,13 +132,6 @@ func (p *pipe) Send(j gox.Job) error {
 			return err
 		}
 		return p.printBack.Send(j)
-	case *gox.JobTempl:
-		ctx := j.Ctx
-		var buf bytes.Buffer
-		if err := j.Output(&buf); err != nil {
-			return err
-		}
-		return p.printBack.Send(gox.NewJobBytes(ctx, buf.Bytes()))
 	default:
 		return p.printBack.Send(j)
 	}
@@ -243,9 +216,6 @@ func (p *pushFrontPrinter) buf() *deque.Deque[any] {
 }
 
 func (p *pushFrontPrinter) Send(j gox.Job) error {
-	if j.Context().Err() != nil {
-		return j.Context().Err()
-	}
 	p.buf().PushFront(j)
 	return nil
 }
@@ -257,9 +227,6 @@ func (p *pushBackPrinter) buf() *deque.Deque[any] {
 }
 
 func (p *pushBackPrinter) Send(j gox.Job) error {
-	if j.Context().Err() != nil {
-		return j.Context().Err()
-	}
 	p.buf().PushBack(j)
 	return nil
 }

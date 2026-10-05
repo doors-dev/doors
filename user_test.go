@@ -54,8 +54,8 @@ func (helperDoor) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
 
-func (helperDoor) ReadyFrame() shredder.Frame {
-	return &shredder.ValveFrame{}
+func (helperDoor) ReadyFrame() shredder.ReleaseFrame {
+	return shredder.Join(context.Background(), &shredder.ValveFrame{})
 }
 
 func (helperDoor) Cinema() beam.Cinema {
@@ -93,8 +93,8 @@ func (helperDoorWithRoot) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
 
-func (helperDoorWithRoot) ReadyFrame() shredder.Frame {
-	return &shredder.ValveFrame{}
+func (helperDoorWithRoot) ReadyFrame() shredder.ReleaseFrame {
+	return shredder.Join(context.Background(), &shredder.ValveFrame{})
 }
 
 // UserCall implements [core.Door].

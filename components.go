@@ -43,8 +43,9 @@ type Door = door.Door
 func Parallel() gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
 		j := parallelJob{
-			ctx: cur.Context(),
-			el:  elem,
+			ctx:    cur.Context(),
+			el:     elem,
+			caller: common.CaptureCaller(),
 		}
 		return cur.Printer().Send(j)
 	})
@@ -63,12 +64,13 @@ func Ctx(ctx context.Context) gox.Proxy {
 }
 
 type parallelJob struct {
-	ctx context.Context
-	el  gox.Elem
+	ctx    context.Context
+	el     gox.Elem
+	caller common.Caller
 }
 
 func (pj parallelJob) Render(pip door.Pipe) {
-	pip.Submit(func(cur gox.Cursor) error {
+	pip.Submit(pj.caller, func(cur gox.Cursor) error {
 		cur = gox.NewCursor(pj.ctx, cur.Printer())
 		return cur.Comp(pj.el)
 	})

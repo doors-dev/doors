@@ -177,8 +177,8 @@ retry:
 	}
 	sh := shredder.Thread{}
 	gate := &shredder.ValveFrame{}
-	syncFrame := shredder.Join(ctx, true, sh.Frame(), gate)
-	checkFrame := shredder.Join(ctx, true, ctxFrame, sh.Frame())
+	syncFrame := shredder.JoinRelease(ctx, sh.Frame(), gate)
+	checkFrame := shredder.JoinRelease(ctx, ctxFrame, sh.Frame())
 	cleanFrame := &shredder.ValveFrame{}
 	for sub := range s.subs.Iter() {
 		sub.sync(true, ctx, cleanFrame, syncFrame, seq, isStopped)

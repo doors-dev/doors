@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package n
+package door
 
 import (
 	"bytes"
@@ -108,6 +108,9 @@ func (e Error) Main() gox.Elem {
 				}
 			}
 			if err := cur.Close(); err != nil {
+				return err
+			}
+			if err := cur.Raw(fmt.Sprintf(`<!-- %s -->`, e.err.Error())); err != nil {
 				return err
 			}
 		}

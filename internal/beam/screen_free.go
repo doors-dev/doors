@@ -57,7 +57,7 @@ func (f *freeScreen) removeWatcher(*watcher) {
 
 func (f *freeScreen) sync(ctx context.Context, cleanFrame shredder.Frame, sourceFrame shredder.Frame, seq uint, isStopped func() bool) {
 	threadFrame := f.thread.Frame()
-	frame := shredder.Join(ctx, false, sourceFrame, threadFrame, f.w.syncFrame())
+	frame := shredder.Join(ctx, sourceFrame, threadFrame, f.w.syncFrame())
 	threadFrame.Release()
 	defer frame.Release()
 	frame.Submit(f.ctx, nil, func(ok bool) {

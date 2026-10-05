@@ -1,175 +1,304 @@
-// Copyright 2026 doors dev LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package door
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 	"github.com/gammazero/deque"
 )
 
-type nodeInner struct {
-	*userTask
-	content any
+type renderNode struct {
+	pipe   *pipe
+	buffer *deque.Deque[any]
+	ctx    context.Context
+	caller common.Caller
 }
 
-func (t nodeInner) apply(next *node, prev *node) {
-	next.mode = modeInner
-	next.outer = prev.outer
-	next.content = t.content
-	if !prev.isMounted() {
-		t.userTask.Accept()
-		return
-	}
-	next.tracker = trackerInherit(next, prev.tracker, true)
-	next.sync(t.userTask)
-}
-
-var _ nodeTask = nodeInner{}
-
-type nodeOuter struct {
-	*userTask
-	outer any
-}
-
-func (t nodeOuter) apply(next *node, prev *node) {
-	next.mode = modeOuter
-	next.outer = t.outer
-	if !prev.isMounted() {
-		t.userTask.Accept()
-		return
-	}
-	next.tracker = trackerInherit(next, prev.tracker, false)
-	next.sync(t.userTask)
-}
-
-var _ nodeTask = nodeOuter{}
-
-type nodeReload struct {
-	*userTask
-}
-
-func (t nodeReload) apply(next *node, prev *node) {
+func (n renderNode) apply(_ shredder.Frame, next *node, prev *node) {
 	next.mode = prev.mode
+	next.caller = n.caller
 	next.outer = prev.outer
-	next.content = prev.content
-	if !prev.isMounted() {
-		t.userTask.Accept()
+	next.inner = prev.inner
+	if next.mode == modeStatic {
+		next.static.user = common.UserCtx(n.ctx, n.pipe.tracker.renderCtx)
+		next.placeRenderStatic(n.pipe, n.buffer)
 		return
 	}
-	next.tracker = trackerInherit(next, prev.tracker, next.mode == modeInner)
-	next.sync(t.userTask)
-}
-
-var _ nodeTask = nodeReload{}
-
-type nodeUnmount struct {
-	*userTask
-}
-
-func (t nodeUnmount) apply(next *node, prev *node) {
-	next.mode = prev.mode
-	next.outer = prev.outer
-	next.content = prev.content
-	if !prev.isMounted() {
-		t.userTask.Accept()
-		return
+	if prev.isMounted() {
+		prev.scheduleRemoval()
 	}
-	trackerRemove(prev.tracker, t.userTask)
+	outer := newOuterTracker2(n.pipe.tracker, n.pipe.callGuard, n.ctx)
+	next.tracker = outer.newTracker(next)
+	next.placeRender(n.pipe, n.buffer)
 }
-
-var _ nodeTask = nodeUnmount{}
-
-type nodeStatic struct {
-	*userTask
-	content any
-}
-
-func (t nodeStatic) apply(next *node, prev *node) {
-	next.mode = modeStatic
-	next.content = t.content
-	if !prev.isMounted() {
-		t.userTask.Accept()
-		return
-	}
-	trackerShutdown(prev.tracker)
-	next.staticTracker = trackerStaticInherit(prev.tracker)
-	next.sync(t.userTask)
-}
-
-var _ nodeTask = nodeStatic{}
 
 type nodeProxy struct {
 	el     gox.Elem
 	pipe   *pipe
 	buffer *deque.Deque[any]
 	ctx    context.Context
+	caller common.Caller
 }
 
-func (t nodeProxy) apply(next *node, prev *node) {
+func (n nodeProxy) apply(_ shredder.Frame, next *node, prev *node) {
 	next.mode = modeBlend
-	next.outer = t.el
-	next.content = prev.content
-	next.tracker = trackerCreate(next, t.pipe, t.ctx)
+	next.caller = n.caller
+	next.outer = n.el
+	next.inner = prev.inner
 	if prev.isMounted() {
-		trackerRemove(prev.tracker, nil)
+		prev.scheduleRemoval()
 	}
-	next.render(t.pipe, t.buffer)
+	outer := newOuterTracker2(n.pipe.tracker, n.pipe.callGuard, n.ctx)
+	next.tracker = outer.newTracker(next)
+	next.placeRender(n.pipe, n.buffer)
 }
 
-var _ nodeTask = nodeProxy{}
-
-type nodeRender struct {
-	pipe   *pipe
-	buffer *deque.Deque[any]
-	ctx    context.Context
+type innerNode struct {
+	*userTask
+	inner any
 }
 
-func (t nodeRender) apply(next *node, prev *node) {
+func (n innerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
+	next.mode = modeInner
+	next.caller = n.caller
+	next.outer = prev.outer
+	next.inner = n.inner
+	if !prev.isMounted() {
+		n.userTask.Accept()
+		return
+	}
+	next.tracker = prev.tracker.outer.newTracker(next)
+	var thread shredder.Thread
+	if prev.mode == modeInner {
+		placeFrame := shredder.JoinRelease(prev.runtimeContext(), initFrame, prev.tracker.outer.placeGuard, thread.Frame())
+		placeFrame.Run(nil, prev.runtime(), func(b bool) {
+			prev.tracker.clean()
+		})
+		placeFrame.Release()
+	}
+	outerFrame := shredder.JoinRelease(prev.runtimeContext(), initFrame, &prev.tracker.outer.outerGuard, thread.Frame())
+	defer outerFrame.Release()
+	outerFrame.Run(next.tracker.ctx, prev.runtime(), func(b bool) {
+		if prev.mode != modeInner {
+			prev.tracker.clean()
+		}
+		if next.tracker.outer.placementError != nil {
+			next.tracker.clean()
+			n.Report(fmt.Errorf("placement error: %w", next.tracker.outer.placementError))
+			return
+		}
+		if next.tracker.outer.outerError != nil {
+			next.tracker.clean()
+			n.Report(fmt.Errorf("outer error: %w", next.tracker.outer.outerError))
+			return
+		}
+		if !b {
+			n.Cancel()
+			return
+		}
+		next.sync(n.userTask)
+	})
+}
+
+type outerNode struct {
+	*userTask
+	outer any
+}
+
+func (n outerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
+	next.mode = modeOuter
+	next.caller = n.caller
+	next.outer = n.outer
+	next.inner = nil
+	if !prev.isMounted() {
+		n.userTask.Accept()
+		return
+	}
+	outer := newOuterTracker1(prev.tracker.outer)
+	next.tracker = outer.newTracker(next)
+	placeFrame := shredder.Join(prev.runtimeContext(), initFrame, prev.tracker.outer.placeGuard)
+	defer placeFrame.Release()
+	placeFrame.Run(next.tracker.outer.ctx, prev.runtime(), func(b bool) {
+		next.tracker.outer.placementError = prev.tracker.outer.placementError
+		prev.tracker.outer.clean()
+		prev.tracker.clean()
+		if !b {
+			defer next.tracker.outer.outerGuard.Activate()
+			n.Cancel()
+			return
+		}
+		if next.tracker.outer.placementError != nil {
+			defer next.tracker.outer.outerGuard.Activate()
+			next.tracker.outer.clean()
+			next.tracker.clean()
+			n.Report(fmt.Errorf("placement error: %w", next.tracker.outer.placementError))
+			return
+		}
+		next.sync(n.userTask)
+	})
+}
+
+type staticNode struct {
+	*userTask
+	outer any
+}
+
+func (n staticNode) apply(initFrame shredder.Frame, next *node, prev *node) {
+	next.mode = modeStatic
+	next.caller = n.caller
+	next.outer = n.outer
+	if !prev.isMounted() {
+		n.userTask.Accept()
+		return
+	}
+	next.tracker = prev.tracker.outer.parent
+	next.static.id = prev.tracker.outer.id
+	next.static.callGuard = new(shredder.ValveFrame)
+	next.static.user = prev.tracker.outer.user
+	placeFrame := shredder.Join(prev.runtimeContext(), initFrame, prev.tracker.outer.placeGuard)
+	defer placeFrame.Release()
+	placeFrame.Run(next.tracker.ctx, prev.runtime(), func(b bool) {
+		prev.tracker.outer.clean()
+		prev.tracker.clean()
+		if !b {
+			n.Cancel()
+			return
+		}
+		if prev.tracker.outer.placementError != nil {
+			n.Report(fmt.Errorf("placement error: %w", prev.tracker.outer.placementError))
+			return
+		}
+		next.sync(n.userTask)
+	})
+}
+
+type nodeReload struct {
+	*userTask
+}
+
+func (n nodeReload) apply(initFrame shredder.Frame, next *node, prev *node) {
+	next.mode = prev.mode
+	next.caller = n.caller
+	next.outer = prev.outer
+	next.inner = prev.inner
+	if !prev.isMounted() {
+		n.userTask.Accept()
+		return
+	}
+	if prev.mode != modeInner {
+		outer := newOuterTracker1(prev.tracker.outer)
+		next.tracker = outer.newTracker(next)
+		placeFrame := shredder.Join(prev.runtimeContext(), initFrame, prev.tracker.outer.placeGuard)
+		defer placeFrame.Release()
+		placeFrame.Run(next.tracker.outer.ctx, prev.runtime(), func(b bool) {
+			next.tracker.outer.placementError = prev.tracker.outer.placementError
+			prev.tracker.outer.clean()
+			prev.tracker.clean()
+			if !b {
+				defer next.tracker.outer.outerGuard.Activate()
+				n.Cancel()
+				return
+			}
+			if next.tracker.outer.placementError != nil {
+				defer next.tracker.outer.outerGuard.Activate()
+				next.tracker.outer.clean()
+				next.tracker.clean()
+				n.Report(fmt.Errorf("placement error: %w", next.tracker.outer.placementError))
+				return
+			}
+			next.sync(n.userTask)
+		})
+		return
+	}
+	next.tracker = prev.tracker.outer.newTracker(next)
+	var thread shredder.Thread
+	placeFrame := shredder.JoinRelease(prev.runtimeContext(), initFrame, prev.tracker.outer.placeGuard, thread.Frame())
+	placeFrame.Run(nil, prev.runtime(), func(b bool) {
+		prev.tracker.clean()
+	})
+	placeFrame.Release()
+	outerFrame := shredder.JoinRelease(prev.runtimeContext(), initFrame, &prev.tracker.outer.outerGuard, thread.Frame())
+	defer outerFrame.Release()
+	outerFrame.Run(next.tracker.ctx, prev.runtime(), func(b bool) {
+		if next.tracker.outer.placementError != nil {
+			next.tracker.clean()
+			n.Report(fmt.Errorf("placement error: %w", next.tracker.outer.placementError))
+			return
+		}
+		if next.tracker.outer.outerError != nil {
+			next.tracker.clean()
+			n.Report(fmt.Errorf("outer error: %w", next.tracker.outer.outerError))
+			return
+		}
+		if !b {
+			n.Cancel()
+			return
+		}
+		next.sync(n.userTask)
+	})
+}
+
+type unmountNode struct {
+	*userTask
+}
+
+func (n unmountNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.mode = prev.mode
 	next.outer = prev.outer
-	next.content = prev.content
-	if prev.isMounted() {
-		trackerRemove(prev.tracker, nil)
+	next.inner = prev.inner
+	if !prev.isMounted() {
+		n.userTask.Accept()
+		return
 	}
-	if next.mode != modeStatic {
-		next.tracker = trackerCreate(next, t.pipe, t.ctx)
-	} else {
-		next.staticTracker = trackerStatic(t.pipe, t.ctx)
-	}
-	next.render(t.pipe, t.buffer)
+	var thread shredder.Thread
+	placeFrame := shredder.JoinRelease(prev.runtimeContext(), initFrame, prev.tracker.outer.placeGuard, thread.Frame())
+	placeFrame.Run(nil, prev.runtime(), func(b bool) {
+		prev.tracker.outer.clean()
+		prev.tracker.clean()
+	})
+	placeFrame.Release()
+	callFrame := shredder.Join(prev.runtimeContext(), prev.tracker.outer.callGuard, n.CallFrame(), thread.Frame())
+	defer callFrame.Release()
+	callFrame.Run(prev.tracker.outer.parent.ctx, prev.runtime(), func(b bool) {
+		if !b {
+			n.Cancel()
+			return
+		}
+		if prev.tracker.outer.placementError != nil {
+			n.Report(fmt.Errorf("placement error: %w", prev.tracker.outer.placementError))
+			return
+		}
+		prev.call(&call{
+			ctx:     prev.tracker.outer.parent.ctx,
+			kind:    callReplace,
+			id:      prev.tracker.outer.id,
+			payload: emptyPayload{},
+			task:    n.userTask,
+			logger:  prev.logger(),
+		})
+	})
 }
 
-var _ nodeTask = nodeRender{}
+var _ nodeTask = renderNode{}
 
 type nodeTask interface {
-	apply(next *node, prev *node)
+	apply(initFrame shredder.Frame, next *node, prev *node)
 }
 
 func newUserTask(ctx context.Context) (*userTask, <-chan error) {
 	ch := make(chan error, 2)
-	return &userTask{ch: &ch, ctx: ctx, frames: ctex.GetFrames(ctx)}, ch
+	return &userTask{ch: &ch, ctx: ctx, frames: ctex.GetFrames(ctx), caller: common.CaptureCaller()}, ch
 }
 
 type userTask struct {
 	ch     *chan error
 	ctx    context.Context
 	frames ctex.Frames
+	caller common.Caller
 }
 
 func (t *userTask) InitFrame() shredder.ReleaseFrame {
@@ -190,7 +319,7 @@ func (t *userTask) RenderFrame() shredder.Frame {
 	if t == nil {
 		return shredder.FreeFrame{}
 	}
-	return t.frames.Render()
+	return shredder.Join(t.ctx, t.frames.Render())
 }
 
 func (t *userTask) Scheduled() {

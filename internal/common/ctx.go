@@ -29,11 +29,24 @@ const (
 	KeyHistoryReplace
 )
 
-func NewRenderCtx(system context.Context, user context.Context) RenderCtx {
+func NewRenderCtx(system context.Context, user context.Context) context.Context {
 	if rc, ok := system.(RenderCtx); ok {
 		system = rc.system
 	}
+	if user == nil {
+		return system
+	}
 	return RenderCtx{system: system, user: user}
+}
+
+func UserCtx(ctx context.Context, parent context.Context) context.Context {
+	if rc, ok := ctx.(RenderCtx); ok {
+		return rc.User()
+	}
+	if ctx == parent {
+		return nil
+	}
+	return ctx
 }
 
 type RenderCtx struct {

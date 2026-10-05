@@ -158,8 +158,8 @@ func (titleDoor) UserCall(context.Context, actions.Action, func(json.RawMessage,
 func (titleDoor) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
-func (titleDoor) ReadyFrame() shredder.Frame {
-	return &shredder.ValveFrame{}
+func (titleDoor) ReadyFrame() shredder.ReleaseFrame {
+	return shredder.Join(context.Background(), &shredder.ValveFrame{})
 }
 
 type testMetaUpdate struct {
@@ -211,8 +211,8 @@ func (d *hookDoor) UserCall(context.Context, actions.Action, func(json.RawMessag
 func (d *hookDoor) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
 }
-func (d *hookDoor) ReadyFrame() shredder.Frame {
-	return &shredder.ValveFrame{}
+func (d *hookDoor) ReadyFrame() shredder.ReleaseFrame {
+	return shredder.Join(context.Background(), &shredder.ValveFrame{})
 }
 
 func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstance, *hookDoor, *testModuleRegistry) {

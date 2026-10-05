@@ -1,23 +1,10 @@
-// Copyright 2026 doors dev LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package door
 
 import (
 	"context"
 	"sync/atomic"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -28,101 +15,23 @@ type Door struct {
 	node atomic.Pointer[node]
 }
 
-func (d *Door) proxy(p *pipe, el gox.Elem, ctx context.Context) {
-	task := nodeProxy{
+func (d *Door) render(ctx context.Context, p *pipe, caller common.Caller) {
+	d.schedule(ctx, renderNode{
+		pipe:   p,
+		buffer: p.branch(),
+		ctx:    ctx,
+		caller: caller,
+	}, p.renderFrame)
+}
+
+func (d *Door) proxy(p *pipe, el gox.Elem, ctx context.Context, caller common.Caller) {
+	d.schedule(ctx, nodeProxy{
 		pipe:   p,
 		buffer: p.branch(),
 		el:     el,
 		ctx:    ctx,
-	}
-	d.schedule(p.tracker.Context(), task, p.renderFrame)
-}
-
-func (d *Door) render(p *pipe, ctx context.Context) {
-	task := nodeRender{
-		pipe:   p,
-		buffer: p.branch(),
-		ctx:    ctx,
-	}
-	d.schedule(p.tracker.Context(), task, p.renderFrame)
-}
-
-func (d *Door) outer(ctx context.Context, outer any) <-chan error {
-	ctex.LogCanceled(ctx, "Door outer")
-	userTask, ch := newUserTask(ctx)
-	task := nodeOuter{
-		userTask: userTask,
-		outer:    outer,
-	}
-	d.schedule(ctx, task, userTask.InitFrame())
-	return ch
-}
-
-func (d *Door) inner(ctx context.Context, content any) <-chan error {
-	ctex.LogCanceled(ctx, "Door inner")
-	userTask, ch := newUserTask(ctx)
-	task := nodeInner{
-		userTask: userTask,
-		content:  content,
-	}
-	d.schedule(ctx, task, userTask.InitFrame())
-	return ch
-}
-
-func (d *Door) static(ctx context.Context, content any) <-chan error {
-	ctex.LogCanceled(ctx, "Door static")
-	userTask, ch := newUserTask(ctx)
-	task := nodeStatic{
-		userTask: userTask,
-		content:  content,
-	}
-	d.schedule(ctx, task, userTask.InitFrame())
-	return ch
-}
-
-func (d *Door) unmount(ctx context.Context) <-chan error {
-	ctex.LogCanceled(ctx, "Door unmount")
-	userTask, ch := newUserTask(ctx)
-	task := nodeUnmount{
-		userTask: userTask,
-	}
-	d.schedule(ctx, task, userTask.InitFrame())
-	return ch
-}
-
-func (d *Door) reload(ctx context.Context) <-chan error {
-	ctex.LogCanceled(ctx, "Door reload")
-	userTask, ch := newUserTask(ctx)
-	task := nodeReload{
-		userTask: userTask,
-	}
-	d.schedule(ctx, task, userTask.InitFrame())
-	return ch
-}
-
-func (d *Door) reloadSelf(ctx context.Context, prev *node) <-chan error {
-	ctex.LogCanceled(ctx, "Door reload")
-	userTask, ch := newUserTask(ctx)
-	task := nodeReload{
-		userTask: userTask,
-	}
-	frame := userTask.InitFrame()
-	if !d.atomicSchedule(ctx, prev, task, frame) {
-		frame.Release()
-		userTask.Cancel()
-	}
-	return ch
-}
-
-func (d *Door) unmountedSelf(prev *node) {
-	node := &node{
-		door:    d,
-		mode:    prev.mode,
-		outer:   prev.outer,
-		content: prev.content,
-	}
-	node.guard.Activate()
-	d.node.CompareAndSwap(prev, node)
+		caller: caller,
+	}, p.renderFrame)
 }
 
 func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredder.ReleaseFrame) {
@@ -135,32 +44,39 @@ func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredd
 			door: d,
 			mode: modeOuter,
 		}
-		prev.guard.Activate()
+		prev.initGuard.Activate()
 	}
-	initFrame := shredder.Join(ctx, true, &prev.guard, externalFrame)
+	initFrame := shredder.JoinRelease(ctx, &prev.initGuard, externalFrame)
 	defer initFrame.Release()
 	initFrame.Run(nil, nil, func(b bool) {
-		defer next.guard.Activate()
-		task.apply(next, prev)
+		defer next.initGuard.Activate()
+		task.apply(initFrame, next, prev)
 	})
+}
+
+func (d *Door) reloadSelf(ctx context.Context, prev *node) <-chan error {
+	ctex.LogCanceled(ctx, "Door reload")
+	userTask, ch := newUserTask(ctx)
+	frame := userTask.InitFrame()
+	if !d.atomicSchedule(ctx, prev, nodeReload{userTask: userTask}, frame) {
+		frame.Release()
+		userTask.Cancel()
+	}
+	return ch
 }
 
 func (d *Door) atomicSchedule(ctx context.Context, prev *node, task nodeTask, externalFrame shredder.ReleaseFrame) bool {
 	next := &node{
 		door: d,
 	}
-	ok := d.node.CompareAndSwap(prev, next)
-	if !ok {
+	if !d.node.CompareAndSwap(prev, next) {
 		return false
 	}
-	initFrame := shredder.Join(ctx, true, &prev.guard, externalFrame)
+	initFrame := shredder.JoinRelease(ctx, &prev.initGuard, externalFrame)
 	defer initFrame.Release()
 	initFrame.Run(nil, nil, func(b bool) {
-		defer next.guard.Activate()
-		task.apply(next, prev)
+		defer next.initGuard.Activate()
+		task.apply(initFrame, next, prev)
 	})
 	return true
 }
-
-var _ gox.Proxy = &Door{}
-var _ gox.Comp = &Door{}

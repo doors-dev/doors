@@ -30,14 +30,14 @@ func (t *ReadStarveWriteThread) Read() ReleaseFrame {
 	t.mu.Lock()
 	for frame := range t.queue.Iter() {
 		if frame, ok := frame.(*ownedFrame); ok {
-			read := Join(context.Background(), false, frame)
+			read := Join(context.Background(), frame)
 			t.mu.Unlock()
 			return read
 		}
 	}
 	frame := t.appendRead()
 	frame.active = t.queue.Len() == 1
-	read := Join(context.Background(), false, frame)
+	read := Join(context.Background(), frame)
 	t.mu.Unlock()
 	return read
 }

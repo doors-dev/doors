@@ -19,6 +19,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/gox"
 )
 
@@ -35,20 +36,22 @@ func (d fakeJob) Output(w io.Writer) error {
 }
 
 type renderJob struct {
-	door *Door
+	door   *Door
+	caller common.Caller
 	fakeJob
 }
 
 func (d renderJob) Render(p *pipe) {
-	d.door.render(p, d.Context())
+	d.door.render(d.Context(), p, d.caller)
 }
 
 type proxyJob struct {
-	door *Door
-	el   gox.Elem
+	door   *Door
+	el     gox.Elem
+	caller common.Caller
 	fakeJob
 }
 
 func (d proxyJob) Render(p *pipe) {
-	d.door.proxy(p, d.el, d.Context())
+	d.door.proxy(p, d.el, d.Context(), d.caller)
 }

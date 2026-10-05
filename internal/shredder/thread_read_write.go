@@ -52,7 +52,7 @@ func (s *readWriteFrame) getRead() ReleaseFrame {
 		return s.next.getRead()
 	}
 	if !s.write {
-		return Join(context.Background(), false, &s.baseFrame)
+		return Join(context.Background(), &s.baseFrame)
 	}
 	s.next = s.thread.newFrame(false)
 	return s.next.getRead()

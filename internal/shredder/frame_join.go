@@ -49,7 +49,15 @@ func (j *joinedFrame) execute(callback func(error)) {
 	j.register(callback)
 }
 
-func Join(ctx context.Context, release bool, frames ...frame) ReleaseFrame {
+func Join(ctx context.Context, frames ...frame) ReleaseFrame {
+	return join(ctx, false, frames...)
+}
+
+func JoinRelease(ctx context.Context, frames ...frame) ReleaseFrame {
+	return join(ctx, true, frames...)
+}
+
+func join(ctx context.Context, release bool, frames ...frame) ReleaseFrame {
 	if len(frames) == 0 {
 		panic("join must have frames")
 	}

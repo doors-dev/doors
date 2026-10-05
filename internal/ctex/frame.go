@@ -61,7 +61,7 @@ func (f Frames) InitFrame(ctx context.Context) shredder.ReleaseFrame {
 	} else {
 		init = f.init
 	}
-	return shredder.Join(ctx, false, init, sync, after)
+	return shredder.Join(ctx, init, sync, after)
 }
 
 func AfterFrameInsert(ctx context.Context) (context.Context, *shredder.AfterFrame) {
