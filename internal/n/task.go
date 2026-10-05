@@ -28,7 +28,7 @@ func (n renderNode) apply(_ shredder.Frame, next *node, prev *node) {
 		prev.scheduleRemoval()
 	}
 	outer := newOuterTracker2(n.pipe.tracker, n.pipe.callGuard)
-	next.tracker = outer.newTracker()
+	next.tracker = outer.newTracker(next)
 	next.placeRender(n.pipe, n.buffer)
 }
 
@@ -47,7 +47,7 @@ func (n nodeProxy) apply(next *node, prev *node) {
 		prev.scheduleRemoval()
 	}
 	outer := newOuterTracker2(n.pipe.tracker, n.pipe.callGuard)
-	next.tracker = outer.newTracker()
+	next.tracker = outer.newTracker(next)
 	next.placeRender(n.pipe, n.buffer)
 }
 
@@ -64,7 +64,7 @@ func (n innerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 		n.userTask.Accept()
 		return
 	}
-	next.tracker = prev.tracker.outer.newTracker()
+	next.tracker = prev.tracker.outer.newTracker(next)
 	var thread shredder.Thread
 	if prev.mode == modeInner {
 		placeFrame := shredder.Join(prev.runtimeContext(), true, initFrame, prev.tracker.outer.placeGuard, thread.Frame())
@@ -111,7 +111,7 @@ func (n outerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 		return
 	}
 	outer := newOuterTracker1(prev.tracker.outer)
-	next.tracker = outer.newTracker()
+	next.tracker = outer.newTracker(next)
 	placeFrame := shredder.Join(prev.runtimeContext(), false, initFrame, prev.tracker.outer.placeGuard)
 	defer placeFrame.Release()
 	placeFrame.Run(next.tracker.outer.ctx, prev.runtime(), func(b bool) {
@@ -180,7 +180,7 @@ func (n nodeReload) apply(initFrame shredder.Frame, next *node, prev *node) {
 	}
 	if prev.mode != modeInner {
 		outer := newOuterTracker1(prev.tracker.outer)
-		next.tracker = outer.newTracker()
+		next.tracker = outer.newTracker(next)
 		placeFrame := shredder.Join(prev.runtimeContext(), false, initFrame, prev.tracker.outer.placeGuard)
 		defer placeFrame.Release()
 		placeFrame.Run(next.tracker.outer.ctx, prev.runtime(), func(b bool) {
@@ -203,7 +203,7 @@ func (n nodeReload) apply(initFrame shredder.Frame, next *node, prev *node) {
 		})
 		return
 	}
-	next.tracker = prev.tracker.outer.newTracker()
+	next.tracker = prev.tracker.outer.newTracker(next)
 	var thread shredder.Thread
 	placeFrame := shredder.Join(prev.runtimeContext(), true, initFrame, prev.tracker.outer.placeGuard, thread.Frame())
 	placeFrame.Run(nil, prev.runtime(), func(b bool) {

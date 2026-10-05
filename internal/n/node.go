@@ -145,9 +145,9 @@ func (n *node) onSyncError(err error) {
 func (n *node) syncRenderFrame(task *userTask, threadFrame shredder.ReleaseFrame, writeFrame shredder.ReleaseFrame) shredder.ReleaseFrame {
 	switch n.mode {
 	case modeOuter, modeInner, modeBlend:
-		return shredder.Join(n.runtimeContext(), true, threadFrame, writeFrame, task.RenderFrame())
+		return shredder.Join(n.runtimeContext(), true, threadFrame, writeFrame, n.tracker.cinemaFrame(), task.RenderFrame())
 	case modeStatic:
-		return shredder.Join(n.runtimeContext(), true, threadFrame, writeFrame)
+		return shredder.Join(n.runtimeContext(), true, threadFrame, writeFrame, n.tracker.cinemaFrame())
 	default:
 		panic("unknown node mode")
 	}
@@ -233,7 +233,7 @@ func (n *node) placeRender(parentPipe *pipe, buffer *deque.Deque[any]) {
 		panic("unexpected mode")
 	}
 	thread := shredder.Thread{}
-	renderFrame := shredder.Join(n.runtimeContext(), true, parentPipe.renderFrame, thread.Frame(), n.tracker.rw.Write())
+	renderFrame := shredder.Join(n.runtimeContext(), true, parentPipe.renderFrame, thread.Frame(), n.tracker.rw.Write(), n.tracker.cinemaFrame())
 	defer renderFrame.Release()
 	pip := newPipe(
 		n.tracker,

@@ -3,8 +3,10 @@ package n
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sync"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
@@ -16,14 +18,19 @@ import (
 )
 
 type tracker struct {
-	mu        sync.Mutex
-	ctx       context.Context
-	cancel    context.CancelFunc
-	outer     *outerTracker
-	rw        shredder.ReadWriteThread
-	renderCtx context.Context
-	printers  common.Set[*printer.PayloadPrinter]
-	cinema    beam.Cinema
+	mu         sync.Mutex
+	ctx        context.Context
+	cancel     context.CancelFunc
+	outer      *outerTracker
+	rw         shredder.ReadWriteThread
+	renderCtx  context.Context
+	printers   common.Set[*printer.PayloadPrinter]
+	cinema     beam.Cinema
+	cleanGuard shredder.ValveFrame
+	cleaned    atomic.Bool
+	children   common.Set[*outerTracker]
+	hooks      common.Set[uint64]
+	node       *node
 }
 
 func (t *tracker) Context() context.Context {
@@ -44,9 +51,8 @@ func (t *tracker) Cinema() beam.Cinema {
 	return t.cinema
 }
 
-// CleanFrame implements [core.Door].
 func (t *tracker) CleanFrame() shredder.Frame {
-	panic("unimplemented")
+	return &t.cleanGuard
 }
 
 func (t *tracker) ID() uint64 {
@@ -61,24 +67,74 @@ func (t *tracker) ReadyFrame() shredder.ReleaseFrame {
 	return shredder.Join(t.ctx, true, t.outer.callGuard, t.rw.Read())
 }
 
-// RegisterHook implements [core.Door].
 func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race) (core.Hook, bool) {
-	panic("unimplemented")
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.ctx.Err() != nil {
+		return core.Hook{}, false
+	}
+	if t.hooks == nil {
+		t.hooks = common.NewSet[uint64]()
+	}
+	h := newHook(t.inst().NewID(), t, onTrigger, race)
+	t.hooks.Add(h.id)
+	t.outer.root.addHook(h)
+	return core.Hook{
+		HookID: h.id,
+		Cancel: h.cancel,
+	}, true
 }
 
-// Reload implements [core.Door].
+func (t *tracker) removeHook(id uint64) {
+	t.outer.root.removeHook(id)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.hooks == nil {
+		return
+	}
+	t.hooks.Remove(id)
+}
+
+func (t *tracker) inst() Instance {
+	return t.outer.root.inst
+}
+
 func (t *tracker) Reload(ctx context.Context) <-chan error {
-	panic("unimplemented")
+	if t.node == nil {
+		ch := make(chan error, 1)
+		ch <- errors.New("root door cannot be reloaded")
+		close(ch)
+		return ch
+	}
+	return t.node.door.reloadSelf(ctx, t.node)
 }
 
-// RootCore implements [core.Door].
 func (t *tracker) RootCore() core.Core {
-	panic("unimplemented")
+	return t.outer.root.core
 }
 
-// UserCall implements [core.Door].
 func (t *tracker) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
-	panic("unimplemented")
+	callFrame := t.callFrame(ctx)
+	defer callFrame.Release()
+	callFrame.Run(ctx, t.Runtime(), func(b bool) {
+		if !b {
+			if onCancel != nil {
+				onCancel()
+			}
+			return
+		}
+		t.inst().UserCall(ctx, action, onResult, onCancel, params)
+	})
+}
+
+func (t *tracker) cinemaFrame() shredder.ReleaseFrame {
+	return shredder.Join(t.ctx, true, t.cinema.ReadFrame(), t.outer.cinema.ReadFrame())
+}
+
+func (t *tracker) isEmpty() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.children.Len() == 0
 }
 
 func (t *tracker) callFrame(ctx context.Context) shredder.ReleaseFrame {
@@ -109,16 +165,74 @@ func (t *tracker) newPrinter() (*printer.PayloadPrinter, bool) {
 	return p, true
 }
 
+func (t *tracker) addChild(c *outerTracker) {
+	t.mu.Lock()
+	if t.cleaned.Load() {
+		t.mu.Unlock()
+		c.clean()
+		return
+	}
+	if t.children == nil {
+		t.children = common.NewSet[*outerTracker]()
+	}
+	t.children.Add(c)
+	t.mu.Unlock()
+}
+
+func (t *tracker) removeChild(c *outerTracker) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.children == nil {
+		return
+	}
+	t.children.Remove(c)
+}
+
 func (t *tracker) clean() {
+	if t.cleaned.Swap(true) {
+		return
+	}
 	t.cancel()
 	t.cinema.Clean()
 	t.mu.Lock()
 	printers := t.printers
+	children := t.children
+	hooks := t.hooks
 	t.printers = nil
+	t.children = nil
+	t.hooks = nil
 	t.mu.Unlock()
 	for p := range printers {
 		p.Release()
 	}
+	for c := range children {
+		c.clean()
+	}
+	for id := range hooks {
+		t.outer.root.cancelHook(id)
+	}
+	t.outer.removeChild(t)
+	write := t.rw.Write()
+	write.Run(nil, nil, func(bool) {
+		t.cleanGuard.Activate()
+	})
+	write.Release()
+}
+
+func newRootOuterTracker(r *root) *outerTracker {
+	ctx, cancel := context.WithCancel(r.runtime().Context())
+	tracker := &outerTracker{
+		id:        r.inst.NewID(),
+		root:      r,
+		ctx:       ctx,
+		cancel:    cancel,
+		callGuard: new(shredder.ValveFrame),
+	}
+	tracker.callGuard.Activate()
+	tracker.placeGuard = &tracker.outerGuard
+	tracker.cinema = beam.NewCinema(nil, tracker)
+	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker))
+	return tracker
 }
 
 func newOuterTracker1(prev *outerTracker) *outerTracker {
@@ -133,14 +247,15 @@ func newOuterTracker1(prev *outerTracker) *outerTracker {
 		placeGuard: prev.placeGuard,
 	}
 	tracker.cinema = beam.NewCinema(prev.parent.Cinema(), tracker)
-	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, tracker)
+	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker))
+	prev.parent.addChild(tracker)
 	return tracker
 }
 
 func newOuterTracker2(parent *tracker, callGuard *shredder.ValveFrame) *outerTracker {
 	ctx, cancel := context.WithCancel(parent.ctx)
 	tracker := &outerTracker{
-		id:        parent.outer.root.ID(),
+		id:        parent.Instance().NewID(),
 		root:      parent.outer.root,
 		parent:    parent,
 		ctx:       ctx,
@@ -149,7 +264,8 @@ func newOuterTracker2(parent *tracker, callGuard *shredder.ValveFrame) *outerTra
 	}
 	tracker.cinema = beam.NewCinema(parent.Cinema(), tracker)
 	tracker.placeGuard = &tracker.outerGuard
-	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, tracker)
+	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker))
+	parent.addChild(tracker)
 	return tracker
 }
 
@@ -162,12 +278,18 @@ type outerTracker struct {
 	callGuard      *shredder.ValveFrame
 	placeGuard     *shredder.ValveFrame
 	outerGuard     shredder.ValveFrame
+	cleanTrigger   shredder.ValveFrame
+	cleanThread    shredder.ReadWriteThread
+	printers       common.Set[*printer.PayloadPrinter]
 	renderCtx      context.Context
 	placementError error
 	outerError     error
 	cinema         beam.Cinema
 	mu             sync.Mutex
-	printers       common.Set[*printer.PayloadPrinter]
+	cleaned        atomic.Bool
+	children       common.Set[*tracker]
+	hooks          common.Set[uint64]
+	current        *tracker
 }
 
 func (t *outerTracker) Context() context.Context {
@@ -189,7 +311,7 @@ func (t *outerTracker) Cinema() beam.Cinema {
 }
 
 func (t *outerTracker) CleanFrame() shredder.Frame {
-	panic("unimplemented")
+	return &t.cleanTrigger
 }
 
 func (t *outerTracker) ID() uint64 {
@@ -201,23 +323,64 @@ func (t *outerTracker) Instance() core.Instance {
 }
 
 func (t *outerTracker) ReadyFrame() shredder.ReleaseFrame {
-	return shredder.Join(t.ctx, false, t.callGuard, &t.outerGuard)
+	return shredder.Join(t.ctx, true, t.callGuard, &t.outerGuard, t.cleanThread.Read())
 }
 
 func (t *outerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race) (core.Hook, bool) {
-	panic("unimplemented")
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.ctx.Err() != nil {
+		return core.Hook{}, false
+	}
+	if t.hooks == nil {
+		t.hooks = common.NewSet[uint64]()
+	}
+	h := newHook(t.inst().NewID(), t, onTrigger, race)
+	t.hooks.Add(h.id)
+	t.root.addHook(h)
+	return core.Hook{
+		HookID: h.id,
+		Cancel: h.cancel,
+	}, true
+}
+
+func (t *outerTracker) removeHook(id uint64) {
+	t.root.removeHook(id)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.hooks == nil {
+		return
+	}
+	t.hooks.Remove(id)
+}
+
+func (t *outerTracker) inst() Instance {
+	return t.root.inst
 }
 
 func (t *outerTracker) Reload(ctx context.Context) <-chan error {
-	panic("unimplemented")
+	t.mu.Lock()
+	current := t.current
+	t.mu.Unlock()
+	return current.Reload(ctx)
 }
 
 func (t *outerTracker) RootCore() core.Core {
-	panic("unimplemented")
+	return t.root.core
 }
 
 func (t *outerTracker) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
-	panic("unimplemented")
+	callFrame := t.callFrame(ctx)
+	defer callFrame.Release()
+	callFrame.Run(ctx, t.Runtime(), func(b bool) {
+		if !b {
+			if onCancel != nil {
+				onCancel()
+			}
+			return
+		}
+		t.inst().UserCall(ctx, action, onResult, onCancel, params)
+	})
 }
 
 func (t *outerTracker) callFrame(ctx context.Context) shredder.ReleaseFrame {
@@ -248,26 +411,79 @@ func (t *outerTracker) newPrinter() (*printer.PayloadPrinter, bool) {
 	return p, true
 }
 
+func (t *outerTracker) addChild(c *tracker) {
+	t.mu.Lock()
+	if t.cleaned.Load() {
+		t.mu.Unlock()
+		c.clean()
+		return
+	}
+	defer t.mu.Unlock()
+	if t.children == nil {
+		t.children = common.NewSet[*tracker]()
+	}
+	t.children.Add(c)
+}
+
+func (t *outerTracker) removeChild(c *tracker) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.children == nil {
+		return
+	}
+	t.children.Remove(c)
+}
+
 func (t *outerTracker) clean() {
+	if t.cleaned.Swap(true) {
+		return
+	}
 	t.cancel()
 	t.cinema.Clean()
 	t.mu.Lock()
 	printers := t.printers
+	children := t.children
+	hooks := t.hooks
 	t.printers = nil
+	t.children = nil
+	t.hooks = nil
 	t.mu.Unlock()
 	for p := range printers {
 		p.Release()
 	}
+	for c := range children {
+		c.clean()
+	}
+	for id := range hooks {
+		t.root.cancelHook(id)
+	}
+	if t.parent != nil {
+		t.parent.removeChild(t)
+	}
+	write := t.cleanThread.Write()
+	defer write.Release()
+	write.Run(nil, nil, func(bool) {
+		t.cleanTrigger.Activate()
+	})
 }
 
-func (t *outerTracker) newTracker() *tracker {
+func (t *outerTracker) newTracker(n *node) *tracker {
 	ctx, cancel := context.WithCancel(t.ctx)
 	tracker := &tracker{
 		ctx:    ctx,
 		cancel: cancel,
 		outer:  t,
+		node:   n,
 	}
-	tracker.cinema = beam.NewCinema(t.parent.Cinema(), tracker)
-	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, tracker)
+	var parentCinema beam.Cinema
+	if t.parent != nil {
+		parentCinema = t.parent.Cinema()
+	}
+	tracker.cinema = beam.NewCinema(parentCinema, tracker)
+	tracker.renderCtx = context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker))
+	t.mu.Lock()
+	t.current = tracker
+	t.mu.Unlock()
+	t.addChild(tracker)
 	return tracker
 }
