@@ -419,6 +419,8 @@ Use `$on(name, handler)` when Go should call JavaScript through `doors.ActionEmi
 
 The nearest matching handler wins in the Door tree. `$on(...)` handlers may return a `Promise`.
 
+A managed script is loaded from its own URL and runs once the browser has fetched it, which is not ordered relative to **Doors** calls. An `ActionEmit` issued by the same render that inserts the script can arrive before the script has registered its `$on` handler, and then fails with `handler … not found`. When an emit must reach a handler from freshly rendered script, call a `$hook` from the script after registering its handlers, and issue the emit from that hook's handler.
+
 Use `$sys.clean(...)` for timers, global listeners, and embedded widgets that need teardown:
 
 ```gox

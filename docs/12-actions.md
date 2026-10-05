@@ -97,6 +97,8 @@ emitted events triggered.
 </>
 ```
 
+A handler registered by a managed script rendered in the same update may not be ready when the emit arrives; see [Emit and cleanup](./15-javascript.md#emit-and-cleanup).
+
 Handler search is scoped through the Door tree.
 
 **Doors** starts from the Door where the action was created and walks outward through parent Doors until it finds a matching handler.
