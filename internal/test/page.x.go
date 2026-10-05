@@ -1,6 +1,20 @@
-// Managed by GoX v0.3.0
+// Managed by GoX v0.3.2
 
 //line page.gox:1
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package test
 
 import (
@@ -52,28 +66,28 @@ func (p *Page) head() gox.Elem {
 	return p.H(p.Source)
 }
 
-//line page.gox:52
+//line page.gox:66
 func (p *Page) content() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line page.gox:53
+//line page.gox:67
 		if p.F != nil {
-//line page.gox:55
+//line page.gox:69
 			p.F.setBeam(p.Source)
 
-//line page.gox:57
+//line page.gox:71
 			__e = __c.Any(p.F); if __e != nil { return }
 		}
 	return })
-//line page.gox:59
+//line page.gox:73
 }
 
-//line page.gox:61
+//line page.gox:75
 func (p *Page) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line page.gox:62
+//line page.gox:76
 		__e = __c.Any(Document(p)); if __e != nil { return }
 	return })
-//line page.gox:63
+//line page.gox:77
 }

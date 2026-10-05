@@ -1,6 +1,20 @@
-// Managed by GoX v0.3.0
+// Managed by GoX v0.3.2
 
 //line ctx.gox:1
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package components
 
 import (
@@ -13,11 +27,11 @@ import (
 
 type ctxTestKey struct{}
 
-//line ctx.gox:13
+//line ctx.gox:27
 func ctxValue(id string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line ctx.gox:15
+//line ctx.gox:29
 		v, ok := ctx.Value(ctxTestKey{}).(string)
 	if !ok {
 		v = "none"
@@ -25,32 +39,32 @@ func ctxValue(id string) gox.Elem {
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line ctx.gox:20
+//line ctx.gox:34
 			__e = __c.Set("id", id); if __e != nil { return }
-//line ctx.gox:20
+//line ctx.gox:34
 			__e = __c.Set("data-value", v); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line ctx.gox:21
+//line ctx.gox:35
 }
 
-//line ctx.gox:23
+//line ctx.gox:37
 func ctxLit(id string, v string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line ctx.gox:24
+//line ctx.gox:38
 			__e = __c.Set("id", id); if __e != nil { return }
-//line ctx.gox:24
+//line ctx.gox:38
 			__e = __c.Set("data-value", v); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line ctx.gox:25
+//line ctx.gox:39
 }
 
 func ctxHandlerValue(ctx context.Context) string {
@@ -68,65 +82,65 @@ type CtxFragment struct {
 	deep doors.Door
 }
 
-//line ctx.gox:42
+//line ctx.gox:56
 func (f *CtxFragment) innerContent(label string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line ctx.gox:43
+//line ctx.gox:57
 		__e = __c.Any(ctxValue(label)); if __e != nil { return }
-//line ctx.gox:44
+//line ctx.gox:58
 		__e = (f.deep).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
-//line ctx.gox:45
+//line ctx.gox:59
 				__e = __c.Any(ctxValue(label + "-deep")); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
-//line ctx.gox:47
+//line ctx.gox:61
 }
 
-//line ctx.gox:49
+//line ctx.gox:63
 func (f *CtxFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line ctx.gox:50
+//line ctx.gox:64
 		__e = __c.Any(ctxValue("outside")); if __e != nil { return }
-//line ctx.gox:51
+//line ctx.gox:65
 		__e = (doors.Ctx(context.WithValue(context.Background(), ctxTestKey{}, "v1"))).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
-//line ctx.gox:52
+//line ctx.gox:66
 				__e = __c.Any(ctxValue("inside")); if __e != nil { return }
-//line ctx.gox:53
+//line ctx.gox:67
 				__e = (doors.Ctx(context.WithValue(ctx, ctxTestKey{}, "v2"))).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); _ = ctx
 					__e = __c.InitContainer(); if __e != nil { return }
 					{
-//line ctx.gox:54
+//line ctx.gox:68
 						__e = __c.Any(ctxValue("override")); if __e != nil { return }
 					}
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
-//line ctx.gox:56
+//line ctx.gox:70
 				__e = (f.inner).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); _ = ctx
 					__e = __c.InitContainer(); if __e != nil { return }
 					{
-//line ctx.gox:57
+//line ctx.gox:71
 						__e = __c.Any(f.innerContent("initial")); if __e != nil { return }
 					}
 					__e = __c.Close(); if __e != nil { return }
 				return })); if __e != nil { return }
-//line ctx.gox:59
+//line ctx.gox:73
 				__e = (f.stat).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); _ = ctx
 					__e = __c.InitContainer(); if __e != nil { return }
 					{
-//line ctx.gox:60
+//line ctx.gox:74
 						__e = __c.Any(ctxValue("stat-initial")); if __e != nil { return }
 					}
 					__e = __c.Close(); if __e != nil { return }
@@ -134,32 +148,32 @@ func (f *CtxFragment) Main() gox.Elem {
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line ctx.gox:64
+//line ctx.gox:78
 		canceledCtx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-//line ctx.gox:67
+//line ctx.gox:81
 		__e = (doors.Ctx(context.WithValue(canceledCtx, ctxTestKey{}, "vc"))).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
-//line ctx.gox:68
+//line ctx.gox:82
 				__e = __c.Any(ctxValue("canceled")); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line ctx.gox:70
+//line ctx.gox:84
 		__e = __c.Any(test.Button("update-inner", func(ctx context.Context) bool {
 		f.inner.Inner(ctx, f.innerContent("updated"))
 		return true
 	})); if __e != nil { return }
-//line ctx.gox:74
+//line ctx.gox:88
 		__e = __c.Any(test.Button("static-stat", func(ctx context.Context) bool {
 		f.stat.Static(ctx, ctxValue("stat-static"))
 		return true
 	})); if __e != nil { return }
 	return })
-//line ctx.gox:78
+//line ctx.gox:92
 }
 
 type CtxRerenderFragment struct {
@@ -170,34 +184,34 @@ type CtxRerenderFragment struct {
 	repContainer doors.Door
 }
 
-//line ctx.gox:88
+//line ctx.gox:102
 func (f *CtxRerenderFragment) dynContent(label string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line ctx.gox:89
+//line ctx.gox:103
 		__e = __c.Any(ctxValue(label)); if __e != nil { return }
-//line ctx.gox:90
+//line ctx.gox:104
 		__e = __c.Any(test.Button("content-handler", func(ctx context.Context) bool {
 		f.repContent.Inner(ctx, ctxLit("content-report", ctxHandlerValue(ctx)))
 		return true
 	})); if __e != nil { return }
 	return })
-//line ctx.gox:94
+//line ctx.gox:108
 }
 
-//line ctx.gox:96
+//line ctx.gox:110
 func (f *CtxRerenderFragment) wrapContent(val string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line ctx.gox:97
+//line ctx.gox:111
 		__e = (doors.Ctx(context.WithValue(context.Background(), ctxTestKey{}, val))).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
-//line ctx.gox:98
+//line ctx.gox:112
 				__e = (f.dyn).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); _ = ctx
-//line ctx.gox:98
+//line ctx.gox:112
 					__e = (doors.AClick{
 			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 				f.repContainer.Inner(ctx, ctxLit("container-report", ctxHandlerValue(ctx)))
@@ -207,16 +221,16 @@ func (f *CtxRerenderFragment) wrapContent(val string) gox.Elem {
 						ctx := __c.Context(); _ = ctx
 						__e = __c.Init("div"); if __e != nil { return }
 						{
-//line ctx.gox:103
+//line ctx.gox:117
 							__e = __c.Set("id", "dyn-el"); if __e != nil { return }
 							__e = __c.Submit(); if __e != nil { return }
-//line ctx.gox:104
+//line ctx.gox:118
 							__e = __c.Any(f.dynContent("dyn-" + val)); if __e != nil { return }
 						}
 						__e = __c.Close(); if __e != nil { return }
 					return })); if __e != nil { return }
 				return })); if __e != nil { return }
-//line ctx.gox:106
+//line ctx.gox:120
 				__e = __c.Any(test.Button("same-scope-handler", func(ctx context.Context) bool {
 			f.repContent.Inner(ctx, ctxLit("same-scope-report", ctxHandlerValue(ctx)))
 			return true
@@ -225,37 +239,37 @@ func (f *CtxRerenderFragment) wrapContent(val string) gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
-//line ctx.gox:111
+//line ctx.gox:125
 }
 
-//line ctx.gox:113
+//line ctx.gox:127
 func (f *CtxRerenderFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line ctx.gox:114
+//line ctx.gox:128
 		__e = (f.wrap).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.InitContainer(); if __e != nil { return }
 			{
-//line ctx.gox:115
+//line ctx.gox:129
 				__e = __c.Any(f.wrapContent("a")); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line ctx.gox:117
+//line ctx.gox:131
 		__e = __c.Any(&f.repContent); if __e != nil { return }
-//line ctx.gox:118
+//line ctx.gox:132
 		__e = __c.Any(&f.repContainer); if __e != nil { return }
-//line ctx.gox:119
+//line ctx.gox:133
 		__e = __c.Any(test.Button("rerender-wrap", func(ctx context.Context) bool {
 		f.wrap.Inner(ctx, f.wrapContent("b"))
 		return true
 	})); if __e != nil { return }
-//line ctx.gox:123
+//line ctx.gox:137
 		__e = __c.Any(test.Button("update-dyn", func(ctx context.Context) bool {
 		f.dyn.Inner(ctx, f.dynContent("dyn-updated"))
 		return true
 	})); if __e != nil { return }
 	return })
-//line ctx.gox:127
+//line ctx.gox:141
 }

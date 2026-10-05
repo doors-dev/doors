@@ -1,6 +1,20 @@
-// Managed by GoX v0.3.0
+// Managed by GoX v0.3.2
 
 //line lifecycle.gox:1
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package components
 
 import (
@@ -19,34 +33,34 @@ type LifecycleFragment struct {
 	test.NoBeam
 }
 
-//line lifecycle.gox:19
+//line lifecycle.gox:33
 func (f *LifecycleFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line lifecycle.gox:20
+//line lifecycle.gox:34
 			__e = __c.Set("id", "session-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line lifecycle.gox:20
+//line lifecycle.gox:34
 			__e = __c.Any(doors.SessionID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line lifecycle.gox:21
+//line lifecycle.gox:35
 			__e = __c.Set("id", "instance-id"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line lifecycle.gox:21
+//line lifecycle.gox:35
 			__e = __c.Any(doors.InstanceID(ctx)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line lifecycle.gox:22
+//line lifecycle.gox:36
 			__e = __c.Set("id", "session-marker"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line lifecycle.gox:23
+//line lifecycle.gox:37
 			__e = __c.Any(doors.SessionStore(ctx).Init(lifecycleSessionKey{}, func() any {
 			return common.RandId()
 		}).(string)); if __e != nil { return }
@@ -54,16 +68,16 @@ func (f *LifecycleFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line lifecycle.gox:27
+//line lifecycle.gox:41
 			__e = __c.Set("id", "instance-marker"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line lifecycle.gox:28
+//line lifecycle.gox:42
 			__e = __c.Any(doors.InstanceStore(ctx).Init(lifecycleInstanceKey{}, func() any {
 			return common.RandId()
 		}).(string)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line lifecycle.gox:32
+//line lifecycle.gox:46
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			doors.InstanceEnd(ctx)
@@ -73,14 +87,14 @@ func (f *LifecycleFragment) Main() gox.Elem {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line lifecycle.gox:37
+//line lifecycle.gox:51
 				__e = __c.Set("id", "end-instance"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("end-instance"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line lifecycle.gox:38
+//line lifecycle.gox:52
 		__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			doors.SessionEnd(ctx)
@@ -90,7 +104,7 @@ func (f *LifecycleFragment) Main() gox.Elem {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line lifecycle.gox:43
+//line lifecycle.gox:57
 				__e = __c.Set("id", "end-session"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("end-session"); if __e != nil { return }
@@ -98,5 +112,5 @@ func (f *LifecycleFragment) Main() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
-//line lifecycle.gox:44
+//line lifecycle.gox:58
 }
