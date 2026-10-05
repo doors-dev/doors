@@ -68,6 +68,10 @@ func (p *pipe) outerContext() context.Context {
 	return p.tracker.outer.renderCtx
 }
 
+func (p *pipe) runtime() shredder.Runtime {
+	return p.tracker.Runtime()
+}
+
 func (p *pipe) isEmpty() bool {
 	return p.buffer.Len() == 0
 }

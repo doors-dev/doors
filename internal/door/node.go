@@ -44,16 +44,12 @@ type node struct {
 	}
 }
 
-func (n *node) runtime() shredder.Runtime {
-	return n.tracker.outer.root.runtime()
-}
-
 func (n *node) runtimeContext() context.Context {
 	return n.tracker.outer.root.runtime().Context()
 }
 
 func (n *node) isMounted() bool {
-	return n.mode != modeStatic && n.tracker != nil
+	return n.mode != modeStatic && n.tracker != nil && n.tracker.outer.parent.ctx.Err() == nil
 }
 
 func (n *node) newPrinter() (*printer.PayloadPrinter, bool) {
@@ -168,7 +164,7 @@ func (n *node) sync(task *userTask) {
 		innerCallGuard,
 	)
 	var err error
-	pip.renderFrame.Submit(n.tracker.ctx, n.runtime(), func(b bool) {
+	pip.renderFrame.Submit(n.tracker.ctx, pip.runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -176,7 +172,7 @@ func (n *node) sync(task *userTask) {
 	})
 	callFrame := shredder.JoinRelease(n.runtimeContext(), thread.Frame(), writeFrame, n.tracker.outer.callGuard, task.CallFrame())
 	defer callFrame.Release()
-	callFrame.Run(n.tracker.ctx, n.runtime(), func(b bool) {
+	callFrame.Run(n.tracker.ctx, pip.runtime(), func(b bool) {
 		defer innerCallGuard.Activate()
 		if n.mode != modeInner {
 			defer n.tracker.outer.outerGuard.Activate()
@@ -244,7 +240,7 @@ func (n *node) placeRender(parentPipe *pipe, buffer *deque.Deque[any]) {
 		n.tracker.outer.callGuard,
 	)
 	var err error
-	renderFrame.Submit(n.tracker.outer.ctx, n.runtime(), func(b bool) {
+	renderFrame.Submit(n.tracker.outer.ctx, pip.runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -261,7 +257,7 @@ func (n *node) placeRender(parentPipe *pipe, buffer *deque.Deque[any]) {
 	})
 	finalFrame := shredder.JoinRelease(n.runtimeContext(), parentPipe.renderFrame, thread.Frame())
 	defer finalFrame.Release()
-	finalFrame.Run(parentPipe.tracker.ctx, n.runtime(), func(b bool) {
+	finalFrame.Run(parentPipe.tracker.ctx, parentPipe.runtime(), func(b bool) {
 		defer n.tracker.outer.placeGuard.Activate()
 		if !b {
 			return
@@ -281,7 +277,7 @@ func (n *node) placeRenderStatic(parentPipe *pipe, buffer *deque.Deque[any]) {
 	if n.mode != modeStatic {
 		panic("unexpected mode")
 	}
-	parentPipe.renderFrame.Submit(parentPipe.tracker.renderCtx, n.runtime(), func(b bool) {
+	parentPipe.renderFrame.Submit(parentPipe.tracker.renderCtx, parentPipe.runtime(), func(b bool) {
 		if !b {
 			return
 		}
@@ -361,7 +357,7 @@ func (n *node) renderInner(pip *pipe) (err error) {
 func (n *node) scheduleRemoval() {
 	var thread shredder.Thread
 	placeFrame := shredder.JoinRelease(n.runtimeContext(), n.tracker.outer.placeGuard, thread.Frame())
-	placeFrame.Run(nil, n.runtime(), func(b bool) {
+	placeFrame.Run(nil, n.tracker.Runtime(), func(b bool) {
 		if n.tracker.outer.placementError != nil {
 			return
 		}
@@ -371,7 +367,7 @@ func (n *node) scheduleRemoval() {
 	placeFrame.Release()
 	callFrame := shredder.JoinRelease(n.runtimeContext(), n.tracker.outer.callGuard, thread.Frame())
 	defer callFrame.Release()
-	callFrame.Run(n.tracker.outer.parent.ctx, n.runtime(), func(b bool) {
+	callFrame.Run(n.tracker.outer.parent.ctx, n.tracker.Runtime(), func(b bool) {
 		if !b {
 			return
 		}
