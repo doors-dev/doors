@@ -15,108 +15,20 @@
 package door
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/actions"
-	"github.com/doors-dev/gox"
 )
 
-func newError(err error, logger *slog.Logger) Error {
-	var e Error
-	if errors.As(err, &e) {
-		return e
+func logError(ctx context.Context, logger *slog.Logger, err error, caller common.Caller) {
+	if errors.Is(err, context.Canceled) && ctx.Err() != nil {
+		return
 	}
-	id := common.RandId()
-	logger.Error("door rendering/printing error", "error", err, "error_id", id)
-	return Error{
-		id:  id,
-		err: err,
+	if source := caller.String(); source != "" {
+		logger.Error("door rendering error", "error", err, "caller", source)
+		return
 	}
-}
-
-type Error struct {
-	err error
-	id  string
-}
-
-func (e Error) Error() string {
-	return e.err.Error()
-}
-
-func (e Error) Unwrap() error {
-	return e.err
-}
-
-func (e Error) Release() {
-
-}
-
-func (e Error) Free() {
-
-}
-
-func (e Error) Lock() bool {
-	return true
-}
-
-func (e Error) Payload() (actions.Payload, bool) {
-	buf := &bytes.Buffer{}
-	if err := e.Main().Render(context.Background(), buf); err != nil {
-		panic("error rendering error")
-	}
-	return actions.NewTextBytes(buf.Bytes()), true
-}
-
-func (e Error) Main() gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		if err := cur.Init("div"); err != nil {
-			return err
-		}
-		{
-			if err := cur.Set("role", "alert"); err != nil {
-				return err
-			}
-			if err := cur.Set("aria-live", "polite"); err != nil {
-				return err
-			}
-			if err := cur.Set("data-fw", "error"); err != nil {
-				return err
-			}
-			if err := cur.Submit(); err != nil {
-				return err
-			}
-			if err := cur.Text(`Component Error. `); err != nil {
-				return err
-			}
-			if err := cur.Init("span"); err != nil {
-				return err
-			}
-			{
-				if err := cur.Set("data-fw", "error-id"); err != nil {
-					return err
-				}
-				if err := cur.Submit(); err != nil {
-					return err
-				}
-				if err := cur.Text(fmt.Sprintf(`ID: %s`, e.id)); err != nil {
-					return err
-				}
-			}
-			if err := cur.Close(); err != nil {
-				return err
-			}
-			if err := cur.Raw(fmt.Sprintf(`<!-- %s -->`, e.err.Error())); err != nil {
-				return err
-			}
-		}
-		if err := cur.Close(); err != nil {
-			return err
-		}
-		return nil
-	})
+	logger.Error("door rendering error", "error", err)
 }

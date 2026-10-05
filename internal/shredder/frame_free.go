@@ -39,4 +39,4 @@ func (f FreeFrame) schedule(e executable, _ *slog.Logger) {
 	e.execute(func(error) {})
 }
 
-var _ Frame = FreeFrame{}
+var _ ReleaseFrame = FreeFrame{}

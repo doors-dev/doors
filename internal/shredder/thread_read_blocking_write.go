@@ -21,55 +21,68 @@ import (
 
 type ReadBlockingWriteThread struct {
 	mu       sync.Mutex
-	read     *baseFrame
-	nextRead *baseFrame
+	read     *ownedFrame
+	nextRead *ownedFrame
 	write    *baseFrame
 }
 
-func (f *ReadBlockingWriteThread) init() {
-	if f.read != nil {
+func (t *ReadBlockingWriteThread) init() {
+	if t.read != nil {
 		return
 	}
-	f.read = &baseFrame{
-		onComplete: f.complete,
+	t.read = t.newReadFrame()
+	t.read.active = true
+}
+
+func (t *ReadBlockingWriteThread) newReadFrame() *ownedFrame {
+	return &ownedFrame{owner: t}
+}
+
+func (t *ReadBlockingWriteThread) lock(op ownedOperation) {
+	if op == scheduleOwned {
+		return
 	}
-	f.read.activate()
+	t.mu.Lock()
 }
 
-func (f *ReadBlockingWriteThread) Read() Frame {
-	f.mu.Lock()
-	f.init()
-	defer f.mu.Unlock()
-	return Join(context.Background(), false, f.read)
+func (t *ReadBlockingWriteThread) unlock(op ownedOperation, done bool) {
+	if op == scheduleOwned {
+		return
+	}
+	if !done {
+		t.mu.Unlock()
+		return
+	}
+	t.read = t.nextRead
+	t.nextRead = nil
+	t.write.activate()
 }
 
-func (f *ReadBlockingWriteThread) complete() {
-	f.mu.Lock()
-	f.read = f.nextRead
-	f.nextRead = nil
-	f.write.activate()
+func (t *ReadBlockingWriteThread) Read() ReleaseFrame {
+	t.mu.Lock()
+	t.init()
+	defer t.mu.Unlock()
+	return Join(context.Background(), t.read)
 }
 
-func (f *ReadBlockingWriteThread) Write() (write Frame, read Frame) {
-	f.mu.Lock()
-	f.init()
-	if f.write != nil {
-		f.mu.Unlock()
+func (t *ReadBlockingWriteThread) Write() (write ReleaseFrame, read ReleaseFrame) {
+	t.mu.Lock()
+	t.init()
+	if t.write != nil {
+		t.mu.Unlock()
 		panic("blocking frame contract violation: blocking frame is already issued")
 	}
-	f.nextRead = &baseFrame{
-		onComplete: f.complete,
-	}
-	f.write = &baseFrame{
+	t.nextRead = t.newReadFrame()
+	t.write = &baseFrame{
 		onComplete: func() {
-			f.write = nil
-			f.mu.Unlock()
-			f.read.activate()
+			t.write = nil
+			t.mu.Unlock()
+			t.read.activate()
 		},
 	}
-	read = Join(context.Background(), false, f.nextRead)
-	write = f.write
-	f.mu.Unlock()
-	f.read.Release()
+	read = Join(context.Background(), t.nextRead)
+	write = t.write
+	t.mu.Unlock()
+	t.read.Release()
 	return
 }

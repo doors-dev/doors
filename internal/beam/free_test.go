@@ -19,6 +19,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 )
 
 func freeLen[T any](s Source[T]) int {
@@ -103,9 +104,9 @@ func TestFreeSubEndsWhenDone(t *testing.T) {
 }
 
 type recordingWatcher struct {
-	mu       sync.Mutex
-	values   []int
-	canceled bool
+	mu      sync.Mutex
+	values  []int
+	cancels int
 }
 
 func (r *recordingWatcher) Watch(_ context.Context, v int) bool {
@@ -118,13 +119,13 @@ func (r *recordingWatcher) Watch(_ context.Context, v int) bool {
 func (r *recordingWatcher) Cancel() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.canceled = true
+	r.cancels++
 }
 
-func (r *recordingWatcher) isCanceled() bool {
+func (r *recordingWatcher) cancelCount() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.canceled
+	return r.cancels
 }
 
 func TestFreeSubCancelFunc(t *testing.T) {
@@ -135,8 +136,8 @@ func TestFreeSubCancelFunc(t *testing.T) {
 		t.Fatal("watch refused on background ctx")
 	}
 	cancel()
-	if !w.isCanceled() {
-		t.Fatal("expected watcher cancel")
+	if n := w.cancelCount(); n != 1 {
+		t.Fatalf("expected one watcher cancel, got %d", n)
 	}
 	if n := freeLen(src); n != 0 {
 		t.Fatalf("expected canceled sub removed, got %d", n)
@@ -149,7 +150,7 @@ func TestFreeSubCancelFunc(t *testing.T) {
 	}
 }
 
-func TestFreeSubLazyCtxCleanup(t *testing.T) {
+func TestFreeSubCtxCleanup(t *testing.T) {
 	src := NewSource(0, DefaultEqual[int], false)
 	w := &recordingWatcher{}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -157,17 +158,19 @@ func TestFreeSubLazyCtxCleanup(t *testing.T) {
 		t.Fatal("watch refused")
 	}
 	cancel()
-	if n := freeLen(src); n != 1 {
-		t.Fatalf("expected sub kept until propagation, got %d", n)
-	}
 	if err := <-src.Update(context.Background(), 1); err != nil {
 		t.Fatal(err)
 	}
-	if n := freeLen(src); n != 0 {
-		t.Fatalf("expected dead sub removed on propagation, got %d", n)
+	deadline := time.After(time.Second)
+	for freeLen(src) != 0 || w.cancelCount() == 0 {
+		select {
+		case <-deadline:
+			t.Fatalf("expected dead sub removed, got %d subs and %d cancels", freeLen(src), w.cancelCount())
+		case <-time.After(time.Millisecond):
+		}
 	}
-	if !w.isCanceled() {
-		t.Fatal("expected watcher cancel on propagation")
+	if n := w.cancelCount(); n != 1 {
+		t.Fatalf("expected one watcher cancel, got %d", n)
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()

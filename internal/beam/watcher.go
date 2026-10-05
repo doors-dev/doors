@@ -27,11 +27,12 @@ type watcherResult int
 const (
 	watch watcherResult = iota
 	done
+	canceled
 )
 
 type innerWatcher interface {
 	init(ctx context.Context, seq uint) watcherResult
-	sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) watcherResult
+	sync(ctx context.Context, seq uint, cleanFrame shredder.Frame) watcherResult
 	cancel()
 }
 
@@ -50,6 +51,7 @@ const (
 
 type anyScreen interface {
 	removeWatcher(w *watcher)
+	isKilled() bool
 }
 
 type watcher struct {
@@ -83,34 +85,41 @@ func (w *watcher) Cancel() {
 	w.inner.cancel()
 }
 
-func (w *watcher) syncFrame() shredder.AnyFrame {
+func (w *watcher) syncFrame() shredder.Frame {
 	return &w.initGuard
 }
 
-func (w *watcher) init(ctx context.Context, seq uint) {
+func (w *watcher) init(ctx context.Context, seq uint) bool {
 	res := w.inner.init(ctx, seq)
 	switch res {
 	case watch:
 		ok := w.state.CompareAndSwap(watcherInit, watcherReady)
 		w.initGuard.Activate()
 		if ok {
-			return
+			return true
 		}
 		w.unregister()
 		w.inner.cancel()
-	case done:
+	case done, canceled:
+		if res == canceled && !w.screen.isKilled() {
+			panic("init sync logic error:" + fmt.Sprint(seq))
+		}
 		w.state.Store(watcherDone)
 		w.initGuard.Activate()
 		w.unregister()
 	}
+	return res != canceled
 }
 
-func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) {
+func (w *watcher) sync(ctx context.Context, seq uint, cleanFrame shredder.Frame) {
 	ok := w.state.CompareAndSwap(watcherReady, wathcherSync)
 	if !ok {
 		return
 	}
 	res := w.inner.sync(ctx, seq, cleanFrame)
+	if res == canceled && !w.screen.isKilled() {
+		panic("update sync logic error:" + fmt.Sprint(seq))
+	}
 	if res == done {
 		w.state.Store(watcherDone)
 		w.unregister()
@@ -144,7 +153,7 @@ func (s *singleWatcher[T]) init(ctx context.Context, seq uint) watcherResult {
 	s.seq = seq
 	v, _ := s.beam.sync(0, seq, nil)
 	if v == nil {
-		panic("init sync logic error:" + fmt.Sprint(seq))
+		return canceled
 	}
 	if s.w.Watch(ctx, *v) {
 		return done
@@ -152,11 +161,11 @@ func (s *singleWatcher[T]) init(ctx context.Context, seq uint) watcherResult {
 	return watch
 }
 
-func (s *singleWatcher[T]) sync(ctx context.Context, seq uint, cleanFrame shredder.SimpleFrame) watcherResult {
+func (s *singleWatcher[T]) sync(ctx context.Context, seq uint, cleanFrame shredder.Frame) watcherResult {
 	v, updated := s.beam.sync(s.seq, seq, cleanFrame)
 	s.seq = seq
 	if v == nil {
-		panic("update sync logic error:" + fmt.Sprint(seq))
+		return canceled
 	}
 	if !updated {
 		return watch

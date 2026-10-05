@@ -35,7 +35,7 @@ type screenTestDoor struct {
 }
 
 func (d *screenTestDoor) Runtime() shredder.Runtime { return d.rt }
-func (d *screenTestDoor) ReadFrame() shredder.Frame { return shredder.FreeFrame{} }
+func (d *screenTestDoor) ReadFrame() shredder.ReleaseFrame { return shredder.FreeFrame{} }
 func (d *screenTestDoor) Context() context.Context  { return d.ctx }
 
 type screenTestCore struct{ c Cinema }

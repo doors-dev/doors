@@ -25,7 +25,7 @@ type Beamer[T any] interface {
 	Get() T
 	Watch(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool)
 	addWatcher(ctx context.Context, w *watcher) bool
-	sync(uint, uint, shredder.SimpleFrame) (*T, bool)
+	sync(uint, uint, shredder.Frame) (*T, bool)
 	oldest() uint
 }
 
@@ -68,7 +68,7 @@ func (b *beam[T1, T2]) addWatcher(ctx context.Context, w *watcher) bool {
 	return b.beam.addWatcher(ctx, w)
 }
 
-func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (v *T2, u bool) {
+func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.Frame) (v *T2, u bool) {
 	e, has := b.values[seq]
 	if has {
 		if prev == 0 {
@@ -153,7 +153,7 @@ func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.SimpleFrame) (v 
 	return &newValue, true
 }
 
-func (b *beam[T1, T2]) sync(prev uint, seq uint, after shredder.SimpleFrame) (*T2, bool) {
+func (b *beam[T1, T2]) sync(prev uint, seq uint, after shredder.Frame) (*T2, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.syncEntry(prev, seq, after)

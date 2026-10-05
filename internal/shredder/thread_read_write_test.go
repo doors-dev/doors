@@ -37,7 +37,7 @@ func expectBool(t *testing.T, ch <-chan bool, name string) bool {
 	}
 }
 
-func expectFrame(t *testing.T, ch <-chan Frame, name string) Frame {
+func expectFrame(t *testing.T, ch <-chan ReleaseFrame, name string) ReleaseFrame {
 	t.Helper()
 	select {
 	case got := <-ch:
@@ -64,7 +64,7 @@ func TestJoinCompletedFrameDoesNotPanic(t *testing.T) {
 	source.activate()
 	source.Release()
 
-	joined := Join(context.Background(), false, source)
+	joined := Join(context.Background(), source)
 	joined.Release()
 }
 
@@ -95,7 +95,7 @@ func TestReadBlockingWriteThreadWriterLifecycle(t *testing.T) {
 		nextReadStarted <- ok
 	})
 
-	starvingReadDone := make(chan Frame, 1)
+	starvingReadDone := make(chan ReleaseFrame, 1)
 	go func() {
 		starvingReadDone <- thread.Read()
 	}()
@@ -112,7 +112,7 @@ func TestReadBlockingWriteThreadWriterLifecycle(t *testing.T) {
 	}
 	expectNoSignal(t, nextReadStarted, "next read activation while writer is active")
 
-	blockedReadDone := make(chan Frame, 1)
+	blockedReadDone := make(chan ReleaseFrame, 1)
 	go func() {
 		blockedReadDone <- thread.Read()
 	}()
@@ -164,21 +164,21 @@ func TestReadWriteThreadSerializesWrites(t *testing.T) {
 	writeOne := thread.Write()
 	t.Cleanup(writeOne.Release)
 
-	midReadDone := make(chan Frame, 1)
+	midReadDone := make(chan ReleaseFrame, 1)
 	go func() {
 		midReadDone <- thread.Read()
 	}()
 	midRead := expectFrame(t, midReadDone, "mid read frame")
 	t.Cleanup(midRead.Release)
 
-	writeTwoDone := make(chan Frame, 1)
+	writeTwoDone := make(chan ReleaseFrame, 1)
 	go func() {
 		writeTwoDone <- thread.Write()
 	}()
 	writeTwo := expectFrame(t, writeTwoDone, "second write frame")
 	t.Cleanup(writeTwo.Release)
 
-	tailReadDone := make(chan Frame, 1)
+	tailReadDone := make(chan ReleaseFrame, 1)
 	go func() {
 		tailReadDone <- thread.Read()
 	}()
@@ -296,14 +296,14 @@ func TestReadStarveWriteThreadQueuedWriteIsStarvedByLaterReads(t *testing.T) {
 		writerStarted <- ok
 	})
 
-	lateReadOneDone := make(chan Frame, 1)
+	lateReadOneDone := make(chan ReleaseFrame, 1)
 	go func() {
 		lateReadOneDone <- thread.Read()
 	}()
 	lateReadOne := expectFrame(t, lateReadOneDone, "first late read frame")
 	t.Cleanup(lateReadOne.Release)
 
-	lateReadTwoDone := make(chan Frame, 1)
+	lateReadTwoDone := make(chan ReleaseFrame, 1)
 	go func() {
 		lateReadTwoDone <- thread.Read()
 	}()
@@ -359,7 +359,7 @@ func TestReadStarveWriteThreadStarvesAndSerializesPendingWrites(t *testing.T) {
 		writeOneStarted <- ok
 	})
 
-	starvingReadDone := make(chan Frame, 1)
+	starvingReadDone := make(chan ReleaseFrame, 1)
 	go func() {
 		starvingReadDone <- thread.Read()
 	}()
@@ -383,21 +383,21 @@ func TestReadStarveWriteThreadStarvesAndSerializesPendingWrites(t *testing.T) {
 		t.Fatal("expected first write to run with ok=true")
 	}
 
-	writeTwoDone := make(chan Frame, 1)
+	writeTwoDone := make(chan ReleaseFrame, 1)
 	go func() {
 		writeTwoDone <- thread.Write()
 	}()
 	writeTwo := expectFrame(t, writeTwoDone, "second write frame")
 	t.Cleanup(writeTwo.Release)
 
-	futureReadDone := make(chan Frame, 1)
+	futureReadDone := make(chan ReleaseFrame, 1)
 	go func() {
 		futureReadDone <- thread.Read()
 	}()
 	futureRead := expectFrame(t, futureReadDone, "future read frame")
 	t.Cleanup(futureRead.Release)
 
-	writeThreeDone := make(chan Frame, 1)
+	writeThreeDone := make(chan ReleaseFrame, 1)
 	go func() {
 		writeThreeDone <- thread.Write()
 	}()

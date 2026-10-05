@@ -54,7 +54,7 @@ func (f *AfterFrame) Activate() {
 	f.valve.Activate()
 }
 
-func (f *AfterFrame) After() SimpleFrame {
+func (f *AfterFrame) After() Frame {
 	return &f.valve
 }
 
@@ -93,4 +93,4 @@ func (f *AfterFrame) Submit(ctx context.Context, r Runtime, fun func(bool)) {
 	f.schedule(spawn{runtime: r, ctx: ctx, fun: fun}, common.Logger(ctx))
 }
 
-var _ SimpleFrame = (*AfterFrame)(nil)
+var _ Frame = (*AfterFrame)(nil)

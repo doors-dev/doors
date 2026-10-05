@@ -17,6 +17,8 @@ package door
 import (
 	"context"
 
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/gox"
 )
 
@@ -25,7 +27,7 @@ import (
 //	~(&doors.Door{})
 func (d *Door) Main() gox.Elem {
 	return gox.Elem(func(cur gox.Cursor) error {
-		return cur.Printer().Send(renderJob{door: d, fakeJob: fakeJob{cur.Context()}})
+		return cur.Printer().Send(renderJob{door: d, caller: common.CaptureCaller(), fakeJob: fakeJob{cur.Context()}})
 	})
 }
 
@@ -33,7 +35,7 @@ func (d *Door) Main() gox.Elem {
 //
 //	~>(&doors.Door{}) <div>content</div>
 func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
-	return cur.Printer().Send(proxyJob{door: d, el: el, fakeJob: fakeJob{cur.Context()}})
+	return cur.Printer().Send(proxyJob{door: d, el: el, caller: common.CaptureCaller(), fakeJob: fakeJob{cur.Context()}})
 }
 
 // Inner replaces the Door's children while keeping the same container mounted.
@@ -47,7 +49,10 @@ func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
 // the channel during rendering; to wait, use doors.Go or your own goroutine
 // with doors.DetachedContext.
 func (d *Door) Inner(ctx context.Context, content any) <-chan error {
-	return d.inner(ctx, content)
+	ctex.LogCanceled(ctx, "Door inner")
+	task, ch := newUserTask(ctx)
+	d.schedule(ctx, innerNode{userTask: task, inner: content}, task.InitFrame())
+	return ch
 }
 
 // Outer replaces the Door container and its children with outer. A nil outer
@@ -62,7 +67,10 @@ func (d *Door) Inner(ctx context.Context, content any) <-chan error {
 // the channel during rendering; to wait, use doors.Go or your own goroutine
 // with doors.DetachedContext.
 func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
-	return d.outer(ctx, outer)
+	ctex.LogCanceled(ctx, "Door outer")
+	task, ch := newUserTask(ctx)
+	d.schedule(ctx, outerNode{userTask: task, outer: outer}, task.InitFrame())
+	return ch
 }
 
 // Static removes the Door container and renders content in its place. A nil
@@ -78,7 +86,10 @@ func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
 // the channel during rendering; to wait, use doors.Go or your own goroutine
 // with doors.DetachedContext.
 func (d *Door) Static(ctx context.Context, content any) <-chan error {
-	return d.static(ctx, content)
+	ctex.LogCanceled(ctx, "Door static")
+	task, ch := newUserTask(ctx)
+	d.schedule(ctx, staticNode{userTask: task, outer: content}, task.InitFrame())
+	return ch
 }
 
 // Reload rerenders the Door with its current content.
@@ -91,7 +102,10 @@ func (d *Door) Static(ctx context.Context, content any) <-chan error {
 // the channel during rendering; to wait, use doors.Go or your own goroutine
 // with doors.DetachedContext.
 func (d *Door) Reload(ctx context.Context) <-chan error {
-	return d.reload(ctx)
+	ctex.LogCanceled(ctx, "Door reload")
+	task, ch := newUserTask(ctx)
+	d.schedule(ctx, nodeReload{userTask: task}, task.InitFrame())
+	return ch
 }
 
 // Unmount removes the Door from the page and keeps its current content for a
@@ -106,6 +120,11 @@ func (d *Door) Reload(ctx context.Context) <-chan error {
 // the channel during rendering; to wait, use doors.Go or your own goroutine
 // with doors.DetachedContext.
 func (d *Door) Unmount(ctx context.Context) <-chan error {
-	return d.unmount(ctx)
+	ctex.LogCanceled(ctx, "Door unmount")
+	task, ch := newUserTask(ctx)
+	d.schedule(ctx, unmountNode{userTask: task}, task.InitFrame())
+	return ch
 }
 
+var _ gox.Proxy = &Door{}
+var _ gox.Comp = &Door{}

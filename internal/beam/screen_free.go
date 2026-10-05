@@ -36,14 +36,18 @@ func newFreeScreen(ctx context.Context, source anySource, w *watcher) *freeScree
 	return f
 }
 
-func (f *freeScreen) init(seq uint) {
+func (f *freeScreen) init(seq uint) bool {
 	defer func() {
 		if r := recover(); r != nil {
 			f.w.abort()
 			panic(r)
 		}
 	}()
-	f.w.init(f.ctx, seq)
+	return f.w.init(f.ctx, seq)
+}
+
+func (f *freeScreen) isKilled() bool {
+	return f.ctx.Err() != nil
 }
 
 func (f *freeScreen) removeWatcher(*watcher) {
@@ -51,8 +55,10 @@ func (f *freeScreen) removeWatcher(*watcher) {
 	f.source.removeFreeSub(f)
 }
 
-func (f *freeScreen) sync(ctx context.Context, cleanFrame shredder.SimpleFrame, sourceFrame shredder.SimpleFrame, seq uint, isStopped func() bool) {
-	frame := shredder.Join(ctx, true, sourceFrame, f.thread.Frame(), f.w.syncFrame())
+func (f *freeScreen) sync(ctx context.Context, cleanFrame shredder.Frame, sourceFrame shredder.Frame, seq uint, isStopped func() bool) {
+	threadFrame := f.thread.Frame()
+	frame := shredder.Join(ctx, sourceFrame, threadFrame, f.w.syncFrame())
+	threadFrame.Release()
 	defer frame.Release()
 	frame.Submit(f.ctx, nil, func(ok bool) {
 		if f.ctx.Err() != nil {

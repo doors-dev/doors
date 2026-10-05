@@ -97,7 +97,7 @@ func (s *source[T]) Get() T {
 	return *s.values[s.seq]
 }
 
-func (s *source[T]) sync(prev uint, seq uint, _ shredder.SimpleFrame) (*T, bool) {
+func (s *source[T]) sync(prev uint, seq uint, _ shredder.Frame) (*T, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	value, ok := s.values[seq]
@@ -176,8 +176,9 @@ retry:
 		return true
 	}
 	sh := shredder.Thread{}
-	syncFrame := shredder.Join(ctx, true, sh.Frame())
-	checkFrame := shredder.Join(ctx, true, ctxFrame, sh.Frame())
+	gate := &shredder.ValveFrame{}
+	syncFrame := shredder.JoinRelease(ctx, sh.Frame(), gate)
+	checkFrame := shredder.JoinRelease(ctx, ctxFrame, sh.Frame())
 	cleanFrame := &shredder.ValveFrame{}
 	for sub := range s.subs.Iter() {
 		sub.sync(true, ctx, cleanFrame, syncFrame, seq, isStopped)
@@ -187,6 +188,7 @@ retry:
 	}
 	syncFrame.Release()
 	s.mu.Unlock()
+	gate.Activate()
 	checkFrame.Run(nil, nil, func(bool) {
 		if stopped.Load() {
 			ch <- context.Canceled
@@ -242,8 +244,7 @@ func (s *source[T]) addFreeSub(ctx context.Context, w *watcher) bool {
 	s.freeSubs.Add(f)
 	seq := s.seq
 	s.mu.Unlock()
-	f.init(seq)
-	return true
+	return f.init(seq)
 }
 
 func (s *source[T]) removeFreeSub(f *freeScreen) {

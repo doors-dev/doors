@@ -80,4 +80,4 @@ func (f *ValveFrame) Submit(ctx context.Context, s Runtime, fun func(bool)) {
 	f.schedule(spawn{runtime: s, ctx: ctx, fun: fun}, common.Logger(ctx))
 }
 
-var _ SimpleFrame = &ValveFrame{}
+var _ Frame = &ValveFrame{}

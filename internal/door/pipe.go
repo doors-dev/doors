@@ -15,6 +15,7 @@
 package door
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/doors-dev/doors/internal/common"
@@ -28,7 +29,7 @@ import (
 func newPipe(
 	tracker *tracker,
 	buffer *deque.Deque[any],
-	renderFrame shredder.Frame,
+	renderFrame shredder.ReleaseFrame,
 	callGuard *shredder.ValveFrame,
 ) *pipe {
 	p := &pipe{
@@ -45,10 +46,30 @@ func newPipe(
 type pipe struct {
 	tracker     *tracker
 	buffer      *deque.Deque[any]
-	renderFrame shredder.Frame
+	renderFrame shredder.ReleaseFrame
 	callGuard   *shredder.ValveFrame
 	printFront  gox.Printer
 	printBack   gox.Printer
+}
+
+func (p *pipe) id() uint64 {
+	return p.tracker.outer.id
+}
+
+func (p *pipe) parentID() uint64 {
+	return p.tracker.outer.parent.outer.id
+}
+
+func (p *pipe) innerContext() context.Context {
+	return p.tracker.renderCtx
+}
+
+func (p *pipe) outerContext() context.Context {
+	return p.tracker.outer.renderCtx
+}
+
+func (p *pipe) runtime() shredder.Runtime {
+	return p.tracker.Runtime()
 }
 
 func (p *pipe) isEmpty() bool {
@@ -77,12 +98,9 @@ func (p *pipe) Render(pr *printer.PayloadPrinter, printerMiddleware func(next go
 	return pr, nil
 }
 
-func (p *pipe) error(err error) {
+func (p *pipe) error(err error, caller common.Caller) {
 	p.buffer.Clear()
-	e := newError(err, p.tracker.Instance().Logger())
-	if err := e.Main().Print(context.Background(), (*pushBackPrinter)(p.buffer)); err != nil {
-		panic("error rendering error")
-	}
+	logError(p.tracker.ctx, common.Logger(p.tracker.ctx), err, caller)
 }
 
 func (p *pipe) branch() *deque.Deque[any] {
@@ -91,7 +109,7 @@ func (p *pipe) branch() *deque.Deque[any] {
 	return buffer
 }
 
-func (p *pipe) Submit(f func(cur gox.Cursor) error) {
+func (p *pipe) Submit(caller common.Caller, f func(cur gox.Cursor) error) {
 	pip := newPipe(
 		p.tracker,
 		p.branch(),
@@ -104,7 +122,7 @@ func (p *pipe) Submit(f func(cur gox.Cursor) error) {
 		}
 		cur := gox.NewCursor(pip.tracker.Context(), pip)
 		if err := f(cur); err != nil {
-			pip.error(err)
+			pip.error(err, caller)
 		}
 	})
 }
@@ -123,6 +141,9 @@ type renderer interface {
 }
 
 func (p *pipe) Send(j gox.Job) error {
+	if j.Context().Err() != nil {
+		return j.Context().Err()
+	}
 	switch j := j.(type) {
 	case renderer:
 		j.Render(p)
@@ -132,6 +153,13 @@ func (p *pipe) Send(j gox.Job) error {
 			return err
 		}
 		return p.printBack.Send(j)
+	case *gox.JobTempl:
+		ctx := j.Ctx
+		var buf bytes.Buffer
+		if err := j.Output(&buf); err != nil {
+			return err
+		}
+		return p.printBack.Send(gox.NewJobBytes(ctx, buf.Bytes()))
 	default:
 		return p.printBack.Send(j)
 	}
@@ -146,19 +174,24 @@ cycle:
 		return nil
 	}
 	common.FreezeDequeBuffer(next)
+	var err error
+loop:
 	for item := range next.IterPopFront() {
 		switch item := item.(type) {
 		case *deque.Deque[any]:
 			p.push(item)
 			goto cycle
 		case gox.Job:
-			if err := pr.Send(item); err != nil {
-				p.Release()
-				return err
+			if err = pr.Send(item); err != nil {
+				break loop
 			}
 		default:
 			panic("unknown item type in the render buffer")
 		}
+	}
+	if err != nil {
+		p.Release()
+		return err
 	}
 	p.pop()
 	goto cycle
@@ -216,6 +249,9 @@ func (p *pushFrontPrinter) buf() *deque.Deque[any] {
 }
 
 func (p *pushFrontPrinter) Send(j gox.Job) error {
+	if j.Context().Err() != nil {
+		return j.Context().Err()
+	}
 	p.buf().PushFront(j)
 	return nil
 }
@@ -227,6 +263,9 @@ func (p *pushBackPrinter) buf() *deque.Deque[any] {
 }
 
 func (p *pushBackPrinter) Send(j gox.Job) error {
+	if j.Context().Err() != nil {
+		return j.Context().Err()
+	}
 	p.buf().PushBack(j)
 	return nil
 }

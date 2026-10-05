@@ -25,7 +25,7 @@ import (
 
 type Door interface {
 	Runtime() shredder.Runtime
-	ReadFrame() shredder.Frame
+	ReadFrame() shredder.ReleaseFrame
 	Context() context.Context
 }
 
@@ -54,11 +54,11 @@ func (c Cinema) runtime() shredder.Runtime {
 	return c.door.Runtime()
 }
 
-func (c Cinema) ReadFrame() shredder.Frame {
+func (c Cinema) ReadFrame() shredder.ReleaseFrame {
 	return c.removeGuard.Read()
 }
 
-func (c Cinema) writeFrame() shredder.Frame {
+func (c Cinema) writeFrame() shredder.ReleaseFrame {
 	return c.removeGuard.Write()
 }
 
@@ -72,14 +72,14 @@ func (c *cinema) isKilled() bool {
 	return c.door.Context().Err() != nil
 }
 
-func (c *cinema) Cancel() {
+func (c *cinema) Clean() {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	for _, screen := range c.screens {
+	screens := c.screens
+	c.screens = nil
+	c.mu.Unlock()
+	for _, screen := range screens {
 		screen.cancel()
 	}
-	clear(c.screens)
-
 }
 
 func (c *cinema) ctx() context.Context {
@@ -88,29 +88,30 @@ func (c *cinema) ctx() context.Context {
 
 func (c *cinema) tryRemove(sourceId common.ID) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	scr, ok := c.screens[sourceId]
-	if !ok {
+	if !ok || !scr.tryRemove() {
+		c.mu.Unlock()
 		return
 	}
-	if scr.tryRemove() {
-		delete(c.screens, sourceId)
-	}
+	delete(c.screens, sourceId)
+	c.mu.Unlock()
+	scr.unsub()
 }
 
 func (c *cinema) addWatcher(src anySource, w *watcher) bool {
+	read := c.ReadFrame()
 	c.mu.Lock()
 	s, ok := c.getScreen(src)
 	if !ok {
 		c.mu.Unlock()
+		read.Release()
 		return false
 	}
-	seq, frame := s.addWatcher(w)
+	seq, frame := s.addWatcher(w, read)
 	defer frame.Release()
 	c.mu.Unlock()
 	ctx := ctex.SyncFrameInsert(c.ctx(), frame, nil)
-	w.init(ctx, seq)
-	return true
+	return w.init(ctx, seq)
 }
 
 func (c *cinema) getScreen(src anySource) (*screen, bool) {

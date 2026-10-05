@@ -27,7 +27,7 @@ import (
 
 // An unreleased read wrapper pins the thread: a write queued after the joined
 // work completed never activates. This is the leaking pattern
-// Join(ctx, false, ..., thread.Read()) with the wrapper reference dropped.
+// Join(ctx, ..., thread.Read()) with the wrapper reference dropped.
 func TestReadStarveWriteThreadUnreleasedReadWrapperPinsWrites(t *testing.T) {
 	runtime := NewRuntime(context.Background(), 1, testShutdown{})
 	t.Cleanup(runtime.Cancel)
@@ -36,7 +36,7 @@ func TestReadStarveWriteThreadUnreleasedReadWrapperPinsWrites(t *testing.T) {
 	var thread ReadStarveWriteThread
 
 	readWrapper := thread.Read()
-	outer := Join(ctx, false, readWrapper) // wrapper never released
+	outer := Join(ctx, readWrapper) // wrapper never released
 
 	workDone := make(chan bool, 1)
 	outer.Run(ctx, runtime, func(b bool) { workDone <- b })
@@ -64,7 +64,7 @@ func TestReadStarveWriteThreadReleasedReadWrapperUnblocksWrites(t *testing.T) {
 	var thread ReadStarveWriteThread
 
 	readWrapper := thread.Read()
-	outer := Join(ctx, true, readWrapper)
+	outer := JoinRelease(ctx, readWrapper)
 
 	workDone := make(chan bool, 1)
 	outer.Run(ctx, runtime, func(b bool) { workDone <- b })
@@ -92,7 +92,7 @@ func TestReadStarveWriteThreadWriteWaitsForInflightRead(t *testing.T) {
 	var thread ReadStarveWriteThread
 
 	readWrapper := thread.Read()
-	outer := Join(ctx, true, readWrapper) // joined work still open
+	outer := JoinRelease(ctx, readWrapper) // joined work still open
 
 	w := thread.Write()
 	fired := make(chan bool, 1)

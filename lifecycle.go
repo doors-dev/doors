@@ -40,12 +40,14 @@ import (
 func OnReady(ctx context.Context, on func(ctx context.Context)) {
 	ctex.LogCanceled(ctx, "OnReady")
 	core := ctx.Value(common.KeyCore).(core.Core)
-	ctx = DetachedContext(ctx)
-	core.Door().ReadyFrame().Run(ctx, core.Instance().Runtime(), func(ok bool) {
+	detached := DetachedContext(ctx)
+	ready := core.Door().ReadyFrame()
+	defer ready.Release()
+	ready.Run(ctx, core.Instance().Runtime(), func(ok bool) {
 		if !ok {
 			return
 		}
-		on(ctx)
+		on(detached)
 	})
 }
 
@@ -72,7 +74,7 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 	ctex.LogCanceled(ctx, "OnSettle")
 	detached := DetachedContext(ctx)
 	core := ctx.Value(common.KeyCore).(core.Core)
-	var afterFrame shredder.SimpleFrame = shredder.FreeFrame{}
+	var afterFrame shredder.Frame = shredder.FreeFrame{}
 	if frame, ok := ctex.AfterFrame(ctx); ok {
 		afterFrame = frame.After()
 	} else if len(ops) != 0 {
@@ -80,11 +82,13 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 		afterFrame = frame.After()
 		defer frame.Activate()
 	}
-	joined := shredder.Join(ctx, false, core.Door().ReadyFrame(), afterFrame)
-	joined.Run(ctx, core.Instance().Runtime(), func(bool) {
-		on(detached)
+	ready := core.Door().ReadyFrame()
+	ready.Run(ctx, core.Instance().Runtime(), func(bool) {
+		afterFrame.Run(ctx, core.Instance().Runtime(), func(bool) {
+			on(detached)
+		})
 	})
-	joined.Release()
+	ready.Release()
 	for _, op := range ops {
 		op(ctx)
 	}
@@ -128,7 +132,7 @@ func HoldSettle(ctx context.Context) (release func()) {
 	if !ok {
 		return func() {}
 	}
-	frameRelease := shredder.Join(ctx, false, after).Release
+	frameRelease := shredder.Join(ctx, after).Release
 	stop := context.AfterFunc(InstanceContext(ctx), frameRelease)
 	return func() {
 		stop()

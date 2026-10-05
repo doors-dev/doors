@@ -16,14 +16,9 @@ package ctex
 
 import (
 	"context"
-	"fmt"
-	"runtime"
-	"strings"
 
 	"github.com/doors-dev/doors/internal/common"
 )
-
-const modulePath = "github.com/doors-dev/doors"
 
 func LogCanceled(ctx context.Context, action string) {
 	if ctx.Err() == nil {
@@ -34,20 +29,6 @@ func LogCanceled(ctx context.Context, action string) {
 		"action",
 		action,
 		"caller",
-		caller(),
+		common.CaptureCaller().String(),
 	)
-}
-
-func caller() string {
-	var pcs [32]uintptr
-	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs[:])])
-	for {
-		frame, more := frames.Next()
-		if !strings.HasPrefix(frame.Function, modulePath+".") && !strings.HasPrefix(frame.Function, modulePath+"/") {
-			return fmt.Sprintf("%s:%d", frame.File, frame.Line)
-		}
-		if !more {
-			return ""
-		}
-	}
 }

@@ -38,12 +38,15 @@ func NewRoot(inst Instance) Root {
 		inst:  inst,
 		hooks: make(map[uint64]*hook),
 	}
-	r.tracker, r.core = trackerRoot(r)
+	r.outer = newRootOuterTracker(r)
+	r.tracker = r.outer.newTracker(nil)
+	r.core = core.NewCore(r.tracker)
 	return r
 }
 
 type root struct {
 	core    core.Core
+	outer   *outerTracker
 	tracker *tracker
 	mu      sync.Mutex
 	hooks   map[uint64]*hook
@@ -51,15 +54,19 @@ type root struct {
 }
 
 func (r Root) Kill() {
-	r.tracker.clean(false, shredder.FreeFrame{})
+	r.outer.clean()
 }
 
 func (r Root) ID() uint64 {
-	return r.tracker.id
+	return r.outer.id
 }
 
 func (r Root) instance() Instance {
 	return r.inst
+}
+
+func (r *root) runtime() shredder.Runtime {
+	return r.inst.Runtime()
 }
 
 func (r *root) cancelHook(id uint64) {
@@ -70,10 +77,6 @@ func (r *root) cancelHook(id uint64) {
 		return
 	}
 	hook.cancel()
-}
-
-func (r *root) runtime() shredder.Runtime {
-	return r.inst.Runtime()
 }
 
 func (r *root) addHook(h *hook) {
@@ -102,7 +105,7 @@ func (r Root) IsStatic() bool {
 	if !r.tracker.isEmpty() {
 		return false
 	}
-	if !r.tracker.cinema.IsEmpty() {
+	if !r.tracker.cinema.IsEmpty() || !r.outer.cinema.IsEmpty() {
 		return false
 	}
 	r.mu.Lock()
@@ -112,12 +115,14 @@ func (r Root) IsStatic() bool {
 
 func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 	thread := shredder.Thread{}
-	renderFrame := shredder.Join(r.tracker.Context(), true, thread.Frame(), r.tracker.writeFrame())
+	writeFrame := r.tracker.rw.Write()
+	renderFrame := shredder.JoinRelease(r.tracker.Context(), thread.Frame(), writeFrame, r.tracker.cinemaFrame())
+	passGuard := new(shredder.ValveFrame)
 	pipe := newPipe(
 		r.tracker,
 		common.GetDequeBuffer(),
 		renderFrame,
-		r.tracker.innerCallGuard,
+		passGuard,
 	)
 	ch := make(chan struct{})
 	var err error
@@ -129,14 +134,18 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 		cur := gox.NewCursor(r.tracker.Context(), pipe)
 		err = cur.Comp(comp)
 	})
-	renderFrame.Release()
-	thread.Frame().Run(r.tracker.ctx, r.runtime(), func(b bool) {
-		r.tracker.innerCallGuard.Activate()
-		close(ch)
+	callFrame := shredder.JoinRelease(r.tracker.Context(), thread.Frame(), writeFrame)
+	callFrame.Run(r.tracker.ctx, r.runtime(), func(bool) {
+		defer close(ch)
+		defer passGuard.Activate()
+		r.outer.outerGuard.Activate()
 	})
+	callFrame.Release()
+	renderFrame.Release()
 	select {
 	case <-ch:
 		if err != nil {
+			logError(r.tracker.ctx, r.inst.Logger(), err, common.Caller{})
 			return nil, err
 		}
 		return pipe.Collect(), nil

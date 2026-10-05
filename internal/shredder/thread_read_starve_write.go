@@ -17,84 +17,98 @@ package shredder
 import (
 	"context"
 	"sync"
+
+	"github.com/gammazero/deque"
 )
 
-type starveFrame struct {
-	baseFrame
-	thread *ReadStarveWriteThread
-	write  bool
-	next   *starveFrame
+type ReadStarveWriteThread struct {
+	mu    sync.Mutex
+	queue deque.Deque[Releaser]
 }
 
-func (s *starveFrame) appendWrite(f *starveFrame) *starveFrame {
-	if s.next == nil {
-		s.next = f
-		if s.write {
-			return nil
+func (t *ReadStarveWriteThread) Read() ReleaseFrame {
+	t.mu.Lock()
+	for frame := range t.queue.Iter() {
+		if frame, ok := frame.(*ownedFrame); ok {
+			read := Join(context.Background(), frame)
+			t.mu.Unlock()
+			return read
 		}
-		return s
 	}
-	return s.next.appendWrite(f)
+	frame := t.appendRead()
+	frame.active = t.queue.Len() == 1
+	read := Join(context.Background(), frame)
+	t.mu.Unlock()
+	return read
 }
 
-func (s *starveFrame) onComplete() {
-	s.thread.mu.Lock()
-	s.thread.head = s.next
-	s.thread.mu.Unlock()
-	if s.next == nil {
+func (t *ReadStarveWriteThread) Write() ReleaseFrame {
+	t.mu.Lock()
+	var read *ownedFrame
+	if t.queue.Len() != 0 {
+		read, _ = t.queue.Back().(*ownedFrame)
+	}
+	frame := t.appendWrite()
+	if t.queue.Len() == 1 {
+		frame.activate()
+	}
+	t.mu.Unlock()
+	if read != nil {
+		read.Release()
+	}
+	return frame
+}
+
+func (t *ReadStarveWriteThread) appendWrite() *baseFrame {
+	frame := &baseFrame{
+		onComplete: func() {
+			t.mu.Lock()
+			t.queue.PopFront()
+			if t.queue.Len() == 0 {
+				t.mu.Unlock()
+				return
+			}
+			next := t.queue.Front()
+			t.mu.Unlock()
+			switch f := next.(type) {
+			case *baseFrame:
+				f.activate()
+			case *ownedFrame:
+				f.activate()
+			}
+		},
+	}
+	t.queue.PushBack(frame)
+	return frame
+}
+
+func (t *ReadStarveWriteThread) appendRead() *ownedFrame {
+	frame := &ownedFrame{owner: t}
+	t.queue.PushBack(frame)
+	return frame
+}
+
+func (t *ReadStarveWriteThread) lock(op ownedOperation) {
+	if op == scheduleOwned {
 		return
 	}
-	s.next.activate()
+	t.mu.Lock()
 }
 
-func (s *starveFrame) getRead() Frame {
-	if !s.write {
-		return Join(context.Background(), false, &s.baseFrame)
+func (t *ReadStarveWriteThread) unlock(op ownedOperation, done bool) {
+	if op == scheduleOwned {
+		return
 	}
-	if s.next == nil {
-		s.next = s.thread.newFrame(false)
+	if !done {
+		t.mu.Unlock()
+		return
 	}
-	return s.next.getRead()
-}
-
-type ReadStarveWriteThread struct {
-	mu   sync.Mutex
-	head *starveFrame
-}
-
-func (r *ReadStarveWriteThread) newFrame(write bool) *starveFrame {
-	frame := &starveFrame{
-		thread: r,
-		write:  write,
+	t.queue.PopFront()
+	if t.queue.Len() == 0 {
+		t.mu.Unlock()
+		return
 	}
-	frame.baseFrame.onComplete = frame.onComplete
-	return frame
-}
-
-func (r *ReadStarveWriteThread) Read() Frame {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.head == nil {
-		frame := r.newFrame(false)
-		r.head = frame
-		frame.activate()
-	}
-	return r.head.getRead()
-}
-
-func (r *ReadStarveWriteThread) Write() Frame {
-	r.mu.Lock()
-	frame := r.newFrame(true)
-	if r.head == nil {
-		r.head = frame
-		r.mu.Unlock()
-		frame.activate()
-		return frame
-	}
-	frameToRelease := r.head.appendWrite(frame)
-	r.mu.Unlock()
-	if frameToRelease != nil {
-		frameToRelease.Release()
-	}
-	return frame
+	next := t.queue.Front()
+	t.mu.Unlock()
+	next.(*baseFrame).activate()
 }

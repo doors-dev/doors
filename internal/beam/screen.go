@@ -41,8 +41,8 @@ func (s *screen) init(parent parentScreen, seq uint) {
 	s.seq = seq
 }
 
-func (s *screen) addWatcher(w *watcher) (uint, shredder.Frame) {
-	frame := shredder.Join(s.cinema.ctx(), true, s.watcherSyncGuard.Read(), s.cinema.ReadFrame())
+func (s *screen) addWatcher(w *watcher, cinemaRead shredder.ReleaseFrame) (uint, shredder.ReleaseFrame) {
+	frame := shredder.JoinRelease(s.cinema.ctx(), s.watcherSyncGuard.Read(), cinemaRead)
 	s.mu.Lock()
 	seq := s.seq
 	if s.watchers == nil {
@@ -94,9 +94,14 @@ func (s *screen) removeSub(sub *screen) {
 	s.scheduleRemove()
 }
 
-func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.SimpleFrame, sourceFrame shredder.SimpleFrame, seq uint, isStopped func() bool) {
+func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Frame, sourceFrame shredder.Frame, seq uint, isStopped func() bool) {
 	cinemaRead := s.cinema.ReadFrame()
-	syncFrame := shredder.Join(ctx, true, sourceFrame, s.cinema.door.ReadFrame(), s.thread.Frame(), cinemaRead)
+	doorRead := s.cinema.door.ReadFrame()
+	threadFrame := s.thread.Frame()
+	syncFrame := shredder.Join(ctx, sourceFrame, doorRead, threadFrame, cinemaRead)
+	doorRead.Release()
+	threadFrame.Release()
+	cinemaRead.Release()
 	defer syncFrame.Release()
 	schedule := syncFrame.Run
 	if init {
@@ -110,10 +115,10 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 		var subs []*screen
 		syncThread := shredder.Thread{}
 		writeFrame, readFrame := s.watcherSyncGuard.Write()
-		readFrame = shredder.Join(ctx, true, readFrame, cinemaRead)
-		commitFrame := shredder.Join(ctx, true, syncThread.Frame(), syncFrame, writeFrame)
-		watchersFrame := shredder.Join(ctx, true, syncFrame, syncThread.Frame(), readFrame)
-		childerenFrame := shredder.Join(ctx, true, syncFrame, syncThread.Frame())
+		readFrame = shredder.JoinRelease(ctx, readFrame, cinemaRead)
+		commitFrame := shredder.JoinRelease(ctx, syncThread.Frame(), syncFrame, writeFrame)
+		watchersFrame := shredder.JoinRelease(ctx, syncFrame, syncThread.Frame(), readFrame)
+		childerenFrame := shredder.JoinRelease(ctx, syncFrame, syncThread.Frame())
 
 		commitFrame.Run(s.cinema.ctx(), s.cinema.runtime(), func(b bool) {
 			if !b {
@@ -128,7 +133,7 @@ func (s *screen) sync(init bool, ctx context.Context, cleanFrame shredder.Simple
 				return
 			}
 			for _, watcher := range watchers {
-				watcherFrame := shredder.Join(ctx, false, watchersFrame, watcher.syncFrame())
+				watcherFrame := shredder.Join(ctx, watchersFrame, watcher.syncFrame())
 				watcherCtx := ctex.FrameInfect(ctx, s.cinema.ctx())
 				watcherCtx = ctex.SyncFrameInsert(watcherCtx, readFrame, watcherFrame)
 				watcherFrame.Submit(s.cinema.ctx(), s.cinema.runtime(), func(ok bool) {
@@ -193,10 +198,22 @@ func (s *screen) tryRemove() bool {
 		s.removeScheduled = false
 		return false
 	}
+	return true
+}
+
+func (s *screen) unsub() {
 	if s.parent != nil {
 		s.parent.removeSub(s)
 	}
-	return true
+}
+
+func (s *screen) isKilled() bool {
+	for c := s.cinema; c != nil; c = c.parent {
+		if c.isKilled() {
+			return true
+		}
+	}
+	return s.cinema.runtime().Context().Err() != nil
 }
 
 func (s *screen) cancel() {
@@ -208,7 +225,5 @@ func (s *screen) cancel() {
 	for _, w := range w {
 		w.Cancel()
 	}
-	if s.parent != nil {
-		s.parent.removeSub(s)
-	}
+	s.unsub()
 }

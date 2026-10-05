@@ -47,12 +47,12 @@ func (s *readWriteFrame) onComplete() {
 	s.next.activate()
 }
 
-func (s *readWriteFrame) getRead() Frame {
+func (s *readWriteFrame) getRead() ReleaseFrame {
 	if s.next != nil {
 		return s.next.getRead()
 	}
 	if !s.write {
-		return Join(context.Background(), false, &s.baseFrame)
+		return Join(context.Background(), &s.baseFrame)
 	}
 	s.next = s.thread.newFrame(false)
 	return s.next.getRead()
@@ -72,7 +72,7 @@ func (r *ReadWriteThread) newFrame(write bool) *readWriteFrame {
 	return frame
 }
 
-func (r *ReadWriteThread) Read() Frame {
+func (r *ReadWriteThread) Read() ReleaseFrame {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.head == nil {
@@ -83,7 +83,7 @@ func (r *ReadWriteThread) Read() Frame {
 	return r.head.getRead()
 }
 
-func (r *ReadWriteThread) Write() Frame {
+func (r *ReadWriteThread) Write() ReleaseFrame {
 	r.mu.Lock()
 	frame := r.newFrame(true)
 	if r.head == nil {
