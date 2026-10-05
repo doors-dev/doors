@@ -29,47 +29,70 @@ type bufferedExecutable struct {
 	l *slog.Logger
 }
 
+const (
+	valveClosed int32 = iota
+	valveDraining
+	valveOpened
+)
+
 type ValveFrame struct {
 	mu      sync.Mutex
 	buffer  []bufferedExecutable
-	active  atomic.Bool
+	state   atomic.Int32
 	reverse bool
 }
 
 func (f *ValveFrame) Activate() {
 	f.mu.Lock()
-	if f.active.Load() {
+	if f.state.Load() > valveClosed {
 		f.mu.Unlock()
 		return
 	}
-	f.active.Store(true)
+	f.state.Store(valveDraining)
 	buf := f.buffer
 	f.buffer = nil
+repeat:
 	f.mu.Unlock()
 	if f.reverse {
 		for _, e := range slices.Backward(buf) {
-			f.schedule(e.e, e.l)
+			f.scheduleState(e.e, e.l, true)
 		}
-		return
+	} else {
+		for _, e := range buf {
+			f.scheduleState(e.e, e.l, true)
+		}
 	}
-	for _, e := range buf {
-		f.schedule(e.e, e.l)
+	f.mu.Lock()
+	if len(f.buffer) > 0 {
+		buf = f.buffer
+		f.buffer = nil
+		goto repeat
 	}
+	f.state.Store(valveOpened)
+	f.mu.Unlock()
 }
 
-func (f *ValveFrame) schedule(e executable, l *slog.Logger) {
-	if f.active.Load() {
+func (f *ValveFrame) scheduleState(e executable, l *slog.Logger, ingoreState bool) {
+	if ingoreState {
+		e.execute(func(error) {})
+		return
+	}
+	if f.state.Load() == valveOpened {
 		e.execute(func(error) {})
 		return
 	}
 	f.mu.Lock()
-	if f.active.Load() {
+	if f.state.Load() == valveOpened {
 		f.mu.Unlock()
 		e.execute(func(error) {})
 		return
 	}
 	f.buffer = append(f.buffer, bufferedExecutable{e: e, l: l})
 	f.mu.Unlock()
+}
+
+func (f *ValveFrame) schedule(e executable, l *slog.Logger) {
+	f.scheduleState(e, l, false)
 }
 
 func (f *ValveFrame) Run(ctx context.Context, s Runtime, fun func(bool)) {

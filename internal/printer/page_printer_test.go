@@ -78,7 +78,7 @@ func TestPagePrinterInsertsHeadBeforeBody(t *testing.T) {
 		return cur.Submit()
 	})
 
-	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"app":"/app.js"}}`), meta)
+	p := NewPagePrinter(&out, nil, []byte(`{"imports":{"app":"/app.js"}}`), meta)
 
 	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "body", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
@@ -125,7 +125,7 @@ func TestPagePrinterInsertsIntoExplicitHead(t *testing.T) {
 		return cur.Submit()
 	})
 
-	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"extra":"/extra.js"}}`), meta)
+	p := NewPagePrinter(&out, nil, []byte(`{"imports":{"extra":"/extra.js"}}`), meta)
 
 	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "head", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
@@ -155,7 +155,7 @@ func TestPagePrinterInsertsIntoExplicitHead(t *testing.T) {
 
 func TestPagePrinterInsertsBeforeFirstScript(t *testing.T) {
 	var out bytes.Buffer
-	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"boot":"/boot.js"}}`), noMeta())
+	p := NewPagePrinter(&out, nil, []byte(`{"imports":{"boot":"/boot.js"}}`), noMeta())
 
 	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "script", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
@@ -172,7 +172,7 @@ func TestPagePrinterInsertsBeforeFirstScript(t *testing.T) {
 
 func TestPagePrinterInsertsInsideHeadBeforeNestedScript(t *testing.T) {
 	var out bytes.Buffer
-	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"head":"/head.js"}}`), noMeta())
+	p := NewPagePrinter(&out, nil, []byte(`{"imports":{"head":"/head.js"}}`), noMeta())
 
 	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "head", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
@@ -203,7 +203,7 @@ func TestPagePrinterIncludesFrontAssetsWhenNotStatic(t *testing.T) {
 	ctx := context.WithValue(context.Background(), common.KeyCore, core.NewCore(titleDoor{inst: inst}))
 
 	var out bytes.Buffer
-	p := NewPagePrinter(&out, false, front.Include(inst), nil, noMeta())
+	p := NewPagePrinter(&out, front.Include(inst), nil, noMeta())
 	if err := p.Send(gox.NewJobOpen(ctx, 1, gox.KindRegular, "body", gox.NewAttrs())); err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func TestPagePrinterIncludesFrontAssetsWhenNotStatic(t *testing.T) {
 
 func TestPagePrinterInsertedHeadPropagatesMetaError(t *testing.T) {
 	expected := errors.New("meta boom")
-	p := NewPagePrinter(&bytes.Buffer{}, true, nil, nil, gox.Elem(func(gox.Cursor) error {
+	p := NewPagePrinter(&bytes.Buffer{}, nil, nil, gox.Elem(func(gox.Cursor) error {
 		return expected
 	}))
 
@@ -237,7 +237,7 @@ func TestPagePrinterInsertedHeadPropagatesMetaError(t *testing.T) {
 
 func TestPagePrinterWaitsForMatchingHeadClose(t *testing.T) {
 	var out bytes.Buffer
-	p := NewPagePrinter(&out, true, nil, []byte(`{"imports":{"late":"/late.js"}}`), noMeta())
+	p := NewPagePrinter(&out, nil, []byte(`{"imports":{"late":"/late.js"}}`), noMeta())
 
 	if err := p.Send(gox.NewJobOpen(context.Background(), 1, gox.KindRegular, "head", gox.NewAttrs())); err != nil {
 		t.Fatal(err)

@@ -146,12 +146,6 @@ func (t *tracker) cinemaFrame() shredder.ReleaseFrame {
 	return shredder.JoinRelease(t.ctx, t.cinema.ReadFrame(), t.outer.cinema.ReadFrame())
 }
 
-func (t *tracker) isEmpty() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.children.Len() == 0
-}
-
 func (t *tracker) callFrame(ctx context.Context) shredder.ReleaseFrame {
 	frames := ctex.GetFrames(ctx)
 	return shredder.JoinRelease(ctx, frames.Call(), t.outer.callGuard, t.rw.Read())
@@ -244,7 +238,8 @@ func newRootOuterTracker(r *root) *outerTracker {
 		callGuard: new(shredder.ValveFrame),
 	}
 	tracker.callGuard.Activate()
-	tracker.placeGuard = &tracker.outerGuard
+	tracker.outerGuard = new(shredder.ValveFrame)
+	tracker.placeGuard = tracker.outerGuard
 	tracker.cinema = beam.NewCinema(nil, tracker)
 	tracker.renderCtx = common.NewRenderCtx(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
 	return tracker
@@ -259,6 +254,7 @@ func newOuterTracker1(prev *outerTracker) *outerTracker {
 		ctx:        ctx,
 		cancel:     cancel,
 		callGuard:  prev.callGuard,
+		outerGuard: new(shredder.ValveFrame),
 		placeGuard: prev.placeGuard,
 		user:       prev.user,
 	}
@@ -280,7 +276,8 @@ func newOuterTracker2(parent *tracker, callGuard *shredder.ValveFrame, userCtx c
 		user:      common.UserCtx(userCtx, parent.renderCtx),
 	}
 	tracker.cinema = beam.NewCinema(parent.Cinema(), tracker)
-	tracker.placeGuard = &tracker.outerGuard
+	tracker.outerGuard = new(shredder.ValveFrame)
+	tracker.placeGuard = tracker.outerGuard
 	tracker.renderCtx = common.NewRenderCtx(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
 	parent.addChild(tracker)
 	return tracker
@@ -294,7 +291,7 @@ type outerTracker struct {
 	cancel         context.CancelFunc
 	callGuard      *shredder.ValveFrame
 	placeGuard     *shredder.ValveFrame
-	outerGuard     shredder.ValveFrame
+	outerGuard     *shredder.ValveFrame
 	cleanTrigger   shredder.ValveFrame
 	cleanThread    shredder.ReadWriteThread
 	printers       common.Set[*printer.PayloadPrinter]
@@ -315,7 +312,7 @@ func (t *outerTracker) Context() context.Context {
 }
 
 func (t *outerTracker) ReadFrame() shredder.ReleaseFrame {
-	return shredder.Join(t.ctx, &t.outerGuard)
+	return shredder.Join(t.ctx, t.outerGuard)
 }
 
 func (t *outerTracker) Runtime() shredder.Runtime {
@@ -341,7 +338,7 @@ func (t *outerTracker) Instance() core.Instance {
 }
 
 func (t *outerTracker) ReadyFrame() shredder.ReleaseFrame {
-	return shredder.JoinRelease(t.ctx, t.callGuard, &t.outerGuard, t.cleanThread.Read())
+	return shredder.JoinRelease(t.ctx, t.callGuard, t.outerGuard, t.cleanThread.Read())
 }
 
 func (t *outerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race) (core.Hook, bool) {
@@ -403,7 +400,7 @@ func (t *outerTracker) UserCall(ctx context.Context, action actions.Action, onRe
 
 func (t *outerTracker) callFrame(ctx context.Context) shredder.ReleaseFrame {
 	frames := ctex.GetFrames(ctx)
-	return shredder.JoinRelease(ctx, frames.Call(), t.callGuard, &t.outerGuard)
+	return shredder.JoinRelease(ctx, frames.Call(), t.callGuard, t.outerGuard)
 }
 
 var _ core.Door = (*outerTracker)(nil)

@@ -17,6 +17,7 @@ package instance
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -240,23 +241,22 @@ func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (e
 	if err != nil {
 		ok := inst.state.CompareAndSwap(initializing, killed)
 		inst.clean(common.EndCauseKilled)
-		return err, ok
+		return err, ok || errors.Is(err, common.ErrTerminated)
 	}
 	if !inst.state.CompareAndSwap(initializing, active) {
 		inst.clean(common.EndCauseSuspend)
 		return nil, false
 	}
-	static := inst.root.IsStatic()
-	if !static && !inst.head {
+	if !inst.head {
 		inst.killTimer.KeepAlive()
 	}
-	if err := inst.render(w, r, stack, static); err != nil || static || inst.head {
+	if err := inst.render(w, r, stack); err != nil || inst.head {
 		inst.end(common.EndCauseKilled)
 	}
 	return nil, true
 }
 
-func (inst *instance) render(w http.ResponseWriter, r *http.Request, pipe door.Stack, static bool) error {
+func (inst *instance) render(w http.ResponseWriter, r *http.Request, pipe door.Stack) error {
 	gz := !inst.session.App().Conf().ServerDisableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 	importMap, importHash := inst.importMap.Generate()
 	inst.renderHeaders(w, gz, importHash)
@@ -271,7 +271,7 @@ func (inst *instance) render(w http.ResponseWriter, r *http.Request, pipe door.S
 		defer wgz.Close()
 		writer = wgz
 	}
-	pr := printer.NewPagePrinter(writer, static, front.Include(inst), importMap, inst.titleMeta)
+	pr := printer.NewPagePrinter(writer, front.Include(inst), importMap, inst.titleMeta)
 	return pipe.Print(inst.session.App().PrinterMiddleware()(pr))
 }
 

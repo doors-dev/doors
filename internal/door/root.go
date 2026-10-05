@@ -16,6 +16,7 @@ package door
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"sync"
 
@@ -101,18 +102,6 @@ func (r *root) TriggerHook(id uint64, w http.ResponseWriter, rq *http.Request, t
 	return hook.trigger(w, rq, track)
 }
 
-func (r Root) IsStatic() bool {
-	if !r.tracker.isEmpty() {
-		return false
-	}
-	if !r.tracker.cinema.IsEmpty() || !r.outer.cinema.IsEmpty() {
-		return false
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return len(r.hooks) == 0
-}
-
 func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 	thread := shredder.Thread{}
 	writeFrame := r.tracker.rw.Write()
@@ -125,6 +114,7 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 		passGuard,
 	)
 	ch := make(chan struct{})
+	callFrame := shredder.JoinRelease(r.tracker.Context(), thread.Frame(), writeFrame)
 	var err error
 	renderFrame.Submit(r.tracker.ctx, r.runtime(), func(b bool) {
 		if !b {
@@ -134,7 +124,6 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 		cur := gox.NewCursor(r.tracker.Context(), pipe)
 		err = cur.Comp(comp)
 	})
-	callFrame := shredder.JoinRelease(r.tracker.Context(), thread.Frame(), writeFrame)
 	callFrame.Run(r.tracker.ctx, r.runtime(), func(bool) {
 		defer close(ch)
 		defer passGuard.Activate()
@@ -148,8 +137,14 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 			logError(r.tracker.ctx, r.inst.Logger(), err, common.Caller{})
 			return nil, err
 		}
+		if r.runtime().Context().Err() != nil {
+			return nil, common.ErrTerminated
+		}
 		return pipe.Collect(), nil
 	case <-requestCtx.Done():
+		if errors.Is(requestCtx.Err(), context.DeadlineExceeded) {
+			r.inst.Logger().Error("page rendering timed out", "error", requestCtx.Err())
+		}
 		return nil, requestCtx.Err()
 	}
 }

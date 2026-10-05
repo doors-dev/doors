@@ -79,7 +79,9 @@ type innerNode struct {
 func (n innerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.mode = modeInner
 	next.caller = n.caller
-	next.outer = prev.outer
+	if prev.mode != modeStatic {
+		next.outer = prev.outer
+	}
 	next.inner = n.inner
 	if !prev.isMounted() {
 		n.userTask.Accept()
@@ -94,7 +96,7 @@ func (n innerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 		})
 		placeFrame.Release()
 	}
-	outerFrame := shredder.JoinRelease(prev.runtimeContext(), initFrame, &prev.tracker.outer.outerGuard, thread.Frame())
+	outerFrame := shredder.JoinRelease(prev.runtimeContext(), initFrame, prev.tracker.outer.outerGuard, thread.Frame())
 	defer outerFrame.Release()
 	outerFrame.Run(next.tracker.ctx, prev.tracker.Runtime(), func(b bool) {
 		if prev.mode != modeInner {
@@ -171,7 +173,6 @@ func (n staticNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	}
 	next.tracker = prev.tracker.outer.parent
 	next.static.id = prev.tracker.outer.id
-	next.static.callGuard = new(shredder.ValveFrame)
 	next.static.user = prev.tracker.outer.user
 	placeFrame := shredder.Join(prev.runtimeContext(), initFrame, prev.tracker.outer.placeGuard)
 	defer placeFrame.Release()
@@ -235,7 +236,7 @@ func (n nodeReload) apply(initFrame shredder.Frame, next *node, prev *node) {
 		prev.tracker.clean()
 	})
 	placeFrame.Release()
-	outerFrame := shredder.JoinRelease(prev.runtimeContext(), initFrame, &prev.tracker.outer.outerGuard, thread.Frame())
+	outerFrame := shredder.JoinRelease(prev.runtimeContext(), initFrame, prev.tracker.outer.outerGuard, thread.Frame())
 	defer outerFrame.Release()
 	outerFrame.Run(next.tracker.ctx, prev.tracker.Runtime(), func(b bool) {
 		if next.tracker.outer.placementError != nil {
@@ -286,6 +287,7 @@ func (n unmountNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 			n.Report(fmt.Errorf("placement error: %w", prev.tracker.outer.placementError))
 			return
 		}
+		n.Scheduled()
 		prev.call(&call{
 			ctx:     prev.tracker.outer.parent.ctx,
 			kind:    callReplace,

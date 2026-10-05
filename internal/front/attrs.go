@@ -15,6 +15,7 @@
 package front
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,8 +34,17 @@ func AttrsSetHook(attrs gox.Attrs, name string, hook Hook) {
 	attrs.Get(fmt.Sprintf("data-d0h-%s", name)).Set(jsonAttr{hook})
 }
 
-func AttrsSetData(attrs gox.Attrs, name string, data any) {
-	attrs.Get(fmt.Sprintf("data-d0d-%s", name)).Set(payloadAttr{data})
+func AttrsSetData(attrs gox.Attrs, name string, data any) error {
+	payload, err := actions.IntoPayload(data, false)
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	if err := json.NewEncoder(common.NewJsonWriter(&buf)).Encode(payload); err != nil {
+		return err
+	}
+	attrs.Get(fmt.Sprintf("data-d0d-%s", name)).Set(payloadAttr(buf.Bytes()))
+	return nil
 }
 
 func AttrsAppendSetter(attrs gox.Attrs, id uint64) {
@@ -108,15 +118,9 @@ func (j jsonAttr) Output(w io.Writer) error {
 
 var _ gox.Output = jsonAttr{}
 
-type payloadAttr struct {
-	value any
-}
+type payloadAttr []byte
 
 func (j payloadAttr) Output(w io.Writer) error {
-	payload, err := actions.IntoPayload(j.value, false)
-	if err != nil {
-		return err
-	}
-	enc := json.NewEncoder(common.NewJsonWriter(w))
-	return enc.Encode(payload)
+	_, err := w.Write(j)
+	return err
 }

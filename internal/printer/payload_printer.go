@@ -67,8 +67,9 @@ var _ Payload = (*PayloadPrinter)(nil)
 
 func NewPayloadPrinter(disableGzip bool, onRelease func(*PayloadPrinter)) *PayloadPrinter {
 	b := &PayloadPrinter{
-		buf: bufferPrinterPool.Get().(sliceWriter),
-		gz:  !disableGzip,
+		buf:       bufferPrinterPool.Get().(sliceWriter),
+		gz:        !disableGzip,
+		onRelease: onRelease,
 	}
 	if b.gz {
 		b.gzip = common.GetGzipWriter(&b.buf)

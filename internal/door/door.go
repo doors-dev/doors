@@ -35,7 +35,7 @@ func (d *Door) render(ctx context.Context, p *pipe, caller common.Caller) {
 		buffer: p.branch(),
 		ctx:    ctx,
 		caller: caller,
-	}, p.renderFrame)
+	}, shredder.Join(ctx, p.renderFrame))
 }
 
 func (d *Door) proxy(p *pipe, el gox.Elem, ctx context.Context, caller common.Caller) {
@@ -45,7 +45,7 @@ func (d *Door) proxy(p *pipe, el gox.Elem, ctx context.Context, caller common.Ca
 		el:     el,
 		ctx:    ctx,
 		caller: caller,
-	}, p.renderFrame)
+	}, shredder.Join(ctx, p.renderFrame))
 }
 
 func (d *Door) schedule(ctx context.Context, task nodeTask, externalFrame shredder.ReleaseFrame) {

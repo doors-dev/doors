@@ -15,13 +15,18 @@
 package doors
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -33,27 +38,261 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/doors/internal/front/actions"
+	"github.com/doors-dev/doors/internal/instance/utils"
 	"github.com/doors-dev/doors/internal/path"
+	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
 
-type lifecycleKiller struct {
-	killed chan struct{}
-	once   sync.Once
+// lifecycleLog captures the instance log.
+type lifecycleLog struct {
+	mu   sync.Mutex
+	msgs []string
 }
 
-func (k *lifecycleKiller) Kill() {
-	k.once.Do(func() {
-		close(k.killed)
+func (l *lifecycleLog) Enabled(context.Context, slog.Level) bool { return true }
+
+func (l *lifecycleLog) Handle(_ context.Context, r slog.Record) error {
+	msg := r.Message
+	r.Attrs(func(a slog.Attr) bool {
+		msg += " " + a.Key + "=" + a.Value.String()
+		return true
 	})
+	l.mu.Lock()
+	l.msgs = append(l.msgs, msg)
+	l.mu.Unlock()
+	return nil
 }
 
-func (k *lifecycleKiller) Logger() *slog.Logger { return slog.Default() }
+func (l *lifecycleLog) WithAttrs([]slog.Attr) slog.Handler { return l }
 
+func (l *lifecycleLog) WithGroup(string) slog.Handler { return l }
+
+func (l *lifecycleLog) all() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.msgs)
+}
+
+func (l *lifecycleLog) count(prefix string) int {
+	n := 0
+	for _, msg := range l.all() {
+		if strings.HasPrefix(msg, prefix) {
+			n++
+		}
+	}
+	return n
+}
+
+// lifecycleAction is an action the client applied.
+type lifecycleAction struct {
+	name string
+	id   uint64
+	body string
+}
+
+// lifecycleClient plays the browser side of the solitaire: calls queue in
+// the order the instance issues them and are applied asynchronously, one at a
+// time. Holding the client keeps calls queued, like a client that has not
+// answered yet. On instance end, queued and later calls are canceled.
+type lifecycleClient struct {
+	mu      sync.Mutex
+	cond    sync.Cond
+	queue   []actions.Call
+	held    bool
+	busy    bool
+	ended   bool
+	applied []lifecycleAction
+}
+
+func newLifecycleClient() *lifecycleClient {
+	c := &lifecycleClient{}
+	c.cond.L = &c.mu
+	go c.run()
+	return c
+}
+
+func (c *lifecycleClient) call(call actions.Call) {
+	c.mu.Lock()
+	if c.ended {
+		c.mu.Unlock()
+		call.Cancel()
+		return
+	}
+	c.queue = append(c.queue, call)
+	c.mu.Unlock()
+	c.cond.Broadcast()
+}
+
+func (c *lifecycleClient) run() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for {
+		for !c.ended && (c.held || len(c.queue) == 0) {
+			c.cond.Wait()
+		}
+		if c.ended {
+			return
+		}
+		call := c.queue[0]
+		c.queue[0] = nil
+		c.queue = c.queue[1:]
+		c.busy = true
+		c.mu.Unlock()
+		c.apply(call)
+		c.mu.Lock()
+		c.busy = false
+	}
+}
+
+func (c *lifecycleClient) apply(call actions.Call) {
+	action, free, ok := call.Action()
+	if !ok {
+		call.Cancel()
+		return
+	}
+	applied := lifecycleAction{name: action.Log()}
+	switch action := action.(type) {
+	case actions.DoorReplace:
+		applied.id, applied.body = action.ID, payloadText(action.Payload)
+	case actions.DoorUpdate:
+		applied.id, applied.body = action.ID, payloadText(action.Payload)
+	default:
+		applied.body = fmt.Sprint(action)
+	}
+	free()
+	c.mu.Lock()
+	c.applied = append(c.applied, applied)
+	c.mu.Unlock()
+	call.Result(nil, nil)
+}
+
+func (c *lifecycleClient) end() {
+	c.mu.Lock()
+	c.ended = true
+	queue := c.queue
+	c.queue = nil
+	c.mu.Unlock()
+	c.cond.Broadcast()
+	for _, call := range queue {
+		call.Cancel()
+	}
+}
+
+func (c *lifecycleClient) hold() {
+	c.mu.Lock()
+	c.held = true
+	c.mu.Unlock()
+}
+
+func (c *lifecycleClient) release() {
+	c.mu.Lock()
+	c.held = false
+	c.mu.Unlock()
+	c.cond.Broadcast()
+}
+
+func (c *lifecycleClient) queued() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.queue)
+}
+
+func (c *lifecycleClient) idle() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.queue) == 0 && !c.busy
+}
+
+func (c *lifecycleClient) actions() []lifecycleAction {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.applied)
+}
+
+func payloadText(p actions.Payload) string {
+	var buf bytes.Buffer
+	if err := p.Output(&buf); err != nil {
+		return "payload error: " + err.Error()
+	}
+	if p.Type() != actions.PayloadTextGZ {
+		return buf.String()
+	}
+	r, err := gzip.NewReader(&buf)
+	if err != nil {
+		return "payload error: " + err.Error()
+	}
+	text, err := io.ReadAll(r)
+	if err != nil {
+		return "payload error: " + err.Error()
+	}
+	return string(text)
+}
+
+// lifecycleUserCall mirrors the instance's user call: the action is dropped
+// once its context is canceled or its check fails.
+type lifecycleUserCall struct {
+	ctx      context.Context
+	check    func() bool
+	action   actions.Action
+	onResult func(json.RawMessage, error)
+	onCancel func()
+	params   actions.CallParams
+}
+
+func (c *lifecycleUserCall) Params() actions.CallParams { return c.params }
+
+func (c *lifecycleUserCall) Action() (actions.Action, func(), bool) {
+	if c.check != nil && !c.check() {
+		return nil, nil, false
+	}
+	if c.check == nil && c.ctx.Err() != nil {
+		return nil, nil, false
+	}
+	return c.action, func() {}, true
+}
+
+func (c *lifecycleUserCall) Cancel() {
+	if c.onCancel != nil {
+		c.onCancel()
+	}
+}
+
+func (c *lifecycleUserCall) Result(r json.RawMessage, err error) {
+	if c.onResult != nil {
+		c.onResult(r, err)
+	}
+}
+
+type lifecycleApp struct {
+	*helperApp
+	logger *slog.Logger
+}
+
+func (a *lifecycleApp) Logger() *slog.Logger { return a.logger }
+
+type lifecycleSession struct {
+	*helperSession
+	app *lifecycleApp
+}
+
+func (s *lifecycleSession) App() core.App { return s.app }
+
+func (s *lifecycleSession) Logger() *slog.Logger { return s.app.logger }
+
+// lifecycleInstance mirrors the production instance around a real Root: it
+// owns the runtime, and ending it cancels the runtime, cancels pending calls
+// and kills the root, in production order.
 type lifecycleInstance struct {
 	*helperInstance
-	ids atomic.Uint64
+	ids     atomic.Uint64
+	sess    *lifecycleSession
+	client  *lifecycleClient
+	meta    core.TitleMeta
+	root    door.Root
+	endOnce sync.Once
+	ended   chan struct{}
 }
 
 func (l *lifecycleInstance) NewID() uint64 {
@@ -61,7 +300,34 @@ func (l *lifecycleInstance) NewID() uint64 {
 }
 
 func (l *lifecycleInstance) Call(c actions.Call) {
-	c.Result(nil, nil)
+	l.client.call(c)
+}
+
+func (l *lifecycleInstance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+	l.client.call(&lifecycleUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params})
+}
+
+func (l *lifecycleInstance) UserCallCheck(check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+	l.client.call(&lifecycleUserCall{ctx: context.Background(), check: check, action: action, onResult: onResult, onCancel: onCancel, params: params})
+}
+
+func (l *lifecycleInstance) Session() core.Session { return l.sess }
+
+func (l *lifecycleInstance) Logger() *slog.Logger { return l.sess.app.logger }
+
+func (l *lifecycleInstance) TitleMeta() core.TitleMeta { return l.meta }
+
+func (l *lifecycleInstance) Kill() {
+	l.end()
+}
+
+func (l *lifecycleInstance) end() {
+	l.endOnce.Do(func() {
+		l.runtime.Cancel()
+		l.client.end()
+		l.root.Kill()
+		close(l.ended)
+	})
 }
 
 var _ door.Instance = &lifecycleInstance{}
@@ -70,7 +336,8 @@ type lifecycleHarness struct {
 	t      *testing.T
 	inst   *lifecycleInstance
 	root   door.Root
-	killer *lifecycleKiller
+	client *lifecycleClient
+	logs   *lifecycleLog
 	events chan string
 }
 
@@ -78,42 +345,55 @@ func newLifecycleHarness(t *testing.T, workers int) *lifecycleHarness {
 	t.Helper()
 	conf := common.Conf{}
 	common.InitDefaults(&conf)
-	inst := &lifecycleInstance{helperInstance: &helperInstance{
-		conf:     conf,
-		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
-	}}
+	logs := &lifecycleLog{}
+	inst := &lifecycleInstance{
+		helperInstance: &helperInstance{
+			conf:     conf,
+			location: beam.NewSource(path.Location{}, path.EqualLocation, false),
+		},
+		client: newLifecycleClient(),
+		ended:  make(chan struct{}),
+	}
 	sessCtx, cancel := context.WithCancel(context.Background())
 	inst.session = &helperSession{
 		inst:   inst.helperInstance,
 		app:    &helperApp{conf: &inst.helperInstance.conf},
-		ctx:    sessCtx,
 		cancel: cancel,
 	}
-	killer := &lifecycleKiller{killed: make(chan struct{})}
-	rt := shredder.NewRuntime(context.Background(), workers, killer)
-	inst.runtime = rt
-	root := door.NewRoot(inst)
+	inst.sess = &lifecycleSession{
+		helperSession: inst.session,
+		app:           &lifecycleApp{helperApp: inst.session.app, logger: slog.New(logs)},
+	}
+	inst.session.ctx = context.WithValue(sessCtx, common.KeySession, inst.sess)
+	inst.meta = utils.NewTitleMeta(inst)
+	inst.runtime = shredder.NewRuntime(inst.session.ctx, workers, inst)
+	inst.root = door.NewRoot(inst)
 	t.Cleanup(func() {
-		root.Kill()
-		rt.Cancel()
+		inst.end()
 		cancel()
 	})
 	return &lifecycleHarness{
 		t:      t,
 		inst:   inst,
-		root:   root,
-		killer: killer,
+		root:   inst.root,
+		client: inst.client,
+		logs:   logs,
 		events: make(chan string, 64),
 	}
 }
 
-// renderPageErr renders a full page containing content and returns the
-// page-level render context (root tracker content ctx). It is safe to call
-// from a non-test goroutine.
-func (h *lifecycleHarness) renderPageErr(content gox.Elem) (context.Context, error) {
+func lifecycleInclude(gox.Cursor) error { return nil }
+
+// renderPageHTML serves a page the way the instance does: the root renders
+// content after the navigator subscribes, the stack is printed with the page
+// printer, and a render or print error ends the instance. It returns the
+// page-level render context (root tracker content ctx) and the printed page.
+// It is safe to call from a non-test goroutine.
+func (h *lifecycleHarness) renderPageHTML(content gox.Elem) (context.Context, string, error) {
 	ctxCh := make(chan context.Context, 1)
 	page := gox.Elem(func(cur gox.Cursor) error {
 		ctxCh <- cur.Context()
+		utils.NewNavigator(h.inst, cur.Context()).Sync()
 		if content == nil {
 			return nil
 		}
@@ -121,12 +401,21 @@ func (h *lifecycleHarness) renderPageErr(content gox.Elem) (context.Context, err
 	})
 	stack, err := h.root.Render(context.Background(), page)
 	if err != nil {
-		return nil, err
+		h.inst.end()
+		return nil, "", err
 	}
-	if err := stack.Print(gox.NewPrinter(io.Discard)); err != nil {
-		return nil, err
+	var buf bytes.Buffer
+	pr := printer.NewPagePrinter(&buf, lifecycleInclude, nil, h.inst.TitleMeta())
+	if err := stack.Print(h.inst.Session().App().PrinterMiddleware()(pr)); err != nil {
+		h.inst.end()
+		return nil, "", err
 	}
-	return <-ctxCh, nil
+	return <-ctxCh, buf.String(), nil
+}
+
+func (h *lifecycleHarness) renderPageErr(content gox.Elem) (context.Context, error) {
+	ctx, _, err := h.renderPageHTML(content)
+	return ctx, err
 }
 
 // renderPage renders a full page containing content and returns the page-level
@@ -138,6 +427,38 @@ func (h *lifecycleHarness) renderPage(content gox.Elem) context.Context {
 		h.t.Fatal(err)
 	}
 	return ctx
+}
+
+func (h *lifecycleHarness) waitQueued(n int) {
+	h.t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for h.client.queued() < n {
+		if time.Now().After(deadline) {
+			h.t.Fatalf("timed out waiting for %d queued calls, have %d", n, h.client.queued())
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+func (h *lifecycleHarness) waitIdle() {
+	h.t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for !h.client.idle() {
+		if time.Now().After(deadline) {
+			h.t.Fatalf("timed out waiting for the client to apply %d queued calls", h.client.queued())
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// waitLogged waits until at least n messages with prefix are logged and
+// returns their count.
+func (h *lifecycleHarness) waitLogged(prefix string, n int) int {
+	deadline := time.Now().Add(5 * time.Second)
+	for h.logs.count(prefix) < n && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	return h.logs.count(prefix)
 }
 
 func (h *lifecycleHarness) waitEvent(want string) {
@@ -189,6 +510,74 @@ func mountDoor(d *Door) gox.Elem {
 func textElem(text string) gox.Elem {
 	return func(cur gox.Cursor) error {
 		return cur.Text(text)
+	}
+}
+
+func tagElem(tag string, id string, content gox.Elem) gox.Elem {
+	return func(cur gox.Cursor) error {
+		if err := cur.Init(tag); err != nil {
+			return err
+		}
+		if err := cur.Set("id", id); err != nil {
+			return err
+		}
+		if err := cur.Submit(); err != nil {
+			return err
+		}
+		if content != nil {
+			if err := content(cur); err != nil {
+				return err
+			}
+		}
+		return cur.Close()
+	}
+}
+
+// drainOp collects the values of an operation channel until it closes.
+func drainOp(t *testing.T, ch <-chan error) []error {
+	t.Helper()
+	var vals []error
+	timeout := time.After(5 * time.Second)
+	for {
+		select {
+		case err, ok := <-ch:
+			if !ok {
+				return vals
+			}
+			vals = append(vals, err)
+		case <-timeout:
+			t.Fatalf("operation channel did not close, got %v", vals)
+		}
+	}
+}
+
+// A page render that updates a Door it just rendered still prints, as the
+// production page printer does not check job contexts. The page shows the
+// rendered content and the update reaches the client as a call.
+func TestLifecyclePageUpdatedDuringRender(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	d.Inner(context.Background(), textElem("v0"))
+	var ch <-chan error
+	_, html, err := h.renderPageHTML(func(cur gox.Cursor) error {
+		if err := cur.Comp(d); err != nil {
+			return err
+		}
+		ch = d.Inner(DetachedContext(cur.Context()), textElem("v1"))
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("page failed: %v", err)
+	}
+	if !strings.Contains(html, "v0") {
+		t.Fatalf("expected the rendered content in the page, got %q", html)
+	}
+	if vals := drainOp(t, ch); len(vals) != 2 || vals[0] != nil || vals[1] != nil {
+		t.Fatalf("expected the update to succeed, got %v", vals)
+	}
+	got := h.client.actions()
+	if len(got) != 1 || got[0].name != "door_update" || got[0].body != "v1" {
+		t.Fatalf("expected one door_update with v1, got %+v", got)
 	}
 }
 
@@ -582,44 +971,6 @@ func TestOnReadyDroppedOnRenderError(t *testing.T) {
 	h.expectNoEvent(100 * time.Millisecond)
 }
 
-// On replacement, the replaced content's OnClean runs exactly once, before the
-// replacing content renders.
-func TestOnCleanReplaceBeforeRender(t *testing.T) {
-	h := newLifecycleHarness(t, 8)
-	d := &Door{}
-	var cleanDispatched atomic.Bool
-	var cleanCount atomic.Int32
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
-		OnReady(cur.Context(), func(context.Context) { h.events <- "ready-old" })
-		OnClean(cur.Context(), func() {
-			cleanDispatched.Store(true)
-			cleanCount.Add(1)
-			h.events <- "clean-old"
-		})
-		return cur.Text("v0")
-	}))
-	pageCtx := h.renderPage(mountDoor(d))
-	h.waitEvent("ready-old")
-
-	next := gox.Elem(func(cur gox.Cursor) error {
-		if !cleanDispatched.Load() {
-			h.events <- "replacing-render-before-clean"
-			return nil
-		}
-		OnReady(cur.Context(), func(context.Context) { h.events <- "ready-new" })
-		return cur.Text("v1")
-	})
-	ch := d.Inner(DetachedContext(pageCtx), next)
-	if err := <-ch; err != nil {
-		t.Fatalf("expected replacing update to schedule, got %v", err)
-	}
-	h.waitEvents("clean-old", "ready-new")
-	if got := cleanCount.Load(); got != 1 {
-		t.Fatalf("expected the replaced OnClean to run exactly once, ran %d times", got)
-	}
-	h.expectNoEvent(100 * time.Millisecond)
-}
-
 // OnClean fires on unmount; registration on an already-cleaned owner still
 // fires, and OnReady on a cleaned owner is dropped.
 func TestOnCleanUnmountAndCleanedOwner(t *testing.T) {
@@ -680,7 +1031,7 @@ func TestOnCleanOnInstanceEnd(t *testing.T) {
 	pageCtx := h.renderPage(mountDoor(d))
 	OnClean(pageCtx, func() { h.events <- "clean-root" })
 
-	h.root.Kill()
+	h.inst.Kill()
 	h.waitEvents("clean-door", "clean-root")
 }
 
@@ -699,7 +1050,7 @@ func TestOnCleanPanicRecovered(t *testing.T) {
 	d.Unmount(pageCtx)
 	h.waitEvent("clean-after-panic")
 	select {
-	case <-h.killer.killed:
+	case <-h.inst.ended:
 	case <-time.After(5 * time.Second):
 		t.Fatal("expected a panic in OnClean to kill the instance")
 	}
@@ -717,7 +1068,7 @@ func TestOnReadyPanicRecovered(t *testing.T) {
 	}))
 	h.renderPageErr(mountDoor(d))
 	select {
-	case <-h.killer.killed:
+	case <-h.inst.ended:
 	case <-time.After(5 * time.Second):
 		t.Fatal("expected a panic in OnReady to kill the instance")
 	}

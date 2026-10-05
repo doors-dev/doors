@@ -193,6 +193,5 @@ func (a AData) Proxy(cur gox.Cursor, elem gox.Elem) error {
 }
 
 func (a AData) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
-	front.AttrsSetData(attrs, a.Name, a.Value)
-	return nil
+	return front.AttrsSetData(attrs, a.Name, a.Value)
 }

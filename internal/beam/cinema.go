@@ -62,12 +62,6 @@ func (c Cinema) writeFrame() shredder.ReleaseFrame {
 	return c.removeGuard.Write()
 }
 
-func (c Cinema) IsEmpty() bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return len(c.screens) == 0
-}
-
 func (c *cinema) isKilled() bool {
 	return c.door.Context().Err() != nil
 }

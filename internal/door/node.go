@@ -52,9 +52,8 @@ type node struct {
 	outer     any
 	inner     any
 	static    struct {
-		id        uint64
-		callGuard *shredder.ValveFrame
-		user      context.Context
+		id   uint64
+		user context.Context
 	}
 }
 
@@ -177,6 +176,8 @@ func (n *node) sync(task *userTask) {
 		renderFrame,
 		innerCallGuard,
 	)
+	callFrame := shredder.JoinRelease(n.runtimeContext(), thread.Frame(), writeFrame, n.tracker.outer.callGuard, task.CallFrame())
+	defer callFrame.Release()
 	var err error
 	pip.renderFrame.Submit(n.tracker.ctx, pip.runtime(), func(b bool) {
 		if !b {
@@ -184,14 +185,15 @@ func (n *node) sync(task *userTask) {
 		}
 		err = n.syncRender(pip)
 	})
-	callFrame := shredder.JoinRelease(n.runtimeContext(), thread.Frame(), writeFrame, n.tracker.outer.callGuard, task.CallFrame())
-	defer callFrame.Release()
 	callFrame.Run(n.tracker.ctx, pip.runtime(), func(b bool) {
 		defer innerCallGuard.Activate()
 		if n.mode != modeInner {
 			defer n.tracker.outer.outerGuard.Activate()
 		}
 		if !b {
+			if err != nil {
+				logError(n.tracker.ctx, n.logger(), err, n.caller)
+			}
 			pip.Release()
 			task.Cancel()
 			return
@@ -213,6 +215,9 @@ func (n *node) sync(task *userTask) {
 			p.Free()
 		}
 		if n.tracker.ctx.Err() != nil {
+			if err != nil {
+				logError(n.tracker.ctx, n.logger(), err, n.caller)
+			}
 			if payload != nil {
 				payload.Release()
 			}
@@ -229,6 +234,7 @@ func (n *node) sync(task *userTask) {
 			n.onSyncError(err)
 			return
 		}
+		task.Scheduled()
 		n.call(&call{
 			ctx:     n.callContext(),
 			kind:    n.callKind(),
@@ -245,7 +251,13 @@ func (n *node) placeRender(parentPipe *pipe, buffer *deque.Deque[any]) {
 		panic("unexpected mode")
 	}
 	thread := shredder.Thread{}
-	renderFrame := shredder.JoinRelease(n.runtimeContext(), parentPipe.renderFrame, thread.Frame(), n.tracker.rw.Write(), n.tracker.cinemaFrame())
+	localFrame := thread.Frame()
+	writeFrame := n.tracker.rw.Write()
+	cinemaFrame := n.tracker.cinemaFrame()
+	renderFrame := shredder.Join(n.runtimeContext(), parentPipe.renderFrame, localFrame, writeFrame, cinemaFrame)
+	localFrame.Release()
+	writeFrame.Release()
+	cinemaFrame.Release()
 	defer renderFrame.Release()
 	pip := newPipe(
 		n.tracker,
@@ -269,21 +281,26 @@ func (n *node) placeRender(parentPipe *pipe, buffer *deque.Deque[any]) {
 			panic("unexpected node mode")
 		}
 	})
-	finalFrame := shredder.JoinRelease(n.runtimeContext(), parentPipe.renderFrame, thread.Frame())
+	localFrame = thread.Frame()
+	finalFrame := shredder.Join(n.runtimeContext(), parentPipe.renderFrame, localFrame)
+	localFrame.Release()
 	defer finalFrame.Release()
 	finalFrame.Run(parentPipe.tracker.ctx, parentPipe.runtime(), func(b bool) {
 		defer n.tracker.outer.placeGuard.Activate()
 		if !b {
+			if err != nil {
+				logError(n.tracker.ctx, n.logger(), err, n.caller)
+			}
 			return
 		}
 		if err == nil {
 			return
 		}
+		pip.error(err, n.caller)
 		n.tracker.outer.clean()
 		n.tracker.clean()
 		n.tracker.outer.placementError = err
 		n.tracker.outer.outerError = err
-		pip.error(err, n.caller)
 	})
 }
 

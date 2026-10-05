@@ -191,7 +191,9 @@ func (s *scriptProps) Read(attrs gox.Attrs) (bool, error) {
 			continue
 		}
 		if !s.rel {
-			s.readData(attrs, attr)
+			if err := s.readData(attrs, attr); err != nil {
+				return false, err
+			}
 		}
 	}
 	if s.sourceKind == sourceUnknown {
@@ -282,14 +284,14 @@ func (s *scriptProps) readType(attr gox.Attr) (bool, bool) {
 	return true, true
 }
 
-func (s *scriptProps) readData(attrs gox.Attrs, attr gox.Attr) {
+func (s *scriptProps) readData(attrs gox.Attrs, attr gox.Attr) error {
 	name, ok := strings.CutPrefix(attr.Name(), "data:")
 	if !ok {
-		return
+		return nil
 	}
 	value := attr.Value()
 	s.reg(attr)
-	front.AttrsSetData(attrs, name, value)
+	return front.AttrsSetData(attrs, name, value)
 }
 
 func isTrue(a gox.Attr) bool {
