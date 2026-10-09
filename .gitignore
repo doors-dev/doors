@@ -17,3 +17,4 @@ go.work.sum
 **/.DS_Store
 .gocache
 skill/
+.claude/

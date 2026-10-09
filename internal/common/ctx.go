@@ -27,6 +27,7 @@ const (
 	KeySession
 	KeyFrame
 	KeyHistoryReplace
+	KeyDocument
 )
 
 func NewRenderCtx(system context.Context, user context.Context) context.Context {
@@ -37,6 +38,13 @@ func NewRenderCtx(system context.Context, user context.Context) context.Context 
 		return system
 	}
 	return RenderCtx{system: system, user: user}
+}
+
+func DocumentCtx(ctx context.Context) context.Context {
+	if rc, ok := ctx.(RenderCtx); ok {
+		return RenderCtx{system: context.WithValue(rc.system, KeyDocument, true), user: rc.user}
+	}
+	return context.WithValue(ctx, KeyDocument, true)
 }
 
 func UserCtx(ctx context.Context, parent context.Context) context.Context {

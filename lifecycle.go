@@ -29,9 +29,10 @@ import (
 // event handler, on fires promptly.
 //
 // OnReady is best-effort and fires at most once: if the render cycle fails or
-// is superseded by a newer operation, on never runs. [Door.Static] content is
-// the exception: it belongs to the parent Door, so on still runs if the static
-// render fails. Tie cleanup to [OnClean].
+// is superseded by a newer operation, on never runs. Content rendered by
+// [Door.Static], [Door.DeferredStatic] or [DeferredStatic] is the exception: it
+// belongs to the parent Door, so on still runs if that render fails. Tie
+// cleanup to [OnClean].
 //
 // on runs inline on the framework goroutine completing the cycle — on the
 // calling goroutine when the content is already on the page — with a context
@@ -55,8 +56,9 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 
 // OnSettle runs ops within the current dispatch batch and registers on to run
 // once that batch settles: every Doors operation started from the batch is
-// processed and its updates are enqueued for delivery to the client. In a
-// handler the batch spans the whole handler; otherwise OnSettle opens one
+// processed and its updates are enqueued for delivery to the client. The
+// content of a deferred operation is not awaited. In a handler the batch spans
+// the whole handler; otherwise OnSettle opens one
 // spanning the ops calls. on never runs before the content that produced ctx
 // is ready itself.
 //
@@ -100,8 +102,9 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 // enclosing Door is updated, removed, rerendered by an ancestor, fails to
 // render, or the instance ends. Exactly one of these eventually happens to
 // every rendered piece of content, so f runs exactly once per registration.
-// [Door.Static] content belongs to the parent Door, so f runs when the
-// parent's content is cleared, even if the static render fails.
+// Content rendered by [Door.Static], [Door.DeferredStatic] or [DeferredStatic]
+// belongs to the parent Door, so f runs when the parent's content is cleared,
+// even if that render fails.
 //
 // f runs inline on the framework goroutine performing the clean — on the
 // calling goroutine when the content is already cleaned — and receives no

@@ -124,7 +124,7 @@ func (c infectedContext) Err() error {
 
 func (c infectedContext) Value(key any) any {
 	switch key {
-	case common.KeyCore, common.KeySession:
+	case common.KeyCore, common.KeySession, common.KeyDocument:
 		return c.target.Value(key)
 	default:
 		return c.source.Value(key)

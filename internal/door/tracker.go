@@ -124,6 +124,36 @@ func (t *tracker) Reload(ctx context.Context) <-chan error {
 	return t.node.door.reloadSelf(ctx, t.node)
 }
 
+func (t *tracker) DeferredInner(ctx context.Context, content any) <-chan error {
+	if t.node == nil {
+		ch := make(chan error, 1)
+		ch <- errors.New("root door cannot be deferred")
+		close(ch)
+		return ch
+	}
+	return t.node.door.deferredInnerSelf(ctx, t.node, content)
+}
+
+func (t *tracker) DeferredOuter(ctx context.Context, content any) <-chan error {
+	if t.node == nil {
+		ch := make(chan error, 1)
+		ch <- errors.New("root door cannot be deferred")
+		close(ch)
+		return ch
+	}
+	return t.node.door.deferredOuterSelf(ctx, t.node, content)
+}
+
+func (t *tracker) DeferredStatic(ctx context.Context, content any) <-chan error {
+	if t.node == nil {
+		ch := make(chan error, 1)
+		ch <- errors.New("root door cannot be deferred")
+		close(ch)
+		return ch
+	}
+	return t.node.door.deferredStaticSelf(ctx, t.node, content)
+}
+
 func (t *tracker) RootCore() core.Core {
 	return t.outer.root.core
 }
@@ -228,7 +258,7 @@ func (t *tracker) clean() {
 	write.Release()
 }
 
-func newRootOuterTracker(r *root) *outerTracker {
+func newOuterTrackerRoot(r *root) *outerTracker {
 	ctx, cancel := context.WithCancel(r.runtime().Context())
 	tracker := &outerTracker{
 		id:        r.inst.NewID(),
@@ -245,7 +275,7 @@ func newRootOuterTracker(r *root) *outerTracker {
 	return tracker
 }
 
-func newOuterTracker1(prev *outerTracker) *outerTracker {
+func newOuterTrackerInherit(prev *outerTracker) *outerTracker {
 	ctx, cancel := context.WithCancel(prev.parent.ctx)
 	tracker := &outerTracker{
 		id:         prev.id,
@@ -264,7 +294,8 @@ func newOuterTracker1(prev *outerTracker) *outerTracker {
 	return tracker
 }
 
-func newOuterTracker2(parent *tracker, callGuard *shredder.ValveFrame, userCtx context.Context) *outerTracker {
+func newOuterTrackerCreate(pip *pipe, userCtx context.Context) *outerTracker {
+	parent := pip.tracker
 	ctx, cancel := context.WithCancel(parent.ctx)
 	tracker := &outerTracker{
 		id:        parent.Instance().NewID(),
@@ -272,8 +303,8 @@ func newOuterTracker2(parent *tracker, callGuard *shredder.ValveFrame, userCtx c
 		parent:    parent,
 		ctx:       ctx,
 		cancel:    cancel,
-		callGuard: callGuard,
-		user:      common.UserCtx(userCtx, parent.renderCtx),
+		callGuard: pip.callGuard,
+		user:      common.UserCtx(userCtx, pip.innerContext()),
 	}
 	tracker.cinema = beam.NewCinema(parent.Cinema(), tracker)
 	tracker.outerGuard = new(shredder.ValveFrame)
@@ -378,6 +409,27 @@ func (t *outerTracker) Reload(ctx context.Context) <-chan error {
 	current := t.current
 	t.mu.Unlock()
 	return current.Reload(ctx)
+}
+
+func (t *outerTracker) DeferredInner(ctx context.Context, content any) <-chan error {
+	t.mu.Lock()
+	current := t.current
+	t.mu.Unlock()
+	return current.DeferredInner(ctx, content)
+}
+
+func (t *outerTracker) DeferredOuter(ctx context.Context, content any) <-chan error {
+	t.mu.Lock()
+	current := t.current
+	t.mu.Unlock()
+	return current.DeferredOuter(ctx, content)
+}
+
+func (t *outerTracker) DeferredStatic(ctx context.Context, content any) <-chan error {
+	t.mu.Lock()
+	current := t.current
+	t.mu.Unlock()
+	return current.DeferredStatic(ctx, content)
 }
 
 func (t *outerTracker) RootCore() core.Core {

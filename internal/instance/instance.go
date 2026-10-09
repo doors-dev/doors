@@ -229,7 +229,7 @@ func (inst Instance) Serve(w http.ResponseWriter, r *http.Request, page Page) (e
 	inst.solitaire = solitaire.NewSolitaire(inst, common.GetSolitaireConf(inst.Session().App().Conf()))
 	inst.root = door.NewRoot(inst)
 	inst.killTimer = utils.NewKillTimer(inst)
-	inst.csp = inst.session.app.CSP().NewCollector()
+	inst.csp = common.NewCSPCollector(inst.session.app.CSP())
 	inst.importMap = utils.NewImportMap()
 	inst.titleMeta = utils.NewTitleMeta(inst)
 	stack, err := inst.root.Render(r.Context(), instanceComp{
@@ -282,7 +282,6 @@ func (inst *instance) renderHeaders(w http.ResponseWriter, gz bool, importHash [
 		}
 		header := inst.csp.Generate()
 		w.Header().Add("Content-Security-Policy", header)
-		inst.csp = nil
 	}
 	if gz {
 		w.Header().Set("Content-Encoding", "gzip")

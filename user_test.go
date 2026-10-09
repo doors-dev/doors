@@ -76,6 +76,24 @@ func (helperDoor) Reload(context.Context) <-chan error {
 	return ch
 }
 
+func (helperDoor) DeferredInner(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+
+func (helperDoor) DeferredOuter(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+
+func (helperDoor) DeferredStatic(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+
 func (helperDoor) RootCore() core.Core {
 	return nil
 }
@@ -115,6 +133,24 @@ func (helperDoorWithRoot) ID() uint64 {
 }
 
 func (helperDoorWithRoot) Reload(context.Context) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+
+func (helperDoorWithRoot) DeferredInner(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+
+func (helperDoorWithRoot) DeferredOuter(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+
+func (helperDoorWithRoot) DeferredStatic(context.Context, any) <-chan error {
 	ch := make(chan error)
 	close(ch)
 	return ch
@@ -162,7 +198,7 @@ func (h *helperInstance) UserCall(_ context.Context, act actions.Action, onResul
 }
 
 func (h *helperInstance) CSPCollector() common.CSPCollector {
-	return (&common.CSP{}).NewCollector()
+	return common.NewCSPCollector(&common.CSP{})
 }
 
 func (h *helperInstance) ModuleRegistry() core.ModuleRegistry {

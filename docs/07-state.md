@@ -28,8 +28,8 @@ Use `doors.NewSourceEqual(...)` when you need custom equality:
 ```go
 import "reflect"
 
-settings := doors.NewSourceEqual(Settings{}, func(new Settings, old Settings) bool {
-	return reflect.DeepEqual(new, old)
+settings := doors.NewSourceEqual(Settings{}, func(old Settings, new Settings) bool {
+	return reflect.DeepEqual(old, new)
 })
 ```
 

@@ -31,12 +31,20 @@ func newPipe(
 	buffer *deque.Deque[any],
 	renderFrame shredder.ReleaseFrame,
 	callGuard *shredder.ValveFrame,
+	document bool,
 ) *pipe {
 	p := &pipe{
 		tracker:     tracker,
 		buffer:      buffer,
 		renderFrame: renderFrame,
 		callGuard:   callGuard,
+		document:    document,
+		ctx:         tracker.renderCtx,
+		outerCtx:    tracker.outer.renderCtx,
+	}
+	if document {
+		p.ctx = common.DocumentCtx(p.ctx)
+		p.outerCtx = common.DocumentCtx(p.outerCtx)
 	}
 	p.printFront = printer.NewResourcePrinter((*pushFrontPrinter)(p.buffer))
 	p.printBack = printer.NewResourcePrinter((*pushBackPrinter)(p.buffer))
@@ -44,6 +52,9 @@ func newPipe(
 }
 
 type pipe struct {
+	document    bool
+	ctx         context.Context
+	outerCtx    context.Context
 	tracker     *tracker
 	buffer      *deque.Deque[any]
 	renderFrame shredder.ReleaseFrame
@@ -61,11 +72,11 @@ func (p *pipe) parentID() uint64 {
 }
 
 func (p *pipe) innerContext() context.Context {
-	return p.tracker.renderCtx
+	return p.ctx
 }
 
 func (p *pipe) outerContext() context.Context {
-	return p.tracker.outer.renderCtx
+	return p.outerCtx
 }
 
 func (p *pipe) runtime() shredder.Runtime {
@@ -109,18 +120,21 @@ func (p *pipe) branch() *deque.Deque[any] {
 	return buffer
 }
 
+func (p *pipe) fork(buffer *deque.Deque[any]) *pipe {
+	pip := *p
+	pip.buffer = buffer
+	pip.printFront = printer.NewResourcePrinter((*pushFrontPrinter)(buffer))
+	pip.printBack = printer.NewResourcePrinter((*pushBackPrinter)(buffer))
+	return &pip
+}
+
 func (p *pipe) Submit(caller common.Caller, f func(cur gox.Cursor) error) {
-	pip := newPipe(
-		p.tracker,
-		p.branch(),
-		p.renderFrame,
-		p.callGuard,
-	)
+	pip := p.fork(p.branch())
 	pip.renderFrame.Submit(p.tracker.ctx, p.tracker.Runtime(), func(b bool) {
 		if !b {
 			return
 		}
-		cur := gox.NewCursor(pip.tracker.Context(), pip)
+		cur := gox.NewCursor(pip.innerContext(), pip)
 		if err := f(cur); err != nil {
 			pip.error(err, caller)
 		}

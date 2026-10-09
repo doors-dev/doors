@@ -113,8 +113,8 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 					updated: false,
 				},
 			},
-			equal: func(new int, old int) bool {
-				return new == old
+			equal: func(old int, new int) bool {
+				return old == new
 			},
 		}
 
@@ -142,8 +142,8 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 					updated: false,
 				},
 			},
-			equal: func(new int, old int) bool {
-				return new == old
+			equal: func(old int, new int) bool {
+				return old == new
 			},
 		}
 
@@ -171,8 +171,8 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 					updated: false,
 				},
 			},
-			equal: func(new int, old int) bool {
-				return new == old
+			equal: func(old int, new int) bool {
+				return old == new
 			},
 		}
 
@@ -206,8 +206,8 @@ func TestBeamSyncEntryCachedBranches(t *testing.T) {
 					updated: true,
 				},
 			},
-			equal: func(new int, old int) bool {
-				return new == old
+			equal: func(old int, new int) bool {
+				return old == new
 			},
 		}
 
@@ -251,8 +251,8 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 				t.Fatal("cast should not run when previous beam value is still cached")
 				return ""
 			},
-			equal: func(new string, old string) bool {
-				return new == old
+			equal: func(old string, new string) bool {
+				return old == new
 			},
 		}
 
@@ -289,8 +289,8 @@ func TestBeamSyncEntryStaleEqualBranches(t *testing.T) {
 			get: func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			},
-			equal: func(new string, old string) bool {
-				return new == old
+			equal: func(old string, new string) bool {
+				return old == new
 			},
 		}
 
@@ -328,8 +328,8 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 				t.Fatal("cast should not run when source value is missing")
 				return ""
 			},
-			equal: func(new string, old string) bool {
-				return new == old
+			equal: func(old string, new string) bool {
+				return old == new
 			},
 		}
 
@@ -358,8 +358,8 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 			get: func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			},
-			equal: func(new string, old string) bool {
-				return new == old
+			equal: func(old string, new string) bool {
+				return old == new
 			},
 		}
 
@@ -403,8 +403,8 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 			get: func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			},
-			equal: func(new string, old string) bool {
-				return new == old
+			equal: func(old string, new string) bool {
+				return old == new
 			},
 		}
 
@@ -450,8 +450,8 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 			get: func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			},
-			equal: func(new string, old string) bool {
-				return new == old
+			equal: func(old string, new string) bool {
+				return old == new
 			},
 		}
 
@@ -491,8 +491,8 @@ func TestBeamSyncEntrySourceBranches(t *testing.T) {
 			get: func(v int) string {
 				return fmt.Sprintf("v:%d", v)
 			},
-			equal: func(new string, old string) bool {
-				return new == old
+			equal: func(old string, new string) bool {
+				return old == new
 			},
 		}
 

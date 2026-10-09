@@ -137,10 +137,12 @@ func (i *testInstance) UserCall(context.Context, actions.Action, func(json.RawMe
 func (i *testInstance) UserCallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 
-func (i *testInstance) Session() core.Session                { return i.session }
-func (i *testInstance) Logger() *slog.Logger                 { return testLogger }
-func (i *testInstance) Store() ctex.Store                    { return ctex.NewStore() }
-func (i *testInstance) CSPCollector() common.CSPCollector    { return (&common.CSP{}).NewCollector() }
+func (i *testInstance) Session() core.Session { return i.session }
+func (i *testInstance) Logger() *slog.Logger  { return testLogger }
+func (i *testInstance) Store() ctex.Store     { return ctex.NewStore() }
+func (i *testInstance) CSPCollector() common.CSPCollector {
+	return common.NewCSPCollector(&common.CSP{})
+}
 func (i *testInstance) ModuleRegistry() core.ModuleRegistry  { return nil }
 func (i *testInstance) ID() string                           { return "instance" }
 func (i *testInstance) LastSeen() time.Time                  { return time.Time{} }
@@ -249,5 +251,80 @@ func TestStaticChainReleasesParentPrinter(t *testing.T) {
 	}
 	if n := inst.root.tracker.printerCount(); n != 0 {
 		t.Fatalf("root content tracker retains %d printers", n)
+	}
+}
+
+type userKey struct{}
+
+type submitJob struct {
+	ctx context.Context
+	el  gox.Elem
+}
+
+func (j submitJob) Render(pip Pipe) {
+	pip.Submit(common.Caller{}, func(cur gox.Cursor) error {
+		return gox.NewCursor(j.ctx, cur.Printer()).Comp(j.el)
+	})
+}
+
+func (j submitJob) Context() context.Context {
+	return j.ctx
+}
+
+func (submitJob) Output(io.Writer) error {
+	return nil
+}
+
+// Doors placed during the page render keep no user context of their own
+// unless the render wrapped ctx.
+func TestDocumentDoorsKeepNoUserCtx(t *testing.T) {
+	inst := newTestInstance(t)
+	plain := &Door{}
+	nested := &Door{}
+	nested.Inner(context.Background(), text("nested"))
+	plain.Inner(context.Background(), func(cur gox.Cursor) error {
+		return cur.Comp(nested)
+	})
+	inStatic := &Door{}
+	inStatic.Inner(context.Background(), text("in static"))
+	static := &Door{}
+	static.Static(context.Background(), func(cur gox.Cursor) error {
+		return cur.Comp(inStatic)
+	})
+	inSubmit := &Door{}
+	inSubmit.Inner(context.Background(), text("in submit"))
+	staticInSubmit := &Door{}
+	staticInSubmit.Static(context.Background(), text("static in submit"))
+	wrapped := &Door{}
+	wrapped.Inner(context.Background(), text("wrapped"))
+	renderTestPage(t, inst, func(cur gox.Cursor) error {
+		for _, d := range []*Door{plain, static} {
+			if err := cur.Comp(d); err != nil {
+				return err
+			}
+		}
+		if err := cur.Printer().Send(submitJob{ctx: cur.Context(), el: func(cur gox.Cursor) error {
+			if err := cur.Comp(inSubmit); err != nil {
+				return err
+			}
+			return cur.Comp(staticInSubmit)
+		}}); err != nil {
+			return err
+		}
+		ctx := context.WithValue(cur.Context(), userKey{}, true)
+		return gox.NewCursor(ctx, cur.Printer()).Comp(wrapped)
+	})
+	for name, d := range map[string]*Door{"plain": plain, "nested": nested, "in static": inStatic, "in submit": inSubmit} {
+		if user := d.node.Load().tracker.outer.user; user != nil {
+			t.Errorf("%s door keeps a user context", name)
+		}
+	}
+	for name, d := range map[string]*Door{"static": static, "static in submit": staticInSubmit} {
+		if user := d.node.Load().static.user; user != nil {
+			t.Errorf("%s door keeps a user context", name)
+		}
+	}
+	if user := wrapped.node.Load().tracker.outer.user; user == nil {
+		t.Error("wrapped door lost its user context")
 	}
 }

@@ -177,8 +177,8 @@ func NewPathBroOptions(b *rod.Browser, page func(PathLens) gox.Comp, options []d
 					return prev
 				}
 				return loc
-			}, func(new Path, old Path) bool {
-				return reflect.DeepEqual(new, old)
+			}, func(old Path, new Path) bool {
+				return reflect.DeepEqual(old, new)
 			})
 			return page(pathLens)
 		},

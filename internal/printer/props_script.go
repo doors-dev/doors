@@ -64,17 +64,20 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		return nil
 	}
 	c := job.Ctx.Value(common.KeyCore).(core.Core)
+	document, _ := job.Ctx.Value(common.KeyDocument).(bool)
 	switch src := s.source.(type) {
 	case string:
-		if s.specifier != "" {
+		if document && s.specifier != "" {
 			c.Instance().ModuleRegistry().Add(s.specifier, src)
 		}
 		return p.printer.Send(job)
 	case SourceExternal:
-		if s.specifier != "" {
+		if document && s.specifier != "" {
 			c.Instance().ModuleRegistry().Add(s.specifier, string(src))
 		}
-		c.Instance().CSPCollector().ScriptSource(string(src))
+		if document {
+			c.Instance().CSPCollector().ScriptSource(string(src))
+		}
 		return p.printer.Send(job)
 	case SourceStatic:
 		entry := src.scriptEntry(s.output == scriptInline, s.ts)
@@ -90,7 +93,7 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		if err != nil {
 			return err
 		}
-		if s.specifier != "" {
+		if document && s.specifier != "" {
 			c.Instance().ModuleRegistry().Add(s.specifier, path)
 		}
 		s.sourceAttr.Set(path)
@@ -104,7 +107,7 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 			return context.Canceled
 		}
 		path := c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, s.name)
-		if s.specifier != "" {
+		if document && s.specifier != "" {
 			c.Instance().ModuleRegistry().Add(s.specifier, path)
 		}
 		s.sourceAttr.Set(path)

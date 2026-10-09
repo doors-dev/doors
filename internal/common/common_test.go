@@ -19,10 +19,14 @@ import (
 	"compress/gzip"
 	"io"
 	"log/slog"
+	"runtime"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/doors-dev/gox"
 )
@@ -154,7 +158,7 @@ func TestCSPGenerateAndCollector(t *testing.T) {
 		ImgSources:          []string{"data:"},
 		ReportTo:            "csp-endpoint",
 	}
-	collector := csp.NewCollector()
+	collector := NewCSPCollector(csp)
 	collector.StyleSource("https://style-cdn.example")
 	collector.ScriptSource("https://script-cdn.example")
 	collector.StyleHash([]byte("style-hash"))
@@ -190,7 +194,7 @@ func TestCSPGenerateAndCollector(t *testing.T) {
 	}
 
 	var nilCSP *CSP
-	if nilCSP.NewCollector() != nil {
+	if NewCSPCollector(nilCSP) != nil {
 		t.Fatal("expected nil csp collector to stay nil")
 	}
 	if got := csp.simple("img-src", nil, []string{}, nil); got != "" {
@@ -302,4 +306,37 @@ func TestPrimeIDAndEndCause(t *testing.T) {
 	if got := EndCauseSuspend.Error(); got != "instance suspended" {
 		t.Fatalf("unexpected end cause error: %q", got)
 	}
+}
+
+// Once runs f on the first call only, also under concurrent callers, and
+// drops f once it ran; a nil f gives a no-op.
+func TestOnce(t *testing.T) {
+	var runs atomic.Int32
+	var once func()
+	held := func() weak.Pointer[[64]byte] {
+		v := new([64]byte)
+		once = Once(func() {
+			v[0]++
+			runs.Add(1)
+		})
+		return weak.Make(v)
+	}()
+	runtime.GC()
+	if held.Value() == nil {
+		t.Fatal("Once dropped f before it ran")
+	}
+	var wg sync.WaitGroup
+	for range 64 {
+		wg.Go(once)
+	}
+	wg.Wait()
+	once()
+	if n := runs.Load(); n != 1 {
+		t.Fatalf("expected f to run once, ran %d times", n)
+	}
+	runtime.GC()
+	if held.Value() != nil {
+		t.Fatal("Once kept f after it ran")
+	}
+	Once(nil)()
 }

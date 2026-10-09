@@ -121,8 +121,8 @@ func TestEqualSubAndGo(t *testing.T) {
 		func() test.Fragment {
 			return &BeamEqualFragment{
 				r: test.NewReporter(3),
-				b: doors.NewSourceEqual(state{}, func(new state, old state) bool {
-					return new.Int == old.Int
+				b: doors.NewSourceEqual(state{}, func(old state, new state) bool {
+					return old.Int == new.Int
 				}),
 			}
 		})

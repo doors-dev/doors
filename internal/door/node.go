@@ -36,12 +36,6 @@ const (
 	modeStatic
 )
 
-const (
-	nodeInit int32 = iota
-	nodeFlushed
-	nodeSuperseded
-)
-
 type node struct {
 	caller    common.Caller
 	door      *Door
@@ -55,6 +49,8 @@ type node struct {
 		id   uint64
 		user context.Context
 	}
+	deferedInnerClean func()
+	deferedOuterClean func()
 }
 
 func (n *node) runtimeContext() context.Context {
@@ -138,6 +134,19 @@ func (n *node) callID() uint64 {
 	}
 }
 
+func (n *node) hasDeferedClean() bool {
+	return n.deferedOuterClean != nil || n.deferedInnerClean != nil
+}
+
+func (n *node) cleanDefered() {
+	if n.deferedInnerClean != nil {
+		n.deferedInnerClean()
+	}
+	if n.deferedOuterClean != nil {
+		n.deferedOuterClean()
+	}
+}
+
 func (n *node) onSyncError(err error) {
 	logError(n.tracker.ctx, n.logger(), err, n.caller)
 	switch n.mode {
@@ -164,9 +173,11 @@ func (n *node) syncRenderFrame(task *userTask, threadFrame shredder.ReleaseFrame
 	}
 }
 
-func (n *node) sync(task *userTask) {
+func (n *node) sync(task *userTask, writeFrame shredder.ReleaseFrame) {
 	thread := shredder.Thread{}
-	writeFrame := n.tracker.rw.Write()
+	if writeFrame == nil {
+		writeFrame = n.tracker.rw.Write()
+	}
 	renderFrame := n.syncRenderFrame(task, thread.Frame(), writeFrame)
 	defer renderFrame.Release()
 	innerCallGuard := new(shredder.ValveFrame)
@@ -175,7 +186,15 @@ func (n *node) sync(task *userTask) {
 		common.GetDequeBuffer(),
 		renderFrame,
 		innerCallGuard,
+		false,
 	)
+	if n.hasDeferedClean() {
+		cleanFrame := shredder.JoinRelease(n.runtimeContext(), thread.Frame())
+		cleanFrame.Run(nil, pip.runtime(), func(bool) {
+			n.cleanDefered()
+		})
+		cleanFrame.Release()
+	}
 	callFrame := shredder.JoinRelease(n.runtimeContext(), thread.Frame(), writeFrame, n.tracker.outer.callGuard, task.CallFrame())
 	defer callFrame.Release()
 	var err error
@@ -264,6 +283,7 @@ func (n *node) placeRender(parentPipe *pipe, buffer *deque.Deque[any]) {
 		buffer,
 		renderFrame,
 		n.tracker.outer.callGuard,
+		parentPipe.document,
 	)
 	var err error
 	renderFrame.Submit(n.tracker.outer.ctx, pip.runtime(), func(b bool) {
@@ -312,13 +332,8 @@ func (n *node) placeRenderStatic(parentPipe *pipe, buffer *deque.Deque[any]) {
 		if !b {
 			return
 		}
-		pipe := newPipe(
-			parentPipe.tracker,
-			buffer,
-			parentPipe.renderFrame,
-			parentPipe.callGuard,
-		)
-		cur := gox.NewCursor(common.NewRenderCtx(parentPipe.tracker.renderCtx, n.static.user), pipe)
+		pipe := parentPipe.fork(buffer)
+		cur := gox.NewCursor(common.NewRenderCtx(pipe.innerContext(), n.static.user), pipe)
 		if err := cur.Any(n.outer); err != nil {
 			pipe.error(err, n.caller)
 		}
@@ -385,10 +400,11 @@ func (n *node) renderInner(pip *pipe) (err error) {
 	return cur.Any(n.inner)
 }
 
-func (n *node) scheduleRemoval() {
+func (n *node) scheduleRemoval(placed *shredder.ValveFrame) {
 	var thread shredder.Thread
-	placeFrame := shredder.JoinRelease(n.runtimeContext(), n.tracker.outer.placeGuard, thread.Frame())
+	placeFrame := shredder.JoinRelease(n.runtimeContext(), placed, n.tracker.outer.placeGuard, thread.Frame())
 	placeFrame.Run(nil, n.tracker.Runtime(), func(b bool) {
+		n.cleanDefered()
 		if n.tracker.outer.placementError != nil {
 			return
 		}

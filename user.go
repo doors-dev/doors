@@ -41,11 +41,67 @@ func Reload(ctx context.Context) <-chan error {
 	return core.Door().Reload(ctx)
 }
 
+// DeferredInner replaces the children of the closest dynamic parent with
+// content, but waits until the current content is rendered and scheduled for
+// delivery. Use it to show a placeholder first and replace it with content that
+// is slow to render.
+//
+// It is the same as [Door.DeferredInner] on that parent, but bound to the
+// content ctx belongs to: if a newer operation has already replaced that
+// content, it does nothing and reports context.Canceled.
+//
+// ctx must belong to a Doors render or handler; otherwise DeferredInner panics.
+func DeferredInner(ctx context.Context, content any) <-chan error {
+	core := ctx.Value(common.KeyCore).(core.Core)
+	return core.Door().DeferredInner(ctx, content)
+}
+
+// DeferredOuter replaces the container and children of the closest dynamic
+// parent with content, but waits until the current content is rendered and
+// scheduled for delivery. Use it to show a placeholder first and replace it
+// with content that is slow to render.
+//
+// It is the same as [Door.DeferredOuter] on that parent, but bound to the
+// content ctx belongs to: if a newer operation has already replaced that
+// content, it does nothing and reports context.Canceled.
+//
+// ctx must belong to a Doors render or handler; otherwise DeferredOuter panics.
+func DeferredOuter(ctx context.Context, content any) <-chan error {
+	core := ctx.Value(common.KeyCore).(core.Core)
+	return core.Door().DeferredOuter(ctx, content)
+}
+
+// DeferredStatic removes the container of the closest dynamic parent and
+// renders content in its place, but waits until the current content is
+// rendered and scheduled for delivery. Use it to show a placeholder first and
+// replace it with content that is slow to render.
+//
+// It is the same as [Door.DeferredStatic] on that parent, but bound to the
+// content ctx belongs to: if a newer operation has already replaced that
+// content, it does nothing and reports context.Canceled.
+//
+// ctx must belong to a Doors render or handler; otherwise DeferredStatic panics.
+func DeferredStatic(ctx context.Context, content any) <-chan error {
+	core := ctx.Value(common.KeyCore).(core.Core)
+	return core.Door().DeferredStatic(ctx, content)
+}
+
 // HasSession reports whether ctx carries a Doors session, meaning
 // session-scoped helpers like [SessionID] and [SessionStore] accept it.
 func HasSession(ctx context.Context) bool {
 	_, ok := ctx.Value(common.KeySession).(core.Session)
 	return ok
+}
+
+// IsDocument reports whether ctx renders into the HTML document of the page
+// response: the initial page render and every Door placed during it. Updates
+// report false, including Deferred and Reload renders that run before the
+// response is sent, as do handlers, callbacks, and contexts from
+// [DetachedContext] or [InstanceContext]. Contexts derived from such a ctx with
+// the context package keep the value.
+func IsDocument(ctx context.Context) bool {
+	v, _ := ctx.Value(common.KeyDocument).(bool)
+	return v
 }
 
 // HasInstance reports whether ctx belongs to a Doors render or handler,
@@ -161,8 +217,9 @@ func InstanceStore(ctx context.Context) Store {
 // It carries the session and nothing else: values of ctx are dropped, and it is
 // tied to no instance or dynamic owner. Session-scoped helpers, Door methods,
 // and Source or Beam reads, subscriptions, and updates accept it; a
-// subscription made with it lives until the session ends. [Reload] and
-// instance-scoped helpers panic on it.
+// subscription made with it lives until the session ends. [Reload],
+// [DeferredInner], [DeferredOuter], [DeferredStatic], and instance-scoped
+// helpers panic on it.
 //
 // ctx must carry a Doors session; otherwise SessionContext panics.
 func SessionContext(ctx context.Context) context.Context {

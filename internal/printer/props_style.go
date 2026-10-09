@@ -60,7 +60,9 @@ func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 	case string:
 		return p.printer.Send(job)
 	case SourceExternal:
-		c.Instance().CSPCollector().StyleSource(string(src))
+		if document, _ := job.Ctx.Value(common.KeyDocument).(bool); document {
+			c.Instance().CSPCollector().StyleSource(string(src))
+		}
 		return p.printer.Send(job)
 	case SourceStatic:
 		entry := src.styleEntry()

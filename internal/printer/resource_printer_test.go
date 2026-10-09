@@ -62,7 +62,7 @@ func (t *titleInstance) CSPCollector() common.CSPCollector {
 	if t.csp != nil {
 		return t.csp
 	}
-	return (&common.CSP{}).NewCollector()
+	return common.NewCSPCollector(&common.CSP{})
 }
 func (t *titleInstance) ModuleRegistry() core.ModuleRegistry  { return t.modules }
 func (t *titleInstance) ID() string                           { return "instance" }
@@ -150,6 +150,21 @@ func (titleDoor) Reload(context.Context) <-chan error {
 	close(ch)
 	return ch
 }
+func (titleDoor) DeferredInner(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+func (titleDoor) DeferredOuter(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+func (titleDoor) DeferredStatic(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
 func (titleDoor) RootCore() core.Core {
 	return nil
 }
@@ -203,6 +218,21 @@ func (d *hookDoor) Reload(context.Context) <-chan error {
 	close(ch)
 	return ch
 }
+func (d *hookDoor) DeferredInner(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+func (d *hookDoor) DeferredOuter(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
+func (d *hookDoor) DeferredStatic(context.Context, any) <-chan error {
+	ch := make(chan error)
+	close(ch)
+	return ch
+}
 func (d *hookDoor) RootCore() core.Core {
 	return nil
 }
@@ -224,14 +254,42 @@ func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstan
 	inst := &titleInstance{
 		registry: registry,
 		conf:     conf,
-		csp:      (&common.CSP{}).NewCollector(),
+		csp:      common.NewCSPCollector(&common.CSP{}),
 		modules:  modules,
 		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
 	}
 	inst.session = &titleSession{app: titleApp{conf: &inst.conf, registry: registry}}
 	door := &hookDoor{id: 7, allowHook: allowHook, inst: inst}
-	ctx := context.WithValue(context.Background(), common.KeyCore, core.NewCore(door))
+	ctx := common.DocumentCtx(context.WithValue(context.Background(), common.KeyCore, core.NewCore(door)))
 	return ctx, inst, door, modules
+}
+
+// Updates render after the page response, so they register no CSP sources or
+// import map specifiers.
+func TestResourcePrinterSkipsRegistrationOutsideDocument(t *testing.T) {
+	_, inst, door, modules := newPrinterCore(t, true)
+	ctx := context.WithValue(context.Background(), common.KeyCore, core.NewCore(door))
+	var out bytes.Buffer
+	rp := &resourcePrinter{printer: defaultPrinter{&out}}
+	script := gox.NewAttrs()
+	script.Get("src").Set(SourceExternal("https://cdn.example/app.js"))
+	script.Get("type").Set("module")
+	script.Get("specifier").Set("app")
+	if err := rp.prepareScript(gox.NewJobOpen(ctx, 1, gox.KindRegular, "script", script)); err != nil {
+		t.Fatal(err)
+	}
+	style := gox.NewAttrs()
+	style.Get("rel").Set("stylesheet")
+	style.Get("href").Set(SourceExternal("https://cdn.example/app.css"))
+	if err := rp.prepareLinkStyle(gox.NewJobOpen(ctx, 2, gox.KindVoid, "link", style)); err != nil {
+		t.Fatal(err)
+	}
+	if header := inst.CSPCollector().Generate(); strings.Contains(header, "cdn.example") {
+		t.Fatalf("update registered csp sources: %q", header)
+	}
+	if len(modules.values) != 0 {
+		t.Fatalf("update registered specifiers: %#v", modules.values)
+	}
 }
 
 type failPrinter struct {
@@ -539,8 +597,8 @@ func TestPrepareLinkStyleBranches(t *testing.T) {
 		if !strings.Contains(out.String(), `https://cdn.example/app.css`) {
 			t.Fatalf("expected external stylesheet passthrough, got %q", out.String())
 		}
-		if !strings.Contains(inst.CSPCollector().Generate(), "https://cdn.example/app.css") {
-			t.Fatalf("expected csp style source to be recorded, got %q", inst.CSPCollector().Generate())
+		if header := inst.CSPCollector().Generate(); !strings.Contains(header, "https://cdn.example/app.css") {
+			t.Fatalf("expected csp style source to be recorded, got %q", header)
 		}
 	})
 }

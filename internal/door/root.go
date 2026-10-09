@@ -39,7 +39,7 @@ func NewRoot(inst Instance) Root {
 		inst:  inst,
 		hooks: make(map[uint64]*hook),
 	}
-	r.outer = newRootOuterTracker(r)
+	r.outer = newOuterTrackerRoot(r)
 	r.tracker = r.outer.newTracker(nil)
 	r.core = core.NewCore(r.tracker)
 	return r
@@ -112,6 +112,7 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 		common.GetDequeBuffer(),
 		renderFrame,
 		passGuard,
+		true,
 	)
 	ch := make(chan struct{})
 	callFrame := shredder.JoinRelease(r.tracker.Context(), thread.Frame(), writeFrame)
@@ -121,7 +122,7 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 			err = context.Canceled
 			return
 		}
-		cur := gox.NewCursor(r.tracker.Context(), pipe)
+		cur := gox.NewCursor(pipe.innerContext(), pipe)
 		err = cur.Comp(comp)
 	})
 	callFrame.Run(r.tracker.ctx, r.runtime(), func(bool) {

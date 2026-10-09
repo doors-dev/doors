@@ -340,8 +340,8 @@ func (f *BeamEqualFragment) Main() gox.Elem {
 				return "even"
 			}
 			return "odd"
-		}, func(new string, old string) bool {
-			return new == old
+		}, func(old string, new string) bool {
+			return old == new
 		})
 	}
 	f.b.Sub(ctx, func(ctx context.Context, s state) bool {
@@ -1055,8 +1055,8 @@ func (f *BeamLensRoundTripFragment) init() {
 		return "odd"
 	}, func(s state, _ string) state {
 		return s
-	}, func(new string, old string) bool {
-		return new == old
+	}, func(old string, new string) bool {
+		return old == new
 	})
 	f.label = doors.DeriveBeam(f.intLens, func(v int) string {
 		return fmt.Sprintf("label:%d", v)

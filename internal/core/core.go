@@ -104,6 +104,9 @@ type Door interface {
 	ID() uint64
 	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race Race) (Hook, bool)
 	Reload(ctx context.Context) <-chan error
+	DeferredInner(ctx context.Context, content any) <-chan error
+	DeferredOuter(ctx context.Context, content any) <-chan error
+	DeferredStatic(ctx context.Context, content any) <-chan error
 	RootCore() Core
 	UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
 	CleanFrame() shredder.Frame

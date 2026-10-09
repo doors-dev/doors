@@ -1,0 +1,425 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package deferred
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"sync"
+	"sync/atomic"
+	
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type Shared struct {
+	mu sync.Mutex
+	block chan struct{}
+	skelBlock chan struct{}
+	entered chan string
+	results chan string
+	counts map[string]int
+	probes map[string]<-chan error
+	queued map[string]int
+}
+
+func NewShared() *Shared {
+	return &Shared{
+		entered: make(chan string, 64),
+		results: make(chan string, 64),
+		counts: map[string]int{},
+		probes: map[string]<-chan error{},
+		queued: map[string]int{},
+	}
+}
+
+func (s *Shared) count(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.counts[key]++
+}
+
+func (s *Shared) Count(key string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.counts[key]
+}
+
+func (s *Shared) hold(block *chan struct{}) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if *block == nil {
+		*block = make(chan struct{})
+	}
+}
+
+func (s *Shared) release(block *chan struct{}) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if *block != nil {
+		close(*block)
+		*block = nil
+	}
+}
+
+func (s *Shared) Hold() {
+	s.hold(&s.block)
+}
+
+func (s *Shared) Release() {
+	s.release(&s.block)
+}
+
+func (s *Shared) HoldSkeleton() {
+	s.hold(&s.skelBlock)
+}
+
+func (s *Shared) ReleaseSkeleton() {
+	s.release(&s.skelBlock)
+}
+
+func (s *Shared) Probe(label string, ch <-chan error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.probes[label] = ch
+}
+
+func (s *Shared) Probed(label string) (<-chan error, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	ch, ok := s.probes[label]
+	return ch, ok
+}
+
+func (s *Shared) Queued(label string) (int, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n, ok := s.queued[label]
+	return n, ok
+}
+
+func (s *Shared) pass(label string) {
+	s.mu.Lock()
+	s.counts["heavy " + label]++
+	if probe, ok := s.probes["load " + label]; ok {
+		s.queued[label] = len(probe)
+	}
+	block := s.block
+	s.mu.Unlock()
+	select {
+	case s.entered <- label:
+	default:
+	}
+	if block != nil {
+		<-block
+	}
+}
+
+func (s *Shared) passSkeleton(label string) {
+	s.mu.Lock()
+	block := s.skelBlock
+	s.mu.Unlock()
+	select {
+	case s.entered <- "skel " + label:
+	default:
+	}
+	if block != nil {
+		<-block
+	}
+}
+
+func (s *Shared) track(label string, ch <-chan error) {
+	go func() {
+		var out []string
+		for err := range ch {
+			if err == nil {
+				out = append(out, "nil")
+				continue
+			}
+			out = append(out, err.Error())
+		}
+		s.results <- label + ":" + strings.Join(out, ",")
+	}()
+}
+
+elem (s *Shared) heavy(label string) {
+	~~
+	s.pass(label)
+	~~
+	<b class="heavy">~("heavy " + label)</b>
+}
+
+elem (s *Shared) skeleton(label string) {
+	<i class="skel">~("skel " + label)</i>
+}
+
+elem (s *Shared) innerLoader(label string) {
+	~~
+	s.count("deferred " + label)
+	s.track("deferred " + label, doors.DeferredInner(ctx, s.heavy(label)))
+	~~
+	~(s.skeleton(label))
+}
+
+elem (s *Shared) gatedLoader(label string) {
+	~~
+	s.count("deferred " + label)
+	s.track("deferred " + label, doors.DeferredInner(ctx, s.heavy(label)))
+	s.passSkeleton(label)
+	~~
+	~(s.skeleton(label))
+}
+
+elem (s *Shared) outerLoader(label string) {
+	~~
+	s.count("deferred " + label)
+	s.track("deferred " + label, doors.DeferredOuter(ctx, s.heavy(label)))
+	~~
+	~(s.skeleton(label))
+}
+
+elem (s *Shared) staticLoader(label string) {
+	~~
+	s.count("deferred " + label)
+	s.track("deferred " + label, doors.DeferredStatic(ctx, s.heavy(label)))
+	~~
+	~(s.skeleton(label))
+}
+
+elem (s *Shared) documentLoader(label string) {
+	~({
+		if doors.IsDocument(ctx) {
+			return s.heavy(label)
+		}
+		s.count("deferred " + label)
+		s.track("deferred " + label, doors.DeferredInner(ctx, s.heavy(label)))
+		return s.skeleton(label)
+	})
+}
+
+type Sentinel struct {
+	d doors.Door
+	n atomic.Int32
+}
+
+elem (s *Sentinel) Main() {
+	<div id="sentinel">~(&s.d)</div>
+	~(test.Button("sentinel-ping", func(ctx context.Context) bool {
+		s.d.Inner(ctx, <span>~(fmt.Sprint("ping ", s.n.Add(1)))</span>)
+		return false
+	}))
+}
+
+type FreshFragment struct {
+	S *Shared
+	parent doors.Door
+	loose doors.Door
+	sentinel Sentinel
+	test.NoBeam
+}
+
+elem (f *FreshFragment) blendHost(label string) {
+	~~
+	d := &doors.Door{}
+	~~
+	~>(d) <div class="door">~(f.S.innerLoader(label))</div>
+}
+
+elem (f *FreshFragment) innerHost(label string) {
+	~~
+	d := &doors.Door{}
+	d.Inner(ctx, f.S.innerLoader(label))
+	~~
+	~(d)
+}
+
+elem (f *FreshFragment) documentHost(label string) {
+	~~
+	d := &doors.Door{}
+	~~
+	~>(d) <div class="door">~(f.S.documentLoader(label))</div>
+}
+
+elem (f *FreshFragment) Main() {
+	<section id="area">~(&f.parent)</section>
+	~(&f.sentinel)
+	~(test.Button("place-blend", func(ctx context.Context) bool {
+		f.parent.Inner(ctx, f.blendHost("blend"))
+		return false
+	}))
+	~(test.Button("place-inner", func(ctx context.Context) bool {
+		f.parent.Inner(ctx, f.innerHost("inner"))
+		return false
+	}))
+	~(test.Button("place-document", func(ctx context.Context) bool {
+		f.parent.Inner(ctx, f.documentHost("document"))
+		return false
+	}))
+	~(test.Button("defer-loose", func(ctx context.Context) bool {
+		f.S.track("loose", f.loose.DeferredInner(ctx, f.S.heavy("loose")))
+		return false
+	}))
+	~(test.Button("place-loose", func(ctx context.Context) bool {
+		f.parent.Inner(ctx, &f.loose)
+		return false
+	}))
+}
+
+type BindFragment struct {
+	S *Shared
+	Outer bool
+	src doors.Source[int]
+	sentinel Sentinel
+	test.NoBeam
+}
+
+elem (f *BindFragment) Main() {
+	~~
+	f.src = doors.NewSource(0)
+	~~
+	<section id="area">
+		~(f.src.Bind(func(v int) gox.Elem {
+			if f.Outer {
+				return f.S.outerLoader(fmt.Sprint(v))
+			}
+			return f.S.innerLoader(fmt.Sprint(v))
+		}))
+	</section>
+	~(&f.sentinel)
+	~(test.Button("next", func(ctx context.Context) bool {
+		f.src.Mutate(ctx, func(v int) int {
+			return v + 1
+		})
+		return false
+	}))
+}
+
+type MountedFragment struct {
+	S *Shared
+	d doors.Door
+	sentinel Sentinel
+	test.NoBeam
+}
+
+elem (f *MountedFragment) Main() {
+	~~
+	f.d.Inner(ctx, <span>initial</span>)
+	~~
+	<section id="area">~(&f.d)</section>
+	~(&f.sentinel)
+	~(test.Button("load", func(ctx context.Context) bool {
+		f.S.track("load", f.d.Inner(ctx, f.S.innerLoader("mounted")))
+		return false
+	}))
+	~(test.Button("load-gated", func(ctx context.Context) bool {
+		f.S.Probe("load gated", f.d.Inner(ctx, f.S.gatedLoader("gated")))
+		return false
+	}))
+	~(test.Button("newer-deferred", func(ctx context.Context) bool {
+		f.S.Probe("newer", f.d.DeferredInner(ctx, <span>newer</span>))
+		return false
+	}))
+	~(test.Button("plain-inner", func(ctx context.Context) bool {
+		f.S.track("plain", f.d.Inner(ctx, <span>plain</span>))
+		return false
+	}))
+	~(test.Button("plain-outer", func(ctx context.Context) bool {
+		f.S.track("plain", f.d.Outer(ctx, <span>plain</span>))
+		return false
+	}))
+	~(test.Button("plain-static", func(ctx context.Context) bool {
+		f.S.track("plain", f.d.Static(ctx, <span>plain</span>))
+		return false
+	}))
+	~(test.Button("plain-reload", func(ctx context.Context) bool {
+		f.S.track("plain", f.d.Reload(ctx))
+		return false
+	}))
+	~(test.Button("plain-unmount", func(ctx context.Context) bool {
+		f.S.track("plain", f.d.Unmount(ctx))
+		return false
+	}))
+}
+
+type ReloadFragment struct {
+	S *Shared
+	blend doors.Door
+	outer doors.Door
+	inner doors.Door
+	plain doors.Door
+	sentinel Sentinel
+	test.NoBeam
+}
+
+elem (f *ReloadFragment) Main() {
+	~~
+	f.outer.Outer(ctx, f.S.documentLoader("outer"))
+	f.inner.Inner(ctx, f.S.documentLoader("inner"))
+	~~
+	<section id="area-blend">
+		~>(f.blend) <div class="door">~(f.S.documentLoader("blend"))</div>
+	</section>
+	<section id="area-outer">~(&f.outer)</section>
+	<section id="area-inner">~(&f.inner)</section>
+	<section id="area-plain">
+		~>(f.plain) <div class="door">~(f.S.innerLoader("plain"))</div>
+	</section>
+	~(&f.sentinel)
+	~(test.Button("reload-blend", func(ctx context.Context) bool {
+		f.S.track("reload blend", f.blend.Reload(ctx))
+		return false
+	}))
+	~(test.Button("reload-outer", func(ctx context.Context) bool {
+		f.S.track("reload outer", f.outer.Reload(ctx))
+		return false
+	}))
+	~(test.Button("reload-inner", func(ctx context.Context) bool {
+		f.S.track("reload inner", f.inner.Reload(ctx))
+		return false
+	}))
+	~(test.Button("reload-plain", func(ctx context.Context) bool {
+		f.S.track("reload plain", f.plain.Reload(ctx))
+		return false
+	}))
+}
+
+type StaticFragment struct {
+	S *Shared
+	d doors.Door
+	sentinel Sentinel
+	test.NoBeam
+}
+
+elem (f *StaticFragment) Main() {
+	<section id="area">
+		~>(f.d) <div class="door">~(f.S.staticLoader("static"))</div>
+	</section>
+	~(&f.sentinel)
+	~(test.Button("after", func(ctx context.Context) bool {
+		f.S.track("after", f.d.Inner(ctx, <span>after</span>))
+		return false
+	}))
+}
+
+type RootFragment struct {
+	S *Shared
+	test.NoBeam
+}
+
+elem (f *RootFragment) Main() {
+	<section id="area">~(f.S.innerLoader("root"))</section>
+}

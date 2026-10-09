@@ -146,8 +146,8 @@ func (ae ActionEmit[T]) And(a Actions) Actions {
 	return joinedActions([]Actions{ae, a})
 }
 
-// Into returns an action that decodes the handler result into dst; see
-// [ActionInto.Into].
+// Into returns an action for [Call] that decodes the handler result into dst.
+// dst is valid once the completion channel returned by Call delivers nil.
 func (ae ActionEmit[T]) Into(dst *T) Action {
 	return into(ae, dst)
 }
@@ -376,8 +376,8 @@ func (ai ActionIndicate) action(ctx context.Context, core core.Core, _ bool) (ac
 //	err := <-doors.Call(ctx, doors.ActionTime{}.Into(&now))
 type ActionTime struct{}
 
-// Into returns an action that stores the reading into dst; see
-// [ActionInto.Into].
+// Into returns an action for [Call] that stores the reading into dst. dst is
+// valid once the completion channel returned by Call delivers nil.
 func (a ActionTime) Into(dst *time.Time) Action {
 	return into(a, dst)
 }

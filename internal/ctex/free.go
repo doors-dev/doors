@@ -43,7 +43,7 @@ func (f freeContext) Err() error {
 }
 
 func (f freeContext) Value(key any) any {
-	if key == common.KeyFrame {
+	if key == common.KeyFrame || key == common.KeyDocument {
 		return nil
 	}
 	return f.ctx.Value(key)

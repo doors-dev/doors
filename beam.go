@@ -68,20 +68,29 @@ type Beam[T any] interface {
 	Read(ctx context.Context) (T, bool)
 
 	// ReadAndSub returns the current value and subscribes to later updates.
-	// Unlike [Beam.Sub], onValue is not called with the current value. If
-	// onValue is nil, no subscription is created. The subscription lives as
-	// described in [Beam.Sub].
+	// Unlike [Beam.Sub], onValue is called only on later updates, not with the
+	// current value. If onValue is nil, no subscription is created.
+	//
+	// The subscription ends when onValue returns true or the content that
+	// registered it is cleared. From a context outside an instance, for
+	// example [SessionContext] or a background context, it ends when the
+	// context is canceled.
 	//
 	// It returns false if the context was canceled or the instance is shut
 	// down.
 	ReadAndSub(ctx context.Context, onValue func(context.Context, T) bool) (T, bool)
 
 	// Watch subscribes w to the value stream and returns a function that
-	// cancels the subscription. The subscription lives as described in
-	// [Beam.Sub]. It returns false if the context was canceled or the
-	// instance is shut down.
+	// cancels the subscription. It returns false if the context was canceled
+	// or the instance is shut down.
 	//
 	// w receives the current value on the calling goroutine, then every update.
+	// The subscription ends when w.Watch returns true, the returned function is
+	// called, or the content that registered it is cleared. From a context
+	// outside an instance, for example [SessionContext] or a background
+	// context, it ends when the context is canceled. w.Cancel runs when the
+	// subscription ends, unless w.Watch ended it by returning true.
+	//
 	// Prefer [Beam.Sub] or [Beam.ReadAndSub] unless you need to cancel the
 	// subscription explicitly.
 	Watch(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool)
@@ -127,8 +136,12 @@ type Source[T any] interface {
 	// concurrent update lands first, so keep it free of side effects. Any
 	// context is allowed.
 	//
-	// The returned channel is optional to use; see [Source.Update] for the
-	// contract.
+	// The returned channel is optional to use. It receives nil when propagation
+	// completes, or context.Canceled when a newer update supersedes it, then
+	// closes. It closes without a value when no propagation happens: the next
+	// value is suppressed as equal or there are no subscribers. Do not wait on
+	// it during rendering. If you need to wait, use [Go] or your own goroutine
+	// with [DetachedContext].
 	Mutate(context.Context, func(T) T) <-chan error
 
 	innerLens() beam.Lenser[T]
@@ -145,11 +158,11 @@ func NewSource[T comparable](init T) Source[T] {
 // NewSourceEqual returns a writable source holding init. It calls equal to
 // suppress equal updates.
 //
-// equal reports whether new and old should be treated as equal and therefore
+// equal reports whether old and new should be treated as equal and therefore
 // not propagated. If equal is nil, every update propagates. equal runs while
 // the source's lock is held: it must not panic and must not call back into any
 // source or beam.
-func NewSourceEqual[T any](init T, equal func(new T, old T) bool) Source[T] {
+func NewSourceEqual[T any](init T, equal func(old T, new T) bool) Source[T] {
 	return source[T]{
 		beam.NewSource(init, equal, false),
 	}
@@ -168,8 +181,11 @@ func NewSourceNoSkip[T comparable](init T) Source[T] {
 // to suppress equal updates and lets in-progress propagation finish even if a
 // newer update arrives.
 //
-// The equal contract follows [NewSourceEqual].
-func NewSourceEqualNoSkip[T any](init T, equal func(new T, old T) bool) Source[T] {
+// equal reports whether old and new should be treated as equal and therefore
+// not propagated. If equal is nil, every update propagates. equal runs while
+// the source's lock is held: it must not panic and must not call back into any
+// source or beam.
+func NewSourceEqualNoSkip[T any](init T, equal func(old T, new T) bool) Source[T] {
 	return source[T]{
 		beam.NewSource(init, equal, true),
 	}
@@ -227,11 +243,13 @@ func DeriveSource[T1 any, T2 comparable](source Source[T1], get func(v T1) T2, s
 // equal to suppress equal derived values. If equal is nil, every derived value
 // propagates.
 //
-// get and set follow [DeriveSource].
+// get extracts the derived value from the source value. set receives the
+// current source value and the new derived value and must return the next
+// source value.
 //
 // equal runs while the derived source's lock is held: it must not panic and
 // must not call back into any source or beam.
-func DeriveSourceEqual[T1 any, T2 any](source Source[T1], get func(v T1) T2, set func(v1 T1, v2 T2) T1, equal func(new T2, old T2) bool) Source[T2] {
+func DeriveSourceEqual[T1 any, T2 any](source Source[T1], get func(v T1) T2, set func(v1 T1, v2 T2) T1, equal func(old T2, new T2) bool) Source[T2] {
 	return derivedSource[T1, T2]{
 		beam.NewLens(source.innerLens(), get, set, equal),
 	}
@@ -285,7 +303,7 @@ func DeriveBeam[T1 any, T2 comparable](source Beam[T1], get func(v T1) T2) Beam[
 //
 // equal runs while the derived beam's lock is held: it must not panic and must
 // not call back into any source or beam.
-func DeriveBeamEqual[T1 any, T2 any](source Beam[T1], get func(v T1) T2, equal func(new T2, old T2) bool) Beam[T2] {
+func DeriveBeamEqual[T1 any, T2 any](source Beam[T1], get func(v T1) T2, equal func(old T2, new T2) bool) Beam[T2] {
 	return derivedBeam[T1, T2]{
 		beam.NewBeam(source.innerBeam(), get, equal),
 	}

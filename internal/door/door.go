@@ -79,6 +79,39 @@ func (d *Door) reloadSelf(ctx context.Context, prev *node) <-chan error {
 	return ch
 }
 
+func (d *Door) deferredInnerSelf(ctx context.Context, prev *node, content any) <-chan error {
+	ctex.LogCanceled(ctx, "Door deferred inner")
+	userTask, ch := newUserTask(ctx)
+	frame := userTask.InitFrame()
+	if !d.atomicSchedule(ctx, prev, innerNode{userTask: userTask, inner: content, defered: true}, frame) {
+		frame.Release()
+		userTask.Cancel()
+	}
+	return ch
+}
+
+func (d *Door) deferredOuterSelf(ctx context.Context, prev *node, content any) <-chan error {
+	ctex.LogCanceled(ctx, "Door deferred outer")
+	userTask, ch := newUserTask(ctx)
+	frame := userTask.InitFrame()
+	if !d.atomicSchedule(ctx, prev, outerNode{userTask: userTask, outer: content, defered: true}, frame) {
+		frame.Release()
+		userTask.Cancel()
+	}
+	return ch
+}
+
+func (d *Door) deferredStaticSelf(ctx context.Context, prev *node, content any) <-chan error {
+	ctex.LogCanceled(ctx, "Door deferred static")
+	userTask, ch := newUserTask(ctx)
+	frame := userTask.InitFrame()
+	if !d.atomicSchedule(ctx, prev, staticNode{userTask: userTask, outer: content, defered: true}, frame) {
+		frame.Release()
+		userTask.Cancel()
+	}
+	return ch
+}
+
 func (d *Door) atomicSchedule(ctx context.Context, prev *node, task nodeTask, externalFrame shredder.ReleaseFrame) bool {
 	next := &node{
 		door: d,

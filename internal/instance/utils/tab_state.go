@@ -140,7 +140,7 @@ func (t TabStateManager) Initialize(data map[string]json.RawMessage) {
 	})
 }
 
-func DeriveTabState[T any](m TabStateManager, key string, equal func(new T, old T) bool) beam.Lens[TabState, *T] {
+func DeriveTabState[T any](m TabStateManager, key string, equal func(old T, new T) bool) beam.Lens[TabState, *T] {
 	logger := common.Logger(m.ctx)
 	return beam.NewLens(m.source, func(s TabState) *T {
 		raw, ok := s.get()[key]
@@ -182,13 +182,13 @@ func DeriveTabState[T any](m TabStateManager, key string, equal func(new T, old 
 		}
 		clone.get()[key] = raw
 		return clone
-	}, func(new, old *T) bool {
-		if new == old {
+	}, func(old, new *T) bool {
+		if old == new {
 			return true
 		}
-		if new == nil || old == nil {
+		if old == nil || new == nil {
 			return false
 		}
-		return equal(*new, *old)
+		return equal(*old, *new)
 	})
 }

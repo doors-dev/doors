@@ -26,7 +26,7 @@ type Lenser[T any] interface {
 
 type Lens[T1, T2 any] = *lens[T1, T2]
 
-func NewLens[T1 any, T2 any](source Lenser[T1], get func(T1) T2, set func(T1, T2) T1, equal func(new T2, old T2) bool) Lens[T1, T2] {
+func NewLens[T1 any, T2 any](source Lenser[T1], get func(T1) T2, set func(T1, T2) T1, equal func(old T2, new T2) bool) Lens[T1, T2] {
 	if equal == nil {
 		equal = NeverEqual
 	}

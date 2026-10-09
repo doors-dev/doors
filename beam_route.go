@@ -146,7 +146,7 @@ func RouteDerive[T1 any, T2 comparable](derive func(v T1) (T2, bool)) DeriveRout
 // RouteDeriveEqual returns a route builder that matches when derive reports
 // true and exposes the derived value to the branch. It uses equal to suppress
 // propagation; if equal is nil, every update propagates.
-func RouteDeriveEqual[T1 any, T2 any](derive func(v T1) (T2, bool), equal func(v1 T2, v2 T2) bool) DeriveRoute[T1, T2] {
+func RouteDeriveEqual[T1 any, T2 any](derive func(v T1) (T2, bool), equal func(old T2, new T2) bool) DeriveRoute[T1, T2] {
 	return DeriveRoute[T1, T2]{
 		derive: derive,
 		equal:  equal,

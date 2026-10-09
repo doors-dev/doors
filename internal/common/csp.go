@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // CSP is the Content-Security-Policy Doors sends on page responses.
@@ -96,10 +97,12 @@ func newCollectedCSP() *collectedCSP {
 }
 
 // CSPCollector collects the sources and hashes added while one page renders.
-// A nil collector discards them.
+// It is safe for concurrent use. A nil collector discards them, and so does a
+// collector after Generate.
 type CSPCollector = *cspCollector
 
 type cspCollector struct {
+	mu      sync.Mutex
 	csp     *CSP
 	styles  *collectedCSP
 	scripts *collectedCSP
@@ -110,12 +113,22 @@ func (c CSPCollector) StyleSource(source string) {
 	if c == nil {
 		return
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.styles == nil {
+		return
+	}
 	c.styles.sources = append(c.styles.sources, source)
 }
 
 // ScriptSource records a script URL for the final header.
 func (c CSPCollector) ScriptSource(source string) {
 	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.scripts == nil {
 		return
 	}
 	c.scripts.sources = append(c.scripts.sources, source)
@@ -126,6 +139,11 @@ func (c CSPCollector) StyleHash(hash []byte) {
 	if c == nil {
 		return
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.styles == nil {
+		return
+	}
 	c.styles.hashes = append(c.styles.hashes, hash)
 }
 
@@ -134,17 +152,28 @@ func (c CSPCollector) ScriptHash(hash []byte) {
 	if c == nil {
 		return
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.scripts == nil {
+		return
+	}
 	c.scripts.hashes = append(c.scripts.hashes, hash)
 }
 
-// Generate returns the final Content-Security-Policy header value.
+// Generate returns the final Content-Security-Policy header value. Call it
+// once; later additions are discarded.
 func (c CSPCollector) Generate() string {
-	return c.csp.generate(c.styles, c.scripts)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	header := c.csp.generate(c.styles, c.scripts)
+	c.styles = nil
+	c.scripts = nil
+	return header
 }
 
-// NewCollector returns a collector for one page render. A nil c returns a nil
-// collector.
-func (c *CSP) NewCollector() CSPCollector {
+// NewCSPCollector returns a collector for one page render under c. A nil c
+// returns a nil collector.
+func NewCSPCollector(c *CSP) CSPCollector {
 	if c == nil {
 		return nil
 	}

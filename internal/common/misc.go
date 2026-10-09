@@ -19,6 +19,7 @@ import (
 	"crypto/rand"
 	"log"
 	"log/slog"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/doors-dev/gox"
@@ -104,4 +105,17 @@ func MinifyCSS(input []byte) ([]byte, error) {
 	m := minify.New()
 	m.AddFunc("text/css", css.Minify)
 	return m.Bytes("text/css", input)
+}
+
+func Once(f func()) func() {
+	if f == nil {
+		return func() {}
+	}
+	p := atomic.Pointer[func()]{}
+	p.Store(&f)
+	return func() {
+		if f := p.Swap(nil); f != nil {
+			(*f)()
+		}
+	}
 }

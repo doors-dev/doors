@@ -28,8 +28,8 @@ func NeverEqual[T any](T, T) bool {
 	return false
 }
 
-func DefaultEqual[T comparable](new T, old T) bool {
-	return new == old
+func DefaultEqual[T comparable](old T, new T) bool {
+	return old == new
 }
 
 type anySource interface {
@@ -49,7 +49,7 @@ type source[T any] struct {
 	seq       uint
 	oldestSeq uint
 	values    map[uint]*T
-	equal     func(new T, old T) bool
+	equal     func(old T, new T) bool
 	mu        sync.RWMutex
 	noSkip    bool
 	subs      common.Set[*screen]
@@ -74,7 +74,7 @@ func (s *source[T]) removeSub(sc *screen) {
 	s.subs.Remove(sc)
 }
 
-func NewSource[T any](init T, equal func(new T, old T) bool, noSkip bool) Source[T] {
+func NewSource[T any](init T, equal func(old T, new T) bool, noSkip bool) Source[T] {
 	if equal == nil {
 		equal = NeverEqual[T]
 	}
@@ -114,7 +114,7 @@ func (s *source[T]) sync(prev uint, seq uint, _ shredder.Frame) (*T, bool) {
 	if !ok {
 		return value, true
 	}
-	return value, !s.equal(*value, *prevValue)
+	return value, !s.equal(*prevValue, *value)
 }
 
 func (s *source[T]) Update(ctx context.Context, v T) <-chan error {

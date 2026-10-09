@@ -33,7 +33,7 @@ func (d *Door) Main() gox.Elem {
 
 // Proxy renders the Door in GoX with the following element as its container:
 //
-//	~>(&doors.Door{}) <div>content</div>
+//	~>(new(doors.Door)) <div>content</div>
 func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
 	return cur.Printer().Send(proxyJob{door: d, el: el, caller: common.CaptureCaller(), fakeJob: fakeJob{cur.Context()}})
 }
@@ -93,6 +93,36 @@ func (d *Door) Static(ctx context.Context, content any) <-chan error {
 	ctex.LogCanceled(ctx, "Door static")
 	task, ch := newUserTask(ctx)
 	d.schedule(ctx, staticNode{userTask: task, outer: content}, task.InitFrame())
+	return ch
+}
+
+// DeferredInner is the same as [Door.Inner], but the operation waits until the
+// current content is rendered and scheduled for delivery. Use it to show a
+// placeholder first and replace it with content that is slow to render.
+func (d *Door) DeferredInner(ctx context.Context, content any) <-chan error {
+	ctex.LogCanceled(ctx, "Door deferred inner")
+	task, ch := newUserTask(ctx)
+	d.schedule(ctx, innerNode{userTask: task, inner: content, defered: true}, task.InitFrame())
+	return ch
+}
+
+// DeferredOuter is the same as [Door.Outer], but the operation waits until the
+// current content is rendered and scheduled for delivery. Use it to show a
+// placeholder first and replace it with content that is slow to render.
+func (d *Door) DeferredOuter(ctx context.Context, outer any) <-chan error {
+	ctex.LogCanceled(ctx, "Door deferred outer")
+	task, ch := newUserTask(ctx)
+	d.schedule(ctx, outerNode{userTask: task, outer: outer, defered: true}, task.InitFrame())
+	return ch
+}
+
+// DeferredStatic is the same as [Door.Static], but the operation waits until
+// the current content is rendered and scheduled for delivery. Use it to show a
+// placeholder first and replace it with content that is slow to render.
+func (d *Door) DeferredStatic(ctx context.Context, content any) <-chan error {
+	ctex.LogCanceled(ctx, "Door deferred static")
+	task, ch := newUserTask(ctx)
+	d.schedule(ctx, staticNode{userTask: task, outer: content, defered: true}, task.InitFrame())
 	return ch
 }
 

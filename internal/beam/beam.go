@@ -37,7 +37,7 @@ type entry[T any] struct {
 
 type Beam[T1, T2 any] = *beam[T1, T2]
 
-func NewBeam[T1 any, T2 any](source Beamer[T1], get func(T1) T2, equal func(new T2, old T2) bool) Beam[T1, T2] {
+func NewBeam[T1 any, T2 any](source Beamer[T1], get func(T1) T2, equal func(old T2, new T2) bool) Beam[T1, T2] {
 	if equal == nil {
 		equal = NeverEqual
 	}
@@ -56,7 +56,7 @@ type beam[T1 any, T2 any] struct {
 	values map[uint]entry[T2]
 	mu     sync.Mutex
 	get    func(T1) T2
-	equal  func(new T2, old T2) bool
+	equal  func(old T2, new T2) bool
 	null   T2
 }
 
@@ -81,7 +81,7 @@ func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.Frame) (v *T2, u
 		if !has {
 			return e.value, true
 		}
-		e.updated = !b.equal(*e.value, *prevValue.value)
+		e.updated = !b.equal(*prevValue.value, *e.value)
 		e.prev = prev
 		b.values[seq] = e
 		return e.value, e.updated
@@ -136,7 +136,7 @@ func (b *beam[T1, T2]) syncEntry(prev, seq uint, after shredder.Frame) (v *T2, u
 		}
 		return &newValue, true
 	}
-	updated = !b.equal(newValue, *prevValue.value)
+	updated = !b.equal(*prevValue.value, newValue)
 	if !updated {
 		b.values[seq] = entry[T2]{
 			value:   prevValue.value,
