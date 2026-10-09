@@ -411,3 +411,56 @@ func TestSenderRunCleanupSetsCauseAfterSubmitError(t *testing.T) {
 		t.Fatalf("expected cleanup to cancel sender context after submit error, got %v", context.Cause(ctx))
 	}
 }
+
+type blockingStasher struct {
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (s *blockingStasher) Stash(*inner.Card) stashResult {
+	s.entered <- struct{}{}
+	<-s.release
+	return stashIssue
+}
+
+func (s *blockingStasher) Full() bool {
+	return false
+}
+
+// Ending the deck while a dump is stashing a card cancels every call exactly
+// once: the queued ones at once and the one being stashed when it returns.
+func TestDeckEndDuringDump(t *testing.T) {
+	conf := testSolitaireConf()
+	deck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
+	first := &stubSyncCall{act: actions.Test{Arg: "first"}}
+	second := &stubSyncCall{act: actions.Test{Arg: "second"}}
+	for _, c := range []*stubSyncCall{first, second} {
+		if err := deck.Insert(c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s := &blockingStasher{entered: make(chan struct{}, 1), release: make(chan struct{})}
+	done := make(chan error, 1)
+	go func() {
+		done <- deck.Dump(s)
+	}()
+	<-s.entered
+	deck.End()
+	close(s.release)
+	if err := <-done; !errors.Is(err, errorKilled) {
+		t.Fatalf("expected the dump to stop with errorKilled, got %v", err)
+	}
+	if first.cancelCount != 1 || second.cancelCount != 1 {
+		t.Fatalf("expected each call canceled once, got first=%d second=%d", first.cancelCount, second.cancelCount)
+	}
+	if first.resultCount != 0 {
+		t.Fatalf("the stashed call must not be written after the deck ended, got %d results", first.resultCount)
+	}
+	if n := deck.PendingCount(); n != 0 {
+		t.Fatalf("expected nothing pending after End, got %d", n)
+	}
+	deck.HeatUp()
+	if n := deck.QueueLength(); n != 0 {
+		t.Fatalf("expected an empty queue after End, got %d", n)
+	}
+}

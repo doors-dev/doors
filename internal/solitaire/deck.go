@@ -54,12 +54,16 @@ func (d *deck) End() {
 		return
 	}
 	d.killed = true
+	issued := d.issued
+	queued := d.inner
+	d.issued = make(map[uint64]*inner.Card)
+	d.inner = inner.Deck{}
 	d.mu.Unlock()
 	d.expirator.Shutdown()
-	for _, issued := range d.issued {
-		issued.Call.Cancel()
+	for _, card := range issued {
+		card.Call.Cancel()
 	}
-	d.inner.Cancel()
+	queued.Cancel()
 }
 
 func (d *deck) PendingCount() int {
@@ -124,10 +128,17 @@ func (d *deck) Dump(s Stasher) (err error) {
 			d.expirator.Report(card.End)
 			card.Call.Cancel()
 			d.mu.Lock()
-			d.inner.Fill(card.Beg, card.End)
+			if !d.killed {
+				d.inner.Fill(card.Beg, card.End)
+			}
 			d.mu.Unlock()
 		case stashIssue:
 			d.mu.Lock()
+			if d.killed {
+				d.mu.Unlock()
+				card.Call.Cancel()
+				return errorKilled
+			}
 			d.issued[card.End] = card
 			d.mu.Unlock()
 			card.Call.Written()
@@ -188,6 +199,9 @@ func (d *deck) CollectResults(r map[uint64]result) error {
 func (d *deck) HeatUp() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	if d.killed {
+		return
+	}
 	if d.inner.IsCold(d.seq) && len(d.issued) > 0 {
 		d.seq += 1
 		d.inner.Probe(d.seq)
