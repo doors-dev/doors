@@ -51,6 +51,7 @@ func Reload(ctx context.Context) <-chan error {
 // content, it does nothing and reports context.Canceled.
 //
 // ctx must belong to a Doors render or handler; otherwise DeferredInner panics.
+// If ctx belongs to the root page render, it sends an error and closes.
 func DeferredInner(ctx context.Context, content any) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Door().DeferredInner(ctx, content)
@@ -66,6 +67,7 @@ func DeferredInner(ctx context.Context, content any) <-chan error {
 // content, it does nothing and reports context.Canceled.
 //
 // ctx must belong to a Doors render or handler; otherwise DeferredOuter panics.
+// If ctx belongs to the root page render, it sends an error and closes.
 func DeferredOuter(ctx context.Context, content any) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Door().DeferredOuter(ctx, content)
@@ -81,6 +83,7 @@ func DeferredOuter(ctx context.Context, content any) <-chan error {
 // content, it does nothing and reports context.Canceled.
 //
 // ctx must belong to a Doors render or handler; otherwise DeferredStatic panics.
+// If ctx belongs to the root page render, it sends an error and closes.
 func DeferredStatic(ctx context.Context, content any) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	return core.Door().DeferredStatic(ctx, content)
@@ -93,12 +96,9 @@ func HasSession(ctx context.Context) bool {
 	return ok
 }
 
-// IsDocument reports whether ctx renders into the HTML document of the page
-// response: the initial page render and every Door placed during it. Updates
-// report false, including Deferred and Reload renders that run before the
-// response is sent, as do handlers, callbacks, and contexts from
-// [DetachedContext] or [InstanceContext]. Contexts derived from such a ctx with
-// the context package keep the value.
+// IsDocument reports whether ctx renders the page response: the initial page
+// render and every Door placed during it. Use it to send slow content complete
+// with the page and defer it on later renders.
 func IsDocument(ctx context.Context) bool {
 	v, _ := ctx.Value(common.KeyDocument).(bool)
 	return v

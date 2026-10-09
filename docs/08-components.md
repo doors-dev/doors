@@ -229,8 +229,6 @@ When a dynamic parent unmounts, **Doors** cancels everything inside it:
 - mounted Doors
 - scoped background work started with `doors.Go(...)`
 
-Start timing and context semantics of `doors.Go(f)` are covered in [Core Concepts](./02-core-concepts.md).
-
 ### Disposable Components
 
 Give `Main` a value receiver and initialize state inside it — every render then works on a fresh copy of the component value, and the declared value itself is never mutated:
