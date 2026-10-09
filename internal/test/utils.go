@@ -75,8 +75,11 @@ func (s *Bro) PageStatus(t *testing.T, path string, status int) *rod.Page {
 	t.Helper()
 	page := s.b.MustPage("")
 	var err string
+	done := false
 	url := s.url(path)
-	wait := page.EachEvent(
+	timed := page.Timeout(pageLoadTimeout)
+	defer timed.CancelTimeout()
+	wait := timed.EachEvent(
 		func(e *proto.NetworkResponseReceived) bool {
 			if e.Response.URL != url {
 				return false
@@ -84,6 +87,7 @@ func (s *Bro) PageStatus(t *testing.T, path string, status int) *rod.Page {
 			if e.Response.Status != status {
 				err = fmt.Sprintf("[http %d] %s", int(e.Response.Status), e.Response.URL)
 			}
+			done = true
 			return true
 		},
 		func(e *proto.NetworkLoadingFailed) bool {
@@ -91,9 +95,11 @@ func (s *Bro) PageStatus(t *testing.T, path string, status int) *rod.Page {
 				return false
 			}
 			err = fmt.Sprintf("[request-failed] %s – %s", e.RequestID, e.ErrorText)
+			done = true
 			return true
 		},
 		func(_ *proto.PageLoadEventFired) bool {
+			done = true
 			return true
 		},
 	)
@@ -102,16 +108,23 @@ func (s *Bro) PageStatus(t *testing.T, path string, status int) *rod.Page {
 	if err != "" {
 		t.Fatal(err)
 	}
+	if !done {
+		t.Fatal("page load timed out: ", path)
+	}
 	return page
 }
 func (s *Bro) Page(t *testing.T, path string) *rod.Page {
 	t.Helper()
 	page := s.b.MustPage("")
 	var err string
-	wait := page.EachEvent(
+	done := false
+	timed := page.Timeout(pageLoadTimeout)
+	defer timed.CancelTimeout()
+	wait := timed.EachEvent(
 		func(e *proto.NetworkResponseReceived) bool {
 			if e.Response.Status >= 400 {
 				err = fmt.Sprintf("[http %d] %s", int(e.Response.Status), e.Response.URL)
+				done = true
 				return true
 			}
 			return false
@@ -121,9 +134,11 @@ func (s *Bro) Page(t *testing.T, path string) *rod.Page {
 				return false
 			}
 			err = fmt.Sprintf("[request-failed] %s – %s", e.RequestID, e.ErrorText)
+			done = true
 			return true
 		},
 		func(_ *proto.PageLoadEventFired) bool {
+			done = true
 			return true
 		},
 	)
@@ -132,8 +147,13 @@ func (s *Bro) Page(t *testing.T, path string) *rod.Page {
 	if err != "" {
 		t.Fatal(err)
 	}
+	if !done {
+		t.Fatal("page load timed out: ", path)
+	}
 	return page
 }
+
+const pageLoadTimeout = 30 * time.Second
 
 func (s *Bro) url(path string) string {
 	return fmt.Sprintf("http://localhost:%d%s", s.p, path)
