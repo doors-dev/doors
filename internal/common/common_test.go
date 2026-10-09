@@ -88,9 +88,6 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 	if solitaire.Queue != conf.SolitaireQueue || solitaire.Pending != conf.SolitairePending {
 		t.Fatal("expected solitaire config to mirror system config")
 	}
-	if solitaire.DisableGzip != conf.SolitaireDisableGzip {
-		t.Fatal("expected solitaire gzip setting to mirror system config")
-	}
 	if solitaire.Roll != conf.SolitaireRollTime ||
 		solitaire.FrameSize != conf.SolitaireFrameSize ||
 		solitaire.FlushTime != conf.SolitaireFrameTime ||
@@ -145,18 +142,17 @@ func TestInitDefaultsAndSolitaireConf(t *testing.T) {
 
 func TestCSPGenerateAndCollector(t *testing.T) {
 	csp := &CSP{
-		DefaultSources:      nil,
-		ScriptSources:       []string{"https://scripts.example"},
-		ScriptStrictDynamic: true,
-		StyleSources:        []string{"https://styles.example"},
-		ConnectSources:      []string{"https://api.example"},
-		FormActions:         nil,
-		ObjectSources:       []string{},
-		FrameSources:        []string{"https://frame.example"},
-		FrameAncestors:      nil,
-		BaseURIAllow:        []string{},
-		ImgSources:          []string{"data:"},
-		ReportTo:            "csp-endpoint",
+		DefaultSources: nil,
+		ScriptSources:  []string{"https://scripts.example"},
+		StyleSources:   []string{"https://styles.example"},
+		ConnectSources: []string{"https://api.example"},
+		FormActions:    nil,
+		ObjectSources:  []string{},
+		FrameSources:   []string{"https://frame.example"},
+		FrameAncestors: nil,
+		BaseURIAllow:   []string{},
+		ImgSources:     []string{"data:"},
+		ReportTo:       "csp-endpoint",
 	}
 	collector := NewCSPCollector(csp)
 	collector.StyleSource("https://style-cdn.example")
@@ -169,7 +165,6 @@ func TestCSPGenerateAndCollector(t *testing.T) {
 		"default-src 'self'",
 		"connect-src 'self' https://api.example",
 		"script-src 'self'",
-		"'strict-dynamic'",
 		"https://scripts.example",
 		"https://script-cdn.example",
 		"style-src 'self'",

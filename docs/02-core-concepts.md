@@ -135,20 +135,11 @@ timers, pubsub listeners, or other work that should continue after rendering,
 start your own goroutine or use `doors.Go(...)` when it should follow the
 lifetime of a rendered subtree.
 
-`doors.Go(f)` starts `f` only after the render cycle that produced the
-surrounding content completes and is enqueued for delivery, so `Door` updates
-made from `f` always land after the markup that hosts them. It is best-effort:
-if that render fails or is superseded, `f` never runs. Inside `Door.Static`
-content, `f` belongs to the parent Door, so a failed static render does not
-drop it. The context passed to `f` is detached from the render cycle and
-canceled when the surrounding dynamic content is released: replaced or
-unmounted (see [Door](./06-door.md)).
-
 ## Security
 
 **Doors** scopes handlers to the UI that produced them. A user can trigger only the handlers that were rendered for that user's live page instance, and only while the owning dynamic tree is still mounted.
 
-That means rendering is the main permission boundary for UI actions. If a user is not allowed to delete a record, do not render the delete button for that user. The handler attached to that button cannot be triggered by a different user or by another page instance.
+**That means rendering is the main permission boundary for UI actions.** If a user is not allowed to delete a record, do not render the delete button for that user. The handler attached to that button cannot be triggered by a different user or by another page instance.
 
 The URL is different. It is client-owned input: any path, query, or decoded path-model value is whatever the user sent. A successful path-model match means "this URL parses", not "this user is allowed to see what it points at".
 

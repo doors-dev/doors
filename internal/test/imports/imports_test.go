@@ -648,13 +648,11 @@ func TestStyleNoCache(t *testing.T) {
 
 func TestCSPHeader(t *testing.T) {
 	header := fetchPageCSPHeader(t, cspHead, doors.CSP{
-		ConnectSources:      []string{"https://api.example.com"},
-		ScriptStrictDynamic: true,
+		ConnectSources: []string{"https://api.example.com"},
 	})
 	expect := []string{
 		"default-src 'self'",
 		"script-src 'self'",
-		"'strict-dynamic'",
 		test.Host + "/module/index.js",
 		"style-src 'self'",
 		test.Host + "/module/style.css",

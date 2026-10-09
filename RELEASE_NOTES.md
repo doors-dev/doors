@@ -1,3 +1,73 @@
+# Doors `0.17` Release Notes
+
+Doors `0.17` adds deferred Door operations: show a placeholder right away and replace it with slow content once it is rendered. With `doors.IsDocument`, the same code sends the slow content complete in the page response.
+
+## Highlights
+
+### Deferred operations
+
+`DeferredInner`, `DeferredOuter`, and `DeferredStatic` work like `Inner`, `Outer`, and `Static`, but wait until the Door's current content is rendered and scheduled for delivery. Use them to show a placeholder first and replace it with content that is slow to render:
+
+```gox
+func (p *Page) showReport(ctx context.Context, period string) {
+	p.report.Inner(ctx, <div class="skeleton">Loading report...</div>)
+	p.report.DeferredInner(ctx, ReportTable{period: period})
+}
+```
+
+Each is also a package function that targets the Door `ctx` renders in, so content in a `Bind` or route can defer its own slow part:
+
+```gox
+elem (p *Page) Main() {
+	~(p.period.Bind(elem(period string) {
+		<section class="report">
+			~(if doors.IsDocument(ctx) {
+				~ReportTable{period: period}
+			} else {
+				~~
+				doors.DeferredInner(ctx, ReportTable{period: period})
+				~~
+				<div class="skeleton">Loading report...</div>
+			})
+		</section>
+	}))
+}
+```
+
+See [Door](./docs/06-door.md#deferred-operations).
+
+### IsDocument
+
+`doors.IsDocument(ctx)` is `true` only while rendering the page response: the initial page render and every Door placed during it. Use it, as above, to send slow content complete with the page instead of as a skeleton followed by an update.
+
+## Behavior Changes
+
+- **Door updates follow `SolitaireDisableGzip`.** It was documented to, but Door updates followed `ServerDisableGzip`. `ServerDisableGzip` now covers HTML and resources only.
+- **A Door rendered in a new place leaves its old place once the new content is queued**, instead of at once.
+
+## Fixes
+
+- Equality functions (`NewSourceEqual`, `NewSourceEqualNoSkip`, `DeriveSourceEqual`, `DeriveBeamEqual`, `RouteDeriveEqual`, `TabStateEqual`) received `(new, old)` on updates. They now always get `(old, new)`.
+- Door renders during the page render could race on CSP collection.
+- A panic in cleanup code during a Door operation, such as in a beam watcher's `Cancel`, could leave the operation's channel open for good.
+
+## Breaking Changes
+
+| Old | New |
+|---|---|
+| `CSP.ScriptStrictDynamic` | Removed: `'strict-dynamic'` made browsers block the **Doors** client script, so pages did not work |
+| `ServerDisableGzip` turns off gzip for Door updates | `SolitaireDisableGzip` does |
+
+## Migration
+
+```sh
+go get github.com/doors-dev/doors@v0.17.0
+```
+
+Remove `ScriptStrictDynamic` from `doors.CSP`. If you turned off gzip with `ServerDisableGzip` and want Door updates uncompressed too, also set `SolitaireDisableGzip`.
+
+---
+
 # Doors `0.16` Release Notes
 
 Doors `0.16` rebuilds the Door layer to close ordering edge cases and stop `Door.Static` append chains from growing memory. Door operations were already applied in order, with the calls they trigger queued after their markup, but rare races between overlapping operations, render errors, and parent re-renders could break that. Render errors no longer reach the browser. Also in this release: race modes for hook calls, joinable key filters, `doors.Once`, a client clock read, and HEAD support for pages.

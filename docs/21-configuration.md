@@ -6,7 +6,7 @@ Reach for configuration when you need to change a few app-level things:
 
 - session or instance lifetime and runtime limits
 - Content Security Policy
-- esbuild behavior for scripts, modules, and stylesheets
+- esbuild behavior for scripts and modules
 - the server ID used in **Doors** runtime URLs and session cookie naming
 - error pages, session tracking, ...
 
@@ -95,8 +95,8 @@ The fields that matter most in practice are:
 - `InstanceGoroutineLimit`: max goroutines per page instance for runtime work. Default `8`.
 - `DisconnectHiddenTimer`: how long hidden pages stay connected before disconnecting. Default `InstanceTTL / 2`.
 - `RequestTimeout`: max duration of a client request or hook call. Default `30s`. `AHook`, `ARawHook`, `ASubmit`, and `ARawSubmit` can override it per hook or form with their own `RequestTimeout` field.
-- `ServerCacheControl`: cache header for **Doors**-served JS and CSS resources. Default `public, max-age=31536000, immutable`.
-- `ServerDisableGzip`: disables gzip for HTML, JS, and CSS.
+- `ServerCacheControl`: cache header for resources **Doors** serves, such as managed scripts and stylesheets and `doors.UseResource` files. Default `public, max-age=31536000, immutable`.
+- `ServerDisableGzip`: disables gzip for HTML and resources **Doors** serves.
 - `ServerDisableHead`: answers HEAD requests for pages with 405. By default a page HEAD renders the page to get its status and headers and sends no body. Static files and resources always answer HEAD.
 - `ServerSessionCookiePrefix`: optional prefix for the internal **Doors** session cookie name. Empty by default, so with `doors.WithID("blue")` the cookie is named `blue`. Set it explicitly when you want browser-enforced cookie prefix rules such as `__Host-` or `__Secure-`.
 - `ServerSessionCookieNoSecure`: omits the `Secure` attribute from the internal **Doors** session cookie. Use only for plain HTTP development.
@@ -109,7 +109,7 @@ The `Solitaire*` fields tune the sync transport between server and browser:
 - `SolitaireRollTime`, `SolitaireFrameTime`, and `SolitaireFrameSize` control request handover and server-to-client frame buffering.
 - `SolitaireDisableReportStreaming`, `SolitaireReportLimit`, and `SolitaireReportTimeout` control client-to-server report delivery. `SolitaireReportLimit` defaults to `8 MB`. Streaming reports are enabled by default when the browser and connection support streaming request bodies; set `SolitaireDisableReportStreaming` when the deployment path cannot handle them reliably.
 - `SolitaireMaxRTT` caps the RTT estimate used for sync probing when the server has pending work but no frame ready to flush. Values below `2*SolitaireFrameTime` are raised to that minimum.
-- `SolitaireDisableGzip` disables gzip for solitaire sync payloads without affecting HTML, JS, or CSS compression.
+- `SolitaireDisableGzip` disables gzip for Door updates and other payloads sent through the sync connection, without affecting HTML, JS, or CSS compression.
 
 Most apps should leave the `Solitaire*` settings alone unless they are debugging runtime behavior or tuning under load.
 
@@ -133,20 +133,19 @@ CSP is off until you call `doors.WithCSP(...)`.
 
 ```go
 doors.WithCSP(doors.CSP{
-	ConnectSources:      []string{"https://api.example.com"},
-	ScriptStrictDynamic: true,
+	ConnectSources: []string{"https://api.example.com"},
 })
 ```
 
-When enabled, **Doors** builds the `Content-Security-Policy` header per page and automatically collects hashes and sources from **Doors**-managed resources.
+When enabled, **Doors** sends a `Content-Security-Policy` header with each page response and adds the sources that resources rendered through **Doors** need:
 
-In practice, that means:
-
-- `script-src` always includes `'self'` plus collected script hashes and sources
-- `style-src` always includes `'self'` plus collected style hashes and sources
+- `script-src` always includes `'self'`, plus the import map hash when the page has an import map, and the URLs of `doors.ResourceExternal` scripts
+- `style-src` always includes `'self'`, plus the URLs of `doors.ResourceExternal` stylesheets
 - `connect-src` always includes `'self'`
 
-External script and style resources added through **Doors** also register their source automatically for CSP.
+Managed scripts and stylesheets, including plain `<script>...</script>` and `<style>...</style>` blocks, load from your app's own URLs, so `'self'` covers them.
+
+The header is sent once, with the page response. Add external sources to `ScriptSources` or `StyleSources` yourself when a later update can render an external script or stylesheet the page did not, or when an external script loads other scripts.
 
 The field groups behave like this:
 
@@ -168,7 +167,8 @@ This is used for:
 - the main **Doors** client bundle
 - managed inline `<script>...</script>` resources
 - buildable `<script src=(...)>` resources
-- buildable `<link rel="stylesheet" href=(...)>` and `<style>...</style>` resources
+
+Stylesheets are minified by a separate CSS minifier, so esbuild profiles do not affect them.
 
 Use `doors.ESProfile{...}` for simple esbuild settings:
 

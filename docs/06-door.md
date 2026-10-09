@@ -73,6 +73,9 @@ Use an explicit tag with `~>(door)` when the exact HTML parent matters.
 Inner(ctx context.Context, content any)
 Outer(ctx context.Context, outer any)
 Static(ctx context.Context, content any)
+DeferredInner(ctx context.Context, content any)
+DeferredOuter(ctx context.Context, outer any)
+DeferredStatic(ctx context.Context, content any)
 Reload(ctx context.Context)
 Unmount(ctx context.Context)
 ```
@@ -126,6 +129,72 @@ Use it when the stored content depends on outside state and you want to redraw w
 ### Unmount
 
 `Unmount` removes the Door from the DOM but keeps its current content for a future mount.
+
+## Deferred Operations
+
+`DeferredInner`, `DeferredOuter`, and `DeferredStatic` work like `Inner`, `Outer`, and `Static`, but wait until the Door's current content is rendered and scheduled for delivery. Use them to show a placeholder first and replace it with content that is slow to render:
+
+```gox
+func (p *Page) showReport(ctx context.Context, period string) {
+	p.report.Inner(ctx, <div class="skeleton">Loading report...</div>)
+	p.report.DeferredInner(ctx, ReportTable{period: period})
+}
+```
+
+A handler does not wait for deferred content: its indicator, `After` actions, and `OnSettle` finish without it.
+
+### In a Bind or Route
+
+Each operation also exists as a package function that targets the Door `ctx` renders in:
+
+```go
+doors.DeferredInner(ctx context.Context, content any) <-chan error
+doors.DeferredOuter(ctx context.Context, content any) <-chan error
+doors.DeferredStatic(ctx context.Context, content any) <-chan error
+```
+
+Content in a `Bind` or route uses them to defer its own slow part:
+
+```gox
+elem (p *Page) Main() {
+	~(p.period.Bind(elem(period string) {
+		<section class="report">
+			~(if doors.IsDocument(ctx) {
+				~ReportTable{period: period}
+			} else {
+				~~
+				doors.DeferredInner(ctx, ReportTable{period: period})
+				~~
+				<div class="skeleton">Loading report...</div>
+			})
+		</section>
+	}))
+}
+
+type ReportTable struct {
+	period string
+}
+
+elem (t ReportTable) Main() {
+	~~
+	rows := loadReport(ctx, t.period)
+	~~
+	<table>
+		~(for _, row := range rows {
+			<tr>
+				<td>~(row.Name)</td>
+				<td>~(row.Total)</td>
+			</tr>
+		})
+	</table>
+}
+```
+
+`doors.IsDocument` is `true` only while rendering the page response, so the page arrives complete instead of as a skeleton followed by an update.
+
+- Keep the placeholder inside an element that stays, like the `<section>` here; to replace that element too, use `DeferredOuter`.
+- Outside a `Bind` or route, give the loader a Door of its own, for example `~>(new(doors.Door)) <section class="report">`.
+- Do the expensive work inside the heavy content's render, as `ReportTable` does, not while building the argument.
 
 ## Growing Content
 
@@ -215,6 +284,9 @@ Each mutating method returns a completion channel. The return value is optional 
 Inner(ctx context.Context, content any) <-chan error
 Outer(ctx context.Context, outer any) <-chan error
 Static(ctx context.Context, content any) <-chan error
+DeferredInner(ctx context.Context, content any) <-chan error
+DeferredOuter(ctx context.Context, outer any) <-chan error
+DeferredStatic(ctx context.Context, content any) <-chan error
 Reload(ctx context.Context) <-chan error
 Unmount(ctx context.Context) <-chan error
 ```
@@ -245,7 +317,7 @@ Render errors are a marginal case. Element render functions do not return errors
 
 When rendering a Door's content fails, nothing is sent to the browser, and the error is logged as `door rendering error` with the call site. A render that fails because it was superseded is not logged.
 
-- **A Door operation** (`Inner`, `Outer`, `Static`, `Reload`) sends the error on its completion channel. The page keeps the previous content, but it no longer responds: its hooks and subscriptions were released when the operation started. The next successful operation replaces it. After a failed `Outer`, `Inner` fails until a new `Outer` succeeds or the parent renders the Door again. A failed `Static` still makes the Door static: later operations only update its stored state.
+- **A Door operation** sends the error on its completion channel. The page keeps the previous content, but it no longer responds. The next successful operation replaces it. After a failed `Outer`, `Inner` fails until a new `Outer` succeeds or the parent renders the Door again. A failed `Static` still makes the Door static: later operations only update its stored state.
 - **A Door rendered by its parent**, on the initial page or in a parent update, is left out of the parent's output. Operations on it fail with a placement error until the parent renders it again.
 
 ## Lifecycle
@@ -275,41 +347,13 @@ After a Door has been made static or unmounted, later calls still update the Doo
 
 ### Lifecycle Hooks
 
-`doors.OnReady`, `doors.OnSettle`, and `doors.OnClean` attach callbacks to the content being rendered:
-
 ```go
 doors.OnReady(ctx context.Context, f func(ctx context.Context))
 doors.OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context))
 doors.OnClean(ctx context.Context, f func())
 ```
 
-`OnReady` fires when the render cycle that produced the surrounding content completes — the HTML is rendered and the update is on its way to the client. Called with a `ctx` whose content is already on the page (an event handler, for example), it fires promptly.
-
-`OnSettle` runs `ops` inside the current dispatch batch and fires once that batch settles: every Doors operation the batch started has been processed and its updates are enqueued. Where `OnReady` tracks one render cycle, `OnSettle` tracks everything the batch started, including the Door updates and beam propagation it triggered. Settling is server-side — the updates are queued, not yet written to the connection or acknowledged by the browser.
-
-`doors.HoldSettle` keeps the current dispatch batch open after the handler returns, until the returned `release` is called. Use it to hand the batch over to a goroutine:
-
-```go
-release := doors.HoldSettle(ctx)
-go func() {
-	defer release()
-	// operations started with the handler ctx join the batch
-}()
-```
-
-While held, the batch does not settle: `OnSettle` callbacks wait, and in a hook the client keeps the indicator, the scope, and the `$hook` promise pending. Call it synchronously in the handler; `release` is idempotent and may run settle callbacks inline. Operations started with the handler `ctx` join the batch, operations started with `doors.DetachedContext` do not. Always call `release` — a held batch otherwise settles only when the instance ends. Outside a batch, `release` is a no-op.
-
-`OnClean` fires when that content is cleared:
-
-- the enclosing Door is updated (`Inner`, `Outer`, `Reload`)
-- the Door is removed (`Static`, `Unmount`)
-- an ancestor Door re-renders
-- the render fails (not for `Static` content, which belongs to the parent)
-- the instance ends
-
-The only ordering guarantee is per piece of content: its `OnClean` runs after its `OnReady` has run or been dropped. The replaced content's `OnClean` is not ordered with the replacing content's render or `OnReady`.
-
-They are not symmetric. `OnReady` is **best-effort**: if the render cycle fails or is superseded by a newer Door operation, it never fires. A failed `Static` render is the exception: its content belongs to the parent, see [Static](#static). `OnSettle` and `OnClean` are **exactly-once**: a batch always settles one way or another, and every rendered piece of content is eventually cleared. So acquire in render code, release in `OnClean`:
+`OnClean` runs when the surrounding content goes away. Use it to free resources tied to that content: it is the lighter alternative to a goroutine that waits on `ctx.Done()`:
 
 ```gox
 elem (c Chat) Main() {
@@ -323,7 +367,22 @@ elem (c Chat) Main() {
 }
 ```
 
-Do not block in any of these callbacks. `OnReady` and `OnSettle` run on the instance goroutine pool with a context equivalent to `doors.DetachedContext`; `OnSettle` runs inline on the calling goroutine when the instance is shutting down or the owner is already canceled. `OnClean` runs inline on framework goroutines and receives no context — if teardown is slow, start your own goroutine with a context captured beforehand (for example from `doors.InstanceContext(ctx)`).
+`OnReady` runs once the surrounding content is rendered and on its way to the browser. Use it for work that must come after that markup.
+
+`OnSettle` runs once everything a handler started has its updates queued. Use it to act after a multi-step update. If the handler hands work to a goroutine, keep the batch open with `doors.HoldSettle`:
+
+```go
+release := doors.HoldSettle(ctx)
+go func() {
+	defer release()
+	// operations started with the handler ctx join the batch
+}()
+```
+
+Details:
+
+- `OnClean` always runs, exactly once; `OnReady` is best-effort.
+- Do not block in these callbacks. For slow teardown, start a goroutine with a context captured beforehand, for example `doors.InstanceContext(ctx)`.
 
 ## Use Cases
 
@@ -333,6 +392,7 @@ Do not block in any of these callbacks. `OnReady` and `OnSettle` run on the inst
 - Use `Outer(ctx, nil)` when you need mounted placeholder that does not affect layout (`d0-r`)
 - Use `Static` when the region's content is final and the Door's live container is no longer needed.
 - Use `Static(ctx, nil)` when the Door should disappear without replacement content.
+- Use `DeferredInner`, `DeferredOuter`, or `DeferredStatic` to show a placeholder while slow content renders; add `doors.IsDocument` to send it complete in the page response.
 - Use `Reload` when you want to redraw the current content.
 - Use `Unmount` when the Door should disappear for now but keep its internal state for reuse.
 - Use `doors.Once` when the Door should not keep its content in memory after rendering it.

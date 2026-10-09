@@ -121,7 +121,7 @@ elem (w Wizard) Main() {
 }
 ```
 
-After the sync the value is never `nil`: a missing key reads as the zero value. Update with `nil` to remove the key. A value set before the sync wins over the stored one.
+After the sync the value is never `nil`: a missing key reads as the zero value. Update with `nil` to remove the key. A non-nil value set before the sync wins over the stored one.
 
 Values are stored as JSON. Keep them small: browsers cap history state size, and the whole tab state travels on every page load and update.
 

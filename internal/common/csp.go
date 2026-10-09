@@ -32,9 +32,6 @@ type CSP struct {
 	// doors.ResourceExternal scripts when the page has them.
 	ScriptSources []string
 
-	// ScriptStrictDynamic adds 'strict-dynamic' to script-src.
-	ScriptStrictDynamic bool
-
 	// StyleSources are extra style-src values. The directive is always emitted
 	// with 'self', plus the URLs of doors.ResourceExternal stylesheets when the
 	// page has them.
@@ -188,9 +185,6 @@ func (c *CSP) generate(styleCollected *collectedCSP, scriptCollected *collectedC
 	def := c.simple("default-src", nil, c.DefaultSources, []string{"'self'"})
 	connect := c.simple("connect-src", []string{"'self'"}, c.ConnectSources, nil)
 	script := c.collected("script-src", scriptCollected, c.ScriptSources)
-	if c.ScriptStrictDynamic {
-		script = script + " " + "'strict-dynamic'"
-	}
 	style := c.collected("style-src", styleCollected, c.StyleSources)
 	allow := map[string][]string{
 		"form-action":     c.FormActions,

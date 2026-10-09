@@ -11,7 +11,9 @@ Doors is a server-driven UI framework + runtime for building stateful, reactive 
 
 ## Example
 
-Templates are [GoX](https://github.com/doors-dev/gox) — a typed Go superset with its own parser, LSP, and editor plugins. Live search, complete:
+> Templates are [GoX](https://github.com/doors-dev/gox) — a typed Go superset with its own parser, LSP, and editor plugins.
+
+Live search:
 
 ```gox
 type Search struct {

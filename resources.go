@@ -45,8 +45,8 @@ type ResourceStatic = printer.SourceStatic
 
 // ResourceExternal is a URL the browser loads directly from another host.
 //
-// Doors adds the host to the generated Content-Security-Policy only for script
-// tags and stylesheet or modulepreload links.
+// Doors adds its exact URL to the generated Content-Security-Policy for script
+// tags and stylesheet or modulepreload links rendered with the page.
 type ResourceExternal = printer.SourceExternal
 
 // ResourceFS returns a [ResourceStatic] that serves entry from fsys.

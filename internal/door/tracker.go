@@ -192,7 +192,7 @@ func (t *tracker) newPrinter() (*printer.PayloadPrinter, bool) {
 	if t.printers == nil {
 		t.printers = common.NewSet[*printer.PayloadPrinter]()
 	}
-	p := printer.NewPayloadPrinter(t.Instance().Session().App().Conf().ServerDisableGzip, func(p *printer.PayloadPrinter) {
+	p := printer.NewPayloadPrinter(t.Instance().Session().App().Conf().SolitaireDisableGzip, func(p *printer.PayloadPrinter) {
 		t.mu.Lock()
 		defer t.mu.Unlock()
 		if t.printers == nil {
@@ -466,7 +466,7 @@ func (t *outerTracker) newPrinter() (*printer.PayloadPrinter, bool) {
 	if t.printers == nil {
 		t.printers = common.NewSet[*printer.PayloadPrinter]()
 	}
-	p := printer.NewPayloadPrinter(t.Instance().Session().App().Conf().ServerDisableGzip, func(p *printer.PayloadPrinter) {
+	p := printer.NewPayloadPrinter(t.Instance().Session().App().Conf().SolitaireDisableGzip, func(p *printer.PayloadPrinter) {
 		t.mu.Lock()
 		defer t.mu.Unlock()
 		if t.printers == nil {

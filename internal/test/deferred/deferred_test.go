@@ -44,8 +44,13 @@ type run struct {
 
 func open(t *testing.T, s *Shared, f func() test.Fragment) *run {
 	t.Helper()
+	return openAt(t, s, "/", f)
+}
+
+func openAt(t *testing.T, s *Shared, path string, f func() test.Fragment) *run {
+	t.Helper()
 	bro := test.NewFragmentBro(browser, f)
-	page := bro.Page(t, "/")
+	page := bro.Page(t, path)
 	t.Cleanup(bro.Close)
 	t.Cleanup(func() { page.Close() })
 	t.Cleanup(s.ReleaseSkeleton)
@@ -95,6 +100,27 @@ func (r *run) count(selector string) int {
 		r.t.Fatal("count eval: ", err)
 	}
 	return res.Value.Int()
+}
+
+func (r *run) expectCount(selector string, want int) {
+	r.t.Helper()
+	if got := r.count(selector); got != want {
+		r.t.Fatalf("%s: expected %d elements, fact %d", selector, want, got)
+	}
+}
+
+func (r *run) document(path string) string {
+	r.t.Helper()
+	res, err := http.Get(test.Host + path)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	return string(body)
 }
 
 // flush updates the sentinel Door and waits for it on the page. Calls reach
@@ -415,6 +441,137 @@ func TestDeferredBindOuterHeld(t *testing.T) {
 	r.expectRecords("skel 1", "heavy 1")
 }
 
+// A Bind fragment whose single root is the skeleton uses it as the Door
+// container, so DeferredInner puts heavy inside the skeleton element.
+func TestDeferredBindRootContainer(t *testing.T) {
+	s := NewShared()
+	r := open(t, s, func() test.Fragment { return &BindFragment{S: s} })
+	r.settle("#area", "0")
+	r.expectCount("#area > i.skel > b.heavy", 1)
+	r.click("next")
+	r.settle("#area", "1")
+	r.expectCount("#area > i.skel > b.heavy", 1)
+	r.expectCount("#area b.heavy", 1)
+}
+
+// A Bind fragment shaped like the docs example, a wrapper section around an
+// IsDocument loader: the page carries heavy inline, and an update shows the
+// skeleton inside the section while heavy renders, then heavy in its place.
+func TestDeferredBindSection(t *testing.T) {
+	s := NewShared()
+	r := open(t, s, func() test.Fragment { return &BindFragment{S: s, Section: true} })
+	r.waitText("#area", "heavy 0")
+	r.expectCount("#area > section.wrapper > b.heavy", 1)
+	html := r.document("/")
+	if !strings.Contains(html, "heavy 0") || strings.Contains(html, "skel 0") {
+		t.Fatal("page html of the section loader must carry heavy only")
+	}
+	if c := s.Count("deferred 0"); c != 0 {
+		t.Fatal("section loader deferred ", c, " times in the page render")
+	}
+	r.observe("#area")
+	r.hold()
+	r.click("next")
+	r.entered("1")
+	r.waitText("#area", "skel 1")
+	r.expectCount("#area > section.wrapper > i.skel", 1)
+	s.Release()
+	r.settle("#area", "1")
+	r.expectCount("#area > section.wrapper > b.heavy", 1)
+	r.expectCount("#area .skel", 0)
+	r.click("next")
+	r.settle("#area", "2")
+	r.expectCount("#area > section.wrapper > b.heavy", 1)
+	r.expectCount("#area .skel", 0)
+	r.expectRecords("skel 1", "heavy 1", "skel 2", "heavy 2")
+}
+
+// A route whose fragment is a wrapper section around an IsDocument loader
+// keeps the section as the route container: the skeleton shows inside it while
+// heavy renders, then heavy replaces it there, on every switch to the route.
+func TestDeferredRouteInner(t *testing.T) {
+	s := NewShared()
+	r := open(t, s, func() test.Fragment { return &RouteFragment{S: s} })
+	r.waitText("#area", "home")
+	r.observe("#area")
+	r.hold()
+	r.click("go-inner")
+	r.entered("inner")
+	r.waitText("#area", "skel inner")
+	r.expectCount("#area > section.wrapper > i.skel", 1)
+	s.Release()
+	r.settle("#area", "inner")
+	r.expectCount("#area > section.wrapper > b.heavy", 1)
+	r.expectCount("#area .skel", 0)
+	r.expectRecords("skel inner", "heavy inner")
+	r.click("go-home")
+	r.waitText("#area", "home")
+	r.click("go-inner")
+	r.settle("#area", "inner")
+	r.expectCount("#area > section.wrapper > b.heavy", 1)
+	r.expectCount("#area .skel", 0)
+	r.expectRecords("skel inner", "heavy inner", "home", "skel inner", "heavy inner")
+}
+
+// A route whose fragment root is the skeleton uses it as the route container,
+// and DeferredOuter replaces it with heavy. The route door stays live for the
+// next switches.
+func TestDeferredRouteOuter(t *testing.T) {
+	s := NewShared()
+	r := open(t, s, func() test.Fragment { return &RouteFragment{S: s} })
+	r.waitText("#area", "home")
+	r.observe("#area")
+	r.hold()
+	r.click("go-outer")
+	r.entered("outer")
+	r.waitText("#area", "skel outer")
+	r.expectCount("#area > i.skel", 1)
+	s.Release()
+	r.settle("#area", "outer")
+	r.expectCount("#area > b.heavy", 1)
+	r.expectCount("#area .skel", 0)
+	r.expectRecords("skel outer", "heavy outer")
+	r.click("go-inner")
+	r.settle("#area", "inner")
+	r.expectCount("#area > section.wrapper > b.heavy", 1)
+	r.click("go-outer")
+	r.settle("#area", "outer")
+	r.expectCount("#area > b.heavy", 1)
+	r.expectCount("#area .skel", 0)
+	r.expectCount("#area section", 0)
+	r.expectRecordsMaybe("skel outer", "heavy outer", "skel inner", "heavy inner", maybe("skel outer"), "heavy outer")
+}
+
+// Routes rendered with the page response carry heavy inline: the first HTML
+// has no skeleton and the loaders do not defer. Later route switches show the
+// skeleton first.
+func TestDeferredRouteDocument(t *testing.T) {
+	s := NewShared()
+	r := openAt(t, s, "/s/inner", func() test.Fragment { return &RouteFragment{S: s} })
+	r.waitText("#area", "heavy inner")
+	r.expectCount("#area > section.wrapper > b.heavy", 1)
+	for _, label := range []string{"inner", "outer"} {
+		html := r.document("/s/" + label)
+		if !strings.Contains(html, "heavy "+label) {
+			t.Fatal("page html has no heavy ", label)
+		}
+		if strings.Contains(html, "skel "+label) {
+			t.Fatal("page html has skeleton ", label)
+		}
+		if c := s.Count("deferred " + label); c != 0 {
+			t.Fatal("route loader ", label, " deferred ", c, " times in the page render")
+		}
+	}
+	r.observe("#area")
+	r.click("go-outer")
+	r.settle("#area", "outer")
+	r.expectCount("#area > b.heavy", 1)
+	r.click("go-inner")
+	r.settle("#area", "inner")
+	r.expectCount("#area > section.wrapper > b.heavy", 1)
+	r.expectRecordsMaybe(maybe("skel outer"), "heavy outer", "skel inner", "heavy inner")
+}
+
 // A skeleton that was only queued when heavy finished is dropped at send and
 // its op reports context.Canceled after its scheduled nil; a skeleton that was
 // sent lands and its op reports success. Either way heavy lands last.
@@ -450,6 +607,24 @@ func TestDeferredMountedInnerHeld(t *testing.T) {
 	r.settle("#area", "mounted")
 	r.expectRecords("skel mounted", "heavy mounted")
 	r.expectResult("load", "nil,nil")
+}
+
+// Door methods from a handler: Inner puts the skeleton on the page at once and
+// DeferredInner replaces it with heavy once heavy is rendered.
+func TestDeferredDoorMethodsHeld(t *testing.T) {
+	s := NewShared()
+	r := open(t, s, func() test.Fragment { return &MountedFragment{S: s} })
+	r.waitText("#area", "initial")
+	r.observe("#area")
+	r.hold()
+	r.click("skeleton-heavy")
+	r.entered("method")
+	r.waitText("#area", "skel method")
+	s.Release()
+	r.settle("#area", "method")
+	r.expectResult("skeleton", "nil,nil")
+	r.expectCount("#area .skel", 0)
+	r.expectRecords("skel method", "heavy method")
 }
 
 // Heavy starts rendering only once the loader content is rendered and
@@ -582,16 +757,7 @@ func TestDeferredDocumentHTML(t *testing.T) {
 		r.waitText("#area-"+label, "heavy "+label)
 	}
 	r.settle("#area-plain", "plain")
-	res, err := http.Get(test.Host + "/")
-	if err != nil {
-		t.Fatal(err)
-	}
-	body, err := io.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-	html := string(body)
+	html := r.document("/")
 	for _, label := range []string{"blend", "outer", "inner"} {
 		if !strings.Contains(html, "heavy "+label) {
 			t.Fatal("page html has no heavy ", label)

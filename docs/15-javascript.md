@@ -194,7 +194,7 @@ Use `specifier` when the module should be registered in the page import map:
 
 On a regular `<script>` tag, `specifier` does not replace module typing. Use `type="module"` together with `specifier`.
 
-`specifier` matters only during the initial render, before the browser starts resolving module specifiers. In practice, modules you want available through the import map should usually be declared in the page head.
+Render modules with a `specifier` as part of the page, for example in the head: the import map is sent once, with the page response, so a module first rendered by a later update does not register its `specifier`. Scripts rendered later can still import what the page registered.
 
 ### Import Without Execution
 
@@ -242,7 +242,7 @@ Example:
 	specifier="react_app"></script>
 ```
 
-Plain string URLs are passed through as-is. `doors.ResourceExternal(...)` keeps the browser URL direct while also adding that host to CSP. Handler and proxy sources already produce hook-backed URLs.
+Plain string URLs are passed through as-is. `doors.ResourceExternal(...)` keeps the browser URL direct and adds that URL to the page CSP when the script is rendered with the page; see [CSP](./21-configuration.md#csp). Handler and proxy sources already produce hook-backed URLs.
 
 Use `private` when the script should not be publicly reachable.
 

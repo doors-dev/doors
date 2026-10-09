@@ -42,8 +42,8 @@ type Conf struct {
 	// ServerCacheControl is the Cache-Control value for managed resources.
 	// Default: public, max-age=31536000, immutable.
 	ServerCacheControl string
-	// ServerDisableGzip disables gzip compression for HTML, Door updates, and
-	// managed resources.
+	// ServerDisableGzip disables gzip compression for HTML and managed
+	// resources.
 	ServerDisableGzip bool
 	// ServerDisableHead answers HEAD requests for pages with 405. By default a
 	// page HEAD renders the page to get its status and headers, and sends no
@@ -78,8 +78,8 @@ type Conf struct {
 	// SolitaireFrameSize is how many buffered bytes force an immediate send of
 	// outgoing updates. Default: 32 KB.
 	SolitaireFrameSize int
-	// SolitaireDisableGzip disables gzip compression of action payloads sent
-	// to the browser.
+	// SolitaireDisableGzip disables gzip compression of Door updates and action
+	// payloads sent to the browser.
 	SolitaireDisableGzip bool
 	// SolitaireQueue is the max number of updates waiting for delivery or
 	// acknowledgement. Exceeding it ends the instance. Default: 1024.
@@ -112,8 +112,6 @@ type SolitaireConf struct {
 	FrameSize int
 	// FlushTime is the effective SolitaireFrameTime.
 	FlushTime time.Duration
-	// DisableGzip is the effective SolitaireDisableGzip.
-	DisableGzip bool
 	// DisableReportStreaming is the effective SolitaireDisableReportStreaming.
 	DisableReportStreaming bool
 	// Queue is the effective SolitaireQueue.
@@ -137,7 +135,6 @@ func GetSolitaireConf(s *Conf) *SolitaireConf {
 		Roll:                   s.SolitaireRollTime,
 		FrameSize:              s.SolitaireFrameSize,
 		FlushTime:              s.SolitaireFrameTime,
-		DisableGzip:            s.SolitaireDisableGzip,
 		DisableReportStreaming: s.SolitaireDisableReportStreaming,
 		Queue:                  s.SolitaireQueue,
 		Pending:                s.SolitairePending,

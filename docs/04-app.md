@@ -119,7 +119,7 @@ app.Use(
 
 ### UseResource
 
-`doors.UseResource` exposes a **Doors** static resource at a fixed public path. This goes through the resource registry and gets caching, gzip, and CSP integration:
+`doors.UseResource` exposes a **Doors** static resource at a fixed public path. It is cached and gzipped like other managed resources (see [Configuration](./21-configuration.md)):
 
 ```go
 app.Use(

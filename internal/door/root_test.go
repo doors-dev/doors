@@ -328,3 +328,38 @@ func TestDocumentDoorsKeepNoUserCtx(t *testing.T) {
 		t.Error("wrapped door lost its user context")
 	}
 }
+
+// Door update payloads are compressed according to SolitaireDisableGzip, not
+// ServerDisableGzip.
+func TestUpdatePayloadGzipFollowsSolitaire(t *testing.T) {
+	cases := []struct {
+		name      string
+		server    bool
+		solitaire bool
+		want      actions.PayloadType
+	}{
+		{"solitaire off", false, true, actions.PayloadText},
+		{"server off", true, false, actions.PayloadTextGZ},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			inst := newTestInstance(t)
+			inst.session.app.conf.ServerDisableGzip = c.server
+			inst.session.app.conf.SolitaireDisableGzip = c.solitaire
+			p, ok := inst.root.tracker.newPrinter()
+			if !ok {
+				t.Fatal("the tracker refused a printer")
+			}
+			p.Finalize()
+			payload, ok := p.Payload()
+			if !ok {
+				t.Fatal("the payload is unavailable")
+			}
+			if payload.Type() != c.want {
+				t.Fatalf("payload type %v, want %v", payload.Type(), c.want)
+			}
+			p.Free()
+			p.Release()
+		})
+	}
+}

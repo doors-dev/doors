@@ -178,7 +178,7 @@ Example:
 	private>
 ```
 
-Plain string URLs are passed through as-is. `doors.ResourceExternal(...)` keeps the browser URL direct while also adding that host to CSP. Handler and proxy sources already produce hook-backed URLs.
+Plain string URLs are passed through as-is. `doors.ResourceExternal(...)` keeps the browser URL direct and adds that URL to the page CSP when the stylesheet is rendered with the page; see [CSP](./21-configuration.md#csp). Handler and proxy sources already produce hook-backed URLs.
 
 Use `private` when the stylesheet should not be publicly reachable.
 

@@ -104,7 +104,7 @@ sessionCtx := doors.SessionContext(ctx)
 
 Use it for goroutines or external work that should live for the whole browser session and stop on `SessionEnd`, session expiration, or session cleanup.
 
-It is broader than the current instance or dynamic owner context. It is suitable for session-scoped helpers, Door methods, and Source or Beam reads, subscriptions, and updates; a subscription made with it lives until the session ends. `doors.Reload(ctx)` and instance-scoped helpers panic on it, so they still need an instance or render context.
+It is broader than the current instance or dynamic owner context. It is suitable for session-scoped helpers, Door methods, and Source or Beam reads, subscriptions, and updates; a subscription made with it lives until the session ends. `doors.Reload`, the package-level `doors.Deferred*` functions, and instance-scoped helpers panic on it.
 
 For work that should stay scoped to the current dynamic owner, keep using the current `ctx`, or use `doors.DetachedContext(ctx)` from a goroutine that needs to wait on completion channels.
 

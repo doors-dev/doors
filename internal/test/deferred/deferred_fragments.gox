@@ -211,6 +211,32 @@ elem (s *Shared) documentLoader(label string) {
 	})
 }
 
+elem (s *Shared) sectionLoader(label string) {
+	<section class="wrapper">
+		~(if doors.IsDocument(ctx) {
+			~(s.heavy(label))
+		} else {
+			~~
+			s.count("deferred " + label)
+			s.track("deferred " + label, doors.DeferredInner(ctx, s.heavy(label)))
+			~~
+			~(s.skeleton(label))
+		})
+	</section>
+}
+
+elem (s *Shared) swapLoader(label string) {
+	~(if doors.IsDocument(ctx) {
+		~(s.heavy(label))
+	} else {
+		~~
+		s.count("deferred " + label)
+		s.track("deferred " + label, doors.DeferredOuter(ctx, s.heavy(label)))
+		~~
+		~(s.skeleton(label))
+	})
+}
+
 type Sentinel struct {
 	d doors.Door
 	n atomic.Int32
@@ -282,6 +308,7 @@ elem (f *FreshFragment) Main() {
 type BindFragment struct {
 	S *Shared
 	Outer bool
+	Section bool
 	src doors.Source[int]
 	sentinel Sentinel
 	test.NoBeam
@@ -293,6 +320,9 @@ elem (f *BindFragment) Main() {
 	~~
 	<section id="area">
 		~(f.src.Bind(func(v int) gox.Elem {
+			if f.Section {
+				return f.S.sectionLoader(fmt.Sprint(v))
+			}
 			if f.Outer {
 				return f.S.outerLoader(fmt.Sprint(v))
 			}
@@ -327,6 +357,11 @@ elem (f *MountedFragment) Main() {
 	}))
 	~(test.Button("load-gated", func(ctx context.Context) bool {
 		f.S.Probe("load gated", f.d.Inner(ctx, f.S.gatedLoader("gated")))
+		return false
+	}))
+	~(test.Button("skeleton-heavy", func(ctx context.Context) bool {
+		f.S.track("skeleton", f.d.Inner(ctx, f.S.skeleton("method")))
+		f.S.track("deferred method", f.d.DeferredInner(ctx, f.S.heavy("method")))
 		return false
 	}))
 	~(test.Button("newer-deferred", func(ctx context.Context) bool {
@@ -411,6 +446,41 @@ elem (f *StaticFragment) Main() {
 	~(&f.sentinel)
 	~(test.Button("after", func(ctx context.Context) bool {
 		f.S.track("after", f.d.Inner(ctx, <span>after</span>))
+		return false
+	}))
+}
+
+type RouteFragment struct {
+	S *Shared
+	sentinel Sentinel
+	test.Beam
+}
+
+func routeTo(name string) func(test.Path) bool {
+	return func(p test.Path) bool {
+		return p.Vp && p.P == name
+	}
+}
+
+elem (f *RouteFragment) Main() {
+	<div id="area">
+		~(f.B.Route(
+			doors.RouteMatch(routeTo("inner")).Comp(f.S.sectionLoader("inner")),
+			doors.RouteMatch(routeTo("outer")).Comp(f.S.swapLoader("outer")),
+			doors.RouteDefaultComp[test.Path](<p class="home">home</p>),
+		))
+	</div>
+	~(&f.sentinel)
+	~(test.Button("go-home", func(ctx context.Context) bool {
+		f.B.Update(ctx, test.Path{Vh: true})
+		return false
+	}))
+	~(test.Button("go-inner", func(ctx context.Context) bool {
+		f.B.Update(ctx, test.Path{Vp: true, P: "inner"})
+		return false
+	}))
+	~(test.Button("go-outer", func(ctx context.Context) bool {
+		f.B.Update(ctx, test.Path{Vp: true, P: "outer"})
 		return false
 	}))
 }

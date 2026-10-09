@@ -76,7 +76,7 @@ That gives you:
 - `r.Event()` for the typed event payload
 - `r.Context()` for the underlying HTTP request context
 - `r.SetCookie(...)` and `r.GetCookie(...)`
-- `r.After(...)` to schedule client-side actions after the request succeeds and all triggered DOM changes are applied
+- `r.After(...)` to schedule client-side actions after the request succeeds and the DOM changes it triggered are applied
 
 The `ctx` parameter is the **Doors** runtime context. Pass that `ctx` to **Doors** APIs. `r.Context()` is separate: it belongs to the HTTP request.
 
@@ -138,6 +138,8 @@ When an event fires, the client/runtime flow is roughly:
 That is why scopes and indication feel immediate: they start on the client before the server finishes the request.
 
 A handler that hands work to a goroutine can keep the request pending past its return with `doors.HoldSettle(ctx)`: the client keeps the indicator and the scope until the returned release function is called. See [Door](./06-door.md).
+
+The indicator, the scope, `After` actions, and the `$hook` promise do not wait for content passed to deferred Door operations (`DeferredInner`, `DeferredOuter`, `DeferredStatic`).
 
 ## Pointer
 
