@@ -153,8 +153,8 @@ type KeyboardEvent struct {
 }
 
 // KeyboardEmit is the event init for the synthetic keyboard events [Emitter]
-// dispatches. An event that matches no entry of [AKeyDown.Keys] or
-// [AKeyUp.Keys] on the target attr sends no request.
+// dispatches. An event that matches no entry of [AKeyDown.Key] or
+// [AKeyUp.Key] on the target attr sends no request.
 type KeyboardEmit struct {
 	// Key is the key value to report. Optional.
 	Key string `json:"key,omitempty"`

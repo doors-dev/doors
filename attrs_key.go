@@ -105,9 +105,9 @@ type keyEventHook struct {
 	// ExactTarget limits the handler to events whose target is the element
 	// itself. Optional.
 	ExactTarget bool
-	// Keys filters by key and modifier state; the handler fires when the event
+	// Key filters by key and modifier state; the handler fires when the event
 	// matches any key. Optional; without keys every event fires.
-	Keys Keys
+	Key Keys
 	// Scope controls how the request is scheduled. Optional; unscoped requests
 	// are sent as soon as the event fires.
 	Scope Scopes
@@ -129,7 +129,7 @@ type keyEventHook struct {
 }
 
 func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs) error {
-	matches := keysOrNil(k.Keys)
+	matches := keysOrNil(k.Key)
 	keys := make([]front.KeyMatch, 0, len(matches))
 	for _, key := range matches {
 		keys = append(keys, front.KeyMatch{
@@ -171,10 +171,10 @@ type AKeyDown struct {
 	// ExactTarget limits the handler to events whose target is the element
 	// itself. Optional.
 	ExactTarget bool
-	// Keys limits the handler to events matching at least one key.
+	// Key limits the handler to events matching at least one key.
 	// PreventDefault and StopPropagation apply only to matching
 	// events. Optional; without keys every keydown fires.
-	Keys Keys
+	Key Keys
 	// Scope controls how the request is scheduled. Optional; unscoped requests
 	// are sent as soon as the event fires.
 	Scope Scopes
@@ -213,10 +213,10 @@ type AKeyUp struct {
 	// ExactTarget limits the handler to events whose target is the element
 	// itself. Optional.
 	ExactTarget bool
-	// Keys limits the handler to events matching at least one key.
+	// Key limits the handler to events matching at least one key.
 	// PreventDefault and StopPropagation apply only to matching
 	// events. Optional; without keys every keyup fires.
-	Keys Keys
+	Key Keys
 	// Scope controls how the request is scheduled. Optional; unscoped requests
 	// are sent as soon as the event fires.
 	Scope Scopes

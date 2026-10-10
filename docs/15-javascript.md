@@ -451,4 +451,4 @@ Use `$sys.clean(...)` for timers, global listeners, and embedded widgets that ne
 </script>
 ```
 
-You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. Any failed hook request rejects the promise with `HookErr`; a hook canceled by a scope or by `RaceStrict`, or filtered out by `Keys`, counts as a failure as well. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.
+You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. Any failed hook request rejects the promise with `HookErr`; a hook canceled by a scope or by `RaceStrict`, or filtered out by `Key`, counts as a failure as well. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.

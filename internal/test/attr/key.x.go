@@ -64,7 +64,7 @@ func (f *keyFragment) Main() gox.Elem {
 				ctx := __c.Context(); _ = ctx
 //line key.gox:53
 				__e = (doors.AKeyUp{
-		Keys: doors.Key{Key: "e", CtrlMod: doors.ModOn},
+		Key: doors.Key{Key: "e", CtrlMod: doors.ModOn},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.r.Update(ctx, 7, "ctrl-e")
 			return false

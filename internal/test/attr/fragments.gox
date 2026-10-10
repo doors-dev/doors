@@ -408,7 +408,7 @@ elem (f *captureFragment) Main() {
 		},
 	} <a id="prevent-link" href="#jump">prevent-link</a>
 	~>doors.AKeyDown{
-		Keys: doors.Key{Key: "Enter"},
+		Key: doors.Key{Key: "Enter"},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.filter++
 			f.r.Update(ctx, 4, fmt.Sprint(f.filter))
@@ -416,7 +416,7 @@ elem (f *captureFragment) Main() {
 		},
 	} <input id="filter-input" type="text"/>
 	~>doors.AKeyDown{
-		Keys: doors.Key{Key: "s", CtrlMod: doors.ModOn},
+		Key: doors.Key{Key: "s", CtrlMod: doors.ModOn},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.ctrlOn++
 			f.r.Update(ctx, 5, fmt.Sprint(f.ctrlOn))
@@ -424,7 +424,7 @@ elem (f *captureFragment) Main() {
 		},
 	} <input id="keys-ctrl" type="text"/>
 	~>doors.AKeyDown{
-		Keys: doors.Key{Key: "d", CtrlMod: doors.ModOff},
+		Key: doors.Key{Key: "d", CtrlMod: doors.ModOff},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.ctrlOff++
 			f.r.Update(ctx, 6, fmt.Sprint(f.ctrlOff))
@@ -432,7 +432,7 @@ elem (f *captureFragment) Main() {
 		},
 	} <input id="keys-ctrl-off" type="text"/>
 	~>doors.AKeyDown{
-		Keys: doors.Key{Key: "e", MetaMod: doors.ModOn},
+		Key: doors.Key{Key: "e", MetaMod: doors.ModOn},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.metaOn++
 			f.r.Update(ctx, 7, fmt.Sprint(f.metaOn))
@@ -440,7 +440,7 @@ elem (f *captureFragment) Main() {
 		},
 	} <input id="keys-meta" type="text"/>
 	~>doors.AKeyDown{
-		Keys: doors.Key{Key: "a"}.And(doors.Key{Key: "b", ShiftMod: doors.ModOn}),
+		Key: doors.Key{Key: "a"}.And(doors.Key{Key: "b", ShiftMod: doors.ModOn}),
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.multi++
 			f.r.Update(ctx, 8, fmt.Sprint(f.multi))
@@ -448,7 +448,7 @@ elem (f *captureFragment) Main() {
 		},
 	} <input id="keys-multi" type="text"/>
 	~>doors.AKeyDown{
-		Keys: doors.Key{Key: "", AltMod: doors.ModOn},
+		Key: doors.Key{Key: "", AltMod: doors.ModOn},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.anyKey++
 			f.r.Update(ctx, 9, fmt.Sprint(f.anyKey))

@@ -67,6 +67,7 @@ See [Door](./docs/06-door.md#deferred-operations).
 |---|---|
 | `CSP.ScriptStrictDynamic` | Removed: `'strict-dynamic'` made browsers block the **Doors** client script, so pages did not work |
 | `ServerDisableGzip` turns off gzip for Door updates | `SolitaireDisableGzip` does |
+| `Keys:` on `AKeyDown` and `AKeyUp` | `Key:`, named like `Scope` and `Indicator` |
 
 ## Migration
 
@@ -74,7 +75,7 @@ See [Door](./docs/06-door.md#deferred-operations).
 go get github.com/doors-dev/doors@v0.17.0
 ```
 
-Remove `ScriptStrictDynamic` from `doors.CSP`. If you turned off gzip with `ServerDisableGzip` and want Door updates uncompressed too, also set `SolitaireDisableGzip`.
+Rename `Keys:` to `Key:` on `AKeyDown` and `AKeyUp`. Remove `ScriptStrictDynamic` from `doors.CSP`. If you turned off gzip with `ServerDisableGzip` and want Door updates uncompressed too, also set `SolitaireDisableGzip`.
 
 ---
 

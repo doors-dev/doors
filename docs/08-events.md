@@ -114,7 +114,7 @@ Some event families also add browser-event options such as:
 - `PreventDefault`
 - `StopPropagation`
 - `ExactTarget`
-- `Keys`
+- `Key`
 - `ExcludeValue`
 
 Not every event family supports every one of these options.
@@ -126,7 +126,7 @@ Form and custom-hook attrs — `ASubmit[T]`, `ARawSubmit`, `AHook[...]`, and `AR
 When an event fires, the client/runtime flow is roughly:
 
 1. capture the browser event and build the payload
-2. apply client-side event options such as `PreventDefault`, `StopPropagation`, `ExactTarget`, or keyboard `Keys` matching
+2. apply client-side event options such as `PreventDefault`, `StopPropagation`, `ExactTarget`, or keyboard `Key` matching
 3. run client-side scopes
 4. start indication
 5. run any `Before` actions
@@ -184,14 +184,14 @@ Keyboard attributes are:
 - `doors.AKeyDown`
 - `doors.AKeyUp`
 
-Use `Keys` to fire only for specific keys and modifier combinations.
+Use `Key` to fire only for specific keys and modifier combinations.
 
-`Keys` is a single `doors.Keys` value, and a `doors.Key` is one on its own. Combine several with `.And(...)` or `doors.JoinKeys(...)`; the hook fires when the event matches any of them:
+`Key` takes a single `doors.Keys` value, and a `doors.Key` is one on its own. Combine several with `.And(...)` or `doors.JoinKeys(...)`; the hook fires when the event matches any of them:
 
 ```gox
 <input
 	(doors.AKeyDown{
-		Keys: doors.Key{Key: "Enter"}.
+		Key: doors.Key{Key: "Enter"}.
 			And(doors.Key{Key: "s", CtrlMod: doors.ModOn}),
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			return false

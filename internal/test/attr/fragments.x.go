@@ -667,7 +667,7 @@ func (f *captureFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 //line fragments.gox:410
 		__e = (doors.AKeyDown{
-		Keys: doors.Key{Key: "Enter"},
+		Key: doors.Key{Key: "Enter"},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.filter++
 			f.r.Update(ctx, 4, fmt.Sprint(f.filter))
@@ -686,7 +686,7 @@ func (f *captureFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 //line fragments.gox:418
 		__e = (doors.AKeyDown{
-		Keys: doors.Key{Key: "s", CtrlMod: doors.ModOn},
+		Key: doors.Key{Key: "s", CtrlMod: doors.ModOn},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.ctrlOn++
 			f.r.Update(ctx, 5, fmt.Sprint(f.ctrlOn))
@@ -705,7 +705,7 @@ func (f *captureFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 //line fragments.gox:426
 		__e = (doors.AKeyDown{
-		Keys: doors.Key{Key: "d", CtrlMod: doors.ModOff},
+		Key: doors.Key{Key: "d", CtrlMod: doors.ModOff},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.ctrlOff++
 			f.r.Update(ctx, 6, fmt.Sprint(f.ctrlOff))
@@ -724,7 +724,7 @@ func (f *captureFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 //line fragments.gox:434
 		__e = (doors.AKeyDown{
-		Keys: doors.Key{Key: "e", MetaMod: doors.ModOn},
+		Key: doors.Key{Key: "e", MetaMod: doors.ModOn},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.metaOn++
 			f.r.Update(ctx, 7, fmt.Sprint(f.metaOn))
@@ -743,7 +743,7 @@ func (f *captureFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 //line fragments.gox:442
 		__e = (doors.AKeyDown{
-		Keys: doors.Key{Key: "a"}.And(doors.Key{Key: "b", ShiftMod: doors.ModOn}),
+		Key: doors.Key{Key: "a"}.And(doors.Key{Key: "b", ShiftMod: doors.ModOn}),
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.multi++
 			f.r.Update(ctx, 8, fmt.Sprint(f.multi))
@@ -762,7 +762,7 @@ func (f *captureFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 //line fragments.gox:450
 		__e = (doors.AKeyDown{
-		Keys: doors.Key{Key: "", AltMod: doors.ModOn},
+		Key: doors.Key{Key: "", AltMod: doors.ModOn},
 		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
 			f.anyKey++
 			f.r.Update(ctx, 9, fmt.Sprint(f.anyKey))
