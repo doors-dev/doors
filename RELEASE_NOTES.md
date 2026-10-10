@@ -47,9 +47,19 @@ See [Door](./docs/06-door.md#deferred-operations).
 
 ## Fixes
 
-- Equality functions (`NewSourceEqual`, `NewSourceEqualNoSkip`, `DeriveSourceEqual`, `DeriveBeamEqual`, `RouteDeriveEqual`, `TabStateEqual`) received `(new, old)` on updates. They now always get `(old, new)`.
+- Equality functions (`NewSourceEqual`, `NewSourceEqualNoSkip`, `DeriveSourceEqual`, `DeriveBeamEqual`, `RouteDeriveEqual`, `TabStateEqual`) received `(new, old)` on updates, while internals used a different order. They now always get `(old, new)`.
 - Door renders during the page render could race on CSP collection.
 - A panic in cleanup code during a Door operation, such as in a beam watcher's `Cancel`, could leave the operation's channel open for good.
+- Update stream:
+  - Ending an instance while updates were being written could crash the process or leave an operation's channel open.
+  - A result or gap report for a re-sent update that arrived while it was being written was lost, so the instance later ended with a sync timeout, or the stream panicked.
+  - Navigation actions (`ActionLocation*`) were not re-sent after the frame carrying them was lost.
+  - A late report of a lost update that had already been re-delivered could end the instance when many updates followed in between.
+  - A new stream could not take over while the previous one was stuck writing to a client that stopped reading.
+  - A request context canceled with a cause from outside **Doors**, such as a `BaseContext` from `signal.NotifyContext`, made the stream panic.
+  - A panic in one call's result callback left the other calls answered in the same report unresolved.
+  - The instance ended on reaching `SolitaireQueue` instead of on exceeding it.
+- `ActionScroll` options that cannot be encoded to JSON failed inside the update stream; `Call` now reports the encoding error.
 
 ## Breaking Changes
 

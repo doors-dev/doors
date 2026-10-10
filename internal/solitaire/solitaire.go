@@ -83,7 +83,8 @@ func (s Solitaire) End(cause common.EndCause) {
 }
 
 func (s Solitaire) Connect(w http.ResponseWriter, r *http.Request) {
-	ctx, cancelTimer := context.WithTimeout(r.Context(), s.conf.Roll*4/3)
+	lifetime := s.conf.Roll * 4 / 3
+	ctx, cancelTimer := context.WithTimeout(r.Context(), lifetime)
 	ctx, cancelCause := context.WithCancelCause(ctx)
 	cancel := func(cause error) {
 		cancelCause(cause)
@@ -92,6 +93,7 @@ func (s Solitaire) Connect(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if r.Method == http.MethodGet {
 		s.inst.Touch()
+		http.NewResponseController(w).SetWriteDeadline(time.Now().Add(lifetime))
 		fw := &writeController{
 			Sync:    &s.sync,
 			Writer:  w,
@@ -390,16 +392,14 @@ func (c *sender) wait() bool {
 
 func (c *sender) handleCause() {
 	cause := context.Cause(c.ctx)
-	switch cause {
-	case context.DeadlineExceeded, context.Canceled:
-		c.submit(signalRoll)
-	case common.EndCauseKilled:
+	switch {
+	case errors.Is(cause, common.EndCauseKilled):
 		c.submit(signalKill)
-	case common.EndCauseSuspend:
+	case errors.Is(cause, common.EndCauseSuspend):
 		c.submit(signalSuspend)
-	case common.EndCauseSyncError:
+	case errors.Is(cause, common.EndCauseSyncError):
 	default:
-		panic(errors.New("unknown solitaire connection cancel cause"))
+		c.submit(signalRoll)
 	}
 }
 

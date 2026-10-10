@@ -329,10 +329,14 @@ func (aa ActionScroll) And(a Actions) Actions {
 }
 
 func (a ActionScroll) action(ctx context.Context, core core.Core, _ bool) (action, error) {
+	options, err := json.Marshal(a.Options)
+	if err != nil {
+		return action{}, err
+	}
 	return action{
 		action: actions.Scroll{
 			Selector: a.Selector,
-			Options:  a.Options,
+			Options:  json.RawMessage(options),
 		},
 	}, nil
 }

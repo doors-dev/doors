@@ -105,13 +105,12 @@ func (c *Card) insert(n *Card, h head) {
 }
 
 func (c *Card) cancel() {
+	if c.tail != nil {
+		defer c.tail.cancel()
+	}
 	if !c.IsFiller() {
 		c.Call.Cancel()
 	}
-	if c.tail == nil {
-		return
-	}
-	c.tail.cancel()
 }
 
 func (c *Card) extractRestored(seq uint64, h head) (*Card, error) {

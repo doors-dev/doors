@@ -153,7 +153,7 @@ func TestWriteControllerStashAndSubmit(t *testing.T) {
 			Payload: actions.NewText("payload"),
 		},
 	}
-	if got := fw.Stash(newInnerCard(5, issuedCall)); got != stashIssue {
+	if got := fw.Stash(newInnerCard(5, issuedCall)); got != stashOk {
 		t.Fatalf("expected issue stash result, got %v", got)
 	}
 	if fw.Len() != 1 {
@@ -203,7 +203,7 @@ func TestWriteControllerSubmitRestoresOnWriteError(t *testing.T) {
 	recorder := &stubRW{writeErr: true}
 	fw := newTestWriteController(conf, recorder)
 	call := &stubSyncCall{act: actions.Test{Arg: "retry"}}
-	if got := fw.Stash(newInnerCard(1, call)); got != stashIssue {
+	if got := fw.Stash(newInnerCard(1, call)); got != stashOk {
 		t.Fatalf("expected issued card, got %v", got)
 	}
 
@@ -399,7 +399,7 @@ func TestSenderRunCleanupSetsCauseAfterSubmitError(t *testing.T) {
 	deck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
 	fw := newTestWriteController(conf, &stubRW{writeErr: true})
 	call := &stubSyncCall{act: actions.Test{Arg: "write-error"}}
-	if got := fw.Stash(newInnerCard(1, call)); got != stashIssue {
+	if got := fw.Stash(newInnerCard(1, call)); got != stashOk {
 		t.Fatalf("expected issued card, got %v", got)
 	}
 	fw.frameStart = time.Now().Add(-conf.FlushTime)
@@ -420,7 +420,7 @@ type blockingStasher struct {
 func (s *blockingStasher) Stash(*inner.Card) stashResult {
 	s.entered <- struct{}{}
 	<-s.release
-	return stashIssue
+	return stashOk
 }
 
 func (s *blockingStasher) Full() bool {

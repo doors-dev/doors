@@ -52,7 +52,7 @@ type writeController struct {
 type stashResult int
 
 const (
-	stashIssue stashResult = iota
+	stashOk stashResult = iota
 	stashFiller
 	stashCancel
 )
@@ -144,7 +144,7 @@ func (f *writeController) Stash(card *inner.Card) stashResult {
 	if err := h.writeCard(&f.buffer, &invocation); err != nil {
 		panic(err)
 	}
-	return stashIssue
+	return stashOk
 }
 
 func (f *writeController) stash(h header) {

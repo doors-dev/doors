@@ -60,10 +60,10 @@ func (d *deck) End() {
 	d.inner = inner.Deck{}
 	d.mu.Unlock()
 	d.expirator.Shutdown()
+	defer queued.Cancel()
 	for _, card := range issued {
-		card.Call.Cancel()
+		defer card.Call.Cancel()
 	}
-	queued.Cancel()
 }
 
 func (d *deck) PendingCount() int {
@@ -109,6 +109,9 @@ var errorLimit = errors.New("limit")
 
 func (d *deck) Dump(s Stasher) (err error) {
 	for err == nil {
+		if s.Full() {
+			return
+		}
 		d.mu.Lock()
 		if d.killed {
 			d.mu.Unlock()
@@ -118,33 +121,34 @@ func (d *deck) Dump(s Stasher) (err error) {
 			err = errorLimit
 		}
 		card := d.inner.Cut()
+		if card != nil && !card.IsFiller() {
+			d.issued[card.End] = card
+		}
 		d.mu.Unlock()
 		if card == nil {
 			return
 		}
-		switch s.Stash(card) {
-		case stashFiller:
-		case stashCancel:
+		res := s.Stash(card)
+		if res == stashFiller {
+			continue
+		}
+		d.mu.Lock()
+		killed := d.killed
+		owned := d.issued[card.End] == card
+		if owned && res != stashOk {
+			delete(d.issued, card.End)
+			d.inner.Fill(card.Beg, card.End)
+		}
+		d.mu.Unlock()
+		switch true {
+		case killed:
+			return errorKilled
+		case !owned:
+		case res == stashOk:
+			card.Call.Written()
+		case res == stashCancel:
 			d.expirator.Report(card.End)
 			card.Call.Cancel()
-			d.mu.Lock()
-			if !d.killed {
-				d.inner.Fill(card.Beg, card.End)
-			}
-			d.mu.Unlock()
-		case stashIssue:
-			d.mu.Lock()
-			if d.killed {
-				d.mu.Unlock()
-				card.Call.Cancel()
-				return errorKilled
-			}
-			d.issued[card.End] = card
-			d.mu.Unlock()
-			card.Call.Written()
-		}
-		if s.Full() {
-			return
 		}
 	}
 	return
@@ -163,7 +167,7 @@ func (d *deck) CollectResults(r map[uint64]result) error {
 	buffer := make([]bufferedResult, 0, len(r))
 	defer func() {
 		for _, r := range buffer {
-			r.process()
+			defer r.process()
 		}
 	}()
 	d.mu.Lock()
@@ -214,21 +218,23 @@ func (d *deck) FillGaps(g []gap) error {
 	if d.killed {
 		return context.Canceled
 	}
-	tolarance := min(uint64(d.conf.Pending), d.seq)
-	prevEnd := max(d.latestReport, tolarance) - tolarance
-	for _, gap := range g {
+	var prevEnd uint64
+	for i, gap := range g {
 		if gap.end < gap.beg {
 			return errors.New("gap range issue")
 		}
 		if gap.end > d.seq {
 			return errors.New("gap overflows last seq")
 		}
-		if prevEnd >= gap.beg {
+		if i > 0 && prevEnd >= gap.beg {
 			return errors.New("gap overlap")
 		}
 		prevEnd = gap.end
-		beg := gap.beg
-		for seq := max(gap.beg, d.latestReport); seq <= gap.end; seq++ {
+		if gap.end <= d.latestReport {
+			continue
+		}
+		beg := max(gap.beg, d.latestReport+1)
+		for seq := beg; seq <= gap.end; seq++ {
 			card, ok := d.issued[seq]
 			if !ok {
 				continue
@@ -272,7 +278,7 @@ func (d *deck) Insert(c actions.Call) (err error) {
 }
 
 func (d *deck) checkQueueLength() error {
-	if d.inner.Len()+len(d.issued) < d.conf.Queue {
+	if d.inner.Len()+len(d.issued) <= d.conf.Queue {
 		return nil
 	}
 	return fmt.Errorf("%w: call queue limit reached", common.ErrTerminated)

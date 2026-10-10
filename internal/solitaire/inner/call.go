@@ -22,9 +22,10 @@ import (
 )
 
 type Call struct {
-	Call     actions.Call
-	Params   actions.CallParams
-	reported atomic.Bool
+	Call             actions.Call
+	Params           actions.CallParams
+	reported         atomic.Bool
+	optimisticAction actions.Action
 }
 
 func (p *Call) Written() {
@@ -35,7 +36,14 @@ func (p *Call) Written() {
 }
 
 func (c *Call) Action() (action actions.Action, free func(), ok bool) {
-	return c.Call.Action()
+	if c.optimisticAction != nil {
+		return c.optimisticAction, func() {}, true
+	}
+	action, free, ok = c.Call.Action()
+	if ok && c.Params.Optimistic {
+		c.optimisticAction = action
+	}
+	return action, free, ok
 }
 
 func (c *Call) Cancel() {
