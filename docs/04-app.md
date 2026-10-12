@@ -225,14 +225,12 @@ elem (a App) Main() {
 	<html lang="en">
 		<body>
 			~(doors.Route(
-				doors.RouteModel(elem(p doors.Source[Path]) {
-					~Page{path: p}
-				}),
-				doors.RouteDefaultComp[doors.Location](NotFound{}),
+				doors.RouteModel[Path](doors.RouteSource(Page)),
+				doors.RouteComp[doors.Location](NotFound{}),
 			))
 		</body>
 	</html>
 }
 ```
 
-Path models, route builders, default fallbacks, and routing on derived state are covered in [Routing](./05-routing.md).
+Path models, route builders, fallbacks, and routing on derived state are covered in [Routing](./05-routing.md).

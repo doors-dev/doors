@@ -44,9 +44,10 @@ type Beam[T any] interface {
 	// when the value changes. If f returns nil, the fragment renders nothing.
 	Bind(func(T) gox.Elem) gox.Elem
 
-	// RouteBeam renders the first matching read-only route for the current
-	// value. The fragment swaps only when the matching route changes.
-	RouteBeam(routes ...RouteBeam[T]) gox.Elem
+	// RouteBeam renders the first route that matches the current value and
+	// switches branches as the value changes. Routes are tried in order and can
+	// be nested. They receive a read-only [Beam].
+	RouteBeam(routes ...BeamRoute[T]) gox.Elem
 
 	// Sub subscribes to the value stream. onValue is called immediately with the
 	// current value on the calling goroutine, then again on every update.
@@ -114,10 +115,10 @@ type Beam[T any] interface {
 type Source[T any] interface {
 	Beam[T]
 
-	// Route renders the first matching writable route for the current value.
-	// The fragment swaps only when the matching route changes. Unlike
-	// [Beam.RouteBeam], routes receive a writable [Source].
-	Route(routes ...RouteSource[T]) gox.Elem
+	// Route renders the first route that matches the current value and switches
+	// branches as the value changes. Routes are tried in order and can be
+	// nested. They receive a writable [Source].
+	Route(routes ...SourceRoute[T]) gox.Elem
 
 	// Update sets a new value and propagates it to subscribers and derived beams
 	// through the underlying source. Any context is allowed.
@@ -195,12 +196,12 @@ type source[T any] struct {
 	beam.Source[T]
 }
 
-func (s source[T]) Route(routes ...RouteSource[T]) gox.Elem {
-	return routeSource(s, routes)
+func (s source[T]) Route(routes ...SourceRoute[T]) gox.Elem {
+	return renderSourceRoutes(s, routes)
 }
 
-func (s source[T]) RouteBeam(routes ...RouteBeam[T]) gox.Elem {
-	return routeBeam(s, routes)
+func (s source[T]) RouteBeam(routes ...BeamRoute[T]) gox.Elem {
+	return renderBeamRoutes(s, routes)
 }
 
 func (s source[T]) Effect(ctx context.Context) (T, bool) {
@@ -259,12 +260,12 @@ type derivedSource[T1, T2 any] struct {
 	beam.Lens[T1, T2]
 }
 
-func (l derivedSource[T1, T2]) Route(routes ...RouteSource[T2]) gox.Elem {
-	return routeSource(l, routes)
+func (l derivedSource[T1, T2]) Route(routes ...SourceRoute[T2]) gox.Elem {
+	return renderSourceRoutes(l, routes)
 }
 
-func (l derivedSource[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.Elem {
-	return routeBeam(l, routes)
+func (l derivedSource[T1, T2]) RouteBeam(routes ...BeamRoute[T2]) gox.Elem {
+	return renderBeamRoutes(l, routes)
 }
 
 func (l derivedSource[T1, T2]) Bind(f func(v T2) gox.Elem) gox.Elem {
@@ -313,8 +314,8 @@ type derivedBeam[T1, T2 any] struct {
 	beam.Beam[T1, T2]
 }
 
-func (b derivedBeam[T1, T2]) RouteBeam(routes ...RouteBeam[T2]) gox.Elem {
-	return routeBeam(b, routes)
+func (b derivedBeam[T1, T2]) RouteBeam(routes ...BeamRoute[T2]) gox.Elem {
+	return renderBeamRoutes(b, routes)
 }
 
 func (b derivedBeam[T1, T2]) Bind(f func(v T2) gox.Elem) gox.Elem {

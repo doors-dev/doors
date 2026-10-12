@@ -3,7 +3,7 @@
 In **Doors**, in-app navigation happens in one of two ways:
 
 - declaratively with `doors.ALink`
-- programmatically by updating the `Source` received from `RouteModel`
+- programmatically by updating the `Source` a `RouteSource` receives inside `RouteModel`
 
 Both update the current page instance's location source. The router (see [Routing](./05-routing.md)) reacts by re-matching routes and updating the view in place. No full reload is involved.
 
@@ -39,7 +39,7 @@ type LocationEncoder interface {
 }
 ```
 
-Implement it on a domain type when you have one-off URL shapes that don't justify a full path-model struct, or when an existing type already knows its own URL form. It pairs naturally with `RouteDerive` on `Location` for the matching side — together they round-trip a custom value through the URL.
+Implement it on a domain type when you have one-off URL shapes that don't justify a full path-model struct, or when an existing type already knows its own URL form. It pairs naturally with `RouteDerive` inside a `RouteMatch` on `Location` for the matching side — together they round-trip a custom value through the URL.
 
 ```go
 type CustomRoute struct {
@@ -63,7 +63,7 @@ func (r CustomRoute) Encode() (doors.Location, error) {
 
 ## Link Behavior
 
-ALink always navigates dynamically. A normal click is intercepted, a hook updates the current instance's location source, and the page re-routes in place. `Route(...)` matches the new `Location` — the active route swaps if a different route now matches; otherwise the existing fragment stays and reacts to the new value via its `Source` or `Beam`.
+ALink always navigates dynamically. A normal click is intercepted, a hook updates the current instance's location source, and the page re-routes in place. `Route(...)` routes the new `Location` in the same container: the shown branch stays while its conditions keep holding and reacts to the new value via its `Source` or `Beam`. When a condition fails, routing picks again from the top, and a showing leaf gives way to an earlier route in its list that starts matching. See [Routing](./07-state.md#routing).
 
 The element is also a real anchor — `href` is set from the encoded model. That's there for browser features (middle-click, Cmd-click, "open in new tab", "copy link"), not as a fallback for clicks. Each of those opens the URL in a fresh browser context, handled like any other initial request.
 
@@ -166,7 +166,7 @@ For action types, see [Actions](./12-actions.md).
 
 For navigation that doesn't fit an anchor (button, wizard step, form flow), update that `Source` directly.
 
-The source you get from `doors.RouteModel(...)` is a typed view of the current URL. Updating it encodes the new path model back into the URL, like an `ALink` click.
+The source a `RouteSource` receives inside `doors.RouteModel[Path](...)` is a typed view of the current URL. Updating it encodes the new path model back into the URL, like an `ALink` click.
 
 For raw locations, update `doors.Router(ctx)` directly.
 
@@ -218,4 +218,4 @@ a.path.Update(doors.HistoryReplaceContext(ctx), Path{
 })
 ```
 
-It works with any URL-backed source — `doors.Router(ctx)`, a `RouteModel` source, or a derived route source — and with both `Update` and `Mutate`. Browser back then skips the replaced entry.
+It works with any URL-backed source — `doors.Router(ctx)` or any source derived from it, such as a `RouteModel` source — and with both `Update` and `Mutate`. Browser back then skips the replaced entry.

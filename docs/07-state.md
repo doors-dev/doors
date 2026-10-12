@@ -235,103 +235,454 @@ It is enough to check only the last `ok`. `Effect` fails only when the context w
 
 ### Routing
 
-`RouteBeam` and `source.Route` pick one of several views based on a reactive value:
+Routing shows one of several branches depending on a reactive value. Think of it as a `switch` over a `Source` or `Beam` that keeps running: routes are tried against the current value, the first match is shown, and when the value changes, the branch is switched only if a different one should show.
 
 ```go
-beam.RouteBeam(routes...)      // gox.Elem
-source.RouteBeam(routes...)    // gox.Elem
-source.Route(routes...)        // gox.Elem
+source.Route(routes...)   // gox.Elem; routes are SourceRoute[T]
+beam.RouteBeam(routes...) // gox.Elem; routes are BeamRoute[T], every branch is read-only
+doors.Route(routes...)    // gox.Elem; routes the page URL, a Source[doors.Location]
 ```
 
-The routed fragment only swaps when the active route changes. Value changes that keep the same route matched do not rerender the route fragment. Instead, the route's render function receives a live `Beam` or `Source` and reacts inside with normal state primitives (`Bind`, `Effect`, derived values).
+`Route` is available on every source, `RouteBeam` on every source and beam, derived ones included. `doors.Route(...)` routes `doors.Router(ctx)`; path models and URL helpers are covered in [Routing](./05-routing.md).
 
-`RouteBeam` accepts only read-only routes. `source.Route` accepts both writable and read-only routes, because a source can also be passed where a beam is expected.
+Each call renders one dynamic container, however deeply its routes nest. The container shows the chosen branch's content, or nothing when no route matches.
 
-URL routing is just the special case where the source is `doors.Source[doors.Location]`; see [Routing](./05-routing.md) for path models and URL helpers. The mechanics below apply to any reactive value.
+#### When to Use
 
-#### Match Builders
+Use routing when the value decides **which** view the user sees: an order's status, a member's role, a checkout step, a settings tab, a URL section. A branch that stays chosen is not rendered again: it reads later values through the `Source` or `Beam` it receives, so inputs, open panels, and component state inside survive the update. `RouteBind` is the one leaf that re-renders on purpose; see [Leaf Updates](#leaf-updates).
 
-A route has two parts: a matcher and a render. Three matcher builders, ordered from most general to least:
+Reach for something else when:
 
-**`RouteDerive(derive)`** matches and derives in one step. `derive(value)` returns `(derivedValue, ok)`. The route matches when `ok` is `true`, and the route's render receives the derived value. This is the central pattern when state is structural: match on a field's presence and route on the field itself.
+- one fragment just displays the value: use [Bind](#bind). A `Bind` with an `if` chain also switches views, but it re-renders the fragment on every change.
+- one small container reads several values together: use [Effect](#effect).
+- a handler or background job decides what to show, not a value: use a [Door](./06-door.md).
 
-```go
-matchString := func(s State) (string, bool) {
-	return s.Str, s.Str != ""
-}
-```
+#### Typical Use
 
-For non-comparable derived types such as slices, maps, or custom structs, use `RouteDeriveEqual(derive, equal)` and supply your own equality function.
-
-**`RouteMatch(pred)`** matches without deriving. `pred(value)` returns a `bool`. The route's render receives the original value.
-
-**`RouteValue(v)`** is sugar for `RouteMatch(== v)`. It requires `T` to be `comparable`, and is convenient for typed enums and small unions.
-
-**`RouteDefault*`** always matches. Put it last. It renders with the original value, not the derived type of any non-default route.
-
-#### Render Methods
-
-The match builders are not yet full routes. Chain one of these to produce one:
-
-| Method | Render signature | Available in |
-| --- | --- | --- |
-| `.Comp(comp)` | fixed `gox.Comp`, no value | `RouteBeam(...)` and `source.Route(...)` |
-| `.Beam(render)` | `func(Beam[T]) gox.Elem` | `RouteBeam(...)` and `source.Route(...)` |
-| `.Bind(render)` | `func(T) gox.Elem` | `RouteBeam(...)` and `source.Route(...)` |
-| `.Source(render)` on `RouteMatch` | `func(Source[T]) gox.Elem` | `source.Route(...)` only |
-| `.Source(set, render)` on `RouteDerive` | `set func(parent, derived) parent`, `render func(Source[derived]) gox.Elem` | `source.Route(...)` only |
-
-The `set` parameter on `RouteDerive(...).Source(...)` writes a derived value back into the parent state. Without it, the route would have no way to map a write on `Source[Derived]` back to `Source[Parent]`.
-
-Default routes also have a render-method shape:
-
-- `RouteDefaultComp(comp)` — fixed component
-- `RouteDefaultBeam(render)` — `func(Beam[T]) gox.Comp`
-- `RouteDefaultBind(render)` — `func(T) gox.Comp`, receives the raw value
-- `RouteDefault(render)` — `func(Source[T]) gox.Comp`, only inside `source.Route(...)`
-
-#### Example
+An order page shows an editor while the order is a draft, tracking once it is placed, and a notice otherwise:
 
 ```gox
-type Section int
-
-const (
-	SectionProfile Section = iota
-	SectionBilling
-)
-
-type Settings struct {
-	section doors.Source[Section]
+type Order struct {
+	ID     int
+	Status Status
+	Note   string
 }
 
-elem (s Settings) Main() {
-	<button (doors.AClick{
-		On: func(ctx context.Context, _ doors.RequestPointer) bool {
-			s.section.Update(ctx, SectionProfile)
-			return false
-		},
-	})>
-		Profile
-	</button>
-
-	<button (doors.AClick{
-		On: func(ctx context.Context, _ doors.RequestPointer) bool {
-			s.section.Update(ctx, SectionBilling)
-			return false
-		},
-	})>
-		Billing
-	</button>
-
-	~(s.section.RouteBeam(
-		doors.RouteValue(SectionProfile).Comp(ProfilePanel{}),
-		doors.RouteValue(SectionBilling).Comp(BillingPanel{}),
-		doors.RouteDefaultComp(ProfilePanel{}),
+elem OrderPage(order doors.Source[Order]) {
+	~(order.Route(
+		doors.RouteMatch(
+			func(o Order) bool {
+				return o.Status == StatusDraft
+			},
+			doors.RouteSource(OrderEditor),
+		),
+		doors.RouteMatch(
+			func(o Order) bool {
+				return o.Status == StatusPlaced
+			},
+			doors.RouteBeam(OrderTracking),
+		),
+		doors.RouteComp[Order](OrderClosed{}),
 	))
 }
 ```
 
-The fragment swaps only when `section` changes to a value matched by a different route. Updates that keep the same route active stay inside that branch and can be handled with `Bind`, `Effect`, or derived values.
+- `OrderEditor` receives the writable order source, `OrderTracking` a read-only beam, and `OrderClosed` is a fixed component for every other status.
+- The editor writes the note through its source. The order is still a draft, so the editor is not rendered again, and its textarea keeps its text and focus.
+- When the editor sets the status to `StatusPlaced`, the draft route stops matching, the editor is unmounted, and tracking takes its place.
+
+#### Leaves and Groups
+
+Routes come in two kinds. **Leaves** render content and always match:
+
+| Leaf | Content |
+| --- | --- |
+| `RouteComp[T](comp)` | a fixed component |
+| `RouteBind(func(v T) gox.Elem)` | rendered from the value, again whenever it changes |
+| `RouteSource(func(s Source[T]) gox.Elem)` | receives the writable source |
+| `RouteBeam(func(b Beam[T]) gox.Elem)` | receives a read-only beam |
+
+**Groups** hold more routes:
+
+| Group | Matches when |
+| --- | --- |
+| `RouteMatch(pred, routes...)` | `pred` returns `true` and a child matches |
+| `RouteValue(value, routes...)` | the value equals `value` and a child matches |
+| `RouteDerive(derive, routes...)` | a child matches the derived value |
+| `RouteModel[M](routes...)` | the `Location` decodes into path model `M` and a child matches |
+
+Each group has a read-only twin; see [Read-Only Routes](#read-only-routes).
+
+Routes are tried in order, depth first, and the first leaf reached wins. Since a leaf always matches, it is the fallback of its list: put it last, because routes after it are never tried. Without a leaf at the end, the container is empty when nothing matches.
+
+```gox
+<>
+	~(role.Route(
+		doors.RouteValue(RoleAdmin, doors.RouteComp[Role](AdminDashboard{})),
+		doors.RouteValue(RoleSupport, doors.RouteComp[Role](TicketQueue{})),
+		doors.RouteComp[Role](CustomerHome{}),
+	))
+</>
+```
+
+Routes below a `RouteDerive` work on the derived source, and routes below a `RouteModel` on the model source. Everywhere else, routes work on the source being routed.
+
+#### Match
+
+`RouteMatch` takes a predicate over the value. Use it for ranges, flags, and conditions on several fields:
+
+```gox
+elem QuotaBanner(usage doors.Source[Usage]) {
+	~(usage.Route(
+		doors.RouteMatch(
+			func(u Usage) bool {
+				return u.UsedGB >= u.LimitGB
+			},
+			doors.RouteComp[Usage](QuotaExceeded{}),
+		),
+		doors.RouteMatch(
+			func(u Usage) bool {
+				return u.UsedGB*5 >= u.LimitGB*4
+			},
+			doors.RouteBind(QuotaWarning),
+		),
+	))
+}
+
+elem QuotaWarning(u Usage) {
+	<p class="warning">~(u.UsedGB) of ~(u.LimitGB) GB used</p>
+}
+```
+
+Over the limit the banner shows `QuotaExceeded`, from 80% a warning with live numbers, and below that nothing matches, so the banner is empty.
+
+#### Value
+
+`RouteValue` matches one value. It fits enums: steps, plans, tabs.
+
+```gox
+<>
+	~(step.Route(
+		doors.RouteValue(StepCart, doors.RouteComp[Step](CartReview{})),
+		doors.RouteValue(StepShipping, doors.RouteSource(ShippingForm)),
+		doors.RouteValue(StepPayment, doors.RouteSource(PaymentForm)),
+	))
+</>
+```
+
+`ShippingForm` receives the step source and moves the checkout on with `step.Update(ctx, StepPayment)` once the address is saved.
+
+`RouteValue` compares with the comparator of the source it routes: `==` for `NewSource`, `DeriveSource`, and `DeriveBeam`, your function for `NewSourceEqual`, `DeriveSourceEqual`, and `DeriveBeamEqual`. A custom comparator lets it match types that are not comparable. A source with a nil comparator never matches a `RouteValue`; route it with `RouteMatch`.
+
+#### Derive
+
+`RouteDerive` hands its children a narrower part of the value. It usually sits inside a `RouteMatch`: the match decides when the branch applies, and the derive decides what the routes inside it work on. The derive function turns the level's source into a derived one, usually with `DeriveSource` (see [Derived Sources](#derived-sources)).
+
+Placed orders get delivery views that work on the delivery alone:
+
+```gox
+<>
+	~(order.Route(
+		doors.RouteMatch(
+			func(o Order) bool {
+				return o.Status == StatusPlaced
+			},
+			doors.RouteDerive(
+				func(src doors.Source[Order]) doors.Source[Delivery] {
+					return doors.DeriveSource(
+						src,
+						func(o Order) Delivery {
+							return o.Delivery
+						},
+						func(o Order, d Delivery) Order {
+							o.Delivery = d
+							return o
+						},
+					)
+				},
+				doors.RouteMatch(
+					func(d Delivery) bool {
+						return d.Delivered
+					},
+					doors.RouteComp[Delivery](DeliveredNotice{}),
+				),
+				doors.RouteSource(DeliveryTracker),
+			),
+		),
+		doors.RouteComp[Order](OrderSummary{}),
+	))
+</>
+```
+
+- The outer match keeps delivery views to placed orders; every other order gets `OrderSummary`.
+- Inside it, routes work on `Delivery`: `DeliveredNotice` once the parcel arrives, `DeliveryTracker` until then.
+- `DeliveryTracker` receives a `Source[Delivery]`. When it saves delivery instructions, the write goes through the derived source into the order.
+
+`RouteDerive` has no condition of its own: it matches when one of its children matches. `DeliveryTracker` is a leaf, so without the outer match the derive would match every order and `OrderSummary` would never render. Use a bare `RouteDerive` only where it should take everything that reaches it, such as the last route of a list.
+
+#### Read-Only Routes
+
+The `RouteBeam` method starts a read-only tree: nothing below gets a `Source`, even when the routed value is one. Its routes are `BeamRoute[T]`:
+
+- the leaves `RouteComp`, `RouteBind`, and `RouteBeam`
+- the groups `RouteBeamMatch`, `RouteBeamValue`, `RouteBeamDerive`, and `RouteBeamModel`
+
+They work like their writable twins. `RouteBeamDerive` takes a `func(Beam[T1]) Beam[T2]`, usually built with `DeriveBeam`, and `RouteBeamModel[M]` hands its children a `Beam[M]`.
+
+```gox
+<>
+	~(order.RouteBeam(
+		doors.RouteBeamMatch(
+			func(o Order) bool {
+				return o.Status == StatusPlaced
+			},
+			doors.RouteBeam(OrderTracking),
+		),
+		doors.RouteBind(OrderReceipt),
+	))
+</>
+```
+
+Don't confuse the two `RouteBeam`s: the method `x.RouteBeam(routes...)` starts a read-only tree, while the leaf `doors.RouteBeam(render)` hands its content a beam and fits in any tree.
+
+`Route` accepts both kinds of routes. `RouteSource` and the writable groups (`RouteMatch`, `RouteValue`, `RouteDerive`, `RouteModel`) fit only under `Route` and other writable groups. A read-only group inside a `Route` tree makes its own subtree read-only.
+
+#### Path Models
+
+`RouteModel[M]` routes a `Location` through a path model. It matches when the `Location` decodes into `M`, and its children route on the decoded model. A `RouteSource` below receives a `Source[M]`: writing it encodes the model back into the `Location`. Under `doors.Route`, that changes the URL, and the page reroutes without a reload. The model syntax is covered in [Path Models](./05-routing.md#path-models).
+
+```gox
+type OrdersPath struct {
+	View   OrdersView `/orders:" | :ID"`
+	ID     int
+	Status string `query:"status"`
+}
+
+type OrdersView int
+
+const (
+	OrdersList OrdersView = iota
+	OrderDetails
+)
+
+elem App() {
+	~(doors.Route(
+		doors.RouteModel[OrdersPath](
+			doors.RouteMatch(
+				func(p OrdersPath) bool {
+					return p.View == OrdersList
+				},
+				doors.RouteSource(OrderList),
+			),
+			doors.RouteBind(OrderDetailsPage),
+		),
+		doors.RouteComp[doors.Location](NotFound{}),
+	))
+}
+
+elem OrderList(path doors.Source[OrdersPath]) {
+	<button (doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestPointer) bool {
+			path.Mutate(ctx, func(p OrdersPath) OrdersPath {
+				p.Status = "open"
+				return p
+			})
+			return false
+		},
+	})>
+		Open orders
+	</button>
+}
+```
+
+- `/orders` shows the list, `/orders/42` the order, and URLs that don't decode, like `/orders/abc` or `/billing`, get `NotFound`.
+- **Open orders** writes the model, and the URL becomes `/orders?status=open`. The list route still matches, so `OrderList` stays.
+- `OrderDetailsPage` is a `RouteBind`, so it re-renders when `/orders/42` becomes `/orders/43`. A URL change that decodes into an equal model doesn't reach the routes below.
+
+Writes push a browser history entry; to replace the current one, see [Navigation](./09-navigation.md#history-replace).
+
+#### Nesting
+
+Groups nest to any depth, and the whole tree still renders into the one container. Here tabs sit inside a section inside the page:
+
+```gox
+type Path struct {
+	Section Section `/:"dashboard | settings/:Tab"`
+	Tab     string
+}
+
+<>
+	~(doors.Route(
+		doors.RouteModel[Path](
+			doors.RouteMatch(
+				func(p Path) bool {
+					return p.Section == SectionDashboard
+				},
+				doors.RouteComp[Path](Dashboard{}),
+			),
+			doors.RouteMatch(
+				func(p Path) bool {
+					return p.Section == SectionSettings
+				},
+				doors.RouteBeamDerive(
+					func(path doors.Beam[Path]) doors.Beam[string] {
+						return doors.DeriveBeam(
+							path,
+							func(p Path) string {
+								return p.Tab
+							},
+						)
+					},
+					doors.RouteBeamValue("profile", doors.RouteComp[string](ProfileTab{})),
+					doors.RouteBeamValue("team", doors.RouteComp[string](TeamTab{})),
+				),
+			),
+		),
+		doors.RouteComp[doors.Location](NotFound{}),
+	))
+</>
+```
+
+Going from `/dashboard` to `/settings/team`, or from one tab to another, replaces the container content once.
+
+The container shows only the chosen leaf, so switching tabs replaces everything in it. When a settings layout should stay put while tabs switch, render the layout from a leaf, for example `doors.RouteSource(SettingsLayout)`, and route the tabs inside it with another `Route` call. That inner call is a container of its own and starts over each time the settings branch is entered.
+
+#### Fall-Through
+
+A group matches only when one of its children matches. If none does, routing moves on to the group's next sibling, as if the group's condition had failed.
+
+In the [Nesting](#nesting) example, `/settings/audit` passes the settings match, but no tab matches `"audit"`. The settings group falls through, so does the model route, and `NotFound` renders. To show a page of the section instead, end the tabs with their own leaf: `doors.RouteComp[string](UnknownTab{})`.
+
+#### Rendering Nothing
+
+When no route matches, the container is empty. To render nothing for some values **and** keep later routes from matching them, give the group an empty leaf, `RouteComp[T](nil)`:
+
+```gox
+<>
+	~(account.Route(
+		doors.RouteMatch(
+			func(a Account) bool {
+				return a.Enterprise
+			},
+			doors.RouteComp[Account](nil),
+		),
+		doors.RouteComp[Account](UpgradeBanner{}),
+	))
+</>
+```
+
+Enterprise accounts see no banner. A group with no children never matches, so `RouteMatch(pred)` alone would fall through and show them `UpgradeBanner`.
+
+#### Leaf Updates
+
+While a branch stays chosen, its leaf decides what a new value does:
+
+- `RouteComp`, `RouteSource`, and `RouteBeam` render once when the branch is entered. Later values reach the content through its `Source` or `Beam`, so update the parts that change with `Bind`, `Effect`, or derived values inside.
+- `RouteBind` re-renders its content whenever the value changes, judged by the comparator of its level.
+
+```gox
+<>
+	~(shipment.Route(
+		doors.RouteMatch(
+			func(s Shipment) bool {
+				return s.Delivered
+			},
+			doors.RouteBind(DeliveredNote),
+		),
+		doors.RouteBeam(TrackingMap),
+	))
+</>
+
+elem TrackingMap(shipment doors.Beam[Shipment]) {
+	~(MapWidget{})
+	~(shipment.Bind(elem(s Shipment) {
+		<p>Last seen in ~(s.City)</p>
+	}))
+}
+```
+
+While the parcel travels, `TrackingMap` renders once: the map stays, and only the last-seen line follows the shipment. `DeliveredNote` is small and holds no state, so re-rendering it on change is fine.
+
+Use `RouteBind` for small views where re-rendering is cheap. Use `RouteSource` or `RouteBeam` when the content holds state, such as inputs or its own sources, or is expensive to render.
+
+#### Sticky Branches
+
+A chosen branch stays mounted while the conditions on its path keep holding, even if an earlier route would now match too. Updates that keep it chosen don't re-render it, so a form inside keeps what the user typed:
+
+```gox
+<>
+	~(ticket.Route(
+		doors.RouteMatch(
+			func(t Ticket) bool {
+				return !t.Closed
+			},
+			doors.RouteSource(ReplyForm),
+		),
+		doors.RouteComp[Ticket](ClosedNotice{}),
+	))
+</>
+```
+
+While the agent types a reply, new messages and reassignments keep updating `ticket`. The ticket is still open, so `ReplyForm` is not rendered again and the draft stays.
+
+When someone closes the ticket, the condition fails and the container picks again from the top, as on the first render. Leaving a branch unmounts its content: its hooks and subscriptions end, `OnClean` callbacks run, and `ClosedNotice` shows.
+
+When an earlier route must win whenever it matches, write the later conditions so they exclude it. Leaves are the exception to stickiness, covered next.
+
+#### Fallbacks Give Way
+
+While a leaf is showing, updates re-check the routes before it in its list, and the first one that matches takes over. A fallback is a placeholder until something more specific applies:
+
+```gox
+<>
+	~(query.Route(
+		doors.RouteMatch(
+			func(q string) bool {
+				return len(q) >= 3
+			},
+			doors.RouteBeam(SearchResults),
+		),
+		doors.RouteComp[string](SearchTips{}),
+	))
+</>
+```
+
+Tips show until the query reaches three characters, then the results take over. `SearchResults` follows further typing through its beam; deleting back below three characters ends its branch and the tips return.
+
+A `RouteDerive` showing a leaf of its own list counts as a fallback too, so it gives way to its earlier siblings as well. `RouteMatch`, `RouteValue`, and `RouteModel` don't pass this on: while their condition holds, they stay, whatever they show.
+
+#### Equal Derived Values
+
+A derive level passes an update down only when the derived value changes by its comparator, the same rule beams use to suppress equal updates. While it stays equal, no predicate below runs and nothing below re-renders.
+
+```gox
+<>
+	~(workspace.RouteBeam(
+		doors.RouteBeamDerive(
+			func(ws doors.Beam[Workspace]) doors.Beam[Role] {
+				return doors.DeriveBeam(
+					ws,
+					func(w Workspace) Role {
+						return w.Role
+					},
+				)
+			},
+			doors.RouteBeamValue(RoleOwner, doors.RouteComp[Role](OwnerDashboard{})),
+			doors.RouteBeamValue(RoleMember, doors.RouteComp[Role](MemberDashboard{})),
+			doors.RouteComp[Role](GuestHome{}),
+		),
+	))
+</>
+```
+
+A workspace's unread and online counters change all the time, but the role stays equal, so the role routes are not even checked. Derive the narrowest value a subtree routes on.
+
+With `DeriveSourceEqual` or `DeriveBeamEqual`, your comparator decides what counts as a change: a change it calls equal stays hidden from every route below, even one that would now pick another branch. A nil comparator passes every update down.
+
+#### Details
+
+- The derive functions of `RouteDerive` and `RouteBeamDerive` run once each time the container renders, for every derive in the tree, shown or not. Keep them to building the derived source or beam.
+- `RouteComp` renders the same component value each time its branch is entered. Use a [disposable component](./08-components.md#disposable-components) when it should start fresh on every entry.
 
 ## Update
 

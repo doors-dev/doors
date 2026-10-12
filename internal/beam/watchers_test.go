@@ -50,6 +50,10 @@ func (s *stubSyncSource[T]) Get() T {
 	return zero
 }
 
+func (s *stubSyncSource[T]) Equal(T, T) bool {
+	return false
+}
+
 func (s *stubSyncSource[T]) addWatcher(context.Context, *watcher) bool {
 	return false
 }

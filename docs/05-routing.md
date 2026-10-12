@@ -32,35 +32,27 @@ elem (a App) Main() {
 		<body>
 			~(doors.Route(
 				// Decode the browser URL into Path.
-				doors.RouteModel(Page),
-				// Render when the URL does not decode into any path model.
-				doors.RouteDefaultComp[doors.Location](NotFound{}),
+				doors.RouteModel[Path](
+					// /: home page.
+					doors.RouteMatch(
+						func(p Path) bool {
+							return p.Section == SectionHome
+						},
+						doors.RouteComp[Path](Home{}),
+					),
+					// /docs and /docs/:ID.
+					doors.RouteMatch(
+						func(p Path) bool {
+							return p.Section == SectionDocs
+						},
+						doors.RouteBind(DocsPage),
+					),
+				),
+				// URLs that don't decode into Path.
+				doors.RouteComp[doors.Location](NotFound{}),
 			))
 		</body>
 	</html>
-}
-```
-
-`RouteModel` matches when the URL decodes into `Path`. The matched view receives `doors.Source[Path]`: a typed view of the current URL. Updating that source encodes the new `Path` back into the URL.
-
-`RouteDefaultComp[doors.Location]` is the fallback for URLs that didn't decode. Routes are tried in order and the first match renders, so put fallbacks last.
-
-Inside the matched app page, route on decoded fields instead of parsing strings:
-
-```gox
-elem Page(path doors.Source[Path]) {
-	~(path.Route(
-		// /: home page.
-		doors.RouteMatch(func(p Path) bool {
-			return p.Section == SectionHome
-		}).Comp(Home{}),
-		// /docs and /docs/:ID.
-		doors.RouteMatch(func(p Path) bool {
-			return p.Section == SectionDocs
-		}).Bind(DocsPage),
-		// Decoded but unsupported Section values.
-		doors.RouteDefaultComp[Path](NotFound{}),
-	))
 }
 
 elem DocsPage(p Path) {
@@ -72,7 +64,9 @@ elem DocsPage(p Path) {
 }
 ```
 
-Branches that need URL params, such as `DocsPage`, receive the decoded `Path` value so they can render from `ID` directly.
+`RouteModel[Path]` matches when the URL decodes into `Path`, and the routes inside it work on the decoded value instead of parsing strings. `DocsPage` is a `RouteBind`, so it renders from the decoded `Path` and again when `ID` changes. A `RouteSource` inside receives `doors.Source[Path]`: a typed view of the current URL. Updating that source encodes the new `Path` back into the URL.
+
+`NotFound` is the fallback. A leaf always matches, so it goes last. It also catches URLs that decode into `Path` but match none of the routes inside the model route.
 
 ## Path Models
 
@@ -238,20 +232,20 @@ Query is for state that belongs in the address bar. For per-tab state that shoul
 
 ## Multiple Models
 
-A page can route on more than one path model — list them in order of specificity:
+A page can route on more than one path model. List them in order of specificity:
 
 ```gox
 <>
-    ~(doors.Route(
-        doors.RouteModel(renderHome),
-        doors.RouteModel(renderPost),
-        doors.RouteModel(renderCatalog),
-        doors.RouteDefaultComp[doors.Location](NotFound{}),
-    ))
+	~(doors.Route(
+		doors.RouteModel[HomePath](doors.RouteComp[HomePath](Home{})),
+		doors.RouteModel[PostPath](doors.RouteBind(PostPage)),
+		doors.RouteModel[CatalogPath](doors.RouteSource(Catalog)),
+		doors.RouteComp[doors.Location](NotFound{}),
+	))
 </>
 ```
 
-The first model that decodes successfully wins.
+The first model that decodes the URL and has a matching route inside wins.
 
 ## URLs
 
@@ -318,19 +312,19 @@ Matched routes may receive a `Source` and write back to the routed value.
 
 ### The Primitive
 
-State routing swaps one of several views based on a reactive value. Routes are built from `RouteValue`, `RouteMatch`, and `RouteDerive`, then completed with `.Comp`, `.Beam(...)`, `.Bind(...)`, or `.Source(...)`, plus an optional `RouteDefault*` fallback.
+State routing shows one of several views based on a reactive value. Leaves (`RouteComp`, `RouteBind`, `RouteSource`, `RouteBeam`) render content, and groups (`RouteMatch`, `RouteValue`, `RouteDerive`, `RouteModel`) choose between the routes inside them. Groups nest, and the whole tree renders in one container.
 
-The fragment swaps only when the active route changes. Within a matched route, the render function receives a live `Beam` or `Source` and reacts to value changes with normal state primitives. Full reference in [State](./07-state.md).
+A chosen branch stays while it keeps matching: its content reads later values through the `Beam` or `Source` it receives and reacts with normal state primitives. Full reference in [State](./07-state.md#routing).
 
 ### Patterns
 
 In a routing context, that opens up a few common patterns:
 
-- **Match the location without a path model.** The general `RouteValue`, `RouteMatch`, and `RouteDerive` builders work directly on `Location`, and compose freely with `RouteModel` / `RouteModelBeam` in the same router. Reach for them when one ad-hoc URL doesn't deserve its own struct.
-- **Take the location source directly.** `RouteDefault`, `RouteDefaultBeam`, and `RouteDefaultBind` can give the matched view a `Source[Location]`, `Beam[Location]`, or raw `Location` value. Useful as a fallback or when a page parses URLs itself.
-- **Dispatch on a derived value.** Once a page has a typed `Path`, derive a beam for the variant field and route on it again. The fragment only swaps when the variant actually changes.
-- **Mix URL routing with non-URL state.** Branch on a session-scoped flag, a feature toggle, an auth state — using the same `Route*` builders.
-- **Custom slices of the URL.** Derive a single-purpose source or beam from `doors.Router(ctx)` (for example, one query param) without committing to a path model.
-- **Compose levels.** Route on `Location` to pick a section, then route on a derived value inside it. Each level only rerenders on its own changes.
+- **Match the location without a path model.** `RouteValue`, `RouteMatch`, and `RouteDerive` work directly on `Location` and mix freely with `RouteModel` and `RouteBeamModel` in the same router. Reach for them when one ad-hoc URL doesn't deserve its own struct.
+- **Take the location source directly.** The leaves `RouteSource`, `RouteBeam`, and `RouteBind` give the view a `Source[Location]`, `Beam[Location]`, or the `Location` value. Useful as a fallback or when a page parses URLs itself.
+- **Dispatch on a derived value.** Inside a model route, derive the variant field with `RouteDerive` or `RouteBeamDerive` and route on it. While the derived value stays equal, the routes below are not checked again.
+- **Mix URL routing with non-URL state.** Branch on a session-scoped flag, a feature toggle, or an auth state with the same routes.
+- **Custom slices of the URL.** Derive a single-purpose source or beam from `doors.Router(ctx)`, for example one query param, without committing to a path model.
+- **Compose levels.** Pick a section on `Location`, then route on a derived value inside it, all in one container. To keep a section layout mounted while the routes inside switch, render the layout from a leaf and route inside it with another `Route` call.
 
-For derivation patterns (`DeriveSource`, `DeriveBeam`), the full `Route*` builder reference, the `.Comp` / `.Beam` / `.Source` chain, write-back via `RouteDerive(...).Source(set, render)`, and how routing fits in with `Bind` and `Effect`, see [State](./07-state.md).
+For derivation patterns (`DeriveSource`, `DeriveBeam`), writing back through `RouteSource`, and how routing fits in with `Bind` and `Effect`, see [State](./07-state.md#routing).
