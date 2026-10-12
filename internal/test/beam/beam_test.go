@@ -20,6 +20,7 @@ import (
 
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
+	"github.com/go-rod/rod"
 )
 
 func TestBeamBasics(t *testing.T) {
@@ -560,4 +561,126 @@ func TestRouteSourceAndDerivedBeamEntrypoints(t *testing.T) {
 	test.TestContent(t, page, "#route-entry-simple-beam", "simple-beam:simple-lens")
 	test.TestMustNot(t, page, "#route-entry-derived")
 	test.TestContent(t, page, "#route-entry-derived-default", "derived-default:even")
+}
+
+func testRouteDoors(t *testing.T, page *rod.Page, wrapper string) {
+	t.Helper()
+	if c := test.Count(page, wrapper+" d0-r, "+wrapper+" [data-d0r]"); c != 1 {
+		t.Fatal("expected one route door in ", wrapper, ", got ", c)
+	}
+}
+
+func TestRouteNestedSourceClicks(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamRouteNestedFragment{
+				source: doors.NewSource(state{}),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#nested-view", "off")
+	testRouteDoors(t, page, "#nested-route")
+
+	test.Click(t, page, "#nested-a")
+	test.TestContent(t, page, "#nested-view", "tab-a")
+	testRouteDoors(t, page, "#nested-route")
+
+	test.Click(t, page, "#nested-b")
+	test.TestContent(t, page, "#nested-view", "form")
+	testRouteDoors(t, page, "#nested-route")
+
+	test.TestInput(t, page, "#nested-input", "draft")
+	test.ClickBurst(t, page, "#nested-bump")
+	<-time.After(200 * time.Millisecond)
+	test.TestContent(t, page, "#nested-source", "2:b")
+	test.TestContent(t, page, "#nested-view", "form")
+	testRouteDoors(t, page, "#nested-route")
+	res, err := page.Eval(`() => {
+		const el = document.querySelector("#nested-input")
+		return el.value + ":" + (document.activeElement === el)
+	}`)
+	if err != nil {
+		t.Fatal("input state: ", err)
+	}
+	if s := res.Value.String(); s != "draft:true" {
+		t.Fatal("input state: expects draft:true fact: ", s)
+	}
+
+	test.Click(t, page, "#nested-x")
+	test.TestContent(t, page, "#nested-view", "unknown:x")
+	test.TestMustNot(t, page, "#nested-input")
+	testRouteDoors(t, page, "#nested-route")
+
+	test.Click(t, page, "#nested-a")
+	test.TestContent(t, page, "#nested-view", "tab-a")
+	testRouteDoors(t, page, "#nested-route")
+
+	test.Click(t, page, "#nested-off")
+	test.TestContent(t, page, "#nested-source", "0:a")
+	test.TestContent(t, page, "#nested-view", "off")
+	testRouteDoors(t, page, "#nested-route")
+}
+
+func TestRouteBindRerendersSourceAndBeamDoNot(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamRouteLeafFragment{
+				source: doors.NewSource(0),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#leaf-bind", "0:1")
+	test.TestContent(t, page, "#leaf-source-render", "1")
+	test.TestContent(t, page, "#leaf-source-value", "0")
+	test.TestContent(t, page, "#leaf-beam-render", "1")
+	test.TestContent(t, page, "#leaf-beam-value", "0")
+
+	test.Click(t, page, "#leaf-update")
+	test.TestContent(t, page, "#leaf-bind", "1:2")
+	test.TestContent(t, page, "#leaf-source-render", "1")
+	test.TestContent(t, page, "#leaf-source-value", "1")
+	test.TestContent(t, page, "#leaf-beam-render", "1")
+	test.TestContent(t, page, "#leaf-beam-value", "1")
+	testRouteDoors(t, page, "#leaf-bind-route")
+
+	test.Click(t, page, "#leaf-update")
+	test.TestContent(t, page, "#leaf-bind", "2:3")
+	test.TestContent(t, page, "#leaf-source-render", "1")
+	test.TestContent(t, page, "#leaf-source-value", "2")
+	test.TestContent(t, page, "#leaf-beam-render", "1")
+	test.TestContent(t, page, "#leaf-beam-value", "2")
+	testRouteDoors(t, page, "#leaf-bind-route")
+}
+
+func TestRouteEqualDerivedValueSkipsSubtree(t *testing.T) {
+	bro := test.NewFragmentBro(browser,
+		func() test.Fragment {
+			return &BeamRouteEqualDeriveFragment{
+				source: doors.NewSource(state{Int: 1, Str: "a"}),
+			}
+		})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.TestContent(t, page, "#derive-equal-leaf", "a:1:1")
+
+	test.Click(t, page, "#derive-equal-int")
+	test.Click(t, page, "#derive-equal-int")
+	test.TestContent(t, page, "#derive-equal-source", "3:a")
+	test.TestContent(t, page, "#derive-equal-leaf", "a:1:1")
+
+	test.Click(t, page, "#derive-equal-case")
+	test.TestContent(t, page, "#derive-equal-source", "3:A")
+	test.TestContent(t, page, "#derive-equal-leaf", "a:1:1")
+
+	test.Click(t, page, "#derive-equal-str")
+	test.TestContent(t, page, "#derive-equal-source", "3:b")
+	test.TestContent(t, page, "#derive-equal-leaf", "b:2:2")
 }

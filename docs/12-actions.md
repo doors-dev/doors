@@ -122,7 +122,7 @@ They go through the browser location API and load the target page again.
 
 That makes them useful when you intentionally want a full page load.
 
-For normal in-app navigation, prefer [Navigation](./09-navigation.md), especially `ALink` or updating the `Source` from `RouteModel`.
+For normal in-app navigation, prefer [Navigation](./09-navigation.md), especially `ALink` or updating the `Source` a `RouteSource` receives inside `RouteModel`.
 
 Built-ins:
 
@@ -197,6 +197,6 @@ The same shape works for `r.After(...)` and `OnError`.
 - Prefer `Setter` when existing attributes should stay shared without rerendering the elements.
 - Ignore the `doors.Call` completion channel when the outcome does not matter; capture results with `Into`.
 - Scope `$on(...)` handlers intentionally; async handlers hold the action pending until their `Promise` settles.
-- Prefer `ALink` or updating the `Source` from `RouteModel` for in-app navigation.
+- Prefer `ALink` or updating the `Source` a `RouteSource` receives inside `RouteModel` for in-app navigation.
 - Use location actions when you intentionally want a full page load.
 - Use `r.After(...)` for success-only follow-up and `OnError` for fallback or recovery behavior.

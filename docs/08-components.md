@@ -267,10 +267,13 @@ Where it pays off — a component value handed to a route branch is one Go value
 ```gox
 <>
 	~(path.Route(
-		doors.RouteMatch(func(p Path) bool { 
-           return p.Section == SectionCounter 
-        }).Comp(Counter{}),
-		doors.RouteDefaultComp[Path](Dashboard{}),
+		doors.RouteMatch(
+			func(p Path) bool {
+				return p.Section == SectionCounter
+			},
+			doors.RouteComp[Path](Counter{}),
+		),
+		doors.RouteComp[Path](Dashboard{}),
 	))
 </>
 ```

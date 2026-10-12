@@ -813,8 +813,12 @@ func (f *BeamRouteStateFragment) init() {
 	})
 }
 
-func (f *BeamRouteStateFragment) matchString(s state) (string, bool) {
-	return s.Str, s.Str != ""
+func (f *BeamRouteStateFragment) hasString(s state) bool {
+	return s.Str != ""
+}
+
+func (f *BeamRouteStateFragment) getString(s state) string {
+	return s.Str
 }
 
 func (f *BeamRouteStateFragment) setString(s state, v string) state {
@@ -822,11 +826,16 @@ func (f *BeamRouteStateFragment) setString(s state, v string) state {
 	return s
 }
 
-func (f *BeamRouteStateFragment) matchList(s state) ([]string, bool) {
-	if s.Str == "" {
-		return nil, false
-	}
-	return []string{s.Str, fmt.Sprint(s.Int)}, true
+func (f *BeamRouteStateFragment) deriveString(s doors.Source[state]) doors.Source[string] {
+	return doors.DeriveSource(s, f.getString, f.setString)
+}
+
+func (f *BeamRouteStateFragment) deriveStringBeam(b doors.Beam[state]) doors.Beam[string] {
+	return doors.DeriveBeam(b, f.getString)
+}
+
+func (f *BeamRouteStateFragment) getList(s state) []string {
+	return []string{s.Str, fmt.Sprint(s.Int)}
 }
 
 func (f *BeamRouteStateFragment) setList(s state, v []string) state {
@@ -848,6 +857,14 @@ func (f *BeamRouteStateFragment) equalList(a []string, b []string) bool {
 		}
 	}
 	return true
+}
+
+func (f *BeamRouteStateFragment) deriveList(s doors.Source[state]) doors.Source[[]string] {
+	return doors.DeriveSourceEqual(s, f.getList, f.setList, f.equalList)
+}
+
+func (f *BeamRouteStateFragment) deriveListBeam(b doors.Beam[state]) doors.Beam[[]string] {
+	return doors.DeriveBeamEqual(b, f.getList, f.equalList)
 }
 
 elem (f *BeamRouteStateFragment) lensRoute(l doors.Source[string]) {
@@ -929,18 +946,18 @@ elem (f *BeamRouteStateFragment) Main() {
 		<div id="route-source">~(fmt.Sprintf("%d:%s:%d", v.Int, v.Str, f.sourceRenders))</div>
 	}))
 	~(f.source.Route(
-		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
-		doors.RouteDefaultBeam(f.lensDefault),
+		doors.RouteMatch(f.hasString, doors.RouteDerive(f.deriveString, doors.RouteSource(f.lensRoute))),
+		doors.RouteBeam(f.lensDefault),
 	))
 	~(f.source.RouteBeam(
-		doors.RouteDerive(f.matchString).Beam(f.beamRoute),
-		doors.RouteDefaultBeam(f.beamDefault),
+		doors.RouteBeamMatch(f.hasString, doors.RouteBeamDerive(f.deriveStringBeam, doors.RouteBeam(f.beamRoute))),
+		doors.RouteBeam(f.beamDefault),
 	))
 	~(f.source.Route(
-		doors.RouteDeriveEqual(f.matchList, f.equalList).Source(f.setList, f.lensListRoute),
+		doors.RouteMatch(f.hasString, doors.RouteDerive(f.deriveList, doors.RouteSource(f.lensListRoute))),
 	))
 	~(f.source.RouteBeam(
-		doors.RouteDeriveEqual(f.matchList, f.equalList).Beam(f.beamListRoute),
+		doors.RouteBeamMatch(f.hasString, doors.RouteBeamDerive(f.deriveListBeam, doors.RouteBeam(f.beamListRoute))),
 	))
 	~(test.Button("route-source-lens", func(ctx context.Context) bool {
 		f.source.Update(ctx, state{Int: 2, Str: "doc"})
@@ -968,13 +985,25 @@ func (f *BeamRouteNoDefaultBurstFragment) init() {
 	f.source = doors.NewSource(state{})
 }
 
-func (f *BeamRouteNoDefaultBurstFragment) matchString(s state) (string, bool) {
-	return s.Str, s.Str != ""
+func (f *BeamRouteNoDefaultBurstFragment) hasString(s state) bool {
+	return s.Str != ""
+}
+
+func (f *BeamRouteNoDefaultBurstFragment) getString(s state) string {
+	return s.Str
 }
 
 func (f *BeamRouteNoDefaultBurstFragment) setString(s state, v string) state {
 	s.Str = v
 	return s
+}
+
+func (f *BeamRouteNoDefaultBurstFragment) deriveString(s doors.Source[state]) doors.Source[string] {
+	return doors.DeriveSource(s, f.getString, f.setString)
+}
+
+func (f *BeamRouteNoDefaultBurstFragment) deriveStringBeam(b doors.Beam[state]) doors.Beam[string] {
+	return doors.DeriveBeam(b, f.getString)
 }
 
 elem (f *BeamRouteNoDefaultBurstFragment) lensRoute(l doors.Source[string]) {
@@ -997,10 +1026,10 @@ elem (f *BeamRouteNoDefaultBurstFragment) Main() {
 		<div id="route-burst-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
 	}))
 	~(f.source.Route(
-		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
+		doors.RouteMatch(f.hasString, doors.RouteDerive(f.deriveString, doors.RouteSource(f.lensRoute))),
 	))
 	~(f.source.RouteBeam(
-		doors.RouteDerive(f.matchString).Beam(f.beamRoute),
+		doors.RouteBeamMatch(f.hasString, doors.RouteBeamDerive(f.deriveStringBeam, doors.RouteBeam(f.beamRoute))),
 	))
 	~(test.Button("route-burst-none", func(ctx context.Context) bool {
 		f.source.Update(ctx, state{Int: 1, Str: "queued"})
@@ -1042,16 +1071,32 @@ func (f *BeamRouteEntrypointsFragment) init() {
 	})
 }
 
-func (f *BeamRouteEntrypointsFragment) matchNonEmpty(v string) (string, bool) {
-	return v, v != ""
+func (f *BeamRouteEntrypointsFragment) nonEmpty(v string) bool {
+	return v != ""
 }
 
-func (f *BeamRouteEntrypointsFragment) matchOdd(v string) (string, bool) {
-	return v, v == "odd"
+func (f *BeamRouteEntrypointsFragment) odd(v string) bool {
+	return v == "odd"
+}
+
+func (f *BeamRouteEntrypointsFragment) simple(v string) bool {
+	return strings.HasPrefix(v, "simple")
+}
+
+func (f *BeamRouteEntrypointsFragment) getString(v string) string {
+	return v
 }
 
 func (f *BeamRouteEntrypointsFragment) setString(_ string, v string) string {
 	return v
+}
+
+func (f *BeamRouteEntrypointsFragment) deriveString(s doors.Source[string]) doors.Source[string] {
+	return doors.DeriveSource(s, f.getString, f.setString)
+}
+
+func (f *BeamRouteEntrypointsFragment) deriveStringBeam(b doors.Beam[string]) doors.Beam[string] {
+	return doors.DeriveBeam(b, f.getString)
 }
 
 elem (f *BeamRouteEntrypointsFragment) lensRoute(l doors.Source[string]) {
@@ -1106,24 +1151,20 @@ elem (f *BeamRouteEntrypointsFragment) Main() {
 		<div id="route-entry-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
 	}))
 	~(f.str.Route(
-		doors.RouteDerive(f.matchNonEmpty).Source(f.setString, f.lensRoute),
+		doors.RouteMatch(f.nonEmpty, doors.RouteDerive(f.deriveString, doors.RouteSource(f.lensRoute))),
 	))
 	~(f.str.RouteBeam(
-		doors.RouteDerive(f.matchNonEmpty).Beam(f.lensBeamRoute),
+		doors.RouteBeamMatch(f.nonEmpty, doors.RouteBeamDerive(f.deriveStringBeam, doors.RouteBeam(f.lensBeamRoute))),
 	))
 	~(f.parity.RouteBeam(
-		doors.RouteDerive(f.matchOdd).Beam(f.derivedRoute),
-		doors.RouteDefaultBeam(f.derivedDefault),
+		doors.RouteBeamMatch(f.odd, doors.RouteBeamDerive(f.deriveStringBeam, doors.RouteBeam(f.derivedRoute))),
+		doors.RouteBeam(f.derivedDefault),
 	))
 	~(f.str.Route(
-		doors.RouteMatch(func(v string) bool {
-			return strings.HasPrefix(v, "simple")
-		}).Source(f.simpleLensRoute),
+		doors.RouteMatch(f.simple, doors.RouteSource(f.simpleLensRoute)),
 	))
 	~(f.str.RouteBeam(
-		doors.RouteMatch(func(v string) bool {
-			return strings.HasPrefix(v, "simple")
-		}).Beam(f.simpleBeamRoute),
+		doors.RouteBeamMatch(f.simple, doors.RouteBeam(f.simpleBeamRoute)),
 	))
 	~(test.Button("route-entry-set-simple", func(ctx context.Context) bool {
 		f.str.Update(ctx, "simple")
@@ -1131,6 +1172,190 @@ elem (f *BeamRouteEntrypointsFragment) Main() {
 	}))
 	~(test.Button("route-entry-even", func(ctx context.Context) bool {
 		f.source.Update(ctx, state{Int: 2, Str: f.str.Get()})
+		return false
+	}))
+}
+
+type BeamRouteNestedFragment struct {
+	source doors.Source[state]
+	test.NoBeam
+}
+
+func (f *BeamRouteNestedFragment) active(s state) bool {
+	return s.Int > 0
+}
+
+func (f *BeamRouteNestedFragment) deriveString(s doors.Source[state]) doors.Source[string] {
+	return doors.DeriveSource(s, func(s state) string {
+		return s.Str
+	}, func(s state, v string) state {
+		s.Str = v
+		return s
+	})
+}
+
+elem (f *BeamRouteNestedFragment) view(label string) {
+	<div id="nested-view">~(label)</div>
+}
+
+elem (f *BeamRouteNestedFragment) form(_ doors.Source[string]) {
+	~(f.view("form"))
+	<input id="nested-input">
+}
+
+elem (f *BeamRouteNestedFragment) unknown(v string) {
+	~(f.view("unknown:" + v))
+}
+
+elem (f *BeamRouteNestedFragment) Main() {
+	~(f.source.Bind(elem(v state) {
+		<div id="nested-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
+	}))
+	<div id="nested-route">
+		~(f.source.Route(
+			doors.RouteMatch(
+				f.active,
+				doors.RouteDerive(
+					f.deriveString,
+					doors.RouteValue("a", doors.RouteComp[string](f.view("tab-a"))),
+					doors.RouteValue("b", doors.RouteSource(f.form)),
+					doors.RouteBind(f.unknown),
+				),
+			),
+			doors.RouteComp[state](f.view("off")),
+		))
+	</div>
+	~(test.Button("nested-a", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 1, Str: "a"})
+		return false
+	}))
+	~(test.Button("nested-b", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 1, Str: "b"})
+		return false
+	}))
+	~(test.Button("nested-x", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 1, Str: "x"})
+		return false
+	}))
+	~(test.Button("nested-bump", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Int++
+			return s
+		})
+		return false
+	}))
+	~(test.Button("nested-off", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Int = 0
+			return s
+		})
+		return false
+	}))
+}
+
+type BeamRouteLeafFragment struct {
+	source doors.Source[int]
+	bindRenders int
+	sourceRenders int
+	beamRenders int
+	test.NoBeam
+}
+
+elem (f *BeamRouteLeafFragment) bindLeaf(v int) {
+	~~
+	f.bindRenders++
+	~~
+	<div id="leaf-bind">~(fmt.Sprintf("%d:%d", v, f.bindRenders))</div>
+}
+
+elem (f *BeamRouteLeafFragment) sourceLeaf(s doors.Source[int]) {
+	~~
+	f.sourceRenders++
+	~~
+	<div id="leaf-source-render">~(fmt.Sprint(f.sourceRenders))</div>
+	~(s.Bind(elem(v int) {
+		<div id="leaf-source-value">~(fmt.Sprint(v))</div>
+	}))
+}
+
+elem (f *BeamRouteLeafFragment) beamLeaf(b doors.Beam[int]) {
+	~~
+	f.beamRenders++
+	~~
+	<div id="leaf-beam-render">~(fmt.Sprint(f.beamRenders))</div>
+	~(b.Bind(elem(v int) {
+		<div id="leaf-beam-value">~(fmt.Sprint(v))</div>
+	}))
+}
+
+elem (f *BeamRouteLeafFragment) Main() {
+	<div id="leaf-bind-route">
+		~(f.source.Route(doors.RouteBind(f.bindLeaf)))
+	</div>
+	~(f.source.Route(doors.RouteSource(f.sourceLeaf)))
+	~(f.source.RouteBeam(doors.RouteBeam(f.beamLeaf)))
+	~(test.Button("leaf-update", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(v int) int {
+			return v + 1
+		})
+		return false
+	}))
+}
+
+type BeamRouteEqualDeriveFragment struct {
+	source doors.Source[state]
+	checks int
+	renders int
+	test.NoBeam
+}
+
+func (f *BeamRouteEqualDeriveFragment) deriveString(b doors.Beam[state]) doors.Beam[string] {
+	return doors.DeriveBeamEqual(b, func(s state) string {
+		return s.Str
+	}, strings.EqualFold)
+}
+
+func (f *BeamRouteEqualDeriveFragment) check(v string) bool {
+	f.checks++
+	return v != ""
+}
+
+elem (f *BeamRouteEqualDeriveFragment) leaf(v string) {
+	~~
+	f.renders++
+	~~
+	<div id="derive-equal-leaf">~(fmt.Sprintf("%s:%d:%d", v, f.checks, f.renders))</div>
+}
+
+elem (f *BeamRouteEqualDeriveFragment) Main() {
+	~(f.source.Bind(elem(v state) {
+		<div id="derive-equal-source">~(fmt.Sprintf("%d:%s", v.Int, v.Str))</div>
+	}))
+	~(f.source.RouteBeam(
+		doors.RouteBeamDerive(
+			f.deriveString,
+			doors.RouteBeamMatch(f.check, doors.RouteBind(f.leaf)),
+		),
+	))
+	~(test.Button("derive-equal-int", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Int++
+			return s
+		})
+		return false
+	}))
+	~(test.Button("derive-equal-case", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Str = strings.ToUpper(s.Str)
+			return s
+		})
+		return false
+	}))
+	~(test.Button("derive-equal-str", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Str = "b"
+			return s
+		})
 		return false
 	}))
 }

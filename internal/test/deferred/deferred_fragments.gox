@@ -465,9 +465,9 @@ func routeTo(name string) func(test.Path) bool {
 elem (f *RouteFragment) Main() {
 	<div id="area">
 		~(f.B.Route(
-			doors.RouteMatch(routeTo("inner")).Comp(f.S.sectionLoader("inner")),
-			doors.RouteMatch(routeTo("outer")).Comp(f.S.swapLoader("outer")),
-			doors.RouteDefaultComp[test.Path](<p class="home">home</p>),
+			doors.RouteMatch(routeTo("inner"), doors.RouteComp[test.Path](f.S.sectionLoader("inner"))),
+			doors.RouteMatch(routeTo("outer"), doors.RouteComp[test.Path](f.S.swapLoader("outer"))),
+			doors.RouteComp[test.Path](<p class="home">home</p>),
 		))
 	</div>
 	~(&f.sentinel)

@@ -19,557 +19,434 @@ import (
 	"log/slog"
 	"reflect"
 
-	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/gox"
 )
 
-// RouteModel returns a URL route that matches when the current [Location]
-// decodes into path model M and renders with a writable [Source] of M.
-//
-// Updating that source re-encodes M into the URL.
-func RouteModel[M any, C gox.Comp](render func(s Source[M]) C) RouteSource[Location] {
-	a, err := path.GetModelAdapter[M]()
-	if err != nil {
-		slog.Error("Model adapter error", "error", err)
-	}
-	return modelSource[M, C]{
-		err:     err,
-		adapter: a,
-		render:  render,
-	}
+type SourceRoute[T any] interface {
+	init(source Source[T]) route[T]
 }
 
-type modelSource[M any, C gox.Comp] struct {
-	err     error
-	adapter path.ModelAdapter[M]
-	render  func(Source[M]) C
+type BeamRoute[T any] interface {
+	SourceRoute[T]
+	initBeam(beam Beam[T]) route[T]
 }
 
-func (ml modelSource[M, C]) sourceRender(l Source[Location]) gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		nl := DeriveSourceEqual(l, func(l Location) M {
-			m, ok := ml.adapter.Decode(l)
-			if !ok {
-				return *new(M)
-			}
-			return *m
-		}, func(prev Location, m M) Location {
-			loc, err := ml.adapter.Encode(&m)
-			if err != nil {
-				slog.Error("Model adapter encoding error", "error", err)
-				return prev
-			}
-			return loc
-		}, func(v1 M, v2 M) bool {
-			return reflect.DeepEqual(v1, v2)
-		})
-		return cur.Comp(ml.render(nl))
-	})
+type route[T any] interface {
+	clean()
+	seek(ctx context.Context, value T) (gox.Comp, seekResult)
+	keep(ctx context.Context, value T) (gox.Comp, keepResult)
 }
 
-func (ml modelSource[M, C]) match(l Location) routeMatch {
-	if ml.err != nil {
-		return routeMatchFalse
-	}
-	if _, ok := ml.adapter.Decode(l); ok {
-		return routeMatchTrue
-	}
-	return routeMatchFalse
-}
-
-var _ RouteSource[Location] = modelSource[any, gox.Comp]{}
-
-// RouteModelBeam returns a URL route that matches when the current [Location]
-// decodes into path model M and renders with a read-only [Beam] of M.
-//
-// Unlike [RouteModel], the model cannot be written back to the URL.
-func RouteModelBeam[M any, C gox.Comp](render func(b Beam[M]) C) RouteBeam[Location] {
-	a, err := path.GetModelAdapter[M]()
-	if err != nil {
-		slog.Error("Model adapter error", "error", err)
-	}
-	return modelBeam[M, C]{
-		err:     err,
-		adapter: a,
-		render:  render,
-	}
-}
-
-type modelBeam[M any, C gox.Comp] struct {
-	err     error
-	adapter path.ModelAdapter[M]
-	render  func(Beam[M]) C
-}
-
-func (ml modelBeam[M, C]) sourceRender(l Source[Location]) gox.Elem {
-	return ml.beamRender(l)
-}
-
-func (ml modelBeam[M, C]) beamRender(l Beam[Location]) gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		nl := DeriveBeamEqual(l, func(l Location) M {
-			m, ok := ml.adapter.Decode(l)
-			if !ok {
-				return *new(M)
-			}
-			return *m
-		}, func(v1 M, v2 M) bool {
-			return reflect.DeepEqual(v1, v2)
-		})
-		return cur.Comp(ml.render(nl))
-	})
-}
-
-func (ml modelBeam[M, C]) match(l Location) routeMatch {
-	if ml.err != nil {
-		return routeMatchFalse
-	}
-	if _, ok := ml.adapter.Decode(l); ok {
-		return routeMatchTrue
-	}
-	return routeMatchFalse
-}
-
-var _ RouteBeam[Location] = modelBeam[any, gox.Comp]{}
-
-// RouteDerive returns a route builder that matches when derive reports true
-// and exposes the derived value to the branch. It uses == to suppress
-// propagation of equal derived values.
-func RouteDerive[T1 any, T2 comparable](derive func(v T1) (T2, bool)) DeriveRoute[T1, T2] {
-	return DeriveRoute[T1, T2]{
-		derive: derive,
-		equal:  beam.DefaultEqual[T2],
-	}
-}
-
-// RouteDeriveEqual returns a route builder that matches when derive reports
-// true and exposes the derived value to the branch. It uses equal to suppress
-// propagation; if equal is nil, every update propagates.
-func RouteDeriveEqual[T1 any, T2 any](derive func(v T1) (T2, bool), equal func(old T2, new T2) bool) DeriveRoute[T1, T2] {
-	return DeriveRoute[T1, T2]{
-		derive: derive,
-		equal:  equal,
-	}
-}
-
-// DeriveRoute builds route branches that receive a value derived from the
-// routed value.
-type DeriveRoute[T1, T2 any] struct {
-	derive func(T1) (T2, bool)
-	equal  func(T2, T2) bool
-}
-
-// Source returns a writable branch for the derived value. set maps an updated
-// derived value back onto the routed value; updates made while the branch does
-// not match leave the routed value unchanged.
-func (r DeriveRoute[T1, T2]) Source(set func(v1 T1, v2 T2) T1, render func(s Source[T2]) gox.Elem) RouteSource[T1] {
-	return deriveRouteSource[T1, T2]{
-		derive: r.derive,
-		set:    set,
-		equal:  r.equal,
-		render: render,
-	}
-}
-
-// Beam returns a read-only branch that renders with a [Beam] of the derived
-// value. render runs when the branch becomes active; later value changes reach
-// it through the beam.
-func (r DeriveRoute[T1, T2]) Beam(render func(b Beam[T2]) gox.Elem) RouteBeam[T1] {
-	return deriveRouteBeam[T1, T2]{
-		derive: r.derive,
-		equal:  r.equal,
-		render: render,
-	}
-}
-
-// Bind returns a read-only branch that renders with the derived value itself.
-// Unlike [DeriveRoute.Beam], render runs again on every change of that value.
-func (r DeriveRoute[T1, T2]) Bind(render func(v T2) gox.Elem) RouteBeam[T1] {
-	return deriveRouteBeam[T1, T2]{
-		derive: r.derive,
-		equal:  r.equal,
-		render: func(b Beam[T2]) gox.Elem {
-			return b.Bind(render).Main()
-		},
-	}
-}
-
-// RouteValue returns a route builder that matches routed values equal to v.
-func RouteValue[T comparable](v T) MatchRoute[T] {
-	return MatchRoute[T]{
-		pred: func(t T) bool {
-			return t == v
-		},
-	}
-}
-
-// RouteMatch returns a route builder that matches when match reports true and
-// exposes the whole routed value to the branch.
-func RouteMatch[T any](match func(v T) bool) MatchRoute[T] {
-	return MatchRoute[T]{
-		pred: match,
-	}
-}
-
-// MatchRoute builds route branches that receive the whole routed value.
-type MatchRoute[T any] struct {
-	pred func(T) bool
-}
-
-// Comp returns a read-only branch that renders comp, which receives no value.
-func (m MatchRoute[T]) Comp(comp gox.Comp) RouteBeam[T] {
-	return matchRouteBeam[T]{
-		pred: m.pred,
-		render: func(Beam[T]) gox.Elem {
-			return comp.Main()
-		},
-	}
-}
-
-// Beam returns a read-only branch that renders with a [Beam] of the routed
-// value. render runs when the branch becomes active; later value changes reach
-// it through the beam.
-func (m MatchRoute[T]) Beam(render func(b Beam[T]) gox.Elem) RouteBeam[T] {
-	return matchRouteBeam[T]{
-		pred:   m.pred,
-		render: render,
-	}
-}
-
-// Bind returns a read-only branch that renders with the routed value itself.
-// Unlike [MatchRoute.Beam], render runs again on every change of that value.
-func (m MatchRoute[T]) Bind(render func(v T) gox.Elem) RouteBeam[T] {
-	return matchRouteBeam[T]{
-		pred: m.pred,
-		render: func(b Beam[T]) gox.Elem {
-			return b.Bind(render).Main()
-		},
-	}
-}
-
-// Source returns a writable branch for the routed value. Unlike
-// [MatchRoute.Beam], it is not accepted by [Beam.RouteBeam].
-func (m MatchRoute[T]) Source(render func(s Source[T]) gox.Elem) RouteSource[T] {
-	return matchRouteSource[T]{
-		pred:   m.pred,
-		render: render,
-	}
-}
-
-// RouteDefault returns a fallback route that always matches and renders with a
-// writable [Source] of the routed value. Place it last; routes after it are
-// never tried.
-func RouteDefault[T any, C gox.Comp](render func(s Source[T]) C) RouteSource[T] {
-	return defaultRouteSource[T](func(l Source[T]) gox.Elem {
-		var comp gox.Comp = render(l)
-		if comp == nil {
-			return nil
-		}
-		return comp.Main()
-	})
-}
-
-// RouteDefaultBeam returns a fallback route that always matches and renders
-// with a read-only [Beam] of the routed value. Place it last; routes after it
-// are never tried.
-func RouteDefaultBeam[T any, C gox.Comp](render func(b Beam[T]) C) RouteBeam[T] {
-	return defaultRouteBeam[T](func(l Beam[T]) gox.Elem {
-		var comp gox.Comp = render(l)
-		if comp == nil {
-			return nil
-		}
-		return comp.Main()
-	})
-}
-
-// RouteDefaultBind returns a fallback route that always matches and renders
-// with the routed value itself, rerendering on every change. Place it last;
-// routes after it are never tried.
-func RouteDefaultBind[T any, C gox.Comp](render func(v T) C) RouteBeam[T] {
-	return defaultRouteBeam[T](func(b Beam[T]) gox.Elem {
-		return b.Bind(func(t T) gox.Elem {
-			var comp gox.Comp = render(t)
-			if comp == nil {
-				return nil
-			}
-			el := comp.Main()
-			if el == nil {
-				return nil
-			}
-			return el
-		}).Main()
-	})
-}
-
-// RouteDefaultComp returns a fallback route that always matches and renders
-// comp, which receives no value. Place it last; routes after it are never
-// tried.
-func RouteDefaultComp[T any](comp gox.Comp) RouteBeam[T] {
-	return defaultRouteBeam[T](func(b Beam[T]) gox.Elem {
-		return comp.Main()
-	})
-}
-
-type routeMatch int
+type seekResult int
 
 const (
-	routeMatchFalse routeMatch = iota
-	routeMatchTrue
-	routeMatchDefault
+	seekNone seekResult = iota
+	seekOk
+	seekDefault
 )
 
-// RouteSource is a writable route branch for values of type T1.
-type RouteSource[T1 any] interface {
-	match(v T1) routeMatch
-	sourceRender(l Source[T1]) gox.Elem
+type keepResult int
+
+const (
+	keepCheck keepResult = iota
+	keepEnd
+	keepUpdate
+	keepSwitch
+)
+
+type sourceRouteFunc[T any] func(source Source[T]) route[T]
+
+func (f sourceRouteFunc[T]) init(source Source[T]) route[T] {
+	return f(source)
 }
 
-// RouteBeam is a read-only route branch for values of type T1. It is accepted
-// wherever [RouteSource] is.
-type RouteBeam[T1 any] interface {
-	RouteSource[T1]
-	beamRender(l Beam[T1]) gox.Elem
+type beamRouteFunc[T any] func(beam Beam[T]) route[T]
+
+func (f beamRouteFunc[T]) init(source Source[T]) route[T] {
+	return f(source)
 }
 
-func routeSource[T any](l Source[T], routes []RouteSource[T]) gox.Elem {
-	return routeRender(l, routes, func(r RouteSource[T]) gox.Elem {
-		return r.sourceRender(l)
+func (f beamRouteFunc[T]) initBeam(beam Beam[T]) route[T] {
+	return f(beam)
+}
+
+func RouteComp[T any](render gox.Comp) BeamRoute[T] {
+	return beamRouteFunc[T](func(Beam[T]) route[T] {
+		return &compRoute[T]{
+			comp: render,
+		}
 	})
 }
 
-func routeBeam[T any](b Beam[T], routes []RouteBeam[T]) gox.Elem {
-	return routeRender(b, routes, func(r RouteBeam[T]) gox.Elem {
-		return r.beamRender(b)
+func RouteBind[T any](render func(v T) gox.Elem) BeamRoute[T] {
+	return beamRouteFunc[T](func(Beam[T]) route[T] {
+		return &bindRoute[T]{
+			render: render,
+		}
 	})
 }
 
-func routeRender[T any, R RouteSource[T]](
-	source Beam[T],
-	routes []R,
-	render func(R) gox.Elem,
-) gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		index := -1
-		defaultActive := false
-		door := &Door{}
-		source.Sub(cur.Context(), func(ctx context.Context, v T) bool {
-			prevIndex := index
-			checked := -1
-			if index != -1 && !defaultActive {
-				checked = index
-				m := routes[index].match(v)
-				if m == routeMatchDefault {
-					defaultActive = true
-					return false
-				}
-				if m == routeMatchTrue {
-					defaultActive = false
-					return false
-				}
-			}
-			index = -1
-			for i := range routes {
-				if checked == i {
-					continue
-				}
-				m := routes[i].match(v)
-				if m == routeMatchDefault {
-					index = i
-					defaultActive = true
-					break
-				}
-				if m == routeMatchTrue {
-					index = i
-					defaultActive = false
-					break
-				}
-			}
-			if prevIndex == index {
-				return false
-			}
-			if index == -1 {
-				door.Outer(ctx, nil)
-				return false
-			}
-			r := routes[index]
-			door.Outer(ctx, gox.Elem(func(cur gox.Cursor) error {
-				return cur.Comp(render(r))
-			}))
-			return false
+func RouteMatch[T any](match func(v T) bool, routes ...SourceRoute[T]) SourceRoute[T] {
+	return sourceRouteFunc[T](func(source Source[T]) route[T] {
+		return &matchRoute[T]{
+			routes: newRoutesRoute(routes, source),
+			match:  match,
+		}
+	})
+}
+
+func RouteBeamMatch[T any](match func(v T) bool, routes ...BeamRoute[T]) BeamRoute[T] {
+	return beamRouteFunc[T](func(beam Beam[T]) route[T] {
+		return &matchRoute[T]{
+			routes: newBeamRoutesRoute(routes, beam),
+			match:  match,
+		}
+	})
+}
+
+func RouteValue[T any](value T, routes ...SourceRoute[T]) SourceRoute[T] {
+	return sourceRouteFunc[T](func(source Source[T]) route[T] {
+		equal := source.innerBeam().Equal
+		return &matchRoute[T]{
+			routes: newRoutesRoute(routes, source),
+			match: func(v T) bool {
+				return equal(value, v)
+			},
+		}
+	})
+}
+
+func RouteBeamValue[T any](value T, routes ...BeamRoute[T]) BeamRoute[T] {
+	return beamRouteFunc[T](func(beam Beam[T]) route[T] {
+		equal := beam.innerBeam().Equal
+		return &matchRoute[T]{
+			routes: newBeamRoutesRoute(routes, beam),
+			match: func(v T) bool {
+				return equal(value, v)
+			},
+		}
+	})
+}
+
+func RouteDerive[T1 any, T2 any](derive func(source Source[T1]) Source[T2], routes ...SourceRoute[T2]) SourceRoute[T1] {
+	return sourceRouteFunc[T1](func(source Source[T1]) route[T1] {
+		derived := derive(source)
+		return &deriveRoute[T1, T2]{
+			routes:  newRoutesRoute(routes, derived),
+			derived: derived,
+		}
+	})
+}
+
+func RouteBeamDerive[T1 any, T2 any](derive func(beam Beam[T1]) Beam[T2], routes ...BeamRoute[T2]) BeamRoute[T1] {
+	return beamRouteFunc[T1](func(beam Beam[T1]) route[T1] {
+		derived := derive(beam)
+		return &deriveRoute[T1, T2]{
+			routes:  newBeamRoutesRoute(routes, derived),
+			derived: derived,
+		}
+	})
+}
+
+func RouteModel[M any](routes ...SourceRoute[M]) SourceRoute[Location] {
+	match, get, set := modelFuncs[M]()
+	return RouteMatch(match, RouteDerive(func(s Source[Location]) Source[M] {
+		return DeriveSourceEqual(s, get, set, func(a, b M) bool {
+			return reflect.DeepEqual(a, b)
 		})
+	}, routes...))
+}
+
+func RouteBeamModel[M any](routes ...BeamRoute[M]) BeamRoute[Location] {
+	match, get, _ := modelFuncs[M]()
+	return RouteBeamMatch(match, RouteBeamDerive(func(b Beam[Location]) Beam[M] {
+		return DeriveBeamEqual(b, get, func(a, b M) bool {
+			return reflect.DeepEqual(a, b)
+		})
+	}, routes...))
+}
+
+func modelFuncs[M any]() (func(Location) bool, func(Location) M, func(Location, M) Location) {
+	a, err := path.GetModelAdapter[M]()
+	if err != nil {
+		slog.Error("Model adapter error", "error", err)
+	}
+	match := func(l Location) bool {
+		if err != nil {
+			return false
+		}
+		_, ok := a.Decode(l)
+		return ok
+	}
+	get := func(l Location) M {
+		m, ok := a.Decode(l)
+		if !ok {
+			return *new(M)
+		}
+		return *m
+	}
+	set := func(prev Location, m M) Location {
+		loc, err := a.Encode(&m)
+		if err != nil {
+			slog.Error("Model adapter encoding error", "error", err)
+			return prev
+		}
+		return loc
+	}
+	return match, get, set
+}
+
+func RouteBeam[T any](render func(b Beam[T]) gox.Elem) BeamRoute[T] {
+	return beamRouteFunc[T](func(beam Beam[T]) route[T] {
+		return &compRoute[T]{
+			comp: gox.Elem(func(cur gox.Cursor) error {
+				return cur.Comp(render(beam))
+			}),
+		}
+	})
+}
+
+func RouteSource[T any](render func(s Source[T]) gox.Elem) SourceRoute[T] {
+	return sourceRouteFunc[T](func(source Source[T]) route[T] {
+		return &compRoute[T]{
+			comp: gox.Elem(func(cur gox.Cursor) error {
+				return cur.Comp(render(source))
+			}),
+		}
+	})
+}
+
+func renderSourceRoutes[T any](source Source[T], routes []SourceRoute[T]) gox.Elem {
+	return renderRoutes(source, func() routesRoute[T] {
+		return newRoutesRoute(routes, source)
+	})
+}
+
+func renderBeamRoutes[T any](beam Beam[T], routes []BeamRoute[T]) gox.Elem {
+	return renderRoutes(beam, func() routesRoute[T] {
+		return newBeamRoutesRoute(routes, beam)
+	})
+}
+
+func renderRoutes[T any](beam Beam[T], newRoutes func() routesRoute[T]) gox.Elem {
+	return gox.Elem(func(cur gox.Cursor) error {
+		door := new(Door)
+		rr := newRoutes()
+		matched := false
+		blank := true
+		show := func(ctx context.Context, el gox.Comp) {
+			if el == nil && blank {
+				return
+			}
+			blank = el == nil
+			door.Outer(ctx, el)
+		}
+		ok := beam.Sub(cur.Context(), func(ctx context.Context, t T) bool {
+			if !matched {
+				el, res := rr.seek(ctx, t)
+				if res == seekNone {
+					return false
+				}
+				matched = true
+				show(ctx, el)
+				return false
+			}
+			el, res := rr.keep(ctx, t)
+			switch res {
+			case keepCheck:
+				return false
+			case keepEnd:
+				rr.clean()
+				el, res := rr.seek(ctx, t)
+				matched = res != seekNone
+				show(ctx, el)
+				return false
+			default:
+				show(ctx, el)
+				return false
+			}
+
+		})
+		if !ok {
+			return nil
+		}
 		return cur.Comp(door)
 	})
 }
 
-type deriveRouteSource[T1, T2 any] struct {
-	derive func(T1) (T2, bool)
-	set    func(T1, T2) T1
-	equal  func(T2, T2) bool
-	render func(Source[T2]) gox.Elem
+type routesRoute[T any] struct {
+	routes        []route[T]
+	active        int
+	activeDefault bool
 }
 
-func (r deriveRouteSource[T1, T2]) sourceSet(sourceV T1, v T2) T1 {
-	if r.match(sourceV) == routeMatchFalse {
-		return sourceV
+func newRoutesRoute[T any](routes []SourceRoute[T], source Source[T]) routesRoute[T] {
+	inited := make([]route[T], len(routes))
+	for i, r := range routes {
+		inited[i] = r.init(source)
 	}
-	return r.set(sourceV, v)
+	return routesRoute[T]{
+		routes: inited,
+		active: -1,
+	}
 }
 
-func (r deriveRouteSource[T1, T2]) sourceGet(sourceV T1) T2 {
-	v, ok := r.derive(sourceV)
+func newBeamRoutesRoute[T any](routes []BeamRoute[T], beam Beam[T]) routesRoute[T] {
+	inited := make([]route[T], len(routes))
+	for i, r := range routes {
+		inited[i] = r.initBeam(beam)
+	}
+	return routesRoute[T]{
+		routes: inited,
+		active: -1,
+	}
+}
+
+func (sr *routesRoute[T]) clean() {
+	if sr.active != -1 {
+		sr.routes[sr.active].clean()
+	}
+	sr.active = -1
+	sr.activeDefault = false
+}
+
+func (sr *routesRoute[T]) seek(ctx context.Context, value T) (gox.Comp, seekResult) {
+	for i, r := range sr.routes {
+		el, res := r.seek(ctx, value)
+		if res == seekNone {
+			continue
+		}
+		sr.active = i
+		sr.activeDefault = res == seekDefault
+		return el, res
+	}
+	return nil, seekNone
+}
+
+func (sr *routesRoute[T]) keep(ctx context.Context, value T) (gox.Comp, keepResult) {
+	if sr.activeDefault {
+		for i := 0; i < sr.active; i++ {
+			el, res := sr.routes[i].seek(ctx, value)
+			if res == seekNone {
+				continue
+			}
+			sr.routes[sr.active].clean()
+			sr.active = i
+			sr.activeDefault = false
+			return el, keepSwitch
+		}
+	}
+	el, res := sr.routes[sr.active].keep(ctx, value)
+	if res == keepSwitch {
+		sr.activeDefault = false
+	}
+	return el, res
+}
+
+type matchRoute[T any] struct {
+	routes routesRoute[T]
+	match  func(T) bool
+}
+
+func (sr *matchRoute[T]) clean() {
+	sr.routes.clean()
+}
+
+func (sr *matchRoute[T]) seek(ctx context.Context, value T) (gox.Comp, seekResult) {
+	if !sr.match(value) {
+		return nil, seekNone
+	}
+	el, res := sr.routes.seek(ctx, value)
+	if res == seekNone {
+		return nil, seekNone
+	}
+	return el, seekOk
+}
+
+func (sr *matchRoute[T]) keep(ctx context.Context, value T) (gox.Comp, keepResult) {
+	if !sr.match(value) {
+		return nil, keepEnd
+	}
+	el, res := sr.routes.keep(ctx, value)
+	if res == keepSwitch {
+		return el, keepUpdate
+	}
+	return el, res
+}
+
+type deriveRoute[T1 any, T2 any] struct {
+	routes  routesRoute[T2]
+	derived Beam[T2]
+	last    T2
+	none    bool
+}
+
+func (sr *deriveRoute[T1, T2]) clean() {
+	sr.routes.clean()
+	var v T2
+	sr.last = v
+	sr.none = false
+}
+
+func (sr *deriveRoute[T1, T2]) seek(ctx context.Context, _ T1) (gox.Comp, seekResult) {
+	value, ok := sr.derived.Read(ctx)
 	if !ok {
-		return *new(T2)
+		return nil, seekOk
 	}
-	return v
-}
-
-func (r deriveRouteSource[T1, T2]) sourceRender(l Source[T1]) gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		l := DeriveSourceEqual(l, r.sourceGet, r.sourceSet, r.equal)
-		el := r.render(l)
-		if el == nil {
-			return nil
-		}
-		return el(cur)
-	})
-}
-
-func (r deriveRouteSource[T1, T2]) match(v T1) routeMatch {
-	if _, ok := r.derive(v); ok {
-		return routeMatchTrue
+	if sr.none && sr.derived.innerBeam().Equal(sr.last, value) {
+		return nil, seekNone
 	}
-	return routeMatchFalse
+	el, res := sr.routes.seek(ctx, value)
+	sr.last = value
+	sr.none = res == seekNone
+	return el, res
 }
 
-var _ RouteSource[any] = deriveRouteSource[any, any]{}
-
-type defaultRouteSource[T1 any] func(l Source[T1]) gox.Elem
-
-func (r defaultRouteSource[T1]) sourceRender(l Source[T1]) gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		el := r(l)
-		if el == nil {
-			return nil
-		}
-		return el(cur)
-	})
-}
-
-func (r defaultRouteSource[T1]) match(T1) routeMatch {
-	return routeMatchDefault
-}
-
-var _ RouteSource[any] = defaultRouteSource[any](nil)
-
-type deriveRouteBeam[T1, T2 any] struct {
-	derive func(T1) (T2, bool)
-	equal  func(T2, T2) bool
-	render func(Beam[T2]) gox.Elem
-}
-
-func (r deriveRouteBeam[T1, T2]) get(sourceV T1) T2 {
-	v, ok := r.derive(sourceV)
+func (sr *deriveRoute[T1, T2]) keep(ctx context.Context, _ T1) (gox.Comp, keepResult) {
+	value, ok := sr.derived.Read(ctx)
 	if !ok {
-		return *new(T2)
+		return nil, keepCheck
 	}
-	return v
+	if sr.derived.innerBeam().Equal(sr.last, value) {
+		return nil, keepCheck
+	}
+	sr.last = value
+	return sr.routes.keep(ctx, value)
 }
 
-func (r deriveRouteBeam[T1, T2]) sourceRender(l Source[T1]) gox.Elem {
-	return r.beamRender(l)
+type compRoute[T any] struct {
+	comp gox.Comp
 }
 
-func (r deriveRouteBeam[T1, T2]) beamRender(l Beam[T1]) gox.Elem {
+func (sr *compRoute[T]) clean() {
+}
+
+func (sr *compRoute[T]) seek(ctx context.Context, _ T) (gox.Comp, seekResult) {
+	return sr.comp, seekDefault
+}
+
+func (sr *compRoute[T]) keep(ctx context.Context, _ T) (gox.Comp, keepResult) {
+	return nil, keepCheck
+}
+
+type bindRoute[T any] struct {
+	render func(v T) gox.Elem
+}
+
+func (sr *bindRoute[T]) clean() {
+}
+
+func (sr *bindRoute[T]) comp(value T) gox.Elem {
 	return gox.Elem(func(cur gox.Cursor) error {
-		l := DeriveBeamEqual(l, r.get, r.equal)
-		el := r.render(l)
-		if el == nil {
-			return nil
-		}
-		return el(cur)
+		return cur.Comp(sr.render(value))
 	})
 }
 
-func (r deriveRouteBeam[T1, T2]) match(v T1) routeMatch {
-	if _, ok := r.derive(v); ok {
-		return routeMatchTrue
-	}
-	return routeMatchFalse
+func (sr *bindRoute[T]) seek(ctx context.Context, value T) (gox.Comp, seekResult) {
+	return sr.comp(value), seekDefault
 }
 
-var _ RouteBeam[any] = deriveRouteBeam[any, any]{}
-
-type defaultRouteBeam[T1 any] func(l Beam[T1]) gox.Elem
-
-func (r defaultRouteBeam[T1]) sourceRender(l Source[T1]) gox.Elem {
-	return r.beamRender(l)
+func (sr *bindRoute[T]) keep(ctx context.Context, value T) (gox.Comp, keepResult) {
+	return sr.comp(value), keepUpdate
 }
-
-func (r defaultRouteBeam[T1]) beamRender(l Beam[T1]) gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		el := r(l)
-		if el == nil {
-			return nil
-		}
-		return el(cur)
-	})
-}
-
-func (r defaultRouteBeam[T1]) match(T1) routeMatch {
-	return routeMatchDefault
-}
-
-var _ RouteBeam[any] = defaultRouteBeam[any](nil)
-
-type matchRouteBeam[T any] struct {
-	pred   func(T) bool
-	render func(Beam[T]) gox.Elem
-}
-
-func (r matchRouteBeam[T]) match(v T) routeMatch {
-	if r.pred(v) {
-		return routeMatchTrue
-	}
-	return routeMatchFalse
-}
-
-func (r matchRouteBeam[T]) sourceRender(b Source[T]) gox.Elem {
-	return r.beamRender(b)
-}
-
-func (r matchRouteBeam[T]) beamRender(b Beam[T]) gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		el := r.render(b)
-		if el == nil {
-			return nil
-		}
-		return el(cur)
-	})
-}
-
-var _ RouteBeam[any] = matchRouteBeam[any]{}
-
-type matchRouteSource[T any] struct {
-	pred   func(T) bool
-	render func(Source[T]) gox.Elem
-}
-
-func (r matchRouteSource[T]) match(v T) routeMatch {
-	if r.pred(v) {
-		return routeMatchTrue
-	}
-	return routeMatchFalse
-}
-
-func (r matchRouteSource[T]) sourceRender(b Source[T]) gox.Elem {
-	return gox.Elem(func(cur gox.Cursor) error {
-		el := r.render(b)
-		if el == nil {
-			return nil
-		}
-		return el(cur)
-	})
-}
-
-var _ RouteSource[any] = matchRouteSource[any]{}

@@ -67,13 +67,10 @@ func HistoryReplaceContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, common.KeyHistoryReplace, true)
 }
 
-// Route returns a component that renders the first matching route branch for
-// the current URL.
-//
-// Routes are tried in order, and a branch is rerendered only when the matching
-// route changes. If no route matches, nothing is rendered. Use [RouteModel] to
-// match path models and [RouteDefault] as the fallback.
-func Route(routes ...RouteSource[Location]) gox.Elem {
+// Route renders the first route that matches the current URL and switches
+// branches as the URL changes. Routes are tried in order: use [RouteModel] to
+// match path models and a leaf such as [RouteComp] last as the fallback.
+func Route(routes ...SourceRoute[Location]) gox.Elem {
 	return gox.Elem(func(cur gox.Cursor) error {
 		path := Router(cur.Context())
 		return cur.Comp(path.Route(routes...))

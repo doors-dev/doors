@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.2
+// Managed by GoX v0.3.3-0.20261011164703-508309b766d1
 
 //line deferred_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -810,9 +810,9 @@ func (f *RouteFragment) Main() gox.Elem {
 			__e = __c.Submit(); if __e != nil { return }
 //line deferred_fragments.gox:467
 			__e = __c.Any(f.B.Route(
-			doors.RouteMatch(routeTo("inner")).Comp(f.S.sectionLoader("inner")),
-			doors.RouteMatch(routeTo("outer")).Comp(f.S.swapLoader("outer")),
-			doors.RouteDefaultComp[test.Path](gox.Elem(func(__c gox.Cursor) (__e error) {
+			doors.RouteMatch(routeTo("inner"), doors.RouteComp[test.Path](f.S.sectionLoader("inner"))),
+			doors.RouteMatch(routeTo("outer"), doors.RouteComp[test.Path](f.S.swapLoader("outer"))),
+			doors.RouteComp[test.Path](gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
 				__e = __c.Init("p"); if __e != nil { return }
 				{

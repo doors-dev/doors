@@ -23,6 +23,7 @@ import (
 
 type Beamer[T any] interface {
 	Get() T
+	Equal(a T, b T) bool
 	Watch(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool)
 	addWatcher(ctx context.Context, w *watcher) bool
 	sync(uint, uint, shredder.Frame) (*T, bool)
@@ -62,6 +63,10 @@ type beam[T1 any, T2 any] struct {
 
 func (b *beam[T1, T2]) Get() T2 {
 	return b.get(b.beam.Get())
+}
+
+func (b *beam[T1, T2]) Equal(x T2, y T2) bool {
+	return b.equal(x, y)
 }
 
 func (b *beam[T1, T2]) addWatcher(ctx context.Context, w *watcher) bool {

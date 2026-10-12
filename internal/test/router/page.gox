@@ -483,9 +483,9 @@ elem routerBeamDocument() {
 	<html>
 		<body>
 			~(doors.Route(
-				doors.RouteModelBeam(beamCrossAContent),
-				doors.RouteModelBeam(beamCrossBContent),
-				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+				doors.RouteBeamModel[PathCrossA](doors.RouteBeam(beamCrossAContent)),
+				doors.RouteBeamModel[PathCrossB](doors.RouteBeam(beamCrossBContent)),
+				doors.RouteComp[doors.Location](routeDefault404()),
 			))
 		</body>
 	</html>
@@ -526,9 +526,9 @@ elem routerLensCrossDocument() {
 	<html>
 		<body>
 			~(doors.Route(
-				doors.RouteModel(crossAContent),
-				doors.RouteModel(crossBContent),
-				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+				doors.RouteModel[PathCrossA](doors.RouteSource(crossAContent)),
+				doors.RouteModel[PathCrossB](doors.RouteSource(crossBContent)),
+				doors.RouteComp[doors.Location](routeDefault404()),
 			))
 		</body>
 	</html>
@@ -564,14 +564,18 @@ func (r CustomRoute) Encode() (doors.Location, error) {
 	}, nil
 }
 
-func deriveCustomRoute(l doors.Location) (CustomRoute, bool) {
-	if len(l.Segments) != 2 || l.Segments[0] != "custom" {
-		return CustomRoute{}, false
+func matchCustomRoute(l doors.Location) bool {
+	return len(l.Segments) == 2 && l.Segments[0] == "custom"
+}
+
+func getCustomRoute(l doors.Location) CustomRoute {
+	if !matchCustomRoute(l) {
+		return CustomRoute{}
 	}
 	return CustomRoute{
 		ID: l.Segments[1],
 		Tab: l.Query.Get("tab"),
-	}, true
+	}
 }
 
 func setCustomRoute(l doors.Location, r CustomRoute) doors.Location {
@@ -582,17 +586,28 @@ func setCustomRoute(l doors.Location, r CustomRoute) doors.Location {
 	return next
 }
 
+func customRouteSource(s doors.Source[doors.Location]) doors.Source[CustomRoute] {
+	return doors.DeriveSource(s, getCustomRoute, setCustomRoute)
+}
+
+func customRouteBeam(b doors.Beam[doors.Location]) doors.Beam[CustomRoute] {
+	return doors.DeriveBeam(b, getCustomRoute)
+}
+
 elem routerCombinedLensDocument() {
 	<html>
 		<body>
 			~(doors.Route(
-				doors.RouteModel(combinedAContent),
-				doors.RouteDerive(deriveCustomRoute).Source(setCustomRoute, combinedCustomContent),
-				doors.RouteModel(combinedQueryContent),
-				doors.RouteMatch(func(l doors.Location) bool {
-					return len(l.Segments) == 1 && l.Segments[0] == "raw"
-				}).Source(combinedRawContent),
-				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+				doors.RouteModel[PathCrossA](doors.RouteSource(combinedAContent)),
+				doors.RouteMatch(matchCustomRoute, doors.RouteDerive(customRouteSource, doors.RouteSource(combinedCustomContent))),
+				doors.RouteModel[PathQuery](doors.RouteSource(combinedQueryContent)),
+				doors.RouteMatch(
+					func(l doors.Location) bool {
+						return len(l.Segments) == 1 && l.Segments[0] == "raw"
+					},
+					doors.RouteSource(combinedRawContent),
+				),
+				doors.RouteComp[doors.Location](routeDefault404()),
 			))
 		</body>
 	</html>
@@ -701,10 +716,10 @@ elem routerCombinedBeamDocument() {
 	<html>
 		<body>
 			~(doors.Route(
-				doors.RouteModelBeam(beamCrossAContent),
-				doors.RouteDerive(deriveCustomRoute).Beam(combinedCustomBeamContent),
-				doors.RouteModelBeam(combinedQueryBeamContent),
-				doors.RouteDefaultComp[doors.Location](routeDefault404()),
+				doors.RouteBeamModel[PathCrossA](doors.RouteBeam(beamCrossAContent)),
+				doors.RouteBeamMatch(matchCustomRoute, doors.RouteBeamDerive(customRouteBeam, doors.RouteBeam(combinedCustomBeamContent))),
+				doors.RouteBeamModel[PathQuery](doors.RouteBeam(combinedQueryBeamContent)),
+				doors.RouteComp[doors.Location](routeDefault404()),
 			))
 		</body>
 	</html>
@@ -746,18 +761,24 @@ elem routeBindDocument() {
 	<html>
 		<body>
 			~(doors.Route(
-				doors.RouteDerive(deriveCustomRoute).Bind(elem(route CustomRoute) {
-					<div id="route-name">derive-bind</div>
-					<div id="custom-id">~(route.ID)</div>
-					<div id="custom-tab">~(route.Tab)</div>
-				}),
-				doors.RouteMatch(func(l doors.Location) bool {
-					return len(l.Segments) == 1 && l.Segments[0] == "cross-a"
-				}).Bind(elem(loc doors.Location) {
-					<div id="route-name">match-bind</div>
-					<div id="match-path">~(loc.Path())</div>
-				}),
-				doors.RouteDefaultBind(elem(loc doors.Location) {
+				doors.RouteBeamMatch(
+					matchCustomRoute,
+					doors.RouteBeamDerive(customRouteBeam, doors.RouteBind(elem(route CustomRoute) {
+						<div id="route-name">derive-bind</div>
+						<div id="custom-id">~(route.ID)</div>
+						<div id="custom-tab">~(route.Tab)</div>
+					})),
+				),
+				doors.RouteMatch(
+					func(l doors.Location) bool {
+						return len(l.Segments) == 1 && l.Segments[0] == "cross-a"
+					},
+					doors.RouteBind(elem(loc doors.Location) {
+						<div id="route-name">match-bind</div>
+						<div id="match-path">~(loc.Path())</div>
+					}),
+				),
+				doors.RouteBind(elem(loc doors.Location) {
 					~(doors.Status(404))
 					<div id="route-name">default-bind</div>
 					<div id="default-path">~(loc.Path())</div>
@@ -921,4 +942,89 @@ elem pageLastSeen(b doors.Source[doors.Location]) {
 			} <button id="check">check</button>
 		</body>
 	</html>
+}
+
+type NestSection int
+
+const (
+	NestHome NestSection = iota
+	NestSettings
+	NestEdit
+)
+
+type PathNest struct {
+	Section NestSection `/nest:" | settings/:Tab | edit"`
+	Tab string
+	Q string `query:"q,omitempty"`
+}
+
+func nestSection(section NestSection) func(PathNest) bool {
+	return func(p PathNest) bool {
+		return p.Section == section
+	}
+}
+
+func nestTab(s doors.Source[PathNest]) doors.Source[string] {
+	return doors.DeriveSource(s, func(p PathNest) string {
+		return p.Tab
+	}, func(p PathNest, tab string) PathNest {
+		p.Tab = tab
+		return p
+	})
+}
+
+elem routeNestDocument() {
+	<html>
+		<body>
+			<main id="routes">
+				~(doors.Route(
+					doors.RouteModel[PathNest](
+						doors.RouteMatch(nestSection(NestHome), doors.RouteBind(elem(p PathNest) {
+							<div id="nest-name">~("home", p.Q)</div>
+						})),
+						doors.RouteMatch(
+							nestSection(NestSettings),
+							doors.RouteDerive(
+								nestTab,
+								doors.RouteValue("profile", doors.RouteComp[string](<div id="nest-name">profile</div>)),
+								doors.RouteValue("team", doors.RouteComp[string](<div id="nest-name">team</div>)),
+							),
+						),
+						doors.RouteMatch(nestSection(NestEdit), doors.RouteSource(nestEdit)),
+					),
+					doors.RouteComp[doors.Location](<div id="nest-name">not found</div>),
+				))
+			</main>
+			<div id="instance-id">~(doors.InstanceID(ctx))</div>
+			~>doors.ALink{Model: PathNest{Section: NestHome}} <a id="to-home">to-home</a>
+			~>doors.ALink{Model: PathNest{Section: NestHome, Q: "x"}} <a id="to-home-q">to-home-q</a>
+			~>doors.ALink{Model: PathNest{Section: NestSettings, Tab: "profile"}} <a id="to-profile">to-profile</a>
+			~>doors.ALink{Model: PathNest{Section: NestSettings, Tab: "team"}} <a id="to-team">to-team</a>
+			~>doors.ALink{Model: PathNest{Section: NestSettings, Tab: "audit"}} <a id="to-audit">to-audit</a>
+			~>doors.ALink{Model: PathNest{Section: NestEdit}} <a id="to-edit">to-edit</a>
+		</body>
+	</html>
+}
+
+elem nestEdit(s doors.Source[PathNest]) {
+	<div id="nest-name">edit</div>
+	<input id="nest-input">
+	~(s.Bind(elem(p PathNest) {
+		<div id="nest-q">~(p.Q)</div>
+	}))
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			s.Mutate(ctx, func(p PathNest) PathNest {
+				p.Q = "1"
+				return p
+			})
+			return false
+		},
+	} <button id="nest-write-q">nest-write-q</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			s.Update(ctx, PathNest{Section: NestSettings, Tab: "team"})
+			return false
+		},
+	} <button id="nest-write-team">nest-write-team</button>
 }

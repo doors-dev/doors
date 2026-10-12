@@ -1,3 +1,149 @@
+# Doors `0.18` Release Notes
+
+Doors `0.18` brings nested routing and simpler route building. Groups such as `RouteMatch`, `RouteValue`, `RouteDerive`, and `RouteModel` hold routes of their own, so sections, tabs, and variants fit in a single route call that renders into one container, however deep it goes. Leaves such as `RouteComp` and `RouteSource` render the content and double as fallbacks, so there is no separate default family. Every route is complete as soon as it is written: no half-built match that the editor flags as an error until the `.Comp` or `.Source` call that finishes it.
+
+## Highlights
+
+### Nested routes in one container
+
+A route call used to choose one branch, and each further level was another route call inside the branch content, with its own container. Now the levels nest in one call:
+
+```gox
+<>
+	~(doors.Route(
+		doors.RouteModel[Path](
+			doors.RouteMatch(
+				func(p Path) bool {
+					return p.Section == SectionDashboard
+				},
+				doors.RouteComp[Path](Dashboard{}),
+			),
+			doors.RouteMatch(
+				func(p Path) bool {
+					return p.Section == SectionSettings
+				},
+				doors.RouteBeamDerive(
+					func(path doors.Beam[Path]) doors.Beam[string] {
+						return doors.DeriveBeam(
+							path,
+							func(p Path) string {
+								return p.Tab
+							},
+						)
+					},
+					doors.RouteBeamValue("profile", doors.RouteComp[string](ProfileTab{})),
+					doors.RouteBeamValue("team", doors.RouteComp[string](TeamTab{})),
+				),
+			),
+		),
+		doors.RouteComp[doors.Location](NotFound{}),
+	))
+</>
+```
+
+Going from `/dashboard` to `/settings/team`, or between tabs, replaces the container content once.
+
+**Leaves** always match and act as the fallback of their list:
+
+- `RouteComp[T](comp)` renders a fixed component
+- `RouteBind(render)` renders from the value and again whenever it changes
+- `RouteSource(render)` hands its content the writable source
+- `RouteBeam(render)` hands its content a read-only beam
+
+**Groups** match when their condition holds and one of their children matches:
+
+- `RouteMatch(pred, routes...)` and `RouteValue(value, routes...)`
+- `RouteDerive(derive, routes...)` routes its children on a derived source, usually inside a `RouteMatch`
+- `RouteModel[M](routes...)` routes its children on a path model decoded from the `Location`
+
+Each group has a read-only twin: `RouteBeamMatch`, `RouteBeamValue`, `RouteBeamDerive`, `RouteBeamModel`. See [State](./docs/07-state.md#routing) and [Routing](./docs/05-routing.md).
+
+### Fall-through
+
+A group whose children match nothing falls through to its next sibling. A URL that decodes into a path model but matches none of the routes inside its `RouteModel` reaches the 404 that follows.
+
+### Equal derived values
+
+While a `RouteDerive` value stays equal by its comparator, the routes below it are not checked again, the same rule beams use to suppress equal updates. A URL change that decodes into an equal model doesn't reach the routes inside a `RouteModel`.
+
+## Behavior Changes
+
+- **One container per call.** `Source.Route`, `Beam.RouteBeam`, and `doors.Route` render a single Door however deep the routes nest, and `RouteBind` leaves no longer add a Door of their own. CSS that relied on the extra wrappers needs updating.
+- **Branch selection across levels.** A chosen branch stays mounted while every condition on its path holds, even if an earlier route would now match too. When one condition fails, the whole tree selects again from the top, as on the first render. A showing leaf gives way to an earlier route that starts matching; a leaf inside a `RouteDerive` counts as the derive's fallback.
+- **`RouteValue` uses the routed source's comparator** instead of `==` and accepts any `T`. A source with a nil comparator never matches a `RouteValue`; route it with `RouteMatch`.
+- **Derive functions run once per render of the route container**, for every `RouteDerive` and `RouteBeamDerive` in the tree, shown or not.
+
+## Breaking Changes
+
+| Old | New |
+|---|---|
+| `RouteDefaultComp[T](comp)` | `RouteComp[T](comp)` |
+| `RouteDefault(render)` | `RouteSource(render)` |
+| `RouteDefaultBeam(render)` | `RouteBeam(render)` |
+| `RouteDefaultBind(render)` | `RouteBind(render)` |
+| `RouteMatch(pred).Comp/.Source/.Beam/.Bind(...)` | `RouteMatch(pred, leaf)` |
+| `RouteValue(v).Comp/.Source/.Beam/.Bind(...)` | `RouteValue(v, leaf)` |
+| `RouteDerive(f).Source(set, render)` | `RouteMatch(pred, RouteDerive(derive, RouteSource(render)))`, with the lens built by `DeriveSource` |
+| `RouteDerive(f).Beam(render)`, `.Bind(render)` | `RouteBeamMatch(pred, RouteBeamDerive(derive, leaf))`, with the beam built by `DeriveBeam` |
+| `RouteDeriveEqual(f, equal)` | `DeriveSourceEqual` or `DeriveBeamEqual` inside the derive function |
+| `RouteModel(render)` | `RouteModel[M](RouteSource(render))`, or routes on `M` inside it |
+| `RouteModelBeam(render)` | `RouteBeamModel[M](RouteBeam(render))` |
+| `RouteSource[T]`, `RouteBeam[T]` route types | `SourceRoute[T]`, `BeamRoute[T]` |
+| `MatchRoute`, `DeriveRoute` builders | Removed |
+| Render functions returning any `gox.Comp` type | Return `gox.Elem` |
+
+## Migration
+
+```sh
+go get github.com/doors-dev/doors@v0.18.0
+```
+
+Wrap each branch's content in a leaf and pass it to its group; the fallback becomes a plain leaf at the end:
+
+```gox
+<>
+	~(doors.Route(
+		doors.RouteModel[Path](doors.RouteSource(Page)),
+		doors.RouteComp[doors.Location](NotFound{}),
+	))
+</>
+```
+
+A `RouteDerive` built from `func(T1) (T2, bool)` splits into a match for the `bool` and a derive for the value:
+
+```gox
+<>
+	~(location.Route(
+		doors.RouteMatch(
+			func(l doors.Location) bool {
+				_, ok := parseCustom(l)
+				return ok
+			},
+			doors.RouteDerive(
+				func(s doors.Source[doors.Location]) doors.Source[Custom] {
+					return doors.DeriveSource(
+						s,
+						func(l doors.Location) Custom {
+							c, _ := parseCustom(l)
+							return c
+						},
+						setCustom,
+					)
+				},
+				doors.RouteSource(CustomPage),
+			),
+		),
+	))
+</>
+```
+
+Two more things to check:
+
+- **Routers inside pages.** A page that calls `Route` again inside its own content keeps working once its routes are converted. To render everything in one container instead, move those routes into the parent `Route` call as a group, as in the [example above](#nested-routes-in-one-container).
+- **`RouteValue` on sources made with `NewSourceEqual`, `DeriveSourceEqual`, or `DeriveBeamEqual`.** `RouteValue` now matches whenever that comparator calls the values equal. With a nil comparator it never matches; use `RouteMatch` with `==` in the predicate instead.
+
+---
+
 # Doors `0.17` Release Notes
 
 Doors `0.17` adds deferred Door operations: show a placeholder right away and replace it with slow content once it is rendered. With `doors.IsDocument`, the same code sends the slow content complete in the page response.

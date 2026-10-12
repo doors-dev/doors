@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.2
+// Managed by GoX v0.3.3-0.20261011164703-508309b766d1
 
 //line beam_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -1285,8 +1285,12 @@ func (f *BeamRouteStateFragment) init() {
 	})
 }
 
-func (f *BeamRouteStateFragment) matchString(s state) (string, bool) {
-	return s.Str, s.Str != ""
+func (f *BeamRouteStateFragment) hasString(s state) bool {
+	return s.Str != ""
+}
+
+func (f *BeamRouteStateFragment) getString(s state) string {
+	return s.Str
 }
 
 func (f *BeamRouteStateFragment) setString(s state, v string) state {
@@ -1294,11 +1298,16 @@ func (f *BeamRouteStateFragment) setString(s state, v string) state {
 	return s
 }
 
-func (f *BeamRouteStateFragment) matchList(s state) ([]string, bool) {
-	if s.Str == "" {
-		return nil, false
-	}
-	return []string{s.Str, fmt.Sprint(s.Int)}, true
+func (f *BeamRouteStateFragment) deriveString(s doors.Source[state]) doors.Source[string] {
+	return doors.DeriveSource(s, f.getString, f.setString)
+}
+
+func (f *BeamRouteStateFragment) deriveStringBeam(b doors.Beam[state]) doors.Beam[string] {
+	return doors.DeriveBeam(b, f.getString)
+}
+
+func (f *BeamRouteStateFragment) getList(s state) []string {
+	return []string{s.Str, fmt.Sprint(s.Int)}
 }
 
 func (f *BeamRouteStateFragment) setList(s state, v []string) state {
@@ -1322,293 +1331,301 @@ func (f *BeamRouteStateFragment) equalList(a []string, b []string) bool {
 	return true
 }
 
-//line beam_fragments.gox:853
+func (f *BeamRouteStateFragment) deriveList(s doors.Source[state]) doors.Source[[]string] {
+	return doors.DeriveSourceEqual(s, f.getList, f.setList, f.equalList)
+}
+
+func (f *BeamRouteStateFragment) deriveListBeam(b doors.Beam[state]) doors.Beam[[]string] {
+	return doors.DeriveBeamEqual(b, f.getList, f.equalList)
+}
+
+//line beam_fragments.gox:870
 func (f *BeamRouteStateFragment) lensRoute(l doors.Source[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:855
+//line beam_fragments.gox:872
 		f.lensRouteRenders++
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line beam_fragments.gox:857
+//line beam_fragments.gox:874
 			__e = __c.Set("id", "route-lens-render"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:857
+//line beam_fragments.gox:874
 			__e = __c.Any(fmt.Sprint(f.lensRouteRenders)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line beam_fragments.gox:858
+//line beam_fragments.gox:875
 		__e = __c.Any(l.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:859
+//line beam_fragments.gox:876
 				__e = __c.Set("id", "route-lens-value"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:859
+//line beam_fragments.gox:876
 				__e = __c.Any("lens:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:860
+//line beam_fragments.gox:877
 	})); if __e != nil { return }
-//line beam_fragments.gox:861
+//line beam_fragments.gox:878
 		__e = __c.Any(test.Button("route-lens-update", func(ctx context.Context) bool {
 		l.Update(ctx, "child")
 		return false
 	})); if __e != nil { return }
-//line beam_fragments.gox:865
+//line beam_fragments.gox:882
 		__e = __c.Any(test.Button("route-lens-clear", func(ctx context.Context) bool {
 		l.Update(ctx, "")
 		return false
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:869
+//line beam_fragments.gox:886
 }
 
-//line beam_fragments.gox:871
+//line beam_fragments.gox:888
 func (f *BeamRouteStateFragment) lensListRoute(l doors.Source[[]string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:873
+//line beam_fragments.gox:890
 		f.lensListRenders++
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line beam_fragments.gox:875
+//line beam_fragments.gox:892
 			__e = __c.Set("id", "route-lens-list-render"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:875
+//line beam_fragments.gox:892
 			__e = __c.Any(fmt.Sprint(f.lensListRenders)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line beam_fragments.gox:876
+//line beam_fragments.gox:893
 		__e = __c.Any(l.Bind(func(v []string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:877
+//line beam_fragments.gox:894
 				__e = __c.Set("id", "route-lens-list-value"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:877
+//line beam_fragments.gox:894
 				__e = __c.Any(strings.Join(v, ",")); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:878
+//line beam_fragments.gox:895
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:879
+//line beam_fragments.gox:896
 }
 
-//line beam_fragments.gox:881
+//line beam_fragments.gox:898
 func (f *BeamRouteStateFragment) lensDefault(b doors.Beam[state]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:883
+//line beam_fragments.gox:900
 		f.defaultLensRenders++
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line beam_fragments.gox:885
+//line beam_fragments.gox:902
 			__e = __c.Set("id", "route-lens-default-render"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:885
+//line beam_fragments.gox:902
 			__e = __c.Any(fmt.Sprint(f.defaultLensRenders)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line beam_fragments.gox:886
+//line beam_fragments.gox:903
 		__e = __c.Any(b.Bind(func(v state) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:887
+//line beam_fragments.gox:904
 				__e = __c.Set("id", "route-lens-default-value"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:887
+//line beam_fragments.gox:904
 				__e = __c.Any(fmt.Sprintf("default:%d:%s", v.Int, v.Str)); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:888
+//line beam_fragments.gox:905
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:889
+//line beam_fragments.gox:906
 }
 
-//line beam_fragments.gox:891
+//line beam_fragments.gox:908
 func (f *BeamRouteStateFragment) beamRoute(b doors.Beam[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:893
+//line beam_fragments.gox:910
 		f.beamRouteRenders++
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line beam_fragments.gox:895
+//line beam_fragments.gox:912
 			__e = __c.Set("id", "route-beam-render"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:895
+//line beam_fragments.gox:912
 			__e = __c.Any(fmt.Sprint(f.beamRouteRenders)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line beam_fragments.gox:896
+//line beam_fragments.gox:913
 		__e = __c.Any(b.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:897
+//line beam_fragments.gox:914
 				__e = __c.Set("id", "route-beam-value"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:897
+//line beam_fragments.gox:914
 				__e = __c.Any("beam:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:898
+//line beam_fragments.gox:915
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:899
+//line beam_fragments.gox:916
 }
 
-//line beam_fragments.gox:901
+//line beam_fragments.gox:918
 func (f *BeamRouteStateFragment) beamListRoute(b doors.Beam[[]string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:903
+//line beam_fragments.gox:920
 		f.beamListRenders++
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line beam_fragments.gox:905
+//line beam_fragments.gox:922
 			__e = __c.Set("id", "route-beam-list-render"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:905
+//line beam_fragments.gox:922
 			__e = __c.Any(fmt.Sprint(f.beamListRenders)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line beam_fragments.gox:906
+//line beam_fragments.gox:923
 		__e = __c.Any(b.Bind(func(v []string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:907
+//line beam_fragments.gox:924
 				__e = __c.Set("id", "route-beam-list-value"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:907
+//line beam_fragments.gox:924
 				__e = __c.Any(strings.Join(v, ",")); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:908
+//line beam_fragments.gox:925
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:909
+//line beam_fragments.gox:926
 }
 
-//line beam_fragments.gox:911
+//line beam_fragments.gox:928
 func (f *BeamRouteStateFragment) beamDefault(b doors.Beam[state]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:913
+//line beam_fragments.gox:930
 		f.defaultBeamRenders++
 
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line beam_fragments.gox:915
+//line beam_fragments.gox:932
 			__e = __c.Set("id", "route-beam-default-render"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:915
+//line beam_fragments.gox:932
 			__e = __c.Any(fmt.Sprint(f.defaultBeamRenders)); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line beam_fragments.gox:916
+//line beam_fragments.gox:933
 		__e = __c.Any(b.Bind(func(v state) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:917
+//line beam_fragments.gox:934
 				__e = __c.Set("id", "route-beam-default-value"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:917
+//line beam_fragments.gox:934
 				__e = __c.Any(fmt.Sprintf("beam-default:%d:%s", v.Int, v.Str)); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:918
+//line beam_fragments.gox:935
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:919
+//line beam_fragments.gox:936
 }
 
-//line beam_fragments.gox:921
+//line beam_fragments.gox:938
 func (f *BeamRouteStateFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:923
+//line beam_fragments.gox:940
 		f.init()
 
-//line beam_fragments.gox:925
+//line beam_fragments.gox:942
 		__e = __c.Any(f.source.Bind(func(v state) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:927
+//line beam_fragments.gox:944
 			f.sourceRenders++
 
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:929
+//line beam_fragments.gox:946
 				__e = __c.Set("id", "route-source"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:929
+//line beam_fragments.gox:946
 				__e = __c.Any(fmt.Sprintf("%d:%s:%d", v.Int, v.Str, f.sourceRenders)); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:930
+//line beam_fragments.gox:947
 	})); if __e != nil { return }
-//line beam_fragments.gox:931
+//line beam_fragments.gox:948
 		__e = __c.Any(f.source.Route(
-		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
-		doors.RouteDefaultBeam(f.lensDefault),
+		doors.RouteMatch(f.hasString, doors.RouteDerive(f.deriveString, doors.RouteSource(f.lensRoute))),
+		doors.RouteBeam(f.lensDefault),
 	)); if __e != nil { return }
-//line beam_fragments.gox:935
+//line beam_fragments.gox:952
 		__e = __c.Any(f.source.RouteBeam(
-		doors.RouteDerive(f.matchString).Beam(f.beamRoute),
-		doors.RouteDefaultBeam(f.beamDefault),
+		doors.RouteBeamMatch(f.hasString, doors.RouteBeamDerive(f.deriveStringBeam, doors.RouteBeam(f.beamRoute))),
+		doors.RouteBeam(f.beamDefault),
 	)); if __e != nil { return }
-//line beam_fragments.gox:939
+//line beam_fragments.gox:956
 		__e = __c.Any(f.source.Route(
-		doors.RouteDeriveEqual(f.matchList, f.equalList).Source(f.setList, f.lensListRoute),
+		doors.RouteMatch(f.hasString, doors.RouteDerive(f.deriveList, doors.RouteSource(f.lensListRoute))),
 	)); if __e != nil { return }
-//line beam_fragments.gox:942
+//line beam_fragments.gox:959
 		__e = __c.Any(f.source.RouteBeam(
-		doors.RouteDeriveEqual(f.matchList, f.equalList).Beam(f.beamListRoute),
+		doors.RouteBeamMatch(f.hasString, doors.RouteBeamDerive(f.deriveListBeam, doors.RouteBeam(f.beamListRoute))),
 	)); if __e != nil { return }
-//line beam_fragments.gox:945
+//line beam_fragments.gox:962
 		__e = __c.Any(test.Button("route-source-lens", func(ctx context.Context) bool {
 		f.source.Update(ctx, state{Int: 2, Str: "doc"})
 		return false
 	})); if __e != nil { return }
-//line beam_fragments.gox:949
+//line beam_fragments.gox:966
 		__e = __c.Any(test.Button("route-source-next", func(ctx context.Context) bool {
 		f.source.Update(ctx, state{Int: 2, Str: "next"})
 		return false
 	})); if __e != nil { return }
-//line beam_fragments.gox:953
+//line beam_fragments.gox:970
 		__e = __c.Any(test.Button("route-source-default-int", func(ctx context.Context) bool {
 		f.source.Update(ctx, state{Int: 4})
 		return false
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:957
+//line beam_fragments.gox:974
 }
 
 type BeamRouteNoDefaultBurstFragment struct {
@@ -1623,8 +1640,12 @@ func (f *BeamRouteNoDefaultBurstFragment) init() {
 	f.source = doors.NewSource(state{})
 }
 
-func (f *BeamRouteNoDefaultBurstFragment) matchString(s state) (string, bool) {
-	return s.Str, s.Str != ""
+func (f *BeamRouteNoDefaultBurstFragment) hasString(s state) bool {
+	return s.Str != ""
+}
+
+func (f *BeamRouteNoDefaultBurstFragment) getString(s state) string {
+	return s.Str
 }
 
 func (f *BeamRouteNoDefaultBurstFragment) setString(s state, v string) state {
@@ -1632,98 +1653,106 @@ func (f *BeamRouteNoDefaultBurstFragment) setString(s state, v string) state {
 	return s
 }
 
-//line beam_fragments.gox:980
+func (f *BeamRouteNoDefaultBurstFragment) deriveString(s doors.Source[state]) doors.Source[string] {
+	return doors.DeriveSource(s, f.getString, f.setString)
+}
+
+func (f *BeamRouteNoDefaultBurstFragment) deriveStringBeam(b doors.Beam[state]) doors.Beam[string] {
+	return doors.DeriveBeam(b, f.getString)
+}
+
+//line beam_fragments.gox:1009
 func (f *BeamRouteNoDefaultBurstFragment) lensRoute(l doors.Source[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:981
+//line beam_fragments.gox:1010
 		__e = __c.Any(l.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:982
+//line beam_fragments.gox:1011
 				__e = __c.Set("id", "route-burst-lens"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:982
+//line beam_fragments.gox:1011
 				__e = __c.Any("lens:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:983
+//line beam_fragments.gox:1012
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:984
+//line beam_fragments.gox:1013
 }
 
-//line beam_fragments.gox:986
+//line beam_fragments.gox:1015
 func (f *BeamRouteNoDefaultBurstFragment) beamRoute(b doors.Beam[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:987
+//line beam_fragments.gox:1016
 		__e = __c.Any(b.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:988
+//line beam_fragments.gox:1017
 				__e = __c.Set("id", "route-burst-beam"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:988
+//line beam_fragments.gox:1017
 				__e = __c.Any("beam:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:989
+//line beam_fragments.gox:1018
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:990
+//line beam_fragments.gox:1019
 }
 
-//line beam_fragments.gox:992
+//line beam_fragments.gox:1021
 func (f *BeamRouteNoDefaultBurstFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:994
+//line beam_fragments.gox:1023
 		f.init()
 
-//line beam_fragments.gox:996
+//line beam_fragments.gox:1025
 		__e = __c.Any(f.source.Bind(func(v state) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:997
+//line beam_fragments.gox:1026
 				__e = __c.Set("id", "route-burst-source"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:997
+//line beam_fragments.gox:1026
 				__e = __c.Any(fmt.Sprintf("%d:%s", v.Int, v.Str)); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:998
+//line beam_fragments.gox:1027
 	})); if __e != nil { return }
-//line beam_fragments.gox:999
+//line beam_fragments.gox:1028
 		__e = __c.Any(f.source.Route(
-		doors.RouteDerive(f.matchString).Source(f.setString, f.lensRoute),
+		doors.RouteMatch(f.hasString, doors.RouteDerive(f.deriveString, doors.RouteSource(f.lensRoute))),
 	)); if __e != nil { return }
-//line beam_fragments.gox:1002
+//line beam_fragments.gox:1031
 		__e = __c.Any(f.source.RouteBeam(
-		doors.RouteDerive(f.matchString).Beam(f.beamRoute),
+		doors.RouteBeamMatch(f.hasString, doors.RouteBeamDerive(f.deriveStringBeam, doors.RouteBeam(f.beamRoute))),
 	)); if __e != nil { return }
-//line beam_fragments.gox:1005
+//line beam_fragments.gox:1034
 		__e = __c.Any(test.Button("route-burst-none", func(ctx context.Context) bool {
 		f.source.Update(ctx, state{Int: 1, Str: "queued"})
 		f.source.Update(ctx, state{Int: 2})
 		return false
 	})); if __e != nil { return }
-//line beam_fragments.gox:1010
+//line beam_fragments.gox:1039
 		__e = __c.Any(test.Button("route-burst-hit", func(ctx context.Context) bool {
 		f.source.Update(ctx, state{Int: 3, Str: "after"})
 		return false
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:1014
+//line beam_fragments.gox:1043
 }
 
 type BeamRouteEntrypointsFragment struct {
@@ -1755,230 +1784,599 @@ func (f *BeamRouteEntrypointsFragment) init() {
 	})
 }
 
-func (f *BeamRouteEntrypointsFragment) matchNonEmpty(v string) (string, bool) {
-	return v, v != ""
+func (f *BeamRouteEntrypointsFragment) nonEmpty(v string) bool {
+	return v != ""
 }
 
-func (f *BeamRouteEntrypointsFragment) matchOdd(v string) (string, bool) {
-	return v, v == "odd"
+func (f *BeamRouteEntrypointsFragment) odd(v string) bool {
+	return v == "odd"
+}
+
+func (f *BeamRouteEntrypointsFragment) simple(v string) bool {
+	return strings.HasPrefix(v, "simple")
+}
+
+func (f *BeamRouteEntrypointsFragment) getString(v string) string {
+	return v
 }
 
 func (f *BeamRouteEntrypointsFragment) setString(_ string, v string) string {
 	return v
 }
 
-//line beam_fragments.gox:1057
+func (f *BeamRouteEntrypointsFragment) deriveString(s doors.Source[string]) doors.Source[string] {
+	return doors.DeriveSource(s, f.getString, f.setString)
+}
+
+func (f *BeamRouteEntrypointsFragment) deriveStringBeam(b doors.Beam[string]) doors.Beam[string] {
+	return doors.DeriveBeam(b, f.getString)
+}
+
+//line beam_fragments.gox:1102
 func (f *BeamRouteEntrypointsFragment) lensRoute(l doors.Source[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:1058
+//line beam_fragments.gox:1103
 		__e = __c.Any(l.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:1059
+//line beam_fragments.gox:1104
 				__e = __c.Set("id", "route-entry-lens"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:1059
+//line beam_fragments.gox:1104
 				__e = __c.Any("lens:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:1060
+//line beam_fragments.gox:1105
 	})); if __e != nil { return }
-//line beam_fragments.gox:1061
+//line beam_fragments.gox:1106
 		__e = __c.Any(test.Button("route-entry-lens-update", func(ctx context.Context) bool {
 		l.Update(ctx, "b")
 		return false
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:1065
+//line beam_fragments.gox:1110
 }
 
-//line beam_fragments.gox:1067
+//line beam_fragments.gox:1112
 func (f *BeamRouteEntrypointsFragment) lensBeamRoute(b doors.Beam[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:1068
+//line beam_fragments.gox:1113
 		__e = __c.Any(b.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:1069
+//line beam_fragments.gox:1114
 				__e = __c.Set("id", "route-entry-lens-beam"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:1069
+//line beam_fragments.gox:1114
 				__e = __c.Any("beam:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:1070
+//line beam_fragments.gox:1115
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:1071
+//line beam_fragments.gox:1116
 }
 
-//line beam_fragments.gox:1073
+//line beam_fragments.gox:1118
 func (f *BeamRouteEntrypointsFragment) derivedRoute(b doors.Beam[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:1074
+//line beam_fragments.gox:1119
 		__e = __c.Any(b.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:1075
+//line beam_fragments.gox:1120
 				__e = __c.Set("id", "route-entry-derived"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:1075
+//line beam_fragments.gox:1120
 				__e = __c.Any("derived:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:1076
+//line beam_fragments.gox:1121
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:1077
+//line beam_fragments.gox:1122
 }
 
-//line beam_fragments.gox:1079
+//line beam_fragments.gox:1124
 func (f *BeamRouteEntrypointsFragment) derivedDefault(b doors.Beam[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:1080
+//line beam_fragments.gox:1125
 		__e = __c.Any(b.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:1081
+//line beam_fragments.gox:1126
 				__e = __c.Set("id", "route-entry-derived-default"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:1081
+//line beam_fragments.gox:1126
 				__e = __c.Any("derived-default:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:1082
+//line beam_fragments.gox:1127
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:1083
+//line beam_fragments.gox:1128
 }
 
-//line beam_fragments.gox:1085
+//line beam_fragments.gox:1130
 func (f *BeamRouteEntrypointsFragment) simpleLensRoute(l doors.Source[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:1086
+//line beam_fragments.gox:1131
 		__e = __c.Any(l.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:1087
+//line beam_fragments.gox:1132
 				__e = __c.Set("id", "route-entry-simple-lens"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:1087
+//line beam_fragments.gox:1132
 				__e = __c.Any("simple-lens:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:1088
+//line beam_fragments.gox:1133
 	})); if __e != nil { return }
-//line beam_fragments.gox:1089
+//line beam_fragments.gox:1134
 		__e = __c.Any(test.Button("route-entry-simple-lens-update", func(ctx context.Context) bool {
 		l.Update(ctx, "simple-lens")
 		return false
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:1093
+//line beam_fragments.gox:1138
 }
 
-//line beam_fragments.gox:1095
+//line beam_fragments.gox:1140
 func (f *BeamRouteEntrypointsFragment) simpleBeamRoute(b doors.Beam[string]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:1096
+//line beam_fragments.gox:1141
 		__e = __c.Any(b.Bind(func(v string) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:1097
+//line beam_fragments.gox:1142
 				__e = __c.Set("id", "route-entry-simple-beam"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:1097
+//line beam_fragments.gox:1142
 				__e = __c.Any("simple-beam:" + v); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:1098
+//line beam_fragments.gox:1143
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:1099
+//line beam_fragments.gox:1144
 }
 
-//line beam_fragments.gox:1101
+//line beam_fragments.gox:1146
 func (f *BeamRouteEntrypointsFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line beam_fragments.gox:1103
+//line beam_fragments.gox:1148
 		f.init()
 
-//line beam_fragments.gox:1105
+//line beam_fragments.gox:1150
 		__e = __c.Any(f.source.Bind(func(v state) gox.Elem {
 		return gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line beam_fragments.gox:1106
+//line beam_fragments.gox:1151
 				__e = __c.Set("id", "route-entry-source"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line beam_fragments.gox:1106
+//line beam_fragments.gox:1151
 				__e = __c.Any(fmt.Sprintf("%d:%s", v.Int, v.Str)); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })
-//line beam_fragments.gox:1107
+//line beam_fragments.gox:1152
 	})); if __e != nil { return }
-//line beam_fragments.gox:1108
+//line beam_fragments.gox:1153
 		__e = __c.Any(f.str.Route(
-		doors.RouteDerive(f.matchNonEmpty).Source(f.setString, f.lensRoute),
+		doors.RouteMatch(f.nonEmpty, doors.RouteDerive(f.deriveString, doors.RouteSource(f.lensRoute))),
 	)); if __e != nil { return }
-//line beam_fragments.gox:1111
+//line beam_fragments.gox:1156
 		__e = __c.Any(f.str.RouteBeam(
-		doors.RouteDerive(f.matchNonEmpty).Beam(f.lensBeamRoute),
+		doors.RouteBeamMatch(f.nonEmpty, doors.RouteBeamDerive(f.deriveStringBeam, doors.RouteBeam(f.lensBeamRoute))),
 	)); if __e != nil { return }
-//line beam_fragments.gox:1114
+//line beam_fragments.gox:1159
 		__e = __c.Any(f.parity.RouteBeam(
-		doors.RouteDerive(f.matchOdd).Beam(f.derivedRoute),
-		doors.RouteDefaultBeam(f.derivedDefault),
+		doors.RouteBeamMatch(f.odd, doors.RouteBeamDerive(f.deriveStringBeam, doors.RouteBeam(f.derivedRoute))),
+		doors.RouteBeam(f.derivedDefault),
 	)); if __e != nil { return }
-//line beam_fragments.gox:1118
+//line beam_fragments.gox:1163
 		__e = __c.Any(f.str.Route(
-		doors.RouteMatch(func(v string) bool {
-			return strings.HasPrefix(v, "simple")
-		}).Source(f.simpleLensRoute),
+		doors.RouteMatch(f.simple, doors.RouteSource(f.simpleLensRoute)),
 	)); if __e != nil { return }
-//line beam_fragments.gox:1123
+//line beam_fragments.gox:1166
 		__e = __c.Any(f.str.RouteBeam(
-		doors.RouteMatch(func(v string) bool {
-			return strings.HasPrefix(v, "simple")
-		}).Beam(f.simpleBeamRoute),
+		doors.RouteBeamMatch(f.simple, doors.RouteBeam(f.simpleBeamRoute)),
 	)); if __e != nil { return }
-//line beam_fragments.gox:1128
+//line beam_fragments.gox:1169
 		__e = __c.Any(test.Button("route-entry-set-simple", func(ctx context.Context) bool {
 		f.str.Update(ctx, "simple")
 		return false
 	})); if __e != nil { return }
-//line beam_fragments.gox:1132
+//line beam_fragments.gox:1173
 		__e = __c.Any(test.Button("route-entry-even", func(ctx context.Context) bool {
 		f.source.Update(ctx, state{Int: 2, Str: f.str.Get()})
 		return false
 	})); if __e != nil { return }
 	return })
-//line beam_fragments.gox:1136
+//line beam_fragments.gox:1177
+}
+
+type BeamRouteNestedFragment struct {
+	source doors.Source[state]
+	test.NoBeam
+}
+
+func (f *BeamRouteNestedFragment) active(s state) bool {
+	return s.Int > 0
+}
+
+func (f *BeamRouteNestedFragment) deriveString(s doors.Source[state]) doors.Source[string] {
+	return doors.DeriveSource(s, func(s state) string {
+		return s.Str
+	}, func(s state, v string) state {
+		s.Str = v
+		return s
+	})
+}
+
+//line beam_fragments.gox:1197
+func (f *BeamRouteNestedFragment) view(label string) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:1198
+			__e = __c.Set("id", "nested-view"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1198
+			__e = __c.Any(label); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1199
+}
+
+//line beam_fragments.gox:1201
+func (f *BeamRouteNestedFragment) form(_ doors.Source[string]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:1202
+		__e = __c.Any(f.view("form")); if __e != nil { return }
+		__e = __c.InitVoid("input"); if __e != nil { return }
+		{
+//line beam_fragments.gox:1203
+			__e = __c.Set("id", "nested-input"); if __e != nil { return }
+		}
+		__e = __c.Submit(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1204
+}
+
+//line beam_fragments.gox:1206
+func (f *BeamRouteNestedFragment) unknown(v string) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:1207
+		__e = __c.Any(f.view("unknown:" + v)); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1208
+}
+
+//line beam_fragments.gox:1210
+func (f *BeamRouteNestedFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:1211
+		__e = __c.Any(f.source.Bind(func(v state) gox.Elem {
+		return gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("div"); if __e != nil { return }
+			{
+//line beam_fragments.gox:1212
+				__e = __c.Set("id", "nested-source"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1212
+				__e = __c.Any(fmt.Sprintf("%d:%s", v.Int, v.Str)); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })
+//line beam_fragments.gox:1213
+	})); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:1214
+			__e = __c.Set("id", "nested-route"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1215
+			__e = __c.Any(f.source.Route(
+			doors.RouteMatch(
+				f.active,
+				doors.RouteDerive(
+					f.deriveString,
+					doors.RouteValue("a", doors.RouteComp[string](f.view("tab-a"))),
+					doors.RouteValue("b", doors.RouteSource(f.form)),
+					doors.RouteBind(f.unknown),
+				),
+			),
+			doors.RouteComp[state](f.view("off")),
+		)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:1228
+		__e = __c.Any(test.Button("nested-a", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 1, Str: "a"})
+		return false
+	})); if __e != nil { return }
+//line beam_fragments.gox:1232
+		__e = __c.Any(test.Button("nested-b", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 1, Str: "b"})
+		return false
+	})); if __e != nil { return }
+//line beam_fragments.gox:1236
+		__e = __c.Any(test.Button("nested-x", func(ctx context.Context) bool {
+		f.source.Update(ctx, state{Int: 1, Str: "x"})
+		return false
+	})); if __e != nil { return }
+//line beam_fragments.gox:1240
+		__e = __c.Any(test.Button("nested-bump", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Int++
+			return s
+		})
+		return false
+	})); if __e != nil { return }
+//line beam_fragments.gox:1247
+		__e = __c.Any(test.Button("nested-off", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Int = 0
+			return s
+		})
+		return false
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1254
+}
+
+type BeamRouteLeafFragment struct {
+	source doors.Source[int]
+	bindRenders int
+	sourceRenders int
+	beamRenders int
+	test.NoBeam
+}
+
+//line beam_fragments.gox:1264
+func (f *BeamRouteLeafFragment) bindLeaf(v int) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:1266
+		f.bindRenders++
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:1268
+			__e = __c.Set("id", "leaf-bind"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1268
+			__e = __c.Any(fmt.Sprintf("%d:%d", v, f.bindRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1269
+}
+
+//line beam_fragments.gox:1271
+func (f *BeamRouteLeafFragment) sourceLeaf(s doors.Source[int]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:1273
+		f.sourceRenders++
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:1275
+			__e = __c.Set("id", "leaf-source-render"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1275
+			__e = __c.Any(fmt.Sprint(f.sourceRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:1276
+		__e = __c.Any(s.Bind(func(v int) gox.Elem {
+		return gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("div"); if __e != nil { return }
+			{
+//line beam_fragments.gox:1277
+				__e = __c.Set("id", "leaf-source-value"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1277
+				__e = __c.Any(fmt.Sprint(v)); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })
+//line beam_fragments.gox:1278
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1279
+}
+
+//line beam_fragments.gox:1281
+func (f *BeamRouteLeafFragment) beamLeaf(b doors.Beam[int]) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:1283
+		f.beamRenders++
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:1285
+			__e = __c.Set("id", "leaf-beam-render"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1285
+			__e = __c.Any(fmt.Sprint(f.beamRenders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:1286
+		__e = __c.Any(b.Bind(func(v int) gox.Elem {
+		return gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("div"); if __e != nil { return }
+			{
+//line beam_fragments.gox:1287
+				__e = __c.Set("id", "leaf-beam-value"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1287
+				__e = __c.Any(fmt.Sprint(v)); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })
+//line beam_fragments.gox:1288
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1289
+}
+
+//line beam_fragments.gox:1291
+func (f *BeamRouteLeafFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:1292
+			__e = __c.Set("id", "leaf-bind-route"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1293
+			__e = __c.Any(f.source.Route(doors.RouteBind(f.bindLeaf))); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line beam_fragments.gox:1295
+		__e = __c.Any(f.source.Route(doors.RouteSource(f.sourceLeaf))); if __e != nil { return }
+//line beam_fragments.gox:1296
+		__e = __c.Any(f.source.RouteBeam(doors.RouteBeam(f.beamLeaf))); if __e != nil { return }
+//line beam_fragments.gox:1297
+		__e = __c.Any(test.Button("leaf-update", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(v int) int {
+			return v + 1
+		})
+		return false
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1303
+}
+
+type BeamRouteEqualDeriveFragment struct {
+	source doors.Source[state]
+	checks int
+	renders int
+	test.NoBeam
+}
+
+func (f *BeamRouteEqualDeriveFragment) deriveString(b doors.Beam[state]) doors.Beam[string] {
+	return doors.DeriveBeamEqual(b, func(s state) string {
+		return s.Str
+	}, strings.EqualFold)
+}
+
+func (f *BeamRouteEqualDeriveFragment) check(v string) bool {
+	f.checks++
+	return v != ""
+}
+
+//line beam_fragments.gox:1323
+func (f *BeamRouteEqualDeriveFragment) leaf(v string) gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:1325
+		f.renders++
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line beam_fragments.gox:1327
+			__e = __c.Set("id", "derive-equal-leaf"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1327
+			__e = __c.Any(fmt.Sprintf("%s:%d:%d", v, f.checks, f.renders)); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1328
+}
+
+//line beam_fragments.gox:1330
+func (f *BeamRouteEqualDeriveFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line beam_fragments.gox:1331
+		__e = __c.Any(f.source.Bind(func(v state) gox.Elem {
+		return gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("div"); if __e != nil { return }
+			{
+//line beam_fragments.gox:1332
+				__e = __c.Set("id", "derive-equal-source"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+//line beam_fragments.gox:1332
+				__e = __c.Any(fmt.Sprintf("%d:%s", v.Int, v.Str)); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })
+//line beam_fragments.gox:1333
+	})); if __e != nil { return }
+//line beam_fragments.gox:1334
+		__e = __c.Any(f.source.RouteBeam(
+		doors.RouteBeamDerive(
+			f.deriveString,
+			doors.RouteBeamMatch(f.check, doors.RouteBind(f.leaf)),
+		),
+	)); if __e != nil { return }
+//line beam_fragments.gox:1340
+		__e = __c.Any(test.Button("derive-equal-int", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Int++
+			return s
+		})
+		return false
+	})); if __e != nil { return }
+//line beam_fragments.gox:1347
+		__e = __c.Any(test.Button("derive-equal-case", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Str = strings.ToUpper(s.Str)
+			return s
+		})
+		return false
+	})); if __e != nil { return }
+//line beam_fragments.gox:1354
+		__e = __c.Any(test.Button("derive-equal-str", func(ctx context.Context) bool {
+		f.source.Mutate(ctx, func(s state) state {
+			s.Str = "b"
+			return s
+		})
+		return false
+	})); if __e != nil { return }
+	return })
+//line beam_fragments.gox:1361
 }
