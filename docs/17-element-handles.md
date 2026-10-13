@@ -119,7 +119,7 @@ The event families and their init structs:
 
 Unset init fields use the browser defaults. `FocusEmit` runs the handlers without moving focus, and `SubmitEmit` reads the form data from the event target, so attach the emitter to the form itself.
 
-`Into(&count)` captures the number of hook requests the emitted events triggered, not the number of elements reached: an attached element with no matching event attr adds nothing, and a bubbling event adds one per event attr it reaches. Any failure among them fails the call. The action completes only after every triggered hook request has finished — awaiting the emit guarantees the handlers ran.
+`Into(&count)` captures the number of hook requests the emitted events triggered, not the number of elements reached: an attached element with no matching event attr adds nothing, and a bubbling event adds one per event attr it reaches. Any failure among them fails the call. The action completes only after every triggered hook request has finished, so by the time its channel delivers, the handlers have run. To wait for it, see [Actions](./12-actions.md#direct).
 
 ## Sharing
 

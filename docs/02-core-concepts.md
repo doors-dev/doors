@@ -120,7 +120,7 @@ The rules:
 
 If you do need the result, for backpressure in advanced setups or for data coming back from the browser, wait in a goroutine of your own with `doors.DetachedContext(ctx)`. Use `doors.Go(...)` when that work should follow the lifetime of a rendered subtree. See [Door](./06-door.md#completion-channels), [Actions](./12-actions.md#direct), and [Session & Instance](./19-session-instance.md#context).
 
-To react after updates, use the callbacks instead of waiting: `doors.OnSettle` runs once the updates are queued for delivery, `doors.OnBatch` once the browser has applied them. See [Door](./06-door.md#lifecycle-hooks).
+To react after updates, use the callbacks instead of waiting: `doors.OnSettle` runs once the updates are queued for delivery, and `doors.OnBatch` applies a group of updates at once and runs once the browser has applied them. See [Door](./06-door.md#lifecycle-hooks).
 
 ## Security
 

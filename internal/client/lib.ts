@@ -13,6 +13,8 @@
 // limitations under the License.
 
 
+export const STRESS_MODE = false
+
 export type Result<T, E> =
 	undefined extends E
 	? never

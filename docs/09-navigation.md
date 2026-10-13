@@ -159,6 +159,18 @@ ALink is a dynamic hook, so it supports the same request-lifecycle fields as eve
 - `After` — actions to run after a successful request.
 - `OnError` — actions to run on failure. If nil, the failed navigation reverts to the previous history entry.
 - `HistoryReplace` — replace the current history entry instead of pushing a new one, so Back skips this navigation.
+- `Batch` — hold the updates of the navigation and apply them together. See [Batch](./08-events.md#batch).
+
+`Batch` is for a link to a view that takes a moment to load: the current view stays intact until the new one is complete, then view and URL are replaced at once. Without it, the page changes piece by piece as each part is ready.
+
+```gox
+<>
+	~>doors.ALink{
+		Model: Path{Section: SectionReports},
+		Batch: true,
+	} <a>Reports</a>
+</>
+```
 
 For action types, see [Actions](./12-actions.md).
 

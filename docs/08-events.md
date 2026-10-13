@@ -106,6 +106,7 @@ Most event attrs share the same request-lifecycle fields:
 - `Before`: client-side actions before the request
 - `OnError`: client-side actions if the request fails
 - `Race`: how overlapping calls to the handler are handled on the backend, covered in [Race](#race)
+- `Batch`: apply the handler's page updates together, covered in [Batch](#batch)
 
 `After` is different: it is not an attribute field. You schedule it from inside the handler with `r.After(...)`.
 
@@ -341,6 +342,33 @@ With `RaceStrict` a call that arrives after a newer one is canceled instead of r
 A canceled call is silent on event attrs: `OnError` does not run.
 
 `Race` acts on the backend, after a request arrives. [Scopes](./10-scopes.md) act on the client, before it is sent. They combine: `ScopeLatest` keeps the newest interaction in control of the UI, `RaceStrict` keeps an older call from running after a newer one.
+
+## Batch
+
+Every Door renders on its own, and its update goes to the browser as soon as it is ready. That keeps pages responsive, but a handler that changes several places, or replaces content that takes a moment to produce, changes the page piece by piece. `Batch: true` groups only the paint: the handler runs and renders as before, and the browser applies its updates together when it finishes.
+
+Use it for an action that changes several stacked or nested components, and for a link to a view that takes a moment to load, see [Navigation](./09-navigation.md#hook-fields).
+
+```gox
+<>
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			p.list.Inner(ctx, OrderList{status: status})
+			p.count.Inner(ctx, OrderCount{status: status})
+			return false
+		},
+	} <button>Show ~(status)</button>
+</>
+```
+
+The batch covers everything the handler starts with its context: Door updates, the state propagation they trigger, and path changes. It closes when the handler has finished and everything it started is queued; `doors.HoldSettle` keeps it open until release, see [Door](./06-door.md#lifecycle-hooks).
+
+Inside the batch, completion channels do not report "applied": a Door operation's channel sends the scheduled signal and closes, `doors.Call` reports nothing, and an action armed with `Into` delivers an error. To get a result from the browser, wait in a goroutine with `doors.DetachedContext(ctx)`, which leaves the batch; to react once the batch is applied, use `doors.OnBatch`, see [Lifecycle Hooks](./06-door.md#lifecycle-hooks).
+
+Title and meta updates are not batched.
+
+Batches are bounded: when the calls held in the browser reach `SolitairePending`, the oldest batch is applied early, see [Configuration](./21-configuration.md#system).
 
 ## Event Presets
 

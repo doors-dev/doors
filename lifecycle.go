@@ -73,7 +73,11 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 // fails, or the instance is shutting down; the provided context reports such
 // states. It runs inline on the goroutine that settles the batch — on the
 // calling goroutine when everything already settled — with a context
-// equivalent to [DetachedContext] of ctx. It must not block.
+// equivalent to [DetachedContext] of ctx that still belongs to the batch of
+// ctx, if there is one. It must not block.
+//
+// Using a handler ctx after the handler returned is misuse; use
+// [DetachedContext] or [HoldSettle].
 //
 // ctx must belong to a Doors render or handler; otherwise OnSettle panics.
 func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context)) {
@@ -100,11 +104,9 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 	}
 }
 
-// OnBatch runs ops as one batch and registers on to run once the browser has
-// applied it: the updates started by ops land on the page together, and on
-// runs after them. If ctx already belongs to a batch or a handler, ops join it
-// and on runs when that whole batch is applied; use [DetachedContext] to start
-// a separate one.
+// OnBatch batches updates yourself, anywhere: the updates made in ops are
+// applied at once, and on runs when the browser has applied them. If ctx
+// already belongs to a batch, OnBatch joins it instead of opening a new one.
 //
 // Where [OnSettle] reports that the updates are queued for delivery, OnBatch
 // reports that the browser applied them.
@@ -170,7 +172,8 @@ func OnClean(ctx context.Context, f func()) {
 // HoldSettle keeps the current dispatch batch open after the handler returns,
 // until release is called. While held, the batch does not settle: [OnSettle]
 // callbacks wait, and in a hook the client keeps the indicator, the scope, and
-// the $hook promise pending. Use it to hand the batch over to a goroutine.
+// the $hook promise pending; in a handler with Batch set, the updates stay
+// unapplied until release. Use it to hand the batch over to a goroutine.
 //
 // Call it synchronously in the handler; release is idempotent and may run
 // settle callbacks inline. Operations started with the handler ctx join the

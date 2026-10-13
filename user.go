@@ -30,10 +30,12 @@ import (
 // The returned channel is optional to use and tracks completion. On success it
 // sends nil when the rerender is scheduled and nil again when it is applied to
 // the page, then closes. On failure it sends an error then closes. If ctx
-// belongs to the root page render, it sends an error and closes.
+// belongs to the root page render, it sends an error and closes. In a batch
+// (a handler with Batch set, or [OnBatch]) it sends the scheduled nil then
+// closes.
 //
-// Do not wait on the channel during rendering. If you need to wait, use [Go] or
-// your own goroutine with [DetachedContext].
+// Never wait on the channel during rendering, in a hook, or in a subscription;
+// to wait, use your own goroutine with [DetachedContext] or [Go].
 //
 // ctx must belong to a Doors render or handler; otherwise Reload panics.
 func Reload(ctx context.Context) <-chan error {

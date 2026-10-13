@@ -39,7 +39,8 @@ type Action interface {
 type ActionInto[T any] interface {
 	Action
 	// Into returns an action for [Call] that decodes the client result into
-	// dst. dst is valid once the completion channel delivers nil.
+	// dst. dst is valid once the completion channel delivers nil. In a batch
+	// the channel delivers an error and dst is not written; see [Call].
 	Into(dst *T) Action
 }
 
@@ -147,7 +148,8 @@ func (ae ActionEmit[T]) And(a Actions) Actions {
 }
 
 // Into returns an action for [Call] that decodes the handler result into dst.
-// dst is valid once the completion channel returned by Call delivers nil.
+// dst is valid once the completion channel returned by Call delivers nil. In a
+// batch the channel delivers an error and dst is not written; see [Call].
 func (ae ActionEmit[T]) Into(dst *T) Action {
 	return into(ae, dst)
 }
@@ -381,7 +383,8 @@ func (ai ActionIndicate) action(ctx context.Context, core core.Core, _ bool) (ac
 type ActionTime struct{}
 
 // Into returns an action for [Call] that stores the reading into dst. dst is
-// valid once the completion channel returned by Call delivers nil.
+// valid once the completion channel returned by Call delivers nil. In a batch
+// the channel delivers an error and dst is not written; see [Call].
 func (a ActionTime) Into(dst *time.Time) Action {
 	return into(a, dst)
 }

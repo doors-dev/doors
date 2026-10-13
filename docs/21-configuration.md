@@ -105,7 +105,7 @@ The fields that matter most in practice are:
 The `Solitaire*` fields tune the sync transport between server and browser:
 
 - `SolitaireSyncTimeout` limits how long a pending server-to-client sync task may wait. If it is exceeded, the instance is ended.
-- `SolitaireQueue` caps queued plus unresolved server-to-client sync tasks; exceeding it ends the instance. `SolitairePending` throttles unresolved work by pacing sends when the pending limit is reached.
+- `SolitaireQueue` caps queued plus unresolved server-to-client sync tasks; exceeding it ends the instance. `SolitairePending` throttles unresolved work by pacing sends when the pending limit is reached. It also bounds how many calls [batches](./08-events.md#batch) may hold in the browser: at the limit, the oldest batch is applied early.
 - `SolitaireRollTime`, `SolitaireFrameTime`, and `SolitaireFrameSize` control request handover and server-to-client frame buffering.
 - `SolitaireDisableReportStreaming`, `SolitaireReportLimit`, and `SolitaireReportTimeout` control client-to-server report delivery. `SolitaireReportLimit` defaults to `8 MB`. Streaming reports are enabled by default when the browser and connection support streaming request bodies; set `SolitaireDisableReportStreaming` when the deployment path cannot handle them reliably.
 - `SolitaireMaxRTT` caps the RTT estimate used for sync probing when the server has pending work but no frame ready to flush. Values below `2*SolitaireFrameTime` are raised to that minimum.

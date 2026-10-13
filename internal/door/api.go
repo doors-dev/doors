@@ -45,9 +45,11 @@ func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
 // then closes: the first means the call was scheduled, the second means it was
 // applied to the page. On failure it sends an error then closes;
 // context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. Do not wait on
-// the channel during rendering; to wait, use doors.Go or your own goroutine
-// with doors.DetachedContext.
+// not mounted, it closes immediately without sending a value. In a batch (a
+// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
+// closes. Never wait on the channel during rendering, in a hook, or in a
+// subscription; to wait, use your own goroutine with doors.DetachedContext or
+// doors.Go.
 func (d *Door) Inner(ctx context.Context, content any) <-chan error {
 	ctex.LogCanceled(ctx, "Door inner")
 	task, ch := newUserTask(ctx)
@@ -63,9 +65,11 @@ func (d *Door) Inner(ctx context.Context, content any) <-chan error {
 // then closes: the first means the call was scheduled, the second means it was
 // applied to the page. On failure it sends an error then closes;
 // context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. Do not wait on
-// the channel during rendering; to wait, use doors.Go or your own goroutine
-// with doors.DetachedContext.
+// not mounted, it closes immediately without sending a value. In a batch (a
+// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
+// closes. Never wait on the channel during rendering, in a hook, or in a
+// subscription; to wait, use your own goroutine with doors.DetachedContext or
+// doors.Go.
 func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
 	ctex.LogCanceled(ctx, "Door outer")
 	task, ch := newUserTask(ctx)
@@ -86,9 +90,11 @@ func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
 // then closes: the first means the call was scheduled, the second means it was
 // applied to the page. On failure it sends an error then closes;
 // context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. Do not wait on
-// the channel during rendering; to wait, use doors.Go or your own goroutine
-// with doors.DetachedContext.
+// not mounted, it closes immediately without sending a value. In a batch (a
+// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
+// closes. Never wait on the channel during rendering, in a hook, or in a
+// subscription; to wait, use your own goroutine with doors.DetachedContext or
+// doors.Go.
 func (d *Door) Static(ctx context.Context, content any) <-chan error {
 	ctex.LogCanceled(ctx, "Door static")
 	task, ch := newUserTask(ctx)
@@ -132,9 +138,11 @@ func (d *Door) DeferredStatic(ctx context.Context, content any) <-chan error {
 // then closes: the first means the call was scheduled, the second means it was
 // applied to the page. On failure it sends an error then closes;
 // context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. Do not wait on
-// the channel during rendering; to wait, use doors.Go or your own goroutine
-// with doors.DetachedContext.
+// not mounted, it closes immediately without sending a value. In a batch (a
+// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
+// closes. Never wait on the channel during rendering, in a hook, or in a
+// subscription; to wait, use your own goroutine with doors.DetachedContext or
+// doors.Go.
 func (d *Door) Reload(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door reload")
 	task, ch := newUserTask(ctx)
@@ -150,9 +158,11 @@ func (d *Door) Reload(ctx context.Context) <-chan error {
 // then closes: the first means the call was scheduled, the second means it was
 // applied to the page. On failure it sends an error then closes;
 // context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. Do not wait on
-// the channel during rendering; to wait, use doors.Go or your own goroutine
-// with doors.DetachedContext.
+// not mounted, it closes immediately without sending a value. In a batch (a
+// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
+// closes. Never wait on the channel during rendering, in a hook, or in a
+// subscription; to wait, use your own goroutine with doors.DetachedContext or
+// doors.Go.
 func (d *Door) Unmount(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door unmount")
 	task, ch := newUserTask(ctx)

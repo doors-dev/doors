@@ -24,6 +24,8 @@ import (
 	"github.com/doors-dev/doors/internal/ctex"
 )
 
+var errBatchResult = errors.New("call result is not available in a batch")
+
 // Call dispatches action to the client.
 //
 // The returned completion channel is optional to use: it delivers nil on
@@ -32,14 +34,14 @@ import (
 // closes without a value. Canceling ctx requests best-effort cancellation.
 //
 // To capture the client result, arm the action with its Into method before
-// dispatch; see [ActionInto].
+// dispatch; see [ActionInto]. In a batch (a handler with Batch set, or
+// [OnBatch]) the channel closes at once; an action armed with Into delivers
+// an error and dst is not written.
 //
-// Do not wait on the channel during rendering. If you need to wait, use [Go]
-// or your own goroutine with [DetachedContext].
+// Never wait on the channel during rendering, in a hook, or in a subscription;
+// to wait, use your own goroutine with [DetachedContext] or [Go].
 //
 // ctx must belong to a Doors render or handler; otherwise Call panics.
-var errBatchResult = errors.New("call result is not available in a batch")
-
 func Call(ctx context.Context, a Action) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	ch := make(chan error, 1)

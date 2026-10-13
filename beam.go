@@ -126,9 +126,9 @@ type Source[T any] interface {
 	// The returned channel is optional to use. It receives nil when propagation
 	// completes, or context.Canceled when a newer update supersedes it, then
 	// closes. It closes without a value when no propagation happens: the update
-	// is suppressed as equal or there are no subscribers. Do not wait on it
-	// during rendering. If you need to wait, use [Go] or your own goroutine with
-	// [DetachedContext].
+	// is suppressed as equal or there are no subscribers. Never wait on it
+	// during rendering, in a hook, or in a subscription; to wait, use your own
+	// goroutine with [DetachedContext] or [Go].
 	Update(context.Context, T) <-chan error
 
 	// Mutate computes the next value from the current value and propagates it
@@ -140,9 +140,9 @@ type Source[T any] interface {
 	// The returned channel is optional to use. It receives nil when propagation
 	// completes, or context.Canceled when a newer update supersedes it, then
 	// closes. It closes without a value when no propagation happens: the next
-	// value is suppressed as equal or there are no subscribers. Do not wait on
-	// it during rendering. If you need to wait, use [Go] or your own goroutine
-	// with [DetachedContext].
+	// value is suppressed as equal or there are no subscribers. Never wait on
+	// it during rendering, in a hook, or in a subscription; to wait, use your
+	// own goroutine with [DetachedContext] or [Go].
 	Mutate(context.Context, func(T) T) <-chan error
 
 	innerLens() beam.Lenser[T]

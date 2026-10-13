@@ -14,7 +14,7 @@
 
 import { Header, Package, Sync, SyncFrame } from "./package";
 import { boot, id, solitaireRoll, prefix, noStream } from "./params"
-import { ProgressiveDelay, AbortTimer, ReliableTimer, Result, result } from "./lib"
+import { ProgressiveDelay, AbortTimer, ReliableTimer, Result, result, STRESS_MODE } from "./lib"
 
 
 export type Results = Map<number, Result<any, string>>
@@ -23,8 +23,6 @@ export type Lost = Array<number>
 
 type Gap = ([number, number] | [number])
 type Gaps = Array<Gap>
-
-export const STRESS_MODE = false
 
 export type Frame = {
 	results: Results,

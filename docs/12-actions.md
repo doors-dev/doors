@@ -27,41 +27,41 @@ It does not run for scope cancellations or expired hooks, and a stopped instance
 
 ## Direct
 
-Ignore the returned channel when the outcome does not matter.
+In most cases, ignore the returned channel. There is nothing to check: whether the action runs depends on the lifetime of the content it was called from, and that is managed for you.
 
 ```go
 doors.Call(ctx, doors.ActionLocationReload{})
 ```
 
-When the client handler should return a value to Go, capture it with `Into`:
+When the client handler should return a value to Go, capture it with `Into`. The channel delivers `nil` once the browser has answered and the destination holds the value, or an error if the action cannot be built, the client fails, or the result cannot be decoded. It closes without a value when the call is canceled.
+
+Never wait on the channel during render, in hooks, or in beam subscriptions. When you need the answer, wait in a goroutine of your own with `doors.DetachedContext(ctx)` and use the value from there:
 
 ```go
-var picked string
-ch := doors.Call(ctx, doors.ActionEmit[string]{
-	Name: "pick",
-	Arg:  "hello",
-}.Into(&picked))
-
-err, ok := <-ch
-if ok && err == nil {
-	println(picked)
-}
+On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+	dctx := doors.DetachedContext(ctx)
+	go func() {
+		var picked string
+		err, ok := <-doors.Call(dctx, doors.ActionEmit[string]{
+			Name: "pick",
+			Arg:  "hello",
+		}.Into(&picked))
+		if !ok || err != nil {
+			return
+		}
+		result.Inner(dctx, Picked{Value: picked})
+	}()
+	return false
+},
 ```
 
-The destination is valid after the channel delivers nil.
+Use `doors.Go(...)` when the wait should follow the lifetime of a rendered subtree, and `doors.InstanceContext(ctx)` when it should outlive the current owner and live with the instance.
 
-Do not wait on the result channel during rendering.
+Canceling `ctx` requests best-effort cancellation.
 
-If you need to wait for the result, do it in a hook, inside `doors.Go(...)`, or
-in your own goroutine with `doors.DetachedContext(ctx)`.
+In a [batch](./08-events.md#batch), the channel of `doors.Call` closes at once, and an action armed with `Into` delivers an error instead of a value.
 
-`doors.DetachedContext(ctx)` keeps the current Doors ownership and lifecycle.
-
-If the work should outlive that owner, use `doors.InstanceContext(ctx)`. It
-switches Doors ownership to the root of the current instance and uses the
-instance runtime lifecycle.
-
-Canceling `ctx` requests best-effort cancellation. If a direct `Call` is canceled, its channel closes without a value.
+A Door update and a `doors.Call` made in the same handler are not ordered against each other unless the call is made from that Door's content. Targeting the content of another Door by selector needs care.
 
 `ActionEmit[T]` declares its result type; `T` is what `Into` decodes into. For
 fire-and-forget emits, use `ActionEmit[any]` and skip `Into`. `Setter.Set`

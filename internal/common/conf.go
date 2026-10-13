@@ -85,7 +85,9 @@ type Conf struct {
 	// acknowledgement. Exceeding it ends the instance. Default: 1024.
 	SolitaireQueue int
 	// SolitairePending is the max number of delivered but unacknowledged
-	// updates; at the limit the server stops sending. Default: 256.
+	// updates; at the limit the server stops sending. It also bounds the
+	// calls batches hold in the browser: at the limit the oldest batch is
+	// applied early. Default: 256.
 	SolitairePending int
 	// SolitaireDisableReportStreaming makes the browser post each message
 	// separately instead of streaming one request body. The browser already

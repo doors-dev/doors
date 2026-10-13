@@ -297,19 +297,11 @@ On failure, the channel sends an error then closes. A failed render sends its er
 
 A closed channel with no value means the Door was not mounted by the time the operation was observed.
 
-Do not wait on the channel during rendering.
+In most cases, ignore the channel. There is nothing to check: whether an update lands depends on the lifetime of what it targets, and that is managed for you.
 
-If you need to wait, do it in a hook, inside `doors.Go(...)`, or in your own
-goroutine with `doors.DetachedContext(ctx)`.
+Never wait on the channel during render, in hooks, or in beam subscriptions. If you need the result, such as pacing a fast stream of updates, wait in a goroutine of your own with `doors.DetachedContext(ctx)`, or in `doors.Go(...)` when the work should follow a rendered subtree. See [Session & Instance](./19-session-instance.md#context).
 
-`doors.DetachedContext(ctx)` keeps the current Doors ownership and lifecycle,
-so it is useful when you want to wait on the channel safely from that same fragment.
-
-If the work should outlive the current dynamic owner, use
-`doors.InstanceContext(ctx)`. It switches Doors ownership to the root of the
-current instance and uses the instance runtime lifecycle.
-
-> Most code ignores the returned channel. Read it when completion itself matters, such as pacing a fast stream of updates.
+In a [batch](./08-events.md#batch), the channel sends the scheduled `nil`, or a render error, and closes: applied is not reported.
 
 ## Render Errors
 
@@ -350,6 +342,7 @@ After a Door has been made static or unmounted, later calls still update the Doo
 ```go
 doors.OnReady(ctx context.Context, f func(ctx context.Context))
 doors.OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context))
+doors.OnBatch(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context))
 doors.OnClean(ctx context.Context, f func())
 ```
 
@@ -369,7 +362,7 @@ elem (c Chat) Main() {
 
 `OnReady` runs once the surrounding content is rendered and on its way to the browser. Use it for work that must come after that markup.
 
-`OnSettle` runs once everything a handler started has its updates queued. Use it to act after a multi-step update. If the handler hands work to a goroutine, keep the batch open with `doors.HoldSettle`:
+`OnSettle` runs once everything a handler started has its updates queued. Use it to act after a multi-step update. If the handler hands work to a goroutine, keep it open with `doors.HoldSettle`; with [Batch](./08-events.md#batch) set, the updates stay unapplied until release:
 
 ```go
 release := doors.HoldSettle(ctx)
@@ -379,9 +372,24 @@ go func() {
 }()
 ```
 
+A goroutine that outlives the handler without `HoldSettle` should use `doors.DetachedContext(ctx)`.
+
+`OnBatch` batches updates yourself, anywhere: the updates made in `ops` are applied at once, and `on` runs when the browser has applied them. Where `OnSettle` reports that the updates are queued for delivery, `OnBatch` reports that they are on the page:
+
+```go
+doors.OnBatch(ctx, func(ctx context.Context) {
+	p.status.Inner(ctx, "Saved")
+}, func(ctx context.Context) {
+	p.form.Inner(ctx, OrderForm{order: order})
+	p.list.Inner(ctx, OrderList{status: status})
+})
+```
+
+If the context already belongs to a batch, such as a handler with [Batch](./08-events.md#batch) set, `OnBatch` joins it instead of opening a new one.
+
 Details:
 
-- `OnClean` always runs, exactly once; `OnReady` is best-effort.
+- `OnClean`, `OnSettle`, and `OnBatch` always run, exactly once; `OnReady` is best-effort.
 - Do not block in these callbacks. For slow teardown, start a goroutine with a context captured beforehand, for example `doors.InstanceContext(ctx)`.
 
 ## Use Cases
