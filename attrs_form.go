@@ -44,6 +44,10 @@ type ARawSubmit struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -64,7 +68,7 @@ func (s ARawSubmit) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(s.handle(core), s.Race)
+	hook, ok := core.Door().RegisterHook(s.handle(core), s.Race, s.Batch)
 	if !ok {
 		return context.Canceled
 	}
@@ -122,6 +126,10 @@ type ASubmit[T any] struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -142,7 +150,7 @@ func (s ASubmit[V]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(s.handle(core), s.Race)
+	hook, ok := core.Door().RegisterHook(s.handle(core), s.Race, s.Batch)
 	if !ok {
 		return context.Canceled
 	}
@@ -212,6 +220,10 @@ type AChange struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -235,6 +247,7 @@ func (p AChange) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		onError:   p.OnError,
 		indicator: p.Indicator,
 		race:      p.Race,
+		batch:     p.Batch,
 		on:        p.On,
 	}.apply(ctx, attrs)
 }
@@ -255,6 +268,10 @@ type AInput struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -283,6 +300,7 @@ func (p AInput) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		onError:   p.OnError,
 		indicator: p.Indicator,
 		race:      p.Race,
+		batch:     p.Batch,
 		on:        p.On,
 	}.apply(ctx, attrs)
 }

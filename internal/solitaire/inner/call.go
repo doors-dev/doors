@@ -24,6 +24,10 @@ import (
 type Call struct {
 	Call             actions.Call
 	Params           actions.CallParams
+	Batch            uint64
+	Door             uint64
+	DepSeq           uint64
+	DepDoor          uint64
 	reported         atomic.Bool
 	optimisticAction actions.Action
 }

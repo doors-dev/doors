@@ -129,8 +129,8 @@ func (inst Instance) CSPCollector() common.CSPCollector {
 	return inst.csp
 }
 
-func (inst *instance) Call(call actions.Call) {
-	inst.solitaire.Call(call)
+func (inst *instance) Call(call actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64 {
+	return inst.solitaire.Call(call, batch, door, depSeq, depDoor)
 }
 
 func (inst *instance) Kill() {

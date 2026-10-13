@@ -102,7 +102,7 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		handler := src.Handler()
 		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			return handler(ctx, w, r)
-		}, core.RaceParallel)
+		}, core.RaceParallel, false)
 		if !ok {
 			return context.Canceled
 		}

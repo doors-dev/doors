@@ -203,6 +203,30 @@ func (a ReportHook) Invocation() Invocation {
 	}
 }
 
+type BatchInit struct{}
+
+func (a BatchInit) Log() string {
+	return "batch_init"
+}
+func (a BatchInit) Invocation() Invocation {
+	return Invocation{
+		name: "batch_init",
+		arg:  []any{},
+	}
+}
+
+type BatchFlush struct{}
+
+func (a BatchFlush) Log() string {
+	return "batch_flush"
+}
+func (a BatchFlush) Invocation() Invocation {
+	return Invocation{
+		name: "batch_flush",
+		arg:  []any{},
+	}
+}
+
 type UpdateTitle struct {
 	Content string
 	Attrs   map[string]string

@@ -17,6 +17,7 @@ package door
 import (
 	"bytes"
 	"context"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/actions"
@@ -31,6 +32,7 @@ func newPipe(
 	buffer *deque.Deque[any],
 	renderFrame shredder.ReleaseFrame,
 	callGuard *shredder.ValveFrame,
+	callSeq *atomic.Uint64,
 	document bool,
 ) *pipe {
 	p := &pipe{
@@ -38,6 +40,7 @@ func newPipe(
 		buffer:      buffer,
 		renderFrame: renderFrame,
 		callGuard:   callGuard,
+		callSeq:     callSeq,
 		document:    document,
 		ctx:         tracker.renderCtx,
 		outerCtx:    tracker.outer.renderCtx,
@@ -59,6 +62,7 @@ type pipe struct {
 	buffer      *deque.Deque[any]
 	renderFrame shredder.ReleaseFrame
 	callGuard   *shredder.ValveFrame
+	callSeq     *atomic.Uint64
 	printFront  gox.Printer
 	printBack   gox.Printer
 }

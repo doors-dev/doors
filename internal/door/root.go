@@ -19,6 +19,7 @@ import (
 	"errors"
 	"net/http"
 	"sync"
+	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
@@ -28,7 +29,7 @@ import (
 )
 
 type Instance interface {
-	Call(call actions.Call)
+	Call(call actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64
 	core.Instance
 }
 
@@ -112,6 +113,7 @@ func (r Root) Render(requestCtx context.Context, comp gox.Comp) (Stack, error) {
 		common.GetDequeBuffer(),
 		renderFrame,
 		passGuard,
+		new(atomic.Uint64),
 		true,
 	)
 	ch := make(chan struct{})

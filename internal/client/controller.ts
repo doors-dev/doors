@@ -18,7 +18,7 @@ import doors from "./door"
 import navigator from "./navigator"
 import { Package } from "./package";
 import { Connector, Frame, Lost, NewConnector, Results, STRESS_MODE } from "./connector";
-import { disconnectAfter, id, ttl, requestTimeout, prefix } from "./params";
+import { disconnectAfter, id, ttl, requestTimeout, prefix, solitairePending } from "./params";
 import { ReliableTimer, ProgressiveDelay, AbortTimer, result } from "./lib";
 
 
@@ -191,11 +191,164 @@ class Card {
 }
 
 
+class Batch {
+	private packages: Array<Package> = []
+	private parents: Set<Batch> = new Set()
+	children: Set<Batch> = new Set()
+	private finished = false
+	id: number = 0
+	constructor(private tracker: Tracker, init: { id?: number, finished?: boolean }) {
+		this.finished = init.finished === true
+		this.id = init.id ?? 0
+	}
+	finish(closer: Package) {
+		this.finished = true
+		this.packages.push(closer)
+	}
+	ready(seen: Set<Batch>, force?: boolean): boolean {
+		if (seen.has(this)) {
+			return true
+		}
+		if (force) {
+			this.finished = true
+		}
+		if (!this.finished) {
+			return false
+		}
+		seen.add(this)
+		for (const b of this.parents) {
+			if (!b.ready(seen, force)) {
+				return false
+			}
+		}
+		return true
+	}
+	release(): Array<Package> {
+		this.tracker.removeBatch(this)
+		for (const p of this.packages) {
+			this.tracker.unhold(p, this)
+		}
+		for (const b of this.parents) {
+			b.children.delete(this)
+		}
+		for (const b of this.children) {
+			b.parents.delete(this)
+		}
+		return this.packages
+	}
+	add(p: Package) {
+		this.packages.push(p)
+		this.wait(this.tracker.doorHolder(p.door))
+		this.wait(this.tracker.packageHolder(p.dependency))
+		this.wait(this.tracker.doorHolder(p.dependencyDoor))
+		this.tracker.hold(p, this)
+	}
+	private wait(batch: Batch | undefined) {
+		if (batch == undefined || batch == this) {
+			return
+		}
+		this.parents.add(batch)
+		batch.children.add(this)
+	}
+}
+
 class Tracker {
 	private buffered_: Results = new Map()
 	constructor(private notify_: () => void) {
 	}
-	process(p: Package) {
+	private batches = new Set<Batch>()
+	private idLookup = new Map<number, Batch>()
+	private doorLookup = new Map<number, Batch>()
+	private packageLookup = new Map<number, Batch>()
+	removeBatch(batch: Batch) {
+		this.batches.delete(batch)
+		this.idLookup.delete(batch.id)
+	}
+	doorHolder(door: number): (Batch | undefined) {
+		return this.doorLookup.get(door)
+	}
+	packageHolder(seq: number): (Batch | undefined) {
+		return this.packageLookup.get(seq)
+	}
+	hold(p: Package, batch: Batch) {
+		this.doorLookup.set(p.door, batch)
+		this.packageLookup.set(p.end, batch)
+	}
+	unhold(p: Package, batch: Batch) {
+		this.packageLookup.delete(p.end)
+		if (this.doorLookup.get(p.door) == batch) {
+			this.doorLookup.delete(p.door)
+		}
+	}
+	push(p: Package) {
+		this.process(p)
+		while (this.packageLookup.size >= solitairePending) {
+			const [batch] = this.batches
+			this.flush(batch, true)
+		}
+	}
+	private process(p: Package) {
+		if (p.action == "batch_init") {
+			if (this.idLookup.has(p.batch)) {
+				this.buffered_.set(p.end, [undefined, "batch is already intialized"])
+				return
+			}
+			const batch = new Batch(this, { id: p.batch })
+			this.batches.add(batch)
+			this.idLookup.set(p.batch, batch)
+			this.execute(p)
+			return
+		}
+		if (p.batch > 0 && (p.action == "batch_flush" || p.action == "report_hook")) {
+			const batch = this.idLookup.get(p.batch)
+			if (!batch) {
+				this.execute(p)
+				return
+			}
+			this.idLookup.delete(p.batch)
+			batch.finish(p)
+			this.flush(batch)
+			return
+		}
+		if (p.batch > 0) {
+			const batch = this.idLookup.get(p.batch)
+			if (batch) {
+				batch.add(p)
+				return
+			}
+			p.batch = 0
+		}
+		const batch = new Batch(this, { finished: true })
+		this.batches.add(batch)
+		batch.add(p)
+		this.flush(batch)
+	}
+	flush(batch: Batch, force?: boolean) {
+		const ready = new Set<Batch>()
+		const queue = [batch]
+		for (const b of queue) {
+			const seen = new Set(ready)
+			if (!b.ready(seen, force && b == batch)) {
+				continue
+			}
+			for (const r of seen) {
+				if (ready.has(r)) {
+					continue
+				}
+				ready.add(r)
+				queue.push(...r.children)
+			}
+		}
+		const packages: Array<Package> = []
+		for (const b of ready) {
+			packages.push(...b.release())
+		}
+		packages.sort((a, b) => a.end - b.end)
+		for (const p of packages) {
+			this.execute(p)
+		}
+	}
+	execute(p: Package) {
 		const result = action(p.action, p.arg, { payload: p.getPayload() })
 		if (result instanceof Promise) {
 			result.then(([ok, err]) => {
@@ -207,7 +360,7 @@ class Tracker {
 		const [ok, err] = result
 		this.buffered_.set(p.end, [ok, err?.message])
 	}
-	return(collected: Results) {
+	buffer(collected: Results) {
 		for (const [seq, entry] of collected.entries()) {
 			this.buffered_.set(seq, entry)
 		}
@@ -344,7 +497,7 @@ class Controller {
 		this.deck_.return(frame.lost)
 	}
 	drop(frame: Frame) {
-		this.tracker_.return(frame.results)
+		this.tracker_.buffer(frame.results)
 		this.deck_.return(frame.lost)
 		this.send()
 	}
@@ -358,7 +511,7 @@ class Controller {
 	private flush() {
 		const collection = this.deck_.collect()
 		for (const p of collection) {
-			this.tracker_.process(p)
+			this.tracker_.push(p)
 		}
 		this.send()
 	}

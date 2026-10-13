@@ -20,7 +20,6 @@ import (
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -46,8 +45,9 @@ type node struct {
 	outer     any
 	inner     any
 	static    struct {
-		id   uint64
-		user context.Context
+		id    uint64
+		place *atomic.Uint64
+		user  context.Context
 	}
 	deferedInnerClean func()
 	deferedOuterClean func()
@@ -78,8 +78,16 @@ func (n *node) logger() *slog.Logger {
 	return n.tracker.outer.root.inst.Logger()
 }
 
-func (n *node) call(call actions.Call) {
-	n.tracker.outer.root.inst.Call(call)
+func (n *node) call(call *call) uint64 {
+	outer := n.tracker.outer
+	batch := call.task.Batch(outer.root.inst.ID())
+	if batch != 0 {
+		call.task.Accept()
+	}
+	if n.mode == modeStatic {
+		return outer.root.inst.Call(call, batch, outer.id, n.static.place.Load(), n.static.id)
+	}
+	return outer.root.inst.Call(call, batch, outer.id, outer.place.Load(), 0)
 }
 
 func (n *node) callKind() callKind {
@@ -181,11 +189,13 @@ func (n *node) sync(task *userTask, writeFrame shredder.ReleaseFrame) {
 	renderFrame := n.syncRenderFrame(task, thread.Frame(), writeFrame)
 	defer renderFrame.Release()
 	innerCallGuard := new(shredder.ValveFrame)
+	placeCallSeq := new(atomic.Uint64)
 	pip := newPipe(
 		n.tracker,
 		common.GetDequeBuffer(),
 		renderFrame,
 		innerCallGuard,
+		placeCallSeq,
 		false,
 	)
 	if n.hasDeferedClean() {
@@ -254,14 +264,14 @@ func (n *node) sync(task *userTask, writeFrame shredder.ReleaseFrame) {
 			return
 		}
 		task.Scheduled()
-		n.call(&call{
+		placeCallSeq.Store(n.call(&call{
 			ctx:     n.callContext(),
 			kind:    n.callKind(),
 			task:    task,
 			id:      n.callID(),
 			payload: payload,
 			logger:  n.logger(),
-		})
+		}))
 	})
 }
 
@@ -283,6 +293,7 @@ func (n *node) placeRender(parentPipe *pipe, buffer *deque.Deque[any]) {
 		buffer,
 		renderFrame,
 		n.tracker.outer.callGuard,
+		n.tracker.outer.place,
 		parentPipe.document,
 	)
 	var err error

@@ -200,12 +200,12 @@ func requireNoStoreValue(t *testing.T, ch <-chan any) {
 
 func TestFreeHelpers(t *testing.T) {
 	base := context.Background()
-	if IsFreeCtx(base) {
+	if IsDetachedCtx(base) {
 		t.Fatal("expected base context to be non-free")
 	}
 
-	free := NewFreeContext(base, base)
-	if !IsFreeCtx(free) {
+	free := NewDetachedContext(base, base, false)
+	if !IsDetachedCtx(free) {
 		t.Fatal("expected free context flag")
 	}
 }
@@ -219,7 +219,7 @@ func TestFrameHelpers(t *testing.T) {
 		t.Fatalf("expected free frame without injected context, got %v", typ)
 	}
 
-	ctx, after := AfterFrameInsert(base)
+	ctx, after := AfterFrameInsert(base, 0, "")
 	got, ok := AfterFrame(ctx)
 	if !ok || got != after {
 		t.Fatal("expected inserted frame to be retrievable")
@@ -243,6 +243,56 @@ func TestFrameHelpers(t *testing.T) {
 	}
 	if noFrame.Value(common.KeyCore) != "core" {
 		t.Fatal("expected infect to expose target core value")
+	}
+}
+
+func TestBatchHelpers(t *testing.T) {
+	base := context.Background()
+	if got := GetFrames(base).Batch("a"); got != 0 {
+		t.Fatalf("expected no batch in base context, got %d", got)
+	}
+
+	ctx, after := AfterFrameInsert(base, 7, "a")
+	if got, ok := AfterFrame(ctx); !ok || got != after {
+		t.Fatal("expected the after frame next to the batch")
+	}
+	if got := GetFrames(ctx).Batch("a"); got != 7 {
+		t.Fatalf("expected batch 7 for the owning instance, got %d", got)
+	}
+	if got := GetFrames(ctx).Batch("b"); got != 0 {
+		t.Fatalf("expected no batch for a foreign instance, got %d", got)
+	}
+
+	synced := SyncFrameInsert(ctx, shredder.FreeFrame{}, shredder.FreeFrame{})
+	if got := GetFrames(synced).Batch("a"); got != 7 {
+		t.Fatalf("expected sync insert to keep the batch, got %d", got)
+	}
+
+	detached := NewDetachedContext(ctx, ctx, false)
+	if got := GetFrames(detached).Batch("a"); got != 0 {
+		t.Fatalf("expected detached context to drop the batch, got %d", got)
+	}
+
+	preserved := NewDetachedContext(ctx, ctx, true)
+	if !IsDetachedCtx(preserved) {
+		t.Fatal("expected the preserving context to stay detached")
+	}
+	if got := GetFrames(preserved).Batch("a"); got != 7 {
+		t.Fatalf("expected detached context to preserve the batch, got %d", got)
+	}
+	if got := GetFrames(preserved).Batch("b"); got != 0 {
+		t.Fatalf("expected no preserved batch for a foreign instance, got %d", got)
+	}
+	if _, ok := AfterFrame(preserved); ok {
+		t.Fatal("expected the preserving context to carry no after frame")
+	}
+	if got := GetFrames(NewDetachedContext(base, base, true)).Batch("a"); got != 0 {
+		t.Fatalf("expected no batch to preserve from a plain context, got %d", got)
+	}
+
+	target := context.WithValue(context.Background(), common.KeyCore, "core")
+	if got := GetFrames(FrameInfect(ctx, target)).Batch("b"); got != 0 {
+		t.Fatalf("expected frame infect into a foreign instance to yield no batch, got %d", got)
 	}
 }
 

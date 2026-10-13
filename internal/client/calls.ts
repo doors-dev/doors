@@ -96,6 +96,10 @@ const actions = {
 	"report_hook": (_: Extras, track: number) => {
 		report(track)
 	},
+	"batch_init": () => {
+	},
+	"batch_flush": () => {
+	},
 	"update_state": (_: Extras, state: any) => {
 		navigator.setState(state)
 	},

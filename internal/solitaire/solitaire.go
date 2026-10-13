@@ -59,14 +59,15 @@ type solitaire struct {
 	receiver atomic.Pointer[receiver]
 }
 
-func (s Solitaire) Call(call actions.Call) {
-	err := s.deck.Insert(call)
+func (s Solitaire) Call(call actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64 {
+	seq, err := s.deck.Insert(call, batch, door, depSeq, depDoor)
 	if err != nil {
 		s.inst.SyncError(err)
-		return
+		return 0
 	}
 	c := s.sender.Load()
 	c.Trigger()
+	return seq
 }
 
 func (d *solitaire) Expire() {

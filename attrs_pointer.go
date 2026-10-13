@@ -40,6 +40,10 @@ type pointerEventHook struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -64,6 +68,7 @@ func (p *pointerEventHook) apply(event string, ctx context.Context, attrs gox.At
 		onError:   p.OnError,
 		indicator: p.Indicator,
 		race:      p.Race,
+		batch:     p.Batch,
 		on:        p.On,
 	}.apply(ctx, attrs)
 }
@@ -91,6 +96,10 @@ type AClick struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -129,6 +138,10 @@ type APointerDown struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -167,6 +180,10 @@ type APointerUp struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -205,6 +222,10 @@ type APointerMove struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -243,6 +264,10 @@ type APointerOver struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -281,6 +306,10 @@ type APointerOut struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -320,6 +349,10 @@ type APointerEnter struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -359,6 +392,10 @@ type APointerLeave struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -397,6 +434,10 @@ type APointerCancel struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -435,6 +476,10 @@ type AGotPointerCapture struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -473,6 +518,10 @@ type ALostPointerCapture struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions

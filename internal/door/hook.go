@@ -40,24 +40,27 @@ type hook struct {
 	ch          atomic.Pointer[chan struct{}]
 	tracker     hookTracker
 	race        core.Race
+	batch       bool
 	last        uint64
 	inflight    atomic.Int64
 	once        atomic.Bool
 }
 
 type hookTracker interface {
+	ID() uint64
 	Runtime() shredder.Runtime
 	inst() Instance
 	removeHook(id uint64)
 	Context() context.Context
 }
 
-func newHook(id uint64, tracker hookTracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, race core.Race) *hook {
+func newHook(id uint64, tracker hookTracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, race core.Race, batch bool) *hook {
 	return &hook{
 		id:          id,
 		triggerFunc: triggerFunc,
 		tracker:     tracker,
 		race:        race,
+		batch:       batch,
 	}
 }
 
@@ -101,11 +104,22 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) boo
 		}
 		h.last = track
 	}
-	ctx, frame := ctex.AfterFrameInsert(h.tracker.Context())
+	var batch uint64
+	if h.batch {
+		batch = h.tracker.inst().NewID()
+		h.tracker.inst().Call(batchInit{}, batch, h.tracker.ID(), 0, 0)
+	}
+	inst := h.tracker.inst().ID()
+	ctx, frame := ctex.AfterFrameInsert(h.tracker.Context(), batch, inst)
 	defer frame.Activate()
-	if track != 0 {
+	if track != 0 || batch != 0 {
+		batchFrame := ctex.GetFrames(ctx).BatchFrame(inst)
 		frame.After().Run(nil, nil, func(b bool) {
-			h.tracker.inst().Call(reportHook(track))
+			if track != 0 {
+				h.tracker.inst().Call(reportHook{track: track, batch: batchFrame}, batch, h.tracker.ID(), 0, 0)
+				return
+			}
+			h.tracker.inst().Call(batchFlush{batch: batchFrame}, batch, h.tracker.ID(), 0, 0)
 		})
 	}
 	done, err := h.tracker.Runtime().SafeHook(ctx, w, r, h.triggerFunc)

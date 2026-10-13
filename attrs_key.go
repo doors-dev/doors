@@ -117,6 +117,10 @@ type keyEventHook struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// On handles the event on the server. Return false to keep the handler
 	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool
@@ -153,6 +157,7 @@ func (k *keyEventHook) apply(event string, ctx context.Context, attrs gox.Attrs)
 		onError:   k.OnError,
 		indicator: k.Indicator,
 		race:      k.Race,
+		batch:     k.Batch,
 		on:        k.On,
 	}.apply(ctx, attrs)
 }
@@ -184,6 +189,10 @@ type AKeyDown struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// On handles the event on the server. Return false to keep the handler
 	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool
@@ -226,6 +235,10 @@ type AKeyUp struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// On handles the event on the server. Return false to keep the handler
 	// active, true to remove it. Optional.
 	On func(context.Context, RequestKeyboard) bool

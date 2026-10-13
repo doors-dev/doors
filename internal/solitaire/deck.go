@@ -255,17 +255,21 @@ func (d *deck) FillGaps(g []gap) error {
 	return nil
 }
 
-func (d *deck) Insert(c actions.Call) (err error) {
+func (d *deck) Insert(c actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) (uint64, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.killed {
 		c.Cancel()
-		return errorKilled
+		return 0, errorKilled
 	}
 	d.seq += 1
 	dc := &inner.Call{
-		Call:   c,
-		Params: c.Params(),
+		Call:    c,
+		Params:  c.Params(),
+		Batch:   batch,
+		Door:    door,
+		DepSeq:  depSeq,
+		DepDoor: depDoor,
 	}
 	if dc.Params.Timeout == 0 {
 		dc.Params.Timeout = d.conf.SyncTimeout
@@ -274,7 +278,7 @@ func (d *deck) Insert(c actions.Call) (err error) {
 	d.inner.Append(card)
 	deadline := time.Now().Add(dc.Params.Timeout)
 	d.expirator.Track(d.seq, deadline)
-	return d.checkQueueLength()
+	return d.seq, d.checkQueueLength()
 }
 
 func (d *deck) checkQueueLength() error {

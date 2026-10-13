@@ -3098,7 +3098,7 @@ func TestRouteHookWrite(t *testing.T) {
 				h.rec.hit("handler")
 				s.Update(ctx, s.Get()+20)
 				return true
-			}, RaceSerial)
+			}, RaceSerial, false)
 			if ok {
 				hooks.put(hook.HookID)
 			}

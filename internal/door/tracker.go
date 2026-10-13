@@ -82,7 +82,7 @@ func (t *tracker) ReadyFrame() shredder.ReleaseFrame {
 	return shredder.JoinRelease(t.ctx, t.outer.callGuard, t.rw.Read(), t.cleanThread.Read())
 }
 
-func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race) (core.Hook, bool) {
+func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race, batch bool) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.ctx.Err() != nil {
@@ -91,7 +91,7 @@ func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.Respon
 	if t.hooks == nil {
 		t.hooks = common.NewSet[uint64]()
 	}
-	h := newHook(t.inst().NewID(), t, onTrigger, race)
+	h := newHook(t.inst().NewID(), t, onTrigger, race, batch)
 	t.hooks.Add(h.id)
 	t.outer.root.addHook(h)
 	return core.Hook{
@@ -168,7 +168,7 @@ func (t *tracker) UserCall(ctx context.Context, action actions.Action, onResult 
 			}
 			return
 		}
-		t.inst().UserCall(ctx, action, onResult, onCancel, params)
+		t.inst().UserCall(ctx, action, onResult, onCancel, params, t.outer.id, t.outer.place.Load())
 	})
 }
 
@@ -266,6 +266,7 @@ func newOuterTrackerRoot(r *root) *outerTracker {
 		ctx:       ctx,
 		cancel:    cancel,
 		callGuard: new(shredder.ValveFrame),
+		place:     new(atomic.Uint64),
 	}
 	tracker.callGuard.Activate()
 	tracker.outerGuard = new(shredder.ValveFrame)
@@ -286,6 +287,7 @@ func newOuterTrackerInherit(prev *outerTracker) *outerTracker {
 		callGuard:  prev.callGuard,
 		outerGuard: new(shredder.ValveFrame),
 		placeGuard: prev.placeGuard,
+		place:      prev.place,
 		user:       prev.user,
 	}
 	tracker.cinema = beam.NewCinema(prev.parent.Cinema(), tracker)
@@ -304,6 +306,7 @@ func newOuterTrackerCreate(pip *pipe, userCtx context.Context) *outerTracker {
 		ctx:       ctx,
 		cancel:    cancel,
 		callGuard: pip.callGuard,
+		place:     pip.callSeq,
 		user:      common.UserCtx(userCtx, pip.innerContext()),
 	}
 	tracker.cinema = beam.NewCinema(parent.Cinema(), tracker)
@@ -316,6 +319,7 @@ func newOuterTrackerCreate(pip *pipe, userCtx context.Context) *outerTracker {
 
 type outerTracker struct {
 	id             uint64
+	place          *atomic.Uint64
 	root           *root
 	parent         *tracker
 	ctx            context.Context
@@ -372,7 +376,7 @@ func (t *outerTracker) ReadyFrame() shredder.ReleaseFrame {
 	return shredder.JoinRelease(t.ctx, t.callGuard, t.outerGuard, t.cleanThread.Read())
 }
 
-func (t *outerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race) (core.Hook, bool) {
+func (t *outerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race, batch bool) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.ctx.Err() != nil {
@@ -381,7 +385,7 @@ func (t *outerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.R
 	if t.hooks == nil {
 		t.hooks = common.NewSet[uint64]()
 	}
-	h := newHook(t.inst().NewID(), t, onTrigger, race)
+	h := newHook(t.inst().NewID(), t, onTrigger, race, batch)
 	t.hooks.Add(h.id)
 	t.root.addHook(h)
 	return core.Hook{
@@ -446,7 +450,7 @@ func (t *outerTracker) UserCall(ctx context.Context, action actions.Action, onRe
 			}
 			return
 		}
-		t.inst().UserCall(ctx, action, onResult, onCancel, params)
+		t.inst().UserCall(ctx, action, onResult, onCancel, params, t.id, t.place.Load())
 	})
 }
 

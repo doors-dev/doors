@@ -277,10 +277,10 @@ func IDNumber(ctx context.Context) uint64 {
 func InstanceContext(ctx context.Context) context.Context {
 	core, ok := ctx.Value(common.KeyCore).(core.Core)
 	if !ok {
-		return ctex.NewFreeContext(ctx, ctx)
+		return ctex.NewDetachedContext(ctx, ctx, false)
 	}
 	ctx = context.WithValue(ctx, common.KeyCore, core.Door().RootCore())
-	return ctex.NewFreeContext(ctx, core.Instance().Runtime().Context())
+	return ctex.NewDetachedContext(ctx, core.Instance().Runtime().Context(), false)
 }
 
 // DetachedContext returns a context that is detached from the current
@@ -292,7 +292,7 @@ func InstanceContext(ctx context.Context) context.Context {
 // Unlike [InstanceContext], work started with it is cleaned up with the current
 // dynamic owner.
 func DetachedContext(ctx context.Context) context.Context {
-	return ctex.NewFreeContext(ctx, ctx)
+	return ctex.NewDetachedContext(ctx, ctx, false)
 }
 
 // Logger returns the Doors logger for ctx.

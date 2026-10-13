@@ -39,6 +39,10 @@ type focusIOEventHook struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -62,6 +66,7 @@ func (p *focusIOEventHook) apply(event string, ctx context.Context, attrs gox.At
 		onError:   p.OnError,
 		indicator: p.Indicator,
 		race:      p.Race,
+		batch:     p.Batch,
 		on:        p.On,
 	}.apply(ctx, attrs)
 }
@@ -76,6 +81,10 @@ type focusEventHook struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -97,6 +106,7 @@ func (p *focusEventHook) apply(event string, ctx context.Context, attrs gox.Attr
 		onError:   p.OnError,
 		indicator: p.Indicator,
 		race:      p.Race,
+		batch:     p.Batch,
 		on:        p.On,
 	}.apply(ctx, attrs)
 }
@@ -120,6 +130,10 @@ type AFocus struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -151,6 +165,10 @@ type ABlur struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -187,6 +205,10 @@ type AFocusIn struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions
@@ -223,6 +245,10 @@ type AFocusOut struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// Before lists client-side actions to run before the request is
 	// sent. Optional.
 	Before Actions

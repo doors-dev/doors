@@ -139,6 +139,10 @@ func (f *writeController) Stash(card *inner.Card) stashResult {
 		return stashCancel
 	}
 	defer free()
+	h.batch = card.Call.Batch
+	h.door = card.Call.Door
+	h.depSeq = card.Call.DepSeq
+	h.depDoor = card.Call.DepDoor
 	f.stash(h)
 	invocation := action.Invocation()
 	if err := h.writeCard(&f.buffer, &invocation); err != nil {
@@ -169,8 +173,12 @@ func (f *writeController) Full() bool {
 }
 
 type header struct {
-	beg uint64
-	end uint64
+	beg     uint64
+	end     uint64
+	batch   uint64
+	door    uint64
+	depSeq  uint64
+	depDoor uint64
 }
 
 func (h header) writeCard(w *bytes.Buffer, invocation *actions.Invocation) error {
@@ -179,7 +187,7 @@ func (h header) writeCard(w *bytes.Buffer, invocation *actions.Invocation) error
 	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
-	tuple := make([]any, 0, 4)
+	tuple := make([]any, 0, 5)
 	if h.beg == h.end {
 		tuple = append(tuple, h.end)
 	} else {
@@ -187,7 +195,14 @@ func (h header) writeCard(w *bytes.Buffer, invocation *actions.Invocation) error
 	}
 	var write *actions.Payload
 	if invocation != nil {
-		tuple = append(tuple, invocation.Func())
+		link := []uint64{h.batch, h.door}
+		if h.depSeq != 0 || h.depDoor != 0 {
+			link = append(link, h.depSeq)
+		}
+		if h.depDoor != 0 {
+			link = append(link, h.depDoor)
+		}
+		tuple = append(tuple, link, invocation.Func())
 		payload := invocation.Payload()
 		if payload.Type() != actions.PayloadNone {
 			write = &payload

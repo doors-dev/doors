@@ -50,6 +50,10 @@ type AHook[T any] struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// On handles the call and returns the value sent back to the caller. Return
 	// false to keep the hook active, true to remove it. Optional; a nil On
 	// answers with null.
@@ -62,7 +66,7 @@ func (h AHook[T]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (h AHook[T]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(h.handle(core), h.Race)
+	hook, ok := core.Door().RegisterHook(h.handle(core), h.Race, h.Batch)
 	if !ok {
 		return context.Canceled
 	}
@@ -134,6 +138,10 @@ type ARawHook struct {
 	// Race sets how overlapping calls to this handler are handled. Default:
 	// [RaceSerial].
 	Race Race
+	// Batch applies the page updates made by this handler together, once it
+	// finishes. Do not wait in the handler for an update to be applied.
+	// Default: false.
+	Batch bool
 	// On handles the call with raw access to the request body and the response.
 	// Return false to keep the hook active, true to remove it. Optional; a nil
 	// On answers with an empty response.
@@ -146,7 +154,7 @@ func (h ARawHook) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (h ARawHook) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(h.handle(core), h.Race)
+	hook, ok := core.Door().RegisterHook(h.handle(core), h.Race, h.Batch)
 	if !ok {
 		return context.Canceled
 	}

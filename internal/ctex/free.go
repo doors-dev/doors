@@ -21,37 +21,45 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 )
 
-func NewFreeContext(ctx context.Context, runtime context.Context) context.Context {
-	return freeContext{ctx, runtime}
+func NewDetachedContext(ctx context.Context, runtime context.Context, preserveBatch bool) context.Context {
+	return detachedContext{ctx, runtime, preserveBatch}
 }
 
-type freeContext struct {
-	ctx     context.Context
-	runtime context.Context
+type detachedContext struct {
+	ctx           context.Context
+	runtime       context.Context
+	preserveBatch bool
 }
 
-func (f freeContext) Deadline() (deadline time.Time, ok bool) {
+func (f detachedContext) Deadline() (deadline time.Time, ok bool) {
 	return f.runtime.Deadline()
 }
 
-func (f freeContext) Done() <-chan struct{} {
+func (f detachedContext) Done() <-chan struct{} {
 	return f.runtime.Done()
 }
 
-func (f freeContext) Err() error {
+func (f detachedContext) Err() error {
 	return f.runtime.Err()
 }
 
-func (f freeContext) Value(key any) any {
-	if key == common.KeyFrame || key == common.KeyDocument {
+func (f detachedContext) Value(key any) any {
+	if key == common.KeyDocument {
 		return nil
+	}
+	if key == common.KeyFrame {
+		if !f.preserveBatch {
+			return nil
+		}
+		fs := GetFrames(f.ctx)
+		return Frames{batch: fs.batch, inst: fs.inst, batchFrame: fs.batchFrame}
 	}
 	return f.ctx.Value(key)
 }
 
-var _ context.Context = freeContext{}
+var _ context.Context = detachedContext{}
 
-func IsFreeCtx(ctx context.Context) bool {
-	_, ok := ctx.(freeContext)
+func IsDetachedCtx(ctx context.Context) bool {
+	_, ok := ctx.(detachedContext)
 	return ok
 }

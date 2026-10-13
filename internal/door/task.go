@@ -284,6 +284,7 @@ func (n staticNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	}
 	next.tracker = prev.tracker.outer.parent
 	next.static.id = prev.tracker.outer.id
+	next.static.place = prev.tracker.outer.place
 	next.static.user = prev.tracker.outer.user
 	if n.defered {
 		n.userTask.Detach()
@@ -486,6 +487,13 @@ type userTask struct {
 
 func (t *userTask) Detach() {
 	t.frames = ctex.Frames{}
+}
+
+func (t *userTask) Batch(inst string) uint64 {
+	if t == nil {
+		return 0
+	}
+	return t.frames.Batch(inst)
 }
 
 func (t *userTask) InitFrame() shredder.ReleaseFrame {

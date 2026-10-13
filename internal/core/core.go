@@ -83,7 +83,7 @@ type Instance interface {
 	Session() Session
 	Logger() *slog.Logger
 	Store() ctex.Store
-	UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
+	UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, door uint64, depSeq uint64)
 	UserCallCheck(check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
 	CSPCollector() common.CSPCollector
 	ModuleRegistry() ModuleRegistry
@@ -102,7 +102,7 @@ type Door interface {
 	Instance() Instance
 	Cinema() beam.Cinema
 	ID() uint64
-	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race Race) (Hook, bool)
+	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race Race, batch bool) (Hook, bool)
 	Reload(ctx context.Context) <-chan error
 	DeferredInner(ctx context.Context, content any) <-chan error
 	DeferredOuter(ctx context.Context, content any) <-chan error

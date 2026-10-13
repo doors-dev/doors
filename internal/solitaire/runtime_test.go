@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -222,6 +223,64 @@ func TestWriteControllerSubmitRestoresOnWriteError(t *testing.T) {
 	}
 }
 
+// The link slot carries batch and door, then the dependency seq and door only when set.
+func TestHeaderLink(t *testing.T) {
+	invocation := actions.Test{Arg: 1}.Invocation()
+	cases := []struct {
+		h    header
+		want string
+	}{
+		{header{beg: 4, end: 4, door: 7}, `[4,[0,7],["test",[1]],null]`},
+		{header{beg: 4, end: 4, batch: 2, door: 7, depSeq: 3}, `[4,[2,7,3],["test",[1]],null]`},
+		{header{beg: 4, end: 4, door: 7, depDoor: 9}, `[4,[0,7,0,9],["test",[1]],null]`},
+		{header{beg: 2, end: 4, door: 7, depSeq: 3, depDoor: 9}, `[[2,4],[0,7,3,9],["test",[1]],null]`},
+	}
+	for _, c := range cases {
+		var buf bytes.Buffer
+		if err := c.h.writeCard(&buf, &invocation); err != nil {
+			t.Fatal(err)
+		}
+		out := buf.Bytes()
+		got := strings.TrimSpace(string(out[1 : len(out)-1]))
+		if got != c.want {
+			t.Fatalf("expected %s, got %s", c.want, got)
+		}
+	}
+	var buf bytes.Buffer
+	if err := (header{beg: 2, end: 4, door: 7, depSeq: 3}).writeCard(&buf, nil); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.Bytes()
+	if got := strings.TrimSpace(string(out[1 : len(out)-1])); got != `[[2,4],null]` {
+		t.Fatalf("expected a bare filler, got %s", got)
+	}
+}
+
+func TestDeckInsertReturnsSeq(t *testing.T) {
+	deck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), testSolitaireConf())
+	for want := uint64(1); want <= 3; want++ {
+		seq, err := deck.Insert(&stubSyncCall{}, 0, 0, 0, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if seq != want {
+			t.Fatalf("expected seq %d, got %d", want, seq)
+		}
+	}
+	deck.End()
+	killed := &stubSyncCall{}
+	seq, err := deck.Insert(killed, 0, 0, 0, 0)
+	if !errors.Is(err, errorKilled) {
+		t.Fatalf("expected killed error, got %v", err)
+	}
+	if seq != 0 {
+		t.Fatalf("expected seq 0 after end, got %d", seq)
+	}
+	if killed.cancelCount != 1 {
+		t.Fatalf("expected killed call canceled once, got %d", killed.cancelCount)
+	}
+}
+
 func TestDeckDumpIssuesCancelsAndWritesFillers(t *testing.T) {
 	conf := testSolitaireConf()
 	deck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
@@ -229,7 +288,7 @@ func TestDeckDumpIssuesCancelsAndWritesFillers(t *testing.T) {
 		act:    actions.Test{Arg: "optimistic"},
 		params: actions.CallParams{Optimistic: true},
 	}
-	if err := deck.Insert(optimistic); err != nil {
+	if _, err := deck.Insert(optimistic, 0, 0, 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := deck.Dump(newTestWriteController(conf, &stubRW{})); err != nil {
@@ -247,7 +306,7 @@ func TestDeckDumpIssuesCancelsAndWritesFillers(t *testing.T) {
 
 	cancelDeck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
 	canceled := &stubSyncCall{}
-	if err := cancelDeck.Insert(canceled); err != nil {
+	if _, err := cancelDeck.Insert(canceled, 0, 0, 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	fw := newTestWriteController(conf, &stubRW{})
@@ -362,7 +421,7 @@ func TestSolitaireAndSenderHelpers(t *testing.T) {
 	s := NewSolitaire(inst, conf)
 
 	queuedCall := &stubSyncCall{act: actions.Test{Arg: "queued"}}
-	s.Call(queuedCall)
+	s.Call(queuedCall, 0, 0, 0, 0)
 	if s.deck.QueueLength() != 1 {
 		t.Fatalf("expected solitaire call to queue work, got %d", s.deck.QueueLength())
 	}
@@ -435,7 +494,7 @@ func TestDeckEndDuringDump(t *testing.T) {
 	first := &stubSyncCall{act: actions.Test{Arg: "first"}}
 	second := &stubSyncCall{act: actions.Test{Arg: "second"}}
 	for _, c := range []*stubSyncCall{first, second} {
-		if err := deck.Insert(c); err != nil {
+		if _, err := deck.Insert(c, 0, 0, 0, 0); err != nil {
 			t.Fatal(err)
 		}
 	}

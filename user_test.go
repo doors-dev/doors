@@ -38,7 +38,7 @@ type helperDoor struct {
 }
 
 func (h helperDoor) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
-	h.inst.UserCall(ctx, action, onResult, onCancel, params)
+	h.inst.UserCall(ctx, action, onResult, onCancel, params, 0, 0)
 }
 
 type helperShutdown struct{}
@@ -62,7 +62,7 @@ func (helperDoor) Cinema() beam.Cinema {
 	return nil
 }
 
-func (helperDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race) (core.Hook, bool) {
+func (helperDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool) (core.Hook, bool) {
 	return core.Hook{}, false
 }
 
@@ -124,7 +124,7 @@ func (helperDoorWithRoot) Cinema() beam.Cinema {
 	return nil
 }
 
-func (helperDoorWithRoot) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race) (core.Hook, bool) {
+func (helperDoorWithRoot) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool) (core.Hook, bool) {
 	return core.Hook{}, false
 }
 
@@ -186,10 +186,10 @@ func (h *helperInstance) CallCheck(_ func() bool, act actions.Action, onResult f
 }
 
 func (h *helperInstance) UserCallCheck(_ func() bool, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
-	h.UserCall(context.Background(), act, onResult, nil, params)
+	h.UserCall(context.Background(), act, onResult, nil, params, 0, 0)
 }
 
-func (h *helperInstance) UserCall(_ context.Context, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
+func (h *helperInstance) UserCall(_ context.Context, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams, _ uint64, _ uint64) {
 	h.lastCallAction = act
 	h.lastCallParams = params
 	if onResult != nil && h.callCheckErr != nil {
@@ -395,7 +395,7 @@ func TestUserHelpers(t *testing.T) {
 		t.Fatal("expected distinct byte ids")
 	}
 
-	if ctex.IsFreeCtx(context.Background()) {
+	if ctex.IsDetachedCtx(context.Background()) {
 		t.Fatal("unexpected free context by default")
 	}
 }
@@ -415,12 +415,12 @@ func TestSessionContextCanceledBySessionEnd(t *testing.T) {
 func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 	ctx, _ := helperContext(t)
 	ctx = context.WithValue(ctx, "value", "kept")
-	ctx, _ = ctex.AfterFrameInsert(ctx)
+	ctx, _ = ctex.AfterFrameInsert(ctx, 0, "")
 	owner, _ := ctx.Value(common.KeyCore).(core.Core)
 	base, cancel := context.WithCancel(ctx)
 	free := DetachedContext(base)
 
-	if !ctex.IsFreeCtx(free) {
+	if !ctex.IsDetachedCtx(free) {
 		t.Fatal("expected DetachedContext to mark context as free")
 	}
 	if free.Value("value") != "kept" {
@@ -444,11 +444,11 @@ func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 func TestInstanceContextSwitchesToRootCoreAndRuntime(t *testing.T) {
 	ctx, inst, root := helperContextWithRoot(t)
 	ctx = context.WithValue(ctx, "value", "kept")
-	ctx, _ = ctex.AfterFrameInsert(ctx)
+	ctx, _ = ctex.AfterFrameInsert(ctx, 0, "")
 	base, cancel := context.WithCancel(ctx)
 	free := InstanceContext(base)
 
-	if !ctex.IsFreeCtx(free) {
+	if !ctex.IsDetachedCtx(free) {
 		t.Fatal("expected InstanceContext to mark context as free")
 	}
 	if free.Value("value") != "kept" {

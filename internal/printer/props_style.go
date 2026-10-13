@@ -80,7 +80,7 @@ func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		hander := src.Handler()
 		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			return hander(ctx, w, r)
-		}, core.RaceParallel)
+		}, core.RaceParallel, false)
 		if !ok {
 			return context.Canceled
 		}

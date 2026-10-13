@@ -56,7 +56,7 @@ func (t *titleInstance) CallCheck(func() bool, actions.Action, func(json.RawMess
 func (t *titleInstance) UserCallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 
-func (t *titleInstance) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (t *titleInstance) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams, uint64, uint64) {
 }
 func (t *titleInstance) CSPCollector() common.CSPCollector {
 	if t.csp != nil {
@@ -141,7 +141,7 @@ type titleDoor struct {
 
 func (d titleDoor) Instance() core.Instance { return d.inst }
 func (titleDoor) Cinema() beam.Cinema       { return nil }
-func (titleDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race) (core.Hook, bool) {
+func (titleDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool) (core.Hook, bool) {
 	return core.Hook{}, false
 }
 func (titleDoor) ID() uint64 { return 7 }
@@ -204,7 +204,7 @@ type hookDoor struct {
 func (d *hookDoor) Instance() core.Instance { return d.inst }
 func (d *hookDoor) Cinema() beam.Cinema     { return nil }
 
-func (d *hookDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race) (core.Hook, bool) {
+func (d *hookDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool) (core.Hook, bool) {
 	if !d.allowHook {
 		return core.Hook{}, false
 	}

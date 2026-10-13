@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -74,6 +75,9 @@ type testInstance struct {
 	ids     atomic.Uint64
 	mu      sync.Mutex
 	ended   bool
+	seq     uint64
+	links   []testLink
+	issued  []actions.Call
 	calls   chan actions.Call
 	endOnce sync.Once
 }
@@ -110,14 +114,38 @@ func (i *testInstance) client() {
 	}
 }
 
-func (i *testInstance) Call(c actions.Call) {
+type testLink struct {
+	seq     uint64
+	batch   uint64
+	door    uint64
+	depSeq  uint64
+	depDoor uint64
+}
+
+func (i *testInstance) Call(c actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64 {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if i.ended {
 		c.Cancel()
-		return
+		return 0
 	}
+	i.seq++
+	i.links = append(i.links, testLink{i.seq, batch, door, depSeq, depDoor})
+	i.issued = append(i.issued, c)
 	i.calls <- c
+	return i.seq
+}
+
+func (i *testInstance) issuedCalls() ([]testLink, []actions.Call) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	return slices.Clone(i.links), slices.Clone(i.issued)
+}
+
+func (i *testInstance) link(seq uint64) testLink {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	return i.links[seq-1]
 }
 
 func (i *testInstance) Kill() {
@@ -131,7 +159,7 @@ func (i *testInstance) Kill() {
 	})
 }
 
-func (i *testInstance) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (i *testInstance) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams, uint64, uint64) {
 }
 
 func (i *testInstance) UserCallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {

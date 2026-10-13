@@ -103,6 +103,7 @@ type lifecycleClient struct {
 	held    bool
 	busy    bool
 	ended   bool
+	seq     uint64
 	applied []lifecycleAction
 }
 
@@ -113,16 +114,19 @@ func newLifecycleClient() *lifecycleClient {
 	return c
 }
 
-func (c *lifecycleClient) call(call actions.Call) {
+func (c *lifecycleClient) call(call actions.Call) uint64 {
 	c.mu.Lock()
 	if c.ended {
 		c.mu.Unlock()
 		call.Cancel()
-		return
+		return 0
 	}
+	c.seq++
+	seq := c.seq
 	c.queue = append(c.queue, call)
 	c.mu.Unlock()
 	c.cond.Broadcast()
+	return seq
 }
 
 func (c *lifecycleClient) run() {
@@ -299,11 +303,11 @@ func (l *lifecycleInstance) NewID() uint64 {
 	return l.ids.Add(1)
 }
 
-func (l *lifecycleInstance) Call(c actions.Call) {
-	l.client.call(c)
+func (l *lifecycleInstance) Call(c actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64 {
+	return l.client.call(c)
 }
 
-func (l *lifecycleInstance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (l *lifecycleInstance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, _ uint64, _ uint64) {
 	l.client.call(&lifecycleUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params})
 }
 
@@ -637,7 +641,7 @@ func TestOnReadyFiresAfterRenderCycleScheduled(t *testing.T) {
 				h.events <- "ready-before-scheduled"
 				return
 			}
-			if !ctex.IsFreeCtx(ctx) {
+			if !ctex.IsDetachedCtx(ctx) {
 				h.events <- "ctx-not-detached"
 				return
 			}
@@ -695,7 +699,7 @@ func TestOnReadyFromHandlerContextFiresInline(t *testing.T) {
 			h.events <- "ready-async"
 		}
 		return true
-	}, RaceSerial)
+	}, RaceSerial, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -717,7 +721,7 @@ func TestOnSettleRenderCtxWaitsForCycle(t *testing.T) {
 	release := make(chan struct{})
 	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
 		OnSettle(cur.Context(), func(ctx context.Context) {
-			if !ctex.IsFreeCtx(ctx) {
+			if !ctex.IsDetachedCtx(ctx) {
 				h.events <- "settle-ctx-not-detached"
 				return
 			}
@@ -756,7 +760,7 @@ func TestOnSettleHandlerCtxWaitsForBatch(t *testing.T) {
 		close(entered)
 		<-proceed
 		return true
-	}, RaceSerial)
+	}, RaceSerial, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -1147,7 +1151,7 @@ func TestHookRaceStrictCancelsOutOfOrder(t *testing.T) {
 		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			ran = append(ran, track)
 			return false
-		}, race)
+		}, race, false)
 		if !ok {
 			t.Fatal("expected hook registration to succeed")
 		}
@@ -1177,5 +1181,143 @@ func TestHookRaceStrictCancelsOutOfOrder(t *testing.T) {
 	}
 	if !slices.Equal(codes, []int{http.StatusOK, http.StatusOK, http.StatusOK}) {
 		t.Fatalf("expected serial hook statuses [200 200 200], got %v", codes)
+	}
+}
+
+func appliedNames(h *lifecycleHarness, from int) []string {
+	applied := h.client.actions()[from:]
+	names := make([]string, len(applied))
+	for i, a := range applied {
+		names[i] = a.name
+	}
+	return names
+}
+
+// OnBatch without a batch opens one around ops and fires only when the client has applied its closer.
+func TestOnBatchOpensBatch(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	pageCtx := h.renderPage(mountDoor(d))
+	h.waitIdle()
+	from := len(h.client.actions())
+	h.client.hold()
+	OnBatch(DetachedContext(pageCtx), func(ctx context.Context) {
+		if !ctex.IsDetachedCtx(ctx) {
+			h.events <- "batch-ctx-not-detached"
+			return
+		}
+		h.events <- "batch"
+	}, func(ctx context.Context) {
+		d.Inner(ctx, gox.Elem(func(cur gox.Cursor) error { return cur.Text("x") }))
+	})
+	h.waitQueued(3)
+	h.expectNoEvent(50 * time.Millisecond)
+	h.client.release()
+	h.waitEvent("batch")
+	if got := appliedNames(h, from); !slices.Equal(got, []string{"batch_init", "door_update", "batch_flush"}) {
+		t.Fatalf("unexpected call order %v", got)
+	}
+}
+
+// OnBatch in a batch hook joins the hook batch: no second batch, and on fires when the hook report is applied.
+func TestOnBatchJoinsHookBatch(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	pageCtx := h.renderPage(mountDoor(d))
+	h.waitIdle()
+	from := len(h.client.actions())
+	c := pageCtx.Value(common.KeyCore).(core.Core)
+	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		OnBatch(ctx, func(context.Context) { h.events <- "batch" })
+		d.Inner(ctx, gox.Elem(func(cur gox.Cursor) error { return cur.Text("x") }))
+		return true
+	}, RaceSerial, true)
+	if !ok {
+		t.Fatal("expected hook registration to succeed")
+	}
+	h.client.hold()
+	h.root.TriggerHook(hook.HookID, httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil), 7)
+	h.waitQueued(3)
+	h.expectNoEvent(50 * time.Millisecond)
+	h.client.release()
+	h.waitEvent("batch")
+	if got := appliedNames(h, from); !slices.Equal(got, []string{"batch_init", "door_update", "report hook"}) {
+		t.Fatalf("unexpected call order %v", got)
+	}
+}
+
+// OnBatch in a plain hook opens a batch on the hook's settle: the flush goes out before the hook report.
+func TestOnBatchInPlainHook(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	pageCtx := h.renderPage(mountDoor(d))
+	h.waitIdle()
+	from := len(h.client.actions())
+	c := pageCtx.Value(common.KeyCore).(core.Core)
+	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		OnBatch(ctx, func(context.Context) { h.events <- "batch" }, func(ctx context.Context) {
+			d.Inner(ctx, gox.Elem(func(cur gox.Cursor) error { return cur.Text("x") }))
+		})
+		return true
+	}, RaceSerial, false)
+	if !ok {
+		t.Fatal("expected hook registration to succeed")
+	}
+	h.root.TriggerHook(hook.HookID, httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil), 7)
+	h.waitEvent("batch")
+	h.waitIdle()
+	if got := appliedNames(h, from); !slices.Equal(got, []string{"batch_init", "door_update", "batch_flush", "report hook"}) {
+		t.Fatalf("unexpected call order %v", got)
+	}
+}
+
+// OnBatch still fires when the instance ends before the client reports the batch.
+func TestOnBatchFiresOnInstanceEnd(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx := h.renderPage(nil)
+	h.waitIdle()
+	h.client.hold()
+	OnBatch(DetachedContext(pageCtx), func(context.Context) { h.events <- "batch" })
+	h.expectNoEvent(50 * time.Millisecond)
+	h.inst.end()
+	h.waitEvent("batch")
+}
+
+// In a batch hook Call reports nothing, and an action armed with Into delivers an error and leaves dst alone.
+func TestCallInBatchHook(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx := h.renderPage(nil)
+	h.waitIdle()
+	c := pageCtx.Value(common.KeyCore).(core.Core)
+	var at time.Time
+	var plainOk, intoOk bool
+	var plainErr, intoErr error
+	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		plainErr, plainOk = <-Call(ctx, ActionScroll{Selector: "#x"})
+		intoErr, intoOk = <-Call(ctx, ActionTime{}.Into(&at))
+		return true
+	}, RaceSerial, true)
+	if !ok {
+		t.Fatal("expected hook registration to succeed")
+	}
+	done := make(chan struct{})
+	go func() {
+		h.root.TriggerHook(hook.HookID, httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil), 7)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected Call channels in a batch hook not to block the handler")
+	}
+	h.waitIdle()
+	if plainOk || plainErr != nil {
+		t.Fatalf("expected a closed channel for a batch call, got %v, %v", plainErr, plainOk)
+	}
+	if !intoOk || !errors.Is(intoErr, errBatchResult) {
+		t.Fatalf("expected the batch result error, got %v, %v", intoErr, intoOk)
+	}
+	if !at.IsZero() {
+		t.Fatalf("expected dst untouched, got %v", at)
 	}
 }

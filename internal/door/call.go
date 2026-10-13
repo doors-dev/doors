@@ -24,21 +24,67 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/printer"
+	"github.com/doors-dev/doors/internal/shredder"
 )
 
-type reportHook uint64
+type reportHook struct {
+	track uint64
+	batch *shredder.ValveFrame
+}
 
 func (c reportHook) Params() actions.CallParams {
 	return actions.CallParams{}
 }
 
 func (c reportHook) Action() (actions.Action, func(), bool) {
-	return actions.ReportHook{HookId: uint64(c)}, func() {}, true
+	return actions.ReportHook{HookId: c.track}, func() {}, true
 }
 
-func (c reportHook) Cancel() {}
+func (c reportHook) Cancel() {
+	if c.batch != nil {
+		c.batch.Activate()
+	}
+}
 
-func (c reportHook) Result(r json.RawMessage, err error) {}
+func (c reportHook) Result(r json.RawMessage, err error) {
+	if c.batch != nil {
+		c.batch.Activate()
+	}
+}
+
+type batchInit struct{}
+
+func (c batchInit) Params() actions.CallParams {
+	return actions.CallParams{}
+}
+
+func (c batchInit) Action() (actions.Action, func(), bool) {
+	return actions.BatchInit{}, func() {}, true
+}
+
+func (c batchInit) Cancel() {}
+
+func (c batchInit) Result(r json.RawMessage, err error) {}
+
+type batchFlush struct {
+	batch *shredder.ValveFrame
+}
+
+func (c batchFlush) Params() actions.CallParams {
+	return actions.CallParams{}
+}
+
+func (c batchFlush) Action() (actions.Action, func(), bool) {
+	return actions.BatchFlush{}, func() {}, true
+}
+
+func (c batchFlush) Cancel() {
+	c.batch.Activate()
+}
+
+func (c batchFlush) Result(r json.RawMessage, err error) {
+	c.batch.Activate()
+}
 
 type callKind int
 

@@ -150,6 +150,22 @@ func TestActionLogsAndInvocations(t *testing.T) {
 			expectedPayload: NewNone(),
 		},
 		{
+			name:            "batch init",
+			action:          BatchInit{},
+			log:             "batch_init",
+			invocationName:  "batch_init",
+			args:            []any{},
+			expectedPayload: NewNone(),
+		},
+		{
+			name:            "batch flush",
+			action:          BatchFlush{},
+			log:             "batch_flush",
+			invocationName:  "batch_flush",
+			args:            []any{},
+			expectedPayload: NewNone(),
+		},
+		{
 			name:            "update title",
 			action:          UpdateTitle{Content: "Home", Attrs: map[string]string{"lang": "en"}},
 			log:             "update_title",

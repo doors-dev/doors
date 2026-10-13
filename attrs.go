@@ -79,12 +79,13 @@ type eventAttr[E any] struct {
 	scope     Scopes
 	indicator Indicators
 	race      Race
+	batch     bool
 	on        func(context.Context, RequestEvent[E]) bool
 }
 
 func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(p.handle(core), p.race)
+	hook, ok := core.Door().RegisterHook(p.handle(core), p.race, p.batch)
 	if !ok {
 		return context.Canceled
 	}

@@ -16,10 +16,12 @@ package doors
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
+	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/shredder"
 )
 
@@ -76,13 +78,13 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 // ctx must belong to a Doors render or handler; otherwise OnSettle panics.
 func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context)) {
 	ctex.LogCanceled(ctx, "OnSettle")
-	detached := DetachedContext(ctx)
+	detached := ctex.NewDetachedContext(ctx, ctx, true)
 	core := ctx.Value(common.KeyCore).(core.Core)
 	var afterFrame shredder.Frame = shredder.FreeFrame{}
 	if frame, ok := ctex.AfterFrame(ctx); ok {
 		afterFrame = frame.After()
 	} else if len(ops) != 0 {
-		ctx, frame = ctex.AfterFrameInsert(ctx)
+		ctx, frame = ctex.AfterFrameInsert(ctx, 0, "")
 		afterFrame = frame.After()
 		defer frame.Activate()
 	}
@@ -93,6 +95,50 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 		})
 	})
 	ready.Release()
+	for _, op := range ops {
+		op(ctx)
+	}
+}
+
+// OnBatch runs ops as one batch and registers on to run once the browser has
+// applied it: the updates started by ops land on the page together, and on
+// runs after them. If ctx already belongs to a batch or a handler, ops join it
+// and on runs when that whole batch is applied; use [DetachedContext] to start
+// a separate one.
+//
+// Where [OnSettle] reports that the updates are queued for delivery, OnBatch
+// reports that the browser applied them.
+//
+// on runs exactly once, also if the instance ends first; the provided context
+// reports such states. It runs with a context equivalent to [DetachedContext]
+// of ctx and must not block.
+//
+// ctx must belong to a Doors render or handler; otherwise OnBatch panics.
+func OnBatch(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context)) {
+	ctex.LogCanceled(ctx, "OnBatch")
+	detached := DetachedContext(ctx)
+	core := ctx.Value(common.KeyCore).(core.Core)
+	inst := core.Instance()
+	batchFrame := ctex.GetFrames(ctx).BatchFrame(inst.ID())
+	if batchFrame == nil {
+		var after *shredder.AfterFrame
+		var inserted bool
+		ctx, after, batchFrame, inserted = ctex.BatchFrameInsert(ctx, inst.NewID(), inst.ID())
+		markerCtx := ctex.NewDetachedContext(ctx, inst.Runtime().Context(), true)
+		door := core.Door().ID()
+		inst.UserCall(markerCtx, actions.BatchInit{}, nil, nil, actions.CallParams{}, door, 0)
+		after.After().Run(nil, nil, func(bool) {
+			inst.UserCall(markerCtx, actions.BatchFlush{}, func(json.RawMessage, error) {
+				batchFrame.Activate()
+			}, batchFrame.Activate, actions.CallParams{}, door, 0)
+		})
+		if inserted {
+			defer after.Activate()
+		}
+	}
+	batchFrame.Submit(detached, inst.Runtime(), func(bool) {
+		on(detached)
+	})
 	for _, op := range ops {
 		op(ctx)
 	}

@@ -23,10 +23,11 @@ import (
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/actions"
 )
 
-func (c Instance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (c Instance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, door uint64, depSeq uint64) {
 	call := &call{
 		ctx:      ctx,
 		onResult: onResult,
@@ -38,7 +39,7 @@ func (c Instance) UserCall(ctx context.Context, action actions.Action, onResult 
 	call.stop = context.AfterFunc(ctx, func() {
 		call.action.Store(nil)
 	})
-	c.solitaire.Call(call)
+	c.solitaire.Call(call, ctex.GetFrames(ctx).Batch(c.ID()), door, depSeq, 0)
 }
 
 func (c Instance) UserCallCheck(check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
@@ -51,7 +52,7 @@ func (c Instance) UserCallCheck(check func() bool, action actions.Action, onResu
 		logger:   c.Logger(),
 	}
 	call.action.Store(&action)
-	c.solitaire.Call(call)
+	c.solitaire.Call(call, 0, c.RootID(), 0, 0)
 }
 
 type call struct {

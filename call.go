@@ -17,6 +17,7 @@ package doors
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
@@ -37,6 +38,8 @@ import (
 // or your own goroutine with [DetachedContext].
 //
 // ctx must belong to a Doors render or handler; otherwise Call panics.
+var errBatchResult = errors.New("call result is not available in a batch")
+
 func Call(ctx context.Context, a Action) <-chan error {
 	core := ctx.Value(common.KeyCore).(core.Core)
 	ch := make(chan error, 1)
@@ -49,6 +52,14 @@ func Call(ctx context.Context, a Action) <-chan error {
 	}
 	if ctx.Err() != nil {
 		ctex.LogCanceled(ctx, "call "+prep.action.Log())
+	}
+	if ctex.GetFrames(ctx).Batch(core.Instance().ID()) != 0 {
+		if prep.decode != nil {
+			ch <- errBatchResult
+		}
+		close(ch)
+		core.Door().UserCall(ctx, prep.action, nil, nil, prep.params)
+		return ch
 	}
 	core.Door().UserCall(
 		ctx,

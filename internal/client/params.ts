@@ -19,5 +19,6 @@ export const ttl: number = Number(document.currentScript!.dataset.ttl)
 export const disconnectAfter: number = Number(document.currentScript!.dataset.disconnect)
 export const requestTimeout: number = Number(document.currentScript!.dataset.request)
 export const solitaireRoll: number = Number(document.currentScript!.dataset.roll)
+export const solitairePending: number = Number(document.currentScript!.dataset.pending)
 export const noStream: boolean = !!document.currentScript!.dataset.nostream
 export const boot: string = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("")
