@@ -1,0 +1,132 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package batch
+
+import (
+	"context"
+	"sync"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type foreignGate struct {
+	*gate
+	once sync.Once
+}
+
+func (g *foreignGate) foreignRelease() {
+	g.once.Do(func() {
+		close(g.proceed)
+	})
+}
+
+type foreignShared struct {
+	src doors.Source[string]
+	ga *foreignGate
+	gb *foreignGate
+	fired chan string
+}
+
+func foreignNewShared() *foreignShared {
+	return &foreignShared{
+		src: doors.NewSource("s0"),
+		ga: &foreignGate{gate: newGate()},
+		gb: &foreignGate{gate: newGate()},
+		fired: make(chan string, 8),
+	}
+}
+
+type foreignFragment struct {
+	test.Beam
+	s *foreignShared
+	shared doors.Door
+	own doors.Door
+	x doors.Door
+	y doors.Door
+}
+
+func (f *foreignFragment) foreignHold(ctx context.Context, g *gate) {
+	g.entered <- struct{}{}
+	select {
+	case <-g.proceed:
+	case <-ctx.Done():
+	}
+}
+
+func (f *foreignFragment) foreignRun(ctx context.Context, first string, second string) {
+	f.s.src.Update(ctx, first)
+	f.own.Inner(ctx, "own-"+first)
+	f.foreignHold(ctx, f.s.ga.gate)
+	if second != "" {
+		f.s.src.Update(ctx, second)
+	}
+}
+
+func (f *foreignFragment) foreignPeer(ctx context.Context, v string) {
+	doors.OnBatch(ctx, func(ctx context.Context) {
+		f.s.fired <- v
+	}, func(ctx context.Context) {
+		f.x.Inner(ctx, "x-"+v)
+	}, func(ctx context.Context) {
+		switch v {
+		case "slow":
+			release := doors.HoldSettle(ctx)
+			go func() {
+				defer release()
+				f.foreignHold(ctx, f.s.gb.gate)
+			}()
+		case "block":
+			f.foreignHold(ctx, f.s.gb.gate)
+		}
+		f.y.Inner(ctx, "y-"+v)
+	})
+}
+
+elem (f *foreignFragment) foreignBatched(id string, first string, second string) {
+	~>doors.AClick{
+		Batch: true,
+		Indicator: doors.IndicateAttrQuery("#foreign-ind", "data-busy", "true"),
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.foreignRun(ctx, first, second)
+			return false
+		},
+	} <button id=(id)>~(id)</button>
+}
+
+elem (f *foreignFragment) Main() {
+	~~
+	path, _ := f.B.Read(ctx)
+	peer := path.Vs
+	v, _ := f.s.src.ReadAndSub(ctx, func(ctx context.Context, v string) bool {
+		f.shared.Inner(ctx, v)
+		if peer {
+			f.foreignPeer(ctx, v)
+		}
+		return false
+	})
+	~~
+	<div id="foreign-ind">ind</div>
+	~>(f.shared) <div id="foreign-shared">~(v)</div>
+	~>(f.own) <div id="foreign-own">own0</div>
+	~>(f.x) <div id="foreign-x">x0</div>
+	~>(f.y) <div id="foreign-y">y0</div>
+	~(f.foreignBatched("foreign-batch", "s1", ""))
+	~(f.foreignBatched("foreign-slow", "slow", ""))
+	~(f.foreignBatched("foreign-block", "block", ""))
+	~(f.foreignBatched("foreign-twice", "s1", "s2"))
+}
+
+var _ gox.Comp = (*foreignFragment)(nil)

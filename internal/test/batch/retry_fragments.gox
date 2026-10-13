@@ -1,0 +1,90 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package batch
+
+import (
+	"context"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+const retryBatchX = "x-batch"
+
+const retryBatchY = "y-batch"
+
+const retrySecondX = "x-second"
+
+const retryThirdX = "x-third"
+
+type retryState struct {
+	entered chan struct{}
+	proceed chan struct{}
+	second chan struct{}
+	third chan struct{}
+}
+
+func retryNewState() *retryState {
+	return &retryState{
+		entered: make(chan struct{}, 8),
+		proceed: make(chan struct{}),
+		second: make(chan struct{}, 8),
+		third: make(chan struct{}, 8),
+	}
+}
+
+type retryFragment struct {
+	test.NoBeam
+	s *retryState
+	x doors.Door
+	y doors.Door
+}
+
+func (f *retryFragment) batch(ctx context.Context) bool {
+	<-f.x.Inner(ctx, retryBatchX)
+	f.s.entered <- struct{}{}
+	select {
+	case <-f.s.proceed:
+	case <-ctx.Done():
+		return false
+	}
+	f.y.Inner(ctx, retryBatchY)
+	return false
+}
+
+func (f *retryFragment) plain(ctx context.Context, content string, issued chan struct{}) bool {
+	<-f.x.Inner(ctx, content)
+	issued <- struct{}{}
+	return false
+}
+
+elem (f *retryFragment) Main() {
+	~>(f.x) <div id="x">x0</div>
+	~>(f.y) <div id="y">y0</div>
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.batch(ctx)
+		},
+	} <button id="retry-batch">retry-batch</button>
+	~(test.Button("retry-second", func(ctx context.Context) bool {
+		return f.plain(ctx, retrySecondX, f.s.second)
+	}))
+	~(test.Button("retry-third", func(ctx context.Context) bool {
+		return f.plain(ctx, retryThirdX, f.s.third)
+	}))
+}
+
+var _ gox.Comp = (*retryFragment)(nil)

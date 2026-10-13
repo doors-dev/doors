@@ -1,0 +1,120 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package batch
+
+import (
+	"context"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type pathFragment struct {
+	test.Beam
+	g *gate
+	done chan struct{}
+	a doors.Door
+	b doors.Door
+}
+
+elem pathMetaContent(desc string, text string) {
+	<meta name="pathdesc" content=(desc)/>
+	<span>~(text)</span>
+}
+
+func (f *pathFragment) pathHold(ctx context.Context) {
+	f.g.entered <- struct{}{}
+	select {
+	case <-f.g.proceed:
+	case <-ctx.Done():
+	}
+}
+
+func (f *pathFragment) pathMove(ctx context.Context, p string, first string, second string) bool {
+	f.B.Update(ctx, test.Path{Vp: true, P: p})
+	f.a.Inner(ctx, first)
+	f.pathHold(ctx)
+	f.b.Inner(ctx, second)
+	return false
+}
+
+func (f *pathFragment) pathOnly(ctx context.Context, p string) bool {
+	f.B.Update(ctx, test.Path{Vp: true, P: p})
+	f.pathHold(ctx)
+	return false
+}
+
+func (f *pathFragment) pathHolder(ctx context.Context) bool {
+	<-f.a.Inner(ctx, "a-held")
+	f.pathHold(ctx)
+	return false
+}
+
+func (f *pathFragment) pathFollow(ctx context.Context, p string) bool {
+	f.B.Update(ctx, test.Path{Vp: true, P: p})
+	f.a.Inner(ctx, "a-"+p)
+	f.done <- struct{}{}
+	return false
+}
+
+func (f *pathFragment) pathMeta(ctx context.Context) bool {
+	f.a.Inner(ctx, pathMetaContent("second", "a3"))
+	f.pathHold(ctx)
+	f.b.Inner(ctx, "b3")
+	return false
+}
+
+elem (f *pathFragment) Main() {
+	~>(f.a) <div id="a">~(pathMetaContent("first", "a0"))</div>
+	~>(f.b) <div id="b">b0</div>
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.pathMove(ctx, "batched", "a1", "b1")
+		},
+	} <button id="path-batched">path-batched</button>
+	~(test.Button("path-plain", func(ctx context.Context) bool {
+		return f.pathMove(ctx, "plain", "a2", "b2")
+	}))
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.pathOnly(ctx, "only")
+		},
+	} <button id="path-only">path-only</button>
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.pathHolder(ctx)
+		},
+	} <button id="path-holder">path-holder</button>
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.pathFollow(ctx, "follow")
+		},
+	} <button id="path-follow">path-follow</button>
+	~(test.Button("path-follow-plain", func(ctx context.Context) bool {
+		return f.pathFollow(ctx, "follow-plain")
+	}))
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return f.pathMeta(ctx)
+		},
+	} <button id="path-meta">path-meta</button>
+}
+
+var _ gox.Comp = (*pathFragment)(nil)

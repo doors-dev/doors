@@ -159,10 +159,45 @@ func (i *testInstance) Kill() {
 	})
 }
 
-func (i *testInstance) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams, uint64, uint64) {
+type linksUserCall struct {
+	ctx      context.Context
+	check    func() bool
+	action   actions.Action
+	onResult func(json.RawMessage, error)
+	onCancel func()
+	params   actions.CallParams
 }
 
-func (i *testInstance) UserCallCheck(uint64, uint64, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (c linksUserCall) Params() actions.CallParams { return c.params }
+
+func (c linksUserCall) Action() (actions.Action, func(), bool) {
+	if c.check != nil && !c.check() {
+		return nil, nil, false
+	}
+	if c.check == nil && c.ctx.Err() != nil {
+		return nil, nil, false
+	}
+	return c.action, func() {}, true
+}
+
+func (c linksUserCall) Cancel() {
+	if c.onCancel != nil {
+		c.onCancel()
+	}
+}
+
+func (c linksUserCall) Result(r json.RawMessage, err error) {
+	if c.onResult != nil {
+		c.onResult(r, err)
+	}
+}
+
+func (i *testInstance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, door uint64, depSeq uint64) {
+	i.Call(linksUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params}, ctex.GetFrames(ctx).Batch(i.ID()), door, depSeq, 0)
+}
+
+func (i *testInstance) UserCallCheck(batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+	i.Call(linksUserCall{check: check, action: action, onResult: onResult, onCancel: onCancel, params: params}, batch, target, 0, 0)
 }
 
 func (i *testInstance) Session() core.Session { return i.session }

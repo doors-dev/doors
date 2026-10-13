@@ -99,7 +99,8 @@ type lifecycleAction struct {
 type lifecycleClient struct {
 	mu      sync.Mutex
 	cond    sync.Cond
-	queue   []actions.Call
+	queue   []linksQueued
+	links   []linksCall
 	held    bool
 	busy    bool
 	ended   bool
@@ -114,7 +115,7 @@ func newLifecycleClient() *lifecycleClient {
 	return c
 }
 
-func (c *lifecycleClient) call(call actions.Call) uint64 {
+func (c *lifecycleClient) call(call actions.Call, link linksCall) uint64 {
 	c.mu.Lock()
 	if c.ended {
 		c.mu.Unlock()
@@ -123,7 +124,9 @@ func (c *lifecycleClient) call(call actions.Call) uint64 {
 	}
 	c.seq++
 	seq := c.seq
-	c.queue = append(c.queue, call)
+	link.seq = seq
+	c.links = append(c.links, link)
+	c.queue = append(c.queue, linksQueued{call, seq})
 	c.mu.Unlock()
 	c.cond.Broadcast()
 	return seq
@@ -139,24 +142,27 @@ func (c *lifecycleClient) run() {
 		if c.ended {
 			return
 		}
-		call := c.queue[0]
-		c.queue[0] = nil
+		queued := c.queue[0]
+		c.queue[0] = linksQueued{}
 		c.queue = c.queue[1:]
 		c.busy = true
 		c.mu.Unlock()
-		c.apply(call)
+		c.apply(queued.call, queued.seq)
 		c.mu.Lock()
 		c.busy = false
 	}
 }
 
-func (c *lifecycleClient) apply(call actions.Call) {
+func (c *lifecycleClient) apply(call actions.Call, seq uint64) {
 	action, free, ok := call.Action()
 	if !ok {
 		call.Cancel()
 		return
 	}
 	applied := lifecycleAction{name: action.Log()}
+	c.mu.Lock()
+	c.links[seq-1].name = applied.name
+	c.mu.Unlock()
 	switch action := action.(type) {
 	case actions.DoorReplace:
 		applied.id, applied.body = action.ID, payloadText(action.Payload)
@@ -179,8 +185,8 @@ func (c *lifecycleClient) end() {
 	c.queue = nil
 	c.mu.Unlock()
 	c.cond.Broadcast()
-	for _, call := range queue {
-		call.Cancel()
+	for _, queued := range queue {
+		queued.call.Cancel()
 	}
 }
 
@@ -213,6 +219,27 @@ func (c *lifecycleClient) actions() []lifecycleAction {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return slices.Clone(c.applied)
+}
+
+type linksQueued struct {
+	call actions.Call
+	seq  uint64
+}
+
+type linksCall struct {
+	seq     uint64
+	name    string
+	action  actions.Action
+	batch   uint64
+	door    uint64
+	depSeq  uint64
+	depDoor uint64
+}
+
+func (c *lifecycleClient) issued() []linksCall {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.links)
 }
 
 func payloadText(p actions.Payload) string {
@@ -291,6 +318,7 @@ func (s *lifecycleSession) Logger() *slog.Logger { return s.app.logger }
 type lifecycleInstance struct {
 	*helperInstance
 	ids     atomic.Uint64
+	linksID string
 	sess    *lifecycleSession
 	client  *lifecycleClient
 	meta    core.TitleMeta
@@ -303,16 +331,29 @@ func (l *lifecycleInstance) NewID() uint64 {
 	return l.ids.Add(1)
 }
 
+func (l *lifecycleInstance) ID() string {
+	if l.linksID != "" {
+		return l.linksID
+	}
+	return l.helperInstance.ID()
+}
+
 func (l *lifecycleInstance) Call(c actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64 {
-	return l.client.call(c)
+	return l.client.call(c, linksCall{batch: batch, door: door, depSeq: depSeq, depDoor: depDoor})
 }
 
-func (l *lifecycleInstance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, _ uint64, _ uint64) {
-	l.client.call(&lifecycleUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params})
+func (l *lifecycleInstance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, door uint64, depSeq uint64) {
+	l.client.call(
+		&lifecycleUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params},
+		linksCall{name: action.Log(), action: action, batch: ctex.GetFrames(ctx).Batch(l.ID()), door: door, depSeq: depSeq},
+	)
 }
 
-func (l *lifecycleInstance) UserCallCheck(_ uint64, _ uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
-	l.client.call(&lifecycleUserCall{ctx: context.Background(), check: check, action: action, onResult: onResult, onCancel: onCancel, params: params})
+func (l *lifecycleInstance) UserCallCheck(batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+	l.client.call(
+		&lifecycleUserCall{ctx: context.Background(), check: check, action: action, onResult: onResult, onCancel: onCancel, params: params},
+		linksCall{name: action.Log(), action: action, batch: batch, door: target},
+	)
 }
 
 func (l *lifecycleInstance) Session() core.Session { return l.sess }

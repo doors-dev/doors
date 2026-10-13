@@ -276,7 +276,9 @@ class Tracker {
 	private tagLookup = new Map<number, Set<Batch>>()
 	removeBatch(batch: Batch) {
 		this.batches.delete(batch)
-		this.idLookup.delete(batch.id)
+		if (this.idLookup.get(batch.id) == batch) {
+			this.idLookup.delete(batch.id)
+		}
 		const tagged = this.tagLookup.get(batch.tag)
 		if (tagged == undefined) {
 			return
@@ -293,8 +295,10 @@ class Tracker {
 		return this.packageLookup.get(seq)
 	}
 	hold(p: Package, batch: Batch) {
-		this.doorLookup.set(p.door, batch)
 		this.packageLookup.set(p.end, batch)
+		if (p.door != 0) {
+			this.doorLookup.set(p.door, batch)
+		}
 	}
 	unhold(p: Package, batch: Batch) {
 		this.packageLookup.delete(p.end)

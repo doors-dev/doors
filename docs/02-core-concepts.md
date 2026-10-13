@@ -108,32 +108,19 @@ A render context may even be canceled mid-render, when the content being produce
 
 ## Runtime
 
-Rendering and state propagation happens on the **Doors** runtime.
+Rendering, state propagation, and hook execution are managed by the **Doors** runtime.
 
-It is completely normal to query a database or call an API while rendering.
+The rules:
 
-Content inside dynamic containers (`doors.Door`) is rendered on the instance
-goroutine pool by default, so separate dynamic fragments can make progress in
-parallel.
+- Load data where you render it: query the database or call an API right in the render.
+- If that is too slow, render a skeleton and replace it with a [deferred operation](./06-door.md#deferred-operations).
+- Ignore the completion channels of Door operations in most cases. `Inner`, `Outer`, and the other Door methods return one, and so does `doors.Call`, but there is nothing to check: whether an update lands depends on the lifetime of what it targets, and that is managed for you.
+- Never wait on them during render, in hooks, or in beam subscriptions.
+- Keep render work tied to producing the current page. Background loops, timers, pubsub listeners, and other work that should continue after rendering belong in their own goroutine.
 
-For ordinary render flow, wrap independent slow fragments with
-`doors.Parallel()` so they can render concurrently:
+If you do need the result, for backpressure in advanced setups or for data coming back from the browser, wait in a goroutine of your own with `doors.DetachedContext(ctx)`. Use `doors.Go(...)` when that work should follow the lifetime of a rendered subtree. See [Door](./06-door.md#completion-channels), [Actions](./12-actions.md#direct), and [Session & Instance](./19-session-instance.md#context).
 
-```gox
-<>
-	~>(doors.Parallel()) <>
-		~~
-		user := loadUser(ctx)
-		~~
-		<section>~(user.Name)</section>
-	</>
-</>
-```
-
-Keep render work tied to producing the current page. For background loops,
-timers, pubsub listeners, or other work that should continue after rendering,
-start your own goroutine or use `doors.Go(...)` when it should follow the
-lifetime of a rendered subtree.
+To react after updates, use the callbacks instead of waiting: `doors.OnSettle` runs once the updates are queued for delivery, `doors.OnBatch` once the browser has applied them. See [Door](./06-door.md#lifecycle-hooks).
 
 ## Security
 

@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.2
+// Managed by GoX v0.3.3-0.20261011164703-508309b766d1
 
 //line caputre_error.gox:1
 // Copyright 2026 doors dev LLC

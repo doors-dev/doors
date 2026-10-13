@@ -1,8 +1,43 @@
 # Doors `0.18` Release Notes
 
-Doors `0.18` brings nested routing and simpler route building. Groups such as `RouteMatch`, `RouteValue`, `RouteDerive`, and `RouteModel` hold routes of their own, so sections, tabs, and variants fit in a single route call that renders into one container, however deep it goes. Leaves such as `RouteComp` and `RouteSource` render the content and double as fallbacks, so there is no separate default family. Every route is complete as soon as it is written: no half-built match that the editor flags as an error until the `.Comp` or `.Source` call that finishes it.
+Doors `0.18` brings two things:
+
+- **Call batching.** A view that changes in several places changes once. Mark a handler `Batch: true` and the browser applies its updates in one step, while rendering stays parallel and non-blocking.
+- **Nested routing.** Sections, tabs, and variants fit in one route call and one container, however deep. Every route is complete as soon as it is written.
 
 ## Highlights
+
+### Call batching
+
+Every Door renders on its own and its update goes to the browser as soon as it is ready. That keeps pages responsive, and it shows when one action changes several places or replaces content that takes time to produce: the page changes piece by piece, a list refreshes before its counter, a view empties out and fills in.
+
+Set `Batch: true` on a link (`ALink`) or on an event attr (`AClick`, `ASubmit`, `AKeyDown`, `AHook`, and the rest, next to `Race`), and the browser holds the handler's updates and applies them together when the handler finishes. The handler runs and renders exactly as before; only the paint is grouped. A link to a view that takes a moment to load keeps the current view intact until the new one is complete, then replaces it and the URL at once. A list, its counter, and its toolbar change in the same step:
+
+```gox
+~>doors.AClick{
+	Batch: true,
+	On: func(ctx context.Context, _ doors.RequestPointer) bool {
+		p.list.Inner(ctx, OrderList{status: status})
+		p.count.Inner(ctx, OrderCount{status: status})
+		return false
+	},
+} <button>Show ~(status)</button>
+```
+
+The batch covers everything the handler starts with its context: Door updates, the state propagation they trigger, and path changes. Other calls are not held up by it unless they touch a Door the batch holds or content the batch is about to place; those land right after it, in order.
+
+To batch updates yourself, anywhere, use `doors.OnBatch(ctx, on, ops...)`: the updates made in `ops` are applied at once, and `on` runs when the browser has applied them. If the context already belongs to a batch, `OnBatch` joins it instead of opening a new one:
+
+```gox
+doors.OnBatch(ctx, func(ctx context.Context) {
+	p.status.Inner(ctx, "Saved")
+}, func(ctx context.Context) {
+	p.form.Inner(ctx, OrderForm{order: order})
+	p.list.Inner(ctx, OrderList{status: status})
+})
+```
+
+Completion channels do not report "applied" inside a batch: a Door operation's channel sends the scheduled signal and closes, `doors.Call` reports nothing, and an action armed with `Into` delivers an error instead of a result. To wait for a browser result, use a goroutine with `doors.DetachedContext(ctx)`; to react after the batch, use `OnBatch`. Title and meta updates apply on arrival and are not batched; a batch that reaches `SolitairePending` held calls is applied early. See [Core Concepts](./docs/02-core-concepts.md#runtime) and [Door](./docs/06-door.md#lifecycle-hooks).
 
 ### Nested routes in one container
 
@@ -72,6 +107,8 @@ While a `RouteDerive` value stays equal by its comparator, the routes below it a
 - **Branch selection across levels.** A chosen branch stays mounted while every condition on its path holds, even if an earlier route would now match too. When one condition fails, the whole tree selects again from the top, as on the first render. A showing leaf gives way to an earlier route that starts matching; a leaf inside a `RouteDerive` counts as the derive's fallback.
 - **`RouteValue` uses the routed source's comparator** instead of `==` and accepts any `T`. A source with a nil comparator never matches a `RouteValue`; route it with `RouteMatch`.
 - **Derive functions run once per render of the route container**, for every `RouteDerive` and `RouteBeamDerive` in the tree, shown or not.
+- **Hook completion waits for the hook's own page updates.** The indicator release, the scope release, and the `$hook` promise now wait for updates the hook made if they are still queued in the browser.
+- **`OnSettle` and hook completion track the handler's own instance only.** Updates the handler triggers in other instances, such as other tabs through shared state, are no longer awaited.
 
 ## Breaking Changes
 
@@ -97,6 +134,8 @@ While a `RouteDerive` value stays equal by its comparator, the routes below it a
 ```sh
 go get github.com/doors-dev/doors@v0.18.0
 ```
+
+Batching is opt-in; handlers that do not set `Batch` behave as before. Routing needs the changes below.
 
 Wrap each branch's content in a leaf and pass it to its group; the fallback becomes a plain leaf at the end:
 

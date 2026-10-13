@@ -1,0 +1,57 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package batch
+
+import (
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type linkFragment struct {
+	test.Beam
+	g *gate
+}
+
+elem (f *linkFragment) slow(v test.Path) {
+	~~
+	if v.P != "" {
+		f.g.entered <- struct{}{}
+		select {
+		case <-f.g.proceed:
+		case <-ctx.Done():
+		}
+	}
+	~~
+	<span id="slow">~("slow-" + v.P)</span>
+}
+
+elem (f *linkFragment) Main() {
+	~(f.B.Bind(elem(v test.Path) {
+		<span id="fast">~("fast-" + v.P)</span>
+	}))
+	~(f.B.Bind(elem(v test.Path) {
+		~(f.slow(v))
+	}))
+	~>doors.ALink{
+		Model: test.Path{Vp: true, P: "batched"},
+		Batch: true,
+	} <a id="link-batched">batched</a>
+	~>doors.ALink{
+		Model: test.Path{Vp: true, P: "plain"},
+	} <a id="link-plain">plain</a>
+}
+
+var _ gox.Comp = (*linkFragment)(nil)

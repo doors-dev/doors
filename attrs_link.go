@@ -161,6 +161,10 @@ type ALink struct {
 	// HistoryReplace replaces the current history entry instead of pushing a
 	// new one, so Back skips this navigation. Optional.
 	HistoryReplace bool
+	// Batch applies the page updates of this navigation together, once all
+	// of them are ready, so the current view stays intact until the new one
+	// can replace it at once. Default: false.
+	Batch bool
 	// Scope controls how the request is scheduled. Optional; all links share a
 	// built-in scope, so a new click cancels a pending navigation.
 	Scope Scopes
@@ -231,7 +235,7 @@ func (h ALink) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 		core.Instance().Location().Update(ctx, loc)
 		return false
 	}
-	hook, ok := core.Door().RegisterHook(handler, RaceStrict, false)
+	hook, ok := core.Door().RegisterHook(handler, RaceStrict, h.Batch)
 	if !ok {
 		return nil
 	}
