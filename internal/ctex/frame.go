@@ -29,6 +29,7 @@ type Frames struct {
 	batch      uint64
 	inst       string
 	batchFrame *shredder.ValveFrame
+	guard      bool
 }
 
 func (f Frames) Batch(inst string) uint64 {
@@ -36,6 +37,10 @@ func (f Frames) Batch(inst string) uint64 {
 		return 0
 	}
 	return f.batch
+}
+
+func (f Frames) BatchGuard(inst string) bool {
+	return f.guard && f.inst == inst && f.batch != 0
 }
 
 func (f Frames) BatchFrame(inst string) *shredder.ValveFrame {
@@ -81,18 +86,22 @@ func (f Frames) InitFrame(ctx context.Context) shredder.ReleaseFrame {
 	return shredder.Join(ctx, init, sync, after)
 }
 
-func AfterFrameInsert(ctx context.Context, batch uint64, inst string) (context.Context, *shredder.AfterFrame) {
-	prev, _ := ctx.Value(common.KeyFrame).(Frames)
+func AfterFrameInsert(ctx context.Context, batch uint64, inst string, hard bool) (context.Context, *shredder.AfterFrame) {
 	fs := Frames{
-		after:      &shredder.AfterFrame{},
-		batch:      prev.batch,
-		inst:       prev.inst,
-		batchFrame: prev.batchFrame,
+		after: &shredder.AfterFrame{},
+		inst:  inst,
+		batch: batch,
 	}
-	if batch != 0 {
-		fs.batch = batch
-		fs.inst = inst
+	if batch == 0 {
+		prev, _ := ctx.Value(common.KeyFrame).(Frames)
+		if prev.inst == inst {
+			fs.batch = prev.batch
+			fs.batchFrame = prev.batchFrame
+			fs.guard = prev.guard
+		}
+	} else if hard {
 		fs.batchFrame = &shredder.ValveFrame{}
+		fs.guard = true
 	}
 	return context.WithValue(ctx, common.KeyFrame, fs), fs.after
 }
@@ -106,6 +115,7 @@ func BatchFrameInsert(ctx context.Context, batch uint64, inst string) (context.C
 	fs.batch = batch
 	fs.inst = inst
 	fs.batchFrame = &shredder.ValveFrame{}
+	fs.guard = true
 	return context.WithValue(ctx, common.KeyFrame, fs), fs.after, fs.batchFrame, inserted
 }
 
@@ -164,6 +174,16 @@ func (c infectedContext) Value(key any) any {
 	switch key {
 	case common.KeyCore, common.KeySession, common.KeyDocument:
 		return c.target.Value(key)
+	case common.KeyFrame:
+		fs, ok := c.source.Value(key).(Frames)
+		if !ok {
+			return nil
+		}
+		owner, _ := c.target.Value(common.KeyCore).(interface{ InstanceID() string })
+		if owner != nil && fs.inst == owner.InstanceID() {
+			return fs
+		}
+		return Frames{sync: fs.sync, init: fs.init}
 	default:
 		return c.source.Value(key)
 	}

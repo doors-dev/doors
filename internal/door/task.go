@@ -496,6 +496,13 @@ func (t *userTask) Batch(inst string) uint64 {
 	return t.frames.Batch(inst)
 }
 
+func (t *userTask) BatchGuard(inst string) bool {
+	if t == nil {
+		return false
+	}
+	return t.frames.BatchGuard(inst)
+}
+
 func (t *userTask) InitFrame() shredder.ReleaseFrame {
 	if t == nil {
 		return shredder.FreeFrame{}

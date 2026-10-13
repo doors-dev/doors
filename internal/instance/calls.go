@@ -42,7 +42,7 @@ func (c Instance) UserCall(ctx context.Context, action actions.Action, onResult 
 	c.solitaire.Call(call, ctex.GetFrames(ctx).Batch(c.ID()), door, depSeq, 0)
 }
 
-func (c Instance) UserCallCheck(check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (c Instance) UserCallCheck(batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	call := &call{
 		ctx:      context.Background(),
 		check:    check,
@@ -52,7 +52,7 @@ func (c Instance) UserCallCheck(check func() bool, action actions.Action, onResu
 		logger:   c.Logger(),
 	}
 	call.action.Store(&action)
-	c.solitaire.Call(call, 0, c.RootID(), 0, 0)
+	c.solitaire.Call(call, batch, target, 0, 0)
 }
 
 type call struct {

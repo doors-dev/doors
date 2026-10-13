@@ -257,11 +257,12 @@ func (d *deck) FillGaps(g []gap) error {
 
 func (d *deck) Insert(c actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) (uint64, error) {
 	d.mu.Lock()
-	defer d.mu.Unlock()
 	if d.killed {
+		d.mu.Unlock()
 		c.Cancel()
 		return 0, errorKilled
 	}
+	defer d.mu.Unlock()
 	d.seq += 1
 	dc := &inner.Call{
 		Call:    c,

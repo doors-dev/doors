@@ -311,7 +311,7 @@ func (l *lifecycleInstance) UserCall(ctx context.Context, action actions.Action,
 	l.client.call(&lifecycleUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params})
 }
 
-func (l *lifecycleInstance) UserCallCheck(check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (l *lifecycleInstance) UserCallCheck(_ uint64, _ uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	l.client.call(&lifecycleUserCall{ctx: context.Background(), check: check, action: action, onResult: onResult, onCancel: onCancel, params: params})
 }
 

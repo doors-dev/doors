@@ -1,0 +1,165 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package batch
+
+import (
+	"context"
+	"sync"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type staticFragment struct {
+	test.NoBeam
+	rendered chan string
+	step     chan struct{}
+	applied  chan struct{}
+	results  chan error
+	x        doors.Door
+	y        doors.Door
+	mu       sync.Mutex
+	tail     *doors.Door
+}
+
+func newStaticFragment() *staticFragment {
+	return &staticFragment{
+		rendered: make(chan string, 16),
+		step:     make(chan struct{}),
+		applied:  make(chan struct{}, 16),
+		results:  make(chan error, 16),
+		tail:     new(doors.Door),
+	}
+}
+
+func (f *staticFragment) staticPause(ctx context.Context) {
+	select {
+	case <-f.step:
+	case <-ctx.Done():
+	}
+}
+
+func (f *staticFragment) staticWatch(ch <-chan error) {
+	go func() {
+		var err error
+		for e := range ch {
+			if e != nil {
+				err = e
+			}
+		}
+		f.results <- err
+	}()
+}
+
+func (f *staticFragment) staticOpen(ctx context.Context) {
+	doors.OnBatch(ctx, func(context.Context) {
+		f.applied <- struct{}{}
+	})
+}
+
+func (f *staticFragment) staticAppend(ctx context.Context, label string) <-chan error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	next := new(doors.Door)
+	ch := f.tail.Static(ctx, <>
+		<p class="item">~(label)</p>
+		~(next)
+		~(f.staticMark(label))
+	</>)
+	f.tail = next
+	return ch
+}
+
+elem (f *staticFragment) staticMark(label string) {
+	~~
+	f.rendered <- label
+	~~
+}
+
+elem (f *staticFragment) staticText(label string) {
+	~(f.staticMark(label))
+	~(label)
+}
+
+elem (f *staticFragment) staticNested() {
+	<p id="b-item">item</p>
+	~>(f.y) <div id="y">~(f.staticText("y0"))</div>
+}
+
+elem (f *staticFragment) staticScroll(detached bool) {
+	~~
+	action := doors.ActionScroll{Selector: "#d-target"}
+	if detached {
+		f.staticWatch(doors.Call(doors.DetachedContext(ctx), action))
+	} else {
+		doors.Call(ctx, action)
+	}
+	~~
+	<div style="height:300vh"></div>
+	<p id="d-target">target</p>
+	~(f.staticMark("d"))
+}
+
+elem (f *staticFragment) staticBatched(id string, on func(ctx context.Context)) {
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.staticOpen(ctx)
+			on(ctx)
+			return false
+		},
+	} <button id=(id)>~(id)</button>
+}
+
+elem (f *staticFragment) Main() {
+	~>(f.x) <div id="x">x0</div>
+	<section id="feed">~(f.tail)</section>
+	~(f.staticBatched("a-batched", func(ctx context.Context) {
+		f.x.Inner(ctx, f.staticText("x1"))
+		f.staticPause(ctx)
+	}))
+	~(test.Button("a-plain", func(ctx context.Context) bool {
+		f.staticWatch(f.x.Static(ctx, <p id="x-static">~(f.staticText("static"))</p>))
+		return false
+	}))
+	~(f.staticBatched("b-batched", func(ctx context.Context) {
+		f.x.Static(ctx, f.staticNested())
+		f.staticPause(ctx)
+	}))
+	~(test.Button("b-plain", func(ctx context.Context) bool {
+		f.staticWatch(f.y.Inner(ctx, f.staticText("y1")))
+		return false
+	}))
+	~(f.staticBatched("c-batched", func(ctx context.Context) {
+		for _, label := range []string{"i1", "i2", "i3"} {
+			f.staticAppend(ctx, label)
+			f.staticPause(ctx)
+		}
+	}))
+	~(test.Button("c-plain", func(ctx context.Context) bool {
+		f.staticWatch(f.staticAppend(ctx, "p"))
+		return false
+	}))
+	~(f.staticBatched("d-batched", func(ctx context.Context) {
+		f.x.Static(ctx, f.staticScroll(false))
+		f.staticPause(ctx)
+	}))
+	~(f.staticBatched("d-detached", func(ctx context.Context) {
+		f.x.Static(ctx, f.staticScroll(true))
+		f.staticPause(ctx)
+	}))
+}
+
+var _ gox.Comp = (*staticFragment)(nil)

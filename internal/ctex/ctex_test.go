@@ -219,7 +219,7 @@ func TestFrameHelpers(t *testing.T) {
 		t.Fatalf("expected free frame without injected context, got %v", typ)
 	}
 
-	ctx, after := AfterFrameInsert(base, 0, "")
+	ctx, after := AfterFrameInsert(base, 0, "a", false)
 	got, ok := AfterFrame(ctx)
 	if !ok || got != after {
 		t.Fatal("expected inserted frame to be retrievable")
@@ -228,21 +228,72 @@ func TestFrameHelpers(t *testing.T) {
 		t.Fatal("expected frame helper to expose inserted frame")
 	}
 
-	target := context.WithValue(context.Background(), common.KeyCore, "core")
+	target := context.WithValue(context.Background(), common.KeyCore, testOwner("a"))
 	infected := FrameInfect(ctx, target)
 	got, ok = AfterFrame(infected)
 	if !ok || got != after {
-		t.Fatal("expected frame to infect target context")
+		t.Fatal("expected frame to infect a context of the same instance")
 	}
-	if infected.Value(common.KeyCore) != "core" {
+	if infected.Value(common.KeyCore) != testOwner("a") {
 		t.Fatal("expected frame infect to preserve existing target values")
 	}
 	noFrame := FrameInfect(base, target)
 	if _, ok := AfterFrame(noFrame); ok {
 		t.Fatal("expected no frame when source has none")
 	}
-	if noFrame.Value(common.KeyCore) != "core" {
+	if noFrame.Value(common.KeyCore) != testOwner("a") {
 		t.Fatal("expected infect to expose target core value")
+	}
+}
+
+type testOwner string
+
+func (o testOwner) InstanceID() string {
+	return string(o)
+}
+
+// A context of another instance gets only the sync frames: no after frame, no batch.
+func TestFrameInfectForeignInstance(t *testing.T) {
+	ctx, _ := AfterFrameInsert(context.Background(), 7, "a", true)
+	ctx = SyncFrameInsert(ctx, shredder.FreeFrame{}, shredder.FreeFrame{})
+	foreign := FrameInfect(ctx, context.WithValue(context.Background(), common.KeyCore, testOwner("b")))
+	if _, ok := AfterFrame(foreign); ok {
+		t.Fatal("expected no after frame in a foreign instance")
+	}
+	fs := GetFrames(foreign)
+	if fs.Batch("a") != 0 || fs.Batch("b") != 0 || fs.BatchFrame("a") != nil || fs.BatchGuard("a") {
+		t.Fatal("expected no batch in a foreign instance")
+	}
+	if fs.sync == nil || fs.init == nil {
+		t.Fatal("expected the sync frames to cross instances")
+	}
+	same := GetFrames(FrameInfect(ctx, context.WithValue(context.Background(), common.KeyCore, testOwner("a"))))
+	if same.Batch("a") != 7 || !same.BatchGuard("a") || same.BatchFrame("a") == nil {
+		t.Fatal("expected the batch to reach a context of the same instance")
+	}
+}
+
+// A soft batch tags without guard or frame, a hard batch has both, and a nested after frame inherits them.
+func TestBatchKinds(t *testing.T) {
+	soft, _ := AfterFrameInsert(context.Background(), 5, "a", false)
+	if fs := GetFrames(soft); fs.Batch("a") != 5 || fs.BatchGuard("a") || fs.BatchFrame("a") != nil {
+		t.Fatal("expected a soft batch to tag only")
+	}
+	hard, _ := AfterFrameInsert(context.Background(), 6, "a", true)
+	fs := GetFrames(hard)
+	if fs.Batch("a") != 6 || !fs.BatchGuard("a") || fs.BatchFrame("a") == nil {
+		t.Fatal("expected a hard batch to carry guard and frame")
+	}
+	if GetFrames(NewDetachedContext(hard, hard, true)).BatchGuard("a") {
+		t.Fatal("expected a preserved batch to drop the guard")
+	}
+	nested, _ := AfterFrameInsert(NewDetachedContext(hard, hard, true), 0, "a", false)
+	if got := GetFrames(nested); got.Batch("a") != 6 || got.BatchFrame("a") != fs.BatchFrame("a") || got.BatchGuard("a") {
+		t.Fatal("expected a nested after frame to keep the batch as it found it")
+	}
+	upgraded, _, frame, inserted := BatchFrameInsert(soft, 9, "a")
+	if got := GetFrames(upgraded); inserted || got.Batch("a") != 9 || !got.BatchGuard("a") || got.BatchFrame("a") != frame {
+		t.Fatal("expected a hard batch to replace a soft one on the same after frame")
 	}
 }
 
@@ -252,7 +303,7 @@ func TestBatchHelpers(t *testing.T) {
 		t.Fatalf("expected no batch in base context, got %d", got)
 	}
 
-	ctx, after := AfterFrameInsert(base, 7, "a")
+	ctx, after := AfterFrameInsert(base, 7, "a", true)
 	if got, ok := AfterFrame(ctx); !ok || got != after {
 		t.Fatal("expected the after frame next to the batch")
 	}
@@ -290,10 +341,6 @@ func TestBatchHelpers(t *testing.T) {
 		t.Fatalf("expected no batch to preserve from a plain context, got %d", got)
 	}
 
-	target := context.WithValue(context.Background(), common.KeyCore, "core")
-	if got := GetFrames(FrameInfect(ctx, target)).Batch("b"); got != 0 {
-		t.Fatalf("expected frame infect into a foreign instance to yield no batch, got %d", got)
-	}
 }
 
 func TestLogCanceled(t *testing.T) {

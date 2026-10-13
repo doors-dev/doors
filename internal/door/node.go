@@ -80,8 +80,9 @@ func (n *node) logger() *slog.Logger {
 
 func (n *node) call(call *call) uint64 {
 	outer := n.tracker.outer
-	batch := call.task.Batch(outer.root.inst.ID())
-	if batch != 0 {
+	inst := outer.root.inst.ID()
+	batch := call.task.Batch(inst)
+	if call.task.BatchGuard(inst) {
 		call.task.Accept()
 	}
 	if n.mode == modeStatic {

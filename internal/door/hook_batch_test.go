@@ -108,8 +108,8 @@ func TestHookBatchClosedByFlush(t *testing.T) {
 	}
 }
 
-// A hook without the batch option issues no batch calls and leaves its calls untagged.
-func TestHookWithoutBatch(t *testing.T) {
+func runPlainHook(t *testing.T, track uint64) ([]testLink, []any) {
+	t.Helper()
 	inst := newTestInstance(t)
 	h, p := &Door{}, &Door{}
 	renderTestPage(t, inst, gox.Elem(func(cur gox.Cursor) error {
@@ -126,24 +126,59 @@ func TestHookWithoutBatch(t *testing.T) {
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
-	inst.root.TriggerHook(hook.HookID, httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil), 7)
-	waitOps(t, []<-chan error{<-done})
+	inst.root.TriggerHook(hook.HookID, httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil), track)
+	ch := <-done
+	for i := range 2 {
+		select {
+		case err, ok := <-ch:
+			if err != nil || !ok {
+				t.Fatalf("expected a plain hook op to report step %d, got %v, %v", i, err, ok)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting on the completion channel")
+		}
+	}
+	want := 1
+	if track != 0 {
+		want = 2
+	}
 	deadline := time.Now().Add(2 * time.Second)
 	for {
 		links, calls := inst.issuedCalls()
-		if len(calls) == 2 {
-			if links[0].batch != 0 {
-				t.Fatalf("expected an untagged call, got %+v", links[0])
+		if len(calls) == want {
+			issued := make([]any, len(calls))
+			for i, c := range calls {
+				issued[i] = c
 			}
-			if report, ok := calls[1].(reportHook); !ok || report.track != 7 || report.batch != nil || links[1].batch != 0 {
-				t.Fatalf("expected a plain hook report, got %#v in batch %d", calls[1], links[1].batch)
-			}
-			return
+			return links, issued
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("expected 2 calls, got %d", len(calls))
+			t.Fatalf("expected %d calls, got %d", want, len(calls))
 		}
 		time.Sleep(time.Millisecond)
+	}
+}
+
+// A plain tracked hook tags its calls and its report with one batch id, opens no batch and keeps full channels.
+func TestHookSoftBatch(t *testing.T) {
+	links, calls := runPlainHook(t, 7)
+	if _, ok := calls[0].(batchInit); ok {
+		t.Fatal("expected a plain hook not to open a batch")
+	}
+	report, ok := calls[1].(reportHook)
+	if !ok || report.track != 7 || report.batch != nil {
+		t.Fatalf("expected a plain hook report without a batch frame, got %#v", calls[1])
+	}
+	if links[0].batch == 0 || links[1].batch != links[0].batch {
+		t.Fatalf("expected the call and the report to share a batch id, got %d and %d", links[0].batch, links[1].batch)
+	}
+}
+
+// A hook without a report issues no closer and leaves its calls untagged.
+func TestHookUntracked(t *testing.T) {
+	links, _ := runPlainHook(t, 0)
+	if links[0].batch != 0 {
+		t.Fatalf("expected an untagged call, got %+v", links[0])
 	}
 }
 

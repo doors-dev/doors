@@ -1,0 +1,221 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package batch
+
+import (
+	"context"
+	"strings"
+	"sync"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type placementLog struct {
+	mu      sync.Mutex
+	events  map[string][]string
+	closed  map[string]bool
+	pong    string
+	reached int
+}
+
+func newPlacementLog() *placementLog {
+	return &placementLog{
+		events: map[string][]string{},
+		closed: map[string]bool{},
+	}
+}
+
+func (l *placementLog) track(label string, ch <-chan error) {
+	l.mu.Lock()
+	l.events[label] = []string{}
+	l.mu.Unlock()
+	go func() {
+		for err := range ch {
+			entry := "nil"
+			if err != nil {
+				entry = err.Error()
+			}
+			l.mu.Lock()
+			l.events[label] = append(l.events[label], entry)
+			l.mu.Unlock()
+		}
+		l.mu.Lock()
+		l.closed[label] = true
+		l.mu.Unlock()
+	}()
+}
+
+func (l *placementLog) state(label string) (string, bool, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	events, ok := l.events[label]
+	return strings.Join(events, ","), l.closed[label], ok
+}
+
+func (l *placementLog) values() (string, int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.pong, l.reached
+}
+
+type placementFragment struct {
+	test.NoBeam
+	g     *gate
+	l     *placementLog
+	box   doors.Door
+	kid   doors.Door
+	p     doors.Door
+	q     doors.Door
+	x     doors.Door
+	y     doors.Door
+	left  doors.Door
+	right doors.Door
+	mv    doors.Door
+	set   doors.Setter
+}
+
+func (f *placementFragment) hold(ctx context.Context) bool {
+	f.g.entered <- struct{}{}
+	select {
+	case <-f.g.proceed:
+	case <-ctx.Done():
+	}
+	return false
+}
+
+elem placementBatchButton(id string, handler func(context.Context) bool) {
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			return handler(ctx)
+		},
+	} <button id=(id)>~(id)</button>
+}
+
+elem (f *placementFragment) kidBox() {
+	<div id="pa-wrap">
+		~>(f.kid) <span id="kid">kid0</span>
+	</div>
+}
+
+elem (f *placementFragment) chain() {
+	~>(f.p) <div id="p">
+		~>(f.q) <div id="q">
+			~>(f.x) <span id="x">x0</span>
+		</div>
+	</div>
+}
+
+elem (f *placementFragment) leaf() {
+	~>(f.y) <span id="y">y0</span>
+}
+
+elem (f *placementFragment) callerInner() {
+	~~
+	f.l.track("emit", doors.Call(ctx, doors.ActionEmit[any]{Name: "placement_ping", Arg: "in"}))
+	f.l.track("emit-detached", doors.Call(
+		doors.DetachedContext(ctx),
+		doors.ActionEmit[string]{Name: "placement_ping", Arg: "out"}.Into(&f.l.pong),
+	))
+	f.l.track("set", doors.Call(
+		doors.DetachedContext(ctx),
+		f.set.Set("data-mark", "on").Into(&f.l.reached),
+	))
+	~~
+	<span id="pd-target">t0</span>
+	~>(f.set) <span id="pd-set">s0</span>
+}
+
+elem (f *placementFragment) caller() {
+	~>(f.kid) <div id="kid">
+		~(f.callerInner())
+	</div>
+}
+
+elem (f *placementFragment) Main() {
+	<div id="pd-log"></div>
+	<div id="pd-ready">loading</div>
+	<script>
+		$on("placement_ping", (arg) => {
+			const target = document.getElementById("pd-target")
+			const log = document.getElementById("pd-log")
+			log.textContent += (target ? "hit" : "miss") + ":" + arg + ";"
+			if (target) {
+				target.textContent = arg
+			}
+			return "pong:" + arg
+		})
+		document.getElementById("pd-ready").textContent = "ready"
+	</script>
+	~>(f.box) <div id="box">box0</div>
+	~>(f.left) <div id="left">
+		~>(f.mv) <span id="mv">mv0</span>
+	</div>
+	~>(f.right) <div id="right">right0</div>
+	~(placementBatchButton("pa-open", func(ctx context.Context) bool {
+		f.l.track("box", f.box.Inner(ctx, f.kidBox()))
+		return f.hold(ctx)
+	}))
+	~(test.Button("pa-poke", func(ctx context.Context) bool {
+		f.l.track("poke", f.kid.Inner(ctx, "kid1"))
+		return false
+	}))
+	~(placementBatchButton("pa-open-go", func(ctx context.Context) bool {
+		placed := f.box.Inner(ctx, f.kidBox())
+		detached := doors.DetachedContext(ctx)
+		go func() {
+			for range placed {
+			}
+			f.l.track("poke", f.kid.Inner(detached, "kid1"))
+		}()
+		return f.hold(ctx)
+	}))
+	~(placementBatchButton("pb-open", func(ctx context.Context) bool {
+		f.l.track("box", f.box.Inner(ctx, f.chain()))
+		return f.hold(ctx)
+	}))
+	~(test.Button("pb-poke", func(ctx context.Context) bool {
+		f.l.track("poke", f.x.Inner(ctx, "x1"))
+		return false
+	}))
+	~(test.Button("pb-swap", func(ctx context.Context) bool {
+		f.l.track("swap", f.q.Inner(ctx, f.leaf()))
+		return false
+	}))
+	~(test.Button("pb-leaf", func(ctx context.Context) bool {
+		f.l.track("leaf", f.y.Inner(ctx, "y1"))
+		return false
+	}))
+	~(placementBatchButton("pc-move", func(ctx context.Context) bool {
+		f.l.track("right", f.right.Inner(ctx, &f.mv))
+		return f.hold(ctx)
+	}))
+	~(placementBatchButton("pc-swap", func(ctx context.Context) bool {
+		f.l.track("left", f.left.Inner(ctx, "left1"))
+		f.l.track("right", f.right.Inner(ctx, &f.mv))
+		return f.hold(ctx)
+	}))
+	~(test.Button("pc-poke", func(ctx context.Context) bool {
+		f.l.track("poke", f.mv.Inner(ctx, "mv1"))
+		return false
+	}))
+	~(placementBatchButton("pd-open", func(ctx context.Context) bool {
+		f.l.track("box", f.box.Inner(ctx, f.caller()))
+		return f.hold(ctx)
+	}))
+}
+
+var _ gox.Comp = (*placementFragment)(nil)

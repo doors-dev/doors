@@ -84,7 +84,7 @@ type Instance interface {
 	Logger() *slog.Logger
 	Store() ctex.Store
 	UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, door uint64, depSeq uint64)
-	UserCallCheck(check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
+	UserCallCheck(batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
 	CSPCollector() common.CSPCollector
 	ModuleRegistry() ModuleRegistry
 	ID() string
@@ -137,6 +137,10 @@ func (c Core) Door() Door {
 
 func (c Core) Instance() Instance {
 	return c.door.Instance()
+}
+
+func (c Core) InstanceID() string {
+	return c.door.Instance().ID()
 }
 
 func (c Core) Cinema() beam.Cinema {

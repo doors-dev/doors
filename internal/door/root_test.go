@@ -162,7 +162,7 @@ func (i *testInstance) Kill() {
 func (i *testInstance) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams, uint64, uint64) {
 }
 
-func (i *testInstance) UserCallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (i *testInstance) UserCallCheck(uint64, uint64, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 
 func (i *testInstance) Session() core.Session { return i.session }

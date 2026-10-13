@@ -70,8 +70,9 @@ type TabStateManager = *tabStateManager
 func NewTabStateManager(inst core.Instance, ctx context.Context) TabStateManager {
 	s := make(map[string]json.RawMessage)
 	return &tabStateManager{
-		inst: inst,
-		ctx:  ctx,
+		inst:   inst,
+		target: inst.NewID(),
+		ctx:    ctx,
 		source: beam.NewSource(TabState{
 			storage: &s,
 		}, func(a TabState, b TabState) bool {
@@ -81,6 +82,7 @@ func NewTabStateManager(inst core.Instance, ctx context.Context) TabStateManager
 }
 
 type tabStateManager struct {
+	target uint64
 	inst   core.Instance
 	ctx    context.Context
 	source beam.Source[TabState]
@@ -128,6 +130,8 @@ func (t TabStateManager) Initialize(data map[string]json.RawMessage) {
 		}
 		seq := t.seq.Add(1)
 		t.inst.UserCallCheck(
+			0,
+			t.target,
 			func() bool {
 				return seq == t.seq.Load()
 			},

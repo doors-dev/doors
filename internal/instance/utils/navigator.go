@@ -37,12 +37,14 @@ func NewNavigator(
 		inst:   inst,
 		inital: &initial,
 		ctx:    ctx,
+		target: inst.NewID(),
 	}
 	return n
 }
 
 type navigator struct {
 	inst   core.Instance
+	target uint64
 	inital *path.Location
 	ctx    context.Context
 	model  beam.Source[path.Location]
@@ -71,18 +73,21 @@ func (n *navigator) Update(l path.Location) bool {
 
 func (n *navigator) push(ctx context.Context, l path.Location, replace bool) {
 	seq := n.seq.Add(1)
+	batch := ctex.GetFrames(ctx).Batch(n.inst.ID())
 	after, ok := ctex.AfterFrame(ctx)
 	if !ok {
-		n.call(l.String(), seq, replace)
+		n.call(l.String(), seq, replace, batch)
 		return
 	}
 	after.After().Run(nil, nil, func(b bool) {
-		n.call(l.String(), seq, replace)
+		n.call(l.String(), seq, replace, batch)
 	})
 }
 
-func (n *navigator) call(path string, seq int32, replace bool) {
+func (n *navigator) call(path string, seq int32, replace bool, batch uint64) {
 	n.inst.UserCallCheck(
+		batch,
+		n.target,
 		func() bool {
 			return seq == n.seq.Load()
 		},

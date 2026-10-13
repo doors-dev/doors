@@ -197,9 +197,14 @@ class Batch {
 	children: Set<Batch> = new Set()
 	private finished = false
 	id: number = 0
-	constructor(private tracker: Tracker, init: { id?: number, finished?: boolean }) {
+	tag: number = 0
+	constructor(private tracker: Tracker, init: { id?: number, tag?: number, finished?: boolean }) {
 		this.finished = init.finished === true
 		this.id = init.id ?? 0
+		this.tag = init.tag ?? 0
+	}
+	empty(): boolean {
+		return this.packages.length == 0
 	}
 	finish(closer: Package) {
 		this.finished = true
@@ -243,6 +248,14 @@ class Batch {
 		this.wait(this.tracker.doorHolder(p.dependencyDoor))
 		this.tracker.hold(p, this)
 	}
+	waitAll(batches: Set<Batch> | undefined) {
+		if (batches == undefined) {
+			return
+		}
+		for (const batch of batches) {
+			this.wait(batch)
+		}
+	}
 	private wait(batch: Batch | undefined) {
 		if (batch == undefined || batch == this) {
 			return
@@ -260,9 +273,18 @@ class Tracker {
 	private idLookup = new Map<number, Batch>()
 	private doorLookup = new Map<number, Batch>()
 	private packageLookup = new Map<number, Batch>()
+	private tagLookup = new Map<number, Set<Batch>>()
 	removeBatch(batch: Batch) {
 		this.batches.delete(batch)
 		this.idLookup.delete(batch.id)
+		const tagged = this.tagLookup.get(batch.tag)
+		if (tagged == undefined) {
+			return
+		}
+		tagged.delete(batch)
+		if (tagged.size == 0) {
+			this.tagLookup.delete(batch.tag)
+		}
 	}
 	doorHolder(door: number): (Batch | undefined) {
 		return this.doorLookup.get(door)
@@ -283,8 +305,13 @@ class Tracker {
 	push(p: Package) {
 		this.process(p)
 		while (this.packageLookup.size >= solitairePending) {
-			const [batch] = this.batches
-			this.flush(batch, true)
+			for (const batch of this.batches) {
+				if (batch.empty()) {
+					continue
+				}
+				this.flush(batch, true)
+				break
+			}
 		}
 	}
 	private process(p: Package) {
@@ -299,29 +326,34 @@ class Tracker {
 			this.execute(p)
 			return
 		}
-		if (p.batch > 0 && (p.action == "batch_flush" || p.action == "report_hook")) {
-			const batch = this.idLookup.get(p.batch)
-			if (!batch) {
-				this.execute(p)
-				return
-			}
+		const closer = p.batch > 0 && (p.action == "batch_flush" || p.action == "report_hook")
+		const hard = this.idLookup.get(p.batch)
+		if (hard && closer) {
 			this.idLookup.delete(p.batch)
-			batch.finish(p)
-			this.flush(batch)
+			hard.finish(p)
+			this.flush(hard)
 			return
 		}
-		if (p.batch > 0) {
-			const batch = this.idLookup.get(p.batch)
-			if (batch) {
-				batch.add(p)
-				return
-			}
-			p.batch = 0
+		if (hard) {
+			hard.add(p)
+			return
 		}
-		const batch = new Batch(this, { finished: true })
+		const batch = new Batch(this, { finished: true, tag: closer ? 0 : p.batch })
 		this.batches.add(batch)
 		batch.add(p)
+		if (closer) {
+			batch.waitAll(this.tagLookup.get(p.batch))
+		}
 		this.flush(batch)
+		if (batch.tag == 0 || !this.batches.has(batch)) {
+			return
+		}
+		let tagged = this.tagLookup.get(batch.tag)
+		if (tagged == undefined) {
+			tagged = new Set()
+			this.tagLookup.set(batch.tag, tagged)
+		}
+		tagged.add(batch)
 	}
 	flush(batch: Batch, force?: boolean) {
 		const ready = new Set<Batch>()

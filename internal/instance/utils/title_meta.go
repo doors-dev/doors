@@ -39,13 +39,45 @@ func NewTitleMeta(inst core.Instance) core.TitleMeta {
 	}
 }
 
+type metaKey struct {
+	prop bool
+	name string
+}
+
 type titleMeta struct {
-	mu        sync.Mutex
-	rendered  bool
-	inst      core.Instance
-	title     cake[title]
-	metaProps metaMap
-	metaNames metaMap
+	mu          sync.Mutex
+	rendered    bool
+	inst        core.Instance
+	title       cake[title]
+	metaProps   metaMap
+	metaNames   metaMap
+	titleTarget uint64
+	metaTargets map[metaKey]uint64
+}
+
+func (t *titleMeta) targetTitle() uint64 {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.titleTarget == 0 {
+		t.titleTarget = t.inst.NewID()
+	}
+	return t.titleTarget
+}
+
+func (t *titleMeta) targetMeta(prop bool, name string) uint64 {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := metaKey{prop, name}
+	target, ok := t.metaTargets[key]
+	if ok {
+		return target
+	}
+	if t.metaTargets == nil {
+		t.metaTargets = make(map[metaKey]uint64)
+	}
+	target = t.inst.NewID()
+	t.metaTargets[key] = target
+	return target
 }
 
 func (t *titleMeta) Main() gox.Elem {
@@ -195,6 +227,8 @@ func (t *titleMeta) removeMeta(m *metaMap, name string, id uint) (uint, gox.Attr
 
 func (t *titleMeta) callRemoveMeta(prop bool, name string) {
 	t.inst.UserCallCheck(
+		0,
+		t.targetMeta(prop, name),
 		func() bool {
 			t.mu.Lock()
 			defer t.mu.Unlock()
@@ -217,6 +251,8 @@ func (t *titleMeta) callRemoveMeta(prop bool, name string) {
 
 func (t *titleMeta) callUpdateMeta(prop bool, id uint, name string, attrs gox.Attrs) {
 	t.inst.UserCallCheck(
+		0,
+		t.targetMeta(prop, name),
 		func() bool {
 			t.mu.Lock()
 			defer t.mu.Unlock()
@@ -243,6 +279,8 @@ func (t *titleMeta) callUpdateMeta(prop bool, id uint, name string, attrs gox.At
 
 func (t *titleMeta) callUpdateTitle(id uint, value string, attrs gox.Attrs) {
 	t.inst.UserCallCheck(
+		0,
+		t.targetTitle(),
 		func() bool {
 			t.mu.Lock()
 			defer t.mu.Unlock()

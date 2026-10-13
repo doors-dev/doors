@@ -391,3 +391,28 @@ func TestRollPastBlockedWrite(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+type reenterCall struct {
+	countCall
+	d *deck
+}
+
+func (c *reenterCall) Cancel() {
+	c.d.Insert(&countCall{act: actions.Test{}}, 0, 0, 0, 0)
+}
+
+// A call canceled by an ended deck may insert another call from its Cancel.
+func TestInsertOnEndedDeckCancelsOutsideLock(t *testing.T) {
+	d := newDeck(expirator.NewExpirator(&stubExpireHandler{}), testSolitaireConf())
+	d.End()
+	done := make(chan struct{})
+	go func() {
+		d.Insert(&reenterCall{d: d}, 0, 0, 0, 0)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("insert on an ended deck deadlocked on a reentrant cancel")
+	}
+}

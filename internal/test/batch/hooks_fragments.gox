@@ -1,0 +1,164 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package batch
+
+import (
+	"context"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type hooksForm struct {
+	Name string `form:"name"`
+}
+
+type hooksFragment struct {
+	test.NoBeam
+	ga *gate
+	gb *gate
+	x doors.Door
+	y doors.Door
+}
+
+func (f *hooksFragment) hold(ctx context.Context, g *gate) {
+	g.entered <- struct{}{}
+	select {
+	case <-g.proceed:
+	case <-ctx.Done():
+	}
+}
+
+func (f *hooksFragment) xy(ctx context.Context, g *gate, tag string) {
+	<-f.x.Inner(ctx, "x-"+tag)
+	f.hold(ctx, g)
+	f.y.Inner(ctx, "y-"+tag)
+}
+
+func (f *hooksFragment) yx(ctx context.Context, g *gate, tag string) {
+	<-f.y.Inner(ctx, "y-"+tag)
+	f.hold(ctx, g)
+	f.x.Inner(ctx, "x-"+tag)
+}
+
+func (f *hooksFragment) busy(selector string) doors.Indicators {
+	return doors.IndicateAttrQuery(selector, "data-busy", "true")
+}
+
+elem (f *hooksFragment) Main() {
+	<div id="ind-a">ind-a</div>
+	<div id="ind-b">ind-b</div>
+	<div id="seen"></div>
+	~>(f.x) <div id="x">x0</div>
+	~>(f.y) <div id="y">y0</div>
+	~>doors.AClick{
+		Batch: true,
+		Indicator: f.busy("#ind-a"),
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.xy(ctx, f.ga, "a")
+			return false
+		},
+	} <button id="batch-a">batch-a</button>
+	~>doors.AClick{
+		Batch: true,
+		Indicator: f.busy("#ind-b"),
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.yx(ctx, f.gb, "b")
+			return false
+		},
+	} <button id="batch-b">batch-b</button>
+	~>doors.AClick{
+		Indicator: f.busy("#ind-b"),
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.x.Inner(ctx, "x-plain")
+			return false
+		},
+	} <button id="plain-b">plain-b</button>
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.x.Inner(ctx, "x-after")
+			f.y.Inner(ctx, "y-after")
+			return false
+		},
+	} <button id="after">after</button>
+	~>doors.AClick{
+		Batch: true,
+		Indicator: f.busy("#ind-a"),
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.x.Inner(ctx, "x-panic")
+			f.hold(ctx, f.ga)
+			panic("hooks panic")
+		},
+	} <button id="panic">panic</button>
+	~>doors.ASubmit[hooksForm]{
+		Batch: true,
+		Indicator: f.busy("#ind-a"),
+		On: func(ctx context.Context, r doors.RequestForm[hooksForm]) bool {
+			f.xy(ctx, f.ga, r.Data().Name)
+			return false
+		},
+	} <form>
+		<input type="text" name="name" value="form"/>
+		<button id="submit" type="submit">submit</button>
+	</form>
+	~>doors.AKeyDown{
+		Batch: true,
+		Indicator: f.busy("#ind-a"),
+		On: func(ctx context.Context, r doors.RequestEvent[doors.KeyboardEvent]) bool {
+			f.xy(ctx, f.ga, r.Event().Key)
+			return false
+		},
+	} <input type="text" id="key"/>
+	<button id="js">js</button>
+	<button id="status">status</button>
+	~>doors.AHook[string]{
+		Name: "hooksJs",
+		Batch: true,
+		Indicator: f.busy("#ind-a"),
+		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
+			f.xy(ctx, f.ga, r.Data())
+			return "done", false
+		},
+	} ~>doors.ARawHook{
+		Name: "hooksStatus",
+		Batch: true,
+		Indicator: f.busy("#ind-a"),
+		On: func(ctx context.Context, r doors.RequestRawHook) bool {
+			f.x.Inner(ctx, "x-status")
+			f.hold(ctx, f.ga)
+			r.ResponseWriter().WriteHeader(500)
+			return false
+		},
+	} <script>
+		const read = (id) => document.getElementById(id).textContent
+		const seen = document.getElementById("seen")
+		document.getElementById("js").addEventListener("click", async () => {
+			const res = await $hook("hooksJs", "js")
+			seen.textContent = `${res}:${read("x")}:${read("y")}`
+		})
+		document.getElementById("status").addEventListener("click", () => {
+			$hook("hooksStatus", "status").then(
+				() => {
+					seen.textContent = `resolved:${read("x")}`
+				},
+				() => {
+					seen.textContent = `rejected:${read("x")}`
+				},
+			)
+		})
+	</script>
+}
+
+var _ gox.Comp = (*hooksFragment)(nil)

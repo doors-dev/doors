@@ -2559,8 +2559,8 @@ func TestRouteOneDoor(t *testing.T) {
 			h := newRT(t)
 			src := NewSource(0)
 			h.render(rtSlot("l", src.Route(ladder(h.rec, 1, depth), rtBind[int](h.rec, "TOP"))))
-			if h.baseIDs != 2 {
-				t.Fatalf("render created %d ids, want the root and one route door", h.baseIDs)
+			if h.baseIDs != 3 {
+				t.Fatalf("render created %d ids, want the root, the path target and one route door", h.baseIDs)
 			}
 			var steps []rtI
 			for l := 1; l <= depth; l++ {

@@ -185,7 +185,7 @@ func (h *helperInstance) CallCheck(_ func() bool, act actions.Action, onResult f
 	}
 }
 
-func (h *helperInstance) UserCallCheck(_ func() bool, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
+func (h *helperInstance) UserCallCheck(_ uint64, _ uint64, _ func() bool, act actions.Action, onResult func(json.RawMessage, error), _ func(), params actions.CallParams) {
 	h.UserCall(context.Background(), act, onResult, nil, params, 0, 0)
 }
 
@@ -415,7 +415,7 @@ func TestSessionContextCanceledBySessionEnd(t *testing.T) {
 func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 	ctx, _ := helperContext(t)
 	ctx = context.WithValue(ctx, "value", "kept")
-	ctx, _ = ctex.AfterFrameInsert(ctx, 0, "")
+	ctx, _ = ctex.AfterFrameInsert(ctx, 0, "", false)
 	owner, _ := ctx.Value(common.KeyCore).(core.Core)
 	base, cancel := context.WithCancel(ctx)
 	free := DetachedContext(base)
@@ -444,7 +444,7 @@ func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 func TestInstanceContextSwitchesToRootCoreAndRuntime(t *testing.T) {
 	ctx, inst, root := helperContextWithRoot(t)
 	ctx = context.WithValue(ctx, "value", "kept")
-	ctx, _ = ctex.AfterFrameInsert(ctx, 0, "")
+	ctx, _ = ctex.AfterFrameInsert(ctx, 0, "", false)
 	base, cancel := context.WithCancel(ctx)
 	free := InstanceContext(base)
 

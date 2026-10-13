@@ -84,7 +84,7 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 	if frame, ok := ctex.AfterFrame(ctx); ok {
 		afterFrame = frame.After()
 	} else if len(ops) != 0 {
-		ctx, frame = ctex.AfterFrameInsert(ctx, 0, "")
+		ctx, frame = ctex.AfterFrameInsert(ctx, 0, core.Instance().ID(), false)
 		afterFrame = frame.After()
 		defer frame.Activate()
 	}
