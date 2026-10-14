@@ -269,8 +269,13 @@ func IDNumber(ctx context.Context) uint64 {
 //
 // It keeps the values of ctx and moves Doors ownership to the root of the
 // current instance, so subscriptions and hooks made with it survive rerenders
-// of the caller. It is safe to use from goroutines that wait on completion
-// channels, and those channels report the result as a second value.
+// of the caller. Completion channels of operations made with it report the
+// result as a second value.
+//
+// Operations made with it are not part of the current handler's work: not its
+// batch, its indicator, or [OnSettle]. Wait on their channels only in
+// goroutines of your own, never during rendering, in a handler, or in a
+// subscription: that can block the page.
 //
 // Unlike [DetachedContext], it outlives the current dynamic owner.
 func InstanceContext(ctx context.Context) context.Context {
@@ -285,9 +290,13 @@ func InstanceContext(ctx context.Context) context.Context {
 // DetachedContext returns a context that is detached from the current
 // render/update cycle and bounded by the lifetime of ctx.
 //
-// It keeps the values of ctx and the current Doors ownership. It is safe to use
-// from goroutines that wait on completion channels, and those channels report
-// the result as a second value.
+// It keeps the values of ctx and the current Doors ownership. Completion
+// channels of operations made with it report the result as a second value.
+//
+// Operations made with it are not part of the current handler's work: not its
+// batch, its indicator, or [OnSettle]. Wait on their channels only in
+// goroutines of your own, never during rendering, in a handler, or in a
+// subscription: that can block the page.
 //
 // Unlike [InstanceContext], work started with it is cleaned up with the current
 // dynamic owner.
