@@ -59,9 +59,10 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 // OnSettle runs ops as part of the work ctx belongs to and registers on to run
 // once that work settles: every Doors operation started from it is processed
 // and its updates are enqueued for delivery to the client. The content of a
-// deferred operation is not awaited. In a handler the work spans the whole
-// handler; otherwise OnSettle starts new work spanning the ops calls. on never
-// runs before the content that produced ctx is ready itself.
+// deferred operation is not awaited. In a handler or in the ops of OnSettle
+// and [OnBatch], OnSettle joins that work; otherwise it starts new work
+// spanning the ops calls. on never runs before the content that produced ctx
+// is ready itself.
 //
 // Where [OnReady] tracks one render cycle, OnSettle tracks everything the work
 // started, including the Door updates and beam propagation it triggered.
@@ -82,22 +83,25 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context)) {
 	ctex.LogCanceled(ctx, "OnSettle")
 	core := ctx.Value(common.KeyCore).(core.Core)
-	var afterFrame shredder.Frame = shredder.FreeFrame{}
-	if frame, ok := ctex.GetFrames(ctx).AfterFrame(); ok {
-		afterFrame = frame.After()
-	} else if len(ops) != 0 {
-		ctx, frame = ctex.NewAfterFrame(ctx, core.Instance().ID(), 0)
-		afterFrame = frame.After()
-		defer frame.Activate()
-	}
-	detached := ctex.NewDetachedContext(ctx, ctx, true)
-	ready := core.Door().ReadyFrame()
-	ready.Run(ctx, core.Instance().Runtime(), func(bool) {
-		afterFrame.Run(ctx, core.Instance().Runtime(), func(bool) {
+	frame, ok := ctex.GetFrames(ctx).AfterFrame()
+	if !ok && len(ops) == 0 {
+		detached := ctex.NewDetachedContext(ctx, ctx, true)
+		ready := core.Door().ReadyFrame()
+		ready.Run(ctx, core.Instance().Runtime(), func(bool) {
 			on(detached)
 		})
+		ready.Release()
+		return
+	}
+	if !ok {
+		ctx, frame = ctex.NewAfterFrame(ctx, core.Instance().ID(), 0)
+		defer frame.Activate()
+		holdUntilReady(ctx, core, frame)
+	}
+	detached := ctex.NewDetachedContext(ctx, ctx, true)
+	frame.After().Run(ctx, core.Instance().Runtime(), func(bool) {
+		on(detached)
 	})
-	ready.Release()
 	for _, op := range ops {
 		op(ctx)
 	}
@@ -132,6 +136,7 @@ func OnBatch(ctx context.Context, on func(ctx context.Context), ops ...func(ctx 
 		if !ok {
 			ctx, after = ctex.NewAfterFrame(ctx, inst.ID(), fs.Group())
 			defer after.Activate()
+			holdUntilReady(ctx, core, after)
 		}
 		ctx, batchFrame = ctex.NewBatch(ctx, inst.NewID())
 		markerCtx := ctex.NewDetachedContext(ctx, inst.Runtime().Context(), true)
@@ -149,6 +154,15 @@ func OnBatch(ctx context.Context, on func(ctx context.Context), ops ...func(ctx 
 	for _, op := range ops {
 		op(ctx)
 	}
+}
+
+func holdUntilReady(ctx context.Context, c core.Core, after *shredder.AfterFrame) {
+	release := shredder.Join(ctx, after).Release
+	ready := c.Door().ReadyFrame()
+	ready.Run(ctx, c.Instance().Runtime(), func(bool) {
+		release()
+	})
+	ready.Release()
 }
 
 // OnClean registers f to run when the current content is cleared: the

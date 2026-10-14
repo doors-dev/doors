@@ -1533,3 +1533,101 @@ func TestCallInBatchHook(t *testing.T) {
 		t.Fatalf("expected dst untouched, got %v", at)
 	}
 }
+
+// OnSettle with ops in a render opens work that settles only after the render is ready, also for an OnSettle joined in its ops.
+func TestOnSettleRenderOpsWaitForRender(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	var done atomic.Bool
+	release := make(chan struct{})
+	entered := make(chan struct{})
+	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+		OnSettle(cur.Context(), func(context.Context) {
+			if !done.Load() {
+				h.events <- "outer-before-render"
+				return
+			}
+			h.events <- "outer"
+		}, func(ctx context.Context) {
+			OnSettle(ctx, func(context.Context) {
+				if !done.Load() {
+					h.events <- "inner-before-render"
+					return
+				}
+				h.events <- "inner"
+			})
+		})
+		close(entered)
+		<-release
+		done.Store(true)
+		return cur.Text("v0")
+	}))
+	rendered := make(chan struct{})
+	go func() {
+		h.renderPageErr(mountDoor(d))
+		close(rendered)
+	}()
+	<-entered
+	h.expectNoEvent(50 * time.Millisecond)
+	close(release)
+	h.waitEvents("outer", "inner")
+	<-rendered
+}
+
+// OnSettle in a handler does not wait for foreign work holding the door.
+func TestOnSettleHandlerSkipsForeignWork(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	a := &Door{}
+	pageCtx, page, _ := linksPage(h, a)
+	gate := make(chan struct{})
+	open := sync.OnceFunc(func() { close(gate) })
+	defer open()
+	entered := make(chan struct{})
+	static := a.Static(DetachedContext(pageCtx), gox.Elem(func(cur gox.Cursor) error {
+		close(entered)
+		<-gate
+		return cur.Text("static")
+	}))
+	<-entered
+	linksHook(h, page, false, 7, func(ctx context.Context) {
+		OnSettle(ctx, func(context.Context) { h.events <- "settle" })
+	})
+	h.waitEvent("settle")
+	open()
+	<-static
+}
+
+// OnBatch in a render opens a batch that closes only after the render is ready.
+func TestOnBatchRenderWaitsForRender(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	var done atomic.Bool
+	release := make(chan struct{})
+	entered := make(chan struct{})
+	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+		OnBatch(cur.Context(), func(context.Context) {
+			if !done.Load() {
+				h.events <- "batch-before-render"
+				return
+			}
+			h.events <- "batch"
+		})
+		close(entered)
+		<-release
+		done.Store(true)
+		return cur.Text("v0")
+	}))
+	rendered := make(chan struct{})
+	go func() {
+		h.renderPageErr(mountDoor(d))
+		close(rendered)
+	}()
+	<-entered
+	h.expectNoEvent(50 * time.Millisecond)
+	if slices.Contains(linksNames(h.client.issued()), "batch_flush") {
+		t.Fatalf("expected no batch_flush before the render is ready, got %v", linksNames(h.client.issued()))
+	}
+	close(release)
+	h.waitEvent("batch")
+	<-rendered
+}

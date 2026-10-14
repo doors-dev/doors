@@ -499,3 +499,51 @@ func TestLinksForeignInstanceUntagged(t *testing.T) {
 		t.Fatalf("expected the foreign call to report its result, got %v", vals)
 	}
 }
+
+// OnSettle in a plain hook whose door is busy with a Static registers on at once, so an OnBatch in on issues batch_init before report_hook.
+func TestLinksOnSettleBatchBeforeReportWithBusyDoor(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	a, b := &Door{}, &Door{}
+	_, page, from := linksPage(h, a, b)
+	linksHook(h, page, false, 7, func(ctx context.Context) {
+		a.Static(ctx, textElem("static"))
+		OnSettle(ctx, func(ctx context.Context) {
+			OnBatch(ctx, func(context.Context) { h.events <- "batch" }, func(ctx context.Context) {
+				b.Inner(ctx, textElem("b"))
+			})
+		})
+	})
+	h.waitEvent("batch")
+	links := linksExpect(h, from, "door_replace", "report hook", "batch_init", "door_update", "batch_flush")
+	init := linksNamed(t, links, "batch_init", 1)[0]
+	report := linksNamed(t, links, "report hook", 1)[0]
+	if init.seq > report.seq {
+		t.Fatalf("expected batch_init before report_hook, got %v", linksNames(links))
+	}
+}
+
+// OnSettle in OnBatch ops whose door is busy with a Static registers on at once, so a nested OnBatch in on issues batch_init before the outer batch_flush.
+func TestLinksOnSettleInBatchOpsWithBusyDoor(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	a, b := &Door{}, &Door{}
+	_, page, from := linksPage(h, a, b)
+	linksHook(h, page, false, 7, func(ctx context.Context) {
+		OnBatch(ctx, func(context.Context) { h.events <- "outer" }, func(ctx context.Context) {
+			a.Static(ctx, textElem("static"))
+			OnSettle(ctx, func(ctx context.Context) {
+				OnBatch(ctx, func(context.Context) { h.events <- "inner" }, func(ctx context.Context) {
+					b.Inner(ctx, textElem("b"))
+				})
+			})
+		})
+	})
+	h.waitEvents("outer", "inner")
+	links := linksExpect(h, from, "batch_init", "door_replace", "batch_init", "door_update", "batch_flush", "batch_flush", "report hook")
+	inits := linksNamed(t, links, "batch_init", 2)
+	outer, inner := inits[0], inits[1]
+	for _, flush := range linksNamed(t, links, "batch_flush", 2) {
+		if flush.batch == outer.batch && inner.seq > flush.seq {
+			t.Fatalf("expected the inner batch_init before the outer batch_flush, got %v", linksNames(links))
+		}
+	}
+}
