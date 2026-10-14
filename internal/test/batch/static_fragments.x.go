@@ -246,7 +246,7 @@ func (f *staticFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line static_fragments.gox:133
 		__e = __c.Any(test.Button("a-plain", func(ctx context.Context) bool {
-		f.staticWatch(f.x.Static(ctx, gox.Elem(func(__c gox.Cursor) (__e error) {
+		f.staticWatch(f.x.Static(doors.DetachedContext(ctx), gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("p"); if __e != nil { return }
 			{
@@ -268,7 +268,7 @@ func (f *staticFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line static_fragments.gox:141
 		__e = __c.Any(test.Button("b-plain", func(ctx context.Context) bool {
-		f.staticWatch(f.y.Inner(ctx, f.staticText("y1")))
+		f.staticWatch(f.y.Inner(doors.DetachedContext(ctx), f.staticText("y1")))
 		return false
 	})); if __e != nil { return }
 //line static_fragments.gox:145
@@ -280,7 +280,7 @@ func (f *staticFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line static_fragments.gox:151
 		__e = __c.Any(test.Button("c-plain", func(ctx context.Context) bool {
-		f.staticWatch(f.staticAppend(ctx, "p"))
+		f.staticWatch(f.staticAppend(doors.DetachedContext(ctx), "p"))
 		return false
 	})); if __e != nil { return }
 //line static_fragments.gox:155

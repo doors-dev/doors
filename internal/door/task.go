@@ -91,7 +91,7 @@ func (n innerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.tracker = prev.tracker.outer.newTracker(next)
 	var thread shredder.Thread
 	if n.defered {
-		n.userTask.Detach()
+		n.userTask.Clear()
 		if prev.mode == modeInner {
 			prevTracker, prevInnerClean := prev.tracker, prev.deferedInnerClean
 			next.deferedInnerClean = common.Once(func() {
@@ -199,7 +199,7 @@ func (n outerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	outer := newOuterTrackerInherit(prev.tracker.outer)
 	next.tracker = outer.newTracker(next)
 	if n.defered {
-		n.userTask.Detach()
+		n.userTask.Clear()
 		prevTracker, prevInnerClean, prevOuterClean := prev.tracker, prev.deferedInnerClean, prev.deferedOuterClean
 		next.deferedOuterClean = common.Once(func() {
 			prevTracker.outer.clean()
@@ -287,7 +287,7 @@ func (n staticNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.static.place = prev.tracker.outer.place
 	next.static.user = prev.tracker.outer.user
 	if n.defered {
-		n.userTask.Detach()
+		n.userTask.Clear()
 		prevTracker, prevInnerClean, prevOuterClean := prev.tracker, prev.deferedInnerClean, prev.deferedOuterClean
 		next.deferedOuterClean = common.Once(func() {
 			prevTracker.outer.clean()
@@ -475,17 +475,19 @@ type nodeTask interface {
 
 func newUserTask(ctx context.Context) (*userTask, <-chan error) {
 	ch := make(chan error, 2)
-	return &userTask{ch: &ch, ctx: ctx, frames: ctex.GetFrames(ctx), caller: common.CaptureCaller()}, ch
+	frames := ctex.GetFrames(ctx)
+	return &userTask{ch: &ch, ctx: ctx, frames: frames, detached: frames.Detached(), caller: common.CaptureCaller()}, ch
 }
 
 type userTask struct {
-	ch     *chan error
-	ctx    context.Context
-	frames ctex.Frames
-	caller common.Caller
+	ch       *chan error
+	ctx      context.Context
+	frames   ctex.Frames
+	detached bool
+	caller   common.Caller
 }
 
-func (t *userTask) Detach() {
+func (t *userTask) Clear() {
 	t.frames = ctex.Frames{}
 }
 
@@ -501,13 +503,6 @@ func (t *userTask) Batch(inst string) uint64 {
 		return 0
 	}
 	return t.frames.Batch()
-}
-
-func (t *userTask) Guard(inst string) bool {
-	if t == nil || t.frames.Inst() != inst {
-		return false
-	}
-	return t.frames.Guard()
 }
 
 func (t *userTask) InitFrame() shredder.ReleaseFrame {
@@ -539,6 +534,10 @@ func (t *userTask) Scheduled() {
 		return
 	}
 	*t.ch <- nil
+	if !t.detached {
+		close(*t.ch)
+		t.ch = nil
+	}
 }
 
 func (t *userTask) Report(err error) {

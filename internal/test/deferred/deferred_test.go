@@ -325,7 +325,7 @@ func concurrent(t *testing.T) {
 func (r *run) settle(area string, label string) {
 	r.t.Helper()
 	r.waitText(area, "heavy "+label)
-	r.expectResult("deferred "+label, "nil,nil")
+	r.expectResult("deferred "+label, "nil")
 }
 
 // A fresh blend door placed by a parent update shows its skeleton, then heavy.
@@ -739,9 +739,7 @@ func TestDeferredNewerDeferredWaits(t *testing.T) {
 	s.track("newer", newer)
 	r.waitText("#area", "newer")
 	r.expectResult("newer", "nil,nil")
-	if got := r.result("deferred mounted"); got != "nil,nil" && got != "nil,context canceled" {
-		t.Fatalf("result %q: expected nil,nil or nil,context canceled, fact %q", "deferred mounted", got)
-	}
+	r.expectResult("deferred mounted", "nil")
 	r.expectRecordsMaybe("skel mounted", maybe("heavy mounted"), "newer")
 	r.expectText("#area", "newer")
 	if c := s.Count("heavy mounted"); c != 1 {

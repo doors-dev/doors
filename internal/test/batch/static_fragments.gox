@@ -131,7 +131,7 @@ elem (f *staticFragment) Main() {
 		f.staticPause(ctx)
 	}))
 	~(test.Button("a-plain", func(ctx context.Context) bool {
-		f.staticWatch(f.x.Static(ctx, <p id="x-static">~(f.staticText("static"))</p>))
+		f.staticWatch(f.x.Static(doors.DetachedContext(ctx), <p id="x-static">~(f.staticText("static"))</p>))
 		return false
 	}))
 	~(f.staticBatched("b-batched", func(ctx context.Context) {
@@ -139,7 +139,7 @@ elem (f *staticFragment) Main() {
 		f.staticPause(ctx)
 	}))
 	~(test.Button("b-plain", func(ctx context.Context) bool {
-		f.staticWatch(f.y.Inner(ctx, f.staticText("y1")))
+		f.staticWatch(f.y.Inner(doors.DetachedContext(ctx), f.staticText("y1")))
 		return false
 	}))
 	~(f.staticBatched("c-batched", func(ctx context.Context) {
@@ -149,7 +149,7 @@ elem (f *staticFragment) Main() {
 		}
 	}))
 	~(test.Button("c-plain", func(ctx context.Context) bool {
-		f.staticWatch(f.staticAppend(ctx, "p"))
+		f.staticWatch(f.staticAppend(doors.DetachedContext(ctx), "p"))
 		return false
 	}))
 	~(f.staticBatched("d-batched", func(ctx context.Context) {

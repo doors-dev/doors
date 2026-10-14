@@ -59,13 +59,13 @@ func TestDoorPlacementErrorLogged(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			child := &Door{}
-			child.Inner(context.Background(), failingElem(c.err))
+			child.Inner(freeCtx(), failingElem(c.err))
 			host := &Door{}
 			withChild := tagElem("div", "child-host", mountDoor(child))
 			if c.inUpdate {
-				host.Inner(context.Background(), textElem("h0"))
+				host.Inner(freeCtx(), textElem("h0"))
 			} else {
-				host.Inner(context.Background(), withChild)
+				host.Inner(freeCtx(), withChild)
 			}
 			pageCtx, html, err := h.renderPageHTML(mountDoor(host))
 			if err != nil {
@@ -147,7 +147,7 @@ func TestDataEncodeErrorFailsPage(t *testing.T) {
 func TestDataEncodeErrorFailsDoorUpdate(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("v0"))
+	d.Inner(freeCtx(), textElem("v0"))
 	pageCtx := DetachedContext(h.renderPage(mountDoor(d)))
 	vals := drainOp(t, d.Inner(pageCtx, badDataElem))
 	if len(vals) != 1 || vals[0] == nil {
@@ -191,7 +191,7 @@ func TestDoorSupersededRenderErrorLogged(t *testing.T) {
 			t.Run(label, func(t *testing.T) {
 				h := newLifecycleHarness(t, 8)
 				d := &Door{}
-				d.Inner(context.Background(), textElem("v0"))
+				d.Inner(freeCtx(), textElem("v0"))
 				pageCtx := DetachedContext(h.renderPage(mountDoor(d)))
 				rendering := make(chan context.Context, 1)
 				gate := make(chan struct{})
@@ -229,12 +229,12 @@ func TestDoorSupersededPlacementErrorLogged(t *testing.T) {
 		t.Run(label, func(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			host := &Door{}
-			host.Inner(context.Background(), textElem("h0"))
+			host.Inner(freeCtx(), textElem("h0"))
 			pageCtx := DetachedContext(h.renderPage(mountDoor(host)))
 			rendering := make(chan context.Context, 1)
 			gate := make(chan struct{})
 			child := &Door{}
-			child.Inner(context.Background(), gatedElem(err, rendering, gate))
+			child.Inner(freeCtx(), gatedElem(err, rendering, gate))
 			first := host.Inner(pageCtx, mountDoor(child))
 			renderCtx := <-rendering
 			second := host.Inner(pageCtx, textElem("h2"))

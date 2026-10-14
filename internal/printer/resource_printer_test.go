@@ -168,7 +168,7 @@ func (titleDoor) DeferredStatic(context.Context, any) <-chan error {
 func (titleDoor) RootCore() core.Core {
 	return nil
 }
-func (titleDoor) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (titleDoor) UserCall(context.Context, actions.Action, func(), func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (titleDoor) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}
@@ -236,7 +236,7 @@ func (d *hookDoor) DeferredStatic(context.Context, any) <-chan error {
 func (d *hookDoor) RootCore() core.Core {
 	return nil
 }
-func (d *hookDoor) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (d *hookDoor) UserCall(context.Context, actions.Action, func(), func(json.RawMessage, error), func(), actions.CallParams) {
 }
 func (d *hookDoor) CleanFrame() shredder.Frame {
 	return &shredder.ValveFrame{}

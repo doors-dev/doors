@@ -420,7 +420,8 @@ func (f *emitterMultiFragment) Main() gox.Elem {
 //line emitter.gox:286
 		__e = __c.Any(test.Button("emit-count", func(ctx context.Context) bool {
 		var count int
-		ch := doors.Call(ctx, f.e.Click(doors.PointerEmit{}).Into(&count))
+		ch := doors.Call(doors.DetachedContext(ctx), f.e.Click(doors.PointerEmit{}).Into(&count))
+		<-ch
 		select {
 		case err := <-ch:
 			if err != nil {
@@ -433,7 +434,7 @@ func (f *emitterMultiFragment) Main() gox.Elem {
 		return false
 	})); if __e != nil { return }
 	return })
-//line emitter.gox:300
+//line emitter.gox:301
 }
 
 // several emitters per element
@@ -441,7 +442,8 @@ func (f *emitterMultiFragment) Main() gox.Elem {
 func emitterCount(r *test.Reporter, slot int, action doors.ActionInto[int]) func(context.Context) bool {
 	return func(ctx context.Context) bool {
 		var count int
-		ch := doors.Call(ctx, action.Into(&count))
+		ch := doors.Call(doors.DetachedContext(ctx), action.Into(&count))
+		<-ch
 		select {
 		case err := <-ch:
 			if err != nil {
@@ -473,28 +475,28 @@ func (f *emitterSharedFragment) hit(slot int) doors.Attr {
 	}
 }
 
-//line emitter.gox:339
+//line emitter.gox:341
 func (f *emitterSharedFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line emitter.gox:341
+//line emitter.gox:343
 		for i := 0; i < 7; i++ {
 		f.r.Update(ctx, i, "")
 	}
 
-//line emitter.gox:345
+//line emitter.gox:347
 		__e = __c.Any(f.r); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line emitter.gox:346
+//line emitter.gox:348
 			__e = __c.Set("id", "s1"); if __e != nil { return }
-//line emitter.gox:346
+//line emitter.gox:348
 			__e = __c.Modify(&f.a); if __e != nil { return }
-//line emitter.gox:346
+//line emitter.gox:348
 			__e = __c.Modify(&f.b); if __e != nil { return }
-//line emitter.gox:346
+//line emitter.gox:348
 			__e = __c.Modify(&f.s); if __e != nil { return }
-//line emitter.gox:346
+//line emitter.gox:348
 			__e = __c.Modify(doors.A(ctx, f.hit(3))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("s1"); if __e != nil { return }
@@ -502,11 +504,11 @@ func (f *emitterSharedFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line emitter.gox:347
+//line emitter.gox:349
 			__e = __c.Set("id", "s2"); if __e != nil { return }
-//line emitter.gox:347
+//line emitter.gox:349
 			__e = __c.Modify(&f.b); if __e != nil { return }
-//line emitter.gox:347
+//line emitter.gox:349
 			__e = __c.Modify(doors.A(ctx, f.hit(4))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("s2"); if __e != nil { return }
@@ -514,28 +516,28 @@ func (f *emitterSharedFragment) Main() gox.Elem {
 		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line emitter.gox:348
+//line emitter.gox:350
 			__e = __c.Set("id", "s3"); if __e != nil { return }
-//line emitter.gox:348
+//line emitter.gox:350
 			__e = __c.Modify(&f.c); if __e != nil { return }
-//line emitter.gox:348
+//line emitter.gox:350
 			__e = __c.Modify(&f.c); if __e != nil { return }
-//line emitter.gox:348
+//line emitter.gox:350
 			__e = __c.Modify(doors.A(ctx, f.hit(5))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("s3"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line emitter.gox:349
-		__e = __c.Any(test.Button("emit-a", emitterCount(f.r, 0, f.a.Click(doors.PointerEmit{Button: 1})))); if __e != nil { return }
-//line emitter.gox:350
-		__e = __c.Any(test.Button("emit-b", emitterCount(f.r, 1, f.b.Click(doors.PointerEmit{Button: 2})))); if __e != nil { return }
 //line emitter.gox:351
-		__e = __c.Any(test.Button("emit-c", emitterCount(f.r, 2, f.c.Click(doors.PointerEmit{Button: 3})))); if __e != nil { return }
+		__e = __c.Any(test.Button("emit-a", emitterCount(f.r, 0, f.a.Click(doors.PointerEmit{Button: 1})))); if __e != nil { return }
 //line emitter.gox:352
+		__e = __c.Any(test.Button("emit-b", emitterCount(f.r, 1, f.b.Click(doors.PointerEmit{Button: 2})))); if __e != nil { return }
+//line emitter.gox:353
+		__e = __c.Any(test.Button("emit-c", emitterCount(f.r, 2, f.c.Click(doors.PointerEmit{Button: 3})))); if __e != nil { return }
+//line emitter.gox:354
 		__e = __c.Any(test.Button("set", emitterCount(f.r, 6, f.s.Set("data-test", "x")))); if __e != nil { return }
 	return })
-//line emitter.gox:353
+//line emitter.gox:355
 }
 
 // emitter on a door container element
@@ -556,66 +558,66 @@ func (f *emitterContainerFragment) hit(slot int) doors.Attr {
 	}
 }
 
-//line emitter.gox:373
+//line emitter.gox:375
 func (f *emitterContainerFragment) body(text string) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("span"); if __e != nil { return }
 		{
-//line emitter.gox:374
+//line emitter.gox:376
 			__e = __c.Set("id", "c2"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line emitter.gox:374
+//line emitter.gox:376
 			__e = __c.Any(text); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line emitter.gox:375
+//line emitter.gox:377
 }
 
-//line emitter.gox:377
+//line emitter.gox:379
 func (f *emitterContainerFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line emitter.gox:379
+//line emitter.gox:381
 		f.r.Update(ctx, 0, "")
 	f.r.Update(ctx, 1, "")
 
-//line emitter.gox:382
+//line emitter.gox:384
 		__e = __c.Any(f.r); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line emitter.gox:383
+//line emitter.gox:385
 			__e = __c.Set("id", "c0"); if __e != nil { return }
-//line emitter.gox:383
+//line emitter.gox:385
 			__e = __c.Modify(doors.A(ctx, f.hit(1))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line emitter.gox:384
+//line emitter.gox:386
 			__e = (f.d).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 				ctx := __c.Context(); _ = ctx
 				__e = __c.Init("div"); if __e != nil { return }
 				{
-//line emitter.gox:384
+//line emitter.gox:386
 					__e = __c.Set("id", "c1"); if __e != nil { return }
-//line emitter.gox:384
+//line emitter.gox:386
 					__e = __c.Modify(doors.A(ctx, &f.e)); if __e != nil { return }
 					__e = __c.Submit(); if __e != nil { return }
-//line emitter.gox:385
+//line emitter.gox:387
 					__e = __c.Any(f.body("first")); if __e != nil { return }
 				}
 				__e = __c.Close(); if __e != nil { return }
 			return })); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line emitter.gox:388
-		__e = __c.Any(test.Button("emit", emitterCount(f.r, 0, f.e.Click(doors.PointerEmit{Button: 1})))); if __e != nil { return }
-//line emitter.gox:389
-		__e = __c.Any(test.Button("emit2", emitterCount(f.r, 0, f.e.Click(doors.PointerEmit{Button: 2})))); if __e != nil { return }
 //line emitter.gox:390
+		__e = __c.Any(test.Button("emit", emitterCount(f.r, 0, f.e.Click(doors.PointerEmit{Button: 1})))); if __e != nil { return }
+//line emitter.gox:391
+		__e = __c.Any(test.Button("emit2", emitterCount(f.r, 0, f.e.Click(doors.PointerEmit{Button: 2})))); if __e != nil { return }
+//line emitter.gox:392
 		__e = __c.Any(test.Button("inner", func(ctx context.Context) bool {
 		f.d.Inner(ctx, f.body("second"))
 		return false
 	})); if __e != nil { return }
 	return })
-//line emitter.gox:394
+//line emitter.gox:396
 }

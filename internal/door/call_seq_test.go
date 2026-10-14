@@ -48,7 +48,7 @@ func requireLink(t *testing.T, inst *testInstance, want testLink) {
 
 func TestCallSeqSeedsDoorsFromDeliveringCall(t *testing.T) {
 	inst := newTestInstance(t)
-	ctx := context.Background()
+	ctx := freeCtx()
 	p, c, g := &Door{}, &Door{}, &Door{}
 	renderTestPage(t, inst, withDoor(p))
 	waitOps(t, []<-chan error{p.Inner(ctx, withDoor(c))})
@@ -71,7 +71,7 @@ func TestCallSeqSeedsDoorsFromDeliveringCall(t *testing.T) {
 
 func TestCallSeqSeedsDoorsFromStaticCall(t *testing.T) {
 	inst := newTestInstance(t)
-	ctx := context.Background()
+	ctx := freeCtx()
 	tail, next := &Door{}, &Door{}
 	renderTestPage(t, inst, withDoor(tail))
 	waitOps(t, []<-chan error{tail.Static(ctx, withDoor(next))})
@@ -84,7 +84,7 @@ func TestCallSeqSeedsDoorsFromStaticCall(t *testing.T) {
 // Every door call targets its own door and depends on the call that placed it.
 func TestCallLinkTargetsDoorAndPlacement(t *testing.T) {
 	inst := newTestInstance(t)
-	ctx := context.Background()
+	ctx := freeCtx()
 	p, c := &Door{}, &Door{}
 	renderTestPage(t, inst, withDoor(p))
 	pid := doorIDOf(p)
@@ -104,7 +104,7 @@ func TestCallLinkTargetsDoorAndPlacement(t *testing.T) {
 // A static call targets the parent scope and depends on the placement and the calls of the replaced door.
 func TestCallLinkStatic(t *testing.T) {
 	inst := newTestInstance(t)
-	ctx := context.Background()
+	ctx := freeCtx()
 	p, x, y := &Door{}, &Door{}, &Door{}
 	renderTestPage(t, inst, withDoor(p))
 	pid := doorIDOf(p)
@@ -120,7 +120,7 @@ func TestCallLinkStatic(t *testing.T) {
 // A door moved by a re-render gets a new id seeded by the placing call, and the removal targets the old id.
 func TestCallLinkMove(t *testing.T) {
 	inst := newTestInstance(t)
-	ctx := context.Background()
+	ctx := freeCtx()
 	a, b, x := &Door{}, &Door{}, &Door{}
 	renderTestPage(t, inst, gox.Elem(func(cur gox.Cursor) error {
 		if err := cur.Comp(a); err != nil {

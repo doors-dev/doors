@@ -16,6 +16,7 @@ package doors
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -57,7 +58,7 @@ func TestDoorOpChannelScheduledThenApplied(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			d := &Door{}
-			d.Inner(context.Background(), textElem("v0"))
+			d.Inner(freeCtx(), textElem("v0"))
 			pageCtx := DetachedContext(h.renderPage(mountDoor(d)))
 			h.client.hold()
 			ch := c.op(d, pageCtx)
@@ -83,14 +84,63 @@ func TestDoorOpChannelScheduledThenApplied(t *testing.T) {
 	}
 }
 
+// A detached context, also wrapped, gets the scheduled nil and the result; any other context gets the scheduled nil only; a failed render or an unmounted Door gives the same shape on both.
+func TestDoorOpChannelPerContext(t *testing.T) {
+	kinds := []struct {
+		name     string
+		ctx      func(page context.Context) (context.Context, context.CancelFunc)
+		detached bool
+	}{
+		{"detached", func(page context.Context) (context.Context, context.CancelFunc) {
+			return DetachedContext(page), func() {}
+		}, true},
+		{"wrapped", func(page context.Context) (context.Context, context.CancelFunc) {
+			return context.WithTimeout(DetachedContext(page), time.Minute)
+		}, true},
+		{"background", func(context.Context) (context.Context, context.CancelFunc) {
+			return context.Background(), func() {}
+		}, false},
+	}
+	errRender := errors.New("render failed")
+	for _, k := range kinds {
+		t.Run(k.name, func(t *testing.T) {
+			h := newLifecycleHarness(t, 8)
+			d := &Door{}
+			d.Inner(freeCtx(), textElem("v0"))
+			ctx, cancel := k.ctx(h.renderPage(mountDoor(d)))
+			defer cancel()
+			h.client.hold()
+			ch := d.Inner(ctx, textElem("v1"))
+			h.waitQueued(1)
+			expectScheduled(t, "op", ch)
+			if !k.detached {
+				expectOp(t, "op", ch)
+				h.client.release()
+			} else {
+				select {
+				case err, ok := <-ch:
+					t.Fatalf("unexpected value %v (open %v) before the client applied the call", err, ok)
+				default:
+				}
+				h.client.release()
+				expectOp(t, "op", ch, nil)
+			}
+			if vals := drainOp(t, d.Inner(ctx, failingElem(errRender))); len(vals) != 1 || !errors.Is(vals[0], errRender) {
+				t.Fatalf("expected the render error only, got %v", vals)
+			}
+			expectOp(t, "unmounted", (&Door{}).Inner(ctx, textElem("v2")))
+		})
+	}
+}
+
 // Static before mount stores content that is not a live container. A later
 // Inner stores content for the Door's own default container.
 func TestDoorStaticThenInnerStored(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
 	var staticRenders atomic.Int32
-	d.Static(context.Background(), countedElem(&staticRenders, tagElem("section", "static-root", textElem("STATIC-BODY"))))
-	d.Inner(context.Background(), textElem("INNER-BODY"))
+	d.Static(freeCtx(), countedElem(&staticRenders, tagElem("section", "static-root", textElem("STATIC-BODY"))))
+	d.Inner(freeCtx(), textElem("INNER-BODY"))
 	_, html, err := h.renderPageHTML(mountDoor(d))
 	if err != nil {
 		t.Fatal(err)
@@ -111,8 +161,8 @@ func TestDoorStaticMountedThenInnerParentRender(t *testing.T) {
 	p := &Door{}
 	d := &Door{}
 	var staticRenders atomic.Int32
-	d.Inner(context.Background(), textElem("d0"))
-	p.Inner(context.Background(), mountDoor(d))
+	d.Inner(freeCtx(), textElem("d0"))
+	p.Inner(freeCtx(), mountDoor(d))
 	pageCtx := DetachedContext(h.renderPage(mountDoor(p)))
 	if vals := drainOp(t, d.Static(pageCtx, countedElem(&staticRenders, tagElem("section", "static-root", textElem("STATIC-BODY"))))); !onlyNils(vals) {
 		t.Fatalf("static failed: %v", vals)
@@ -138,7 +188,7 @@ func TestDoorStaticMountedThenInnerParentRender(t *testing.T) {
 func TestDoorStaticThenEmptyProxy(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Static(context.Background(), textElem("STATIC-BODY"))
+	d.Static(freeCtx(), textElem("STATIC-BODY"))
 	_, html, err := h.renderPageHTML(func(cur gox.Cursor) error {
 		return d.Proxy(cur, tagElem("div", "px", nil))
 	})
@@ -155,7 +205,7 @@ func TestDoorStaticThenEmptyProxy(t *testing.T) {
 func TestDoorOuterThenInnerKeepsBoth(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("v0"))
+	d.Inner(freeCtx(), textElem("v0"))
 	pageCtx := DetachedContext(h.renderPage(mountDoor(d)))
 	h.client.hold()
 	outer := d.Outer(pageCtx, tagElem("section", "new-outer", textElem("outer-content")))
@@ -194,7 +244,7 @@ func TestDoorOuterThenInnerKeepsBoth(t *testing.T) {
 func TestDoorStaticCallsAfterMarkup(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("v0"))
+	d.Inner(freeCtx(), textElem("v0"))
 	pageCtx := DetachedContext(h.renderPage(mountDoor(d)))
 	h.client.hold()
 	ch := d.Static(pageCtx, func(cur gox.Cursor) error {
@@ -226,7 +276,7 @@ func TestDoorStaticFromWatcherWithUpdateInFlight(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	x := NewSource(0)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("d0"))
+	d.Inner(freeCtx(), textElem("d0"))
 	secondIssued := make(chan struct{})
 	staticCh := make(chan (<-chan error), 1)
 	var fired atomic.Bool

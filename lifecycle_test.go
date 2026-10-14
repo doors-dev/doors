@@ -175,6 +175,10 @@ func (c *lifecycleClient) apply(call actions.Call, seq uint64) {
 	c.mu.Lock()
 	c.applied = append(c.applied, applied)
 	c.mu.Unlock()
+	if _, ok := action.(actions.Time); ok {
+		call.Result(json.RawMessage(`"2026-01-02T03:04:05Z"`), nil)
+		return
+	}
 	call.Result(nil, nil)
 }
 
@@ -498,6 +502,18 @@ func (h *lifecycleHarness) waitIdle() {
 	}
 }
 
+// waitApplied waits until the client has applied at least n calls.
+func (h *lifecycleHarness) waitApplied(n int) {
+	h.t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for len(h.client.actions()) < n {
+		if time.Now().After(deadline) {
+			h.t.Fatalf("timed out waiting for %d applied calls, have %d", n, len(h.client.actions()))
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 // waitLogged waits until at least n messages with prefix are logged and
 // returns their count.
 func (h *lifecycleHarness) waitLogged(prefix string, n int) int {
@@ -546,6 +562,10 @@ func (h *lifecycleHarness) expectNoEvent(d time.Duration) {
 		h.t.Fatalf("unexpected event %q", got)
 	case <-time.After(d):
 	}
+}
+
+func freeCtx() context.Context {
+	return DetachedContext(context.Background())
 }
 
 func mountDoor(d *Door) gox.Elem {
@@ -604,7 +624,7 @@ func drainOp(t *testing.T, ch <-chan error) []error {
 func TestLifecyclePageUpdatedDuringRender(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("v0"))
+	d.Inner(freeCtx(), textElem("v0"))
 	var ch <-chan error
 	_, html, err := h.renderPageHTML(func(cur gox.Cursor) error {
 		if err := cur.Comp(d); err != nil {
@@ -640,7 +660,7 @@ func TestOnReadyFiresAfterRenderCycleScheduled(t *testing.T) {
 	// Initial page render, held open at the door content.
 	initialEntered := make(chan struct{})
 	initialRelease := make(chan struct{})
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		OnReady(cur.Context(), func(context.Context) { h.events <- "ready-initial" })
 		close(initialEntered)
 		<-initialRelease
@@ -684,7 +704,7 @@ func TestOnReadyFiresAfterRenderCycleScheduled(t *testing.T) {
 				h.events <- "ready-before-scheduled"
 				return
 			}
-			if !ctex.IsDetachedCtx(ctx) {
+			if !ctex.GetFrames(ctx).Detached() {
 				h.events <- "ctx-not-detached"
 				return
 			}
@@ -756,16 +776,16 @@ func TestOnReadyFromHandlerContextFiresInline(t *testing.T) {
 
 // OnSettle registered during a render with a trivial batch must not fire while
 // the producing cycle is in flight; it fires only after the cycle is enqueued,
-// with a detached live context.
+// with a live context.
 func TestOnSettleRenderCtxWaitsForCycle(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
 	entered := make(chan struct{})
 	release := make(chan struct{})
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		OnSettle(cur.Context(), func(ctx context.Context) {
-			if !ctex.IsDetachedCtx(ctx) {
-				h.events <- "settle-ctx-not-detached"
+			if ctex.GetFrames(ctx).Detached() {
+				h.events <- "settle-ctx-detached"
 				return
 			}
 			if ctx.Err() != nil {
@@ -856,7 +876,7 @@ func TestOnSettleReloadCasFailureClosesBatch(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
 	ctxCh := make(chan context.Context, 1)
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		ctxCh <- cur.Context()
 		return cur.Text("v0")
 	}))
@@ -877,7 +897,7 @@ func TestOnSettleReloadCasFailureClosesBatch(t *testing.T) {
 func TestOnSettleWaitsForUnmountDispatch(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("v0"))
+	d.Inner(freeCtx(), textElem("v0"))
 	pageCtx := h.renderPage(mountDoor(d))
 
 	xch := make(chan (<-chan error), 1)
@@ -937,7 +957,7 @@ func TestOnSettleRunsOnRuntimeShutdown(t *testing.T) {
 func TestOnSettleRunsOnRenderError(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("v0"))
+	d.Inner(freeCtx(), textElem("v0"))
 	pageCtx := h.renderPage(mountDoor(d))
 
 	renderErr := errors.New("render failed")
@@ -965,7 +985,7 @@ func TestOnSettleRunsOnRenderError(t *testing.T) {
 func TestOnReadySupersededDroppedCleanStillFires(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("v0"))
+	d.Inner(freeCtx(), textElem("v0"))
 	pageCtx := h.renderPage(mountDoor(d))
 
 	blocked := make(chan struct{})
@@ -1000,7 +1020,7 @@ func TestOnReadySupersededDroppedCleanStillFires(t *testing.T) {
 func TestOnReadyDroppedOnRenderError(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("v0"))
+	d.Inner(freeCtx(), textElem("v0"))
 	pageCtx := h.renderPage(mountDoor(d))
 
 	renderErr := errors.New("render failed")
@@ -1024,7 +1044,7 @@ func TestOnCleanUnmountAndCleanedOwner(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
 	ctxCh := make(chan context.Context, 1)
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		ctxCh <- cur.Context()
 		OnClean(cur.Context(), func() { h.events <- "clean-unmount" })
 		return cur.Text("v0")
@@ -1053,11 +1073,11 @@ func TestOnCleanCascadeFires(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	parent := &Door{}
 	child := &Door{}
-	child.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	child.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		OnClean(cur.Context(), func() { h.events <- "clean-child" })
 		return cur.Text("child")
 	}))
-	parent.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	parent.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		OnClean(cur.Context(), func() { h.events <- "clean-parent" })
 		return cur.Comp(child)
 	}))
@@ -1071,7 +1091,7 @@ func TestOnCleanCascadeFires(t *testing.T) {
 func TestOnCleanOnInstanceEnd(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		OnClean(cur.Context(), func() { h.events <- "clean-door" })
 		return cur.Text("v0")
 	}))
@@ -1087,7 +1107,7 @@ func TestOnCleanOnInstanceEnd(t *testing.T) {
 func TestOnCleanPanicRecovered(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		OnClean(cur.Context(), func() { panic("boom-clean") })
 		OnClean(cur.Context(), func() { h.events <- "clean-after-panic" })
 		return cur.Text("v0")
@@ -1109,7 +1129,7 @@ func TestOnCleanPanicRecovered(t *testing.T) {
 func TestOnReadyPanicRecovered(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		OnReady(cur.Context(), func(context.Context) { panic("boom-ready") })
 		return cur.Text("v0")
 	}))
@@ -1245,7 +1265,7 @@ func TestOnBatchOpensBatch(t *testing.T) {
 	from := len(h.client.actions())
 	h.client.hold()
 	OnBatch(DetachedContext(pageCtx), func(ctx context.Context) {
-		if !ctex.IsDetachedCtx(ctx) {
+		if !ctex.GetFrames(ctx).Detached() {
 			h.events <- "batch-ctx-not-detached"
 			return
 		}
@@ -1441,37 +1461,52 @@ func TestOnSettleOpsInSettleCallbackUntagged(t *testing.T) {
 	}
 }
 
-// Only a batch the ctx belongs to while it is open guards it: a Batch handler and OnBatch ops are guarded, a plain handler, an OnSettle callback and a detached ctx are not.
-func TestGuardPerContextKind(t *testing.T) {
+// Detached contexts, the callbacks run on them, and wrappers of them are detached; handler, render, subscription, OnSettle callback and ops contexts are not.
+func TestDetachedPerContextKind(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
-	pageCtx, page, _ := linksPage(h)
-	guards := make(chan string, 16)
+	marks := make(chan string, 32)
 	record := func(name string, ctx context.Context) {
-		guards <- fmt.Sprintf("%s=%v", name, ctex.GetFrames(ctx).Guard())
+		marks <- fmt.Sprintf("%s=%v", name, ctex.GetFrames(ctx).Detached())
 	}
-	linksHook(h, page, true, 7, func(ctx context.Context) {
-		record("batch-handler", ctx)
-		record("batch-detached", DetachedContext(ctx))
-		OnBatch(ctx, func(context.Context) {}, func(ctx context.Context) { record("batch-join", ctx) })
-		OnSettle(ctx, func(ctx context.Context) {
-			record("batch-settle", ctx)
-			OnBatch(ctx, func(context.Context) {}, func(ctx context.Context) { record("settle-ops", ctx) })
+	src := NewSource(0)
+	pageCtx := h.renderPage(func(cur gox.Cursor) error {
+		record("render", cur.Context())
+		OnReady(cur.Context(), func(ctx context.Context) { record("ready", ctx) })
+		src.Sub(cur.Context(), func(ctx context.Context, v int) bool {
+			switch v {
+			case 1:
+				record("sub", ctx)
+			case 2:
+				record("sub-detached", ctx)
+			}
+			return false
 		})
+		return Go(func(ctx context.Context) { record("go", ctx) })(cur)
 	})
+	h.waitIdle()
+	page := pageCtx.Value(common.KeyCore).(core.Core).Door()
+	detached := DetachedContext(pageCtx)
+	record("detached", detached)
+	record("instance", InstanceContext(pageCtx))
+	timed, cancel := context.WithTimeout(detached, time.Minute)
+	defer cancel()
+	record("timeout", timed)
 	linksHook(h, page, false, 8, func(ctx context.Context) {
-		record("plain-handler", ctx)
-		OnSettle(ctx, func(ctx context.Context) { record("plain-settle", ctx) })
-		OnBatch(ctx, func(context.Context) {}, func(ctx context.Context) { record("plain-ops", ctx) })
+		record("handler", ctx)
+		OnSettle(ctx, func(ctx context.Context) { record("settle", ctx) })
+		src.Update(ctx, 1)
 	})
-	OnBatch(DetachedContext(pageCtx), func(context.Context) {}, func(ctx context.Context) { record("detached-ops", ctx) })
+	OnSettle(detached, func(context.Context) {}, func(ctx context.Context) { record("settle-ops", ctx) })
+	OnBatch(detached, func(ctx context.Context) { record("batch", ctx) }, func(ctx context.Context) { record("batch-ops", ctx) })
+	src.Update(detached, 2)
 	want := []string{
-		"batch-detached=false", "batch-handler=true", "batch-join=true", "batch-settle=false",
-		"detached-ops=true", "plain-handler=false", "plain-ops=true", "plain-settle=false", "settle-ops=true",
+		"batch-ops=false", "batch=true", "detached=true", "go=true", "handler=false", "instance=true",
+		"ready=true", "render=false", "settle-ops=false", "settle=false", "sub-detached=true", "sub=false", "timeout=true",
 	}
 	var got []string
 	for range want {
 		select {
-		case g := <-guards:
+		case g := <-marks:
 			got = append(got, g)
 		case <-time.After(2 * time.Second):
 			t.Fatalf("timed out, got %v", got)
@@ -1495,42 +1530,81 @@ func TestOnBatchFiresOnInstanceEnd(t *testing.T) {
 	h.waitEvent("batch")
 }
 
-// In a batch hook Call reports nothing, and an action armed with Into delivers an error and leaves dst alone.
-func TestCallInBatchHook(t *testing.T) {
+// Call sends only the scheduled value and leaves dst alone in a batch or plain handler; on a detached ctx it also sends the result after writing dst.
+func TestCallChannelPerContext(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
-	pageCtx := h.renderPage(nil)
-	h.waitIdle()
-	c := pageCtx.Value(common.KeyCore).(core.Core)
-	var at time.Time
-	var plainOk, intoOk bool
-	var plainErr, intoErr error
-	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		plainErr, plainOk = <-Call(ctx, ActionScroll{Selector: "#x"})
-		intoErr, intoOk = <-Call(ctx, ActionTime{}.Into(&at))
-		return true
-	}, RaceSerial, true)
-	if !ok {
-		t.Fatal("expected hook registration to succeed")
+	pageCtx, page, _ := linksPage(h)
+	var batchAt, plainAt, detachedAt time.Time
+	var batchChs, plainChs []<-chan error
+	linksHook(h, page, true, 7, func(ctx context.Context) {
+		batchChs = append(batchChs, Call(ctx, ActionScroll{Selector: "#x"}), Call(ctx, ActionTime{}.Into(&batchAt)))
+	})
+	linksHook(h, page, false, 8, func(ctx context.Context) {
+		plainChs = append(plainChs, Call(ctx, ActionScroll{Selector: "#x"}), Call(ctx, ActionTime{}.Into(&plainAt)))
+	})
+	for _, ch := range append(batchChs, plainChs...) {
+		if got := drainOp(t, ch); len(got) != 1 || got[0] != nil {
+			t.Fatalf("expected only the scheduled nil, got %v", got)
+		}
 	}
-	done := make(chan struct{})
-	go func() {
-		h.root.TriggerHook(hook.HookID, httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil), 7)
-		close(done)
-	}()
+	detachedCh := Call(DetachedContext(pageCtx), ActionTime{}.Into(&detachedAt))
+	timed, cancel := context.WithTimeout(DetachedContext(pageCtx), time.Minute)
+	defer cancel()
+	timedCh := Call(timed, ActionScroll{Selector: "#x"})
+	for _, ch := range []<-chan error{detachedCh, timedCh} {
+		if got := drainOp(t, ch); len(got) != 2 || got[0] != nil || got[1] != nil {
+			t.Fatalf("expected the scheduled and the result nil, got %v", got)
+		}
+	}
+	h.waitIdle()
+	if !batchAt.IsZero() || !plainAt.IsZero() {
+		t.Fatalf("expected dst untouched outside a detached ctx, got %v and %v", batchAt, plainAt)
+	}
+	if want := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC); !detachedAt.Equal(want) {
+		t.Fatalf("expected dst written on a detached ctx, got %v", detachedAt)
+	}
+}
+
+// A detached Call canceled after it was scheduled reports context.Canceled as its second value.
+func TestCallCanceledAfterScheduling(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx := h.renderPage(textElem("page"))
+	h.waitIdle()
+	h.client.hold()
+	ctx, cancel := context.WithCancel(DetachedContext(pageCtx))
+	ch := Call(ctx, ActionScroll{Selector: "#x"})
 	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("expected Call channels in a batch hook not to block the handler")
+	case err := <-ch:
+		if err != nil {
+			t.Fatalf("expected the scheduled nil, got %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("call was never scheduled")
 	}
-	h.waitIdle()
-	if plainOk || plainErr != nil {
-		t.Fatalf("expected a closed channel for a batch call, got %v, %v", plainErr, plainOk)
+	cancel()
+	h.client.release()
+	if got := drainOp(t, ch); len(got) != 1 || !errors.Is(got[0], context.Canceled) {
+		t.Fatalf("expected context.Canceled after the scheduled nil, got %v", got)
 	}
-	if !intoOk || !errors.Is(intoErr, errBatchResult) {
-		t.Fatalf("expected the batch result error, got %v, %v", intoErr, intoOk)
+}
+
+// Before scheduling Call has one shape on every context: a build error then close, or close without a value when canceled.
+func TestCallChannelBeforeScheduling(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx := h.renderPage(textElem("page"))
+	canceledDetached, cancel := context.WithCancel(DetachedContext(pageCtx))
+	cancel()
+	canceledPlain, cancel := context.WithCancel(pageCtx)
+	cancel()
+	for name, ctx := range map[string]context.Context{"detached": DetachedContext(pageCtx), "plain": pageCtx} {
+		if got := drainOp(t, Call(ctx, ActionEmit[any]{Name: "bad", Arg: make(chan int)})); len(got) != 1 || got[0] == nil {
+			t.Fatalf("%s: expected the build error only, got %v", name, got)
+		}
 	}
-	if !at.IsZero() {
-		t.Fatalf("expected dst untouched, got %v", at)
+	for name, ctx := range map[string]context.Context{"detached": canceledDetached, "plain": canceledPlain} {
+		if got := drainOp(t, Call(ctx, ActionScroll{Selector: "#x"})); len(got) != 0 {
+			t.Fatalf("%s: expected a close without a value, got %v", name, got)
+		}
 	}
 }
 
@@ -1541,7 +1615,7 @@ func TestOnSettleRenderOpsWaitForRender(t *testing.T) {
 	var done atomic.Bool
 	release := make(chan struct{})
 	entered := make(chan struct{})
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		OnSettle(cur.Context(), func(context.Context) {
 			if !done.Load() {
 				h.events <- "outer-before-render"
@@ -1604,7 +1678,7 @@ func TestOnBatchRenderWaitsForRender(t *testing.T) {
 	var done atomic.Bool
 	release := make(chan struct{})
 	entered := make(chan struct{})
-	d.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		OnBatch(cur.Context(), func(context.Context) {
 			if !done.Load() {
 				h.events <- "batch-before-render"

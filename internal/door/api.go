@@ -41,15 +41,13 @@ func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
 // Inner replaces the Door's children while keeping the same container mounted.
 // A nil content empties it.
 //
-// The returned channel is optional to use. On success it sends two nil values
-// then closes: the first means the call was scheduled, the second means it was
-// applied to the page. On failure it sends an error then closes;
-// context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. In a batch (a
-// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
-// closes. Never wait on the channel during rendering, in a hook, or in a
-// subscription; to wait, use your own goroutine with doors.DetachedContext or
-// doors.Go.
+// The returned channel is optional to use. It sends nil once the operation is
+// scheduled, or an error if it fails before that; context.Canceled means a
+// newer operation superseded this one. On a detached context
+// (doors.DetachedContext, doors.Go) a second value reports the result: nil
+// once applied to the page, or an error; otherwise the channel closes once the
+// operation is scheduled. If the Door is not mounted, it closes without a
+// value. Never wait on the channel during rendering or in a subscription.
 func (d *Door) Inner(ctx context.Context, content any) <-chan error {
 	ctex.LogCanceled(ctx, "Door inner")
 	task, ch := newUserTask(ctx)
@@ -61,15 +59,13 @@ func (d *Door) Inner(ctx context.Context, content any) <-chan error {
 // leaves an empty container. Unlike [Door.Static], the result remains a live
 // Door that can be updated further.
 //
-// The returned channel is optional to use. On success it sends two nil values
-// then closes: the first means the call was scheduled, the second means it was
-// applied to the page. On failure it sends an error then closes;
-// context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. In a batch (a
-// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
-// closes. Never wait on the channel during rendering, in a hook, or in a
-// subscription; to wait, use your own goroutine with doors.DetachedContext or
-// doors.Go.
+// The returned channel is optional to use. It sends nil once the operation is
+// scheduled, or an error if it fails before that; context.Canceled means a
+// newer operation superseded this one. On a detached context
+// (doors.DetachedContext, doors.Go) a second value reports the result: nil
+// once applied to the page, or an error; otherwise the channel closes once the
+// operation is scheduled. If the Door is not mounted, it closes without a
+// value. Never wait on the channel during rendering or in a subscription.
 func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
 	ctex.LogCanceled(ctx, "Door outer")
 	task, ch := newUserTask(ctx)
@@ -86,15 +82,13 @@ func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
 // lifecycle callbacks it registers attach to the parent, even if the render
 // fails.
 //
-// The returned channel is optional to use. On success it sends two nil values
-// then closes: the first means the call was scheduled, the second means it was
-// applied to the page. On failure it sends an error then closes;
-// context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. In a batch (a
-// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
-// closes. Never wait on the channel during rendering, in a hook, or in a
-// subscription; to wait, use your own goroutine with doors.DetachedContext or
-// doors.Go.
+// The returned channel is optional to use. It sends nil once the operation is
+// scheduled, or an error if it fails before that; context.Canceled means a
+// newer operation superseded this one. On a detached context
+// (doors.DetachedContext, doors.Go) a second value reports the result: nil
+// once applied to the page, or an error; otherwise the channel closes once the
+// operation is scheduled. If the Door is not mounted, it closes without a
+// value. Never wait on the channel during rendering or in a subscription.
 func (d *Door) Static(ctx context.Context, content any) <-chan error {
 	ctex.LogCanceled(ctx, "Door static")
 	task, ch := newUserTask(ctx)
@@ -134,15 +128,13 @@ func (d *Door) DeferredStatic(ctx context.Context, content any) <-chan error {
 
 // Reload rerenders the Door with its current content.
 //
-// The returned channel is optional to use. On success it sends two nil values
-// then closes: the first means the call was scheduled, the second means it was
-// applied to the page. On failure it sends an error then closes;
-// context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. In a batch (a
-// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
-// closes. Never wait on the channel during rendering, in a hook, or in a
-// subscription; to wait, use your own goroutine with doors.DetachedContext or
-// doors.Go.
+// The returned channel is optional to use. It sends nil once the operation is
+// scheduled, or an error if it fails before that; context.Canceled means a
+// newer operation superseded this one. On a detached context
+// (doors.DetachedContext, doors.Go) a second value reports the result: nil
+// once applied to the page, or an error; otherwise the channel closes once the
+// operation is scheduled. If the Door is not mounted, it closes without a
+// value. Never wait on the channel during rendering or in a subscription.
 func (d *Door) Reload(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door reload")
 	task, ch := newUserTask(ctx)
@@ -154,15 +146,13 @@ func (d *Door) Reload(ctx context.Context) <-chan error {
 // future mount. Unlike [Door.Static], the Door stays live and can be mounted
 // again.
 //
-// The returned channel is optional to use. On success it sends two nil values
-// then closes: the first means the call was scheduled, the second means it was
-// applied to the page. On failure it sends an error then closes;
-// context.Canceled means a newer operation superseded this one. If the Door is
-// not mounted, it closes immediately without sending a value. In a batch (a
-// handler with Batch set, or doors.OnBatch) it sends the scheduled nil then
-// closes. Never wait on the channel during rendering, in a hook, or in a
-// subscription; to wait, use your own goroutine with doors.DetachedContext or
-// doors.Go.
+// The returned channel is optional to use. It sends nil once the operation is
+// scheduled, or an error if it fails before that; context.Canceled means a
+// newer operation superseded this one. On a detached context
+// (doors.DetachedContext, doors.Go) a second value reports the result: nil
+// once applied to the page, or an error; otherwise the channel closes once the
+// operation is scheduled. If the Door is not mounted, it closes without a
+// value. Never wait on the channel during rendering or in a subscription.
 func (d *Door) Unmount(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door unmount")
 	task, ch := newUserTask(ctx)

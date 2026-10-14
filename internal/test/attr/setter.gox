@@ -67,7 +67,8 @@ elem (f *setterFragment) Main() {
 	}))
 	~(test.Button("xset", func(ctx context.Context) bool {
 		var count int
-		ch := doors.Call(ctx, f.s.Set("data-count", "x").Into(&count))
+		ch := doors.Call(doors.DetachedContext(ctx), f.s.Set("data-count", "x").Into(&count))
+		<-ch
 		select {
 		case err := <-ch:
 			if err != nil {

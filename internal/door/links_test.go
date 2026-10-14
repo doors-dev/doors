@@ -51,15 +51,15 @@ func TestLinksUserCallTargetsIssuingDoor(t *testing.T) {
 	inst := newTestInstance(t)
 	p, c := &Door{}, &Door{}
 	renderTestPage(t, inst, withDoor(p))
-	waitOps(t, []<-chan error{p.Inner(context.Background(), withDoor(c))})
+	waitOps(t, []<-chan error{p.Inner(freeCtx(), withDoor(c))})
 	cid, place := doorIDOf(c), callSeqOf(c)
 	if place != 1 || cid == doorIDOf(p) {
 		t.Fatalf("expected the child door placed by call 1, got door %d placed by %d", cid, place)
 	}
 	tracker := c.node.Load().tracker
 	hook, ok := tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
-		tracker.UserCall(ctx, actions.Scroll{Selector: "#member"}, nil, nil, actions.CallParams{})
-		tracker.UserCall(ctex.NewDetachedContext(ctx, ctx, false), actions.Scroll{Selector: "#detached"}, nil, nil, actions.CallParams{})
+		tracker.UserCall(ctx, actions.Scroll{Selector: "#member"}, nil, nil, nil, actions.CallParams{})
+		tracker.UserCall(ctex.NewDetachedContext(ctx, ctx, false), actions.Scroll{Selector: "#detached"}, nil, nil, nil, actions.CallParams{})
 		return true
 	}, core.RaceSerial, true)
 	if !ok {

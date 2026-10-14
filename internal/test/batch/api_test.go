@@ -165,25 +165,33 @@ func TestAPIOnSettleCallSeesBatchContent(t *testing.T) {
 	}
 }
 
-// In a Batch hook a Call with Into errors at once, a plain Call closes at once and a Door op does not hang the handler.
-func TestAPIBatchHookGuards(t *testing.T) {
-	page, f := apiOpen(t)
-	test.ClickNow(t, page, "#api-guard")
+func apiScheduledOnly(t *testing.T, page *rod.Page, f *apiFragment, button string) {
+	t.Helper()
+	test.ClickNow(t, page, button)
 	waitContent(t, page, "#b", "b1")
 	waitContent(t, page, "#a", "a1")
 	res := <-f.guard
-	if !res.call.ok || res.call.err == nil {
-		t.Fatalf("expected an error from a batch call with Into, got %v, %v", res.call.err, res.call.ok)
+	if len(res.call) != 1 || res.call[0] != nil || res.value != "" {
+		t.Fatalf("expected only the scheduled nil from a call with Into and dst untouched, got %v, %q", res.call, res.value)
 	}
-	if res.call.value != "" {
-		t.Fatalf("expected dst untouched, got %q", res.call.value)
+	if len(res.plain) != 1 || res.plain[0] != nil {
+		t.Fatalf("expected only the scheduled nil from a plain call, got %v", res.plain)
 	}
-	if res.plainOk {
-		t.Fatal("expected a closed channel from a plain batch call")
+	if len(res.inner) != 1 || res.inner[0] != nil {
+		t.Fatalf("expected only the scheduled nil from a door op, got %v", res.inner)
 	}
-	if !res.inner.ok || res.inner.err != nil {
-		t.Fatalf("expected the scheduled nil from a batch door op, got %v, %v", res.inner.err, res.inner.ok)
-	}
+}
+
+// In a Batch hook a Call with Into, a plain Call and a Door op each send the scheduled nil and close; dst stays unwritten.
+func TestAPIBatchHookScheduledOnly(t *testing.T) {
+	page, f := apiOpen(t)
+	apiScheduledOnly(t, page, f, "#api-guard")
+}
+
+// In a plain hook a Call with Into, a plain Call and a Door op each send the scheduled nil and close; dst stays unwritten.
+func TestAPIPlainHookScheduledOnly(t *testing.T) {
+	page, f := apiOpen(t)
+	apiScheduledOnly(t, page, f, "#api-guard-plain")
 }
 
 // A detached Call from an untouched door returns the real page value while the batch is still open.

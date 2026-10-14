@@ -83,9 +83,6 @@ func (n *node) call(call *call) uint64 {
 	inst := outer.root.inst.ID()
 	group := call.task.Group(inst)
 	batch := call.task.Batch(inst)
-	if call.task.Guard(inst) {
-		call.task.Accept()
-	}
 	if n.mode == modeStatic {
 		return outer.root.inst.Call(call, group, batch, outer.id, n.static.place.Load(), n.static.id)
 	}

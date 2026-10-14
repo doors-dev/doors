@@ -102,8 +102,8 @@ func settleFollowUp(t *testing.T, page *rod.Page) {
 	waitContent(t, page, "#y", "y-after")
 }
 
-// A Door op issued from OnSettle in a Batch hook keeps the two-step channel: scheduled, applied, closed, with the content on the page by then.
-func TestSettleDoorOpTwoStepChannel(t *testing.T) {
+// A Door op issued from OnSettle in a Batch hook sends only the scheduled nil and closes; its content lands with the batch.
+func TestSettleDoorOpScheduledOnly(t *testing.T) {
 	page, f := settleOpen(t)
 	test.ClickNow(t, page, "#settle-op")
 	waitEntered(t, f.g)
@@ -119,19 +119,17 @@ func TestSettleDoorOpTwoStepChannel(t *testing.T) {
 	case <-time.After(waitLimit):
 		t.Fatal("the settle op channel did not close")
 	}
-	if len(op.values) != 2 || op.values[0] != nil || op.values[1] != nil {
-		t.Fatalf("expected scheduled and applied nils from the settle op, got %v", op.values)
+	if len(op.values) != 1 || op.values[0] != nil {
+		t.Fatalf("expected only the scheduled nil from the settle op, got %v", op.values)
 	}
-	if op.page.err != nil || !op.page.ok || op.page.value != "o1" {
-		t.Fatalf("expected the op content on the page when its channel closes, got %q, %v, %v", op.page.value, op.page.err, op.page.ok)
-	}
-	waitContent(t, page, "#settle-res", "2:<nil>,<nil>:o1")
+	waitContent(t, page, "#o", "o1")
+	waitContent(t, page, "#settle-res", "1:<nil>")
 	waitContent(t, page, "#x", "x1")
 	waitContent(t, page, "#y", "y1")
 	hooksWaitIdle(t, page, "#ind-a")
 }
 
-// A Call with Into issued from OnSettle in a Batch hook returns the real page value, read after the batch landed.
+// A Call with Into issued from OnSettle in a Batch hook reads the page after the batch landed; it sends only the scheduled nil and leaves dst unwritten.
 func TestSettleCallIntoReturnsValue(t *testing.T) {
 	page, f := settleOpen(t)
 	test.ClickNow(t, page, "#settle-call")
@@ -139,21 +137,22 @@ func TestSettleCallIntoReturnsValue(t *testing.T) {
 	settleHeld(t, page, f, "#x", "x0")
 	select {
 	case r := <-f.seen:
-		t.Fatalf("expected no call before the handler settles, got %q, %v", r.value, r.err)
+		t.Fatalf("expected no call before the handler settles, got %q, %v", r.value, r.values)
 	default:
 	}
 	close(f.g.proceed)
 	settleFired(t, f)
-	if r := settleSeen(t, f); r.err != nil || !r.ok || r.value != "x1|y1" {
-		t.Fatalf("expected the page value after the batch, got %q, %v, %v", r.value, r.err, r.ok)
+	if r := settleSeen(t, f); len(r.values) != 1 || r.values[0] != nil || r.value != "" {
+		t.Fatalf("expected only the scheduled nil and dst untouched, got %q, %v", r.value, r.values)
 	}
+	waitContent(t, page, "#settle-seen", "x1|y1")
 	if got := settleStates(t, page); got != "x0|y0 x1|y1" {
 		t.Fatalf("expected both doors to change together, got %q", got)
 	}
 	hooksWaitIdle(t, page, "#ind-a")
 }
 
-// Calls issued synchronously in OnSettle of a Batch hook reach the element the batch delivers and report success.
+// Calls issued synchronously in OnSettle of a Batch hook reach the element the batch delivers; each sends only the scheduled nil.
 func TestSettleSyncCallReachesBatchContent(t *testing.T) {
 	page, f := settleOpen(t)
 	test.ClickNow(t, page, "#settle-sync")
@@ -161,8 +160,8 @@ func TestSettleSyncCallReachesBatchContent(t *testing.T) {
 	settleHeld(t, page, f, "#d", "d0")
 	close(f.g.proceed)
 	settleFired(t, f)
-	if r := settleSeen(t, f); r.err != nil || !r.ok || r.value != "set" {
-		t.Fatalf("expected the attribute set on the delivered element, got %q, %v, %v", r.value, r.err, r.ok)
+	if r := settleSeen(t, f); len(r.values) != 2 || r.values[0] != nil || r.values[1] != nil || r.value != "" {
+		t.Fatalf("expected only the scheduled nils and dst untouched, got %q, %v", r.value, r.values)
 	}
 	if _, err := page.Timeout(waitLimit).Element(`#settle-item[data-settle="set"]`); err != nil {
 		t.Fatal("expected the delivered element with the attribute on the page")

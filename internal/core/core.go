@@ -108,7 +108,7 @@ type Door interface {
 	DeferredOuter(ctx context.Context, content any) <-chan error
 	DeferredStatic(ctx context.Context, content any) <-chan error
 	RootCore() Core
-	UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
+	UserCall(ctx context.Context, action actions.Action, onScheduled func(), onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
 	CleanFrame() shredder.Frame
 	ReadyFrame() shredder.ReleaseFrame
 }

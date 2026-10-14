@@ -39,8 +39,9 @@ type Action interface {
 type ActionInto[T any] interface {
 	Action
 	// Into returns an action for [Call] that decodes the client result into
-	// dst. dst is valid once the completion channel delivers nil. In a batch
-	// the channel delivers an error and dst is not written; see [Call].
+	// dst. If you need the result, wait for the second value on the channel;
+	// it only arrives on a detached context, and dst is valid once it is nil.
+	// Otherwise dst is not written. See [Call].
 	Into(dst *T) Action
 }
 
@@ -148,8 +149,9 @@ func (ae ActionEmit[T]) And(a Actions) Actions {
 }
 
 // Into returns an action for [Call] that decodes the handler result into dst.
-// dst is valid once the completion channel returned by Call delivers nil. In a
-// batch the channel delivers an error and dst is not written; see [Call].
+// If you need the result, wait for the second value on the channel; it only
+// arrives on a detached context, and dst is valid once it is nil. Otherwise
+// dst is not written. See [Call].
 func (ae ActionEmit[T]) Into(dst *T) Action {
 	return into(ae, dst)
 }
@@ -312,8 +314,8 @@ func (a ActionLocationRawReplace) action(ctx context.Context, core core.Core, _ 
 
 // ActionScroll scrolls the first element matching Selector into view.
 //
-// If no element matches, the action fails; dispatched with [Call], the error
-// arrives on the completion channel.
+// If no element matches, the action fails; dispatched with [Call] on a
+// detached context, the error arrives on the completion channel.
 type ActionScroll struct {
 	// Selector is a CSS selector matched against the whole document. Required.
 	Selector string
@@ -379,12 +381,15 @@ func (ai ActionIndicate) action(ctx context.Context, core core.Core, _ bool) (ac
 // Example:
 //
 //	var now time.Time
-//	err := <-doors.Call(ctx, doors.ActionTime{}.Into(&now))
+//	ch := doors.Call(doors.DetachedContext(ctx), doors.ActionTime{}.Into(&now))
+//	<-ch
+//	err, ok := <-ch
 type ActionTime struct{}
 
-// Into returns an action for [Call] that stores the reading into dst. dst is
-// valid once the completion channel returned by Call delivers nil. In a batch
-// the channel delivers an error and dst is not written; see [Call].
+// Into returns an action for [Call] that stores the reading into dst. If you
+// need the result, wait for the second value on the channel; it only arrives
+// on a detached context, and dst is valid once it is nil. Otherwise dst is not
+// written. See [Call].
 func (a ActionTime) Into(dst *time.Time) Action {
 	return into(a, dst)
 }

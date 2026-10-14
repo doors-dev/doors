@@ -353,7 +353,7 @@ func (f *placementFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line placement_fragments.gox:172
 		__e = __c.Any(test.Button("pa-poke", func(ctx context.Context) bool {
-		f.l.track("poke", f.kid.Inner(ctx, "kid1"))
+		f.l.track("poke", f.kid.Inner(doors.DetachedContext(ctx), "kid1"))
 		return false
 	})); if __e != nil { return }
 //line placement_fragments.gox:176
@@ -374,17 +374,17 @@ func (f *placementFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line placement_fragments.gox:190
 		__e = __c.Any(test.Button("pb-poke", func(ctx context.Context) bool {
-		f.l.track("poke", f.x.Inner(ctx, "x1"))
+		f.l.track("poke", f.x.Inner(doors.DetachedContext(ctx), "x1"))
 		return false
 	})); if __e != nil { return }
 //line placement_fragments.gox:194
 		__e = __c.Any(test.Button("pb-swap", func(ctx context.Context) bool {
-		f.l.track("swap", f.q.Inner(ctx, f.leaf()))
+		f.l.track("swap", f.q.Inner(doors.DetachedContext(ctx), f.leaf()))
 		return false
 	})); if __e != nil { return }
 //line placement_fragments.gox:198
 		__e = __c.Any(test.Button("pb-leaf", func(ctx context.Context) bool {
-		f.l.track("leaf", f.y.Inner(ctx, "y1"))
+		f.l.track("leaf", f.y.Inner(doors.DetachedContext(ctx), "y1"))
 		return false
 	})); if __e != nil { return }
 //line placement_fragments.gox:202
@@ -400,7 +400,7 @@ func (f *placementFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line placement_fragments.gox:211
 		__e = __c.Any(test.Button("pc-poke", func(ctx context.Context) bool {
-		f.l.track("poke", f.mv.Inner(ctx, "mv1"))
+		f.l.track("poke", f.mv.Inner(doors.DetachedContext(ctx), "mv1"))
 		return false
 	})); if __e != nil { return }
 //line placement_fragments.gox:215

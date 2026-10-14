@@ -285,7 +285,8 @@ elem (f *emitterMultiFragment) Main() {
 	<div id="m2" (&f.e) (doors.A(ctx, f.hit(2)))>m2</div>
 	~(test.Button("emit-count", func(ctx context.Context) bool {
 		var count int
-		ch := doors.Call(ctx, f.e.Click(doors.PointerEmit{}).Into(&count))
+		ch := doors.Call(doors.DetachedContext(ctx), f.e.Click(doors.PointerEmit{}).Into(&count))
+		<-ch
 		select {
 		case err := <-ch:
 			if err != nil {
@@ -304,7 +305,8 @@ elem (f *emitterMultiFragment) Main() {
 func emitterCount(r *test.Reporter, slot int, action doors.ActionInto[int]) func(context.Context) bool {
 	return func(ctx context.Context) bool {
 		var count int
-		ch := doors.Call(ctx, action.Into(&count))
+		ch := doors.Call(doors.DetachedContext(ctx), action.Into(&count))
+		<-ch
 		select {
 		case err := <-ch:
 			if err != nil {

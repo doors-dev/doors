@@ -23,21 +23,22 @@ import (
 )
 
 type Frames struct {
-	sync  shredder.ReleaseFrame
-	init  shredder.Frame
-	after *shredder.AfterFrame
-	inst  string
-	group uint64
-	batch uint64
-	valve *shredder.ValveFrame
+	sync     shredder.ReleaseFrame
+	init     shredder.Frame
+	after    *shredder.AfterFrame
+	inst     string
+	group    uint64
+	batch    uint64
+	valve    *shredder.ValveFrame
+	detached bool
 }
 
 func (f Frames) Owner() bool {
 	return f.after != nil
 }
 
-func (f Frames) Guard() bool {
-	return f.valve != nil
+func (f Frames) Detached() bool {
+	return f.detached
 }
 
 func (f Frames) Group() uint64 {
@@ -172,7 +173,16 @@ func (c infectedContext) Value(key any) any {
 			return nil
 		}
 		owner, _ := c.target.Value(common.KeyCore).(interface{ InstanceID() string })
-		if owner != nil && fs.inst == owner.InstanceID() {
+		if owner == nil {
+			return Frames{sync: fs.sync, init: fs.init}
+		}
+		inst := fs.inst
+		if fs.detached {
+			if source, ok := c.source.Value(common.KeyCore).(interface{ InstanceID() string }); ok {
+				inst = source.InstanceID()
+			}
+		}
+		if inst == owner.InstanceID() {
 			return fs
 		}
 		return Frames{sync: fs.sync, init: fs.init}

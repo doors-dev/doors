@@ -121,7 +121,8 @@ func (f *setterFragment) Main() gox.Elem {
 //line setter.gox:68
 		__e = __c.Any(test.Button("xset", func(ctx context.Context) bool {
 		var count int
-		ch := doors.Call(ctx, f.s.Set("data-count", "x").Into(&count))
+		ch := doors.Call(doors.DetachedContext(ctx), f.s.Set("data-count", "x").Into(&count))
+		<-ch
 		select {
 		case err := <-ch:
 			if err != nil {
@@ -133,16 +134,16 @@ func (f *setterFragment) Main() gox.Elem {
 		}
 		return false
 	})); if __e != nil { return }
-//line setter.gox:82
+//line setter.gox:83
 		__e = __c.Any(test.Button("clear", func(ctx context.Context) bool {
 		f.n.Inner(ctx, nil)
 		return false
 	})); if __e != nil { return }
-//line setter.gox:86
+//line setter.gox:87
 		__e = __c.Any(test.Button("show", func(ctx context.Context) bool {
 		f.n.Inner(ctx, f.content())
 		return false
 	})); if __e != nil { return }
 	return })
-//line setter.gox:90
+//line setter.gox:91
 }

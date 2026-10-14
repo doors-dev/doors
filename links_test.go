@@ -258,8 +258,7 @@ func TestLinksTwoOnBatchInPlainHook(t *testing.T) {
 			b.Inner(ctx, textElem("b"))
 		})
 	})
-	h.waitEvent("first")
-	h.waitEvent("second")
+	h.waitEvents("first", "second")
 	links := linksExpect(h, from, "batch_init", "batch_init", "door_update", "door_update", "batch_flush", "batch_flush", "report hook")
 	report := linksNamed(t, links, "report hook", 1)[0]
 	if report.group == 0 || report.batch != 0 {
@@ -316,7 +315,7 @@ func TestLinksUserCallInBatchHook(t *testing.T) {
 	parent, child := &Door{}, &Door{}
 	pageCtx, _, from := linksPage(h, parent)
 	childCtx := make(chan context.Context, 1)
-	child.Inner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	child.Inner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		childCtx <- cur.Context()
 		return nil
 	}))
@@ -492,11 +491,11 @@ func TestLinksForeignInstanceUntagged(t *testing.T) {
 			t.Fatalf("expected %s of the foreign instance untagged, got batch %d", l.name, l.batch)
 		}
 	}
-	if vals := drainOp(t, foreignOp); len(vals) != 2 || vals[0] != nil || vals[1] != nil {
-		t.Fatalf("expected the foreign op to report scheduled and applied, got %v", vals)
+	if vals := drainOp(t, foreignOp); len(vals) != 1 || vals[0] != nil {
+		t.Fatalf("expected the foreign op to report scheduled only, got %v", vals)
 	}
 	if vals := drainOp(t, foreignCall); len(vals) != 1 || vals[0] != nil {
-		t.Fatalf("expected the foreign call to report its result, got %v", vals)
+		t.Fatalf("expected the foreign call to report scheduled only, got %v", vals)
 	}
 }
 

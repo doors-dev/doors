@@ -352,40 +352,40 @@ elem (f *MountedFragment) Main() {
 	<section id="area">~(&f.d)</section>
 	~(&f.sentinel)
 	~(test.Button("load", func(ctx context.Context) bool {
-		f.S.track("load", f.d.Inner(ctx, f.S.innerLoader("mounted")))
+		f.S.track("load", f.d.Inner(doors.DetachedContext(ctx), f.S.innerLoader("mounted")))
 		return false
 	}))
 	~(test.Button("load-gated", func(ctx context.Context) bool {
-		f.S.Probe("load gated", f.d.Inner(ctx, f.S.gatedLoader("gated")))
+		f.S.Probe("load gated", f.d.Inner(doors.DetachedContext(ctx), f.S.gatedLoader("gated")))
 		return false
 	}))
 	~(test.Button("skeleton-heavy", func(ctx context.Context) bool {
-		f.S.track("skeleton", f.d.Inner(ctx, f.S.skeleton("method")))
+		f.S.track("skeleton", f.d.Inner(doors.DetachedContext(ctx), f.S.skeleton("method")))
 		f.S.track("deferred method", f.d.DeferredInner(ctx, f.S.heavy("method")))
 		return false
 	}))
 	~(test.Button("newer-deferred", func(ctx context.Context) bool {
-		f.S.Probe("newer", f.d.DeferredInner(ctx, <span>newer</span>))
+		f.S.Probe("newer", f.d.DeferredInner(doors.DetachedContext(ctx), <span>newer</span>))
 		return false
 	}))
 	~(test.Button("plain-inner", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Inner(ctx, <span>plain</span>))
+		f.S.track("plain", f.d.Inner(doors.DetachedContext(ctx), <span>plain</span>))
 		return false
 	}))
 	~(test.Button("plain-outer", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Outer(ctx, <span>plain</span>))
+		f.S.track("plain", f.d.Outer(doors.DetachedContext(ctx), <span>plain</span>))
 		return false
 	}))
 	~(test.Button("plain-static", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Static(ctx, <span>plain</span>))
+		f.S.track("plain", f.d.Static(doors.DetachedContext(ctx), <span>plain</span>))
 		return false
 	}))
 	~(test.Button("plain-reload", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Reload(ctx))
+		f.S.track("plain", f.d.Reload(doors.DetachedContext(ctx)))
 		return false
 	}))
 	~(test.Button("plain-unmount", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Unmount(ctx))
+		f.S.track("plain", f.d.Unmount(doors.DetachedContext(ctx)))
 		return false
 	}))
 }
@@ -415,19 +415,19 @@ elem (f *ReloadFragment) Main() {
 	</section>
 	~(&f.sentinel)
 	~(test.Button("reload-blend", func(ctx context.Context) bool {
-		f.S.track("reload blend", f.blend.Reload(ctx))
+		f.S.track("reload blend", f.blend.Reload(doors.DetachedContext(ctx)))
 		return false
 	}))
 	~(test.Button("reload-outer", func(ctx context.Context) bool {
-		f.S.track("reload outer", f.outer.Reload(ctx))
+		f.S.track("reload outer", f.outer.Reload(doors.DetachedContext(ctx)))
 		return false
 	}))
 	~(test.Button("reload-inner", func(ctx context.Context) bool {
-		f.S.track("reload inner", f.inner.Reload(ctx))
+		f.S.track("reload inner", f.inner.Reload(doors.DetachedContext(ctx)))
 		return false
 	}))
 	~(test.Button("reload-plain", func(ctx context.Context) bool {
-		f.S.track("reload plain", f.plain.Reload(ctx))
+		f.S.track("reload plain", f.plain.Reload(doors.DetachedContext(ctx)))
 		return false
 	}))
 }

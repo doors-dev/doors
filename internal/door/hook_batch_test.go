@@ -131,11 +131,11 @@ func runPlainHook(t *testing.T, track uint64) ([]testLink, []any) {
 	}
 	inst.root.TriggerHook(hook.HookID, httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil), track)
 	ch := <-done
-	for i := range 2 {
+	for i, want := range []bool{true, false} {
 		select {
 		case err, ok := <-ch:
-			if err != nil || !ok {
-				t.Fatalf("expected a plain hook op to report step %d, got %v, %v", i, err, ok)
+			if err != nil || ok != want {
+				t.Fatalf("expected a plain hook op to report scheduled and close, got %v, %v at step %d", err, ok, i)
 			}
 		case <-time.After(2 * time.Second):
 			t.Fatal("timed out waiting on the completion channel")
@@ -162,7 +162,7 @@ func runPlainHook(t *testing.T, track uint64) ([]testLink, []any) {
 	}
 }
 
-// A plain tracked hook puts one group on its calls and its report, opens no batch and keeps full channels.
+// A plain tracked hook puts one group on its calls and its report, opens no batch and reports only scheduling on its channels.
 func TestHookGroup(t *testing.T) {
 	links, calls := runPlainHook(t, 7)
 	if _, ok := calls[0].(batchInit); ok {
@@ -248,7 +248,7 @@ func TestHookBatchChannels(t *testing.T) {
 	}
 }
 
-// A Door of another instance operated with a batch handler ctx gets no ids and no guard: its channel reports applied.
+// A Door of another instance operated with a batch handler ctx gets no ids, and its channel reports only scheduling.
 func TestForeignDoorWithBatchCtx(t *testing.T) {
 	inst := newTestInstance(t)
 	other := newTestInstance(t)
@@ -271,21 +271,36 @@ func TestForeignDoorWithBatchCtx(t *testing.T) {
 	}
 	inst.root.TriggerHook(hook.HookID, httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil), 7)
 	ch := <-foreign
-	for i := range 2 {
+	for i, want := range []bool{true, false} {
 		select {
 		case err, ok := <-ch:
-			if err != nil || !ok {
-				t.Fatalf("expected the foreign op to report step %d, got %v, %v", i, err, ok)
+			if err != nil || ok != want {
+				t.Fatalf("expected the foreign op to report scheduled and close, got %v, %v at step %d", err, ok, i)
 			}
 		case <-time.After(2 * time.Second):
 			t.Fatalf("timed out waiting for step %d of the foreign op", i)
 		}
 	}
+	waitIssued(t, other, len(before)+1)
 	links, _ := other.issuedCalls()
 	if len(links) != len(before)+1 {
 		t.Fatalf("expected one call on the other instance, got %d", len(links)-len(before))
 	}
 	if l := links[len(links)-1]; l.group != 0 || l.batch != 0 {
 		t.Fatalf("expected the foreign door call without ids, got %+v", l)
+	}
+}
+
+func waitIssued(t *testing.T, inst *testInstance, n int) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if links, _ := inst.issuedCalls(); len(links) >= n {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("expected %d issued calls", n)
+		}
+		time.Sleep(time.Millisecond)
 	}
 }

@@ -198,15 +198,23 @@ func requireNoStoreValue(t *testing.T, ch <-chan any) {
 	}
 }
 
+// A detached context is marked detached, also through a wrapper; a fake one and a plain context are not.
 func TestFreeHelpers(t *testing.T) {
 	base := context.Background()
-	if IsDetachedCtx(base) {
-		t.Fatal("expected base context to be non-free")
+	if GetFrames(base).Detached() {
+		t.Fatal("expected base context to be non-detached")
 	}
-
 	free := NewDetachedContext(base, base, false)
-	if !IsDetachedCtx(free) {
-		t.Fatal("expected free context flag")
+	if !GetFrames(free).Detached() {
+		t.Fatal("expected detached context flag")
+	}
+	timed, cancel := context.WithTimeout(free, time.Minute)
+	defer cancel()
+	if !GetFrames(timed).Detached() {
+		t.Fatal("expected a wrapper of a detached context to stay detached")
+	}
+	if GetFrames(NewDetachedContext(base, base, true)).Detached() {
+		t.Fatal("expected a fake detached context not to be detached")
 	}
 }
 
@@ -231,23 +239,24 @@ func (o testOwner) InstanceID() string {
 	return string(o)
 }
 
-// Owner means an after frame, Guard a batch valve; Settle keeps only the ids.
+// Owner means an after frame, a batch frame a batch valve; Settle keeps only the ids.
 func TestFramesMethods(t *testing.T) {
-	if fs := GetFrames(context.Background()); fs.Owner() || fs.Guard() || fs.Group() != 0 || fs.Batch() != 0 || !batchNone(fs) {
+	if fs := GetFrames(context.Background()); fs.Owner() || fs.Detached() || fs.Group() != 0 || fs.Batch() != 0 || !batchNone(fs) {
 		t.Fatal("expected empty frames in a base context")
 	}
 	scope, after := NewAfterFrame(context.Background(), "a", 5)
 	fs := GetFrames(scope)
-	if !fs.Owner() || fs.Guard() || fs.Group() != 5 || fs.Batch() != 0 || fs.Inst() != "a" || !batchNone(fs) {
+	if !fs.Owner() || fs.Detached() || fs.Group() != 5 || fs.Batch() != 0 || fs.Inst() != "a" || !batchNone(fs) {
 		t.Fatal("expected a scope to own work without a batch")
 	}
 	batched, valve := NewBatch(scope, 9)
 	fs = GetFrames(batched)
-	if !fs.Owner() || !fs.Guard() || fs.Group() != 5 || fs.Batch() != 9 || batchOf(fs) != valve || fs.Call() != after {
+	if !fs.Owner() || batchNone(fs) || fs.Group() != 5 || fs.Batch() != 9 || batchOf(fs) != valve || fs.Call() != after {
 		t.Fatal("expected a batch on the scope to keep its after frame and group")
 	}
+	fs.detached = true
 	settle := fs.Settle()
-	if settle.Owner() || settle.Guard() || settle.Group() != 5 || settle.Batch() != 9 || settle.Inst() != "a" || settle.sync != nil || settle.init != nil {
+	if settle.Owner() || settle.Detached() || !batchNone(settle) || settle.Group() != 5 || settle.Batch() != 9 || settle.Inst() != "a" || settle.sync != nil || settle.init != nil {
 		t.Fatal("expected settle frames to carry the ids only")
 	}
 }
@@ -260,18 +269,18 @@ func TestNewAfterFrameInheritsSyncOnly(t *testing.T) {
 	outer = SyncFrameInsert(outer, sync, sync)
 	inner, after := NewAfterFrame(outer, "a", 0)
 	fs := GetFrames(inner)
-	if fs.after != after || fs.Group() != 0 || fs.Batch() != 0 || fs.Guard() || fs.Inst() != "a" {
+	if fs.after != after || fs.Group() != 0 || fs.Batch() != 0 || !batchNone(fs) || fs.Inst() != "a" {
 		t.Fatal("expected a new scope to inherit no ids and no valve")
 	}
 	if fs.sync != sync || fs.init != sync {
 		t.Fatal("expected a new scope to keep the sync frames")
 	}
 	settled, _ := NewAfterFrame(NewDetachedContext(outer, outer, true), "a", 0)
-	if fs := GetFrames(settled); fs.Group() != 0 || fs.Batch() != 0 || fs.Guard() {
+	if fs := GetFrames(settled); fs.Group() != 0 || fs.Batch() != 0 || !batchNone(fs) {
 		t.Fatal("expected a new scope on a settle context to inherit no ids")
 	}
 	grouped, _ := NewAfterFrame(outer, "a", 7)
-	if fs := GetFrames(grouped); fs.Group() != 7 || fs.Batch() != 0 || fs.Guard() {
+	if fs := GetFrames(grouped); fs.Group() != 7 || fs.Batch() != 0 || !batchNone(fs) {
 		t.Fatal("expected a new scope to take the given group only")
 	}
 }
@@ -288,35 +297,34 @@ func TestNewBatchKeepsGroup(t *testing.T) {
 	if v1 == v2 || batchOf(f1) != v1 || batchOf(f2) != v2 || f1.Call() != after || f2.Call() != after {
 		t.Fatal("expected each batch to bring its own valve on the same after frame")
 	}
-	if fs := GetFrames(scope); fs.Batch() != 0 || fs.Guard() {
+	if fs := GetFrames(scope); fs.Batch() != 0 || !batchNone(fs) {
 		t.Fatal("expected a batch not to change the scope's context")
 	}
 }
 
-// A detached context carries the settle frames with preserve and nothing without it.
+// A fake detached context carries the settle frames and is not detached; a real one carries only the detached mark, which a new scope drops.
 func TestDetachedFrames(t *testing.T) {
 	scope, _ := NewAfterFrame(context.Background(), "a", 5)
 	batched, _ := NewBatch(scope, 6)
 	batched = SyncFrameInsert(batched, shredder.FreeFrame{}, shredder.FreeFrame{})
-	preserved := NewDetachedContext(batched, batched, true)
-	if !IsDetachedCtx(preserved) {
-		t.Fatal("expected the preserving context to stay detached")
-	}
-	if got := GetFrames(preserved); got != GetFrames(batched).Settle() {
+	fake := NewDetachedContext(batched, batched, true)
+	if got := GetFrames(fake); got != GetFrames(batched).Settle() || got.Detached() {
 		t.Fatalf("expected the settle frames of ctx, got %+v", got)
-	}
-	if preserved.Value(common.KeyFrame) == nil {
-		t.Fatal("expected a frame value with preserve")
-	}
-	if NewDetachedContext(batched, batched, false).Value(common.KeyFrame) != nil {
-		t.Fatal("expected no frame value without preserve")
 	}
 	if got := GetFrames(NewDetachedContext(context.Background(), context.Background(), true)); got != (Frames{}) {
 		t.Fatalf("expected empty frames from a plain context, got %+v", got)
 	}
+	detached := NewDetachedContext(batched, batched, false)
+	if got := GetFrames(detached); got != (Frames{detached: true}) {
+		t.Fatalf("expected only the detached mark, got %+v", got)
+	}
+	scoped, _ := NewAfterFrame(detached, "a", 0)
+	if GetFrames(scoped).Detached() {
+		t.Fatal("expected a new scope on a detached context not to be detached")
+	}
 }
 
-// Infecting a context of the same instance keeps the frames; another instance gets only the sync frames.
+// Infecting a context of the same instance keeps the frames, the detached mark included; another instance gets only the sync frames.
 func TestFrameInfect(t *testing.T) {
 	scope, after := NewAfterFrame(context.Background(), "a", 3)
 	batched, valve := NewBatch(scope, 7)
@@ -331,11 +339,18 @@ func TestFrameInfect(t *testing.T) {
 		t.Fatal("expected frame infect to preserve existing target values")
 	}
 	foreign := GetFrames(FrameInfect(batched, pageB))
-	if foreign.Owner() || foreign.Guard() || foreign.Group() != 0 || foreign.Batch() != 0 || foreign.Inst() != "" {
+	if foreign.Owner() || !batchNone(foreign) || foreign.Group() != 0 || foreign.Batch() != 0 || foreign.Inst() != "" {
 		t.Fatal("expected no after frame, ids or valve in a foreign instance")
 	}
 	if foreign.sync == nil || foreign.init == nil {
 		t.Fatal("expected the sync frames to cross instances")
+	}
+	detached := NewDetachedContext(pageA, pageA, false)
+	if !GetFrames(FrameInfect(detached, pageA)).Detached() {
+		t.Fatal("expected the detached mark to reach a context of the same instance")
+	}
+	if GetFrames(FrameInfect(detached, pageB)).Detached() {
+		t.Fatal("expected no detached mark in a foreign instance")
 	}
 	noFrame := FrameInfect(context.Background(), pageA)
 	if _, ok := GetFrames(noFrame).AfterFrame(); ok || noFrame.Value(common.KeyCore) != testOwner("a") {

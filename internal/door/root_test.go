@@ -264,6 +264,10 @@ func waitOps(t *testing.T, chs []<-chan error) {
 	}
 }
 
+func freeCtx() context.Context {
+	return ctex.NewDetachedContext(context.Background(), context.Background(), false)
+}
+
 func text(s string) gox.Elem {
 	return func(cur gox.Cursor) error {
 		return cur.Text(s)
@@ -283,7 +287,7 @@ func TestStaticReleasesParentPrinter(t *testing.T) {
 	doors := make([]*Door, 100)
 	for i := range doors {
 		doors[i] = &Door{}
-		doors[i].Inner(context.Background(), text("x"))
+		doors[i].Inner(freeCtx(), text("x"))
 	}
 	renderTestPage(t, inst, func(cur gox.Cursor) error {
 		for _, d := range doors {
@@ -295,7 +299,7 @@ func TestStaticReleasesParentPrinter(t *testing.T) {
 	})
 	var chs []<-chan error
 	for _, d := range doors {
-		chs = append(chs, d.Static(context.Background(), text("s")))
+		chs = append(chs, d.Static(freeCtx(), text("s")))
 	}
 	waitOps(t, chs)
 	if n := inst.root.tracker.printerCount(); n != 0 {
@@ -313,7 +317,7 @@ func TestStaticChainReleasesParentPrinter(t *testing.T) {
 	})
 	for range 100 {
 		next := &Door{}
-		waitOps(t, []<-chan error{tail.Static(context.Background(), func(cur gox.Cursor) error {
+		waitOps(t, []<-chan error{tail.Static(freeCtx(), func(cur gox.Cursor) error {
 			if err := cur.Text("item"); err != nil {
 				return err
 			}
@@ -353,22 +357,22 @@ func TestDocumentDoorsKeepNoUserCtx(t *testing.T) {
 	inst := newTestInstance(t)
 	plain := &Door{}
 	nested := &Door{}
-	nested.Inner(context.Background(), text("nested"))
-	plain.Inner(context.Background(), func(cur gox.Cursor) error {
+	nested.Inner(freeCtx(), text("nested"))
+	plain.Inner(freeCtx(), func(cur gox.Cursor) error {
 		return cur.Comp(nested)
 	})
 	inStatic := &Door{}
-	inStatic.Inner(context.Background(), text("in static"))
+	inStatic.Inner(freeCtx(), text("in static"))
 	static := &Door{}
-	static.Static(context.Background(), func(cur gox.Cursor) error {
+	static.Static(freeCtx(), func(cur gox.Cursor) error {
 		return cur.Comp(inStatic)
 	})
 	inSubmit := &Door{}
-	inSubmit.Inner(context.Background(), text("in submit"))
+	inSubmit.Inner(freeCtx(), text("in submit"))
 	staticInSubmit := &Door{}
-	staticInSubmit.Static(context.Background(), text("static in submit"))
+	staticInSubmit.Static(freeCtx(), text("static in submit"))
 	wrapped := &Door{}
-	wrapped.Inner(context.Background(), text("wrapped"))
+	wrapped.Inner(freeCtx(), text("wrapped"))
 	renderTestPage(t, inst, func(cur gox.Cursor) error {
 		for _, d := range []*Door{plain, static} {
 			if err := cur.Comp(d); err != nil {

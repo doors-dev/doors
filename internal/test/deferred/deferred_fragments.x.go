@@ -550,23 +550,23 @@ func (f *MountedFragment) Main() gox.Elem {
 		__e = __c.Any(&f.sentinel); if __e != nil { return }
 //line deferred_fragments.gox:354
 		__e = __c.Any(test.Button("load", func(ctx context.Context) bool {
-		f.S.track("load", f.d.Inner(ctx, f.S.innerLoader("mounted")))
+		f.S.track("load", f.d.Inner(doors.DetachedContext(ctx), f.S.innerLoader("mounted")))
 		return false
 	})); if __e != nil { return }
 //line deferred_fragments.gox:358
 		__e = __c.Any(test.Button("load-gated", func(ctx context.Context) bool {
-		f.S.Probe("load gated", f.d.Inner(ctx, f.S.gatedLoader("gated")))
+		f.S.Probe("load gated", f.d.Inner(doors.DetachedContext(ctx), f.S.gatedLoader("gated")))
 		return false
 	})); if __e != nil { return }
 //line deferred_fragments.gox:362
 		__e = __c.Any(test.Button("skeleton-heavy", func(ctx context.Context) bool {
-		f.S.track("skeleton", f.d.Inner(ctx, f.S.skeleton("method")))
+		f.S.track("skeleton", f.d.Inner(doors.DetachedContext(ctx), f.S.skeleton("method")))
 		f.S.track("deferred method", f.d.DeferredInner(ctx, f.S.heavy("method")))
 		return false
 	})); if __e != nil { return }
 //line deferred_fragments.gox:367
 		__e = __c.Any(test.Button("newer-deferred", func(ctx context.Context) bool {
-		f.S.Probe("newer", f.d.DeferredInner(ctx, gox.Elem(func(__c gox.Cursor) (__e error) {
+		f.S.Probe("newer", f.d.DeferredInner(doors.DetachedContext(ctx), gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("span"); if __e != nil { return }
 			{
@@ -580,7 +580,7 @@ func (f *MountedFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line deferred_fragments.gox:371
 		__e = __c.Any(test.Button("plain-inner", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Inner(ctx, gox.Elem(func(__c gox.Cursor) (__e error) {
+		f.S.track("plain", f.d.Inner(doors.DetachedContext(ctx), gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("span"); if __e != nil { return }
 			{
@@ -594,7 +594,7 @@ func (f *MountedFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line deferred_fragments.gox:375
 		__e = __c.Any(test.Button("plain-outer", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Outer(ctx, gox.Elem(func(__c gox.Cursor) (__e error) {
+		f.S.track("plain", f.d.Outer(doors.DetachedContext(ctx), gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("span"); if __e != nil { return }
 			{
@@ -608,7 +608,7 @@ func (f *MountedFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line deferred_fragments.gox:379
 		__e = __c.Any(test.Button("plain-static", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Static(ctx, gox.Elem(func(__c gox.Cursor) (__e error) {
+		f.S.track("plain", f.d.Static(doors.DetachedContext(ctx), gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("span"); if __e != nil { return }
 			{
@@ -622,12 +622,12 @@ func (f *MountedFragment) Main() gox.Elem {
 	})); if __e != nil { return }
 //line deferred_fragments.gox:383
 		__e = __c.Any(test.Button("plain-reload", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Reload(ctx))
+		f.S.track("plain", f.d.Reload(doors.DetachedContext(ctx)))
 		return false
 	})); if __e != nil { return }
 //line deferred_fragments.gox:387
 		__e = __c.Any(test.Button("plain-unmount", func(ctx context.Context) bool {
-		f.S.track("plain", f.d.Unmount(ctx))
+		f.S.track("plain", f.d.Unmount(doors.DetachedContext(ctx)))
 		return false
 	})); if __e != nil { return }
 	return })
@@ -714,22 +714,22 @@ func (f *ReloadFragment) Main() gox.Elem {
 		__e = __c.Any(&f.sentinel); if __e != nil { return }
 //line deferred_fragments.gox:417
 		__e = __c.Any(test.Button("reload-blend", func(ctx context.Context) bool {
-		f.S.track("reload blend", f.blend.Reload(ctx))
+		f.S.track("reload blend", f.blend.Reload(doors.DetachedContext(ctx)))
 		return false
 	})); if __e != nil { return }
 //line deferred_fragments.gox:421
 		__e = __c.Any(test.Button("reload-outer", func(ctx context.Context) bool {
-		f.S.track("reload outer", f.outer.Reload(ctx))
+		f.S.track("reload outer", f.outer.Reload(doors.DetachedContext(ctx)))
 		return false
 	})); if __e != nil { return }
 //line deferred_fragments.gox:425
 		__e = __c.Any(test.Button("reload-inner", func(ctx context.Context) bool {
-		f.S.track("reload inner", f.inner.Reload(ctx))
+		f.S.track("reload inner", f.inner.Reload(doors.DetachedContext(ctx)))
 		return false
 	})); if __e != nil { return }
 //line deferred_fragments.gox:429
 		__e = __c.Any(test.Button("reload-plain", func(ctx context.Context) bool {
-		f.S.track("reload plain", f.plain.Reload(ctx))
+		f.S.track("reload plain", f.plain.Reload(doors.DetachedContext(ctx)))
 		return false
 	})); if __e != nil { return }
 	return })

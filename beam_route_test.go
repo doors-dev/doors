@@ -2117,7 +2117,7 @@ func TestRouteDeriveNoMatchCache(t *testing.T) {
 
 func rtParent(content gox.Elem) *Door {
 	p := &Door{}
-	p.Inner(context.Background(), content)
+	p.Inner(freeCtx(), content)
 	return p
 }
 

@@ -31,9 +31,10 @@ type apiRead struct {
 }
 
 type apiGuard struct {
-	call apiRead
-	plainOk bool
-	inner apiRead
+	call []error
+	value string
+	plain []error
+	inner []error
 }
 
 type apiFragment struct {
@@ -67,10 +68,37 @@ func (f *apiFragment) apiHold(ctx context.Context) {
 	}
 }
 
+func callResult(ch <-chan error) (error, bool) {
+	err, ok := <-ch
+	if !ok || err != nil {
+		return err, ok
+	}
+	err, ok = <-ch
+	return err, ok
+}
+
+func drain(ch <-chan error) []error {
+	var got []error
+	for err := range ch {
+		got = append(got, err)
+	}
+	return got
+}
+
 func (f *apiFragment) apiRead(ctx context.Context) apiRead {
 	var v string
-	err, ok := <-doors.Call(ctx, doors.ActionEmit[string]{Name: "api_read"}.Into(&v))
+	err, ok := callResult(doors.Call(ctx, doors.ActionEmit[string]{Name: "api_read"}.Into(&v)))
 	return apiRead{value: v, err: err, ok: ok}
+}
+
+func (f *apiFragment) apiGuard(ctx context.Context) {
+	var v string
+	res := apiGuard{call: drain(doors.Call(ctx, doors.ActionEmit[string]{Name: "api_read"}.Into(&v)))}
+	res.value = v
+	res.plain = drain(doors.Call(ctx, doors.ActionScroll{Selector: "#a"}))
+	res.inner = drain(f.a.Inner(ctx, "a1"))
+	f.guard <- res
+	f.b.Inner(ctx, "b1")
 }
 
 func (f *apiFragment) apiOn(ctx context.Context) {
@@ -80,16 +108,16 @@ func (f *apiFragment) apiOn(ctx context.Context) {
 	}()
 }
 
-//line api_fragments.gox:80
+//line api_fragments.gox:108
 func (f *apiFragment) apiDelivered() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line api_fragments.gox:81
+//line api_fragments.gox:109
 		__e = (&f.s).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line api_fragments.gox:81
+//line api_fragments.gox:109
 				__e = __c.Set("id", "api-item"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("delivered"); if __e != nil { return }
@@ -97,14 +125,14 @@ func (f *apiFragment) apiDelivered() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
-//line api_fragments.gox:82
+//line api_fragments.gox:110
 }
 
-//line api_fragments.gox:84
+//line api_fragments.gox:112
 func (f *apiFragment) apiBatched(id string, on func(ctx context.Context)) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line api_fragments.gox:85
+//line api_fragments.gox:113
 		__e = (doors.AClick{
 		Batch: true,
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
@@ -115,52 +143,52 @@ func (f *apiFragment) apiBatched(id string, on func(ctx context.Context)) gox.El
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line api_fragments.gox:91
+//line api_fragments.gox:119
 				__e = __c.Set("id", id); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line api_fragments.gox:91
+//line api_fragments.gox:119
 				__e = __c.Any(id); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
-//line api_fragments.gox:92
+//line api_fragments.gox:120
 }
 
-//line api_fragments.gox:94
+//line api_fragments.gox:122
 func (f *apiFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line api_fragments.gox:95
+//line api_fragments.gox:123
 		__e = (f.a).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line api_fragments.gox:95
+//line api_fragments.gox:123
 				__e = __c.Set("id", "a"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("a0"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line api_fragments.gox:96
+//line api_fragments.gox:124
 		__e = (f.b).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line api_fragments.gox:96
+//line api_fragments.gox:124
 				__e = __c.Set("id", "b"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("b0"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line api_fragments.gox:97
+//line api_fragments.gox:125
 		__e = (f.d).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line api_fragments.gox:97
+//line api_fragments.gox:125
 				__e = __c.Set("id", "d"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("d0"); if __e != nil { return }
@@ -169,7 +197,7 @@ func (f *apiFragment) Main() gox.Elem {
 		return })); if __e != nil { return }
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line api_fragments.gox:98
+//line api_fragments.gox:126
 			__e = __c.Set("id", "api-seen"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("none"); if __e != nil { return }
@@ -181,7 +209,7 @@ func (f *apiFragment) Main() gox.Elem {
 			__e = __c.Raw("const text = (selector) =>\n\t\t\tdocument.querySelector(selector)?.textContent ?? \"missing\"\n\t\t$on(\"api_read\", () => text(\"#a\") + \"|\" + text(\"#b\"))\n\t\t$on(\"api_mark\", (selector) => {\n\t\t\tdocument.getElementById(\"api-seen\").textContent = text(selector)\n\t\t})\n\t\tdocument.documentElement.setAttribute(\"data-api-ready\", \"\")"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line api_fragments.gox:108
+//line api_fragments.gox:136
 		__e = __c.Any(doors.Go(func(ctx context.Context) {
 		select {
 		case <-f.start:
@@ -195,7 +223,7 @@ func (f *apiFragment) Main() gox.Elem {
 			f.b.Inner(ctx, "b1")
 		})
 	})); if __e != nil { return }
-//line api_fragments.gox:121
+//line api_fragments.gox:149
 		__e = __c.Any(test.Button("api-plain", func(ctx context.Context) bool {
 		doors.OnBatch(ctx, f.apiOn, func(ctx context.Context) {
 			f.a.Inner(ctx, "a1")
@@ -205,7 +233,7 @@ func (f *apiFragment) Main() gox.Elem {
 		})
 		return false
 	})); if __e != nil { return }
-//line api_fragments.gox:130
+//line api_fragments.gox:158
 		__e = __c.Any(f.apiBatched("api-join", func(ctx context.Context) {
 		doors.OnBatch(ctx, f.apiOn, func(ctx context.Context) {
 			f.a.Inner(ctx, "a1")
@@ -213,7 +241,7 @@ func (f *apiFragment) Main() gox.Elem {
 		f.apiHold(ctx)
 		f.b.Inner(ctx, "b1")
 	})); if __e != nil { return }
-//line api_fragments.gox:137
+//line api_fragments.gox:165
 		__e = __c.Any(f.apiBatched("api-settle", func(ctx context.Context) {
 		f.d.Inner(ctx, f.apiDelivered())
 		doors.OnSettle(ctx, func(ctx context.Context) {
@@ -222,28 +250,27 @@ func (f *apiFragment) Main() gox.Elem {
 		})
 		f.apiHold(ctx)
 	})); if __e != nil { return }
-//line api_fragments.gox:145
-		__e = __c.Any(f.apiBatched("api-guard", func(ctx context.Context) {
-		res := apiGuard{call: f.apiRead(ctx)}
-		_, res.plainOk = <-doors.Call(ctx, doors.ActionScroll{Selector: "#a"})
-		res.inner.err, res.inner.ok = <-f.a.Inner(ctx, "a1")
-		f.guard <- res
-		f.b.Inner(ctx, "b1")
+//line api_fragments.gox:173
+		__e = __c.Any(f.apiBatched("api-guard", f.apiGuard)); if __e != nil { return }
+//line api_fragments.gox:174
+		__e = __c.Any(test.Button("api-guard-plain", func(ctx context.Context) bool {
+		f.apiGuard(ctx)
+		return false
 	})); if __e != nil { return }
-//line api_fragments.gox:152
+//line api_fragments.gox:178
 		__e = __c.Any(f.apiBatched("api-detached", func(ctx context.Context) {
 		f.a.Inner(ctx, "a1")
 		f.seen <- f.apiRead(doors.DetachedContext(ctx))
 		f.apiHold(ctx)
 		f.b.Inner(ctx, "b1")
 	})); if __e != nil { return }
-//line api_fragments.gox:158
+//line api_fragments.gox:184
 		__e = __c.Any(f.apiBatched("api-held", func(ctx context.Context) {
 		doors.Call(ctx, doors.ActionScroll{Selector: "#a"})
 		var v string
 		ch := doors.Call(doors.DetachedContext(ctx), doors.ActionEmit[string]{Name: "api_read"}.Into(&v))
 		go func() {
-			err, ok := <-ch
+			err, ok := callResult(ch)
 			f.seen <- apiRead{value: v, err: err, ok: ok}
 		}()
 		f.apiHold(ctx)
@@ -251,7 +278,7 @@ func (f *apiFragment) Main() gox.Elem {
 		f.b.Inner(ctx, "b1")
 	})); if __e != nil { return }
 	return })
-//line api_fragments.gox:170
+//line api_fragments.gox:196
 }
 
 var _ gox.Comp = (*apiFragment)(nil)

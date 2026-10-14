@@ -27,15 +27,12 @@ import (
 
 // Reload rerenders the closest dynamic parent.
 //
-// The returned channel is optional to use and tracks completion. On success it
-// sends nil when the rerender is scheduled and nil again when it is applied to
-// the page, then closes. On failure it sends an error then closes. If ctx
-// belongs to the root page render, it sends an error and closes. In a batch
-// (a handler with Batch set, or [OnBatch]) it sends the scheduled nil then
-// closes.
-//
-// Never wait on the channel during rendering, in a hook, or in a subscription;
-// to wait, use your own goroutine with [DetachedContext] or [Go].
+// The returned channel is optional to use. It sends nil once the rerender is
+// scheduled, or an error if it fails before that, for example when ctx belongs
+// to the root page render. On a detached context ([DetachedContext], [Go]) a
+// second value reports the result: nil once applied to the page, or an error;
+// otherwise the channel closes once the rerender is scheduled. Never wait on
+// the channel during rendering or in a subscription.
 //
 // ctx must belong to a Doors render or handler; otherwise Reload panics.
 func Reload(ctx context.Context) <-chan error {
@@ -273,7 +270,7 @@ func IDNumber(ctx context.Context) uint64 {
 // It keeps the values of ctx and moves Doors ownership to the root of the
 // current instance, so subscriptions and hooks made with it survive rerenders
 // of the caller. It is safe to use from goroutines that wait on completion
-// channels.
+// channels, and those channels report the result as a second value.
 //
 // Unlike [DetachedContext], it outlives the current dynamic owner.
 func InstanceContext(ctx context.Context) context.Context {
@@ -289,7 +286,8 @@ func InstanceContext(ctx context.Context) context.Context {
 // render/update cycle and bounded by the lifetime of ctx.
 //
 // It keeps the values of ctx and the current Doors ownership. It is safe to use
-// from goroutines that wait on completion channels.
+// from goroutines that wait on completion channels, and those channels report
+// the result as a second value.
 //
 // Unlike [InstanceContext], work started with it is cleaned up with the current
 // dynamic owner.

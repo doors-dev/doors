@@ -28,9 +28,10 @@ type apiRead struct {
 }
 
 type apiGuard struct {
-	call apiRead
-	plainOk bool
-	inner apiRead
+	call []error
+	value string
+	plain []error
+	inner []error
 }
 
 type apiFragment struct {
@@ -64,10 +65,37 @@ func (f *apiFragment) apiHold(ctx context.Context) {
 	}
 }
 
+func callResult(ch <-chan error) (error, bool) {
+	err, ok := <-ch
+	if !ok || err != nil {
+		return err, ok
+	}
+	err, ok = <-ch
+	return err, ok
+}
+
+func drain(ch <-chan error) []error {
+	var got []error
+	for err := range ch {
+		got = append(got, err)
+	}
+	return got
+}
+
 func (f *apiFragment) apiRead(ctx context.Context) apiRead {
 	var v string
-	err, ok := <-doors.Call(ctx, doors.ActionEmit[string]{Name: "api_read"}.Into(&v))
+	err, ok := callResult(doors.Call(ctx, doors.ActionEmit[string]{Name: "api_read"}.Into(&v)))
 	return apiRead{value: v, err: err, ok: ok}
+}
+
+func (f *apiFragment) apiGuard(ctx context.Context) {
+	var v string
+	res := apiGuard{call: drain(doors.Call(ctx, doors.ActionEmit[string]{Name: "api_read"}.Into(&v)))}
+	res.value = v
+	res.plain = drain(doors.Call(ctx, doors.ActionScroll{Selector: "#a"}))
+	res.inner = drain(f.a.Inner(ctx, "a1"))
+	f.guard <- res
+	f.b.Inner(ctx, "b1")
 }
 
 func (f *apiFragment) apiOn(ctx context.Context) {
@@ -142,12 +170,10 @@ elem (f *apiFragment) Main() {
 		})
 		f.apiHold(ctx)
 	}))
-	~(f.apiBatched("api-guard", func(ctx context.Context) {
-		res := apiGuard{call: f.apiRead(ctx)}
-		_, res.plainOk = <-doors.Call(ctx, doors.ActionScroll{Selector: "#a"})
-		res.inner.err, res.inner.ok = <-f.a.Inner(ctx, "a1")
-		f.guard <- res
-		f.b.Inner(ctx, "b1")
+	~(f.apiBatched("api-guard", f.apiGuard))
+	~(test.Button("api-guard-plain", func(ctx context.Context) bool {
+		f.apiGuard(ctx)
+		return false
 	}))
 	~(f.apiBatched("api-detached", func(ctx context.Context) {
 		f.a.Inner(ctx, "a1")
@@ -160,7 +186,7 @@ elem (f *apiFragment) Main() {
 		var v string
 		ch := doors.Call(doors.DetachedContext(ctx), doors.ActionEmit[string]{Name: "api_read"}.Into(&v))
 		go func() {
-			err, ok := <-ch
+			err, ok := callResult(ch)
 			f.seen <- apiRead{value: v, err: err, ok: ok}
 		}()
 		f.apiHold(ctx)

@@ -250,6 +250,15 @@ func expectOpError(t *testing.T, name string, ch <-chan error, err error, prefix
 	}
 }
 
+// expectDeferred reads the only value of a deferred op started on a render
+// context, the scheduled nil, and waits until the client applied n calls.
+func expectDeferred(t *testing.T, h *lifecycleHarness, ch <-chan error, n int) {
+	t.Helper()
+	expectOp(t, "deferred", ch, nil)
+	h.waitApplied(n)
+	h.waitIdle()
+}
+
 // A fresh Door placed by a parent update defers from its loader: the parent
 // update carries the skeleton and a door_update with heavy follows it, never
 // before, even with a fast heavy and the client held.
@@ -258,17 +267,17 @@ func TestDeferredPlacedByParentUpdate(t *testing.T) {
 		h := newLifecycleHarness(t, 8)
 		chs := make(chan (<-chan error), 8)
 		p := &Door{}
-		p.Inner(context.Background(), textElem("P0"))
+		p.Inner(freeCtx(), textElem("P0"))
 		d := &Door{}
-		d.Inner(context.Background(), deferLoader(DeferredInner, textElem("HEAVY"), textElem("SKELETON"), chs))
+		d.Inner(freeCtx(), deferLoader(DeferredInner, textElem("HEAVY"), textElem("SKELETON"), chs))
 		h.renderPage(mountDoor(p))
 		h.client.hold()
-		pch := p.Inner(context.Background(), mountDoor(d))
+		pch := p.Inner(freeCtx(), mountDoor(d))
 		ch := recvOp(t, chs)
 		h.waitQueued(2)
 		h.client.release()
 		expectOp(t, "parent", pch, nil, nil)
-		expectOp(t, "deferred", ch, nil, nil)
+		expectDeferred(t, h, ch, 2)
 		got := h.client.actions()
 		expectActions(t, got, actionWant{"door_update", "SKELETON"}, actionWant{"door_update", "HEAVY"})
 		if strings.Contains(got[0].body, "HEAVY") || got[0].id == got[1].id {
@@ -288,14 +297,14 @@ func TestDeferredWaitsForParentCall(t *testing.T) {
 			chs := make(chan (<-chan error), 1)
 			p := &Door{}
 			d := &Door{}
-			p.Inner(context.Background(), textElem("P0"))
-			d.Inner(context.Background(), deferLoader(m.op, m.wrap(func(cur gox.Cursor) error {
+			p.Inner(freeCtx(), textElem("P0"))
+			d.Inner(freeCtx(), deferLoader(m.op, m.wrap(func(cur gox.Cursor) error {
 				h.events <- "heavy"
 				return cur.Text("HEAVY")
 			}), textElem("SKELETON"), chs))
 			h.renderPage(mountDoor(p))
 			g.shut()
-			pch := p.Inner(context.Background(), func(cur gox.Cursor) error {
+			pch := p.Inner(freeCtx(), func(cur gox.Cursor) error {
 				if err := cur.Comp(d); err != nil {
 					return err
 				}
@@ -307,7 +316,7 @@ func TestDeferredWaitsForParentCall(t *testing.T) {
 			g.open()
 			h.waitEvent("heavy")
 			expectOp(t, "parent", pch, nil, nil)
-			expectOp(t, "deferred", ch, nil, nil)
+			expectDeferred(t, h, ch, 2)
 			h.waitIdle()
 			got := h.client.actions()
 			expectActions(t, got, actionWant{"door_update", "SKELETON"}, m.final)
@@ -324,7 +333,7 @@ func TestDeferredFromPageRender(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	chs := make(chan (<-chan error), 8)
 	d := &Door{}
-	d.Inner(context.Background(), deferLoader(DeferredInner, textElem("HEAVY"), textElem("SKELETON"), chs))
+	d.Inner(freeCtx(), deferLoader(DeferredInner, textElem("HEAVY"), textElem("SKELETON"), chs))
 	_, html, err := h.renderPageHTML(mountDoor(d))
 	if err != nil {
 		t.Fatal(err)
@@ -332,7 +341,7 @@ func TestDeferredFromPageRender(t *testing.T) {
 	if !strings.Contains(html, "SKELETON") || strings.Contains(html, "HEAVY") {
 		t.Fatalf("expected the skeleton in the page, got %q", html)
 	}
-	expectOp(t, "deferred", recvOp(t, chs), nil, nil)
+	expectDeferred(t, h, recvOp(t, chs), 1)
 	h.waitIdle()
 	expectActions(t, h.client.actions(), actionWant{"door_update", "HEAVY"})
 }
@@ -349,15 +358,15 @@ func TestDeferredSkeletonSentOrQueued(t *testing.T) {
 			g := newHeavyGate(t)
 			chs := make(chan (<-chan error), 8)
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			h.renderPage(mountDoor(d))
 			g.shut()
-			ch1 := d.Inner(context.Background(), deferLoader(m.op, m.wrap(g.elem("HEAVY")), textElem("SKELETON"), chs))
+			ch1 := d.Inner(freeCtx(), deferLoader(m.op, m.wrap(g.elem("HEAVY")), textElem("SKELETON"), chs))
 			expectOp(t, "loader", ch1, nil, nil)
 			ch2 := recvOp(t, chs)
 			g.waitEntered(t)
 			g.open()
-			expectOp(t, "deferred", ch2, nil, nil)
+			expectDeferred(t, h, ch2, 2)
 			h.waitIdle()
 			got := h.client.actions()
 			expectActions(t, got, actionWant{"door_update", "SKELETON"}, m.final)
@@ -370,12 +379,12 @@ func TestDeferredSkeletonSentOrQueued(t *testing.T) {
 			g := newHeavyGate(t)
 			chs := make(chan (<-chan error), 8)
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			h.renderPage(mountDoor(d))
 			h.client.hold()
 			g.shut()
 			proceed := make(chan struct{})
-			ch1 := d.Inner(context.Background(), func(cur gox.Cursor) error {
+			ch1 := d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				chs <- m.op(cur.Context(), m.wrap(g.elem("HEAVY")))
 				<-proceed
 				return cur.Text("SKELETON")
@@ -391,7 +400,7 @@ func TestDeferredSkeletonSentOrQueued(t *testing.T) {
 			h.waitQueued(2)
 			h.client.release()
 			expectOp(t, "loader", ch1, context.Canceled)
-			expectOp(t, "deferred", ch2, nil)
+			expectOp(t, "deferred", ch2)
 			h.waitIdle()
 			expectActions(t, h.client.actions(), m.final)
 		})
@@ -407,15 +416,15 @@ func TestDeferredInnerOverOuterKeepsSkeleton(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			chs := make(chan (<-chan error), 8)
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			h.renderPage(mountDoor(d))
 			h.client.hold()
-			ch1 := d.Outer(context.Background(), deferLoader(DeferredInner, textElem("HEAVY"), tagElem("section", "box", textElem("SKELETON")), chs))
+			ch1 := d.Outer(freeCtx(), deferLoader(DeferredInner, textElem("HEAVY"), tagElem("section", "box", textElem("SKELETON")), chs))
 			ch2 := recvOp(t, chs)
 			h.waitQueued(2)
 			h.client.release()
 			expectOp(t, "outer", ch1, nil, nil)
-			expectOp(t, "deferred", ch2, nil, nil)
+			expectDeferred(t, h, ch2, 2)
 			got := h.client.actions()
 			expectActions(t, got, actionWant{"door_replace", "SKELETON"}, actionWant{"door_update", "HEAVY"})
 			if !strings.Contains(got[0].body, `id="box"`) || got[0].id != got[1].id {
@@ -440,7 +449,7 @@ func TestDeferredInnerOverOuterKeepsSkeleton(t *testing.T) {
 			h.waitQueued(2)
 			h.client.release()
 			expectOp(t, "update", uch, nil)
-			expectOp(t, "deferred", ch2, nil, nil)
+			expectDeferred(t, h, ch2, 2)
 			h.waitIdle()
 			got := h.client.actions()
 			expectActions(t, got, actionWant{"door_replace", "SKELETON"}, actionWant{"door_update", "HEAVY"})
@@ -464,12 +473,12 @@ func TestDeferredInnerOverOuterKeepsSkeleton(t *testing.T) {
 				t.Fatalf("expected heavy inline in the page, got %q", html)
 			}
 			h.client.hold()
-			rch := d.Reload(context.Background())
+			rch := d.Reload(freeCtx())
 			ch2 := recvOp(t, chs)
 			h.waitQueued(2)
 			h.client.release()
 			expectOp(t, "reload", rch, nil, nil)
-			expectOp(t, "deferred", ch2, nil, nil)
+			expectDeferred(t, h, ch2, 2)
 			got := h.client.actions()
 			expectActions(t, got, actionWant{"door_replace", "SKELETON"}, actionWant{"door_update", "HEAVY"})
 			if !strings.Contains(got[0].body, `id="px"`) || got[0].id != got[1].id {
@@ -485,13 +494,13 @@ func TestDeferredOuterLiveContainer(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	chs := make(chan (<-chan error), 8)
 	d := &Door{}
-	d.Inner(context.Background(), textElem("V0"))
+	d.Inner(freeCtx(), textElem("V0"))
 	h.renderPage(mountDoor(d))
-	ch1 := d.Inner(context.Background(), deferLoader(DeferredOuter, tagElem("section", "heavy-outer", textElem("HEAVY")), textElem("SKELETON"), chs))
+	ch1 := d.Inner(freeCtx(), deferLoader(DeferredOuter, tagElem("section", "heavy-outer", textElem("HEAVY")), textElem("SKELETON"), chs))
 	expectScheduled(t, "loader", ch1)
 	drainOp(t, ch1)
-	expectOp(t, "deferred", recvOp(t, chs), nil, nil)
-	expectOp(t, "after", d.Inner(context.Background(), textElem("AFTER")), nil, nil)
+	expectDeferred(t, h, recvOp(t, chs), 1)
+	expectOp(t, "after", d.Inner(freeCtx(), textElem("AFTER")), nil, nil)
 	h.waitIdle()
 	got := h.client.actions()
 	if len(got) < 2 {
@@ -514,22 +523,22 @@ func TestDeferredStaticLaterOpsStoreState(t *testing.T) {
 	pctxs := make(chan context.Context, 8)
 	p := &Door{}
 	d := &Door{}
-	d.Inner(context.Background(), textElem("V0"))
-	p.Inner(context.Background(), func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), textElem("V0"))
+	p.Inner(freeCtx(), func(cur gox.Cursor) error {
 		pctxs <- cur.Context()
 		return cur.Comp(d)
 	})
 	h.renderPage(mountDoor(p))
 	pctx := <-pctxs
 	g.shut()
-	ch1 := d.Inner(context.Background(), deferLoader(DeferredStatic, tagElem("section", "heavy-static", g.elem("HEAVY")), textElem("SKELETON"), chs))
+	ch1 := d.Inner(freeCtx(), deferLoader(DeferredStatic, tagElem("section", "heavy-static", g.elem("HEAVY")), textElem("SKELETON"), chs))
 	expectOp(t, "loader", ch1, nil, nil)
 	ch2 := recvOp(t, chs)
 	g.waitEntered(t)
 	callCh := Call(DetachedContext(pctx), ActionScroll{Selector: "#parent-call"})
 	g.open()
-	expectOp(t, "deferred", ch2, nil, nil)
-	expectOp(t, "parent call", callCh, nil)
+	expectDeferred(t, h, ch2, 2)
+	expectOp(t, "parent call", callCh, nil, nil)
 	h.waitIdle()
 	got := h.client.actions()
 	expectActions(t, got,
@@ -540,14 +549,14 @@ func TestDeferredStaticLaterOpsStoreState(t *testing.T) {
 	if got[1].id != got[0].id {
 		t.Fatalf("expected the static replace on the Door, got %+v", got)
 	}
-	expectOp(t, "inner on static", d.Inner(context.Background(), textElem("STORED")))
-	expectOp(t, "reload on static", d.Reload(context.Background()))
-	expectOp(t, "unmount on static", d.Unmount(context.Background()))
+	expectOp(t, "inner on static", d.Inner(freeCtx(), textElem("STORED")))
+	expectOp(t, "reload on static", d.Reload(freeCtx()))
+	expectOp(t, "unmount on static", d.Unmount(freeCtx()))
 	h.waitIdle()
 	if n := len(h.client.actions()); n != len(got) {
 		t.Fatalf("expected no calls from ops on a static Door, got %+v", h.client.actions())
 	}
-	expectOp(t, "parent reload", p.Reload(context.Background()), nil, nil)
+	expectOp(t, "parent reload", p.Reload(freeCtx()), nil, nil)
 	h.waitIdle()
 	all := h.client.actions()
 	last := all[len(all)-1]
@@ -594,10 +603,10 @@ func TestDeferredSupersededWhileRendering(t *testing.T) {
 				g := newHeavyGate(t)
 				chs := make(chan (<-chan error), 8)
 				d := &Door{}
-				d.Inner(context.Background(), textElem("V0"))
+				d.Inner(freeCtx(), textElem("V0"))
 				h.renderPage(mountDoor(d))
 				g.shut()
-				ch1 := d.Inner(context.Background(), func(cur gox.Cursor) error {
+				ch1 := d.Inner(freeCtx(), func(cur gox.Cursor) error {
 					OnClean(cur.Context(), func() { h.events <- "clean-skeleton" })
 					chs <- m.op(cur.Context(), m.wrap(g.elem("HEAVY")))
 					return cur.Text("SKELETON")
@@ -605,7 +614,7 @@ func TestDeferredSupersededWhileRendering(t *testing.T) {
 				expectOp(t, "loader", ch1, nil, nil)
 				ch2 := recvOp(t, chs)
 				g.waitEntered(t)
-				nch := c.op(d, context.Background())
+				nch := c.op(d, freeCtx())
 				want := []actionWant{{"door_update", "SKELETON"}}
 				kept := m.name == "outer" && c.keeps
 				switch {
@@ -614,7 +623,7 @@ func TestDeferredSupersededWhileRendering(t *testing.T) {
 					h.expectNoEvent(50 * time.Millisecond)
 					g.open()
 					h.waitEvent("clean-skeleton")
-					expectOp(t, "deferred", ch2, nil, nil)
+					expectDeferred(t, h, ch2, 1)
 					want = append(want, m.final)
 				case c.deferred || kept:
 					h.expectNoEvent(50 * time.Millisecond)
@@ -625,10 +634,10 @@ func TestDeferredSupersededWhileRendering(t *testing.T) {
 					h.client.release()
 					expectOp(t, c.name, nch, nil, nil)
 					if kept {
-						expectOp(t, "deferred", ch2, nil, nil)
+						expectOp(t, "deferred", ch2, nil)
 						want = append(want, m.final, c.final)
 					} else {
-						expectOp(t, "deferred", ch2, nil, context.Canceled)
+						expectOp(t, "deferred", ch2, nil)
 						want = append(want, c.final)
 					}
 				default:
@@ -684,17 +693,17 @@ func TestDeferredChain(t *testing.T) {
 			g1 := newHeavyGate(t)
 			g2 := newHeavyGate(t)
 			d := &Door{}
-			d.Inner(context.Background(), func(cur gox.Cursor) error {
+			d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				OnClean(cur.Context(), func() { h.events <- "clean-old" })
 				return cur.Text("OLD")
 			})
 			h.renderPage(mountDoor(d))
 			g1.shut()
 			g2.shut()
-			ch1 := d.DeferredInner(context.Background(), g1.elem("H1"))
+			ch1 := d.DeferredInner(freeCtx(), g1.elem("H1"))
 			g1.waitEntered(t)
-			ch2 := c.second(d, context.Background(), c.wrap2(g2.elem("H2")))
-			ch3 := c.third(d, context.Background(), c.wrap3(func(cur gox.Cursor) error {
+			ch2 := c.second(d, freeCtx(), c.wrap2(g2.elem("H2")))
+			ch3 := c.third(d, freeCtx(), c.wrap3(func(cur gox.Cursor) error {
 				h.events <- "h3-start"
 				return cur.Text("H3")
 			}))
@@ -740,13 +749,13 @@ func TestDeferredWaitsForPendingPlainOp(t *testing.T) {
 		h := newLifecycleHarness(t, 8)
 		g := newHeavyGate(t)
 		d := &Door{}
-		d.Inner(context.Background(), textElem("V0"))
+		d.Inner(freeCtx(), textElem("V0"))
 		h.renderPage(mountDoor(d))
 		g.shut()
-		och := d.Outer(context.Background(), tagElem("section", "o1", g.elem("OUTER")))
+		och := d.Outer(freeCtx(), tagElem("section", "o1", g.elem("OUTER")))
 		g.waitEntered(t)
-		ich := d.Inner(context.Background(), textElem("SKEL"))
-		dch := d.DeferredInner(context.Background(), heavy(h))
+		ich := d.Inner(freeCtx(), textElem("SKEL"))
+		dch := d.DeferredInner(freeCtx(), heavy(h))
 		h.expectNoEvent(50 * time.Millisecond)
 		h.client.hold()
 		g.open()
@@ -765,16 +774,16 @@ func TestDeferredWaitsForPendingPlainOp(t *testing.T) {
 		g := newHeavyGate(t)
 		p := &Door{}
 		d := &Door{}
-		p.Inner(context.Background(), textElem("P0"))
+		p.Inner(freeCtx(), textElem("P0"))
 		h.renderPage(mountDoor(p))
 		h.client.hold()
 		place.shut()
 		g.shut()
-		d.Inner(context.Background(), place.elem("PLACED"))
-		pch := p.Inner(context.Background(), mountDoor(d))
+		d.Inner(freeCtx(), place.elem("PLACED"))
+		pch := p.Inner(freeCtx(), mountDoor(d))
 		place.waitEntered(t)
-		och := d.Outer(context.Background(), tagElem("section", "o1", g.elem("OUTER")))
-		dch := d.DeferredInner(context.Background(), heavy(h))
+		och := d.Outer(freeCtx(), tagElem("section", "o1", g.elem("OUTER")))
+		dch := d.DeferredInner(freeCtx(), heavy(h))
 		place.open()
 		g.waitEntered(t)
 		h.expectNoEvent(50 * time.Millisecond)
@@ -801,14 +810,14 @@ func TestDeferredKeepsChildPlacedByBoth(t *testing.T) {
 			chs := make(chan (<-chan error), 1)
 			var renders atomic.Int32
 			c := &Door{}
-			c.Inner(context.Background(), func(cur gox.Cursor) error {
+			c.Inner(freeCtx(), func(cur gox.Cursor) error {
 				if renders.Add(1) == 1 {
 					OnClean(cur.Context(), func() { h.events <- "clean-child" })
 				}
 				return cur.Text("CHILD")
 			})
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			h.renderPage(mountDoor(d))
 			g.shut()
 			heavy := m.wrap(func(cur gox.Cursor) error {
@@ -817,7 +826,7 @@ func TestDeferredKeepsChildPlacedByBoth(t *testing.T) {
 				}
 				return g.elem("HEAVY")(cur)
 			})
-			ch1 := d.Inner(context.Background(), func(cur gox.Cursor) error {
+			ch1 := d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				chs <- m.op(cur.Context(), heavy)
 				if err := cur.Text("SKELETON"); err != nil {
 					return err
@@ -831,7 +840,7 @@ func TestDeferredKeepsChildPlacedByBoth(t *testing.T) {
 			expectActions(t, h.client.actions(), actionWant{"door_update", "SKELETON"})
 			g.open()
 			h.waitEvent("clean-child")
-			expectOp(t, "deferred", ch2, nil, nil)
+			expectDeferred(t, h, ch2, 2)
 			h.waitIdle()
 			expectActions(t, h.client.actions(), actionWant{"door_update", "SKELETON"}, m.final)
 		})
@@ -867,19 +876,19 @@ func TestDeferredInnerOnPendingOuterSuperseded(t *testing.T) {
 				h := newLifecycleHarness(t, 8)
 				g := newHeavyGate(t)
 				d := &Door{}
-				d.Inner(context.Background(), textElem("V0"))
+				d.Inner(freeCtx(), textElem("V0"))
 				h.renderPage(mountDoor(d))
 				g.shut()
 				ctxs := make(chan context.Context, 1)
-				ch0 := d.Inner(context.Background(), func(cur gox.Cursor) error {
+				ch0 := d.Inner(freeCtx(), func(cur gox.Cursor) error {
 					ctxs <- cur.Context()
 					return g.elem("OLD")(cur)
 				})
 				g.waitEntered(t)
 				old := <-ctxs
-				ch1 := d.DeferredOuter(context.Background(), tagElem("section", "h1", textElem("H1")))
-				ch2 := mid.op(d, context.Background(), textElem("H2"))
-				nch := c.op(d, context.Background())
+				ch1 := d.DeferredOuter(freeCtx(), tagElem("section", "h1", textElem("H1")))
+				ch2 := mid.op(d, freeCtx(), textElem("H2"))
+				nch := c.op(d, freeCtx())
 				select {
 				case <-old.Done():
 				case <-time.After(5 * time.Second):
@@ -909,20 +918,20 @@ func TestDeferredInnerOverOuterSuperseded(t *testing.T) {
 		}
 		newer := func(d *Door, content gox.Elem) <-chan error {
 			if reload {
-				return d.Reload(context.Background())
+				return d.Reload(freeCtx())
 			}
-			return d.Inner(context.Background(), content)
+			return d.Inner(freeCtx(), content)
 		}
 		t.Run(name+"/outer rendering", func(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			g := newHeavyGate(t)
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			h.renderPage(mountDoor(d))
 			g.shut()
-			och := d.Outer(context.Background(), tagElem("section", "box", g.elem("OUTER")))
+			och := d.Outer(freeCtx(), tagElem("section", "box", g.elem("OUTER")))
 			g.waitEntered(t)
-			dch := d.DeferredInner(context.Background(), textElem("DEFERRED"))
+			dch := d.DeferredInner(freeCtx(), textElem("DEFERRED"))
 			nch := newer(d, textElem("NEWER"))
 			g.open()
 			expectOp(t, "outer", och, nil, nil)
@@ -940,15 +949,15 @@ func TestDeferredInnerOverOuterSuperseded(t *testing.T) {
 			g := newHeavyGate(t)
 			var renders atomic.Int32
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			h.renderPage(mountDoor(d))
-			och := d.Outer(context.Background(), tagElem("section", "box", func(cur gox.Cursor) error {
+			och := d.Outer(freeCtx(), tagElem("section", "box", func(cur gox.Cursor) error {
 				OnClean(cur.Context(), func() { h.events <- "clean-outer" })
 				return cur.Text("OUTER")
 			}))
 			expectOp(t, "outer", och, nil, nil)
 			g.shut()
-			dch := d.DeferredInner(context.Background(), func(cur gox.Cursor) error {
+			dch := d.DeferredInner(freeCtx(), func(cur gox.Cursor) error {
 				if renders.Add(1) == 1 {
 					return g.elem("HEAVY")(cur)
 				}
@@ -983,19 +992,19 @@ func TestDeferredPendingChainSuperseded(t *testing.T) {
 	type op = func(d *Door) <-chan error
 	chain := func(ops ...op) []op { return ops }
 	inner := func(text string) op {
-		return func(d *Door) <-chan error { return d.DeferredInner(context.Background(), textElem(text)) }
+		return func(d *Door) <-chan error { return d.DeferredInner(freeCtx(), textElem(text)) }
 	}
 	outer := func(id string) op {
 		return func(d *Door) <-chan error {
-			return d.DeferredOuter(context.Background(), tagElem("section", id, textElem(id)))
+			return d.DeferredOuter(freeCtx(), tagElem("section", id, textElem(id)))
 		}
 	}
-	reload := func(d *Door) <-chan error { return d.Reload(context.Background()) }
-	newInner := func(d *Door) <-chan error { return d.Inner(context.Background(), textElem("NEWER")) }
+	reload := func(d *Door) <-chan error { return d.Reload(freeCtx()) }
+	newInner := func(d *Door) <-chan error { return d.Inner(freeCtx(), textElem("NEWER")) }
 	newOuter := func(d *Door) <-chan error {
-		return d.Outer(context.Background(), tagElem("section", "newer-outer", textElem("NEWER")))
+		return d.Outer(freeCtx(), tagElem("section", "newer-outer", textElem("NEWER")))
 	}
-	newStatic := func(d *Door) <-chan error { return d.Static(context.Background(), textElem("NEWER")) }
+	newStatic := func(d *Door) <-chan error { return d.Static(freeCtx(), textElem("NEWER")) }
 	cases := []struct {
 		name  string
 		chain []op
@@ -1015,11 +1024,11 @@ func TestDeferredPendingChainSuperseded(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			g := newHeavyGate(t)
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			h.renderPage(mountDoor(d))
 			g.shut()
 			ctxs := make(chan context.Context, 1)
-			ch0 := d.Inner(context.Background(), func(cur gox.Cursor) error {
+			ch0 := d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				ctxs <- cur.Context()
 				return g.elem("OLD")(cur)
 			})
@@ -1063,11 +1072,11 @@ func TestDeferredTargetReplacedByParent(t *testing.T) {
 				chs := make(chan (<-chan error), 8)
 				p := &Door{}
 				d := &Door{}
-				d.Inner(context.Background(), textElem("V0"))
-				p.Inner(context.Background(), mountDoor(d))
+				d.Inner(freeCtx(), textElem("V0"))
+				p.Inner(freeCtx(), mountDoor(d))
 				h.renderPage(mountDoor(p))
 				g.shut()
-				ch1 := d.Inner(context.Background(), func(cur gox.Cursor) error {
+				ch1 := d.Inner(freeCtx(), func(cur gox.Cursor) error {
 					OnClean(cur.Context(), func() { h.events <- "clean-skeleton" })
 					chs <- m.op(cur.Context(), m.wrap(g.elem("HEAVY")))
 					return cur.Text("SKELETON")
@@ -1077,9 +1086,9 @@ func TestDeferredTargetReplacedByParent(t *testing.T) {
 				g.waitEntered(t)
 				var pch <-chan error
 				if reload {
-					pch = p.Reload(context.Background())
+					pch = p.Reload(freeCtx())
 				} else {
-					pch = p.Inner(context.Background(), textElem("P1"))
+					pch = p.Inner(freeCtx(), textElem("P1"))
 				}
 				h.waitEvent("clean-skeleton")
 				g.open()
@@ -1116,9 +1125,9 @@ func TestDeferredOuterTargetMoved(t *testing.T) {
 			p := &Door{}
 			q := &Door{}
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
-			p.Inner(context.Background(), mountDoor(d))
-			q.Inner(context.Background(), textElem("Q0"))
+			d.Inner(freeCtx(), textElem("V0"))
+			p.Inner(freeCtx(), mountDoor(d))
+			q.Inner(freeCtx(), textElem("Q0"))
 			h.renderPage(func(cur gox.Cursor) error {
 				if err := cur.Comp(p); err != nil {
 					return err
@@ -1126,7 +1135,7 @@ func TestDeferredOuterTargetMoved(t *testing.T) {
 				return cur.Comp(q)
 			})
 			g.shut()
-			ch0 := d.Inner(context.Background(), func(cur gox.Cursor) error {
+			ch0 := d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				ctxs <- cur.Context()
 				if rendering {
 					return cur.Text("OLD")
@@ -1141,7 +1150,7 @@ func TestDeferredOuterTargetMoved(t *testing.T) {
 			} else {
 				g.waitEntered(t)
 			}
-			ch1 := d.DeferredOuter(context.Background(), tagElem("section", "moved", func(cur gox.Cursor) error {
+			ch1 := d.DeferredOuter(freeCtx(), tagElem("section", "moved", func(cur gox.Cursor) error {
 				if rendering && renders.Add(1) == 1 {
 					return g.elem("HEAVY")(cur)
 				}
@@ -1151,7 +1160,7 @@ func TestDeferredOuterTargetMoved(t *testing.T) {
 				g.waitEntered(t)
 			}
 			h.client.hold()
-			qch := q.Inner(context.Background(), mountDoor(d))
+			qch := q.Inner(freeCtx(), mountDoor(d))
 			select {
 			case <-old.Done():
 			case <-time.After(5 * time.Second):
@@ -1185,10 +1194,10 @@ func TestDeferredPackageFuncLostCAS(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			ctxs := make(chan context.Context, 8)
 			d := &Door{}
-			d.Inner(context.Background(), contentCtxElem(ctxs, "V0"))
+			d.Inner(freeCtx(), contentCtxElem(ctxs, "V0"))
 			h.renderPage(mountDoor(d))
 			dctx := <-ctxs
-			ich := d.Inner(context.Background(), textElem("V1"))
+			ich := d.Inner(freeCtx(), textElem("V1"))
 			expectOp(t, "deferred", op(dctx, textElem("LATE")), context.Canceled)
 			expectOp(t, "inner", ich, nil, nil)
 			h.waitIdle()
@@ -1244,13 +1253,13 @@ func TestDeferredPackageFuncUnmountedTarget(t *testing.T) {
 			ctxs := make(chan context.Context, 8)
 			p := &Door{}
 			d := &Door{}
-			d.Inner(context.Background(), contentCtxElem(ctxs, "V0"))
-			p.Inner(context.Background(), mountDoor(d))
+			d.Inner(freeCtx(), contentCtxElem(ctxs, "V0"))
+			p.Inner(freeCtx(), mountDoor(d))
 			h.renderPage(mountDoor(p))
 			dctx := <-ctxs
-			expectOp(t, "parent away", p.Inner(context.Background(), textElem("P1")), nil, nil)
+			expectOp(t, "parent away", p.Inner(freeCtx(), textElem("P1")), nil, nil)
 			expectOp(t, "deferred", c.op(dctx, c.content))
-			expectOp(t, "parent back", p.Inner(context.Background(), mountDoor(d)), nil, nil)
+			expectOp(t, "parent back", p.Inner(freeCtx(), mountDoor(d)), nil, nil)
 			h.waitIdle()
 			got := h.client.actions()
 			expectActions(t, got, actionWant{"door_update", "P1"}, actionWant{"door_update", "STORED"})
@@ -1291,9 +1300,9 @@ func TestDeferredPackageFuncContainerContext(t *testing.T) {
 					return cur.Close()
 				})
 			})
-			expectOp(t, "deferred", m.op(<-ctxs, m.wrap(textElem("HEAVY"))), nil, nil)
+			expectDeferred(t, h, m.op(<-ctxs, m.wrap(textElem("HEAVY"))), 1)
 			want := []actionWant{m.final}
-			after := d.Inner(context.Background(), textElem("AFTER"))
+			after := d.Inner(freeCtx(), textElem("AFTER"))
 			if m.name == "static" {
 				expectOp(t, "after", after)
 			} else {
@@ -1328,7 +1337,7 @@ func TestDeferredDoorMethodsKeepOldContent(t *testing.T) {
 			ctxs := make(chan context.Context, 8)
 			var cleaned atomic.Bool
 			d := &Door{}
-			d.Inner(context.Background(), func(cur gox.Cursor) error {
+			d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				ctxs <- cur.Context()
 				OnClean(cur.Context(), func() {
 					cleaned.Store(true)
@@ -1339,7 +1348,7 @@ func TestDeferredDoorMethodsKeepOldContent(t *testing.T) {
 			h.renderPage(mountDoor(d))
 			oldCtx := <-ctxs
 			g.shut()
-			ch := c.op(d, context.Background(), c.heavy(g))
+			ch := c.op(d, freeCtx(), c.heavy(g))
 			g.waitEntered(t)
 			if c.deferred {
 				if oldCtx.Err() != nil || cleaned.Load() {
@@ -1374,14 +1383,14 @@ func TestDeferredSkeletonAliveDuringHeavy(t *testing.T) {
 	}{
 		{"inner", actionWant{"door_update", "SKELETON"}, func(loader gox.Elem) (gox.Elem, func() <-chan error, []error) {
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
-			return mountDoor(d), func() <-chan error { return d.Inner(context.Background(), loader) }, []error{nil, nil}
+			d.Inner(freeCtx(), textElem("V0"))
+			return mountDoor(d), func() <-chan error { return d.Inner(freeCtx(), loader) }, []error{nil, nil}
 		}},
 		{"outer", actionWant{"door_replace", `id="box">SKELETON`}, func(loader gox.Elem) (gox.Elem, func() <-chan error, []error) {
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			return mountDoor(d), func() <-chan error {
-				return d.Outer(context.Background(), tagElem("section", "box", loader))
+				return d.Outer(freeCtx(), tagElem("section", "box", loader))
 			}, []error{nil, nil}
 		}},
 		{"bind", actionWant{"door_replace", "SKELETON"}, func(loader gox.Elem) (gox.Elem, func() <-chan error, []error) {
@@ -1397,7 +1406,7 @@ func TestDeferredSkeletonAliveDuringHeavy(t *testing.T) {
 			d := &Door{}
 			return func(cur gox.Cursor) error {
 				return d.Proxy(cur, tagElem("div", "px", loader))
-			}, func() <-chan error { return d.Reload(context.Background()) }, []error{nil, nil}
+			}, func() <-chan error { return d.Reload(freeCtx()) }, []error{nil, nil}
 		}},
 	}
 	for _, k := range kinds {
@@ -1471,7 +1480,7 @@ func TestDeferredSkeletonAliveDuringHeavy(t *testing.T) {
 			g.open()
 			h.waitEvent("heavy-rendered")
 			h.waitEvent("clean-skeleton")
-			expectOp(t, "deferred", ch2, nil, nil)
+			expectOp(t, "deferred", ch2, nil)
 			expectOp(t, k.name, tch, want...)
 			if skeletonCtx.Err() == nil {
 				t.Fatal("expected the skeleton context canceled once heavy was rendered")
@@ -1499,7 +1508,7 @@ func TestDeferredIsDocumentLoader(t *testing.T) {
 		g := newHeavyGate(t)
 		chs := make(chan (<-chan error), 8)
 		d := &Door{}
-		d.Inner(context.Background(), documentLoader(g.elem("HEAVY"), chs))
+		d.Inner(freeCtx(), documentLoader(g.elem("HEAVY"), chs))
 		_, html, err := h.renderPageHTML(mountDoor(d))
 		if err != nil {
 			t.Fatal(err)
@@ -1512,10 +1521,10 @@ func TestDeferredIsDocumentLoader(t *testing.T) {
 			t.Fatalf("expected no deferred op from the page render, got %+v", got)
 		}
 		g.shut()
-		expectOp(t, "reload", d.Reload(context.Background()), nil, nil)
+		expectOp(t, "reload", d.Reload(freeCtx()), nil, nil)
 		ch := recvOp(t, chs)
 		g.open()
-		expectOp(t, "deferred", ch, nil, nil)
+		expectDeferred(t, h, ch, 2)
 		h.waitIdle()
 		expectActions(t, h.client.actions(), actionWant{"door_update", "SKELETON"}, actionWant{"door_update", "HEAVY"})
 	})
@@ -1524,8 +1533,8 @@ func TestDeferredIsDocumentLoader(t *testing.T) {
 		chs := make(chan (<-chan error), 8)
 		p := &Door{}
 		d := &Door{}
-		d.Inner(context.Background(), documentLoader(textElem("HEAVY"), chs))
-		p.Inner(context.Background(), mountDoor(d))
+		d.Inner(freeCtx(), documentLoader(textElem("HEAVY"), chs))
+		p.Inner(freeCtx(), mountDoor(d))
 		_, html, err := h.renderPageHTML(mountDoor(p))
 		if err != nil {
 			t.Fatal(err)
@@ -1538,12 +1547,12 @@ func TestDeferredIsDocumentLoader(t *testing.T) {
 			t.Fatalf("expected no deferred op from the page render, got %+v", got)
 		}
 		h.client.hold()
-		pch := p.Reload(context.Background())
+		pch := p.Reload(freeCtx())
 		ch := recvOp(t, chs)
 		h.waitQueued(2)
 		h.client.release()
 		expectOp(t, "parent reload", pch, nil, nil)
-		expectOp(t, "deferred", ch, nil, nil)
+		expectDeferred(t, h, ch, 2)
 		got := h.client.actions()
 		expectActions(t, got, actionWant{"door_update", "SKELETON"}, actionWant{"door_update", "HEAVY"})
 		if strings.Contains(got[0].body, "HEAVY") || got[0].id == got[1].id {
@@ -1571,7 +1580,7 @@ func TestDeferredHeavyRenderError(t *testing.T) {
 				chs := make(chan (<-chan error), 8)
 				ctxs := make(chan context.Context, 8)
 				d := &Door{}
-				d.Inner(context.Background(), textElem("V0"))
+				d.Inner(freeCtx(), textElem("V0"))
 				h.renderPage(mountDoor(d))
 				heavy := m.wrap(func(cur gox.Cursor) error {
 					if err := g.elem("HEAVY")(cur); err != nil {
@@ -1583,7 +1592,7 @@ func TestDeferredHeavyRenderError(t *testing.T) {
 					h.client.hold()
 				}
 				g.shut()
-				ch1 := d.Inner(context.Background(), func(cur gox.Cursor) error {
+				ch1 := d.Inner(freeCtx(), func(cur gox.Cursor) error {
 					ctx := cur.Context()
 					ch := m.op(ctx, heavy)
 					OnClean(ctx, func() { h.events <- fmt.Sprintf("clean-skeleton reported=%d", len(ch)) })
@@ -1614,7 +1623,7 @@ func TestDeferredHeavyRenderError(t *testing.T) {
 				}
 				h.waitIdle()
 				expectActions(t, h.client.actions(), want...)
-				after := d.Inner(context.Background(), textElem("AFTER"))
+				after := d.Inner(freeCtx(), textElem("AFTER"))
 				switch m.name {
 				case "inner":
 					expectOp(t, "after", after, nil, nil)
@@ -1645,12 +1654,12 @@ func TestDeferredInnerOverFailedOuter(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			g := newHeavyGate(t)
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			h.renderPage(mountDoor(d))
 			if pending {
 				g.shut()
 			}
-			och := d.Outer(context.Background(), tagElem("section", "box", func(cur gox.Cursor) error {
+			och := d.Outer(freeCtx(), tagElem("section", "box", func(cur gox.Cursor) error {
 				if err := g.elem("OUTER")(cur); err != nil {
 					return err
 				}
@@ -1659,12 +1668,12 @@ func TestDeferredInnerOverFailedOuter(t *testing.T) {
 			var dch <-chan error
 			if pending {
 				g.waitEntered(t)
-				dch = d.DeferredInner(context.Background(), textElem("HEAVY"))
+				dch = d.DeferredInner(freeCtx(), textElem("HEAVY"))
 				g.open()
 			}
 			expectOp(t, "outer", och, errOuter)
 			if !pending {
-				dch = d.DeferredInner(context.Background(), textElem("HEAVY"))
+				dch = d.DeferredInner(freeCtx(), textElem("HEAVY"))
 			}
 			expectOpError(t, "deferred", dch, errOuter, "outer error: ")
 			h.waitIdle()
@@ -1687,7 +1696,7 @@ func TestDeferredAfterPlacementError(t *testing.T) {
 			var renders atomic.Int32
 			p := &Door{}
 			d := &Door{}
-			d.Inner(context.Background(), func(cur gox.Cursor) error {
+			d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				OnClean(cur.Context(), func() { h.events <- "clean-loader" })
 				chs <- m.op(cur.Context(), m.wrap(func(cur gox.Cursor) error {
 					renders.Add(1)
@@ -1695,12 +1704,12 @@ func TestDeferredAfterPlacementError(t *testing.T) {
 				}))
 				return errPlace
 			})
-			p.Inner(context.Background(), textElem("P0"))
+			p.Inner(freeCtx(), textElem("P0"))
 			h.renderPage(mountDoor(p))
-			expectOp(t, "parent", p.Inner(context.Background(), mountDoor(d)), nil, nil)
+			expectOp(t, "parent", p.Inner(freeCtx(), mountDoor(d)), nil, nil)
 			expectOpError(t, "deferred", recvOp(t, chs), errPlace, "placement error: ")
 			h.waitEvent("clean-loader")
-			after := d.Inner(context.Background(), textElem("AFTER"))
+			after := d.Inner(freeCtx(), textElem("AFTER"))
 			if m.name == "static" {
 				expectOp(t, "after", after)
 			} else {
@@ -1718,15 +1727,15 @@ func TestDeferredAfterPlacementError(t *testing.T) {
 		h := newLifecycleHarness(t, 8)
 		p := &Door{}
 		d := &Door{}
-		d.Inner(context.Background(), func(cur gox.Cursor) error {
+		d.Inner(freeCtx(), func(cur gox.Cursor) error {
 			OnClean(cur.Context(), func() { h.events <- "clean-failed" })
 			return errPlace
 		})
-		p.Inner(context.Background(), textElem("P0"))
+		p.Inner(freeCtx(), textElem("P0"))
 		h.renderPage(mountDoor(p))
-		expectOp(t, "parent", p.Inner(context.Background(), mountDoor(d)), nil, nil)
+		expectOp(t, "parent", p.Inner(freeCtx(), mountDoor(d)), nil, nil)
 		h.waitEvent("clean-failed")
-		expectOpError(t, "deferred static", d.DeferredStatic(context.Background(), textElem("STATIC")), errPlace, "placement error: ")
+		expectOpError(t, "deferred static", d.DeferredStatic(freeCtx(), textElem("STATIC")), errPlace, "placement error: ")
 		h.waitIdle()
 		expectActions(t, h.client.actions(), actionWant{"door_update", ""})
 		h.expectNoEvent(50 * time.Millisecond)
@@ -1746,7 +1755,7 @@ func TestDeferredNotAwaitedBySettle(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			g := newHeavyGate(t)
 			d := &Door{}
-			d.Inner(context.Background(), textElem("V0"))
+			d.Inner(freeCtx(), textElem("V0"))
 			ctx := h.renderPage(mountDoor(d))
 			g.shut()
 			var ch <-chan error
@@ -1761,7 +1770,7 @@ func TestDeferredNotAwaitedBySettle(t *testing.T) {
 				t.Fatal("the batch waited for the deferred content")
 			}
 			g.open()
-			expectOp(t, "deferred", ch, nil, nil)
+			expectDeferred(t, h, ch, 1)
 			h.waitIdle()
 			expectActions(t, h.client.actions(), m.final)
 			if n := h.logs.count("attempted to schedule on completed frame"); n != 0 {

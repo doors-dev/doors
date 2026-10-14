@@ -21,14 +21,14 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 )
 
-func NewDetachedContext(ctx context.Context, runtime context.Context, preserveBatch bool) context.Context {
-	return detachedContext{ctx, runtime, preserveBatch}
+func NewDetachedContext(ctx context.Context, runtime context.Context, fake bool) context.Context {
+	return detachedContext{ctx, runtime, fake}
 }
 
 type detachedContext struct {
-	ctx           context.Context
-	runtime       context.Context
-	preserveBatch bool
+	ctx     context.Context
+	runtime context.Context
+	fake    bool
 }
 
 func (f detachedContext) Deadline() (deadline time.Time, ok bool) {
@@ -48,8 +48,8 @@ func (f detachedContext) Value(key any) any {
 		return nil
 	}
 	if key == common.KeyFrame {
-		if !f.preserveBatch {
-			return nil
+		if !f.fake {
+			return Frames{detached: true}
 		}
 		return GetFrames(f.ctx).Settle()
 	}
@@ -57,8 +57,3 @@ func (f detachedContext) Value(key any) any {
 }
 
 var _ context.Context = detachedContext{}
-
-func IsDetachedCtx(ctx context.Context) bool {
-	_, ok := ctx.(detachedContext)
-	return ok
-}

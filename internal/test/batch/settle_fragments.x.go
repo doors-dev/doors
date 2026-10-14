@@ -28,13 +28,11 @@ import (
 
 type settleRead struct {
 	value string
-	err error
-	ok bool
+	values []error
 }
 
 type settleOp struct {
 	values []error
-	page settleRead
 }
 
 type settleFragment struct {
@@ -77,8 +75,8 @@ func (f *settleFragment) settleEmit(ctx context.Context, name string, arg any) (
 
 func (f *settleFragment) settleRead(ctx context.Context, name string, arg any) settleRead {
 	v, ch := f.settleEmit(ctx, name, arg)
-	err, ok := <-ch
-	return settleRead{value: *v, err: err, ok: ok}
+	values := drain(ch)
+	return settleRead{value: *v, values: values}
 }
 
 func (f *settleFragment) settleSummary(op settleOp) string {
@@ -86,23 +84,23 @@ func (f *settleFragment) settleSummary(op settleOp) string {
 	for i, err := range op.values {
 		parts[i] = fmt.Sprint(err)
 	}
-	return fmt.Sprintf("%d:%s:%s", len(op.values), strings.Join(parts, ","), op.page.value)
+	return fmt.Sprintf("%d:%s", len(op.values), strings.Join(parts, ","))
 }
 
 func (f *settleFragment) settleMark(ctx context.Context) {
 	f.fired <- struct{}{}
 }
 
-//line settle_fragments.gox:93
+//line settle_fragments.gox:91
 func (f *settleFragment) settleDelivered() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line settle_fragments.gox:94
+//line settle_fragments.gox:92
 		__e = (&f.s).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line settle_fragments.gox:94
+//line settle_fragments.gox:92
 				__e = __c.Set("id", "settle-item"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("delivered"); if __e != nil { return }
@@ -110,14 +108,14 @@ func (f *settleFragment) settleDelivered() gox.Elem {
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
-//line settle_fragments.gox:95
+//line settle_fragments.gox:93
 }
 
-//line settle_fragments.gox:97
+//line settle_fragments.gox:95
 func (f *settleFragment) settleBatched(id string, on func(ctx context.Context)) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line settle_fragments.gox:98
+//line settle_fragments.gox:96
 		__e = (doors.AClick{
 		Batch: true,
 		Indicator: doors.IndicateAttrQuery("#ind-a", "data-busy", "true"),
@@ -130,97 +128,105 @@ func (f *settleFragment) settleBatched(id string, on func(ctx context.Context)) 
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("button"); if __e != nil { return }
 			{
-//line settle_fragments.gox:106
+//line settle_fragments.gox:104
 				__e = __c.Set("id", id); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
-//line settle_fragments.gox:106
+//line settle_fragments.gox:104
 				__e = __c.Any(id); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
 	return })
-//line settle_fragments.gox:107
+//line settle_fragments.gox:105
 }
 
-//line settle_fragments.gox:109
+//line settle_fragments.gox:107
 func (f *settleFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("div"); if __e != nil { return }
 		{
-//line settle_fragments.gox:110
+//line settle_fragments.gox:108
 			__e = __c.Set("id", "ind-a"); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
 			__e = __c.Text("ind-a"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line settle_fragments.gox:111
+//line settle_fragments.gox:109
 		__e = (f.x).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line settle_fragments.gox:111
+//line settle_fragments.gox:109
 				__e = __c.Set("id", "x"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("x0"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line settle_fragments.gox:112
+//line settle_fragments.gox:110
 		__e = (f.y).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line settle_fragments.gox:112
+//line settle_fragments.gox:110
 				__e = __c.Set("id", "y"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("y0"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line settle_fragments.gox:113
+//line settle_fragments.gox:111
 		__e = (f.o).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line settle_fragments.gox:113
+//line settle_fragments.gox:111
 				__e = __c.Set("id", "o"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("o0"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line settle_fragments.gox:114
+//line settle_fragments.gox:112
 		__e = (f.d).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line settle_fragments.gox:114
+//line settle_fragments.gox:112
 				__e = __c.Set("id", "d"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("d0"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
-//line settle_fragments.gox:115
+//line settle_fragments.gox:113
 		__e = (f.res).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
 			ctx := __c.Context(); _ = ctx
 			__e = __c.Init("div"); if __e != nil { return }
 			{
-//line settle_fragments.gox:115
+//line settle_fragments.gox:113
 				__e = __c.Set("id", "settle-res"); if __e != nil { return }
 				__e = __c.Submit(); if __e != nil { return }
 				__e = __c.Text("none"); if __e != nil { return }
 			}
 			__e = __c.Close(); if __e != nil { return }
 		return })); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line settle_fragments.gox:114
+			__e = __c.Set("id", "settle-seen"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("none"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 			__e = __c.Submit(); if __e != nil { return }
-			__e = __c.Raw("const text = (selector) =>\n\t\t\tdocument.querySelector(selector)?.textContent ?? \"missing\"\n\t\t$on(\"settle_text\", (selector) => text(selector))\n\t\t$on(\"settle_read\", () => text(\"#x\") + \"|\" + text(\"#y\"))\n\t\t$on(\"settle_attr\", (selector) =>\n\t\t\tdocument.querySelector(selector)?.getAttribute(\"data-settle\") ?? \"missing\")\n\t\tdocument.documentElement.setAttribute(\"data-settle-ready\", \"\")"); if __e != nil { return }
+			__e = __c.Raw("const text = (selector) =>\n\t\t\tdocument.querySelector(selector)?.textContent ?? \"missing\"\n\t\t$on(\"settle_text\", (selector) => text(selector))\n\t\t$on(\"settle_read\", () => {\n\t\t\tconst value = text(\"#x\") + \"|\" + text(\"#y\")\n\t\t\tdocument.getElementById(\"settle-seen\").textContent = value\n\t\t\treturn value\n\t\t})\n\t\t$on(\"settle_attr\", (selector) =>\n\t\t\tdocument.querySelector(selector)?.getAttribute(\"data-settle\") ?? \"missing\")\n\t\tdocument.documentElement.setAttribute(\"data-settle-ready\", \"\")"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line settle_fragments.gox:125
+//line settle_fragments.gox:128
 		__e = __c.Any(f.settleBatched("settle-op", func(ctx context.Context) {
 		<-f.x.Inner(ctx, "x1")
 		doors.OnSettle(ctx, func(sctx context.Context) {
@@ -228,10 +234,7 @@ func (f *settleFragment) Main() gox.Elem {
 			ch := f.o.Inner(sctx, "o1")
 			go func() {
 				var op settleOp
-				for err := range ch {
-					op.values = append(op.values, err)
-				}
-				op.page = f.settleRead(sctx, "settle_text", "#o")
+				op.values = drain(ch)
 				f.res.Inner(sctx, gox.Elem(func(__c gox.Cursor) (__e error) {
 					ctx := __c.Context(); _ = ctx
 					__e = __c.Init("div"); if __e != nil { return }
@@ -271,19 +274,13 @@ func (f *settleFragment) Main() gox.Elem {
 			set := doors.Call(sctx, f.s.Set("data-settle", "set"))
 			v, ch := f.settleEmit(sctx, "settle_attr", "#settle-item")
 			go func() {
-				var r settleRead
-				if err, ok := <-set; ok && err != nil {
-					f.seen <- settleRead{err: err, ok: ok}
-					return
-				}
-				r.err, r.ok = <-ch
-				r.value = *v
-				f.seen <- r
+				values := append(drain(set), drain(ch)...)
+				f.seen <- settleRead{value: *v, values: values}
 			}()
 		})
 		f.settleHold(ctx)
 	})); if __e != nil { return }
-//line settle_fragments.gox:173
+//line settle_fragments.gox:167
 		__e = __c.Any(f.settleBatched("settle-hold", func(ctx context.Context) {
 		doors.OnSettle(ctx, f.settleMark)
 		release := doors.HoldSettle(ctx)
@@ -294,7 +291,7 @@ func (f *settleFragment) Main() gox.Elem {
 			f.y.Inner(ctx, "y-hold")
 		}()
 	})); if __e != nil { return }
-//line settle_fragments.gox:183
+//line settle_fragments.gox:177
 		__e = __c.Any(f.settleBatched("settle-idle", func(ctx context.Context) {
 		doors.OnSettle(ctx, f.settleMark)
 		<-f.x.Inner(ctx, "x-idle")
@@ -304,14 +301,14 @@ func (f *settleFragment) Main() gox.Elem {
 			f.settleHold(ctx)
 		}()
 	})); if __e != nil { return }
-//line settle_fragments.gox:192
+//line settle_fragments.gox:186
 		__e = __c.Any(test.Button("settle-after", func(ctx context.Context) bool {
 		f.x.Inner(ctx, "x-after")
 		f.y.Inner(ctx, "y-after")
 		return false
 	})); if __e != nil { return }
 	return })
-//line settle_fragments.gox:197
+//line settle_fragments.gox:191
 }
 
 var _ gox.Comp = (*settleFragment)(nil)

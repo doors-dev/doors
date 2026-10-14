@@ -158,7 +158,7 @@ func (t *tracker) RootCore() core.Core {
 	return t.outer.root.core
 }
 
-func (t *tracker) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (t *tracker) UserCall(ctx context.Context, action actions.Action, onScheduled func(), onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	callFrame := t.callFrame(ctx)
 	defer callFrame.Release()
 	callFrame.Run(ctx, t.Runtime(), func(b bool) {
@@ -167,6 +167,9 @@ func (t *tracker) UserCall(ctx context.Context, action actions.Action, onResult 
 				onCancel()
 			}
 			return
+		}
+		if onScheduled != nil {
+			onScheduled()
 		}
 		t.inst().UserCall(ctx, action, onResult, onCancel, params, t.outer.id, t.outer.place.Load())
 	})
@@ -440,7 +443,7 @@ func (t *outerTracker) RootCore() core.Core {
 	return t.root.core
 }
 
-func (t *outerTracker) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (t *outerTracker) UserCall(ctx context.Context, action actions.Action, onScheduled func(), onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	callFrame := t.callFrame(ctx)
 	defer callFrame.Release()
 	callFrame.Run(ctx, t.Runtime(), func(b bool) {
@@ -449,6 +452,9 @@ func (t *outerTracker) UserCall(ctx context.Context, action actions.Action, onRe
 				onCancel()
 			}
 			return
+		}
+		if onScheduled != nil {
+			onScheduled()
 		}
 		t.inst().UserCall(ctx, action, onResult, onCancel, params, t.id, t.place.Load())
 	})

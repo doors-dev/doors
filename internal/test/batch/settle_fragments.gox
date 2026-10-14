@@ -25,13 +25,11 @@ import (
 
 type settleRead struct {
 	value string
-	err error
-	ok bool
+	values []error
 }
 
 type settleOp struct {
 	values []error
-	page settleRead
 }
 
 type settleFragment struct {
@@ -74,8 +72,8 @@ func (f *settleFragment) settleEmit(ctx context.Context, name string, arg any) (
 
 func (f *settleFragment) settleRead(ctx context.Context, name string, arg any) settleRead {
 	v, ch := f.settleEmit(ctx, name, arg)
-	err, ok := <-ch
-	return settleRead{value: *v, err: err, ok: ok}
+	values := drain(ch)
+	return settleRead{value: *v, values: values}
 }
 
 func (f *settleFragment) settleSummary(op settleOp) string {
@@ -83,7 +81,7 @@ func (f *settleFragment) settleSummary(op settleOp) string {
 	for i, err := range op.values {
 		parts[i] = fmt.Sprint(err)
 	}
-	return fmt.Sprintf("%d:%s:%s", len(op.values), strings.Join(parts, ","), op.page.value)
+	return fmt.Sprintf("%d:%s", len(op.values), strings.Join(parts, ","))
 }
 
 func (f *settleFragment) settleMark(ctx context.Context) {
@@ -113,11 +111,16 @@ elem (f *settleFragment) Main() {
 	~>(f.o) <div id="o">o0</div>
 	~>(f.d) <div id="d">d0</div>
 	~>(f.res) <div id="settle-res">none</div>
+	<div id="settle-seen">none</div>
 	<script>
 		const text = (selector) =>
 			document.querySelector(selector)?.textContent ?? "missing"
 		$on("settle_text", (selector) => text(selector))
-		$on("settle_read", () => text("#x") + "|" + text("#y"))
+		$on("settle_read", () => {
+			const value = text("#x") + "|" + text("#y")
+			document.getElementById("settle-seen").textContent = value
+			return value
+		})
 		$on("settle_attr", (selector) =>
 			document.querySelector(selector)?.getAttribute("data-settle") ?? "missing")
 		document.documentElement.setAttribute("data-settle-ready", "")
@@ -129,10 +132,7 @@ elem (f *settleFragment) Main() {
 			ch := f.o.Inner(sctx, "o1")
 			go func() {
 				var op settleOp
-				for err := range ch {
-					op.values = append(op.values, err)
-				}
-				op.page = f.settleRead(sctx, "settle_text", "#o")
+				op.values = drain(ch)
 				f.res.Inner(sctx, <div id="settle-res">~(f.settleSummary(op))</div>)
 				f.ops <- op
 			}()
@@ -158,14 +158,8 @@ elem (f *settleFragment) Main() {
 			set := doors.Call(sctx, f.s.Set("data-settle", "set"))
 			v, ch := f.settleEmit(sctx, "settle_attr", "#settle-item")
 			go func() {
-				var r settleRead
-				if err, ok := <-set; ok && err != nil {
-					f.seen <- settleRead{err: err, ok: ok}
-					return
-				}
-				r.err, r.ok = <-ch
-				r.value = *v
-				f.seen <- r
+				values := append(drain(set), drain(ch)...)
+				f.seen <- settleRead{value: *v, values: values}
 			}()
 		})
 		f.settleHold(ctx)

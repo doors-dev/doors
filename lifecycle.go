@@ -74,7 +74,8 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 // states. It runs inline on the goroutine that settles the work — on the
 // calling goroutine when everything already settled — with a context
 // equivalent to [DetachedContext] of ctx, except that calls issued while on
-// runs keep their place with the handler's updates. It must not block.
+// runs keep their place with the handler's updates and their completion
+// channels close once the calls are scheduled. It must not block.
 //
 // Using a handler ctx after the handler returned is misuse; use
 // [DetachedContext] or [HoldSettle].

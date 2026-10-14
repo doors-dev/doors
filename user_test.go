@@ -37,7 +37,10 @@ type helperDoor struct {
 	inst *helperInstance
 }
 
-func (h helperDoor) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (h helperDoor) UserCall(ctx context.Context, action actions.Action, onScheduled func(), onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+	if onScheduled != nil {
+		onScheduled()
+	}
 	h.inst.UserCall(ctx, action, onResult, onCancel, params, 0, 0)
 }
 
@@ -116,7 +119,7 @@ func (helperDoorWithRoot) ReadyFrame() shredder.ReleaseFrame {
 }
 
 // UserCall implements [core.Door].
-func (h helperDoorWithRoot) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (h helperDoorWithRoot) UserCall(ctx context.Context, action actions.Action, onScheduled func(), onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	panic("unimplemented")
 }
 
@@ -395,7 +398,7 @@ func TestUserHelpers(t *testing.T) {
 		t.Fatal("expected distinct byte ids")
 	}
 
-	if ctex.IsDetachedCtx(context.Background()) {
+	if ctex.GetFrames(context.Background()).Detached() {
 		t.Fatal("unexpected free context by default")
 	}
 }
@@ -420,7 +423,7 @@ func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 	base, cancel := context.WithCancel(ctx)
 	free := DetachedContext(base)
 
-	if !ctex.IsDetachedCtx(free) {
+	if !ctex.GetFrames(free).Detached() {
 		t.Fatal("expected DetachedContext to mark context as free")
 	}
 	if free.Value("value") != "kept" {
@@ -448,7 +451,7 @@ func TestInstanceContextSwitchesToRootCoreAndRuntime(t *testing.T) {
 	base, cancel := context.WithCancel(ctx)
 	free := InstanceContext(base)
 
-	if !ctex.IsDetachedCtx(free) {
+	if !ctex.GetFrames(free).Detached() {
 		t.Fatal("expected InstanceContext to mark context as free")
 	}
 	if free.Value("value") != "kept" {

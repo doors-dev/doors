@@ -122,9 +122,9 @@ func TestDeferredCleanCallbackUpdatesDoor(t *testing.T) {
 			inst := newTestInstance(t)
 			d := &Door{}
 			updates := make(chan (<-chan error), 1)
-			d.Inner(context.Background(), func(cur gox.Cursor) error {
+			d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				onClean(cur.Context(), func() {
-					updates <- c.update(d, context.Background(), text("after"))
+					updates <- c.update(d, freeCtx(), text("after"))
 				})
 				return cur.Text("skeleton")
 			})
@@ -132,11 +132,11 @@ func TestDeferredCleanCallbackUpdatesDoor(t *testing.T) {
 				return cur.Comp(d)
 			})
 			gate := make(chan struct{})
-			ch := c.deferred(d, context.Background(), gated(gate, "heavy"))
+			ch := c.deferred(d, freeCtx(), gated(gate, "heavy"))
 			close(gate)
 			expectCanceled(t, ch)
 			expectApplied(t, recvOp(t, updates))
-			expectApplied(t, d.Inner(context.Background(), text("later")))
+			expectApplied(t, d.Inner(freeCtx(), text("later")))
 		})
 	}
 }
@@ -156,24 +156,24 @@ func TestDeferredCleanCallbackUpdatesAncestor(t *testing.T) {
 			parent := &Door{}
 			d := &Door{}
 			updates := make(chan (<-chan error), 1)
-			d.Inner(context.Background(), func(cur gox.Cursor) error {
+			d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				onClean(cur.Context(), func() {
-					updates <- parent.Inner(context.Background(), text("after"))
+					updates <- parent.Inner(freeCtx(), text("after"))
 				})
 				return cur.Text("skeleton")
 			})
-			parent.Inner(context.Background(), func(cur gox.Cursor) error {
+			parent.Inner(freeCtx(), func(cur gox.Cursor) error {
 				return cur.Comp(d)
 			})
 			renderTestPage(t, inst, func(cur gox.Cursor) error {
 				return cur.Comp(parent)
 			})
 			gate := make(chan struct{})
-			ch := c.deferred(d, context.Background(), gated(gate, "heavy"))
+			ch := c.deferred(d, freeCtx(), gated(gate, "heavy"))
 			close(gate)
 			expectCanceled(t, ch)
 			expectApplied(t, recvOp(t, updates))
-			expectApplied(t, parent.Inner(context.Background(), text("later")))
+			expectApplied(t, parent.Inner(freeCtx(), text("later")))
 		})
 	}
 }
@@ -203,7 +203,7 @@ func TestDeferredCleanPanicEndsInstance(t *testing.T) {
 			inst := newTestInstance(t)
 			src := beam.NewSource(0, beam.DefaultEqual[int], false)
 			d := &Door{}
-			d.Inner(context.Background(), func(cur gox.Cursor) error {
+			d.Inner(freeCtx(), func(cur gox.Cursor) error {
 				if _, ok := src.Watch(cur.Context(), panicWatcher{}); !ok {
 					return errors.New("watch refused")
 				}
@@ -217,7 +217,7 @@ func TestDeferredCleanPanicEndsInstance(t *testing.T) {
 				close(killed)
 			})
 			gate := make(chan struct{})
-			ch := c.deferred(d, context.Background(), gated(gate, "heavy"))
+			ch := c.deferred(d, freeCtx(), gated(gate, "heavy"))
 			close(gate)
 			expectCanceled(t, ch)
 			select {
@@ -252,7 +252,7 @@ func TestPlainCleanPanicReportsCanceled(t *testing.T) {
 			inst := newTestInstance(t)
 			src := beam.NewSource(0, beam.DefaultEqual[int], false)
 			d := &Door{}
-			c.prev(d, context.Background(), gox.Elem(func(cur gox.Cursor) error {
+			c.prev(d, freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 				if _, ok := src.Watch(cur.Context(), panicWatcher{}); !ok {
 					return errors.New("watch refused")
 				}
@@ -261,7 +261,7 @@ func TestPlainCleanPanicReportsCanceled(t *testing.T) {
 			renderTestPage(t, inst, func(cur gox.Cursor) error {
 				return cur.Comp(d)
 			})
-			expectCanceled(t, c.op(d, context.Background()))
+			expectCanceled(t, c.op(d, freeCtx()))
 		})
 	}
 }
@@ -272,7 +272,7 @@ func TestDeferredSupersedeCleansOwnContentOnPrevPanic(t *testing.T) {
 	inst := newTestInstance(t)
 	src := beam.NewSource(0, beam.DefaultEqual[int], false)
 	d := &Door{}
-	d.Inner(context.Background(), func(cur gox.Cursor) error {
+	d.Inner(freeCtx(), func(cur gox.Cursor) error {
 		if _, ok := src.Watch(cur.Context(), panicWatcher{}); !ok {
 			return errors.New("watch refused")
 		}
@@ -285,7 +285,7 @@ func TestDeferredSupersedeCleansOwnContentOnPrevPanic(t *testing.T) {
 	defer close(gate)
 	entered := make(chan struct{})
 	cleaned := make(chan struct{})
-	d.DeferredInner(context.Background(), gox.Elem(func(cur gox.Cursor) error {
+	d.DeferredInner(freeCtx(), gox.Elem(func(cur gox.Cursor) error {
 		onClean(cur.Context(), func() { close(cleaned) })
 		close(entered)
 		<-gate
@@ -296,7 +296,7 @@ func TestDeferredSupersedeCleansOwnContentOnPrevPanic(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("the deferred render never started")
 	}
-	d.Inner(context.Background(), text("newer"))
+	d.Inner(freeCtx(), text("newer"))
 	select {
 	case <-cleaned:
 	case <-time.After(10 * time.Second):
@@ -321,12 +321,12 @@ func TestDeferredReleasesReplacedContent(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			inst := newTestInstance(t)
 			d := &Door{}
-			c.first(d, context.Background(), text("skeleton"))
+			c.first(d, freeCtx(), text("skeleton"))
 			renderTestPage(t, inst, func(cur gox.Cursor) error {
 				return cur.Comp(d)
 			})
 			replaced := weak.Make(d.node.Load().tracker)
-			expectApplied(t, c.deferred(d, context.Background(), text("heavy")))
+			expectApplied(t, c.deferred(d, freeCtx(), text("heavy")))
 			deadline := time.Now().Add(5 * time.Second)
 			for replaced.Value() != nil {
 				if time.Now().After(deadline) {
