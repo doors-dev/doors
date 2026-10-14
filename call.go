@@ -55,7 +55,7 @@ func Call(ctx context.Context, a Action) <-chan error {
 	if ctx.Err() != nil {
 		ctex.LogCanceled(ctx, "call "+prep.action.Log())
 	}
-	if ctex.GetFrames(ctx).BatchGuard(core.Instance().ID()) {
+	if ctex.GetFrames(ctx).Guard() {
 		if prep.decode != nil {
 			ch <- errBatchResult
 		}

@@ -415,7 +415,7 @@ func TestSessionContextCanceledBySessionEnd(t *testing.T) {
 func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 	ctx, _ := helperContext(t)
 	ctx = context.WithValue(ctx, "value", "kept")
-	ctx, _ = ctex.AfterFrameInsert(ctx, 0, 0, "")
+	ctx, _ = ctex.NewAfterFrame(ctx, "", 0)
 	owner, _ := ctx.Value(common.KeyCore).(core.Core)
 	base, cancel := context.WithCancel(ctx)
 	free := DetachedContext(base)
@@ -429,7 +429,7 @@ func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 	if got, _ := free.Value(common.KeyCore).(core.Core); got != owner {
 		t.Fatal("expected DetachedContext to keep the current Doors owner")
 	}
-	if _, ok := ctex.AfterFrame(free); ok {
+	if _, ok := ctex.GetFrames(free).AfterFrame(); ok {
 		t.Fatal("expected DetachedContext to clear current frame binding")
 	}
 
@@ -444,7 +444,7 @@ func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 func TestInstanceContextSwitchesToRootCoreAndRuntime(t *testing.T) {
 	ctx, inst, root := helperContextWithRoot(t)
 	ctx = context.WithValue(ctx, "value", "kept")
-	ctx, _ = ctex.AfterFrameInsert(ctx, 0, 0, "")
+	ctx, _ = ctex.NewAfterFrame(ctx, "", 0)
 	base, cancel := context.WithCancel(ctx)
 	free := InstanceContext(base)
 
@@ -457,7 +457,7 @@ func TestInstanceContextSwitchesToRootCoreAndRuntime(t *testing.T) {
 	if got, _ := free.Value(common.KeyCore).(core.Core); got != root {
 		t.Fatal("expected InstanceContext to switch to root Doors context")
 	}
-	if _, ok := ctex.AfterFrame(free); ok {
+	if _, ok := ctex.GetFrames(free).AfterFrame(); ok {
 		t.Fatal("expected InstanceContext to clear current frame binding")
 	}
 

@@ -347,7 +347,7 @@ func (l *lifecycleInstance) UserCall(ctx context.Context, action actions.Action,
 	frames := ctex.GetFrames(ctx)
 	l.client.call(
 		&lifecycleUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params},
-		linksCall{name: action.Log(), action: action, group: frames.Group(l.ID()), batch: frames.Batch(l.ID()), door: door, depSeq: depSeq},
+		linksCall{name: action.Log(), action: action, group: frames.Group(), batch: frames.Batch(), door: door, depSeq: depSeq},
 	)
 }
 
@@ -1314,8 +1314,64 @@ func TestOnBatchInPlainHook(t *testing.T) {
 	}
 }
 
-// OnBatch in an OnSettle callback of a batch hook opens its own batch: its ops carry the new batch and on fires only when its flush is applied.
-func TestOnBatchInSettleOfBatchHook(t *testing.T) {
+// OnBatch in an OnSettle callback of a tracked hook, plain or Batch, opens its own batch in the hook's group: its ops carry the new batch and on fires only when its flush is applied.
+func TestOnBatchInSettleOfHook(t *testing.T) {
+	for _, batched := range []bool{false, true} {
+		t.Run(fmt.Sprint("batch=", batched), func(t *testing.T) {
+			h := newLifecycleHarness(t, 8)
+			a, b := &Door{}, &Door{}
+			_, page, from := linksPage(h, a, b)
+			applied := make(chan []string, 1)
+			h.client.hold()
+			linksHook(h, page, batched, 7, func(ctx context.Context) {
+				OnSettle(ctx, func(ctx context.Context) {
+					OnBatch(ctx, func(context.Context) {
+						applied <- appliedNames(h, 0)
+						h.events <- "batch"
+					}, func(ctx context.Context) {
+						a.Inner(ctx, textElem("a"))
+						b.Inner(ctx, textElem("b"))
+					})
+				})
+			})
+			want := []string{"batch_init", "report hook", "door_update", "door_update", "batch_flush"}
+			if batched {
+				want = append(want, "batch_init")
+			}
+			h.waitQueued(len(want))
+			h.expectNoEvent(50 * time.Millisecond)
+			h.client.release()
+			h.waitEvent("batch")
+			if got := <-applied; !slices.Contains(got, "batch_flush") {
+				t.Fatalf("expected on after the flush is applied, got %v", got)
+			}
+			links := linksExpect(h, from, want...)
+			report := linksNamed(t, links, "report hook", 1)[0]
+			flush := linksNamed(t, links, "batch_flush", 1)[0]
+			inits := linksNamed(t, links, "batch_init", len(want)-4)
+			own := inits[len(inits)-1]
+			if report.group == 0 || own.batch == 0 || own.batch == report.batch || flush.batch != own.batch {
+				t.Fatalf("expected the report to close the hook and the flush a batch of its own, got %+v, %+v, %+v", report, own, flush)
+			}
+			if batched && inits[0].batch != report.batch {
+				t.Fatalf("expected the report to close the hook's batch %d, got %+v", inits[0].batch, report)
+			}
+			for _, l := range linksNamed(t, links, "door_update", 2) {
+				if l.batch != own.batch || l.seq < own.seq || l.seq > flush.seq {
+					t.Fatalf("expected the op between batch_init and batch_flush of batch %d, got %+v", own.batch, l)
+				}
+			}
+			for _, l := range links {
+				if l.group != report.group {
+					t.Fatalf("expected %s in group %d, got %d", l.name, report.group, l.group)
+				}
+			}
+		})
+	}
+}
+
+// OnBatch under OnSettle with ops inside a settle callback of a Batch hook opens a new batch instead of joining the closed one.
+func TestOnBatchInNestedSettleOfBatchHook(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	a, b := &Door{}, &Door{}
 	_, page, from := linksPage(h, a, b)
@@ -1323,12 +1379,14 @@ func TestOnBatchInSettleOfBatchHook(t *testing.T) {
 	h.client.hold()
 	linksHook(h, page, true, 7, func(ctx context.Context) {
 		OnSettle(ctx, func(ctx context.Context) {
-			OnBatch(ctx, func(context.Context) {
-				applied <- appliedNames(h, 0)
-				h.events <- "batch"
-			}, func(ctx context.Context) {
-				a.Inner(ctx, textElem("a"))
-				b.Inner(ctx, textElem("b"))
+			OnSettle(ctx, func(context.Context) {}, func(ctx context.Context) {
+				OnBatch(ctx, func(context.Context) {
+					applied <- appliedNames(h, 0)
+					h.events <- "batch"
+				}, func(ctx context.Context) {
+					a.Inner(ctx, textElem("a"))
+					b.Inner(ctx, textElem("b"))
+				})
 			})
 		})
 	})
@@ -1345,17 +1403,83 @@ func TestOnBatchInSettleOfBatchHook(t *testing.T) {
 	flush := linksNamed(t, links, "batch_flush", 1)[0]
 	hook, own := inits[0], inits[1]
 	if report.batch != hook.batch || own.batch == 0 || own.batch == hook.batch || flush.batch != own.batch {
-		t.Fatalf("expected the report to close batch %d and the flush a batch of its own, got %+v, %+v, %+v", hook.batch, report, own, flush)
+		t.Fatalf("expected a second batch closed by its own flush, got %+v, %+v, %+v", hook, own, flush)
 	}
 	for _, l := range linksNamed(t, links, "door_update", 2) {
 		if l.batch != own.batch || l.seq < own.seq || l.seq > flush.seq {
 			t.Fatalf("expected the op between batch_init and batch_flush of batch %d, got %+v", own.batch, l)
 		}
 	}
-	for _, l := range links {
-		if l.group != report.group {
-			t.Fatalf("expected %s in group %d, got %d", l.name, report.group, l.group)
+}
+
+// OnSettle with ops inside a settle callback of a tracked Batch hook puts neither the hook's group nor its batch on the ops' calls or on calls from its own callback.
+func TestOnSettleOpsInSettleCallbackUntagged(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	a := &Door{}
+	_, page, from := linksPage(h, a)
+	linksHook(h, page, true, 7, func(ctx context.Context) {
+		OnSettle(ctx, func(ctx context.Context) {
+			OnSettle(ctx, func(ctx context.Context) {
+				Call(ctx, ActionScroll{Selector: "#b"})
+				h.events <- "settled"
+			}, func(ctx context.Context) {
+				a.Inner(ctx, textElem("a"))
+				Call(ctx, ActionScroll{Selector: "#a"})
+			})
+		})
+	})
+	h.waitEvent("settled")
+	links := linksExpect(h, from, "batch_init", "report hook", "door_update", "scroll", "scroll")
+	if report := linksNamed(t, links, "report hook", 1)[0]; report.group == 0 || report.batch == 0 {
+		t.Fatalf("expected the hook in a group and a batch, got %+v", report)
+	}
+	untagged := []linksCall{linksNamed(t, links, "door_update", 1)[0], linksScroll(t, links, "#a"), linksScroll(t, links, "#b")}
+	for _, l := range untagged {
+		if l.group != 0 || l.batch != 0 {
+			t.Fatalf("expected %s without group and batch, got %+v", l.name, l)
 		}
+	}
+}
+
+// Only a batch the ctx belongs to while it is open guards it: a Batch handler and OnBatch ops are guarded, a plain handler, an OnSettle callback and a detached ctx are not.
+func TestGuardPerContextKind(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	pageCtx, page, _ := linksPage(h)
+	guards := make(chan string, 16)
+	record := func(name string, ctx context.Context) {
+		guards <- fmt.Sprintf("%s=%v", name, ctex.GetFrames(ctx).Guard())
+	}
+	linksHook(h, page, true, 7, func(ctx context.Context) {
+		record("batch-handler", ctx)
+		record("batch-detached", DetachedContext(ctx))
+		OnBatch(ctx, func(context.Context) {}, func(ctx context.Context) { record("batch-join", ctx) })
+		OnSettle(ctx, func(ctx context.Context) {
+			record("batch-settle", ctx)
+			OnBatch(ctx, func(context.Context) {}, func(ctx context.Context) { record("settle-ops", ctx) })
+		})
+	})
+	linksHook(h, page, false, 8, func(ctx context.Context) {
+		record("plain-handler", ctx)
+		OnSettle(ctx, func(ctx context.Context) { record("plain-settle", ctx) })
+		OnBatch(ctx, func(context.Context) {}, func(ctx context.Context) { record("plain-ops", ctx) })
+	})
+	OnBatch(DetachedContext(pageCtx), func(context.Context) {}, func(ctx context.Context) { record("detached-ops", ctx) })
+	want := []string{
+		"batch-detached=false", "batch-handler=true", "batch-join=true", "batch-settle=false",
+		"detached-ops=true", "plain-handler=false", "plain-ops=true", "plain-settle=false", "settle-ops=true",
+	}
+	var got []string
+	for range want {
+		select {
+		case g := <-guards:
+			got = append(got, g)
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out, got %v", got)
+		}
+	}
+	slices.Sort(got)
+	if !slices.Equal(got, want) {
+		t.Fatalf("expected %v, got %v", want, got)
 	}
 }
 

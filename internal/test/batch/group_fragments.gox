@@ -24,6 +24,7 @@ import (
 type groupFragment struct {
 	test.NoBeam
 	g *gate
+	g2 *gate
 	fired chan struct{}
 	x doors.Door
 	y doors.Door
@@ -32,6 +33,7 @@ type groupFragment struct {
 func newGroupFragment() *groupFragment {
 	return &groupFragment{
 		g: newGate(),
+		g2: newGate(),
 		fired: make(chan struct{}, 8),
 	}
 }
@@ -51,6 +53,21 @@ func (f *groupFragment) groupOn(ctx context.Context) {
 elem (f *groupFragment) groupSlow(text string) {
 	~{
 		f.groupHold(ctx)
+	}
+	~(text)
+}
+
+func (f *groupFragment) groupHold2(ctx context.Context) {
+	f.g2.entered <- struct{}{}
+	select {
+	case <-f.g2.proceed:
+	case <-ctx.Done():
+	}
+}
+
+elem (f *groupFragment) groupSlow2(text string) {
+	~{
+		f.groupHold2(ctx)
 	}
 	~(text)
 }
@@ -89,6 +106,34 @@ elem (f *groupFragment) Main() {
 			return false
 		},
 	} <button id="group-settle">group-settle</button>
+	~>doors.AClick{
+		Indicator: doors.IndicateAttrQuery("#ind", "data-busy", "true"),
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			doors.OnSettle(ctx, func(ctx context.Context) {
+				doors.OnBatch(ctx, f.groupOn, func(ctx context.Context) {
+					f.x.Inner(ctx, f.groupSlow("x-late"))
+					f.y.Inner(ctx, f.groupSlow("y-late"))
+				})
+			})
+			return false
+		},
+	} <button id="group-settle-plain">group-settle-plain</button>
+	~>doors.AClick{
+		Indicator: doors.IndicateAttrQuery("#ind", "data-busy", "true"),
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			doors.OnSettle(ctx, func(ctx context.Context) {
+				doors.OnBatch(ctx, f.groupOn, func(ctx context.Context) {
+					f.x.Inner(ctx, f.groupSlow("x-nested"))
+					doors.OnSettle(ctx, func(ctx context.Context) {
+						doors.OnBatch(ctx, f.groupOn, func(ctx context.Context) {
+							f.y.Inner(ctx, f.groupSlow2("y-nested"))
+						})
+					})
+				})
+			})
+			return false
+		},
+	} <button id="group-nested">group-nested</button>
 }
 
 var _ gox.Comp = (*groupFragment)(nil)

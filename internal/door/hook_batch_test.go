@@ -208,7 +208,8 @@ func TestHookBatchChannels(t *testing.T) {
 	hook, ok := h.node.Load().tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 		member <- p.Inner(ctx, text("member"))
 		detached <- q.Inner(ctex.NewDetachedContext(ctx, ctx, false), text("detached"))
-		ctex.GetFrames(ctx).BatchFrame(inst.ID()).Run(nil, nil, func(bool) {
+		frame, _ := ctex.GetFrames(ctx).BatchFrame()
+		frame.Run(nil, nil, func(bool) {
 			close(reported)
 		})
 		return true
@@ -244,5 +245,47 @@ func TestHookBatchChannels(t *testing.T) {
 	case <-reported:
 	case <-time.After(2 * time.Second):
 		t.Fatal("expected the batch frame to open when the closer is reported")
+	}
+}
+
+// A Door of another instance operated with a batch handler ctx gets no ids and no guard: its channel reports applied.
+func TestForeignDoorWithBatchCtx(t *testing.T) {
+	inst := newTestInstance(t)
+	other := newTestInstance(t)
+	other.id = "other"
+	h, q := &Door{}, &Door{}
+	renderTestPage(t, inst, gox.Elem(func(cur gox.Cursor) error {
+		return cur.Comp(h)
+	}))
+	renderTestPage(t, other, gox.Elem(func(cur gox.Cursor) error {
+		return cur.Comp(q)
+	}))
+	_, before := other.issuedCalls()
+	foreign := make(chan (<-chan error), 1)
+	hook, ok := h.node.Load().tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
+		foreign <- q.Inner(ctx, text("foreign"))
+		return true
+	}, core.RaceSerial, true)
+	if !ok {
+		t.Fatal("expected hook registration to succeed")
+	}
+	inst.root.TriggerHook(hook.HookID, httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil), 7)
+	ch := <-foreign
+	for i := range 2 {
+		select {
+		case err, ok := <-ch:
+			if err != nil || !ok {
+				t.Fatalf("expected the foreign op to report step %d, got %v, %v", i, err, ok)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for step %d of the foreign op", i)
+		}
+	}
+	links, _ := other.issuedCalls()
+	if len(links) != len(before)+1 {
+		t.Fatalf("expected one call on the other instance, got %d", len(links)-len(before))
+	}
+	if l := links[len(links)-1]; l.group != 0 || l.batch != 0 {
+		t.Fatalf("expected the foreign door call without ids, got %+v", l)
 	}
 }

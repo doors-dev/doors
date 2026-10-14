@@ -56,25 +56,24 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 	})
 }
 
-// OnSettle runs ops within the current dispatch batch and registers on to run
-// once that batch settles: every Doors operation started from the batch is
-// processed and its updates are enqueued for delivery to the client. The
-// content of a deferred operation is not awaited. In a handler the batch spans
-// the whole handler; otherwise OnSettle opens one
-// spanning the ops calls. on never runs before the content that produced ctx
-// is ready itself.
+// OnSettle runs ops as part of the work ctx belongs to and registers on to run
+// once that work settles: every Doors operation started from it is processed
+// and its updates are enqueued for delivery to the client. The content of a
+// deferred operation is not awaited. In a handler the work spans the whole
+// handler; otherwise OnSettle starts new work spanning the ops calls. on never
+// runs before the content that produced ctx is ready itself.
 //
-// Where [OnReady] tracks one render cycle, OnSettle tracks everything the batch
+// Where [OnReady] tracks one render cycle, OnSettle tracks everything the work
 // started, including the Door updates and beam propagation it triggered.
 // Settling is server-side: the updates are queued, not yet written to the
 // connection or acknowledged by the browser.
 //
 // on runs exactly once, even if the owner is canceled, the producing render
 // fails, or the instance is shutting down; the provided context reports such
-// states. It runs inline on the goroutine that settles the batch — on the
+// states. It runs inline on the goroutine that settles the work — on the
 // calling goroutine when everything already settled — with a context
-// equivalent to [DetachedContext] of ctx that still belongs to the batch of
-// ctx, if there is one. It must not block.
+// equivalent to [DetachedContext] of ctx, except that calls issued while on
+// runs keep their place with the handler's updates. It must not block.
 //
 // Using a handler ctx after the handler returned is misuse; use
 // [DetachedContext] or [HoldSettle].
@@ -82,16 +81,16 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 // ctx must belong to a Doors render or handler; otherwise OnSettle panics.
 func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context)) {
 	ctex.LogCanceled(ctx, "OnSettle")
-	detached := ctex.NewDetachedContext(ctx, ctx, true)
 	core := ctx.Value(common.KeyCore).(core.Core)
 	var afterFrame shredder.Frame = shredder.FreeFrame{}
-	if frame, ok := ctex.AfterFrame(ctx); ok {
+	if frame, ok := ctex.GetFrames(ctx).AfterFrame(); ok {
 		afterFrame = frame.After()
 	} else if len(ops) != 0 {
-		ctx, frame = ctex.AfterFrameInsert(ctx, 0, 0, core.Instance().ID())
+		ctx, frame = ctex.NewAfterFrame(ctx, core.Instance().ID(), 0)
 		afterFrame = frame.After()
 		defer frame.Activate()
 	}
+	detached := ctex.NewDetachedContext(ctx, ctx, true)
 	ready := core.Door().ReadyFrame()
 	ready.Run(ctx, core.Instance().Runtime(), func(bool) {
 		afterFrame.Run(ctx, core.Instance().Runtime(), func(bool) {
@@ -106,11 +105,12 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 
 // OnBatch batches updates yourself, anywhere: the updates made in ops are
 // applied at once, and on runs when the browser has applied them. In a handler
-// with Batch set, OnBatch joins the handler's batch instead of opening a new
-// one.
+// with Batch set, or in ops of another OnBatch, OnBatch joins that batch;
+// otherwise it opens one.
 //
 // In a handler the batch closes when the handler settles, not when ops return;
-// use [DetachedContext] of ctx to batch on its own.
+// use [DetachedContext] of ctx to batch on its own. In an [OnSettle] callback
+// of a handler, the handler's completion waits for the batch.
 //
 // Where [OnSettle] reports that the updates are queued for delivery, OnBatch
 // reports that the browser applied them.
@@ -125,11 +125,15 @@ func OnBatch(ctx context.Context, on func(ctx context.Context), ops ...func(ctx 
 	detached := DetachedContext(ctx)
 	core := ctx.Value(common.KeyCore).(core.Core)
 	inst := core.Instance()
-	batchFrame := ctex.GetFrames(ctx).BatchFrame(inst.ID())
-	if _, ok := ctex.AfterFrame(ctx); batchFrame == nil || !ok {
-		var after *shredder.AfterFrame
-		var inserted bool
-		ctx, after, batchFrame, inserted = ctex.BatchFrameInsert(ctx, inst.NewID(), inst.ID())
+	fs := ctex.GetFrames(ctx)
+	batchFrame, joined := fs.BatchFrame()
+	if !joined {
+		after, ok := fs.AfterFrame()
+		if !ok {
+			ctx, after = ctex.NewAfterFrame(ctx, inst.ID(), fs.Group())
+			defer after.Activate()
+		}
+		ctx, batchFrame = ctex.NewBatch(ctx, inst.NewID())
 		markerCtx := ctex.NewDetachedContext(ctx, inst.Runtime().Context(), true)
 		door := core.Door().ID()
 		inst.UserCall(markerCtx, actions.BatchInit{}, nil, nil, actions.CallParams{}, door, 0)
@@ -138,9 +142,6 @@ func OnBatch(ctx context.Context, on func(ctx context.Context), ops ...func(ctx 
 				batchFrame.Activate()
 			}, batchFrame.Activate, actions.CallParams{}, door, 0)
 		})
-		if inserted {
-			defer after.Activate()
-		}
 	}
 	batchFrame.Submit(detached, inst.Runtime(), func(bool) {
 		on(detached)
@@ -173,22 +174,23 @@ func OnClean(ctx context.Context, f func()) {
 	})
 }
 
-// HoldSettle keeps the current dispatch batch open after the handler returns,
-// until release is called. While held, the batch does not settle: [OnSettle]
-// callbacks wait, and in a hook the client keeps the indicator, the scope, and
-// the $hook promise pending; in a handler with Batch set, the updates stay
-// unapplied until release. Use it to hand the batch over to a goroutine.
+// HoldSettle keeps the handler's work open after the handler returns, until
+// release is called. While held, it does not settle: [OnSettle] callbacks
+// wait, and in a hook the client keeps the indicator, the scope, and the $hook
+// promise pending; in a handler with Batch set, the updates stay unapplied
+// until release. Use it to hand the work over to a goroutine.
 //
 // Call it synchronously in the handler; release is idempotent and may run
 // settle callbacks inline. Operations started with the handler ctx join the
-// batch, operations started with [DetachedContext] do not. Always call release,
-// typically deferred in the goroutine; a held batch settles otherwise only when
+// work, operations started with [DetachedContext] do not. Always call release,
+// typically deferred in the goroutine; held work settles otherwise only when
 // the instance ends.
 //
-// Outside a batch, release is a no-op.
+// Outside a handler or the ops of [OnSettle] and [OnBatch], for example in an
+// OnSettle callback, release is a no-op.
 func HoldSettle(ctx context.Context) (release func()) {
 	ctex.LogCanceled(ctx, "HoldSettle")
-	after, ok := ctex.AfterFrame(ctx)
+	after, ok := ctex.GetFrames(ctx).AfterFrame()
 	if !ok {
 		return func() {}
 	}

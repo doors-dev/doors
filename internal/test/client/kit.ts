@@ -58,7 +58,7 @@ export class Stream {
 
 export function leftovers(s: Stream): Array<string> {
 	const tracker: any = s["tracker"]
-	return ["batches", "idLookup", "doorLookup", "packageLookup", "heldLookup"].filter(k => tracker[k].size != 0).concat(tracker.held == 0 ? [] : ["held"])
+	return ["batches", "idLookup", "doorLookup", "packageLookup", "groupLookup", "reportLookup"].filter(k => tracker[k].size != 0).concat(tracker.held == 0 ? [] : ["held"])
 }
 
 export async function fails(fn: () => any, want?: string) {

@@ -106,3 +106,56 @@ func TestGroupOnBatchInSettle(t *testing.T) {
 		t.Fatalf("expected both doors to change together, got %q", got)
 	}
 }
+
+// The indicator of a plain hook stays until the updates of an OnBatch in its OnSettle callback are on the page.
+func TestGroupIndicatorWaitsForOnBatchInSettle(t *testing.T) {
+	page, f := groupOpen(t)
+	hooksProbe(t, page, "#ind")
+	test.ClickNow(t, page, "#group-settle-plain")
+	waitEntered(t, f.g)
+	waitEntered(t, f.g)
+	time.Sleep(quiet)
+	if got := hooksProbed(t, page, "#ind"); got != "" {
+		t.Fatalf("expected the indicator to stay while the updates render, released at %q", got)
+	}
+	if !hooksBusy(t, page, "#ind") {
+		t.Fatal("expected the indicator to be on while the updates render")
+	}
+	groupNotFired(t, f)
+	close(f.g.proceed)
+	if got := hooksWaitProbed(t, page, "#ind"); got != "x-late|y-late" {
+		t.Fatalf("expected both updates applied when the indicator is released, got %q", got)
+	}
+	groupFired(t, page, f, "x-late", "y-late")
+}
+
+// The indicator of a plain hook stays until a second OnBatch, opened from the settle callback of a first one after the report arrived, is on the page.
+func TestGroupIndicatorWaitsForNestedOnBatch(t *testing.T) {
+	page, f := groupOpen(t)
+	hooksProbe(t, page, "#ind")
+	test.ClickNow(t, page, "#group-nested")
+	waitEntered(t, f.g)
+	time.Sleep(quiet)
+	if !hooksBusy(t, page, "#ind") {
+		t.Fatal("expected the indicator to be on while the first update renders")
+	}
+	close(f.g.proceed)
+	waitEntered(t, f.g2)
+	waitContent(t, page, "#x", "x-nested")
+	time.Sleep(quiet)
+	if got := hooksProbed(t, page, "#ind"); got != "" {
+		t.Fatalf("expected the indicator to stay while the second update renders, released at %q", got)
+	}
+	if !hooksBusy(t, page, "#ind") {
+		t.Fatal("expected the indicator to be on while the second update renders")
+	}
+	if got := content(t, page, "#y"); got != "y0" {
+		t.Fatalf("expected the second update not applied yet, got %q", got)
+	}
+	close(f.g2.proceed)
+	if got := hooksWaitProbed(t, page, "#ind"); got != "x-nested|y-nested" {
+		t.Fatalf("expected both updates applied when the indicator is released, got %q", got)
+	}
+	groupFired(t, page, f, "x-nested", "y-nested")
+	groupFired(t, page, f, "x-nested", "y-nested")
+}

@@ -25,7 +25,7 @@ export class Batch {
 	private packages: Array<Package> = []
 	private parents: Set<Batch> = new Set()
 	children: Set<Batch> = new Set()
-	constructor(private tracker: Tracker, private finished: boolean, readonly id = 0) {
+	constructor(private tracker: Tracker, private finished: boolean, readonly id = 0, readonly group = 0) {
 	}
 	empty(): boolean {
 		return this.packages.length == 0
@@ -81,7 +81,7 @@ export class Batch {
 			this.wait(batch)
 		}
 	}
-	private wait(batch: Batch | undefined) {
+	wait(batch: Batch | undefined) {
 		if (batch == undefined || batch == this) {
 			return
 		}
@@ -98,12 +98,17 @@ export class Tracker {
 	private idLookup = new Map<number, Batch>()
 	private doorLookup = new Map<number, Batch>()
 	private packageLookup = new Map<number, Batch>()
-	private heldLookup = new Map<number, Set<Batch>>()
+	private groupLookup = new Map<number, Set<Batch>>()
+	private reportLookup = new Map<number, Batch>()
 	private held = 0
 	removeBatch(batch: Batch) {
 		this.batches.delete(batch)
 		if (this.idLookup.get(batch.id) == batch) {
 			this.idLookup.delete(batch.id)
+		}
+		this.untag(batch.group, batch)
+		if (this.reportLookup.get(batch.group) == batch) {
+			this.reportLookup.delete(batch.group)
 		}
 	}
 	doorHolder(door: number): (Batch | undefined) {
@@ -122,7 +127,6 @@ export class Tracker {
 	register(p: Package, batch: Batch) {
 		this.held += 1
 		this.tag(p.group, batch)
-		this.tag(p.batch, batch)
 	}
 	unhold(p: Package, batch: Batch) {
 		this.held -= 1
@@ -131,27 +135,26 @@ export class Tracker {
 			this.doorLookup.delete(p.door)
 		}
 		this.untag(p.group, batch)
-		this.untag(p.batch, batch)
 	}
-	private tag(id: number, batch: Batch) {
-		if (id == 0) {
+	private tag(group: number, batch: Batch) {
+		if (group == 0) {
 			return
 		}
-		let tagged = this.heldLookup.get(id)
+		let tagged = this.groupLookup.get(group)
 		if (tagged == undefined) {
 			tagged = new Set()
-			this.heldLookup.set(id, tagged)
+			this.groupLookup.set(group, tagged)
 		}
 		tagged.add(batch)
 	}
-	private untag(id: number, batch: Batch) {
-		const tagged = this.heldLookup.get(id)
+	private untag(group: number, batch: Batch) {
+		const tagged = this.groupLookup.get(group)
 		if (tagged == undefined) {
 			return
 		}
 		tagged.delete(batch)
 		if (tagged.size == 0) {
-			this.heldLookup.delete(id)
+			this.groupLookup.delete(group)
 		}
 	}
 	private oldest(): (Batch | undefined) {
@@ -178,33 +181,33 @@ export class Tracker {
 				this.buffered_.set(p.end, [undefined, "batch is already intialized"])
 				return
 			}
-			const batch = new Batch(this, false, p.batch)
+			const batch = new Batch(this, false, p.batch, p.group)
 			this.batches.add(batch)
 			this.idLookup.set(p.batch, batch)
+			this.tag(p.group, batch)
+			this.reportLookup.get(p.group)?.wait(batch)
 			this.execute(p)
 			return
 		}
 		const report = p.action == "report_hook"
 		const closer = p.batch > 0 && (p.action == "batch_flush" || report)
-		const open = this.idLookup.get(p.batch)
-		if (open && !closer) {
-			open.add(p)
-			return
-		}
-		let batch = open
-		if (batch) {
-			this.idLookup.delete(p.batch)
-			batch.finish(p)
-		} else {
-			batch = new Batch(this, true)
-			this.batches.add(batch)
-			batch.add(p)
-			if (closer) {
-				batch.waitAll(this.heldLookup.get(p.batch))
-			}
+		let batch = p.batch > 0 ? this.idLookup.get(p.batch) : undefined
+		switch (true) {
+			case batch != undefined && !closer:
+				batch.add(p)
+				return
+			case batch != undefined:
+				this.idLookup.delete(p.batch)
+				batch.finish(p)
+				break
+			default:
+				batch = new Batch(this, true, 0, p.group)
+				this.batches.add(batch)
+				batch.add(p)
 		}
 		if (report) {
-			batch.waitAll(this.heldLookup.get(p.group))
+			batch.waitAll(this.groupLookup.get(p.group))
+			this.reportLookup.set(p.group, batch)
 		}
 		this.flush(batch)
 	}

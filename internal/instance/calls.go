@@ -40,7 +40,7 @@ func (c Instance) UserCall(ctx context.Context, action actions.Action, onResult 
 		call.action.Store(nil)
 	})
 	frames := ctex.GetFrames(ctx)
-	c.solitaire.Call(call, frames.Group(c.ID()), frames.Batch(c.ID()), door, depSeq, 0)
+	c.solitaire.Call(call, frames.Group(), frames.Batch(), door, depSeq, 0)
 }
 
 func (c Instance) UserCallCheck(group uint64, batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {

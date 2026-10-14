@@ -72,21 +72,13 @@ func (f *writeController) Penalty() <-chan time.Time {
 	return time.After(f.Sync.RTT())
 }
 
-func (f *writeController) probeDelay(probes int) time.Duration {
-	delay := f.Sync.RTT()
-	for ; probes > 0 && delay < f.Conf.MaxRTT; probes-- {
-		delay *= 2
-	}
-	return min(delay, f.Conf.MaxRTT)
-}
-
-func (f *writeController) Wait(pending bool, probes int) <-chan time.Time {
+func (f *writeController) Wait(pending bool) <-chan time.Time {
 	if !pending && f.Len() == 0 {
 		var ch chan time.Time
 		return ch
 	}
 	if f.Len() == 0 {
-		return time.After(f.probeDelay(probes))
+		return time.After(f.Sync.RTT())
 	}
 	flushTime := time.Until(f.frameStart.Add(f.Conf.FlushTime))
 	return time.After(flushTime)

@@ -70,6 +70,7 @@ func (s *testSession) Kill()                    {}
 // instance cancels the runtime and pending calls and kills the root.
 type testInstance struct {
 	session *testSession
+	id      string
 	runtime shredder.Runtime
 	root    Root
 	ids     atomic.Uint64
@@ -195,7 +196,7 @@ func (c linksUserCall) Result(r json.RawMessage, err error) {
 
 func (i *testInstance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, door uint64, depSeq uint64) {
 	frames := ctex.GetFrames(ctx)
-	i.Call(linksUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params}, frames.Group(i.ID()), frames.Batch(i.ID()), door, depSeq, 0)
+	i.Call(linksUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params}, frames.Group(), frames.Batch(), door, depSeq, 0)
 }
 
 func (i *testInstance) UserCallCheck(group uint64, batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
@@ -205,11 +206,17 @@ func (i *testInstance) UserCallCheck(group uint64, batch uint64, target uint64, 
 func (i *testInstance) Session() core.Session { return i.session }
 func (i *testInstance) Logger() *slog.Logger  { return testLogger }
 func (i *testInstance) Store() ctex.Store     { return ctex.NewStore() }
+func (i *testInstance) ID() string {
+	if i.id != "" {
+		return i.id
+	}
+	return "instance"
+}
+
 func (i *testInstance) CSPCollector() common.CSPCollector {
 	return common.NewCSPCollector(&common.CSP{})
 }
 func (i *testInstance) ModuleRegistry() core.ModuleRegistry  { return nil }
-func (i *testInstance) ID() string                           { return "instance" }
 func (i *testInstance) LastSeen() time.Time                  { return time.Time{} }
 func (i *testInstance) RootID() uint64                       { return i.root.ID() }
 func (i *testInstance) NewID() uint64                        { return i.ids.Add(1) }

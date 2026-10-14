@@ -490,24 +490,24 @@ func (t *userTask) Detach() {
 }
 
 func (t *userTask) Group(inst string) uint64 {
-	if t == nil {
+	if t == nil || t.frames.Inst() != inst {
 		return 0
 	}
-	return t.frames.Group(inst)
+	return t.frames.Group()
 }
 
 func (t *userTask) Batch(inst string) uint64 {
-	if t == nil {
+	if t == nil || t.frames.Inst() != inst {
 		return 0
 	}
-	return t.frames.Batch(inst)
+	return t.frames.Batch()
 }
 
-func (t *userTask) BatchGuard(inst string) bool {
-	if t == nil {
+func (t *userTask) Guard(inst string) bool {
+	if t == nil || t.frames.Inst() != inst {
 		return false
 	}
-	return t.frames.BatchGuard(inst)
+	return t.frames.Guard()
 }
 
 func (t *userTask) InitFrame() shredder.ReleaseFrame {

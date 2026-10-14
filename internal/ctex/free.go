@@ -51,8 +51,7 @@ func (f detachedContext) Value(key any) any {
 		if !f.preserveBatch {
 			return nil
 		}
-		fs := GetFrames(f.ctx)
-		return Frames{group: fs.group, batch: fs.batch, inst: fs.inst, batchFrame: fs.batchFrame}
+		return GetFrames(f.ctx).Settle()
 	}
 	return f.ctx.Value(key)
 }

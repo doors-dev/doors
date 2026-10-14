@@ -43,7 +43,6 @@ type deck struct {
 	mu           sync.Mutex
 	killed       bool
 	latestReport uint64
-	probes       int
 	expirator    *expirator.Expirator
 	inner        inner.Deck
 }
@@ -78,10 +77,10 @@ func (d *deck) QueueLength() int {
 	return d.inner.Len()
 }
 
-func (d *deck) Pending() (bool, int) {
+func (d *deck) Pending() bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	return len(d.issued) != 0, d.probes
+	return len(d.issued) != 0
 }
 
 func (d *deck) Restore(beg uint64, end uint64) error {
@@ -190,13 +189,11 @@ func (d *deck) CollectResults(r map[uint64]result) error {
 			if restored == nil {
 				continue
 			}
-			d.probes = 0
 			d.expirator.Report(seq)
 			buffer = append(buffer, bufferedResult{restored.Call, result})
 			continue
 		}
 		delete(d.issued, seq)
-		d.probes = 0
 		d.expirator.Report(seq)
 		buffer = append(buffer, bufferedResult{issued.Call, result})
 	}
@@ -211,7 +208,6 @@ func (d *deck) HeatUp() {
 	}
 	if d.inner.IsCold(d.seq) && len(d.issued) > 0 {
 		d.seq += 1
-		d.probes += 1
 		d.inner.Probe(d.seq)
 	}
 }
@@ -268,7 +264,6 @@ func (d *deck) Insert(c actions.Call, group uint64, batch uint64, door uint64, d
 	}
 	defer d.mu.Unlock()
 	d.seq += 1
-	d.probes = 0
 	dc := &inner.Call{
 		Call:    c,
 		Params:  c.Params(),
@@ -298,7 +293,6 @@ func (d *deck) checkQueueLength() error {
 func (d *deck) restore(seq uint64, c *inner.Call) error {
 	n := inner.NewRestoredCard(seq, c)
 	d.inner.Insert(n)
-	d.probes = 0
 	return d.checkQueueLength()
 
 }
