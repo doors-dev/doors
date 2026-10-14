@@ -29,7 +29,7 @@ import (
 )
 
 type Instance interface {
-	Call(call actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64
+	Call(call actions.Call, group uint64, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64
 	core.Instance
 }
 

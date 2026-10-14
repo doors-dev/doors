@@ -15,9 +15,13 @@
 package door
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"log/slog"
 	"testing"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/gox"
 )
 
@@ -137,4 +141,23 @@ func TestCallLinkMove(t *testing.T) {
 	requireLink(t, inst, testLink{seq: 3, door: doorIDOf(b)})
 	requireLink(t, inst, testLink{seq: 4, door: old, depSeq: 1})
 	requireLink(t, inst, testLink{seq: 5, door: moved, depSeq: 3})
+}
+
+// A client error for a call whose content is already gone reports the operation as superseded and logs nothing; for live content it stays an execution error.
+func TestCallResultSuperseded(t *testing.T) {
+	result := func(ctx context.Context) (error, string) {
+		var log bytes.Buffer
+		task, ch := newUserTask(context.Background())
+		c := &call{ctx: ctx, task: task, payload: emptyPayload{}, logger: slog.New(slog.NewTextHandler(&log, nil))}
+		c.Result(nil, errors.New("door 5 not found"))
+		return <-ch, log.String()
+	}
+	gone, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err, log := result(gone); err != context.Canceled || log != "" {
+		t.Fatalf("expected context.Canceled and no log, got %v and %q", err, log)
+	}
+	if err, log := result(context.Background()); !errors.Is(err, common.ErrExecution) || log == "" {
+		t.Fatalf("expected a logged execution error, got %v and %q", err, log)
+	}
 }

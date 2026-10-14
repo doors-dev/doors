@@ -116,13 +116,14 @@ func (i *testInstance) client() {
 
 type testLink struct {
 	seq     uint64
+	group   uint64
 	batch   uint64
 	door    uint64
 	depSeq  uint64
 	depDoor uint64
 }
 
-func (i *testInstance) Call(c actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64 {
+func (i *testInstance) Call(c actions.Call, group uint64, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64 {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if i.ended {
@@ -130,7 +131,7 @@ func (i *testInstance) Call(c actions.Call, batch uint64, door uint64, depSeq ui
 		return 0
 	}
 	i.seq++
-	i.links = append(i.links, testLink{i.seq, batch, door, depSeq, depDoor})
+	i.links = append(i.links, testLink{i.seq, group, batch, door, depSeq, depDoor})
 	i.issued = append(i.issued, c)
 	i.calls <- c
 	return i.seq
@@ -193,11 +194,12 @@ func (c linksUserCall) Result(r json.RawMessage, err error) {
 }
 
 func (i *testInstance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, door uint64, depSeq uint64) {
-	i.Call(linksUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params}, ctex.GetFrames(ctx).Batch(i.ID()), door, depSeq, 0)
+	frames := ctex.GetFrames(ctx)
+	i.Call(linksUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params}, frames.Group(i.ID()), frames.Batch(i.ID()), door, depSeq, 0)
 }
 
-func (i *testInstance) UserCallCheck(batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
-	i.Call(linksUserCall{check: check, action: action, onResult: onResult, onCancel: onCancel, params: params}, batch, target, 0, 0)
+func (i *testInstance) UserCallCheck(group uint64, batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+	i.Call(linksUserCall{check: check, action: action, onResult: onResult, onCancel: onCancel, params: params}, group, batch, target, 0, 0)
 }
 
 func (i *testInstance) Session() core.Session { return i.session }

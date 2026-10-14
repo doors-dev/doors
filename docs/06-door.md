@@ -385,7 +385,7 @@ doors.OnBatch(ctx, func(ctx context.Context) {
 })
 ```
 
-If the context already belongs to a batch, such as a handler with [Batch](./08-events.md#batch) set, `OnBatch` joins it instead of opening a new one.
+In a handler with [Batch](./08-events.md#batch) set, `OnBatch` joins the handler's batch instead of opening a new one. In a handler the batch closes when the handler settles, not when `ops` return; use `doors.DetachedContext(ctx)` to batch on its own.
 
 Details:
 

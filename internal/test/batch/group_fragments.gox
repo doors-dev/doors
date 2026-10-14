@@ -1,0 +1,94 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package batch
+
+import (
+	"context"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type groupFragment struct {
+	test.NoBeam
+	g *gate
+	fired chan struct{}
+	x doors.Door
+	y doors.Door
+}
+
+func newGroupFragment() *groupFragment {
+	return &groupFragment{
+		g: newGate(),
+		fired: make(chan struct{}, 8),
+	}
+}
+
+func (f *groupFragment) groupHold(ctx context.Context) {
+	f.g.entered <- struct{}{}
+	select {
+	case <-f.g.proceed:
+	case <-ctx.Done():
+	}
+}
+
+func (f *groupFragment) groupOn(ctx context.Context) {
+	f.fired <- struct{}{}
+}
+
+elem (f *groupFragment) groupSlow(text string) {
+	~{
+		f.groupHold(ctx)
+	}
+	~(text)
+}
+
+elem (f *groupFragment) Main() {
+	<div id="ind">ind</div>
+	~>(f.x) <div id="x">x0</div>
+	~>(f.y) <div id="y">y0</div>
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			<-f.x.Inner(ctx, "x-held")
+			f.groupHold(ctx)
+			return false
+		},
+	} <button id="group-holder">group-holder</button>
+	~>doors.AClick{
+		Indicator: doors.IndicateAttrQuery("#ind", "data-busy", "true"),
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			doors.OnBatch(ctx, f.groupOn, func(ctx context.Context) {
+				f.x.Inner(ctx, "x-plain")
+				f.y.Inner(ctx, "y-plain")
+			})
+			return false
+		},
+	} <button id="group-plain">group-plain</button>
+	~>doors.AClick{
+		Batch: true,
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			doors.OnSettle(ctx, func(ctx context.Context) {
+				doors.OnBatch(ctx, f.groupOn, func(ctx context.Context) {
+					f.x.Inner(ctx, "x-settle")
+					f.y.Inner(ctx, f.groupSlow("y-settle"))
+				})
+			})
+			return false
+		},
+	} <button id="group-settle">group-settle</button>
+}
+
+var _ gox.Comp = (*groupFragment)(nil)

@@ -219,7 +219,7 @@ func TestFrameHelpers(t *testing.T) {
 		t.Fatalf("expected free frame without injected context, got %v", typ)
 	}
 
-	ctx, after := AfterFrameInsert(base, 0, "a", false)
+	ctx, after := AfterFrameInsert(base, 0, 0, "a")
 	got, ok := AfterFrame(ctx)
 	if !ok || got != after {
 		t.Fatal("expected inserted frame to be retrievable")
@@ -254,46 +254,74 @@ func (o testOwner) InstanceID() string {
 
 // A context of another instance gets only the sync frames: no after frame, no batch.
 func TestFrameInfectForeignInstance(t *testing.T) {
-	ctx, _ := AfterFrameInsert(context.Background(), 7, "a", true)
+	ctx, _ := AfterFrameInsert(context.Background(), 3, 7, "a")
 	ctx = SyncFrameInsert(ctx, shredder.FreeFrame{}, shredder.FreeFrame{})
 	foreign := FrameInfect(ctx, context.WithValue(context.Background(), common.KeyCore, testOwner("b")))
 	if _, ok := AfterFrame(foreign); ok {
 		t.Fatal("expected no after frame in a foreign instance")
 	}
 	fs := GetFrames(foreign)
-	if fs.Batch("a") != 0 || fs.Batch("b") != 0 || fs.BatchFrame("a") != nil || fs.BatchGuard("a") {
-		t.Fatal("expected no batch in a foreign instance")
+	if fs.Group("a") != 0 || fs.Group("b") != 0 || fs.Batch("a") != 0 || fs.Batch("b") != 0 || fs.BatchFrame("a") != nil || fs.BatchGuard("a") {
+		t.Fatal("expected no group and no batch in a foreign instance")
 	}
 	if fs.sync == nil || fs.init == nil {
 		t.Fatal("expected the sync frames to cross instances")
 	}
 	same := GetFrames(FrameInfect(ctx, context.WithValue(context.Background(), common.KeyCore, testOwner("a"))))
-	if same.Batch("a") != 7 || !same.BatchGuard("a") || same.BatchFrame("a") == nil {
-		t.Fatal("expected the batch to reach a context of the same instance")
+	if same.Group("a") != 3 || same.Batch("a") != 7 || !same.BatchGuard("a") || same.BatchFrame("a") == nil {
+		t.Fatal("expected the group and the batch to reach a context of the same instance")
 	}
 }
 
-// A soft batch tags without guard or frame, a hard batch has both, and a nested after frame inherits them.
-func TestBatchKinds(t *testing.T) {
-	soft, _ := AfterFrameInsert(context.Background(), 5, "a", false)
-	if fs := GetFrames(soft); fs.Batch("a") != 5 || fs.BatchGuard("a") || fs.BatchFrame("a") != nil {
-		t.Fatal("expected a soft batch to tag only")
+// A group holds nothing, a batch has guard and frame, a nested after frame inherits both, and a new batch keeps the group.
+func TestGroupAndBatch(t *testing.T) {
+	plain, _ := AfterFrameInsert(context.Background(), 5, 0, "a")
+	if fs := GetFrames(plain); fs.Group("a") != 5 || fs.Group("b") != 0 || fs.Batch("a") != 0 || fs.BatchGuard("a") || fs.BatchFrame("a") != nil {
+		t.Fatal("expected a group without a batch")
 	}
-	hard, _ := AfterFrameInsert(context.Background(), 6, "a", true)
-	fs := GetFrames(hard)
-	if fs.Batch("a") != 6 || !fs.BatchGuard("a") || fs.BatchFrame("a") == nil {
-		t.Fatal("expected a hard batch to carry guard and frame")
+	batched, _ := AfterFrameInsert(context.Background(), 5, 6, "a")
+	fs := GetFrames(batched)
+	if fs.Group("a") != 5 || fs.Batch("a") != 6 || !fs.BatchGuard("a") || fs.BatchFrame("a") == nil {
+		t.Fatal("expected a batch to carry group, guard and frame")
 	}
-	if GetFrames(NewDetachedContext(hard, hard, true)).BatchGuard("a") {
-		t.Fatal("expected a preserved batch to drop the guard")
+	alone, _ := AfterFrameInsert(plain, 0, 8, "a")
+	if got := GetFrames(alone); got.Group("a") != 0 || got.Batch("a") != 8 || !got.BatchGuard("a") {
+		t.Fatal("expected an explicit batch not to inherit the group")
 	}
-	nested, _ := AfterFrameInsert(NewDetachedContext(hard, hard, true), 0, "a", false)
-	if got := GetFrames(nested); got.Batch("a") != 6 || got.BatchFrame("a") != fs.BatchFrame("a") || got.BatchGuard("a") {
-		t.Fatal("expected a nested after frame to keep the batch as it found it")
+	fresh, _ := AfterFrameInsert(batched, 7, 0, "a")
+	if got := GetFrames(fresh); got.Group("a") != 7 || got.Batch("a") != 0 || got.BatchFrame("a") != nil || got.BatchGuard("a") {
+		t.Fatal("expected an explicit group not to inherit the batch")
 	}
-	upgraded, _, frame, inserted := BatchFrameInsert(soft, 9, "a")
-	if got := GetFrames(upgraded); inserted || got.Batch("a") != 9 || !got.BatchGuard("a") || got.BatchFrame("a") != frame {
-		t.Fatal("expected a hard batch to replace a soft one on the same after frame")
+	preserved := NewDetachedContext(batched, batched, true)
+	if got := GetFrames(preserved); got.Group("a") != 5 || got.Batch("a") != 6 || got.BatchFrame("a") != fs.BatchFrame("a") || got.BatchGuard("a") {
+		t.Fatal("expected a preserved context to keep group and batch and drop the guard")
+	}
+	if got := GetFrames(NewDetachedContext(batched, batched, false)); got.Group("a") != 0 || got.Batch("a") != 0 {
+		t.Fatal("expected a detached context to cut group and batch")
+	}
+	nested, _ := AfterFrameInsert(preserved, 0, 0, "a")
+	if got := GetFrames(nested); got.Group("a") != 5 || got.Batch("a") != 6 || got.BatchFrame("a") != fs.BatchFrame("a") || got.BatchGuard("a") {
+		t.Fatal("expected a nested after frame to keep group and batch as it found them")
+	}
+	inherited, _ := AfterFrameInsert(batched, 0, 0, "a")
+	if got := GetFrames(inherited); got.Group("a") != 5 || got.Batch("a") != 6 || !got.BatchGuard("a") {
+		t.Fatal("expected a nested after frame to inherit the guard")
+	}
+	other, _ := AfterFrameInsert(batched, 0, 0, "b")
+	if got := GetFrames(other); got.Group("b") != 0 || got.Batch("b") != 0 || got.BatchFrame("b") != nil {
+		t.Fatal("expected no inheritance across instances")
+	}
+	opened, after, frame, inserted := BatchFrameInsert(plain, 9, "a")
+	if got := GetFrames(opened); inserted || after != GetFrames(plain).after || got.Group("a") != 5 || got.Batch("a") != 9 || !got.BatchGuard("a") || got.BatchFrame("a") != frame {
+		t.Fatal("expected a new batch to keep the group and the after frame")
+	}
+	late, _, lateFrame, inserted := BatchFrameInsert(preserved, 10, "a")
+	if got := GetFrames(late); !inserted || got.Group("a") != 5 || got.Batch("a") != 10 || got.BatchFrame("a") != lateFrame || lateFrame == fs.BatchFrame("a") {
+		t.Fatal("expected a new batch on a preserved context to bring its own frames and keep the group")
+	}
+	foreign, _, _, _ := BatchFrameInsert(plain, 11, "b")
+	if got := GetFrames(foreign); got.Group("b") != 0 || got.Batch("b") != 11 {
+		t.Fatal("expected a new batch of another instance to drop the group")
 	}
 }
 
@@ -303,7 +331,7 @@ func TestBatchHelpers(t *testing.T) {
 		t.Fatalf("expected no batch in base context, got %d", got)
 	}
 
-	ctx, after := AfterFrameInsert(base, 7, "a", true)
+	ctx, after := AfterFrameInsert(base, 0, 7, "a")
 	if got, ok := AfterFrame(ctx); !ok || got != after {
 		t.Fatal("expected the after frame next to the batch")
 	}

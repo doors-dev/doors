@@ -72,13 +72,21 @@ func (f *writeController) Penalty() <-chan time.Time {
 	return time.After(f.Sync.RTT())
 }
 
-func (f *writeController) Wait(pending bool) <-chan time.Time {
+func (f *writeController) probeDelay(probes int) time.Duration {
+	delay := f.Sync.RTT()
+	for ; probes > 0 && delay < f.Conf.MaxRTT; probes-- {
+		delay *= 2
+	}
+	return min(delay, f.Conf.MaxRTT)
+}
+
+func (f *writeController) Wait(pending bool, probes int) <-chan time.Time {
 	if !pending && f.Len() == 0 {
 		var ch chan time.Time
 		return ch
 	}
 	if f.Len() == 0 {
-		return time.After(f.Sync.RTT())
+		return time.After(f.probeDelay(probes))
 	}
 	flushTime := time.Until(f.frameStart.Add(f.Conf.FlushTime))
 	return time.After(flushTime)
@@ -139,6 +147,7 @@ func (f *writeController) Stash(card *inner.Card) stashResult {
 		return stashCancel
 	}
 	defer free()
+	h.group = card.Call.Group
 	h.batch = card.Call.Batch
 	h.door = card.Call.Door
 	h.depSeq = card.Call.DepSeq
@@ -175,6 +184,7 @@ func (f *writeController) Full() bool {
 type header struct {
 	beg     uint64
 	end     uint64
+	group   uint64
 	batch   uint64
 	door    uint64
 	depSeq  uint64
@@ -187,7 +197,7 @@ func (h header) writeCard(w *bytes.Buffer, invocation *actions.Invocation) error
 	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
-	tuple := make([]any, 0, 5)
+	tuple := make([]any, 0, 6)
 	if h.beg == h.end {
 		tuple = append(tuple, h.end)
 	} else {
@@ -195,14 +205,18 @@ func (h header) writeCard(w *bytes.Buffer, invocation *actions.Invocation) error
 	}
 	var write *actions.Payload
 	if invocation != nil {
-		link := []uint64{h.batch, h.door}
+		link := []uint64{h.door}
 		if h.depSeq != 0 || h.depDoor != 0 {
 			link = append(link, h.depSeq)
 		}
 		if h.depDoor != 0 {
 			link = append(link, h.depDoor)
 		}
-		tuple = append(tuple, link, invocation.Func())
+		var batch any = h.group
+		if h.batch != 0 {
+			batch = []uint64{h.group, h.batch}
+		}
+		tuple = append(tuple, link, batch, invocation.Func())
 		payload := invocation.Payload()
 		if payload.Type() != actions.PayloadNone {
 			write = &payload

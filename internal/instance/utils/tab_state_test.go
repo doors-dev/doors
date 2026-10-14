@@ -29,7 +29,7 @@ type tabStateInstance struct {
 	calls chan map[string]json.RawMessage
 }
 
-func (i *tabStateInstance) UserCallCheck(_ uint64, _ uint64, check func() bool, action actions.Action, _ func(json.RawMessage, error), _ func(), _ actions.CallParams) {
+func (i *tabStateInstance) UserCallCheck(_ uint64, _ uint64, _ uint64, check func() bool, action actions.Action, _ func(json.RawMessage, error), _ func(), _ actions.CallParams) {
 	if check != nil && !check() {
 		return
 	}

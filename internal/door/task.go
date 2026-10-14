@@ -489,6 +489,13 @@ func (t *userTask) Detach() {
 	t.frames = ctex.Frames{}
 }
 
+func (t *userTask) Group(inst string) uint64 {
+	if t == nil {
+		return 0
+	}
+	return t.frames.Group(inst)
+}
+
 func (t *userTask) Batch(inst string) uint64 {
 	if t == nil {
 		return 0

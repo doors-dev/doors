@@ -161,7 +161,9 @@ ALink is a dynamic hook, so it supports the same request-lifecycle fields as eve
 - `HistoryReplace` — replace the current history entry instead of pushing a new one, so Back skips this navigation.
 - `Batch` — hold the updates of the navigation and apply them together. See [Batch](./08-events.md#batch).
 
-`Batch` is for a link to a view that takes a moment to load: the current view stays intact until the new one is complete, then view and URL are replaced at once. Without it, the page changes piece by piece as each part is ready.
+`Batch` is for a link to a view that takes a moment to load: the current view stays intact until the new one is complete, then is replaced at once. Without it, the page changes piece by piece as each part is ready.
+
+> Setting `Batch` on navigation links is almost always a good idea.
 
 ```gox
 <>

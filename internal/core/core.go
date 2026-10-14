@@ -84,7 +84,7 @@ type Instance interface {
 	Logger() *slog.Logger
 	Store() ctex.Store
 	UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, door uint64, depSeq uint64)
-	UserCallCheck(batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
+	UserCallCheck(group uint64, batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams)
 	CSPCollector() common.CSPCollector
 	ModuleRegistry() ModuleRegistry
 	ID() string

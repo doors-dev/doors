@@ -230,6 +230,7 @@ type linksCall struct {
 	seq     uint64
 	name    string
 	action  actions.Action
+	group   uint64
 	batch   uint64
 	door    uint64
 	depSeq  uint64
@@ -338,21 +339,22 @@ func (l *lifecycleInstance) ID() string {
 	return l.helperInstance.ID()
 }
 
-func (l *lifecycleInstance) Call(c actions.Call, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64 {
-	return l.client.call(c, linksCall{batch: batch, door: door, depSeq: depSeq, depDoor: depDoor})
+func (l *lifecycleInstance) Call(c actions.Call, group uint64, batch uint64, door uint64, depSeq uint64, depDoor uint64) uint64 {
+	return l.client.call(c, linksCall{group: group, batch: batch, door: door, depSeq: depSeq, depDoor: depDoor})
 }
 
 func (l *lifecycleInstance) UserCall(ctx context.Context, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams, door uint64, depSeq uint64) {
+	frames := ctex.GetFrames(ctx)
 	l.client.call(
 		&lifecycleUserCall{ctx: ctx, action: action, onResult: onResult, onCancel: onCancel, params: params},
-		linksCall{name: action.Log(), action: action, batch: ctex.GetFrames(ctx).Batch(l.ID()), door: door, depSeq: depSeq},
+		linksCall{name: action.Log(), action: action, group: frames.Group(l.ID()), batch: frames.Batch(l.ID()), door: door, depSeq: depSeq},
 	)
 }
 
-func (l *lifecycleInstance) UserCallCheck(batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
+func (l *lifecycleInstance) UserCallCheck(group uint64, batch uint64, target uint64, check func() bool, action actions.Action, onResult func(json.RawMessage, error), onCancel func(), params actions.CallParams) {
 	l.client.call(
 		&lifecycleUserCall{ctx: context.Background(), check: check, action: action, onResult: onResult, onCancel: onCancel, params: params},
-		linksCall{name: action.Log(), action: action, batch: batch, door: target},
+		linksCall{name: action.Log(), action: action, group: group, batch: batch, door: target},
 	)
 }
 
@@ -1309,6 +1311,51 @@ func TestOnBatchInPlainHook(t *testing.T) {
 	h.waitIdle()
 	if got := appliedNames(h, from); !slices.Equal(got, []string{"batch_init", "door_update", "batch_flush", "report hook"}) {
 		t.Fatalf("unexpected call order %v", got)
+	}
+}
+
+// OnBatch in an OnSettle callback of a batch hook opens its own batch: its ops carry the new batch and on fires only when its flush is applied.
+func TestOnBatchInSettleOfBatchHook(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	a, b := &Door{}, &Door{}
+	_, page, from := linksPage(h, a, b)
+	applied := make(chan []string, 1)
+	h.client.hold()
+	linksHook(h, page, true, 7, func(ctx context.Context) {
+		OnSettle(ctx, func(ctx context.Context) {
+			OnBatch(ctx, func(context.Context) {
+				applied <- appliedNames(h, 0)
+				h.events <- "batch"
+			}, func(ctx context.Context) {
+				a.Inner(ctx, textElem("a"))
+				b.Inner(ctx, textElem("b"))
+			})
+		})
+	})
+	h.waitQueued(6)
+	h.expectNoEvent(50 * time.Millisecond)
+	h.client.release()
+	h.waitEvent("batch")
+	if got := <-applied; !slices.Contains(got, "batch_flush") {
+		t.Fatalf("expected on after the flush is applied, got %v", got)
+	}
+	links := linksExpect(h, from, "batch_init", "batch_init", "report hook", "door_update", "door_update", "batch_flush")
+	inits := linksNamed(t, links, "batch_init", 2)
+	report := linksNamed(t, links, "report hook", 1)[0]
+	flush := linksNamed(t, links, "batch_flush", 1)[0]
+	hook, own := inits[0], inits[1]
+	if report.batch != hook.batch || own.batch == 0 || own.batch == hook.batch || flush.batch != own.batch {
+		t.Fatalf("expected the report to close batch %d and the flush a batch of its own, got %+v, %+v, %+v", hook.batch, report, own, flush)
+	}
+	for _, l := range linksNamed(t, links, "door_update", 2) {
+		if l.batch != own.batch || l.seq < own.seq || l.seq > flush.seq {
+			t.Fatalf("expected the op between batch_init and batch_flush of batch %d, got %+v", own.batch, l)
+		}
+	}
+	for _, l := range links {
+		if l.group != report.group {
+			t.Fatalf("expected %s in group %d, got %d", l.name, report.group, l.group)
+		}
 	}
 }
 

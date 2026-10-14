@@ -53,7 +53,7 @@ func (t *titleInstance) CallCtx(context.Context, actions.Action, func(json.RawMe
 }
 func (t *titleInstance) CallCheck(func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
-func (t *titleInstance) UserCallCheck(uint64, uint64, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
+func (t *titleInstance) UserCallCheck(uint64, uint64, uint64, func() bool, actions.Action, func(json.RawMessage, error), func(), actions.CallParams) {
 }
 
 func (t *titleInstance) UserCall(context.Context, actions.Action, func(json.RawMessage, error), func(), actions.CallParams, uint64, uint64) {

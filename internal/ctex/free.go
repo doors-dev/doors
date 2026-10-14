@@ -52,7 +52,7 @@ func (f detachedContext) Value(key any) any {
 			return nil
 		}
 		fs := GetFrames(f.ctx)
-		return Frames{batch: fs.batch, inst: fs.inst, batchFrame: fs.batchFrame}
+		return Frames{group: fs.group, batch: fs.batch, inst: fs.inst, batchFrame: fs.batchFrame}
 	}
 	return f.ctx.Value(key)
 }

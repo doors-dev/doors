@@ -3,7 +3,7 @@ import { Tracker } from "../../client/tracker"
 
 type Case = () => void | Promise<void>
 
-type Link = { b?: number, s?: number, d?: number }
+export type Link = { g?: number, b?: number, s?: number, d?: number }
 
 export const cases = new Map<string, Case>()
 
@@ -35,20 +35,21 @@ export class Stream {
 	push(action: string, door: number, link: Link = {}): Array<number> {
 		const from = this.ran.length
 		this.seq += 1
-		this.tracker.push(new Package([this.seq, [link.b ?? 0, door, link.s ?? 0, link.d ?? 0], [action, []], null]))
+		const batch = link.b ? [link.g ?? 0, link.b] : link.g ?? 0
+		this.tracker.push(new Package([this.seq, [door, link.s ?? 0, link.d ?? 0], batch, [action, []], null]))
 		return this.ran.slice(from)
 	}
-	init(batch: number): Array<number> {
-		return this.push("batch_init", 0, { b: batch })
+	init(batch: number, group = 0): Array<number> {
+		return this.push("batch_init", 0, { g: group, b: batch })
 	}
 	call(door: number, link: Link = {}): Array<number> {
 		return this.push("call", door, link)
 	}
-	flush(batch: number): Array<number> {
-		return this.push("batch_flush", 0, { b: batch })
+	flush(batch: number, group = 0): Array<number> {
+		return this.push("batch_flush", 0, { g: group, b: batch })
 	}
-	hook(batch: number, door: number): Array<number> {
-		return this.push("report_hook", door, { b: batch })
+	hook(door: number, link: Link = {}): Array<number> {
+		return this.push("report_hook", door, link)
 	}
 	errors(): Array<number> {
 		return [...this.tracker.collect()].filter(([, r]) => r[1] !== undefined).map(([seq]) => seq)
@@ -57,7 +58,7 @@ export class Stream {
 
 export function leftovers(s: Stream): Array<string> {
 	const tracker: any = s["tracker"]
-	return ["batches", "idLookup", "doorLookup", "packageLookup", "tagLookup"].filter(k => tracker[k].size != 0)
+	return ["batches", "idLookup", "doorLookup", "packageLookup", "heldLookup"].filter(k => tracker[k].size != 0).concat(tracker.held == 0 ? [] : ["held"])
 }
 
 export async function fails(fn: () => any, want?: string) {

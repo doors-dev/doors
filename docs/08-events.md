@@ -362,9 +362,11 @@ Use it for an action that changes several stacked or nested components, and for 
 </>
 ```
 
-The batch covers everything the handler starts with its context: Door updates, the state propagation they trigger, and path changes. It closes when the handler has finished and everything it started is queued; `doors.HoldSettle` keeps it open until release, see [Door](./06-door.md#lifecycle-hooks).
+The batch covers everything the handler starts with its context: Door updates, the state propagation they trigger, and path changes. It closes when the handler has finished and everything it started is queued; `doors.HoldSettle` keeps it open until release, see [Door](./06-door.md#lifecycle-hooks). Deferred operations (`DeferredInner`, `DeferredOuter`, `DeferredStatic`) are not part of the batch: their content lands on its own, after the batch when it targets a Door the batch updates.
 
-Inside the batch, completion channels do not report "applied": a Door operation's channel sends the scheduled signal and closes, `doors.Call` reports nothing, and an action armed with `Into` delivers an error. To get a result from the browser, wait in a goroutine with `doors.DetachedContext(ctx)`, which leaves the batch; to react once the batch is applied, use `doors.OnBatch`, see [Lifecycle Hooks](./06-door.md#lifecycle-hooks).
+The view kept on screen during a batch is display only: interactions with parts that are being replaced are ignored until the new view lands, so put an [indicator](./11-indication.md) on the trigger.
+
+Inside the batch, completion channels do not report "applied": a Door operation's channel sends the scheduled signal and closes, the channel of `doors.Call` closes at once, and an action armed with `Into` delivers an error. To get a result from the browser, wait in a goroutine with `doors.DetachedContext(ctx)`, which leaves the batch; to react once the batch is applied, use `doors.OnBatch`, see [Lifecycle Hooks](./06-door.md#lifecycle-hooks).
 
 Title and meta updates are not batched.
 

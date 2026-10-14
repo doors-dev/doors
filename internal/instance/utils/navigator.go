@@ -73,19 +73,22 @@ func (n *navigator) Update(l path.Location) bool {
 
 func (n *navigator) push(ctx context.Context, l path.Location, replace bool) {
 	seq := n.seq.Add(1)
-	batch := ctex.GetFrames(ctx).Batch(n.inst.ID())
+	frames := ctex.GetFrames(ctx)
+	group := frames.Group(n.inst.ID())
+	batch := frames.Batch(n.inst.ID())
 	after, ok := ctex.AfterFrame(ctx)
 	if !ok {
-		n.call(l.String(), seq, replace, batch)
+		n.call(l.String(), seq, replace, group, batch)
 		return
 	}
 	after.After().Run(nil, nil, func(b bool) {
-		n.call(l.String(), seq, replace, batch)
+		n.call(l.String(), seq, replace, group, batch)
 	})
 }
 
-func (n *navigator) call(path string, seq int32, replace bool, batch uint64) {
+func (n *navigator) call(path string, seq int32, replace bool, group uint64, batch uint64) {
 	n.inst.UserCallCheck(
+		group,
 		batch,
 		n.target,
 		func() bool {

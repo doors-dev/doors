@@ -110,6 +110,7 @@ export function decodePayload(payload: EncodedPayload | undefined): DecodedPaylo
 }
 
 export class Package {
+	group: number
 	batch: number
 	door: number
 	dependency: number
@@ -137,6 +138,7 @@ export class Package {
 		}
 		this.isFiller = header.length == 1
 		if (this.isFiller) {
+			this.group = 0
 			this.batch = 0
 			this.door = 0
 			this.dependency = 0
@@ -145,12 +147,18 @@ export class Package {
 			this.arg = undefined
 			return
 		}
-		this.batch = header[1][0]
-		this.door = header[1][1]
-		this.dependency = header[1][2] ?? 0
-		this.dependencyDoor = header[1][3] ?? 0
-		this.action = header[2][0]
-		this.arg = header[2][1]
+		this.door = header[1][0]
+		this.dependency = header[1][1] ?? 0
+		this.dependencyDoor = header[1][2] ?? 0
+		if (Array.isArray(header[2])) {
+			this.group = header[2][0]
+			this.batch = header[2][1]
+		} else {
+			this.group = header[2]
+			this.batch = 0
+		}
+		this.action = header[3][0]
+		this.arg = header[3][1]
 	}
 
 	private written_ = 0

@@ -46,7 +46,7 @@ func linksIssued(t *testing.T, inst *testInstance, from int, n int) ([]testLink,
 	}
 }
 
-// A user call from a Batch hook carries the hook batch, the issuing door and the seq of the call that placed it; a detached one only loses the batch.
+// A user call from a Batch hook carries the hook group and batch, the issuing door and the seq of the call that placed it; a detached one only loses group and batch.
 func TestLinksUserCallTargetsIssuingDoor(t *testing.T) {
 	inst := newTestInstance(t)
 	p, c := &Door{}, &Door{}
@@ -69,10 +69,10 @@ func TestLinksUserCallTargetsIssuingDoor(t *testing.T) {
 		t.Fatal("expected hook trigger to be found")
 	}
 	links, calls := linksIssued(t, inst, 1, 4)
-	if _, ok := calls[0].(batchInit); !ok || links[0].batch == 0 {
-		t.Fatalf("expected the batch to open first, got %T in batch %d", calls[0], links[0].batch)
+	if _, ok := calls[0].(batchInit); !ok || links[0].batch == 0 || links[0].group == 0 {
+		t.Fatalf("expected the batch to open first, got %T with %+v", calls[0], links[0])
 	}
-	batch := links[0].batch
+	group, batch := links[0].group, links[0].batch
 	found := map[string]testLink{}
 	for i, call := range calls {
 		if user, ok := call.(linksUserCall); ok {
@@ -80,7 +80,7 @@ func TestLinksUserCallTargetsIssuingDoor(t *testing.T) {
 		}
 	}
 	member, detached := found["#member"], found["#detached"]
-	if want := (testLink{seq: member.seq, batch: batch, door: cid, depSeq: place}); member.seq == 0 || member != want {
+	if want := (testLink{seq: member.seq, group: group, batch: batch, door: cid, depSeq: place}); member.seq == 0 || member != want {
 		t.Fatalf("expected the user call linked as %+v, got %+v", want, member)
 	}
 	if want := (testLink{seq: detached.seq, door: cid, depSeq: place}); detached.seq == 0 || detached != want {

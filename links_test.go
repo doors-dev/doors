@@ -155,7 +155,7 @@ func linksHead(title string, description string, keywords string) gox.Elem {
 	}
 }
 
-// OnBatch from a detached page ctx puts one non-zero batch id on its batch_init, its ops' door calls and its batch_flush, and leaves later calls untagged.
+// OnBatch from a detached page ctx puts one non-zero batch id and no group on its batch_init, its ops' door calls and its batch_flush, and leaves later calls untagged.
 func TestLinksOnBatchDetached(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	a, b := &Door{}, &Door{}
@@ -176,8 +176,8 @@ func TestLinksOnBatchDetached(t *testing.T) {
 		t.Fatal("expected a non-zero batch id")
 	}
 	for _, l := range links {
-		if l.batch != batch {
-			t.Fatalf("expected %s in batch %d, got %d", l.name, batch, l.batch)
+		if l.batch != batch || l.group != 0 {
+			t.Fatalf("expected %s in batch %d without a group, got %+v", l.name, batch, l)
 		}
 	}
 	if links[1].door == links[2].door || links[1].door == links[0].door {
@@ -187,13 +187,13 @@ func TestLinksOnBatchDetached(t *testing.T) {
 	a.Inner(detached, textElem("later"))
 	Call(detached, ActionScroll{Selector: "#later"})
 	for _, l := range linksExpect(h, from, "door_update", "scroll") {
-		if l.batch != 0 {
+		if l.batch != 0 || l.group != 0 {
 			t.Fatalf("expected %s after the batch untagged, got batch %d", l.name, l.batch)
 		}
 	}
 }
 
-// OnBatch in a plain tracked hook tags its ops, batch_init and batch_flush with a hard id, while the hook's own call and report_hook keep the hook's soft id.
+// OnBatch in a plain tracked hook puts the hook's group and its own batch on its ops, batch_init and batch_flush, while the hook's own call and report_hook carry the group only.
 func TestLinksOnBatchInPlainHook(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	own, op := &Door{}, &Door{}
@@ -210,37 +210,81 @@ func TestLinksOnBatchInPlainHook(t *testing.T) {
 	flush := linksNamed(t, links, "batch_flush", 1)[0]
 	report := linksNamed(t, links, "report hook", 1)[0]
 	updates := linksNamed(t, links, "door_update", 2)
-	hard, soft := init.batch, report.batch
-	if hard == 0 || soft == 0 || hard == soft {
-		t.Fatalf("expected distinct non-zero hard and soft ids, got %d and %d", hard, soft)
+	group, batch := report.group, init.batch
+	if group == 0 || batch == 0 || group == batch || report.batch != 0 {
+		t.Fatalf("expected a group on the report and a distinct batch on batch_init, got %+v and %+v", report, init)
 	}
-	if flush.batch != hard {
-		t.Fatalf("expected batch_flush in batch %d, got %d", hard, flush.batch)
-	}
-	var inHard, inSoft []linksCall
-	for _, l := range updates {
-		switch l.batch {
-		case hard:
-			inHard = append(inHard, l)
-		case soft:
-			inSoft = append(inSoft, l)
+	for _, l := range links {
+		if l.group != group {
+			t.Fatalf("expected %s in group %d, got %d", l.name, group, l.group)
 		}
 	}
-	if len(inHard) != 1 || len(inSoft) != 1 || inHard[0].door == inSoft[0].door {
-		t.Fatalf("expected one door call per id, got batches %d and %d for doors %d and %d", updates[0].batch, updates[1].batch, updates[0].door, updates[1].door)
+	if flush.batch != batch {
+		t.Fatalf("expected batch_flush in batch %d, got %d", batch, flush.batch)
 	}
-	if init.seq > inHard[0].seq || inHard[0].seq > flush.seq {
+	var inBatch, inGroup []linksCall
+	for _, l := range updates {
+		switch l.batch {
+		case batch:
+			inBatch = append(inBatch, l)
+		case 0:
+			inGroup = append(inGroup, l)
+		}
+	}
+	if len(inBatch) != 1 || len(inGroup) != 1 || inBatch[0].door == inGroup[0].door {
+		t.Fatalf("expected the op in the batch and the hook's own call outside, got batches %d and %d for doors %d and %d", updates[0].batch, updates[1].batch, updates[0].door, updates[1].door)
+	}
+	if init.seq > inBatch[0].seq || inBatch[0].seq > flush.seq {
 		t.Fatalf("expected the op between batch_init and batch_flush, got %v", linksNames(links))
 	}
 	if flush.seq > report.seq {
 		t.Fatalf("expected batch_flush before report_hook, got %v", linksNames(links))
 	}
-	if inSoft[0].seq > report.seq {
+	if inGroup[0].seq > report.seq {
 		t.Fatalf("expected the hook's own call before report_hook, got %v", linksNames(links))
 	}
 }
 
-// OnBatch in a Batch hook joins it: one id on every call and exactly one batch_init.
+// Two OnBatch calls in one plain hook handler open two batches in the hook's one group.
+func TestLinksTwoOnBatchInPlainHook(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	a, b := &Door{}, &Door{}
+	_, page, from := linksPage(h, a, b)
+	linksHook(h, page, false, 7, func(ctx context.Context) {
+		OnBatch(ctx, func(context.Context) { h.events <- "first" }, func(ctx context.Context) {
+			a.Inner(ctx, textElem("a"))
+		})
+		OnBatch(ctx, func(context.Context) { h.events <- "second" }, func(ctx context.Context) {
+			b.Inner(ctx, textElem("b"))
+		})
+	})
+	h.waitEvent("first")
+	h.waitEvent("second")
+	links := linksExpect(h, from, "batch_init", "batch_init", "door_update", "door_update", "batch_flush", "batch_flush", "report hook")
+	report := linksNamed(t, links, "report hook", 1)[0]
+	if report.group == 0 || report.batch != 0 {
+		t.Fatalf("expected the report in a group without a batch, got %+v", report)
+	}
+	members := map[uint64][]string{}
+	for _, l := range links {
+		if l.group != report.group {
+			t.Fatalf("expected %s in group %d, got %d", l.name, report.group, l.group)
+		}
+		if l.batch != 0 {
+			members[l.batch] = append(members[l.batch], l.name)
+		}
+	}
+	if len(members) != 2 {
+		t.Fatalf("expected two batches, got %v", members)
+	}
+	for batch, names := range members {
+		if !slices.Equal(names, []string{"batch_init", "door_update", "batch_flush"}) {
+			t.Fatalf("expected batch %d to hold its init, op and flush, got %v", batch, names)
+		}
+	}
+}
+
+// OnBatch in a Batch hook joins it: one group and one batch on every call and exactly one batch_init.
 func TestLinksOnBatchInBatchHook(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	own, op := &Door{}, &Door{}
@@ -256,12 +300,12 @@ func TestLinksOnBatchInBatchHook(t *testing.T) {
 	if links[0].name != "batch_init" || links[3].name != "report hook" {
 		t.Fatalf("expected batch_init first and report_hook last, got %v", linksNames(links))
 	}
-	if links[0].batch == 0 {
-		t.Fatal("expected a non-zero batch id")
+	if links[0].batch == 0 || links[0].group == 0 || links[0].group == links[0].batch {
+		t.Fatalf("expected distinct non-zero group and batch ids, got %+v", links[0])
 	}
 	for _, l := range links {
-		if l.batch != links[0].batch {
-			t.Fatalf("expected %s in batch %d, got %d", l.name, links[0].batch, l.batch)
+		if l.batch != links[0].batch || l.group != links[0].group {
+			t.Fatalf("expected %s in group %d and batch %d, got %+v", l.name, links[0].group, links[0].batch, l)
 		}
 	}
 }
@@ -285,14 +329,15 @@ func TestLinksUserCallInBatchHook(t *testing.T) {
 		Call(DetachedContext(ctx), ActionScroll{Selector: "#detached"})
 	})
 	links := linksExpect(h, from, "batch_init", "scroll", "scroll", "report hook")
-	batch := linksNamed(t, links, "batch_init", 1)[0].batch
+	init := linksNamed(t, links, "batch_init", 1)[0]
+	group, batch := init.group, init.batch
 	member, detached := linksScroll(t, links, "#member"), linksScroll(t, links, "#detached")
 	if issuer.ID() == placed.door || issuer.ID() == h.root.ID() || placed.seq == 0 {
 		t.Fatalf("expected a door placed by a call, got door %d placed by %+v", issuer.ID(), placed)
 	}
 	member.action, detached.action = nil, nil
-	want := linksCall{seq: member.seq, name: "scroll", batch: batch, door: issuer.ID(), depSeq: placed.seq}
-	if batch == 0 || member != want {
+	want := linksCall{seq: member.seq, name: "scroll", group: group, batch: batch, door: issuer.ID(), depSeq: placed.seq}
+	if batch == 0 || group == 0 || member != want {
 		t.Fatalf("expected the user call linked as %+v, got %+v", want, member)
 	}
 	want = linksCall{seq: detached.seq, name: "scroll", door: issuer.ID(), depSeq: placed.seq}
@@ -301,7 +346,7 @@ func TestLinksUserCallInBatchHook(t *testing.T) {
 	}
 }
 
-// Title, each meta name, path and tab state use their own stable target id; title and meta are never tagged, set_path carries the batch of its ctx.
+// Title, each meta name, path and tab state use their own stable target id; title and meta are never tagged, set_path carries the group and batch of its ctx.
 func TestLinksStreamTargets(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	d := &Door{}
@@ -336,6 +381,9 @@ func TestLinksStreamTargets(t *testing.T) {
 	if batch == 0 || setPath.batch != batch {
 		t.Fatalf("expected set_path in batch %d, got %d", batch, setPath.batch)
 	}
+	if report.group == 0 || setPath.group != report.group {
+		t.Fatalf("expected set_path in group %d, got %d", report.group, setPath.group)
+	}
 	if setPath.seq > report.seq {
 		t.Fatalf("expected set_path before the batch closer, got %v", linksNames(first))
 	}
@@ -344,8 +392,8 @@ func TestLinksStreamTargets(t *testing.T) {
 		return count(links, "set_path") == 1 && count(links, "update_state") == 1 &&
 			count(links, "update_title") >= 1 && count(links, "update_meta") >= 2
 	})
-	if got := linksNamed(t, second, "set_path", 1)[0].batch; got != 0 {
-		t.Fatalf("expected the detached set_path untagged, got batch %d", got)
+	if got := linksNamed(t, second, "set_path", 1)[0]; got.batch != 0 || got.group != 0 {
+		t.Fatalf("expected the detached set_path untagged, got batch %d", got.batch)
 	}
 	targets := map[string]uint64{}
 	updates := map[string]int{}
@@ -365,7 +413,7 @@ func TestLinksStreamTargets(t *testing.T) {
 		default:
 			continue
 		}
-		if l.batch != 0 && stream != "path" && stream != "state" {
+		if (l.batch != 0 || l.group != 0) && stream != "path" && stream != "state" {
 			t.Fatalf("expected %s untagged, got batch %d", stream, l.batch)
 		}
 		if l.depSeq != 0 || l.depDoor != 0 {
@@ -426,12 +474,12 @@ func TestLinksForeignInstanceUntagged(t *testing.T) {
 		Call(same, ActionScroll{Selector: "#same"})
 	})
 	linksA := linksExpect(ha, fromA, "batch_init", "door_update", "scroll", "report hook")
-	batch := linksA[0].batch
-	if batch == 0 {
-		t.Fatal("expected a non-zero batch id")
+	batch, group := linksA[0].batch, linksA[0].group
+	if batch == 0 || group == 0 {
+		t.Fatal("expected non-zero group and batch ids")
 	}
 	for _, l := range linksA {
-		if l.batch != batch {
+		if l.batch != batch || l.group != group {
 			t.Fatalf("expected %s of the issuing instance in batch %d, got %d", l.name, batch, l.batch)
 		}
 	}
@@ -440,7 +488,7 @@ func TestLinksForeignInstanceUntagged(t *testing.T) {
 	}
 	open()
 	for _, l := range linksExpect(hb, fromB, "door_update", "scroll") {
-		if l.batch != 0 {
+		if l.batch != 0 || l.group != 0 {
 			t.Fatalf("expected %s of the foreign instance untagged, got batch %d", l.name, l.batch)
 		}
 	}

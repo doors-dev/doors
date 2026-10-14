@@ -49,7 +49,7 @@ func TestLinkPlainStreams(t *testing.T) {
 	pathWait(t, page, "/s/plain")
 }
 
-// A link with Batch keeps the current view until the whole new one is ready, then swaps it and the URL at once.
+// A link with Batch keeps the current view until the whole new one is ready, then swaps it at once; the URL changes at the click.
 func TestLinkBatchSwapsAtOnce(t *testing.T) {
 	page, g := linkOpen(t)
 	waitContent(t, page, "#slow", "slow-")
@@ -58,6 +58,9 @@ func TestLinkBatchSwapsAtOnce(t *testing.T) {
 	time.Sleep(quiet)
 	if fast, slow := content(t, page, "#fast"), content(t, page, "#slow"); fast != "fast-" || slow != "slow-" {
 		t.Fatalf("expected the current view intact while the new one renders, got %q and %q", fast, slow)
+	}
+	if got := pathOf(t, page); got != "/s/batched" {
+		t.Fatalf("expected the URL changed at the click, got %q", got)
 	}
 	close(g.proceed)
 	waitContent(t, page, "#fast", "fast-batched")

@@ -113,7 +113,7 @@ func stashRestored(t *testing.T, full bool) (*deck, *countCall, *gateStasher, ch
 	t.Helper()
 	d := newDeck(expirator.NewExpirator(&stubExpireHandler{}), testSolitaireConf())
 	c := &countCall{act: actions.Test{Arg: "a"}, params: actions.CallParams{Timeout: time.Minute}}
-	if _, err := d.Insert(c, 0, 0, 0, 0); err != nil {
+	if _, err := d.Insert(c, 0, 0, 0, 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := d.Dump(&recordStasher{}); err != nil {
@@ -208,7 +208,7 @@ func TestDeckGapWhileStashing(t *testing.T) {
 func TestDeckOptimisticResent(t *testing.T) {
 	d := newDeck(expirator.NewExpirator(&stubExpireHandler{}), testSolitaireConf())
 	c := &countCall{act: actions.Test{Arg: "navigate"}, params: actions.CallParams{Optimistic: true, Timeout: time.Minute}}
-	if _, err := d.Insert(c, 0, 0, 0, 0); err != nil {
+	if _, err := d.Insert(c, 0, 0, 0, 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := d.Dump(&recordStasher{}); err != nil {
@@ -242,7 +242,7 @@ func TestDeckStaleGapIgnored(t *testing.T) {
 		if i == 0 || i == 1 || i == 6 {
 			calls[i].act = actions.Test{Arg: i}
 		}
-		if _, err := d.Insert(calls[i], 0, 0, 0, 0); err != nil {
+		if _, err := d.Insert(calls[i], 0, 0, 0, 0, 0); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -280,7 +280,7 @@ func TestDeckResultPanicKeepsBatch(t *testing.T) {
 		}
 		for _, c := range calls {
 			c.params.Timeout = time.Minute
-			if _, err := d.Insert(c, 0, 0, 0, 0); err != nil {
+			if _, err := d.Insert(c, 0, 0, 0, 0, 0); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -312,11 +312,11 @@ func TestDeckQueueLimit(t *testing.T) {
 	conf := testSolitaireConf()
 	d := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
 	for i := range conf.Queue {
-		if _, err := d.Insert(&countCall{act: actions.Test{Arg: i}, params: actions.CallParams{Timeout: time.Minute}}, 0, 0, 0, 0); err != nil {
+		if _, err := d.Insert(&countCall{act: actions.Test{Arg: i}, params: actions.CallParams{Timeout: time.Minute}}, 0, 0, 0, 0, 0); err != nil {
 			t.Fatalf("insert %d of %d: %v", i+1, conf.Queue, err)
 		}
 	}
-	if _, err := d.Insert(&countCall{act: actions.Test{Arg: "over"}, params: actions.CallParams{Timeout: time.Minute}}, 0, 0, 0, 0); err == nil {
+	if _, err := d.Insert(&countCall{act: actions.Test{Arg: "over"}, params: actions.CallParams{Timeout: time.Minute}}, 0, 0, 0, 0, 0); err == nil {
 		t.Fatal("expected an error past the queue limit")
 	}
 }
@@ -371,7 +371,7 @@ func TestRollPastBlockedWrite(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-	s.Call(&countCall{act: actions.Test{Arg: strings.Repeat("x", 16<<20)}, params: actions.CallParams{Timeout: time.Minute}}, 0, 0, 0, 0)
+	s.Call(&countCall{act: actions.Test{Arg: strings.Repeat("x", 16<<20)}, params: actions.CallParams{Timeout: time.Minute}}, 0, 0, 0, 0, 0)
 	stuck, err := net.Dial("tcp", srv.Listener.Addr().String())
 	if err != nil {
 		t.Fatal(err)
@@ -398,7 +398,7 @@ type reenterCall struct {
 }
 
 func (c *reenterCall) Cancel() {
-	c.d.Insert(&countCall{act: actions.Test{}}, 0, 0, 0, 0)
+	c.d.Insert(&countCall{act: actions.Test{}}, 0, 0, 0, 0, 0)
 }
 
 // A call canceled by an ended deck may insert another call from its Cancel.
@@ -407,7 +407,7 @@ func TestInsertOnEndedDeckCancelsOutsideLock(t *testing.T) {
 	d.End()
 	done := make(chan struct{})
 	go func() {
-		d.Insert(&reenterCall{d: d}, 0, 0, 0, 0)
+		d.Insert(&reenterCall{d: d}, 0, 0, 0, 0, 0)
 		close(done)
 	}()
 	select {

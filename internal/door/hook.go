@@ -104,24 +104,25 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) boo
 		}
 		h.last = track
 	}
-	var batch uint64
-	if h.batch || track != 0 {
-		batch = h.tracker.inst().NewID()
+	var group, batch uint64
+	if track != 0 {
+		group = h.tracker.inst().NewID()
 	}
 	if h.batch {
-		h.tracker.inst().Call(batchInit{}, batch, h.tracker.ID(), 0, 0)
+		batch = h.tracker.inst().NewID()
+		h.tracker.inst().Call(batchInit{}, group, batch, h.tracker.ID(), 0, 0)
 	}
 	inst := h.tracker.inst().ID()
-	ctx, frame := ctex.AfterFrameInsert(h.tracker.Context(), batch, inst, h.batch)
+	ctx, frame := ctex.AfterFrameInsert(h.tracker.Context(), group, batch, inst)
 	defer frame.Activate()
-	if batch != 0 {
+	if group != 0 || batch != 0 {
 		batchFrame := ctex.GetFrames(ctx).BatchFrame(inst)
 		frame.After().Run(nil, nil, func(b bool) {
 			if track != 0 {
-				h.tracker.inst().Call(reportHook{track: track, batch: batchFrame}, batch, h.tracker.ID(), 0, 0)
+				h.tracker.inst().Call(reportHook{track: track, batch: batchFrame}, group, batch, h.tracker.ID(), 0, 0)
 				return
 			}
-			h.tracker.inst().Call(batchFlush{batch: batchFrame}, batch, h.tracker.ID(), 0, 0)
+			h.tracker.inst().Call(batchFlush{batch: batchFrame}, 0, batch, h.tracker.ID(), 0, 0)
 		})
 	}
 	done, err := h.tracker.Runtime().SafeHook(ctx, w, r, h.triggerFunc)

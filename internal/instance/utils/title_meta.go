@@ -228,6 +228,7 @@ func (t *titleMeta) removeMeta(m *metaMap, name string, id uint) (uint, gox.Attr
 func (t *titleMeta) callRemoveMeta(prop bool, name string) {
 	t.inst.UserCallCheck(
 		0,
+		0,
 		t.targetMeta(prop, name),
 		func() bool {
 			t.mu.Lock()
@@ -251,6 +252,7 @@ func (t *titleMeta) callRemoveMeta(prop bool, name string) {
 
 func (t *titleMeta) callUpdateMeta(prop bool, id uint, name string, attrs gox.Attrs) {
 	t.inst.UserCallCheck(
+		0,
 		0,
 		t.targetMeta(prop, name),
 		func() bool {
@@ -279,6 +281,7 @@ func (t *titleMeta) callUpdateMeta(prop bool, id uint, name string, attrs gox.At
 
 func (t *titleMeta) callUpdateTitle(id uint, value string, attrs gox.Attrs) {
 	t.inst.UserCallCheck(
+		0,
 		0,
 		t.targetTitle(),
 		func() bool {

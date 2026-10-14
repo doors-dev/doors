@@ -223,17 +223,17 @@ func TestWriteControllerSubmitRestoresOnWriteError(t *testing.T) {
 	}
 }
 
-// The link slot carries batch and door, then the dependency seq and door only when set.
+// The link slot carries the door, then the dependency seq and door only when set; the batch slot is 0, the group, or group and batch.
 func TestHeaderLink(t *testing.T) {
 	invocation := actions.Test{Arg: 1}.Invocation()
 	cases := []struct {
 		h    header
 		want string
 	}{
-		{header{beg: 4, end: 4, door: 7}, `[4,[0,7],["test",[1]],null]`},
-		{header{beg: 4, end: 4, batch: 2, door: 7, depSeq: 3}, `[4,[2,7,3],["test",[1]],null]`},
-		{header{beg: 4, end: 4, door: 7, depDoor: 9}, `[4,[0,7,0,9],["test",[1]],null]`},
-		{header{beg: 2, end: 4, door: 7, depSeq: 3, depDoor: 9}, `[[2,4],[0,7,3,9],["test",[1]],null]`},
+		{header{beg: 4, end: 4, door: 7}, `[4,[7],0,["test",[1]],null]`},
+		{header{beg: 4, end: 4, group: 5, door: 7, depSeq: 3}, `[4,[7,3],5,["test",[1]],null]`},
+		{header{beg: 4, end: 4, group: 5, batch: 2, door: 7, depDoor: 9}, `[4,[7,0,9],[5,2],["test",[1]],null]`},
+		{header{beg: 2, end: 4, batch: 2, door: 7, depSeq: 3, depDoor: 9}, `[[2,4],[7,3,9],[0,2],["test",[1]],null]`},
 	}
 	for _, c := range cases {
 		var buf bytes.Buffer
@@ -247,7 +247,7 @@ func TestHeaderLink(t *testing.T) {
 		}
 	}
 	var buf bytes.Buffer
-	if err := (header{beg: 2, end: 4, door: 7, depSeq: 3}).writeCard(&buf, nil); err != nil {
+	if err := (header{beg: 2, end: 4, group: 5, batch: 2, door: 7, depSeq: 3}).writeCard(&buf, nil); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.Bytes()
@@ -259,7 +259,7 @@ func TestHeaderLink(t *testing.T) {
 func TestDeckInsertReturnsSeq(t *testing.T) {
 	deck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), testSolitaireConf())
 	for want := uint64(1); want <= 3; want++ {
-		seq, err := deck.Insert(&stubSyncCall{}, 0, 0, 0, 0)
+		seq, err := deck.Insert(&stubSyncCall{}, 0, 0, 0, 0, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -269,7 +269,7 @@ func TestDeckInsertReturnsSeq(t *testing.T) {
 	}
 	deck.End()
 	killed := &stubSyncCall{}
-	seq, err := deck.Insert(killed, 0, 0, 0, 0)
+	seq, err := deck.Insert(killed, 0, 0, 0, 0, 0)
 	if !errors.Is(err, errorKilled) {
 		t.Fatalf("expected killed error, got %v", err)
 	}
@@ -288,7 +288,7 @@ func TestDeckDumpIssuesCancelsAndWritesFillers(t *testing.T) {
 		act:    actions.Test{Arg: "optimistic"},
 		params: actions.CallParams{Optimistic: true},
 	}
-	if _, err := deck.Insert(optimistic, 0, 0, 0, 0); err != nil {
+	if _, err := deck.Insert(optimistic, 0, 0, 0, 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := deck.Dump(newTestWriteController(conf, &stubRW{})); err != nil {
@@ -306,7 +306,7 @@ func TestDeckDumpIssuesCancelsAndWritesFillers(t *testing.T) {
 
 	cancelDeck := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
 	canceled := &stubSyncCall{}
-	if _, err := cancelDeck.Insert(canceled, 0, 0, 0, 0); err != nil {
+	if _, err := cancelDeck.Insert(canceled, 0, 0, 0, 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	fw := newTestWriteController(conf, &stubRW{})
@@ -421,7 +421,7 @@ func TestSolitaireAndSenderHelpers(t *testing.T) {
 	s := NewSolitaire(inst, conf)
 
 	queuedCall := &stubSyncCall{act: actions.Test{Arg: "queued"}}
-	s.Call(queuedCall, 0, 0, 0, 0)
+	s.Call(queuedCall, 0, 0, 0, 0, 0)
 	if s.deck.QueueLength() != 1 {
 		t.Fatalf("expected solitaire call to queue work, got %d", s.deck.QueueLength())
 	}
@@ -494,7 +494,7 @@ func TestDeckEndDuringDump(t *testing.T) {
 	first := &stubSyncCall{act: actions.Test{Arg: "first"}}
 	second := &stubSyncCall{act: actions.Test{Arg: "second"}}
 	for _, c := range []*stubSyncCall{first, second} {
-		if _, err := deck.Insert(c, 0, 0, 0, 0); err != nil {
+		if _, err := deck.Insert(c, 0, 0, 0, 0, 0); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -521,5 +521,91 @@ func TestDeckEndDuringDump(t *testing.T) {
 	deck.HeatUp()
 	if n := deck.QueueLength(); n != 0 {
 		t.Fatalf("expected an empty queue after End, got %d", n)
+	}
+}
+
+// The delay before a probe grows while probes repeat without progress, stays within the maximum RTT, and resets on any progress.
+func TestProbeBackoff(t *testing.T) {
+	conf := testSolitaireConf()
+	d := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
+	fw := newTestWriteController(conf, &stubRW{})
+	probe := func() {
+		d.HeatUp()
+		if err := d.Dump(fw); err != nil {
+			t.Fatal(err)
+		}
+	}
+	insert := func() uint64 {
+		seq, err := d.Insert(&stubSyncCall{act: actions.Test{}}, 0, 0, 0, 0, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := d.Dump(fw); err != nil {
+			t.Fatal(err)
+		}
+		return seq
+	}
+	expectReset := func(cause string) {
+		t.Helper()
+		if _, probes := d.Pending(); probes != 0 {
+			t.Fatalf("expected %s to reset the back-off, got %d probes", cause, probes)
+		}
+	}
+	first := insert()
+	var prev time.Duration
+	for i := range 6 {
+		pending, probes := d.Pending()
+		if !pending || probes != i {
+			t.Fatalf("expected %d probes without progress, got %d (pending %v)", i, probes, pending)
+		}
+		delay := fw.probeDelay(probes)
+		if i == 0 && delay != fw.Sync.RTT() {
+			t.Fatalf("expected the first probe after one round trip, got %v", delay)
+		}
+		if delay > conf.MaxRTT {
+			t.Fatalf("expected the delay within %v, got %v", conf.MaxRTT, delay)
+		}
+		if i > 0 && delay <= prev && prev != conf.MaxRTT {
+			t.Fatalf("expected the delay to grow past %v, got %v", prev, delay)
+		}
+		prev = delay
+		probe()
+	}
+	if prev != conf.MaxRTT {
+		t.Fatalf("expected the delay to reach %v, got %v", conf.MaxRTT, prev)
+	}
+	second := insert()
+	expectReset("a new call")
+	probe()
+	if err := d.CollectResults(map[uint64]result{first: {}}); err != nil {
+		t.Fatal(err)
+	}
+	expectReset("a result")
+	probe()
+	if err := d.FillGaps([]gap{{beg: second, end: second}}); err != nil {
+		t.Fatal(err)
+	}
+	expectReset("a reported gap")
+	if delay := fw.probeDelay(0); delay != fw.Sync.RTT() {
+		t.Fatalf("expected the delay back at one round trip, got %v", delay)
+	}
+}
+
+// A sender with an unacknowledged call slows its probes down instead of repeating them every round trip.
+func TestSenderProbesBackOff(t *testing.T) {
+	conf := testSolitaireConf()
+	inst := &stubInstance{}
+	d := newDeck(expirator.NewExpirator(&stubExpireHandler{}), conf)
+	rw := &stubRW{}
+	ctx, cancel := context.WithCancelCause(context.Background())
+	s := newSender(inst, d, newTestWriteController(conf, rw), ctx, cancel, conf)
+	if _, err := d.Insert(&stubSyncCall{act: actions.Test{}, params: actions.CallParams{Timeout: time.Minute}}, 0, 0, 0, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	go s.Run()
+	time.Sleep(1200 * time.Millisecond)
+	<-s.Roll()
+	if probes := rw.flushes - 1; probes < 2 || probes > 10 {
+		t.Fatalf("expected a few backed-off probes, got %d", probes)
 	}
 }

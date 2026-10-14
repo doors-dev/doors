@@ -11,7 +11,7 @@ Doors `0.18` brings two things:
 
 Every Door renders on its own and its update goes to the browser as soon as it is ready. That keeps pages responsive, and it shows when one action changes several places or replaces content that takes time to produce: the page changes piece by piece, a list refreshes before its counter, a view empties out and fills in.
 
-Set `Batch: true` on a link (`ALink`) or on an event attr (`AClick`, `ASubmit`, `AKeyDown`, `AHook`, and the rest, next to `Race`), and the browser holds the handler's updates and applies them together when the handler finishes. The handler runs and renders exactly as before; only the paint is grouped. A link to a view that takes a moment to load keeps the current view intact until the new one is complete, then replaces it and the URL at once. A list, its counter, and its toolbar change in the same step:
+Set `Batch: true` on a link (`ALink`) or on an event attr (`AClick`, `ASubmit`, `AKeyDown`, `AHook`, and the rest, next to `Race`), and the browser holds the handler's updates and applies them together when the handler finishes. The handler runs and renders exactly as before; only the paint is grouped. A link to a view that takes a moment to load keeps the current view intact until the new one is complete, then replaces it at once. A list, its counter, and its toolbar change in the same step:
 
 ```gox
 ~>doors.AClick{
@@ -26,7 +26,7 @@ Set `Batch: true` on a link (`ALink`) or on an event attr (`AClick`, `ASubmit`, 
 
 The batch covers everything the handler starts with its context: Door updates, the state propagation they trigger, and path changes. Other calls are not held up by it unless they touch a Door the batch holds or content the batch is about to place; those land right after it, in order.
 
-To batch updates yourself, anywhere, use `doors.OnBatch(ctx, on, ops...)`: the updates made in `ops` are applied at once, and `on` runs when the browser has applied them. If the context already belongs to a batch, `OnBatch` joins it instead of opening a new one:
+To batch updates yourself, anywhere, use `doors.OnBatch(ctx, on, ops...)`: the updates made in `ops` are applied at once, and `on` runs when the browser has applied them. In a handler with `Batch` set, `OnBatch` joins the handler's batch instead of opening a new one:
 
 ```gox
 doors.OnBatch(ctx, func(ctx context.Context) {

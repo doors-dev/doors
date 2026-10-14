@@ -23,7 +23,7 @@ async function card(line: string, cuts: Array<number> = []): Promise<Package> {
 }
 
 function fields(p: Package): Array<any> {
-	return [p.start, p.end, p.batch, p.door, p.dependency, p.dependencyDoor, p.action, p.arg, p.isFiller]
+	return [p.start, p.end, p.group, p.batch, p.door, p.dependency, p.dependencyDoor, p.action, p.arg, p.isFiller]
 }
 
 async function gzip(data: Uint8Array): Promise<Uint8Array> {
@@ -40,7 +40,7 @@ function bytes(buf: ArrayBuffer | undefined): Array<number> {
 }
 
 async function deliver(kind: number, body: Uint8Array, size: number): Promise<Package> {
-	const p = await card(`[1,[0,7],["test",[1]],[${kind},${body.length}]]`)
+	const p = await card(`[1,[7],0,["test",[1]],[${kind},${body.length}]]`)
 	eq(p.remaining(), body.length)
 	for (let from = 0; from < body.length; from += size) {
 		eq(await p.finalize(), false)
@@ -55,35 +55,35 @@ async function deliver(kind: number, body: Uint8Array, size: number): Promise<Pa
 const sample = "héllo wörld ✓ <b>&</b>"
 const blob = Uint8Array.from({ length: 300 }, (_, i) => (i * 7) % 256)
 
-register("package: single seq with a [B,T] link sets start and end to the seq and defaults dependency and dependency door to 0", async () => {
-	const p = await card(`[4,[0,7],["test",[1]],null]`)
-	eq(fields(p), [4, 4, 0, 7, 0, 0, "test", [1], false])
+register("package: single seq with a [T] link and a 0 batch slot sets start and end to the seq and defaults everything else to 0", async () => {
+	const p = await card(`[4,[7],0,["test",[1]],null]`)
+	eq(fields(p), [4, 4, 0, 0, 7, 0, 0, "test", [1], false])
 })
 
-register("package: a [B,T,S] link carries batch and dependency and defaults dependency door to 0", async () => {
-	const p = await card(`[4,[2,7,3],["test",[1]],null]`)
-	eq(fields(p), [4, 4, 2, 7, 3, 0, "test", [1], false])
+register("package: a [T,S] link carries the dependency, and a single number in the batch slot is the group", async () => {
+	const p = await card(`[4,[7,3],5,["test",[1]],null]`)
+	eq(fields(p), [4, 4, 5, 0, 7, 3, 0, "test", [1], false])
 })
 
-register("package: a [B,T,S,D] link with zero S carries only the dependency door", async () => {
-	const p = await card(`[4,[0,7,0,9],["test",[1]],null]`)
-	eq(fields(p), [4, 4, 0, 7, 0, 9, "test", [1], false])
+register("package: a [T,S,D] link with zero S carries only the dependency door, and a [G,B] batch slot carries group and batch", async () => {
+	const p = await card(`[4,[7,0,9],[5,2],["test",[1]],null]`)
+	eq(fields(p), [4, 4, 5, 2, 7, 0, 9, "test", [1], false])
 })
 
-register("package: a [beg,end] seq range with a full link decodes every field", async () => {
-	const p = await card(`[[2,4],[5,7,3,9],["test",[1]],null]`)
-	eq(fields(p), [2, 4, 5, 7, 3, 9, "test", [1], false])
+register("package: a [beg,end] seq range with a full link and a [0,B] batch slot decodes a batch without a group", async () => {
+	const p = await card(`[[2,4],[7,3,9],[0,2],["test",[1]],null]`)
+	eq(fields(p), [2, 4, 0, 2, 7, 3, 9, "test", [1], false])
 })
 
 register("package: a bare single seq filler has a zeroed link, empty action and no arg", async () => {
 	const p = await card(`[4,null]`)
-	eq(fields(p), [4, 4, 0, 0, 0, 0, "", undefined, true])
+	eq(fields(p), [4, 4, 0, 0, 0, 0, 0, "", undefined, true])
 	eq(p.arg === undefined, true)
 })
 
 register("package: a bare range filler keeps its range and has a zeroed link", async () => {
 	const p = await card(`[[2,4],null]`)
-	eq(fields(p), [2, 4, 0, 0, 0, 0, "", undefined, true])
+	eq(fields(p), [2, 4, 0, 0, 0, 0, 0, "", undefined, true])
 })
 
 register("package: a filler finalizes at once with an empty payload", async () => {
@@ -94,28 +94,28 @@ register("package: a filler finalizes at once with an empty payload", async () =
 })
 
 register("package: action name and a nested arg list are taken from the invocation slot unescaped", async () => {
-	const p = await card(`[1,[0,0],["location_assign",["/a?b=<c>&d",true,{"k":[1,null]},"ü"]],null]`)
+	const p = await card(`[1,[0],0,["location_assign",["/a?b=<c>&d",true,{"k":[1,null]},"ü"]],null]`)
 	eq(p.action, "location_assign")
 	eq(p.arg, ["/a?b=<c>&d", true, { k: [1, null] }, "ü"])
 })
 
 register("package: header bytes split across chunks, inside a multibyte character and around an empty chunk, decode the same", async () => {
-	const line = `[[2,4],[5,7,3,9],["test",["✓"]],[3,12]]`
+	const line = `[[2,4],[7,3,9],[6,5],["test",["✓"]],[3,12]]`
 	const at = utf8.encode(line.slice(0, line.indexOf("✓"))).length
 	const p = await card(line, [1, 1, at + 1, at + 2])
-	eq(fields(p), [2, 4, 5, 7, 3, 9, "test", ["✓"], false])
+	eq(fields(p), [2, 4, 6, 5, 7, 3, 9, "test", ["✓"], false])
 	eq(p.remaining(), 12)
 })
 
 register("package: a header without payload info has nothing remaining and finalizes with an empty payload", async () => {
-	const p = await card(`[4,[0,7],["test",[1]],null]`)
+	const p = await card(`[4,[7],0,["test",[1]],null]`)
 	eq(p.remaining(), 0)
 	eq(await p.finalize(), true)
 	eq(p.getPayload(), {})
 })
 
 register("package: an explicit none payload type finalizes with an empty payload", async () => {
-	const p = await card(`[4,[0,7],["test",[1]],[${none},0]]`)
+	const p = await card(`[4,[7],0,["test",[1]],[${none},0]]`)
 	eq(await p.finalize(), true)
 	eq(p.getPayload(), {})
 })
@@ -188,7 +188,7 @@ register("package: a zero length json payload finalizes to null", async () => {
 
 register("package: a chunk larger than remaining throws overflow and is not counted", async () => {
 	const body = utf8.encode("hello")
-	const p = await card(`[1,[0,7],["test",[1]],[${text},${body.length}]]`)
+	const p = await card(`[1,[7],0,["test",[1]],[${text},${body.length}]]`)
 	p.append(body.subarray(0, 2))
 	await fails(() => p.append(body.subarray(1)), "overflow")
 	eq(p.remaining(), 3)
@@ -198,13 +198,13 @@ register("package: a chunk larger than remaining throws overflow and is not coun
 })
 
 register("package: any chunk for a package without payload overflows", async () => {
-	const p = await card(`[4,[0,7],["test",[1]],null]`)
+	const p = await card(`[4,[7],0,["test",[1]],null]`)
 	await fails(() => p.append(utf8.encode("x")), "overflow")
 	eq(await p.finalize(), true)
 })
 
 register("package: a payload shorter than its declared length stays unfinalized and unreadable", async () => {
-	const p = await card(`[1,[0,7],["test",[1]],[${text},5]]`)
+	const p = await card(`[1,[7],0,["test",[1]],[${text},5]]`)
 	p.append(utf8.encode("hell"))
 	eq(await p.finalize(), false)
 	eq(await p.finalize(), false)
@@ -213,20 +213,20 @@ register("package: a payload shorter than its declared length stays unfinalized 
 })
 
 register("package: a json payload cut short by its declared length rejects finalize", async () => {
-	const p = await card(`[1,[0,7],["test",[1]],[${json},5]]`)
+	const p = await card(`[1,[7],0,["test",[1]],[${json},5]]`)
 	p.append(utf8.encode(`{"a":[1,2,3]}`).subarray(0, 5))
 	await fails(() => p.finalize())
 	await fails(() => p.getPayload(), "payload not finalized")
 })
 
 register("package: a gzipped payload that is not gzip rejects finalize", async () => {
-	const p = await card(`[1,[0,7],["test",[1]],[${textGz},5]]`)
+	const p = await card(`[1,[7],0,["test",[1]],[${textGz},5]]`)
 	p.append(utf8.encode("hello"))
 	await fails(() => p.finalize())
 })
 
 register("package: an unknown payload type rejects finalize as unsupported", async () => {
-	const p = await card(`[1,[0,7],["test",[1]],[4,1]]`)
+	const p = await card(`[1,[7],0,["test",[1]],[4,1]]`)
 	p.append(utf8.encode("x"))
 	await fails(() => p.finalize(), "unsupported payload type")
 })

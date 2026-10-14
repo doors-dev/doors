@@ -9,7 +9,7 @@ function card(spec: string): Package {
 	if (label == "f") {
 		return new Package([seq, null])
 	}
-	return new Package([seq, [0, 0], ["call", label], null])
+	return new Package([seq, [0], 0, ["call", label], null])
 }
 
 function put(deck: Solitaire, ...specs: Array<string>) {
@@ -43,11 +43,11 @@ register("deck: packages arriving in order are each delivered by the next collec
 
 register("deck: a package ahead of the cursor waits, its gap is reported lost once, and both collect in order when the gap closes", () => {
 	const deck = new Solitaire()
-	deck.insert(new Package([2, [0, 0], ["call", []], null]))
+	deck.insert(new Package([2, [0], 0, ["call", []], null]))
 	eq(deck.collect().map(p => p.end), [])
 	eq(deck.collectLost(), [1])
 	eq(deck.collectLost(), [])
-	deck.insert(new Package([1, [0, 0], ["call", []], null]))
+	deck.insert(new Package([1, [0], 0, ["call", []], null]))
 	eq(deck.collect().map(p => p.end), [1, 2])
 	eq(deck.collectLost(), [])
 })

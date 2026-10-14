@@ -88,7 +88,7 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 	if frame, ok := ctex.AfterFrame(ctx); ok {
 		afterFrame = frame.After()
 	} else if len(ops) != 0 {
-		ctx, frame = ctex.AfterFrameInsert(ctx, 0, core.Instance().ID(), false)
+		ctx, frame = ctex.AfterFrameInsert(ctx, 0, 0, core.Instance().ID())
 		afterFrame = frame.After()
 		defer frame.Activate()
 	}
@@ -105,8 +105,12 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 }
 
 // OnBatch batches updates yourself, anywhere: the updates made in ops are
-// applied at once, and on runs when the browser has applied them. If ctx
-// already belongs to a batch, OnBatch joins it instead of opening a new one.
+// applied at once, and on runs when the browser has applied them. In a handler
+// with Batch set, OnBatch joins the handler's batch instead of opening a new
+// one.
+//
+// In a handler the batch closes when the handler settles, not when ops return;
+// use [DetachedContext] of ctx to batch on its own.
 //
 // Where [OnSettle] reports that the updates are queued for delivery, OnBatch
 // reports that the browser applied them.
@@ -122,7 +126,7 @@ func OnBatch(ctx context.Context, on func(ctx context.Context), ops ...func(ctx 
 	core := ctx.Value(common.KeyCore).(core.Core)
 	inst := core.Instance()
 	batchFrame := ctex.GetFrames(ctx).BatchFrame(inst.ID())
-	if batchFrame == nil {
+	if _, ok := ctex.AfterFrame(ctx); batchFrame == nil || !ok {
 		var after *shredder.AfterFrame
 		var inserted bool
 		ctx, after, batchFrame, inserted = ctex.BatchFrameInsert(ctx, inst.NewID(), inst.ID())

@@ -77,34 +77,37 @@ func runBatchHook(t *testing.T, track uint64) (member testLink, detached testLin
 	}
 }
 
-// A batch hook opens the batch, tags the calls made with its ctx and closes it with the hook report.
+// A batch hook with a report puts group and batch on the opener, the calls made with its ctx and the report that closes it.
 func TestHookBatchClosedByReport(t *testing.T) {
 	member, detached, opener, closer, closerCall := runBatchHook(t, 7)
-	if opener.batch == 0 {
-		t.Fatal("expected a non-zero batch id")
+	if opener.batch == 0 || opener.group == 0 || opener.group == opener.batch {
+		t.Fatalf("expected distinct non-zero group and batch ids, got %+v", opener)
 	}
-	if member.batch != opener.batch {
-		t.Fatalf("expected the handler ctx call in batch %d, got %d", opener.batch, member.batch)
+	if member.batch != opener.batch || member.group != opener.group {
+		t.Fatalf("expected the handler ctx call in group %d and batch %d, got %+v", opener.group, opener.batch, member)
 	}
 	if member.seq > closer.seq {
 		t.Fatalf("expected the batch call before the closer, got %d after %d", member.seq, closer.seq)
 	}
-	if detached.seq == 0 || detached.batch != 0 {
-		t.Fatalf("expected the detached call outside the batch, got %+v", detached)
+	if detached.seq == 0 || detached.batch != 0 || detached.group != 0 {
+		t.Fatalf("expected the detached call outside the group and the batch, got %+v", detached)
 	}
-	if report, ok := closerCall.(reportHook); !ok || report.track != 7 || closer.batch != opener.batch {
-		t.Fatalf("expected the hook report to close batch %d, got %#v in batch %d", opener.batch, closerCall, closer.batch)
+	if report, ok := closerCall.(reportHook); !ok || report.track != 7 || report.batch == nil || closer.batch != opener.batch || closer.group != opener.group {
+		t.Fatalf("expected the hook report to close batch %d in group %d, got %#v with %+v", opener.batch, opener.group, closerCall, closer)
 	}
 }
 
-// Without a hook report the batch is closed by an explicit flush.
+// Without a hook report the batch has no group and is closed by an explicit flush.
 func TestHookBatchClosedByFlush(t *testing.T) {
 	member, _, opener, closer, closerCall := runBatchHook(t, 0)
-	if member.batch != opener.batch {
-		t.Fatalf("expected the handler ctx call in batch %d, got %d", opener.batch, member.batch)
+	if opener.batch == 0 || opener.group != 0 {
+		t.Fatalf("expected a batch without a group, got %+v", opener)
 	}
-	if _, ok := closerCall.(batchFlush); !ok || closer.batch != opener.batch {
-		t.Fatalf("expected a flush of batch %d, got %#v in batch %d", opener.batch, closerCall, closer.batch)
+	if member.batch != opener.batch || member.group != 0 {
+		t.Fatalf("expected the handler ctx call in batch %d without a group, got %+v", opener.batch, member)
+	}
+	if _, ok := closerCall.(batchFlush); !ok || closer.batch != opener.batch || closer.group != 0 {
+		t.Fatalf("expected a flush of batch %d without a group, got %#v with %+v", opener.batch, closerCall, closer)
 	}
 }
 
@@ -159,8 +162,8 @@ func runPlainHook(t *testing.T, track uint64) ([]testLink, []any) {
 	}
 }
 
-// A plain tracked hook tags its calls and its report with one batch id, opens no batch and keeps full channels.
-func TestHookSoftBatch(t *testing.T) {
+// A plain tracked hook puts one group on its calls and its report, opens no batch and keeps full channels.
+func TestHookGroup(t *testing.T) {
 	links, calls := runPlainHook(t, 7)
 	if _, ok := calls[0].(batchInit); ok {
 		t.Fatal("expected a plain hook not to open a batch")
@@ -169,15 +172,18 @@ func TestHookSoftBatch(t *testing.T) {
 	if !ok || report.track != 7 || report.batch != nil {
 		t.Fatalf("expected a plain hook report without a batch frame, got %#v", calls[1])
 	}
-	if links[0].batch == 0 || links[1].batch != links[0].batch {
-		t.Fatalf("expected the call and the report to share a batch id, got %d and %d", links[0].batch, links[1].batch)
+	if links[0].group == 0 || links[1].group != links[0].group {
+		t.Fatalf("expected the call and the report to share a group, got %d and %d", links[0].group, links[1].group)
+	}
+	if links[0].batch != 0 || links[1].batch != 0 {
+		t.Fatalf("expected no batch id on a plain hook, got %d and %d", links[0].batch, links[1].batch)
 	}
 }
 
-// A hook without a report issues no closer and leaves its calls untagged.
+// A hook without a report issues no closer and puts neither group nor batch on its calls.
 func TestHookUntracked(t *testing.T) {
 	links, _ := runPlainHook(t, 0)
-	if links[0].batch != 0 {
+	if links[0].batch != 0 || links[0].group != 0 {
 		t.Fatalf("expected an untagged call, got %+v", links[0])
 	}
 }

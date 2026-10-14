@@ -131,6 +131,7 @@ func (t TabStateManager) Initialize(data map[string]json.RawMessage) {
 		seq := t.seq.Add(1)
 		t.inst.UserCallCheck(
 			0,
+			0,
 			t.target,
 			func() bool {
 				return seq == t.seq.Load()

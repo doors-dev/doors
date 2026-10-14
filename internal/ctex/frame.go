@@ -26,10 +26,18 @@ type Frames struct {
 	after      *shredder.AfterFrame
 	sync       shredder.ReleaseFrame
 	init       shredder.Frame
+	group      uint64
 	batch      uint64
 	inst       string
 	batchFrame *shredder.ValveFrame
 	guard      bool
+}
+
+func (f Frames) Group(inst string) uint64 {
+	if f.inst != inst {
+		return 0
+	}
+	return f.group
 }
 
 func (f Frames) Batch(inst string) uint64 {
@@ -86,22 +94,24 @@ func (f Frames) InitFrame(ctx context.Context) shredder.ReleaseFrame {
 	return shredder.Join(ctx, init, sync, after)
 }
 
-func AfterFrameInsert(ctx context.Context, batch uint64, inst string, hard bool) (context.Context, *shredder.AfterFrame) {
+func AfterFrameInsert(ctx context.Context, group uint64, batch uint64, inst string) (context.Context, *shredder.AfterFrame) {
 	fs := Frames{
 		after: &shredder.AfterFrame{},
 		inst:  inst,
+		group: group,
 		batch: batch,
 	}
-	if batch == 0 {
+	if batch != 0 {
+		fs.batchFrame = &shredder.ValveFrame{}
+		fs.guard = true
+	} else if group == 0 {
 		prev, _ := ctx.Value(common.KeyFrame).(Frames)
 		if prev.inst == inst {
+			fs.group = prev.group
 			fs.batch = prev.batch
 			fs.batchFrame = prev.batchFrame
 			fs.guard = prev.guard
 		}
-	} else if hard {
-		fs.batchFrame = &shredder.ValveFrame{}
-		fs.guard = true
 	}
 	return context.WithValue(ctx, common.KeyFrame, fs), fs.after
 }
@@ -111,6 +121,9 @@ func BatchFrameInsert(ctx context.Context, batch uint64, inst string) (context.C
 	inserted := fs.after == nil
 	if inserted {
 		fs.after = &shredder.AfterFrame{}
+	}
+	if fs.inst != inst {
+		fs.group = 0
 	}
 	fs.batch = batch
 	fs.inst = inst

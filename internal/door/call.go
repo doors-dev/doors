@@ -110,6 +110,10 @@ func (n *call) Cancel() {
 func (n *call) Result(_ json.RawMessage, err error) {
 	n.payload.Release()
 	if err != nil {
+		if n.ctx.Err() != nil {
+			n.send(context.Canceled)
+			return
+		}
 		n.logger.Error("door rendering call failed", "error", err)
 		if !errors.Is(err, common.ErrTerminated) {
 			err = fmt.Errorf("%w: %w", common.ErrExecution, err)

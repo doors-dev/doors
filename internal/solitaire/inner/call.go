@@ -24,6 +24,7 @@ import (
 type Call struct {
 	Call             actions.Call
 	Params           actions.CallParams
+	Group            uint64
 	Batch            uint64
 	Door             uint64
 	DepSeq           uint64

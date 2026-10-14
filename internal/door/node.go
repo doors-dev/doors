@@ -81,14 +81,15 @@ func (n *node) logger() *slog.Logger {
 func (n *node) call(call *call) uint64 {
 	outer := n.tracker.outer
 	inst := outer.root.inst.ID()
+	group := call.task.Group(inst)
 	batch := call.task.Batch(inst)
 	if call.task.BatchGuard(inst) {
 		call.task.Accept()
 	}
 	if n.mode == modeStatic {
-		return outer.root.inst.Call(call, batch, outer.id, n.static.place.Load(), n.static.id)
+		return outer.root.inst.Call(call, group, batch, outer.id, n.static.place.Load(), n.static.id)
 	}
-	return outer.root.inst.Call(call, batch, outer.id, outer.place.Load(), 0)
+	return outer.root.inst.Call(call, group, batch, outer.id, outer.place.Load(), 0)
 }
 
 func (n *node) callKind() callKind {
