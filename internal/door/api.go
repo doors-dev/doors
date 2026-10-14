@@ -46,8 +46,10 @@ func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
 // newer operation superseded this one. On a detached context
 // (doors.DetachedContext, doors.Go) a second value reports the result: nil
 // once applied to the page, or an error; otherwise the channel closes once the
-// operation is scheduled. If the Door is not mounted, it closes without a
-// value. Never wait on the channel during rendering or in a subscription.
+// operation is scheduled. If you need the result, wait for the second value;
+// it only arrives on a detached context. If the Door is not mounted, it closes
+// without a value. Never wait on the channel during rendering or in a
+// subscription.
 func (d *Door) Inner(ctx context.Context, content any) <-chan error {
 	ctex.LogCanceled(ctx, "Door inner")
 	task, ch := newUserTask(ctx)
@@ -64,8 +66,10 @@ func (d *Door) Inner(ctx context.Context, content any) <-chan error {
 // newer operation superseded this one. On a detached context
 // (doors.DetachedContext, doors.Go) a second value reports the result: nil
 // once applied to the page, or an error; otherwise the channel closes once the
-// operation is scheduled. If the Door is not mounted, it closes without a
-// value. Never wait on the channel during rendering or in a subscription.
+// operation is scheduled. If you need the result, wait for the second value;
+// it only arrives on a detached context. If the Door is not mounted, it closes
+// without a value. Never wait on the channel during rendering or in a
+// subscription.
 func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
 	ctex.LogCanceled(ctx, "Door outer")
 	task, ch := newUserTask(ctx)
@@ -87,8 +91,10 @@ func (d *Door) Outer(ctx context.Context, outer any) <-chan error {
 // newer operation superseded this one. On a detached context
 // (doors.DetachedContext, doors.Go) a second value reports the result: nil
 // once applied to the page, or an error; otherwise the channel closes once the
-// operation is scheduled. If the Door is not mounted, it closes without a
-// value. Never wait on the channel during rendering or in a subscription.
+// operation is scheduled. If you need the result, wait for the second value;
+// it only arrives on a detached context. If the Door is not mounted, it closes
+// without a value. Never wait on the channel during rendering or in a
+// subscription.
 func (d *Door) Static(ctx context.Context, content any) <-chan error {
 	ctex.LogCanceled(ctx, "Door static")
 	task, ch := newUserTask(ctx)
@@ -133,8 +139,10 @@ func (d *Door) DeferredStatic(ctx context.Context, content any) <-chan error {
 // newer operation superseded this one. On a detached context
 // (doors.DetachedContext, doors.Go) a second value reports the result: nil
 // once applied to the page, or an error; otherwise the channel closes once the
-// operation is scheduled. If the Door is not mounted, it closes without a
-// value. Never wait on the channel during rendering or in a subscription.
+// operation is scheduled. If you need the result, wait for the second value;
+// it only arrives on a detached context. If the Door is not mounted, it closes
+// without a value. Never wait on the channel during rendering or in a
+// subscription.
 func (d *Door) Reload(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door reload")
 	task, ch := newUserTask(ctx)
@@ -151,8 +159,10 @@ func (d *Door) Reload(ctx context.Context) <-chan error {
 // newer operation superseded this one. On a detached context
 // (doors.DetachedContext, doors.Go) a second value reports the result: nil
 // once applied to the page, or an error; otherwise the channel closes once the
-// operation is scheduled. If the Door is not mounted, it closes without a
-// value. Never wait on the channel during rendering or in a subscription.
+// operation is scheduled. If you need the result, wait for the second value;
+// it only arrives on a detached context. If the Door is not mounted, it closes
+// without a value. Never wait on the channel during rendering or in a
+// subscription.
 func (d *Door) Unmount(ctx context.Context) <-chan error {
 	ctex.LogCanceled(ctx, "Door unmount")
 	task, ch := newUserTask(ctx)

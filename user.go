@@ -31,8 +31,9 @@ import (
 // scheduled, or an error if it fails before that, for example when ctx belongs
 // to the root page render. On a detached context ([DetachedContext], [Go]) a
 // second value reports the result: nil once applied to the page, or an error;
-// otherwise the channel closes once the rerender is scheduled. Never wait on
-// the channel during rendering or in a subscription.
+// otherwise the channel closes once the rerender is scheduled. If you need the
+// result, wait for the second value; it only arrives on a detached context.
+// Never wait on the channel during rendering or in a subscription.
 //
 // ctx must belong to a Doors render or handler; otherwise Reload panics.
 func Reload(ctx context.Context) <-chan error {

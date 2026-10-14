@@ -1588,7 +1588,7 @@ func TestCallCanceledAfterScheduling(t *testing.T) {
 	}
 }
 
-// Before scheduling Call has one shape on every context: a build error then close, or close without a value when canceled.
+// Before scheduling Call has one shape on every context: a build error or context.Canceled, then close.
 func TestCallChannelBeforeScheduling(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	pageCtx := h.renderPage(textElem("page"))
@@ -1602,8 +1602,8 @@ func TestCallChannelBeforeScheduling(t *testing.T) {
 		}
 	}
 	for name, ctx := range map[string]context.Context{"detached": canceledDetached, "plain": canceledPlain} {
-		if got := drainOp(t, Call(ctx, ActionScroll{Selector: "#x"})); len(got) != 0 {
-			t.Fatalf("%s: expected a close without a value, got %v", name, got)
+		if got := drainOp(t, Call(ctx, ActionScroll{Selector: "#x"})); len(got) != 1 || !errors.Is(got[0], context.Canceled) {
+			t.Fatalf("%s: expected context.Canceled, got %v", name, got)
 		}
 	}
 }

@@ -286,6 +286,39 @@ func TestDeferredPlacedByParentUpdate(t *testing.T) {
 	}
 }
 
+// Package deferred ops and Reload on a detached context report applied as their second value.
+func TestDeferredDetachedReportsApplied(t *testing.T) {
+	for _, m := range deferredModes {
+		t.Run(m.name, func(t *testing.T) {
+			h := newLifecycleHarness(t, 8)
+			chs := make(chan (<-chan error), 1)
+			p := &Door{}
+			p.Inner(freeCtx(), textElem("P0"))
+			d := &Door{}
+			detached := func(ctx context.Context, content any) <-chan error {
+				return m.op(DetachedContext(ctx), content)
+			}
+			d.Inner(freeCtx(), deferLoader(detached, m.wrap(textElem("HEAVY")), textElem("SKELETON"), chs))
+			h.renderPage(mountDoor(p))
+			expectOp(t, "parent", p.Inner(freeCtx(), mountDoor(d)), nil, nil)
+			expectOp(t, "deferred", recvOp(t, chs), nil, nil)
+			expectActions(t, h.client.actions(), actionWant{"door_update", "SKELETON"}, m.final)
+		})
+	}
+	t.Run("reload", func(t *testing.T) {
+		h := newLifecycleHarness(t, 8)
+		ctxs := make(chan context.Context, 2)
+		d := &Door{}
+		d.Inner(freeCtx(), func(cur gox.Cursor) error {
+			ctxs <- cur.Context()
+			return cur.Text("R")
+		})
+		h.renderPage(mountDoor(d))
+		expectOp(t, "reload", Reload(DetachedContext(<-ctxs)), nil, nil)
+		expectActions(t, h.client.actions(), actionWant{"door_update", "R"})
+	})
+}
+
 // A Door placed by a parent update defers from its loader while the parent
 // still renders after it: the deferred render starts only once the parent
 // update is scheduled.
@@ -623,7 +656,7 @@ func TestDeferredSupersededWhileRendering(t *testing.T) {
 					h.expectNoEvent(50 * time.Millisecond)
 					g.open()
 					h.waitEvent("clean-skeleton")
-					expectDeferred(t, h, ch2, 1)
+					expectDeferred(t, h, ch2, 2)
 					want = append(want, m.final)
 				case c.deferred || kept:
 					h.expectNoEvent(50 * time.Millisecond)

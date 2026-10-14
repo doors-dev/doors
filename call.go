@@ -26,16 +26,14 @@ import (
 // Call dispatches action to the client.
 //
 // The returned channel is optional to use. It sends nil once the call is
-// scheduled, or an error if the action cannot be built, then closes. On a
-// detached context ([DetachedContext], [Go]) a second value reports the
-// result: nil, or an error if the client fails or the result cannot be
-// decoded; otherwise the channel closes once the call is scheduled. If you
-// need the result, wait for the second value; it only arrives on a detached
-// context. If the call is canceled before it is scheduled, the channel closes
-// without a value; on a detached context, a call canceled after that reports
-// context.Canceled as its second value. Canceling ctx requests best-effort
-// cancellation. Never wait on the channel during rendering or in a
-// subscription.
+// scheduled, or an error if the action cannot be built. On a detached context
+// ([DetachedContext], [Go]) a second value reports the result: nil, or an
+// error if the client fails or the result cannot be decoded; otherwise the
+// channel closes once the call is scheduled. If you need the result, wait for
+// the second value; it only arrives on a detached context. If the call is
+// canceled, the channel sends context.Canceled and closes. Canceling ctx
+// requests best-effort cancellation. Never wait on the channel during
+// rendering or in a subscription.
 //
 // To capture the client result, arm the action with its Into method before
 // dispatch; see [ActionInto]. dst is written only on a detached context,
@@ -63,14 +61,13 @@ func Call(ctx context.Context, a Action) <-chan error {
 			close(ch)
 		}, nil, func() {
 			if !scheduled {
+				ch <- context.Canceled
 				close(ch)
 			}
 		}, prep.params)
 		return ch
 	}
-	scheduled := false
 	core.Door().UserCall(ctx, prep.action, func() {
-		scheduled = true
 		ch <- nil
 	}, func(rm json.RawMessage, err error) {
 		if err == nil && prep.decode != nil {
@@ -79,9 +76,7 @@ func Call(ctx context.Context, a Action) <-chan error {
 		ch <- err
 		close(ch)
 	}, func() {
-		if scheduled {
-			ch <- context.Canceled
-		}
+		ch <- context.Canceled
 		close(ch)
 	}, prep.params)
 	return ch
