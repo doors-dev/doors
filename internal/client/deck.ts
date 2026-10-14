@@ -19,24 +19,24 @@ import { STRESS_MODE } from "./lib";
 
 export class Solitaire {
 	top: Card
-	private cursor_: number = 1
+	private cursor: number = 1
 	constructor() {
 
 	}
-	private collectedLost_ = new Set<number>()
+	private collectedLost = new Set<number>()
 	return(lost: Lost) {
 		for (const gap of lost) {
-			this.collectedLost_.delete(gap)
+			this.collectedLost.delete(gap)
 		}
 	}
 	collectLost(): Lost {
 		const lost: Lost = []
 		for (const seq of this.getLost()) {
-			if (this.collectedLost_.has(seq)) {
+			if (this.collectedLost.has(seq)) {
 				continue
 			}
 			lost.push(seq)
-			this.collectedLost_.add(seq)
+			this.collectedLost.add(seq)
 		}
 		if (STRESS_MODE && lost.length != 0) {
 			console.log("new lost:", lost)
@@ -49,7 +49,7 @@ export class Solitaire {
 		if (!this.top) {
 			return lost
 		}
-		this.top.lost(this.cursor_ - 1, lost)
+		this.top.lost(this.cursor - 1, lost)
 		return lost
 	}
 	collect(): Array<Package> {
@@ -57,16 +57,16 @@ export class Solitaire {
 		if (!this.top) {
 			return a
 		}
-		if (this.top.start > this.cursor_) {
+		if (this.top.start > this.cursor) {
 			return a
 		}
 		this.top.collect(a, this)
 		const tail = a[a.length - 1]
-		this.cursor_ = tail.end + 1
+		this.cursor = tail.end + 1
 		return a.filter(p => !p.isFiller)
 	}
 	insert(p: Package) {
-		if (p.end < this.cursor_) {
+		if (p.end < this.cursor) {
 			return
 		}
 		if (!this.top) {
@@ -79,25 +79,25 @@ export class Solitaire {
 }
 
 export class Card {
-	private next_: Card
-	constructor(private p_: Package) {
+	private next: Card
+	constructor(private p: Package) {
 	}
 	get end(): number {
-		return this.p_.end
+		return this.p.end
 	}
 	get start(): number {
-		return this.p_.start
+		return this.p.start
 	}
 	lost(end: number, lost: Lost) {
-		if (end < this.p_.start - 1) {
+		if (end < this.p.start - 1) {
 			const lostStart = end + 1
-			const lostEnd = this.p_.start - 1
+			const lostEnd = this.p.start - 1
 			for (let seq = lostStart; seq <= lostEnd; seq++) {
 				lost.push(seq)
 			}
 		}
-		if (this.next_) {
-			this.next_.lost(this.p_.end, lost)
+		if (this.next) {
+			this.next.lost(this.p.end, lost)
 		}
 	}
 	collect(a: Array<Package>, h: Solitaire) {
@@ -111,76 +111,76 @@ export class Card {
 		if (!match) {
 			return
 		}
-		a.push(this.p_)
-		h.top = this.next_
-		if (this.next_) {
-			this.next_.collect(a, h)
+		a.push(this.p)
+		h.top = this.next
+		if (this.next) {
+			this.next.collect(a, h)
 		}
 	}
 	insert(p: Package) {
-		if (p.end < this.p_.start) {
-			if (this.next_) {
-				this.next_.insert(this.p_)
+		if (p.end < this.p.start) {
+			if (this.next) {
+				this.next.insert(this.p)
 			} else {
-				this.next_ = new Card(this.p_)
+				this.next = new Card(this.p)
 			}
-			this.p_ = p
+			this.p = p
 			return
 		}
-		if (p.start > this.p_.end) {
-			if (this.next_) {
-				this.next_.insert(p)
+		if (p.start > this.p.end) {
+			if (this.next) {
+				this.next.insert(p)
 			} else {
-				this.next_ = new Card(p)
+				this.next = new Card(p)
 			}
 			return
 		}
-		if (p.start == this.p_.end) {
-			p.start = this.p_.start
-			this.p_ = p
-			if (this.next_) {
-				this.next_.cover(this.p_.end, this)
+		if (p.start == this.p.end) {
+			p.start = this.p.start
+			this.p = p
+			if (this.next) {
+				this.next.cover(this.p.end, this)
 			}
 			return
 		}
 		// start < end
-		if (p.start <= this.p_.start && p.end >= this.p_.end) {
-			this.p_ = p
-			if (this.next_) {
-				this.next_.cover(this.p_.end, this)
+		if (p.start <= this.p.start && p.end >= this.p.end) {
+			this.p = p
+			if (this.next) {
+				this.next.cover(this.p.end, this)
 			}
 			return
 		}
-		if (p.end >= this.p_.end) { // && p.start > this.start
-			p.start = this.p_.start
-			this.p_ = p
-			if (this.next_) {
-				this.next_.cover(this.p_.end, this)
+		if (p.end >= this.p.end) { // && p.start > this.start
+			p.start = this.p.start
+			this.p = p
+			if (this.next) {
+				this.next.cover(this.p.end, this)
 			}
 			return
 		}
 		// p.end < this.end
-		p.start = Math.min(this.p_.start, p.start)
-		this.p_.start = p.end + 1
-		if (this.next_) {
-			this.next_.insert(this.p_)
+		p.start = Math.min(this.p.start, p.start)
+		this.p.start = p.end + 1
+		if (this.next) {
+			this.next.insert(this.p)
 		} else {
-			this.next_ = new Card(this.p_)
+			this.next = new Card(this.p)
 		}
-		this.p_ = p
+		this.p = p
 	}
 	private cover(end: number, head: Card) {
-		if (end >= this.p_.end) {
-			head.next_ = this.next_
-			if (this.next_) {
-				this.next_.cover(end, head)
+		if (end >= this.p.end) {
+			head.next = this.next
+			if (this.next) {
+				this.next.cover(end, head)
 			}
 			return
 		}
-		if (this.p_.start > end) {
+		if (this.p.start > end) {
 			return
 		}
-		this.p_.start = end + 1
+		this.p.start = end + 1
 		return
 	}
 }

@@ -42,13 +42,13 @@ function repeatedLoad(): boolean {
 }
 
 class Controller {
-	private state_: State = state.active
-	private deck_ = new Solitaire()
-	private tracker_ = new Tracker(() => this.send(), p => action(p.action, p.arg, { payload: p.getPayload() }), solitairePending)
+	private state: State = state.active
+	private deck = new Solitaire()
+	private tracker = new Tracker(() => this.send(), p => action(p.action, p.arg, { payload: p.getPayload() }), solitairePending)
 	readonly ready: Promise<void>
-	private connector_: Connector
-	private loaded_ = false
-	private ttlTimer_ = new ReliableTimer(ttl, () => this.suspend())
+	private connector: Connector
+	private loaded = false
+	private ttlTimer = new ReliableTimer(ttl, () => this.suspend())
 	constructor() {
 		let ready: any = undefined
 		this.ready = new Promise((res) => { ready = res })
@@ -60,12 +60,12 @@ class Controller {
 		document.addEventListener("DOMContentLoaded", () => {
 			this.init()
 			ready()
-			if (this.state_ == state.dead) {
+			if (this.state == state.dead) {
 				return
 			}
 			this.flush()
 		})
-		this.connector_ = NewConnector(this)
+		this.connector = NewConnector(this)
 		this.syncVisibility()
 		window.addEventListener("pagehide", () => this.sleep())
 		window.addEventListener("pageshow", () => this.syncVisibility())
@@ -74,7 +74,7 @@ class Controller {
 	private async pushState() {
 		const delay = new ProgressiveDelay()
 		const body = JSON.stringify(navigator.getState())
-		while (this.state_ != state.dead) {
+		while (this.state != state.dead) {
 			const abortTimer = new AbortTimer(requestTimeout)
 			const [response, err] = await result(() => fetch(`${prefix}/t/${id}`, {
 				method: "POST",
@@ -96,102 +96,102 @@ class Controller {
 		}
 	}
 	private ensureReload() {
-		this.state_ = state.dead
+		this.state = state.dead
 		this.reload()
 		this.reloadOnTouch()
 		window.addEventListener("pageshow", () => this.reload())
 	}
 	resetDelays() {
-		this.connector_.resetDelays()
+		this.connector.resetDelays()
 	}
 	resetTTL() {
-		this.ttlTimer_.reset()
+		this.ttlTimer.reset()
 	}
 	private init() {
-		this.loaded_ = true
+		this.loaded = true
 		doors.scan(document)
 	}
-	private sleepTimer_: number | undefined = undefined
+	private sleepTimer: number | undefined = undefined
 	private syncVisibility() {
-		if (this.state_ == state.dead) {
+		if (this.state == state.dead) {
 			return
 		}
-		if (document.hidden && this.state_ == state.sleep) {
+		if (document.hidden && this.state == state.sleep) {
 			return
 		}
-		if (document.hidden && this.sleepTimer_ !== undefined) {
+		if (document.hidden && this.sleepTimer !== undefined) {
 			return
 		}
 		if (document.hidden) {
-			this.sleepTimer_ = setTimeout(() => {
+			this.sleepTimer = setTimeout(() => {
 				this.sleep()
 			}, disconnectAfter)
 			return
 		}
-		clearTimeout(this.sleepTimer_)
-		this.sleepTimer_ = undefined
-		if (this.state_ == state.sleep) {
-			this.state_ = state.active
-			this.connector_.resume()
+		clearTimeout(this.sleepTimer)
+		this.sleepTimer = undefined
+		if (this.state == state.sleep) {
+			this.state = state.active
+			this.connector.resume()
 			return
 		}
 	}
 	private sleep() {
-		clearTimeout(this.sleepTimer_)
-		this.sleepTimer_ = undefined
-		if (this.state_ != state.active) {
+		clearTimeout(this.sleepTimer)
+		this.sleepTimer = undefined
+		if (this.state != state.active) {
 			return
 		}
-		this.state_ = state.sleep
-		this.connector_.pause()
+		this.state = state.sleep
+		this.connector.pause()
 	}
 	ack(frame: Frame) {
-		this.deck_.return(frame.lost)
+		this.deck.return(frame.lost)
 	}
 	drop(frame: Frame) {
-		this.tracker_.buffer(frame.results)
-		this.deck_.return(frame.lost)
+		this.tracker.buffer(frame.results)
+		this.deck.return(frame.lost)
 		this.send()
 	}
 	onPackage(p: Package) {
-		this.deck_.insert(p)
-		if (!this.loaded_) {
+		this.deck.insert(p)
+		if (!this.loaded) {
 			return
 		}
 		this.flush()
 	}
 	private flush() {
-		const collection = this.deck_.collect()
+		const collection = this.deck.collect()
 		for (const p of collection) {
-			this.tracker_.push(p)
+			this.tracker.push(p)
 		}
 		this.send()
 	}
 	private send() {
-		const results = this.tracker_.collect()
-		const lost = this.deck_.collectLost()
+		const results = this.tracker.collect()
+		const lost = this.deck.collectLost()
 		if (lost.length == 0 && results.size == 0) {
 			return
 		}
-		this.connector_.send({ results, lost })
+		this.connector.send({ results, lost })
 	}
 	suspend() {
-		if (this.state_ == state.dead) {
+		if (this.state == state.dead) {
 			return
 		}
-		this.state_ = state.dead;
-		this.connector_.pause()
+		this.state = state.dead;
+		this.connector.pause()
 		this.reloadOnTouch()
 	}
 	kill() {
-		if (this.state_ == state.dead) {
+		if (this.state == state.dead) {
 			if (!document.hidden) {
 				this.reload()
 			}
 			return
 		}
-		this.state_ = state.dead
-		this.connector_.pause()
+		this.state = state.dead
+		this.connector.pause()
 		if (!document.hidden) {
 			this.reload()
 		}
@@ -202,15 +202,15 @@ class Controller {
 			window.addEventListener(event, () => this.reload(), true);
 		});
 	}
-	private reloaded_ = false
+	private reloaded = false
 	private reload() {
-		if (this.reloaded_) {
+		if (this.reloaded) {
 			return
 		}
-		this.reloaded_ = true
+		this.reloaded = true
 		location.reload()
 		new ReliableTimer(requestTimeout, () => {
-			this.reloaded_ = false
+			this.reloaded = false
 		})
 	}
 }

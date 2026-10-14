@@ -61,7 +61,7 @@ class Conn {
 	private pauseCont: (() => void) | null = null
 	aborts: Set<AbortTimer> = new Set()
 
-	constructor(private ctrl_: Controller) {
+	constructor(private ctrl: Controller) {
 		new PackageReceiver(this, 1)
 		this.sender = new ReportSender(this)
 		this.pausePromise = new Promise((res) => res())
@@ -119,12 +119,12 @@ class Conn {
 				continue
 			}
 			this.inFlight.delete(id)
-			this.ctrl_.ack(frame)
+			this.ctrl.ack(frame)
 		}
 		for (const [id, frame] of this.inFlight.entries()) {
 			if (id < syncFrame.acks[syncFrame.acks.length - 1]) {
 				this.inFlight.delete(id)
-				this.ctrl_.drop(frame)
+				this.ctrl.drop(frame)
 			}
 		}
 		if (flush) {
@@ -141,41 +141,41 @@ class Conn {
 		this.sender.send(this.seq, this.ts, frame)
 	}
 	kill() {
-		this.ctrl_.kill()
+		this.ctrl.kill()
 	}
 	suspend() {
-		this.ctrl_.suspend()
+		this.ctrl.suspend()
 	}
 	resetTTL() {
-		this.ctrl_.resetTTL()
+		this.ctrl.resetTTL()
 	}
-	private receiveBoundary_ = 1
-	private receiveBoundaryBuffer_ = new Set<number>
-	private receivePackageBuffer_: Array<{ id: number, p: Package }> = []
+	private receiveBoundary = 1
+	private receiveBoundaryBuffer = new Set<number>
+	private receivePackageBuffer: Array<{ id: number, p: Package }> = []
 	private receiverPendingFlush = new Set<number>()
 	private receiverFlush(id: number) {
-		if (id <= this.receiveBoundary_) {
+		if (id <= this.receiveBoundary) {
 			this.flush()
 			return
 		}
 		this.receiverPendingFlush.add(id)
 	}
 	receiverDone(id: number, flush: boolean) {
-		this.receiveBoundaryBuffer_.add(id)
-		if (this.receiveBoundary_ != id) {
+		this.receiveBoundaryBuffer.add(id)
+		if (this.receiveBoundary != id) {
 			return
 		}
-		while (this.receiveBoundaryBuffer_.has(this.receiveBoundary_)) {
-			this.receiveBoundaryBuffer_.delete(this.receiveBoundary_)
-			this.receiveBoundary_ += 1
+		while (this.receiveBoundaryBuffer.has(this.receiveBoundary)) {
+			this.receiveBoundaryBuffer.delete(this.receiveBoundary)
+			this.receiveBoundary += 1
 		}
-		const buffer = this.receivePackageBuffer_
-		this.receivePackageBuffer_ = []
+		const buffer = this.receivePackageBuffer
+		this.receivePackageBuffer = []
 		for (const pb of buffer) {
 			this.receiverPackage(pb.id, pb.p)
 		}
 		for (const id of [...this.receiverPendingFlush]) {
-			if (id <= this.receiveBoundary_) {
+			if (id <= this.receiveBoundary) {
 				flush = true
 				this.receiverPendingFlush.delete(id)
 			}
@@ -186,11 +186,11 @@ class Conn {
 	}
 	private _receiverPackage(id: number, p: Package) {
 		this.receiverPendingFlush.add(id)
-		if (id <= this.receiveBoundary_) {
-			this.ctrl_.onPackage(p)
+		if (id <= this.receiveBoundary) {
+			this.ctrl.onPackage(p)
 			return
 		}
-		this.receivePackageBuffer_.push({ id, p })
+		this.receivePackageBuffer.push({ id, p })
 		return
 	}
 	receiverPackage(id: number, p: Package) {
@@ -208,9 +208,9 @@ class Conn {
 
 class ReportSender {
 	private streamer: ReportStreamer | null = null
-	constructor(private conn_: Conn) {
+	constructor(private conn: Conn) {
 		if (supportsRequestStreams) {
-			this.streamer = new ReportStreamer(this.conn_)
+			this.streamer = new ReportStreamer(this.conn)
 		}
 	}
 	send(id: number, ts: number, frame: Frame | null) {
@@ -267,27 +267,27 @@ class ReportSender {
 			return
 		}
 		if (response.status === 410) {
-			this.conn_.kill()
+			this.conn.kill()
 			return
 		}
 	}
 }
 
 class ReportStreamer {
-	private messageWriter_: WritableStreamDefaultWriter<Uint8Array>
-	private messageReader_: ReadableStreamDefaultReader<Uint8Array>
+	private messageWriter: WritableStreamDefaultWriter<Uint8Array>
+	private messageReader: ReadableStreamDefaultReader<Uint8Array>
 	private encoder = new TextEncoder()
-	constructor(private conn_: Conn) {
+	constructor(private conn: Conn) {
 		const channel = new TransformStream<Uint8Array, Uint8Array>();
-		this.messageReader_ = channel.readable.getReader()
-		this.messageWriter_ = channel.writable.getWriter()
+		this.messageReader = channel.readable.getReader()
+		this.messageWriter = channel.writable.getWriter()
 		this.launch()
 	}
 	private launch() {
 		const channel = new TransformStream<WritableStreamDefaultWriter, WritableStreamDefaultWriter>();
 		const writer = channel.writable.getWriter()
 		const reader = channel.readable.getReader()
-		new ReportWriter(this.conn_, writer, 1)
+		new ReportWriter(this.conn, writer, 1)
 		this.loop(reader)
 	}
 	async write(report: string) {
@@ -296,7 +296,7 @@ class ReportStreamer {
 		const view = new DataView(buffer);
 		view.setUint32(0, textBytes.length);
 		new Uint8Array(buffer, 4).set(textBytes);
-		await this.messageWriter_.write(new Uint8Array(buffer))
+		await this.messageWriter.write(new Uint8Array(buffer))
 	}
 	private async loop(readerForWriter: ReadableStreamDefaultReader) {
 		let writer: WritableStreamDefaultWriter | null = null
@@ -330,7 +330,7 @@ class ReportStreamer {
 				continue
 			}
 			if (!messagePromise) {
-				messagePromise = this.messageReader_.read()
+				messagePromise = this.messageReader.read()
 			}
 			const source = await Promise.race([
 				messagePromise.then(() => "message"),
@@ -347,32 +347,32 @@ class ReportStreamer {
 
 
 class ReportWriter {
-	private abortTimer_: AbortTimer
-	private rollTimer_: ReliableTimer
+	private abortTimer: AbortTimer
+	private rollTimer: ReliableTimer
 	private rolled = false
 	private stream = new TransformStream()
 	private writer = this.stream.writable.getWriter()
-	constructor(private conn_: Conn, private writer_: WritableStreamDefaultWriter<WritableStreamDefaultWriter>, private id: number) {
-		this.abortTimer_ = new AbortTimer(solitaireRoll * 4 / 3)
-		this.rollTimer_ = new ReliableTimer(solitaireRoll, () => {
+	constructor(private conn: Conn, private handoff: WritableStreamDefaultWriter<WritableStreamDefaultWriter>, private id: number) {
+		this.abortTimer = new AbortTimer(solitaireRoll * 4 / 3)
+		this.rollTimer = new ReliableTimer(solitaireRoll, () => {
 			this.roll()
 		})
-		conn_.aborts.add(this.abortTimer_)
+		conn.aborts.add(this.abortTimer)
 		this.loop()
 	}
 	private roll() {
 		if (this.rolled) {
 			return
 		}
-		this.rollTimer_.cancel()
+		this.rollTimer.cancel()
 		this.rolled = true
-		this.conn_.pauseGuard().then(() => {
-			new ReportWriter(this.conn_, this.writer_, this.id + 1)
+		this.conn.pauseGuard().then(() => {
+			new ReportWriter(this.conn, this.handoff, this.id + 1)
 		})
 	}
 	private loop() {
 		const promise = fetch(`${prefix}/s/${id}?t=${this.id}&b=${boot}`, {
-			signal: this.abortTimer_.signal,
+			signal: this.abortTimer.signal,
 			method: "POST",
 			body: this.stream.readable,
 			//@ts-ignore
@@ -381,7 +381,7 @@ class ReportWriter {
 				'Content-Type': "application/octet-stream",
 			},
 		})
-		this.writer_.write(this.writer)
+		this.handoff.write(this.writer)
 		promise.then((response) => {
 			result(() => this.writer.abort())
 			if (response.status === 410) {
@@ -409,34 +409,34 @@ class ReportWriter {
 			this.roll()
 			return
 		}
-		this.conn_.senderDelay.wait().then(() => {
+		this.conn.senderDelay.wait().then(() => {
 			this.roll()
 		})
 	}
 	private kill() {
 		this.clear()
-		this.conn_.kill()
+		this.conn.kill()
 	}
 	private clear() {
-		this.abortTimer_.cancel()
-		this.rollTimer_.cancel()
-		this.conn_.aborts.delete(this.abortTimer_)
+		this.abortTimer.cancel()
+		this.rollTimer.cancel()
+		this.conn.aborts.delete(this.abortTimer)
 	}
 }
 
 
 class PackageReceiver {
-	private abortTimer_: AbortTimer
-	private rollTimer_: ReliableTimer
+	private abortTimer: AbortTimer
+	private rollTimer: ReliableTimer
 	private rolled = false
 	private packageReader: PackageReader
-	constructor(private conn_: Conn, private id: number) {
-		this.abortTimer_ = new AbortTimer(solitaireRoll * 4 / 3)
-		conn_.aborts.add(this.abortTimer_)
-		this.rollTimer_ = new ReliableTimer(solitaireRoll, () => {
+	constructor(private conn: Conn, private id: number) {
+		this.abortTimer = new AbortTimer(solitaireRoll * 4 / 3)
+		conn.aborts.add(this.abortTimer)
+		this.rollTimer = new ReliableTimer(solitaireRoll, () => {
 			this.roll()
 		})
-		this.packageReader = new PackageReader(this.conn_, this.id)
+		this.packageReader = new PackageReader(this.conn, this.id)
 		this.launch()
 	}
 
@@ -446,9 +446,9 @@ class PackageReceiver {
 			return
 		}
 		this.rolled = true
-		this.rollTimer_.cancel()
-		this.conn_.pauseGuard().then(() => {
-			new PackageReceiver(this.conn_, this.id + 1)
+		this.rollTimer.cancel()
+		this.conn.pauseGuard().then(() => {
+			new PackageReceiver(this.conn, this.id + 1)
 		})
 	}
 	private async launch() {
@@ -456,13 +456,13 @@ class PackageReceiver {
 			this.clear()
 			return
 		}
-		this.conn_.receiverDone(this.id, false)
+		this.conn.receiverDone(this.id, false)
 	}
 
 	private async loop(): Promise<boolean> {
 		const [response, err] = await result(() => {
 			return fetch(`${prefix}/s/${id}?t=${this.id}&b=${boot}`, {
-				signal: this.abortTimer_.signal,
+				signal: this.abortTimer.signal,
 				method: "GET",
 				cache: "no-store",
 				headers: {
@@ -482,7 +482,7 @@ class PackageReceiver {
 			this.error()
 			return false
 		}
-		this.conn_.resetTTL()
+		this.conn.resetTTL()
 		const reader = response.body!.getReader()
 		while (true) {
 			const [read, err] = await result(() => reader.read())
@@ -527,18 +527,18 @@ class PackageReceiver {
 			this.roll()
 			return
 		}
-		this.conn_.receiverDelay.wait().then(() => {
+		this.conn.receiverDelay.wait().then(() => {
 			this.roll()
 		})
 	}
 	private kill() {
 		this.clear()
-		this.conn_.kill()
+		this.conn.kill()
 	}
 	private clear() {
-		this.abortTimer_.cancel()
-		this.rollTimer_.cancel()
-		this.conn_.aborts.delete(this.abortTimer_)
+		this.abortTimer.cancel()
+		this.rollTimer.cancel()
+		this.conn.aborts.delete(this.abortTimer)
 	}
 }
 
@@ -568,41 +568,41 @@ const readResult = {
 type ReadResult = typeof readResult[keyof typeof readResult];
 
 class PackageReader {
-	private status_: SyncStatus = connectorStatus.signal
-	private header_: Header | undefined
-	private package_: Package | undefined
-	private sync_: Sync | undefined
+	private status: SyncStatus = connectorStatus.signal
+	private header: Header | undefined
+	private package: Package | undefined
+	private sync: Sync | undefined
 	private roll = false
 
-	constructor(private conn_: Conn, private id: number) {
+	constructor(private conn: Conn, private id: number) {
 
 	}
 	async readChunk(data: Uint8Array): Promise<ReadResult> {
 		if (data.length == 0) {
 			return readResult.cont
 		}
-		if (this.status_ == connectorStatus.signal) {
+		if (this.status == connectorStatus.signal) {
 			const signal = data[0]
 			switch (signal) {
 				case signals.sync:
-					this.status_ = connectorStatus.sync
-					this.sync_ = new Sync()
+					this.status = connectorStatus.sync
+					this.sync = new Sync()
 					if (data.length == 1) {
 						return readResult.cont
 					}
 					return await this.readChunk(data.subarray(1))
 				case signals.action:
-					this.status_ = connectorStatus.header
-					this.header_ = new Header()
+					this.status = connectorStatus.header
+					this.header = new Header()
 					if (data.length == 1) {
 						return readResult.cont
 					}
 					return await this.readChunk(data.subarray(1))
 				case signals.suspend:
-					this.conn_.suspend()
+					this.conn.suspend()
 					return readResult.done
 				case signals.kill:
-					this.conn_.kill()
+					this.conn.kill()
 					return readResult.done
 				case signals.roll:
 					this.roll = true
@@ -611,68 +611,68 @@ class PackageReader {
 					}
 					return await this.readChunk(data.subarray(1))
 				case signals.terminator:
-					this.conn_.receiverDone(this.id, false)
+					this.conn.receiverDone(this.id, false)
 					return readResult.done
 				default:
 					console.error(new Error("unsupported signal " + signal))
 					return readResult.error
 			}
 		}
-		if (this.status_ == connectorStatus.sync) {
+		if (this.status == connectorStatus.sync) {
 			for (let i = 0; i < data.length; i++) {
 				const byte = data[i]
 				if (byte != signals.terminator) {
 					continue
 				}
-				this.sync_!.append(data.subarray(0, i))
-				const frame = await this.sync_!.frame()
-				this.sync_ = undefined
-				this.status_ = connectorStatus.signal
+				this.sync!.append(data.subarray(0, i))
+				const frame = await this.sync!.frame()
+				this.sync = undefined
+				this.status = connectorStatus.signal
 				if (this.roll) {
-					this.conn_.sync(this.id, frame, false)
-					this.conn_.receiverDone(this.id, true)
+					this.conn.sync(this.id, frame, false)
+					this.conn.receiverDone(this.id, true)
 					return readResult.done
 				} else {
-					this.conn_.sync(this.id, frame, true)
+					this.conn.sync(this.id, frame, true)
 				}
 				if (i + 1 == data.length) {
 					return readResult.cont
 				}
 				return await this.readChunk(data.subarray(i + 1))
 			}
-			this.sync_!.append(data)
+			this.sync!.append(data)
 			return readResult.cont
 		}
-		if (this.status_ == connectorStatus.header) {
+		if (this.status == connectorStatus.header) {
 			for (let i = 0; i < data.length; i++) {
 				const byte = data[i]
 				if (byte != signals.terminator) {
 					continue
 				}
-				this.header_!.append(data.subarray(0, i))
-				this.package_ = await this.header_!.package()
-				this.header_ = undefined
-				this.status_ = connectorStatus.payload
-				if (await this.package_!.finalize()) {
-					this.conn_.receiverPackage(this.id, this.package_)
-					this.package_ = undefined
-					this.status_ = connectorStatus.signal
+				this.header!.append(data.subarray(0, i))
+				this.package = await this.header!.package()
+				this.header = undefined
+				this.status = connectorStatus.payload
+				if (await this.package!.finalize()) {
+					this.conn.receiverPackage(this.id, this.package)
+					this.package = undefined
+					this.status = connectorStatus.signal
 				}
 				if (i + 1 == data.length) {
 					return readResult.cont
 				}
 				return await this.readChunk(data.subarray(i + 1))
 			}
-			this.header_!.append(data)
+			this.header!.append(data)
 			return readResult.cont
 		}
-		const remaining = this.package_!.remaining();
+		const remaining = this.package!.remaining();
 		const chunk = remaining >= data.length ? data : data.subarray(0, remaining)
-		this.package_!.append(chunk)
-		if (await this.package_!.finalize()) {
-			this.conn_.receiverPackage(this.id, this.package_!)
-			this.package_ = undefined
-			this.status_ = connectorStatus.signal
+		this.package!.append(chunk)
+		if (await this.package!.finalize()) {
+			this.conn.receiverPackage(this.id, this.package!)
+			this.package = undefined
+			this.status = connectorStatus.signal
 		}
 		if (chunk.length == data.length) {
 			return readResult.cont

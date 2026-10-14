@@ -42,7 +42,6 @@ func TestClient(t *testing.T) {
 		GlobalName:  "_d0rCases",
 		Target:      api.ES2022,
 		Platform:    api.PlatformBrowser,
-		MangleProps: "_$",
 	})
 	if len(result.Errors) != 0 {
 		t.Fatal(api.FormatMessages(result.Errors, api.FormatMessagesOptions{}))

@@ -120,15 +120,15 @@ export class Package {
 	isFiller: boolean
 	action: string
 	arg: any
-	private parts_: Uint8Array[] = []
-	private length_ = 0
-	private payloadType_: PayloadType = payloadTypes.none
-	private payload_: Payload | undefined = undefined
+	private parts: Uint8Array[] = []
+	private length = 0
+	private payloadType: PayloadType = payloadTypes.none
+	private payload: Payload | undefined = undefined
 
 	constructor(header: Array<any>) {
 		const payloadInfo = header.pop()
-		this.payloadType_ = payloadInfo ? payloadInfo[0] : payloadTypes.none
-		this.length_ = payloadInfo ? payloadInfo[1] : 0;
+		this.payloadType = payloadInfo ? payloadInfo[0] : payloadTypes.none
+		this.length = payloadInfo ? payloadInfo[1] : 0;
 		if (!Array.isArray(header[0])) {
 			this.start = header[0]
 			this.end = header[0]
@@ -161,16 +161,16 @@ export class Package {
 		this.arg = header[3][1]
 	}
 
-	private written_ = 0
+	private written = 0
 
 	remaining(): number {
-		return this.length_ - this.written_
+		return this.length - this.written
 	}
 
 	private stream(): ReadableStream {
-		const blob = new Blob(this.parts_ as any)
-		this.parts_ = []
-		if (!isGzip(this.payloadType_)) {
+		const blob = new Blob(this.parts as any)
+		this.parts = []
+		if (!isGzip(this.payloadType)) {
 			return blob.stream()
 		}
 		const ds = new DecompressionStream("gzip");
@@ -178,45 +178,45 @@ export class Package {
 	}
 
 	async finalize(): Promise<boolean> {
-		if (this.payload_ != undefined) {
+		if (this.payload != undefined) {
 			throw new Error("already finalized")
 		}
 		if (this.remaining() != 0) {
 			return false
 		}
-		if (this.payloadType_ == payloadTypes.none) {
-			this.payload_ = {}
+		if (this.payloadType == payloadTypes.none) {
+			this.payload = {}
 			return true
 		}
 		const resp = new Response(this.stream())
-		if (isText(this.payloadType_)) {
+		if (isText(this.payloadType)) {
 			let text = ""
-			if (this.length_ != 0) {
+			if (this.length != 0) {
 				text = await resp.text()
 			}
-			this.payload_ = {
+			this.payload = {
 				text,
 				any: text,
 			}
 			return true
 		}
-		if (isBinary(this.payloadType_)) {
+		if (isBinary(this.payloadType)) {
 			let binary = new ArrayBuffer(0)
-			if (this.length_ != 0) {
+			if (this.length != 0) {
 				binary = await resp.arrayBuffer()
 			}
-			this.payload_ = {
+			this.payload = {
 				binary,
 				any: binary,
 			}
 			return true
 		}
-		if (isJson(this.payloadType_)) {
+		if (isJson(this.payloadType)) {
 			let json = null
-			if (this.length_ != 0) {
+			if (this.length != 0) {
 				json = await resp.json()
 			}
-			this.payload_ = {
+			this.payload = {
 				json,
 				any: json,
 			}
@@ -226,21 +226,21 @@ export class Package {
 	}
 
 	append(buf: Uint8Array) {
-		if (this.payload_ != undefined) {
+		if (this.payload != undefined) {
 			throw new Error("payload already finalized")
 		}
 		if (buf.length > this.remaining()) {
 			throw new Error("overflow")
 		}
-		this.parts_.push(buf)
-		this.written_ += buf.length
+		this.parts.push(buf)
+		this.written += buf.length
 	}
 
 	getPayload(): Payload {
-		if (this.payload_ == undefined) {
+		if (this.payload == undefined) {
 			throw new Error("payload not finalized")
 		}
-		return this.payload_
+		return this.payload
 	}
 
 }
@@ -259,26 +259,26 @@ export class SyncFrame {
 }
 
 export class Sync {
-	private parts_: Array<Uint8Array> = []
+	private parts: Array<Uint8Array> = []
 	append(buf: Uint8Array) {
 		if (buf.length == 0) {
 			return
 		}
-		this.parts_.push(buf)
+		this.parts.push(buf)
 	}
 	async frame(): Promise<SyncFrame> {
-		const tuple = await new Response(new Blob(this.parts_ as any, { type: "application/json" })).json();
-		this.parts_ = []
+		const tuple = await new Response(new Blob(this.parts as any, { type: "application/json" })).json();
+		this.parts = []
 		return new SyncFrame(tuple)
 	}
 }
 
 export class Header {
-	private parts_: Array<Uint8Array> = []
+	private parts: Array<Uint8Array> = []
 
 	async package(): Promise<Package> {
-		const header = await new Response(new Blob(this.parts_ as any, { type: "application/json" })).json();
-		this.parts_ = []
+		const header = await new Response(new Blob(this.parts as any, { type: "application/json" })).json();
+		this.parts = []
 		return new Package(header)
 	}
 
@@ -286,6 +286,6 @@ export class Header {
 		if (buf.length == 0) {
 			return
 		}
-		this.parts_.push(buf)
+		this.parts.push(buf)
 	}
 }

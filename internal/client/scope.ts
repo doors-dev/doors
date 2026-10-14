@@ -37,15 +37,15 @@ export function NewFetch(params: {
 }
 
 class Hook {
-	private res_: (value: Response) => void
-	private rej_: (reason: HookErr) => void
-	private promise_: Promise<Response>
-	private scopeStack_: Array<Scope> = []
-	private fetch_: any = {}
-	private scopeQueue_: Array<ScopeSet>
-	private indicatorId_: number | undefined = undefined
-	private track_: number | undefined = undefined
-	constructor(private params_: {
+	private res: (value: Response) => void
+	private rej: (reason: HookErr) => void
+	private promise: Promise<Response>
+	private scopeStack: Array<Scope> = []
+	private fetchOpt: any = {}
+	private scopeQueue: Array<ScopeSet>
+	private indicatorId: number | undefined = undefined
+	private track: number | undefined = undefined
+	constructor(private params: {
 		hookId: number,
 		event?: Event,
 		scopeQueue: Array<ScopeSet>,
@@ -53,26 +53,26 @@ class Hook {
 		before: Array<Action>,
 		timeout?: number | null
 	}) {
-		this.promise_ = new Promise((res, rej) => {
-			this.res_ = res
-			this.rej_ = rej
+		this.promise = new Promise((res, rej) => {
+			this.res = res
+			this.rej = rej
 		})
-		if (!this.params_.scopeQueue || this.params_.scopeQueue.length == 0) {
-			this.scopeQueue_ = [["free", "", undefined]]
+		if (!this.params.scopeQueue || this.params.scopeQueue.length == 0) {
+			this.scopeQueue = [["free", "", undefined]]
 		} else {
-			this.scopeQueue_ = [...this.params_.scopeQueue]
+			this.scopeQueue = [...this.params.scopeQueue]
 		}
 	}
 	fetch = async (opt: FetchOpt): Promise<Response> => {
-		this.fetch_ = opt
+		this.fetchOpt = opt
 		runtime.submitHook(this)
-		return this.promise_
+		return this.promise
 	}
 	nextScope() {
-		return this.scopeQueue_.shift()
+		return this.scopeQueue.shift()
 	}
 	stackScope(scope: Scope) {
-		this.scopeStack_.unshift(scope)
+		this.scopeStack.unshift(scope)
 	}
 	private async actions(actions: Array<Action>) {
 		for (const [name, arg, payload] of actions) {
@@ -81,30 +81,30 @@ class Hook {
 				console.error("hook action payload decode error", decodeErr)
 				continue
 			}
-			const res = action(name, arg, { element: this.params_.event?.target as any, payload: decoded })
+			const res = action(name, arg, { element: this.params.event?.target as any, payload: decoded })
 			const [_, err] = res instanceof Promise ? await res : res
 			if (err) {
 				console.error("hook action error", err)
 			}
 		}
 	}
-	private abortTimer_: AbortTimer | undefined
+	private abortTimer: AbortTimer | undefined
 	execute() {
 		let target: Element | null = null
-		if (this.params_.event?.currentTarget) {
-			target = this.params_.event.currentTarget as Element
+		if (this.params.event?.currentTarget) {
+			target = this.params.event.currentTarget as Element
 		}
-		this.indicatorId_ = indicator.start(target, this.params_.indicator)
-		this.abortTimer_ = new AbortTimer(this.params_.timeout ?? requestTimeout)
-		this.track_ = runtime.hookRegister(this)
-		const track = this.track_
-		this.actions(this.params_.before).then(() => {
-			fetch(`${prefix}/h/${id}/${this.params_.hookId}?t=${track}`, {
+		this.indicatorId = indicator.start(target, this.params.indicator)
+		this.abortTimer = new AbortTimer(this.params.timeout ?? requestTimeout)
+		this.track = runtime.hookRegister(this)
+		const track = this.track
+		this.actions(this.params.before).then(() => {
+			fetch(`${prefix}/h/${id}/${this.params.hookId}?t=${track}`, {
 				method: "POST",
-				signal: this.abortTimer_!.signal,
-				...this.fetch_,
+				signal: this.abortTimer!.signal,
+				...this.fetchOpt,
 			}).then(r => {
-				this.abortTimer_!.cancel()
+				this.abortTimer!.cancel()
 				if (r.ok) {
 					controller.resetDelays()
 					runtime.hookOk(track, r)
@@ -124,49 +124,49 @@ class Hook {
 					runtime.hookErr(track, new HookErr(hookErrKinds.other, r))
 				}
 			}).catch(e => {
-				if (this.abortTimer_!.status == "aborted") {
+				if (this.abortTimer!.status == "aborted") {
 					runtime.hookErr(track, new HookErr(hookErrKinds.canceled))
 					return
 				}
-				if (this.abortTimer_!.status == "running") {
-					this.abortTimer_!.cancel()
+				if (this.abortTimer!.status == "running") {
+					this.abortTimer!.cancel()
 				}
 				runtime.hookErr(track, new HookErr(hookErrKinds.network, e))
 			})
 		})
 	}
 	private done() {
-		this.scopeStack_.forEach(s => s.done(this))
+		this.scopeStack.forEach(s => s.done(this))
 	}
 	cancel() {
-		if (this.response_) {
-			this.response_ = undefined
-			runtime.hookErr(this.track_!, new HookErr(hookErrKinds.canceled))
+		if (this.response) {
+			this.response = undefined
+			runtime.hookErr(this.track!, new HookErr(hookErrKinds.canceled))
 			return
 		}
-		if (this.abortTimer_) {
-			this.abortTimer_.abort()
+		if (this.abortTimer) {
+			this.abortTimer.abort()
 			return
 		}
-		if (this.params_.event) {
-			this.params_.event.preventDefault()
-			this.params_.event.stopPropagation()
+		if (this.params.event) {
+			this.params.event.preventDefault()
+			this.params.event.stopPropagation()
 		}
 		this.err(new HookErr(hookErrKinds.canceled))
 	}
 
-	private response_: Response | undefined = undefined
-	private reported_ = false
+	private response: Response | undefined = undefined
+	private reported = false
 	report(): boolean {
-		this.reported_ = true
-		if (this.response_) {
-			return this.ok(this.response_)
+		this.reported = true
+		if (this.response) {
+			return this.ok(this.response)
 		}
 		return false
 	}
 	ok(r: Response): boolean {
-		if (!this.reported_) {
-			this.response_ = r
+		if (!this.reported) {
+			this.response = r
 			return false
 		}
 		const afterActions: Array<Action> = []
@@ -175,55 +175,55 @@ class Hook {
 			afterActions.push(...JSON.parse(after))
 		}
 		this.actions(afterActions).then(() => {
-			indicator.end(this.indicatorId_)
+			indicator.end(this.indicatorId)
 			this.done()
-			this.res_(r)
+			this.res(r)
 		})
 		return true
 	}
 	err(r: HookErr) {
-		this.rej_(r)
+		this.rej(r)
 		this.done()
-		indicator.end(this.indicatorId_)
+		indicator.end(this.indicatorId)
 	}
 }
 
 
 
 class Runtime {
-	private scopes_ = new Map<string, Scope>()
-	private hooks_ = new Map<number, Hook>()
-	private track_ = 0
+	private scopes = new Map<string, Scope>()
+	private hooks = new Map<number, Hook>()
+	private track = 0
 	constructor() {
 
 	}
 	public hookIsRegistered(track: number): boolean {
-		return this.hooks_.has(track)
+		return this.hooks.has(track)
 	}
 	public hookRegister(hook: Hook): number {
-		this.track_ += 1
-		this.hooks_.set(this.track_, hook)
-		return this.track_
+		this.track += 1
+		this.hooks.set(this.track, hook)
+		return this.track
 	}
 	public hookErr(track: number, err: HookErr) {
-		this.hooks_.get(track)!.err(err)
-		this.hooks_.delete(track)
+		this.hooks.get(track)!.err(err)
+		this.hooks.delete(track)
 	}
 	public hookOk(track: number, r: Response) {
-		if (this.hooks_.get(track)!.ok(r)) {
-			this.hooks_.delete(track)
+		if (this.hooks.get(track)!.ok(r)) {
+			this.hooks.delete(track)
 		}
 	}
 	public hookReport(track: number) {
 		if (!this.hookIsRegistered(track)) {
 			return
 		}
-		if (this.hooks_.get(track)!.report()) {
-			this.hooks_.delete(track)
+		if (this.hooks.get(track)!.report()) {
+			this.hooks.delete(track)
 		}
 	}
 	public scopeDone(id: string) {
-		this.scopes_.delete(id)
+		this.scopes.delete(id)
 	}
 	public submitHook(hook: Hook) {
 		const set = hook.nextScope()!
@@ -231,10 +231,10 @@ class Runtime {
 	}
 	public nextScope(hook: Hook, set: ScopeSet) {
 		const [type, id, opt] = set
-		let scope = this.scopes_.get(id)
+		let scope = this.scopes.get(id)
 		if (!scope) {
 			scope = newScope[type](this, id)
-			this.scopes_.set(id, scope)
+			this.scopes.set(id, scope)
 		}
 		scope.submit(hook, opt)
 	}
@@ -242,24 +242,24 @@ class Runtime {
 
 
 abstract class Scope {
-	private counter_ = 0
-	constructor(protected runtime_: Runtime, protected id_: string) {
+	private counter = 0
+	constructor(protected runtime: Runtime, protected id: string) {
 
 	}
 	protected get size() {
-		return this.counter_
+		return this.counter
 	}
 	public done(fetch: Hook) {
-		this.counter_ -= 1
+		this.counter -= 1
 		this.complete(fetch)
-		if (this.counter_ > 0) {
+		if (this.counter > 0) {
 			return
 		}
-		this.runtime_.scopeDone(this.id_)
+		this.runtime.scopeDone(this.id)
 	}
 	public submit(hook: Hook, opt: any) {
 		hook.stackScope(this)
-		this.counter_ += 1
+		this.counter += 1
 		this.process(hook, opt)
 	}
 	protected promote(hook: Hook) {
@@ -268,7 +268,7 @@ abstract class Scope {
 			hook.execute()
 			return
 		}
-		this.runtime_.nextScope(hook, next)
+		this.runtime.nextScope(hook, next)
 	}
 	protected abstract process(hook: Hook, opt: any): void
 	protected abstract complete(hook: Hook): void
@@ -318,51 +318,51 @@ class RateScope extends Scope {
 }
 
 class DebounceScope extends Scope {
-	private durationTimer_: any = null
-	private limitTimer_: any = null
-	private hook_: Hook | null = null
+	private durationTimer: any = null
+	private limitTimer: any = null
+	private hook: Hook | null = null
 	private launch() {
 		this.clearTimeouts()
-		const hook = this.hook_!
-		this.hook_ = null
+		const hook = this.hook!
+		this.hook = null
 		this.promote(hook)
 	}
 	private clearTimeouts() {
-		clearTimeout(this.durationTimer_)
-		clearTimeout(this.limitTimer_)
-		this.durationTimer_ = null
-		this.limitTimer_ = null
+		clearTimeout(this.durationTimer)
+		clearTimeout(this.limitTimer)
+		this.durationTimer = null
+		this.limitTimer = null
 	}
 	private resetDuration(duration: number) {
-		if (this.durationTimer_) {
-			clearTimeout(this.durationTimer_)
+		if (this.durationTimer) {
+			clearTimeout(this.durationTimer)
 		}
-		this.durationTimer_ = setTimeout(() => {
+		this.durationTimer = setTimeout(() => {
 			this.launch()
 		}, duration)
 	}
 	private resetLimit(limit: number) {
-		if (this.limitTimer_ != null) {
+		if (this.limitTimer != null) {
 			return
 		}
 		if (limit == 0) {
 			return
 		}
-		this.limitTimer_ = setTimeout(() => {
+		this.limitTimer = setTimeout(() => {
 			this.launch()
 		}, limit)
 	}
 	protected complete(hook: Hook): void {
-		if (this.hook_ !== hook) {
+		if (this.hook !== hook) {
 			return
 		}
-		this.hook_ = null
+		this.hook = null
 		this.clearTimeouts()
 	}
 	protected process(hook: Hook, opt: any): void {
 		const [duration, limit] = opt
-		const oldHook = this.hook_
-		this.hook_ = hook
+		const oldHook = this.hook
+		this.hook = hook
 		if (oldHook) {
 			oldHook.cancel()
 		}
@@ -372,21 +372,21 @@ class DebounceScope extends Scope {
 }
 
 class SerialScope extends Scope {
-	private queue_: Array<Hook> = []
+	private queue: Array<Hook> = []
 	protected complete(hook: Hook): void {
-		if (this.queue_[0] === hook) {
-			this.queue_.shift()
-			const next = this.queue_[0]
+		if (this.queue[0] === hook) {
+			this.queue.shift()
+			const next = this.queue[0]
 			if (next) {
 				this.promote(next)
 			}
 			return
 		}
-		this.queue_ = this.queue_.filter(h => h !== hook)
+		this.queue = this.queue.filter(h => h !== hook)
 	}
 	protected process(hook: Hook, _opt: any): void {
-		this.queue_.push(hook)
-		if (this.queue_.length == 1) {
+		this.queue.push(hook)
+		if (this.queue.length == 1) {
 			this.promote(hook)
 		}
 	}
@@ -406,47 +406,47 @@ class BlockingScope extends Scope {
 }
 
 class ConcurrentScope extends Scope {
-	private groupId_: number = 0
+	private groupId: number = 0
 
 	protected complete(_hook: Hook): void {
 	}
 
 	protected process(hook: Hook, opt: any): void {
 		const id = opt as number
-		if (this.size != 1 && this.groupId_ != id) {
+		if (this.size != 1 && this.groupId != id) {
 			hook.cancel()
 			return
 		}
-		this.groupId_ = id
+		this.groupId = id
 		this.promote(hook)
 	}
 }
 
 class FrameScope extends Scope {
-	private frameHook_: Hook | null = null
-	private framePromoted_ = false
+	private frameHook: Hook | null = null
+	private framePromoted = false
 	protected complete(hook: Hook): void {
-		if (!this.frameHook_) {
+		if (!this.frameHook) {
 			return
 		}
-		if (this.frameHook_ == hook) {
-			this.frameHook_ = null
-			this.framePromoted_ = false
+		if (this.frameHook == hook) {
+			this.frameHook = null
+			this.framePromoted = false
 			return
 		}
-		if (this.framePromoted_) {
+		if (this.framePromoted) {
 			return
 		}
 		if (this.size != 1) {
 			return
 		}
-		this.framePromoted_ = true
-		this.promote(this.frameHook_)
+		this.framePromoted = true
+		this.promote(this.frameHook)
 
 	}
 	protected process(hook: Hook, opt: any): void {
 		const frame = opt as boolean
-		if (this.frameHook_) {
+		if (this.frameHook) {
 			hook.cancel()
 			return
 		}
@@ -454,28 +454,28 @@ class FrameScope extends Scope {
 			this.promote(hook)
 			return
 		}
-		this.frameHook_ = hook
+		this.frameHook = hook
 		if (this.size != 1) {
 			return
 		}
-		this.framePromoted_ = true
+		this.framePromoted = true
 		this.promote(hook)
 	}
 }
 
 class LatestScope extends Scope {
-	private last_: Hook | null = null
+	private last: Hook | null = null
 	protected complete(hook: Hook): void {
-		if (this.last_ !== hook) {
+		if (this.last !== hook) {
 			return
 		}
-		this.last_ = null
+		this.last = null
 	}
 	protected process(hook: Hook, _opt: any): void {
-		if (this.last_) {
-			this.last_.cancel()
+		if (this.last) {
+			this.last.cancel()
 		}
-		this.last_ = hook
+		this.last = hook
 		this.promote(hook)
 	}
 }

@@ -22,10 +22,10 @@ type Kind = "attr" | "class" | "remove_class" | "content"
 export type IndicatorEntry = [[SelectorType, string | null], Kind, string, string | null | undefined]
 
 interface Indication {
-    attrs_: Map<string, string | null>
-    classes_: Set<string>
-    removeClasses_: Set<string>
-    content_: string | null
+    attrs: Map<string, string | null>
+    classes: Set<string>
+    removeClasses: Set<string>
+    content: string | null
 }
 
 function newIndicator(
@@ -57,25 +57,25 @@ function newIndicator(
             let indication = indications.get(el)
             if (!indication) {
                 indication = {
-                    attrs_: new Map<string, string | null>(),
-                    classes_: new Set(),
-                    removeClasses_: new Set(),
-                    content_: null,
+                    attrs: new Map<string, string | null>(),
+                    classes: new Set(),
+                    removeClasses: new Set(),
+                    content: null,
                 }
                 indications.set(el, indication)
             }
             switch (kind) {
                 case "attr":
-                    indication.attrs_.set(param1, param2 ?? null)
+                    indication.attrs.set(param1, param2 ?? null)
                     break
                 case "class":
-                    splitClass(param1).forEach(c => indication.classes_.add(c))
+                    splitClass(param1).forEach(c => indication.classes.add(c))
                     break
                 case "remove_class":
-                    splitClass(param1).forEach(c => indication.removeClasses_.add(c))
+                    splitClass(param1).forEach(c => indication.removeClasses.add(c))
                     break
                 case "content":
-                    indication.content_ = param1
+                    indication.content = param1
                     break
             }
         }
@@ -85,15 +85,15 @@ function newIndicator(
 }
 
 class ElementIndicator {
-    private saved_ = {
-        content_: null as string | null,
-        attrs_: new Map<string, string | null>(),
+    private saved = {
+        content: null as string | null,
+        attrs: new Map<string, string | null>(),
     }
 
-    private active_: [number, Indication] | null = null
-    private queue_: [number, Indication][] = []
+    private active: [number, Indication] | null = null
+    private queue: [number, Indication][] = []
 
-    constructor(private el_: Element) { }
+    constructor(private el: Element) { }
 
     private applyNext(
         id: number,
@@ -104,72 +104,72 @@ class ElementIndicator {
         attrsToSet: string[]
     ) {
         for (const remove of classToRemove) {
-            this.el_.classList.remove(remove)
+            this.el.classList.remove(remove)
         }
         for (const add of classToAdd) {
-            this.el_.classList.add(add)
+            this.el.classList.add(add)
         }
         for (const reset of attrsToReset) {
             this.restoreAttr(reset)
         }
         for (const set of attrsToSet) {
-            if (!this.saved_.attrs_.has(set)) {
-                this.saved_.attrs_.set(set, this.el_.getAttribute(set))
+            if (!this.saved.attrs.has(set)) {
+                this.saved.attrs.set(set, this.el.getAttribute(set))
             }
-            const value = indication.attrs_.get(set)
+            const value = indication.attrs.get(set)
             if (value === null) {
-                this.el_.removeAttribute(set)
+                this.el.removeAttribute(set)
             } else {
-                this.el_.setAttribute(set, value!)
+                this.el.setAttribute(set, value!)
             }
         }
-        this.active_ = [id, indication]
+        this.active = [id, indication]
     }
 
     private restoreAttr(name: string) {
-        const saved = this.saved_.attrs_.get(name)
-        this.saved_.attrs_.delete(name)
+        const saved = this.saved.attrs.get(name)
+        this.saved.attrs.delete(name)
         if (saved === undefined || saved === null) {
-            this.el_.removeAttribute(name)
+            this.el.removeAttribute(name)
         } else {
-            this.el_.setAttribute(name, saved)
+            this.el.setAttribute(name, saved)
         }
     }
 
     start(id: number, indication: Indication) {
-        if (this.active_ != null) {
-            this.queue_.push([id, indication])
+        if (this.active != null) {
+            this.queue.push([id, indication])
             return
         }
-        if (indication.content_ != null) {
-            this.saved_.content_ = this.el_.innerHTML
-            this.el_.innerHTML = indication.content_
+        if (indication.content != null) {
+            this.saved.content = this.el.innerHTML
+            this.el.innerHTML = indication.content
         }
-        this.applyNext(id, indication, [...indication.removeClasses_], [...indication.classes_], [], [...indication.attrs_.keys()])
+        this.applyNext(id, indication, [...indication.removeClasses], [...indication.classes], [], [...indication.attrs.keys()])
     }
 
     end(id: number): boolean {
-        const [activeId, activeIndication] = this.active_!
+        const [activeId, activeIndication] = this.active!
         if (id !== activeId) {
-            this.queue_ = this.queue_.filter(([queueId]) => id !== queueId)
+            this.queue = this.queue.filter(([queueId]) => id !== queueId)
             return false
         }
 
-        const next = this.queue_.shift()
+        const next = this.queue.shift()
         if (!next) {
-            if (activeIndication.content_ !== null) {
-                this.el_.innerHTML = this.saved_.content_ ?? ""
+            if (activeIndication.content !== null) {
+                this.el.innerHTML = this.saved.content ?? ""
             }
 
-            for (const name of activeIndication.attrs_.keys()) {
+            for (const name of activeIndication.attrs.keys()) {
                 this.restoreAttr(name)
             }
 
-            for (const remove of activeIndication.classes_) {
-                this.el_.classList.remove(remove)
+            for (const remove of activeIndication.classes) {
+                this.el.classList.remove(remove)
             }
-            for (const remove of activeIndication.removeClasses_) {
-                this.el_.classList.add(remove)
+            for (const remove of activeIndication.removeClasses) {
+                this.el.classList.add(remove)
             }
 
             return true
@@ -178,34 +178,34 @@ class ElementIndicator {
         const [nextId, nextIndication] = next
 
         const [classToRemove1, classToAdd1] = setDiff(
-            activeIndication.classes_,
-            nextIndication.classes_
+            activeIndication.classes,
+            nextIndication.classes
         )
 
         const [classToAdd2, classToRemove2] = setDiff(
-            activeIndication.removeClasses_,
-            nextIndication.removeClasses_
+            activeIndication.removeClasses,
+            nextIndication.removeClasses
         )
 
         const [attrsToReset] = arrayDiff(
-            [...activeIndication.attrs_.keys()],
-            [...nextIndication.attrs_.keys()]
+            [...activeIndication.attrs.keys()],
+            [...nextIndication.attrs.keys()]
         )
 
-        const attrsToSet = [...nextIndication.attrs_.entries()]
-            .filter(([key, value]) => value !== activeIndication.attrs_.get(key))
+        const attrsToSet = [...nextIndication.attrs.entries()]
+            .filter(([key, value]) => value !== activeIndication.attrs.get(key))
             .map(([key]) => key)
 
-        if (activeIndication.content_ !== null) {
-            if (nextIndication.content_ === null) {
-                this.el_.innerHTML = this.saved_.content_ ?? ""
-                this.saved_.content_ = null
-            } else if (nextIndication.content_ !== activeIndication.content_) {
-                this.el_.innerHTML = nextIndication.content_
+        if (activeIndication.content !== null) {
+            if (nextIndication.content === null) {
+                this.el.innerHTML = this.saved.content ?? ""
+                this.saved.content = null
+            } else if (nextIndication.content !== activeIndication.content) {
+                this.el.innerHTML = nextIndication.content
             }
-        } else if (nextIndication.content_ !== null) {
-            this.saved_.content_ = this.el_.innerHTML
-            this.el_.innerHTML = nextIndication.content_
+        } else if (nextIndication.content !== null) {
+            this.saved.content = this.el.innerHTML
+            this.el.innerHTML = nextIndication.content
         }
 
         this.applyNext(nextId, nextIndication, [...classToRemove1, ...classToRemove2], [...classToAdd1, ...classToAdd2], attrsToReset, attrsToSet)
@@ -214,9 +214,9 @@ class ElementIndicator {
 }
 
 class IndicationController {
-    private indicators_ = new Map<number, Map<Element, Indication>>()
-    private elements_ = new WeakMap<Element, ElementIndicator>()
-    private counter_ = 0
+    private indicators = new Map<number, Map<Element, Indication>>()
+    private elements = new WeakMap<Element, ElementIndicator>()
+    private counter = 0
 
     start(target: Element | null, indicators: IndicatorEntry[] | null): number | undefined {
         if (!indicators || indicators.length === 0) {
@@ -226,34 +226,34 @@ class IndicationController {
         if (!indicator) {
             return undefined
         }
-        this.counter_ += 1
-        this.indicators_.set(this.counter_, indicator)
+        this.counter += 1
+        this.indicators.set(this.counter, indicator)
         for (const [el, indication] of indicator.entries()) {
-            let element = this.elements_.get(el)
+            let element = this.elements.get(el)
             if (!element) {
                 element = new ElementIndicator(el)
-                this.elements_.set(el, element)
+                this.elements.set(el, element)
             }
-            element.start(this.counter_, indication)
+            element.start(this.counter, indication)
         }
-        return this.counter_
+        return this.counter
     }
 
     end(id: number | undefined): void {
         if (id === undefined) return
-        const indication = this.indicators_.get(id)
+        const indication = this.indicators.get(id)
         if (!indication) return
-        this.indicators_.delete(id)
+        this.indicators.delete(id)
         for (const el of indication.keys()) {
             if (!el.isConnected) {
-                this.elements_.delete(el)
+                this.elements.delete(el)
                 continue
             }
-            const element = this.elements_.get(el)
+            const element = this.elements.get(el)
             if (!element) continue
             const done = element.end(id)
             if (done) {
-                this.elements_.delete(el)
+                this.elements.delete(el)
             }
         }
     }

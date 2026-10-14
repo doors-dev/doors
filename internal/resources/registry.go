@@ -59,7 +59,6 @@ func (rs *registry) init() {
 		GlobalName: "_d0r",
 		Bundle:     true,
 	}.Apply(&opt)
-	opt.MangleProps = "_$"
 	opt.Footer = map[string]string{
 		"js": "_d0r = _d0r.default;",
 	}

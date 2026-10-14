@@ -15,13 +15,13 @@
 import doors from "./door"
 
 class Registry {
-    private registry_ = new Map<number, Set<Element>>()
+    private registry = new Map<number, Set<Element>>()
 
     add(element: Element, id: number) {
-        let elements = this.registry_.get(id)
+        let elements = this.registry.get(id)
         if (!elements) {
             elements = new Set<Element>()
-            this.registry_.set(id, elements)
+            this.registry.set(id, elements)
         }
         if (elements.has(element)) {
             return
@@ -30,12 +30,12 @@ class Registry {
         doors.onUnmount(element, () => {
             elements.delete(element)
             if (elements.size === 0) {
-                this.registry_.delete(id)
+                this.registry.delete(id)
             }
         })
     }
     setAttr(id: number, name: string, value: string | null): number {
-        const elements = this.registry_.get(id)
+        const elements = this.registry.get(id)
         if (!elements) {
             return 0
         }

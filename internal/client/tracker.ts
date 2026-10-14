@@ -91,8 +91,8 @@ export class Batch {
 }
 
 export class Tracker {
-	private buffered_: Results = new Map()
-	constructor(private notify_: () => void, private run_: Run, private pending_: number) {
+	private buffered: Results = new Map()
+	constructor(private notify: () => void, private run: Run, private pending: number) {
 	}
 	private batches = new Set<Batch>()
 	private idLookup = new Map<number, Batch>()
@@ -167,7 +167,7 @@ export class Tracker {
 	}
 	push(p: Package) {
 		this.process(p)
-		while (this.held >= this.pending_) {
+		while (this.held >= this.pending) {
 			const batch = this.oldest()
 			if (batch == undefined) {
 				break
@@ -178,7 +178,7 @@ export class Tracker {
 	private process(p: Package) {
 		if (p.action == "batch_init") {
 			if (this.idLookup.has(p.batch)) {
-				this.buffered_.set(p.end, [undefined, "batch is already intialized"])
+				this.buffered.set(p.end, [undefined, "batch is already intialized"])
 				return
 			}
 			const batch = new Batch(this, false, p.batch, p.group)
@@ -237,25 +237,25 @@ export class Tracker {
 		}
 	}
 	execute(p: Package) {
-		const result = this.run_(p)
+		const result = this.run(p)
 		if (result instanceof Promise) {
 			result.then(([ok, err]) => {
-				this.buffered_.set(p.end, [ok, err?.message])
-				this.notify_()
+				this.buffered.set(p.end, [ok, err?.message])
+				this.notify()
 			})
 			return
 		}
 		const [ok, err] = result
-		this.buffered_.set(p.end, [ok, err?.message])
+		this.buffered.set(p.end, [ok, err?.message])
 	}
 	buffer(collected: Results) {
 		for (const [seq, entry] of collected.entries()) {
-			this.buffered_.set(seq, entry)
+			this.buffered.set(seq, entry)
 		}
 	}
 	collect(): Results {
-		const collected = this.buffered_
-		this.buffered_ = new Map()
+		const collected = this.buffered
+		this.buffered = new Map()
 		return collected
 	}
 }

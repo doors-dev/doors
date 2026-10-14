@@ -31,10 +31,10 @@ function getHookParams(element: HTMLElement, name: string): any | undefined {
 const global: { [key: string]: any } = {}
 
 class $D {
-	constructor(private anchor_: HTMLElement) { }
+	constructor(private anchor: HTMLElement) { }
 
 	clean = (handler: () => void | Promise<void>): void => {
-		door.onUnmount(this.anchor_, handler)
+		door.onUnmount(this.anchor, handler)
 	}
 
 	get G() {
@@ -46,11 +46,11 @@ class $D {
 	}
 
 	on = (name: string, handler: (arg: any) => any): void => {
-		door.on(this.anchor_, name, handler)
+		door.on(this.anchor, name, handler)
 	}
 
 	fetch = async (name: string, arg: any): Promise<Response> => {
-		const hook = getHookParams(this.anchor_, name)
+		const hook = getHookParams(this.anchor, name)
 		if (hook === undefined) {
 			throw new HookErr(hookErrKinds.other, new Error("hook " + name + " not found"))
 		}
@@ -71,7 +71,7 @@ class $D {
 
 	data = (name: string): Promise<any> | any => {
 		const attrName = `data-d0d-${name}`
-		const encodedPayload = this.anchor_.getAttribute(attrName)
+		const encodedPayload = this.anchor.getAttribute(attrName)
 		if (encodedPayload == null) {
 			return undefined
 		}
