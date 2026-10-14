@@ -67,6 +67,8 @@ That means when the current live page rerenders and produces a different `<title
 
 This is why same-instance page switches can update the browser title without a full page reload.
 
+Title and meta updates are applied as soon as they are ready and are not held by a [batch](./08-events.md#batch): with `Batch` on a handler or link, the title changes before the batched view does.
+
 ## Status
 
 Use `doors.Status(code)` when the initial page response should use a specific HTTP status.

@@ -37,7 +37,7 @@ doors.OnBatch(ctx, func(ctx context.Context) {
 })
 ```
 
-Completion channels do not report "applied" inside a batch: a Door operation's channel sends the scheduled signal and closes, `doors.Call` reports nothing, and an action armed with `Into` delivers an error instead of a result. To wait for a browser result, use a goroutine with `doors.DetachedContext(ctx)`; to react after the batch, use `OnBatch`. Title and meta updates apply on arrival and are not batched; when held calls reach `SolitairePending`, the oldest batch is applied early. See [Core Concepts](./docs/02-core-concepts.md#runtime) and [Door](./docs/06-door.md#lifecycle-hooks).
+Completion channels deliver a result only on a detached context (`DetachedContext`, `InstanceContext`, `Go`); on other contexts, including a handler ctx used from a goroutine, they close once the call is scheduled. `doors.Call` with `Into` needs the second value. To react after the batch, use `OnBatch`. Title and meta updates apply on arrival and are not batched; when held calls reach `SolitairePending`, the oldest batch is applied early. See [Core Concepts](./docs/02-core-concepts.md#runtime) and [Door](./docs/06-door.md#lifecycle-hooks).
 
 ### Nested routes in one container
 

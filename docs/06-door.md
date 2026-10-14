@@ -291,17 +291,27 @@ Reload(ctx context.Context) <-chan error
 Unmount(ctx context.Context) <-chan error
 ```
 
-On success the channel sends **two** `nil` values then closes — the first means the call was scheduled (render was completed), the second means it was applied to the page.
+The channel first sends one value once the operation is scheduled: `nil` when the content rendered, or an error. On a detached context a second value follows: `nil` once the update is applied to the page, or an error. Then the channel closes. On any other context the channel closes right after the first value; whether the update was applied is not reported. See [Detached Context](./19-session-instance.md#detached-context).
 
-On failure, the channel sends an error then closes. A failed render sends its error, see [Render Errors](#render-errors). An error of `context.Canceled` means the operation was overwritten by a newer Door operation, unmount, or related lifecycle change.
+A failed render sends its error as the first value, see [Render Errors](#render-errors). An error of `context.Canceled` means the operation was overwritten by a newer Door operation, unmount, or related lifecycle change.
 
-A closed channel with no value means the Door was not mounted by the time the operation was observed.
+A closed channel with no value means the Door was not mounted by the time the operation was observed. A channel that closes without a further value means the operation was accepted, but its outcome is not reported: the Door is not mounted yet, or the context is not detached.
 
 In most cases, ignore the channel. There is nothing to check: whether an update lands depends on the lifetime of what it targets, and that is managed for you.
 
-Never wait on the channel during render, in hooks, or in beam subscriptions. If you need the result, such as pacing a fast stream of updates, wait in a goroutine of your own with `doors.DetachedContext(ctx)`, or in `doors.Go(...)` when the work should follow a rendered subtree. See [Session & Instance](./19-session-instance.md#context).
+Never wait on the channel during render or in beam subscriptions. If you need the result, such as pacing a fast stream of updates, wait in a goroutine of your own with `doors.DetachedContext(ctx)`, or in `doors.Go(...)` when the work should follow a rendered subtree, and read both values:
 
-In a [batch](./08-events.md#batch), the channel sends the scheduled `nil`, or a render error, and closes: applied is not reported.
+```go
+go func(ctx context.Context) {
+	ch := f.tail.Static(ctx, Item{entry: entry})
+	<-ch // scheduled
+	if err, ok := <-ch; ok && err == nil {
+		// on the page
+	}
+}(doors.DetachedContext(ctx))
+```
+
+See [Detached Context](./19-session-instance.md#detached-context).
 
 ## Render Errors
 
@@ -360,9 +370,9 @@ elem (c Chat) Main() {
 }
 ```
 
-`OnReady` runs once the surrounding content is rendered and on its way to the browser. Use it for work that must come after that markup.
+`OnReady` runs once the surrounding content is rendered and on its way to the browser. Use it for work that must come after that markup. Its `ctx` is detached, see [Detached Context](./19-session-instance.md#detached-context).
 
-`OnSettle` runs once everything a handler started has its updates queued. Use it to act after a multi-step update. If the handler hands work to a goroutine, keep it open with `doors.HoldSettle`; with [Batch](./08-events.md#batch) set, the updates stay unapplied until release:
+`OnSettle` runs once everything a handler started has its updates queued. Use it to act after a multi-step update. Its `ctx` is not detached: operations made with it stay with the handler's updates, so do not block in it. If the handler hands work to a goroutine, keep it open with `doors.HoldSettle`; with [Batch](./08-events.md#batch) set, the updates stay unapplied until release:
 
 ```go
 release := doors.HoldSettle(ctx)
@@ -374,7 +384,7 @@ go func() {
 
 A goroutine that outlives the handler without `HoldSettle` should use `doors.DetachedContext(ctx)`.
 
-`OnBatch` batches updates yourself, anywhere: the updates made in `ops` are applied at once, and `on` runs when the browser has applied them. Where `OnSettle` reports that the updates are queued for delivery, `OnBatch` reports that they are on the page:
+`OnBatch` batches updates yourself, anywhere: the updates made in `ops` are applied at once, and `on` runs when the browser has applied them. `on` runs with a detached `ctx`; `ops` do not. Where `OnSettle` reports that the updates are queued for delivery, `OnBatch` reports that they are on the page:
 
 ```go
 doors.OnBatch(ctx, func(ctx context.Context) {

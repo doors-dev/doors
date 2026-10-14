@@ -106,9 +106,68 @@ Use it for goroutines or external work that should live for the whole browser se
 
 It is broader than the current instance or dynamic owner context. It is suitable for session-scoped helpers, Door methods, and Source or Beam reads, subscriptions, and updates; a subscription made with it lives until the session ends. `doors.Reload`, the package-level `doors.Deferred*` functions, and instance-scoped helpers panic on it.
 
-For work that should stay scoped to the current dynamic owner, keep using the current `ctx`, or use `doors.DetachedContext(ctx)` from a goroutine that needs to wait on completion channels.
+For work that should stay scoped to the current dynamic owner, keep using the current `ctx`, or use `doors.DetachedContext(ctx)` from a goroutine of your own, see [Detached Context](#detached-context).
 
 For work that should outlive the current dynamic owner but stay bounded by the current page instance, use `doors.InstanceContext(ctx)`.
+
+Both are detached contexts: **wait on the channels of their operations only in goroutines of your own**, see [Detached Context](#detached-context).
+
+## Detached Context
+
+`doors.DetachedContext(ctx)` returns a context whose operations are delivered on their own. It keeps the values and the owner of `ctx`, so it is canceled when the content you called it from goes away, but its operations do not join the handler's updates, its batch, or its indicator.
+
+```go
+dctx := doors.DetachedContext(ctx)
+go func() {
+	// Door operations and doors.Call with dctx
+}()
+```
+
+> Operations made with a detached context are not part of the current handler's work: not its batch, its indicator, or `OnSettle`. **Wait on their channels only in goroutines of your own**, never during rendering, in a handler, or in a subscription: that can block the page.
+
+Whether a context is detached decides what the completion channels of Door operations and `doors.Call` deliver.
+
+Every channel first sends one value once the call is scheduled: `nil`, or an error when it failed before that point — the render failed, the action could not be built, or the call was canceled or superseded by a newer operation (`context.Canceled`). If the Door is not mounted, the channel closes without a value.
+
+What comes after that value depends on the context:
+
+| Context | After the scheduled value |
+|---|---|
+| Detached | A second value: `nil` once the update is on the page or the browser has answered, an error, or `context.Canceled` when the call was canceled after it was scheduled. A destination armed with `Into` is written before it. Then the channel closes. |
+| Any other | The channel closes. No result is reported, and a destination armed with `Into` stays unwritten; the closed channel is the only signal, there is no error. |
+
+A channel that closes without a further value means the operation was accepted, but its outcome is not reported: the Door is not mounted yet, or the context is not detached.
+
+Detached contexts:
+
+- `doors.DetachedContext(ctx)`
+- `doors.InstanceContext(ctx)`
+- the `ctx` of `doors.Go(...)`
+- the `ctx` passed to `doors.OnReady` and `doors.OnBatch` callbacks
+- any context derived from one of these with the `context` package, such as `context.WithTimeout`
+
+Not detached:
+
+- handler `ctx` — event, form, and hook handlers (also when used later from a goroutine)
+- render `ctx`
+- beam subscription `ctx`
+- the `ctx` passed to `doors.OnSettle` callbacks: it keeps their operations in place with the handler's updates, so do not block in them
+- the `ctx` passed to the `ops` of `doors.OnSettle` and `doors.OnBatch`, even when the call itself was made with a detached context
+
+If you need the result, wait for the second value in a goroutine of your own, on a detached context:
+
+```go
+go func(ctx context.Context) {
+	var now time.Time
+	ch := doors.Call(ctx, doors.ActionTime{}.Into(&now))
+	<-ch // scheduled
+	if err, ok := <-ch; ok && err == nil {
+		// use now
+	}
+}(doors.DetachedContext(ctx))
+```
+
+Use `doors.Go(...)` for the same wait when the goroutine should follow the lifetime of a rendered subtree, and `doors.InstanceContext(ctx)` when it should outlive the content it started from but stop with the page.
 
 ## Instance End
 
@@ -160,8 +219,9 @@ They are **Doors** runtime IDs, not user IDs or authentication tokens.
 - Use `SessionExpire` to cap the session lifetime.
 - Use `SessionExpire(ctx, 0)` to remove an explicit session-expiration cap.
 - Use `SessionContext` for work that should stop when the whole session ends.
-- Use `DetachedContext` for goroutines that should keep the current dynamic owner.
+- Use `DetachedContext` for goroutines of your own that keep the current dynamic owner; it is the context on which completion channels deliver results.
 - Use `InstanceContext` for goroutines that should outlive the current dynamic owner but stop with the current instance.
+- Only detached contexts get the result of a Door operation or `doors.Call`; see [Detached Context](#detached-context).
 - Use `SessionEnd` only when you really want to end the whole **Doors** session.
 - Use `InstanceEnd` when only the current live page should stop.
 - Use `SessionID` and `InstanceID` for diagnostics, not as business identifiers.

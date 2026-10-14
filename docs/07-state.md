@@ -706,7 +706,7 @@ When several fields must change as one logical update, mutate the original sourc
 
 The channel is useful when completion itself matters, especially for backpressure. For example, if updates arrive very quickly, waiting on it lets a producer send the next state only after the previous one finished propagating.
 
-Never wait on it during render, in hooks, or in beam subscriptions. When you need to wait for propagation, do it in a goroutine of your own with `doors.DetachedContext(ctx)`, or inside `doors.Go(...)` when the wait should follow a rendered subtree.
+Never wait on it during render or in beam subscriptions. When you need to wait for propagation, do it in a goroutine of your own with `doors.DetachedContext(ctx)`, or inside `doors.Go(...)` when the wait should follow a rendered subtree.
 
 If that work should outlive the current dynamic owner, use `doors.InstanceContext(ctx)`.
 

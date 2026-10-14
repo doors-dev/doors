@@ -366,7 +366,7 @@ The batch covers everything the handler starts with its context: Door updates, t
 
 The view kept on screen during a batch is display only: interactions with parts that are being replaced are ignored until the new view lands, so put an [indicator](./11-indication.md) on the trigger.
 
-Inside the batch, completion channels do not report "applied": a Door operation's channel sends the scheduled signal and closes, the channel of `doors.Call` closes at once, and an action armed with `Into` delivers an error. To get a result from the browser, wait in a goroutine with `doors.DetachedContext(ctx)`, which leaves the batch; to react once the batch is applied, use `doors.OnBatch`, see [Lifecycle Hooks](./06-door.md#lifecycle-hooks).
+Completion channels in a handler report only that an operation was scheduled, batch or not. For a result from the browser, wait in a goroutine of your own with `doors.DetachedContext(ctx)`, whose operations are delivered outside the batch, see [Detached Context](./19-session-instance.md#detached-context). To react once the batch is applied, use `doors.OnBatch`, see [Lifecycle Hooks](./06-door.md#lifecycle-hooks).
 
 Title and meta updates are not batched.
 

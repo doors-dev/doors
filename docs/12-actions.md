@@ -33,33 +33,31 @@ In most cases, ignore the returned channel. There is nothing to check: whether t
 doors.Call(ctx, doors.ActionLocationReload{})
 ```
 
-When the client handler should return a value to Go, capture it with `Into`. The channel delivers `nil` once the browser has answered and the destination holds the value, or an error if the action cannot be built, the client fails, or the result cannot be decoded. It closes without a value when the call is canceled.
+When the client handler should return a value to Go, capture it with `Into`. The channel first sends `nil` once the call is scheduled, or an error if the action cannot be built. On a detached context a second value follows: `nil` once the browser has answered and the destination holds the value, or an error if the client failed or the result could not be decoded. On any other context the channel closes after the first value and the destination stays unwritten; the closed channel is the only signal, there is no error. If the call is canceled, the channel sends `context.Canceled`. See [Detached Context](./19-session-instance.md#detached-context).
 
-Never wait on the channel during render, in hooks, or in beam subscriptions. When you need the answer, wait in a goroutine of your own with `doors.DetachedContext(ctx)` and use the value from there:
+Never wait on the channel during render or in beam subscriptions. When you need the answer, wait for the second value in a goroutine of your own with `doors.DetachedContext(ctx)`; only a detached context delivers it:
 
 ```go
 On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
-	dctx := doors.DetachedContext(ctx)
-	go func() {
+	go func(ctx context.Context) {
 		var picked string
-		err, ok := <-doors.Call(dctx, doors.ActionEmit[string]{
+		ch := doors.Call(ctx, doors.ActionEmit[string]{
 			Name: "pick",
 			Arg:  "hello",
 		}.Into(&picked))
-		if !ok || err != nil {
+		<-ch // scheduled
+		if err, ok := <-ch; !ok || err != nil {
 			return
 		}
-		result.Inner(dctx, Picked{Value: picked})
-	}()
+		result.Inner(ctx, Picked{Value: picked})
+	}(doors.DetachedContext(ctx))
 	return false
 },
 ```
 
-Use `doors.Go(...)` when the wait should follow the lifetime of a rendered subtree, and `doors.InstanceContext(ctx)` when it should outlive the current owner and live with the instance.
+Use `doors.Go(...)` when the wait should follow the lifetime of a rendered subtree, and `doors.InstanceContext(ctx)` when it should outlive the current owner and live with the instance. See [Detached Context](./19-session-instance.md#detached-context).
 
-Canceling `ctx` requests best-effort cancellation.
-
-In a [batch](./08-events.md#batch), the channel of `doors.Call` closes at once, and an action armed with `Into` delivers an error instead of a value.
+Canceling `ctx` requests best-effort cancellation; on a detached context, a call canceled after it was scheduled sends `context.Canceled` as its second value.
 
 A Door update and a `doors.Call` made in the same handler are not ordered against each other unless the call is made from that Door's content. Targeting the content of another Door by selector needs care.
 
@@ -150,7 +148,7 @@ It is useful for:
 - bringing a changed region into view
 - moving the user back to a result block or top section
 
-If nothing matches, the action fails — with `doors.Call`, the error arrives on the completion channel.
+If nothing matches, the action fails — with `doors.Call`, the error arrives as the second value on the completion channel, on a detached context.
 
 ## Indicate
 

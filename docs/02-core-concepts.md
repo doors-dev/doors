@@ -115,10 +115,11 @@ The rules:
 - Load data where you render it: query the database or call an API right in the render.
 - If that is too slow, render a skeleton and replace it with a [deferred operation](./06-door.md#deferred-operations).
 - Ignore the completion channels of Door operations in most cases. `Inner`, `Outer`, and the other Door methods return one, and so does `doors.Call`, but there is nothing to check: whether an update lands depends on the lifetime of what it targets, and that is managed for you.
-- Never wait on them during render, in hooks, or in beam subscriptions.
+- Never wait on them during render or in beam subscriptions.
 - Keep render work tied to producing the current page. Background loops, timers, pubsub listeners, and other work that should continue after rendering belong in their own goroutine.
+- Independent slow fragments on the same page can render concurrently with [`doors.Parallel()`](./03-template-syntax.md#parallel).
 
-If you do need the result, for backpressure in advanced setups or for data coming back from the browser, wait in a goroutine of your own with `doors.DetachedContext(ctx)`. Use `doors.Go(...)` when that work should follow the lifetime of a rendered subtree. See [Door](./06-door.md#completion-channels), [Actions](./12-actions.md#direct), and [Session & Instance](./19-session-instance.md#context).
+If you do need the result, for backpressure in advanced setups or for data coming back from the browser, wait in a goroutine of your own with `doors.DetachedContext(ctx)`. Only a detached context delivers the result; on any other context the channel closes once the call is scheduled. Use `doors.Go(...)` when that work should follow the lifetime of a rendered subtree. See [Detached Context](./19-session-instance.md#detached-context), [Door](./06-door.md#completion-channels), and [Actions](./12-actions.md#direct).
 
 To react after updates, use the callbacks instead of waiting: `doors.OnSettle` runs once the updates are queued for delivery, and `doors.OnBatch` applies a group of updates at once and runs once the browser has applied them. See [Door](./06-door.md#lifecycle-hooks).
 

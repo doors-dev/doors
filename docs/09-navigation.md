@@ -65,6 +65,8 @@ func (r CustomRoute) Encode() (doors.Location, error) {
 
 ALink always navigates dynamically. A normal click is intercepted, a hook updates the current instance's location source, and the page re-routes in place. `Route(...)` routes the new `Location` in the same container: the shown branch stays while its conditions keep holding and reacts to the new value via its `Source` or `Beam`. When a condition fails, routing picks again from the top, and a showing leaf gives way to an earlier route in its list that starts matching. See [Routing](./07-state.md#routing).
 
+A navigation to the URL already shown changes nothing: the location is equal, so no route is re-checked, no view re-renders, and no history entry is pushed. The same applies when a new URL decodes into an equal path model, for example a query parameter the model does not have a field for. To act on a click to the current page, use `After` actions or a handler, not routing. See [Equal Derived Values](./07-state.md#equal-derived-values).
+
 The element is also a real anchor — `href` is set from the encoded model. That's there for browser features (middle-click, Cmd-click, "open in new tab", "copy link"), not as a fallback for clicks. Each of those opens the URL in a fresh browser context, handled like any other initial request.
 
 On a normal dynamic click, the client updates the browser URL to the link `href`

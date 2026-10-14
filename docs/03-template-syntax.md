@@ -362,6 +362,37 @@ elem Button() {
 For class-only helpers, prefer `doors.Class(...)`; it already works as an
 attribute value, an attribute modifier, and a proxy.
 
+### Parallel
+
+> `doors.Parallel()` and `doors.Ctx(ctx)` are **Doors** proxies, not part of the base `gox` package.
+
+`doors.Parallel()` renders the following element on the instance goroutine pool, so independent slow fragments of one page render concurrently. The output keeps its order.
+
+```gox
+elem Page() {
+	<main>
+		<h1>Dashboard</h1>
+		~>(doors.Parallel()) <section>~(SlowStats(ctx))</section>
+		~>(doors.Parallel()) <aside>~(SlowSidebar(ctx))</aside>
+	</main>
+}
+```
+
+Use it for fragments that wait on a database query or an external API call. Do not put it in front of `Bind`, `Effect`, `Route`, or a `doors.Door`: dynamic content already renders on the instance goroutine pool.
+
+### Ctx
+
+`doors.Ctx(ctx)` renders the following element with the values of `ctx`, so values added with `context.WithValue` reach the subtree: its nested renders, event handlers, and later Door updates. Only values come from `ctx`; cancellation and **Doors** ownership stay with the enclosing render.
+
+```gox
+elem Page(theme string) {
+	~>(doors.Ctx(context.WithValue(ctx, themeKey{}, theme))) <main>
+		~(Header{})
+		~(Content{})
+	</main>
+}
+```
+
 ## Raw
 
 To output HTML verbatim, without escaping or template processing, wrap it in the special tag: `<:>...</:>`.
