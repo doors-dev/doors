@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"runtime"
 	"testing"
 	"time"
 
@@ -441,6 +442,51 @@ func TestDetachedContextKeepsOwnerAndClearsFrame(t *testing.T) {
 	case <-free.Done():
 	default:
 		t.Fatal("expected Free to keep current context lifecycle")
+	}
+}
+
+// Children and after funcs on instance and detached contexts attach to their lifetime without a goroutine each.
+func TestFreeContextsChildrenNoGoroutines(t *testing.T) {
+	ctx, inst, _ := helperContextWithRoot(t)
+	base, stop := context.WithCancel(ctx)
+	defer stop()
+	checkNoGoroutineChildren(t, InstanceContext(base), inst.runtime.Cancel)
+	ctx, _, _ = helperContextWithRoot(t)
+	base, cancel := context.WithCancel(ctx)
+	checkNoGoroutineChildren(t, DetachedContext(base), cancel)
+}
+
+func checkNoGoroutineChildren(t *testing.T, ctx context.Context, cancel func()) {
+	t.Helper()
+	const n = 100
+	before := runtime.NumGoroutine()
+	children := make([]context.Context, 0, n)
+	for range n {
+		child, stop := context.WithCancel(ctx)
+		t.Cleanup(stop)
+		children = append(children, child)
+	}
+	ran := make(chan struct{}, n)
+	for range n {
+		context.AfterFunc(ctx, func() { ran <- struct{}{} })
+	}
+	if grown := runtime.NumGoroutine() - before; grown > 10 {
+		t.Fatalf("expected no goroutine per child, grew by %d", grown)
+	}
+	cancel()
+	for i, child := range children {
+		select {
+		case <-child.Done():
+		case <-time.After(5 * time.Second):
+			t.Fatalf("child %d not canceled", i)
+		}
+	}
+	for i := range n {
+		select {
+		case <-ran:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("after func %d did not run", i)
+		}
 	}
 }
 

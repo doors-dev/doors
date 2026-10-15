@@ -462,13 +462,13 @@ func TestLinksForeignInstanceUntagged(t *testing.T) {
 	open := sync.OnceFunc(func() { close(gate) })
 	defer open()
 	linksHook(ha, page, true, 7, func(ctx context.Context) {
-		foreign := ctex.FrameInfect(ctx, pageB)
+		foreign := ctex.NewInfectedContext(ctx, pageB)
 		foreignOp = db.Inner(foreign, gox.Elem(func(cur gox.Cursor) error {
 			<-gate
 			return cur.Text("foreign")
 		}))
 		foreignCall = Call(foreign, ActionScroll{Selector: "#foreign"})
-		same := ctex.FrameInfect(ctx, pageA)
+		same := ctex.NewInfectedContext(ctx, pageA)
 		da.Inner(same, textElem("same"))
 		Call(same, ActionScroll{Selector: "#same"})
 	})

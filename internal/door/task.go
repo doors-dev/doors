@@ -38,7 +38,7 @@ func (n renderNode) apply(_ shredder.Frame, next *node, prev *node) {
 	next.outer = prev.outer
 	next.inner = prev.inner
 	if next.mode == modeStatic {
-		next.static.user = common.UserCtx(n.ctx, n.pipe.innerContext())
+		next.static.user = ctex.UserContext(n.ctx, n.pipe.innerContext())
 		next.placeRenderStatic(n.pipe, n.buffer)
 		return
 	}

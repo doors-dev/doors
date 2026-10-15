@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/front/actions"
 	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -46,8 +47,8 @@ func newPipe(
 		outerCtx:    tracker.outer.renderCtx,
 	}
 	if document {
-		p.ctx = common.DocumentCtx(p.ctx)
-		p.outerCtx = common.DocumentCtx(p.outerCtx)
+		p.ctx = ctex.NewDocumentContext(p.ctx)
+		p.outerCtx = ctex.NewDocumentContext(p.outerCtx)
 	}
 	p.printFront = printer.NewResourcePrinter((*pushFrontPrinter)(p.buffer))
 	p.printBack = printer.NewResourcePrinter((*pushBackPrinter)(p.buffer))

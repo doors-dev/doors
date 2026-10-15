@@ -275,7 +275,7 @@ func newOuterTrackerRoot(r *root) *outerTracker {
 	tracker.outerGuard = new(shredder.ValveFrame)
 	tracker.placeGuard = tracker.outerGuard
 	tracker.cinema = beam.NewCinema(nil, tracker)
-	tracker.renderCtx = common.NewRenderCtx(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
+	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
 	return tracker
 }
 
@@ -294,7 +294,7 @@ func newOuterTrackerInherit(prev *outerTracker) *outerTracker {
 		user:       prev.user,
 	}
 	tracker.cinema = beam.NewCinema(prev.parent.Cinema(), tracker)
-	tracker.renderCtx = common.NewRenderCtx(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
+	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
 	prev.parent.addChild(tracker)
 	return tracker
 }
@@ -310,12 +310,12 @@ func newOuterTrackerCreate(pip *pipe, userCtx context.Context) *outerTracker {
 		cancel:    cancel,
 		callGuard: pip.callGuard,
 		place:     pip.callSeq,
-		user:      common.UserCtx(userCtx, pip.innerContext()),
+		user:      ctex.UserContext(userCtx, pip.innerContext()),
 	}
 	tracker.cinema = beam.NewCinema(parent.Cinema(), tracker)
 	tracker.outerGuard = new(shredder.ValveFrame)
 	tracker.placeGuard = tracker.outerGuard
-	tracker.renderCtx = common.NewRenderCtx(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
+	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
 	parent.addChild(tracker)
 	return tracker
 }
@@ -557,7 +557,7 @@ func (t *outerTracker) newTracker(n *node) *tracker {
 		parentCinema = t.parent.Cinema()
 	}
 	tracker.cinema = beam.NewCinema(parentCinema, tracker)
-	tracker.renderCtx = common.NewRenderCtx(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), t.user)
+	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), t.user)
 	t.mu.Lock()
 	t.current = tracker
 	t.mu.Unlock()

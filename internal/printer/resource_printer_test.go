@@ -260,7 +260,7 @@ func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstan
 	}
 	inst.session = &titleSession{app: titleApp{conf: &inst.conf, registry: registry}}
 	door := &hookDoor{id: 7, allowHook: allowHook, inst: inst}
-	ctx := common.DocumentCtx(context.WithValue(context.Background(), common.KeyCore, core.NewCore(door)))
+	ctx := ctex.NewDocumentContext(context.WithValue(context.Background(), common.KeyCore, core.NewCore(door)))
 	return ctx, inst, door, modules
 }
 

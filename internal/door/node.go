@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 
 	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
@@ -343,7 +344,7 @@ func (n *node) placeRenderStatic(parentPipe *pipe, buffer *deque.Deque[any]) {
 			return
 		}
 		pipe := parentPipe.fork(buffer)
-		cur := gox.NewCursor(common.NewRenderCtx(pipe.innerContext(), n.static.user), pipe)
+		cur := gox.NewCursor(ctex.NewRenderContext(pipe.innerContext(), n.static.user), pipe)
 		if err := cur.Any(n.outer); err != nil {
 			pipe.error(err, n.caller)
 		}
@@ -442,6 +443,6 @@ func (n *node) scheduleRemoval(placed *shredder.ValveFrame) {
 }
 
 func (n *node) renderStatic(pip *pipe) (err error) {
-	cur := gox.NewCursor(common.NewRenderCtx(n.tracker.renderCtx, n.static.user), pip)
+	cur := gox.NewCursor(ctex.NewRenderContext(n.tracker.renderCtx, n.static.user), pip)
 	return cur.Any(n.outer)
 }

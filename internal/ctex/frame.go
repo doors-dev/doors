@@ -16,7 +16,6 @@ package ctex
 
 import (
 	"context"
-	"time"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/shredder"
@@ -110,85 +109,34 @@ func NewAfterFrame(ctx context.Context, inst string, group uint64) (context.Cont
 		inst:  inst,
 		group: group,
 	}
-	return context.WithValue(ctx, common.KeyFrame, fs), fs.after
+	return withFrames(ctx, fs), fs.after
 }
 
 func NewBatch(ctx context.Context, id uint64) (context.Context, *shredder.ValveFrame) {
 	fs := GetFrames(ctx)
 	fs.batch = id
 	fs.valve = &shredder.ValveFrame{}
-	return context.WithValue(ctx, common.KeyFrame, fs), fs.valve
+	return withFrames(ctx, fs), fs.valve
 }
 
 func SyncFrameInsert(ctx context.Context, sync shredder.ReleaseFrame, init shredder.ReleaseFrame) context.Context {
-	fs, ok := ctx.Value(common.KeyFrame).(Frames)
-	if ok {
-		fs.sync = sync
-		fs.init = init
-	} else {
-		fs = Frames{
-			sync: sync,
-			init: init,
-		}
-	}
-	return context.WithValue(ctx, common.KeyFrame, fs)
+	fs := GetFrames(ctx)
+	fs.sync = sync
+	fs.init = init
+	return withFrames(ctx, fs)
 }
 
 func GetFrames(ctx context.Context) Frames {
-	f, _ := ctx.Value(common.KeyFrame).(Frames)
-	return f
+	fs, _ := lookupFrames(ctx)
+	return fs
 }
 
-func FrameInfect(source context.Context, target context.Context) context.Context {
-	return infectedContext{
-		source: source,
-		target: target,
+func lookupFrames(ctx context.Context) (Frames, bool) {
+	switch fs := ctx.Value(common.KeyFrame).(type) {
+	case *Frames:
+		return *fs, true
+	case Frames:
+		return fs, true
 	}
+	return Frames{}, false
 }
-
-type infectedContext struct {
-	source context.Context
-	target context.Context
-}
-
-func (c infectedContext) Deadline() (deadline time.Time, ok bool) {
-	return c.target.Deadline()
-}
-
-func (c infectedContext) Done() <-chan struct{} {
-	return c.target.Done()
-}
-
-func (c infectedContext) Err() error {
-	return c.target.Err()
-}
-
-func (c infectedContext) Value(key any) any {
-	switch key {
-	case common.KeyCore, common.KeySession, common.KeyDocument:
-		return c.target.Value(key)
-	case common.KeyFrame:
-		fs, ok := c.source.Value(key).(Frames)
-		if !ok {
-			return nil
-		}
-		owner, _ := c.target.Value(common.KeyCore).(interface{ InstanceID() string })
-		if owner == nil {
-			return Frames{sync: fs.sync, init: fs.init}
-		}
-		inst := fs.inst
-		if fs.detached {
-			if source, ok := c.source.Value(common.KeyCore).(interface{ InstanceID() string }); ok {
-				inst = source.InstanceID()
-			}
-		}
-		if inst == owner.InstanceID() {
-			return fs
-		}
-		return Frames{sync: fs.sync, init: fs.init}
-	default:
-		return c.source.Value(key)
-	}
-}
-
-var _ context.Context = infectedContext{}

@@ -17,7 +17,6 @@ package common
 import (
 	"context"
 	"log/slog"
-	"time"
 )
 
 type ctxKey int
@@ -30,66 +29,10 @@ const (
 	KeyDocument
 )
 
-func NewRenderCtx(system context.Context, user context.Context) context.Context {
-	if rc, ok := system.(RenderCtx); ok {
-		system = rc.system
-	}
-	if user == nil {
-		return system
-	}
-	return RenderCtx{system: system, user: user}
+func IsKey(key any) bool {
+	_, ok := key.(ctxKey)
+	return ok
 }
-
-func DocumentCtx(ctx context.Context) context.Context {
-	if rc, ok := ctx.(RenderCtx); ok {
-		return RenderCtx{system: context.WithValue(rc.system, KeyDocument, true), user: rc.user}
-	}
-	return context.WithValue(ctx, KeyDocument, true)
-}
-
-func UserCtx(ctx context.Context, parent context.Context) context.Context {
-	if rc, ok := ctx.(RenderCtx); ok {
-		return rc.User()
-	}
-	if ctx == parent {
-		return nil
-	}
-	return ctx
-}
-
-type RenderCtx struct {
-	system context.Context
-	user   context.Context
-}
-
-func (c RenderCtx) System() context.Context {
-	return c.system
-}
-
-func (c RenderCtx) User() context.Context {
-	return c.user
-}
-
-func (c RenderCtx) Deadline() (deadline time.Time, ok bool) {
-	return c.system.Deadline()
-}
-
-func (c RenderCtx) Done() <-chan struct{} {
-	return c.system.Done()
-}
-
-func (c RenderCtx) Err() error {
-	return c.system.Err()
-}
-
-func (c RenderCtx) Value(key any) any {
-	if _, ok := key.(ctxKey); ok {
-		return c.system.Value(key)
-	}
-	return c.user.Value(key)
-}
-
-var _ context.Context = RenderCtx{}
 
 func Logger(ctx context.Context) *slog.Logger {
 	if ctx == nil {

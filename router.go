@@ -19,6 +19,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/gox"
 )
@@ -64,7 +65,7 @@ func Router(ctx context.Context) Source[Location] {
 // and on any source derived from it, such as a [RouteModel] source. Passing it
 // to an update of a source not backed by the URL has no effect.
 func HistoryReplaceContext(ctx context.Context) context.Context {
-	return context.WithValue(ctx, common.KeyHistoryReplace, true)
+	return ctex.NewReplaceContext(ctx)
 }
 
 // Route renders the first route that matches the current URL and switches

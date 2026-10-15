@@ -22,6 +22,7 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
+	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
 	"github.com/doors-dev/gox"
 )
@@ -57,7 +58,7 @@ func Parallel() gox.Proxy {
 // with the enclosing render.
 func Ctx(ctx context.Context) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
-		ctx := common.NewRenderCtx(cur.Context(), ctx)
+		ctx := ctex.NewRenderContext(cur.Context(), ctx)
 		cur = gox.NewCursor(ctx, cur.Printer())
 		return elem(cur)
 	})

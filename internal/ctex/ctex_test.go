@@ -331,14 +331,14 @@ func TestFrameInfect(t *testing.T) {
 	batched = SyncFrameInsert(batched, shredder.FreeFrame{}, shredder.FreeFrame{})
 	pageA := context.WithValue(context.Background(), common.KeyCore, testOwner("a"))
 	pageB := context.WithValue(context.Background(), common.KeyCore, testOwner("b"))
-	same := FrameInfect(batched, pageA)
+	same := NewInfectedContext(batched, pageA)
 	if got := GetFrames(same); got != GetFrames(batched) || got.Call() != after || batchOf(got) != valve {
 		t.Fatal("expected the frames to reach a context of the same instance unchanged")
 	}
 	if same.Value(common.KeyCore) != testOwner("a") {
 		t.Fatal("expected frame infect to preserve existing target values")
 	}
-	foreign := GetFrames(FrameInfect(batched, pageB))
+	foreign := GetFrames(NewInfectedContext(batched, pageB))
 	if foreign.Owner() || !batchNone(foreign) || foreign.Group() != 0 || foreign.Batch() != 0 || foreign.Inst() != "" {
 		t.Fatal("expected no after frame, ids or valve in a foreign instance")
 	}
@@ -346,13 +346,13 @@ func TestFrameInfect(t *testing.T) {
 		t.Fatal("expected the sync frames to cross instances")
 	}
 	detached := NewDetachedContext(pageA, pageA, false)
-	if !GetFrames(FrameInfect(detached, pageA)).Detached() {
+	if !GetFrames(NewInfectedContext(detached, pageA)).Detached() {
 		t.Fatal("expected the detached mark to reach a context of the same instance")
 	}
-	if GetFrames(FrameInfect(detached, pageB)).Detached() {
+	if GetFrames(NewInfectedContext(detached, pageB)).Detached() {
 		t.Fatal("expected no detached mark in a foreign instance")
 	}
-	noFrame := FrameInfect(context.Background(), pageA)
+	noFrame := NewInfectedContext(context.Background(), pageA)
 	if _, ok := GetFrames(noFrame).AfterFrame(); ok || noFrame.Value(common.KeyCore) != testOwner("a") {
 		t.Fatal("expected no frame when source has none, and the target core")
 	}
