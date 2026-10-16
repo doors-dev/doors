@@ -150,6 +150,33 @@ func WithPrinter(p func(next gox.Printer) gox.Printer) With {
 	})
 }
 
+// WithValue makes ctx.Value(key) return value in every context Doors
+// creates: renders, handlers, session and instance contexts, and requests.
+// A value you set for the same key inside Doors, with context.WithValue or
+// [Ctx], still wins. Repeated keys keep the last value.
+func WithValue(key, value any) With {
+	return withFunc(func(o *app.Options) {
+		o.Values = append(o.Values, func(ctx context.Context) context.Context {
+			return context.WithValue(ctx, key, value)
+		})
+		o.Keys = append(o.Keys, key)
+	})
+}
+
+// WithFunc calls f once per app in [NewApp] and applies the option it returns.
+// Use it to create per-app values, so the same option passed to several apps
+// does not share them. A nil f or a nil result does nothing.
+func WithFunc(f func() With) With {
+	return withFunc(func(o *app.Options) {
+		if f == nil {
+			return
+		}
+		if w := f(); w != nil {
+			w.apply(o)
+		}
+	})
+}
+
 // NewApp returns an [App] that serves page as its page factory.
 //
 // page runs once per page instance, on the full page load that creates it. ctx

@@ -68,7 +68,7 @@ func checkRouting(t *testing.T, name string, ctx context.Context, want map[strin
 func TestViewRouting(t *testing.T) {
 	life := tagContext{context.Background(), tagLife}
 	values := tagContext{context.Background(), tagValues}
-	checkRouting(t, "render", NewRenderContext(life, values), map[string]any{
+	checkRouting(t, "render", NewRenderContext(life, values, nil), map[string]any{
 		"core": tagLife, "session": tagLife, "frame": tagLife, "replace": tagLife, "document": tagLife,
 		"user": tagValues, "internal": tagValues,
 	})
@@ -110,7 +110,7 @@ func TestViewLifetime(t *testing.T) {
 func viewBuilders() map[string]func(values, life context.Context) context.Context {
 	return map[string]func(values, life context.Context) context.Context{
 		"render": func(values, life context.Context) context.Context {
-			return NewRenderContext(life, values)
+			return NewRenderContext(life, values, nil)
 		},
 		"detached": func(values, life context.Context) context.Context {
 			return NewDetachedContext(values, life, false)
@@ -129,23 +129,23 @@ func TestNewRenderContext(t *testing.T) {
 	life := tagContext{context.Background(), tagLife}
 	first := tagContext{context.Background(), "first"}
 	second := tagContext{context.Background(), "second"}
-	if NewRenderContext(life, nil) != context.Context(life) {
+	if NewRenderContext(life, nil, nil) != context.Context(life) {
 		t.Fatal("expected the system context without a user context")
 	}
-	outer := NewRenderContext(life, first)
-	inner := NewRenderContext(outer, second)
+	outer := NewRenderContext(life, first, nil)
+	inner := NewRenderContext(outer, second, nil)
 	if inner.Value(common.KeyCore) != tagLife || inner.Value(userKey{}) != "second" {
 		t.Fatal("expected a render context to replace the user context of a render context")
 	}
-	if NewRenderContext(outer, nil) != context.Context(life) {
+	if NewRenderContext(outer, nil, nil) != context.Context(life) {
 		t.Fatal("expected a render context without a user context to unwrap to the system context")
 	}
 	detached := NewDetachedContext(first, life, false)
-	wrapped := NewRenderContext(detached, second)
+	wrapped := NewRenderContext(detached, second, nil)
 	if wrapped.Value(common.KeyCore) != "first" || wrapped.Value(common.KeyDocument) != nil || wrapped.Value(userKey{}) != "second" {
 		t.Fatal("expected a render context to keep a detached system context whole")
 	}
-	if NewRenderContext(detached, nil) != detached {
+	if NewRenderContext(detached, nil, nil) != detached {
 		t.Fatal("expected a detached context not to be unwrapped")
 	}
 }
@@ -153,7 +153,7 @@ func TestNewRenderContext(t *testing.T) {
 // The document mark goes to the system side of a render context, or wraps any other context.
 func TestNewDocumentContext(t *testing.T) {
 	values := context.WithValue(context.Background(), userKey{}, "user")
-	render := NewDocumentContext(NewRenderContext(context.Background(), values))
+	render := NewDocumentContext(NewRenderContext(context.Background(), values, nil))
 	if render.Value(common.KeyDocument) != true || render.Value(userKey{}) != "user" {
 		t.Fatal("expected a document render context with the user values")
 	}
@@ -174,7 +174,7 @@ func TestNewDocumentContext(t *testing.T) {
 func TestUserContext(t *testing.T) {
 	parent := context.WithValue(context.Background(), userKey{}, "parent")
 	values := context.WithValue(context.Background(), userKey{}, "user")
-	if UserContext(NewRenderContext(parent, values), parent) != values {
+	if UserContext(NewRenderContext(parent, values, nil), parent) != values {
 		t.Fatal("expected the user context of a render context")
 	}
 	if UserContext(parent, parent) != nil {
@@ -205,7 +205,7 @@ func TestViewNested(t *testing.T) {
 	if GetFrames(settle) != GetFrames(scope).Settle() {
 		t.Fatal("expected the settle frames of the infected frames")
 	}
-	render := NewRenderContext(detached, context.WithValue(context.Background(), userKey{}, "render"))
+	render := NewRenderContext(detached, context.WithValue(context.Background(), userKey{}, "render"), nil)
 	if render.Value(common.KeyCore) != testOwner("a") || render.Value(common.KeyDocument) != nil || GetFrames(render) != (Frames{detached: true}) || render.Value(userKey{}) != "render" {
 		t.Fatal("expected a render context to read doors keys through the detached context")
 	}
@@ -295,7 +295,7 @@ func TestViewMarksPlain(t *testing.T) {
 // Every mark is a new context, and comparing a marked context never compares the user context.
 func TestViewMarksIdentity(t *testing.T) {
 	user := uncomparableContext{context.Background(), []string{"user"}}
-	parent := NewRenderContext(context.Background(), user)
+	parent := NewRenderContext(context.Background(), user, nil)
 	replaced := NewReplaceContext(parent)
 	if UserContext(replaced, parent) != replaced {
 		t.Fatal("expected a marked render context to be the user context as a whole")
@@ -374,5 +374,42 @@ func TestViewInfectOwners(t *testing.T) {
 	noCore := NewDetachedContext(scope, context.Background(), false)
 	if got := GetFrames(NewInfectedContext(noCore, pageA)); got != (Frames{}) {
 		t.Fatalf("expected detached frames without a source core to be cut, got %+v", got)
+	}
+}
+
+type testKeys map[any]bool
+
+func (k testKeys) IsWithValueKey(key any) bool {
+	for registered := range k {
+		if registered == key {
+			return true
+		}
+	}
+	return false
+}
+
+type appKey struct{}
+
+// A registered key missing from the user values reads life; user values win, and other keys never read life.
+func TestViewWithValueKeys(t *testing.T) {
+	life := context.WithValue(context.WithValue(context.Background(), appKey{}, "app"), userKey{}, "life")
+	keys := testKeys{appKey{}: true}
+	render := NewRenderContext(life, context.Background(), keys)
+	if render.Value(appKey{}) != "app" || render.Value(userKey{}) != nil {
+		t.Fatal("expected the registered key from life and no other life values")
+	}
+	own := NewRenderContext(life, context.WithValue(context.Background(), appKey{}, "own"), keys)
+	if own.Value(appKey{}) != "own" {
+		t.Fatal("expected the user value to win")
+	}
+	if NewRenderContext(life, context.Background(), nil).Value(appKey{}) != nil {
+		t.Fatal("expected no life values without keys")
+	}
+	if render.Value([]int{1}) != nil {
+		t.Fatal("expected nil for an uncomparable key")
+	}
+	marked, _ := NewAfterFrame(render, "a", 1)
+	if marked.Value(appKey{}) != "app" {
+		t.Fatal("expected marks to keep the keys")
 	}
 }

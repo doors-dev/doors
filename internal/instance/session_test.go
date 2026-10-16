@@ -77,6 +77,14 @@ func (a *sessionTestApp) SetCookies(w http.ResponseWriter, id string, maxAge tim
 	a.cookieMaxAge = maxAge
 }
 
+func (a *sessionTestApp) IsWithValueKey(key any) bool {
+	return false
+}
+
+func (a *sessionTestApp) Context() context.Context {
+	return context.Background()
+}
+
 func (a *sessionTestApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }
 }

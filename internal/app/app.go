@@ -53,7 +53,10 @@ func NewApp(page Page, o Options) App {
 		errPage:           o.ErrorPage,
 		logger:            o.Logger,
 		printerMiddleware: o.PrinterMiddleware,
+		values:            o.Values,
+		keys:              o.Keys,
 	}
+	a.ctx = a.withValues(context.Background())
 	a.registry = resources.NewRegistry(a)
 	a.Use()
 	return a
@@ -76,6 +79,9 @@ type app struct {
 	errPage           ErrorPage
 	logger            *slog.Logger
 	printerMiddleware func(next gox.Printer) gox.Printer
+	values            []func(context.Context) context.Context
+	keys              []any
+	ctx               context.Context
 	instanceCount     atomic.Int64
 	drain             atomic.Pointer[drain]
 }
@@ -186,10 +192,30 @@ func (a App) Drain(migrate bool, callback func()) {
 	}
 }
 
+func (a *app) Context() context.Context {
+	return a.ctx
+}
+
+func (a *app) IsWithValueKey(key any) bool {
+	for _, k := range a.keys {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *app) withValues(ctx context.Context) context.Context {
+	for _, with := range a.values {
+		ctx = with(ctx)
+	}
+	return ctx
+}
+
 func (a *app) injectSession(w http.ResponseWriter, r *http.Request) *http.Request {
 	s := a.getSession(w, r)
 	if s != nil {
-		return r.WithContext(context.WithValue(r.Context(), common.KeySession, s))
+		return r.WithContext(context.WithValue(a.withValues(r.Context()), common.KeySession, s))
 	}
 	id := common.RandId()
 	a.SetCookies(w, id, a.conf.SessionTTL)
@@ -197,7 +223,7 @@ func (a *app) injectSession(w http.ResponseWriter, r *http.Request) *http.Reques
 		id:  id,
 		app: a,
 	}
-	r = r.WithContext(context.WithValue(r.Context(), common.KeySession, l))
+	r = r.WithContext(context.WithValue(a.withValues(r.Context()), common.KeySession, l))
 	l.r = r
 	return r
 }

@@ -116,6 +116,10 @@ func (a titleApp) Migrating() bool {
 	return false
 }
 
+func (a titleApp) IsWithValueKey(key any) bool {
+	return false
+}
+
 func (a titleApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }
 }

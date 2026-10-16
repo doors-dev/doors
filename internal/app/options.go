@@ -15,6 +15,7 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -58,6 +59,10 @@ type Options struct {
 	// PrinterMiddleware is the printer wrapper from doors.WithPrinter. Nil
 	// disables wrapping.
 	PrinterMiddleware func(next gox.Printer) gox.Printer
+	// Values add the context values from doors.WithValue, in order.
+	Values []func(context.Context) context.Context
+	// Keys are the keys from doors.WithValue.
+	Keys []any
 }
 
 type trackers []SessionTracker

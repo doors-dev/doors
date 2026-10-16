@@ -275,7 +275,8 @@ func newOuterTrackerRoot(r *root) *outerTracker {
 	tracker.outerGuard = new(shredder.ValveFrame)
 	tracker.placeGuard = tracker.outerGuard
 	tracker.cinema = beam.NewCinema(nil, tracker)
-	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
+	c := core.NewCore(tracker)
+	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, c), tracker.user, c.App())
 	return tracker
 }
 
@@ -294,7 +295,8 @@ func newOuterTrackerInherit(prev *outerTracker) *outerTracker {
 		user:       prev.user,
 	}
 	tracker.cinema = beam.NewCinema(prev.parent.Cinema(), tracker)
-	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
+	c := core.NewCore(tracker)
+	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, c), tracker.user, c.App())
 	prev.parent.addChild(tracker)
 	return tracker
 }
@@ -315,7 +317,8 @@ func newOuterTrackerCreate(pip *pipe, userCtx context.Context) *outerTracker {
 	tracker.cinema = beam.NewCinema(parent.Cinema(), tracker)
 	tracker.outerGuard = new(shredder.ValveFrame)
 	tracker.placeGuard = tracker.outerGuard
-	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), tracker.user)
+	c := core.NewCore(tracker)
+	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, c), tracker.user, c.App())
 	parent.addChild(tracker)
 	return tracker
 }
@@ -557,7 +560,8 @@ func (t *outerTracker) newTracker(n *node) *tracker {
 		parentCinema = t.parent.Cinema()
 	}
 	tracker.cinema = beam.NewCinema(parentCinema, tracker)
-	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, core.NewCore(tracker)), t.user)
+	c := core.NewCore(tracker)
+	tracker.renderCtx = ctex.NewRenderContext(context.WithValue(tracker.ctx, common.KeyCore, c), t.user, c.App())
 	t.mu.Lock()
 	t.current = tracker
 	t.mu.Unlock()

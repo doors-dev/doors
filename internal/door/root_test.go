@@ -47,6 +47,10 @@ func (a *testApp) PathMaker() path.PathMaker            { return path.NewPathMak
 func (a *testApp) ResourceRegistry() resources.Registry { return nil }
 func (a *testApp) Conf() *common.Conf                   { return &a.conf }
 func (a *testApp) Migrating() bool                      { return false }
+func (a *testApp) IsWithValueKey(key any) bool {
+	return false
+}
+
 func (a *testApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }
 }

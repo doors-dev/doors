@@ -40,9 +40,14 @@ const (
 	fromFrames
 )
 
+type WithValueKeys interface {
+	IsWithValueKey(key any) bool
+}
+
 type view struct {
 	life     context.Context
 	values   context.Context
+	keys     WithValueKeys
 	frames   *Frames
 	kind     viewKind
 	document bool
@@ -84,7 +89,11 @@ func (v *view) Value(key any) any {
 	case fromFrames:
 		return v.computedFrames()
 	default:
-		return v.values.Value(key)
+		val := v.values.Value(key)
+		if val == nil && v.keys != nil && v.keys.IsWithValueKey(key) {
+			return v.life.Value(key)
+		}
+		return val
 	}
 }
 
@@ -167,14 +176,14 @@ func withFrames(ctx context.Context, fs Frames) context.Context {
 	return &v
 }
 
-func NewRenderContext(system, user context.Context) context.Context {
+func NewRenderContext(system, user context.Context, keys WithValueKeys) context.Context {
 	if v, ok := system.(*view); ok && v.kind == viewRender && v.bare() {
 		system = v.life
 	}
 	if user == nil {
 		return system
 	}
-	return &view{life: system, values: user, kind: viewRender}
+	return &view{life: system, values: user, keys: keys, kind: viewRender}
 }
 
 func NewDocumentContext(ctx context.Context) context.Context {

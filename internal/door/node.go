@@ -344,7 +344,7 @@ func (n *node) placeRenderStatic(parentPipe *pipe, buffer *deque.Deque[any]) {
 			return
 		}
 		pipe := parentPipe.fork(buffer)
-		cur := gox.NewCursor(ctex.NewRenderContext(pipe.innerContext(), n.static.user), pipe)
+		cur := gox.NewCursor(ctex.NewRenderContext(pipe.innerContext(), n.static.user, pipe.tracker.Instance().Session().App()), pipe)
 		if err := cur.Any(n.outer); err != nil {
 			pipe.error(err, n.caller)
 		}
@@ -443,6 +443,6 @@ func (n *node) scheduleRemoval(placed *shredder.ValveFrame) {
 }
 
 func (n *node) renderStatic(pip *pipe) (err error) {
-	cur := gox.NewCursor(ctex.NewRenderContext(n.tracker.renderCtx, n.static.user), pip)
+	cur := gox.NewCursor(ctex.NewRenderContext(n.tracker.renderCtx, n.static.user, n.tracker.Instance().Session().App()), pip)
 	return cur.Any(n.outer)
 }

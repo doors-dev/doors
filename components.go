@@ -58,7 +58,8 @@ func Parallel() gox.Proxy {
 // with the enclosing render.
 func Ctx(ctx context.Context) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
-		ctx := ctex.NewRenderContext(cur.Context(), ctx)
+		core := cur.Context().Value(common.KeyCore).(core.Core)
+		ctx := ctex.NewRenderContext(cur.Context(), ctx, core.App())
 		cur = gox.NewCursor(ctx, cur.Printer())
 		return elem(cur)
 	})

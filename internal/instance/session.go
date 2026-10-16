@@ -32,6 +32,8 @@ import (
 )
 
 type App interface {
+	Context() context.Context
+	IsWithValueKey(key any) bool
 	CSP() *common.CSP
 	Conf() *common.Conf
 	SetCookies(w http.ResponseWriter, id string, maxAge time.Duration)
@@ -48,7 +50,7 @@ type App interface {
 type Session = *session
 
 func NewSession(a App, id string) Session {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(a.Context())
 	sess := &session{
 		store:   ctex.NewStore(),
 		id:      id,

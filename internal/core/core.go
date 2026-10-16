@@ -55,6 +55,7 @@ type App interface {
 	Conf() *common.Conf
 	Migrating() bool
 	PrinterMiddleware() func(next gox.Printer) gox.Printer
+	IsWithValueKey(key any) bool
 }
 
 type Session interface {
