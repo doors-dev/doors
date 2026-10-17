@@ -57,7 +57,7 @@ class $D {
 		return await capture("default", undefined, arg, undefined, hook)
 	}
 
-	hook = async (name: string, arg: any): Promise<any> => {
+	hook = async (name: string, arg: any = null): Promise<any> => {
 		const res = await this.fetch(name, arg)
 		return await res.json()
 	}
