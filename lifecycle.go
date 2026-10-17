@@ -80,8 +80,13 @@ func OnReady(ctx context.Context, on func(ctx context.Context)) {
 // Using a handler ctx after the handler returned is misuse; use
 // [DetachedContext] or [HoldSettle].
 //
+// on may be nil.
+//
 // ctx must belong to a Doors render or handler; otherwise OnSettle panics.
 func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context)) {
+	if on == nil {
+		on = func(context.Context) {}
+	}
 	ctex.LogCanceled(ctx, "OnSettle")
 	core := ctx.Value(common.KeyCore).(core.Core)
 	frame, ok := ctex.GetFrames(ctx).AfterFrame()
@@ -124,8 +129,13 @@ func OnSettle(ctx context.Context, on func(ctx context.Context), ops ...func(ctx
 // reports such states. It runs with a context equivalent to [DetachedContext]
 // of ctx and must not block.
 //
+// on may be nil.
+//
 // ctx must belong to a Doors render or handler; otherwise OnBatch panics.
 func OnBatch(ctx context.Context, on func(ctx context.Context), ops ...func(ctx context.Context)) {
+	if on == nil {
+		on = func(context.Context) {}
+	}
 	ctex.LogCanceled(ctx, "OnBatch")
 	detached := DetachedContext(ctx)
 	core := ctx.Value(common.KeyCore).(core.Core)

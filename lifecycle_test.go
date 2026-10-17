@@ -1282,6 +1282,24 @@ func TestOnBatchOpensBatch(t *testing.T) {
 	}
 }
 
+// A nil on still runs the ops of OnSettle and OnBatch.
+func TestLifecycleNilOn(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	d := &Door{}
+	pageCtx := h.renderPage(mountDoor(d))
+	h.waitIdle()
+	OnSettle(DetachedContext(pageCtx), nil, func(ctx context.Context) {
+		h.events <- "settle-op"
+	})
+	h.waitEvent("settle-op")
+	OnBatch(DetachedContext(pageCtx), nil, func(ctx context.Context) {
+		d.Inner(ctx, gox.Elem(func(cur gox.Cursor) error { return cur.Text("x") }))
+		h.events <- "batch-op"
+	})
+	h.waitEvent("batch-op")
+	h.waitIdle()
+}
+
 // OnBatch in a batch hook joins the hook batch: no second batch, and on fires when the hook report is applied.
 func TestOnBatchJoinsHookBatch(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
