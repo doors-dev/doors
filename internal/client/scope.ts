@@ -99,10 +99,11 @@ class Hook {
 		this.track = runtime.hookRegister(this)
 		const track = this.track
 		this.actions(this.params.before).then(() => {
-			fetch(`${prefix}/h/${id}/${this.params.hookId}?t=${track}`, {
+			fetch(`${prefix}/h/${id}/${this.params.hookId}`, {
 				method: "POST",
 				signal: this.abortTimer!.signal,
 				...this.fetchOpt,
+				headers: { ...this.fetchOpt.headers, "D0-Track": `${track}` },
 			}).then(r => {
 				this.abortTimer!.cancel()
 				if (r.ok) {

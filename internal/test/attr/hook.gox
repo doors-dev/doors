@@ -1,0 +1,120 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package attr
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type nullHookFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+type nullHookData struct {
+	Value string
+}
+
+elem (f *nullHookFragment) Main() {
+	~(f.r)
+	<div id="ptr"></div>
+	<div id="str"></div>
+	<div id="obj"></div>
+	<div id="raw"></div>
+	~>doors.AHook[*string]{
+		Name: "ptrHook",
+		On: func(ctx context.Context, r doors.RequestHook[*string]) (any, bool) {
+			f.r.Update(ctx, 0, fmt.Sprint("called:", r.Data() == nil))
+			return "ptr", true
+		},
+	} ~>doors.AHook[string]{
+		Name: "strHook",
+		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
+			f.r.Update(ctx, 1, fmt.Sprintf("called:%q", r.Data()))
+			return "str", true
+		},
+	} ~>doors.AHook[nullHookData]{
+		Name: "objHook",
+		On: func(ctx context.Context, r doors.RequestHook[nullHookData]) (any, bool) {
+			f.r.Update(ctx, 2, fmt.Sprintf("called:%q", r.Data().Value))
+			return "obj", true
+		},
+	} ~>doors.ARawHook{
+		Name: "rawHook",
+		On: func(ctx context.Context, r doors.RequestRawHook) bool {
+			body, _ := io.ReadAll(r.Body())
+			f.r.Update(ctx, 3, string(body))
+			fmt.Fprint(r.ResponseWriter(), `"raw"`)
+			return true
+		},
+	} <script>
+		const run = async (id, name) => {
+			try {
+				document.getElementById(id).innerHTML = `${await $hook(name)}`
+			} catch (e) {
+				document.getElementById(id).innerHTML = "err"
+			}
+		}
+		await run("ptr", "ptrHook")
+		await run("str", "strHook")
+		await run("obj", "objHook")
+		await run("raw", "rawHook")
+	</script>
+}
+
+type trackHookFragment struct {
+	test.NoBeam
+	r *test.Reporter
+}
+
+elem (f *trackHookFragment) Main() {
+	~~
+	path, _ := doors.NewHook(ctx, doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "%s|%s|%s", r.URL.Path, r.URL.RawPath, r.URL.RawQuery)
+	}))
+	~~
+	~(f.r)
+	<div id="track"></div>
+	<div id="bare"></div>
+	<div id="slash"></div>
+	<div id="sub"></div>
+	<div id="query"></div>
+	~>doors.AHook[string]{
+		Name: "trackHook",
+		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
+			f.r.Update(ctx, 0, r.RequestHeader().Get("D0-Track"))
+			return r.Data(), false
+		},
+	} <script data:hookPath=(path)>
+		document.getElementById("track").innerHTML = await $hook("trackHook", "first")
+		document.getElementById("track").innerHTML = await $hook("trackHook", "second")
+		const base = await $data("hookPath")
+		const get = async (id, url) => {
+			const r = await fetch(url)
+			document.getElementById(id).innerHTML = await r.text()
+		}
+		await get("bare", base)
+		await get("slash", `${base}/`)
+		await get("sub", `${base}/a/b%2Fc?q=1`)
+		await get("query", `${base}?q=2`)
+	</script>
+}

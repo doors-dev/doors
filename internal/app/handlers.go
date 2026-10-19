@@ -81,7 +81,7 @@ func (a *app) tryServeUtility(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	if hook, ok := match.Hook(); ok {
-		a.serveHook(w, r, hook.Instance, hook.Hook, hook.Track)
+		a.serveHook(w, r, hook)
 		return true
 	}
 	if instanceID, ok := match.Sync(); ok {
@@ -150,19 +150,24 @@ func (a *app) serveSync(w http.ResponseWriter, r *http.Request, instanceId strin
 	inst.Connect(w, r)
 }
 
-func (a *app) serveHook(w http.ResponseWriter, r *http.Request, instanceID string, hookID uint64, track uint64) {
+func (a *app) serveHook(w http.ResponseWriter, r *http.Request, hook path.HookMatch) {
 	ses, ok := getSession(r.Context())
 	if !ok {
 		a.Logger().Error("Session is removed from the request context")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	inst, found := ses.GetInstance(instanceID)
+	inst, found := ses.GetInstance(hook.Instance)
 	if !found {
 		w.WriteHeader(http.StatusGone)
 		return
 	}
-	found = inst.TriggerHook(hookID, w, r, track)
+	r.Header.Set("Doors-Hook-Prefix", hook.Prefix)
+	u := *r.URL
+	u.Path, u.RawPath = hook.Path, hook.RawPath
+	stripped := *r
+	stripped.URL = &u
+	found = inst.TriggerHook(hook.Hook, w, &stripped, hook.Track)
 	if !found {
 		w.WriteHeader(http.StatusNotFound)
 	}

@@ -43,6 +43,9 @@ type HookMatch struct {
 	Instance string
 	Hook     uint64
 	Track    uint64
+	Prefix   string
+	Path     string
+	RawPath  string
 }
 
 type UndoPath struct {
@@ -118,7 +121,8 @@ func (pm PathMaker) IsSystem(r *http.Request) bool {
 }
 
 func (pm PathMaker) Match(r *http.Request) (Match, bool) {
-	tilde, ok := strings.CutPrefix(r.URL.RequestURI(), systemPrefix)
+	uri := r.URL.RequestURI()
+	tilde, ok := strings.CutPrefix(uri, systemPrefix)
 	if !ok {
 		return Match{}, false
 	}
@@ -135,18 +139,29 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 			return Match{}, false
 		}
 		track := uint64(0)
-		trackStr := r.URL.Query().Get("t")
+		trackStr := r.Header.Get("D0-Track")
 		if trackStr != "" {
 			track, err = strconv.ParseUint(trackStr, 10, 64)
 			if err != nil {
 				return Match{}, false
 			}
 		}
+		tail, _, _ := strings.Cut(matches[3], "?")
+		if tail == "" {
+			tail = "/"
+		}
+		u, err := url.ParseRequestURI(tail)
+		if err != nil {
+			return Match{}, false
+		}
 		return Match{
 			entity: HookMatch{
 				Instance: instanceID,
 				Hook:     hookID,
 				Track:    track,
+				Prefix:   uri[:len(uri)-len(matches[3])],
+				Path:     u.Path,
+				RawPath:  u.RawPath,
 			},
 		}, true
 	}

@@ -108,8 +108,11 @@ func ResourceProxy(url string) Resource {
 // NewHook registers r on the closest dynamic parent and returns the URL path
 // that serves it. The path stops working once the current content is cleared.
 //
-// Appending a slash and a file name to the returned path is safe. Requests
-// are handled concurrently.
+// Appending a slash and a file name to the returned path is safe. The handler
+// sees the part after the returned path as r.URL.Path, starting with /, so a
+// router such as [http.ServeMux] can serve sub-paths of the hook. The
+// Doors-Hook-Prefix request header holds the returned path, for building
+// redirects. Requests are handled concurrently.
 //
 // It returns false if the closest dynamic parent has already been cleared.
 //

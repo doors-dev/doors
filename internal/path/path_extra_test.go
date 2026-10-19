@@ -392,7 +392,8 @@ func TestPathMakerAndMatch(t *testing.T) {
 	}
 
 	hookPath := pm.Hook("inst1", 20, "file.txt")
-	req := httptest.NewRequest("GET", hookPath+"?t=7", nil)
+	req := httptest.NewRequest("GET", hookPath, nil)
+	req.Header.Set("D0-Track", "7")
 	match, ok := pm.Match(req)
 	if !ok {
 		t.Fatal("expected hook path to match")
@@ -450,21 +451,79 @@ func TestPathMakerAndMatch(t *testing.T) {
 		t.Fatal("expected tab state path with trailing segment to fail matching")
 	}
 
-	if _, ok := pm.Match(httptest.NewRequest("GET", hookPath+"?t=bad", nil)); ok {
+	badTrack := httptest.NewRequest("GET", hookPath, nil)
+	badTrack.Header.Set("D0-Track", "bad")
+	if _, ok := pm.Match(badTrack); ok {
 		t.Fatal("expected bad hook track to fail matching")
+	}
+	match, ok = pm.Match(httptest.NewRequest("GET", hookPath+"?t=7", nil))
+	if !ok {
+		t.Fatal("expected hook path with query to match")
+	}
+	hook, ok = match.Hook()
+	if !ok || hook.Track != 0 {
+		t.Fatalf("expected query not to set hook track: %#v", hook)
 	}
 	if _, ok := pm.Match(httptest.NewRequest("GET", "/not-system/h/inst1/20", nil)); ok {
 		t.Fatal("expected non-system prefix to fail matching")
 	}
 
-	altHookPath := "/~/other/h/inst1/20?t=3"
-	match, ok = pm.Match(httptest.NewRequest("GET", altHookPath, nil))
+	altHook := httptest.NewRequest("GET", "/~/other/h/inst1/20", nil)
+	altHook.Header.Set("D0-Track", "3")
+	match, ok = pm.Match(altHook)
 	if !ok {
 		t.Fatal("expected hook path with alternate server segment to match")
 	}
 	hook, ok = match.Hook()
 	if !ok || hook.Instance != "inst1" || hook.Hook != 20 || hook.Track != 3 {
 		t.Fatalf("unexpected hook match with alternate segment: %#v", hook)
+	}
+}
+
+func TestHookMatchPath(t *testing.T) {
+	pm := NewPathMaker("__Host-", "blue", "")
+	cases := []struct {
+		name    string
+		target  string
+		path    string
+		rawPath string
+	}{
+		{"no tail", pm.Prefix() + "/h/inst1/20", "/", ""},
+		{"query only", pm.Prefix() + "/h/inst1/20?x=1", "/", ""},
+		{"trailing slash", pm.Prefix() + "/h/inst1/20/", "/", ""},
+		{"nested tail", pm.Prefix() + "/h/inst1/20/a/b", "/a/b", ""},
+		{"tail with query", pm.Prefix() + "/h/inst1/20/a/b?x=1&y=2", "/a/b", ""},
+		{"escaped segment", pm.Prefix() + "/h/inst1/20/a%2Fb/c", "/a/b/c", "/a%2Fb/c"},
+		{"double slash tail", pm.Prefix() + "/h/inst1/20//users/42", "//users/42", ""},
+		{"double slash only", pm.Prefix() + "/h/inst1/20//", "//", ""},
+		{"inner double slash", pm.Prefix() + "/h/inst1/20/a//b", "/a//b", ""},
+		{"dot segments", pm.Prefix() + "/h/inst1/20/a/../x", "/a/../x", ""},
+		{"named hook", pm.Hook("inst1", 20, "report.pdf"), "/report.pdf", ""},
+		{"named hook with space", pm.Hook("inst1", 20, "my report.pdf"), "/my report.pdf", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			match, ok := pm.Match(httptest.NewRequest("GET", c.target, nil))
+			if !ok {
+				t.Fatalf("expected %q to match", c.target)
+			}
+			hook, ok := match.Hook()
+			if !ok {
+				t.Fatalf("expected %q to be a hook match", c.target)
+			}
+			if hook.Instance != "inst1" || hook.Hook != 20 || hook.Track != 0 {
+				t.Fatalf("unexpected hook match: %#v", hook)
+			}
+			if want := pm.Prefix() + "/h/inst1/20"; hook.Prefix != want {
+				t.Fatalf("unexpected hook prefix: got %q, want %q", hook.Prefix, want)
+			}
+			if hook.Path != c.path || hook.RawPath != c.rawPath {
+				t.Fatalf("unexpected hook path: got (%q, %q), want (%q, %q)", hook.Path, hook.RawPath, c.path, c.rawPath)
+			}
+		})
+	}
+	if _, ok := pm.Match(httptest.NewRequest("GET", pm.Prefix()+"/h/inst1/20a", nil)); ok {
+		t.Fatal("expected hook id with trailing letters to fail matching")
 	}
 }
 
