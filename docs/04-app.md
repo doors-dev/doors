@@ -27,7 +27,7 @@ if err := http.ListenAndServe(":8080", app); err != nil {
 In practice, the app pulls together:
 
 - middleware that runs in front of all request handling (static files, logging, CORS, ...)
-- app-wide settings (CSP, esbuild, server ID, error pages, session tracking, system limits)
+- app-wide settings (CSP, esbuild, server ID, error pages, session tracking, context values, system limits)
 - where the binary plugs into your HTTP setup
 
 ## Page Factory
@@ -75,10 +75,11 @@ app := doors.NewApp(page,
 	doors.WithCSP(doors.CSP{
 		ConnectSources: []string{"https://api.example.com"},
 	}),
+	doors.WithValue(dbKey{}, db),
 )
 ```
 
-See [Configuration](./21-configuration.md) for the full list.
+`doors.WithValue(...)` makes a value available through `ctx.Value` in every **Doors** context, so a database pool or a service client reaches components and handlers without props. See [Configuration](./21-configuration.md) for the full list and [Context Values](./21-configuration.md#context-values).
 
 ## Middleware
 

@@ -1,6 +1,6 @@
 # Doors `0.18` Release Notes
 
-Doors `0.18` brings two things:
+Doors `0.18` brings two main things:
 
 - **Call batching.** A view that changes in several places changes once. Mark a handler `Batch: true` and the browser applies its updates in one step, while rendering stays parallel and non-blocking.
 - **Nested routing.** Sections, tabs, and variants fit in one route call and one container, however deep. Every route is complete as soon as it is written.
@@ -101,6 +101,22 @@ A group whose children match nothing falls through to its next sibling. A URL th
 
 While a `RouteDerive` value stays equal by its comparator, the routes below it are not checked again, the same rule beams use to suppress equal updates. A URL change that decodes into an equal model doesn't reach the routes inside a `RouteModel`.
 
+### App-wide context values
+
+`doors.WithValue(key, value)` makes `ctx.Value(key)` return the value in every context Doors creates: the page factory, renders, handlers, detached, instance and session contexts, and requests, including the `*http.Request` a hook or resource handler receives. A database pool or a service client reaches every component and handler without props. A value set for the same key inside Doors, with `context.WithValue` or `doors.Ctx`, still wins. `doors.WithFunc(f)` runs `f` once per app in `NewApp` and applies the option it returns, so one option passed to several apps creates a separate value for each.
+
+```go
+type dbKey struct{}
+
+func DB(ctx context.Context) *sql.DB {
+	return ctx.Value(dbKey{}).(*sql.DB)
+}
+
+app := doors.NewApp(page, doors.WithValue(dbKey{}, db))
+```
+
+See [Configuration](./docs/21-configuration.md#context-values).
+
 ## Behavior Changes
 
 - **One container per call.** `Source.Route`, `Beam.RouteBeam`, and `doors.Route` render a single Door however deep the routes nest, and `RouteBind` leaves no longer add a Door of their own. CSS that relied on the extra wrappers needs updating.
@@ -109,6 +125,11 @@ While a `RouteDerive` value stays equal by its comparator, the routes below it a
 - **Derive functions run once per render of the route container**, for every `RouteDerive` and `RouteBeamDerive` in the tree, shown or not.
 - **Hook completion waits for the hook's own page updates.** The indicator release, the scope release, and the `$hook` promise now wait for updates the hook made if they are still queued in the browser.
 - **`OnSettle` and hook completion track the handler's own instance only.** Updates the handler triggers in other instances, such as other tabs through shared state, are no longer awaited.
+- **No goroutine per child context.** `context.WithCancel` and `context.AfterFunc` on a Doors context (handlers, detached and instance contexts, subscriptions) no longer start a goroutine each.
+- **Hook handlers see the path after the hook URL.** For a `NewHook` URL or a handler resource, `r.URL.Path` is the part after the hook URL, starting with `/`, instead of the full `/~/...` path; `r.RequestURI` keeps the original and the `Doors-Hook-Prefix` header holds the hook URL. An `http.ServeMux` can route sub-paths of a hook, see [Custom Endpoints](./docs/23-custom-endpoints.md). Handlers that parsed the full path need updating.
+- **Hook calls carry their order in the `D0-Track` header** instead of the `t` query parameter, so a `t` parameter of your own reaches the handler.
+- **`$hook(name)` without an argument sends `null`.**
+- **`OnSettle` and `OnBatch` accept a nil `on`.**
 
 ## Breaking Changes
 

@@ -131,6 +131,8 @@ var assets embed.FS
 
 If a hook returns `true`, the resource is served only once. That is useful for one-time downloads and other short-lived links.
 
+To get a hook URL without an attribute, for an API, server-sent events, or a WebSocket, see [Custom Endpoints](./23-custom-endpoints.md).
+
 > Request body is not bounded by `ServerRequestBodyLimit` for resource hooks. Apply a safe limit yourself if you read the body in a `ResourceHandler` or `ResourceHook` callback.
 
 ### Proxy

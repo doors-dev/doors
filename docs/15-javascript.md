@@ -326,6 +326,8 @@ By default, calls to the same hook run one at a time on the backend, in order of
 
 A handler can keep the call open past its own return with `doors.HoldSettle`: the client keeps the `$hook(...)` promise, the scope, and the indication pending until the hold is released. See [Door](./06-door.md).
 
+When code outside managed scripts needs a URL, such as a React island API, `EventSource`, or `WebSocket`, see [Custom Endpoints](./23-custom-endpoints.md).
+
 ### Raw Variant
 
 Use `doors.ARawHook` when the Go side needs lower-level transport control.

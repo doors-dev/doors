@@ -41,6 +41,8 @@ Common app options are:
 - `doors.WithSessionTracker(...)` — observe session create/delete
 - `doors.WithErrorPage(...)` — custom error page
 - `doors.WithPrinter(...)` — observe or adjust emitted HTML, covered in [Printer Middleware](./22-printer-middleware.md)
+- `doors.WithValue(...)` — a context value available in every **Doors** context
+- `doors.WithFunc(...)` — build an option once per app
 
 **Doors** fills in defaults automatically, so you usually set only the values you want to change.
 
@@ -223,6 +225,57 @@ Repeat the option to install several trackers. They run one after another in reg
 doors.WithSessionTracker(audit{}),
 doors.WithSessionTracker(metrics{}),
 ```
+
+## Context Values
+
+Use `doors.WithValue(key, value)` to share a database pool, config, or service client with every component and handler without passing it through props. `ctx.Value(key)` returns the value in every context **Doors** creates: the page factory, renders, event handlers, `DetachedContext`, `InstanceContext`, `SessionContext`, and requests (`r.Context()` and the `*http.Request` a hook or resource handler receives).
+
+Keep the key unexported and read it through a typed helper:
+
+```go
+type dbKey struct{}
+
+func DB(ctx context.Context) *sql.DB {
+	return ctx.Value(dbKey{}).(*sql.DB)
+}
+
+app := doors.NewApp(page, doors.WithValue(dbKey{}, db))
+```
+
+```gox
+elem (o *Order) Main() {
+	row := DB(ctx).QueryRowContext(ctx, "SELECT status FROM orders WHERE id = ?", o.id)
+	var status string
+	row.Scan(&status)
+
+	~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestPointer) bool {
+			DB(ctx).ExecContext(ctx, "UPDATE orders SET status = 'shipped' WHERE id = ?", o.id)
+			o.status.Inner(ctx, "shipped")
+			return false
+		},
+	} <button>Ship</button>
+
+	~>(o.status) <span>~(status)</span>
+}
+```
+
+A value set for the same key inside **Doors**, with `context.WithValue` on a **Doors** context or with `doors.Ctx(...)`, wins over the app value. A value set for the same key by middleware added with `app.Use(...)` wins on `r.Context()`. Repeating a key keeps the last value. Keys follow the rules of `context.WithValue`: a `nil` or non-comparable key panics in `NewApp`.
+
+Use `doors.WithFunc(...)` when the value must be created per app. The function runs once inside `NewApp` and the option it returns is applied, so one option passed to several apps does not share a value:
+
+```go
+func withCache() doors.With {
+	return doors.WithFunc(func() doors.With {
+		return doors.WithValue(cacheKey{}, newCache())
+	})
+}
+
+blue := doors.NewApp(page, doors.WithID("blue"), withCache())
+green := doors.NewApp(page, doors.WithID("green"), withCache())
+```
+
+A `nil` function or a `nil` result does nothing.
 
 ## Rules
 
