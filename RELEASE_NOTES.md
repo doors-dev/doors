@@ -1,4 +1,4 @@
-# Doors `0.18` Release Notes
+# Doors `0.18` Release Notes — "Grace"
 
 Doors `0.18` brings two main things:
 
