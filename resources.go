@@ -40,7 +40,8 @@ type Resource = printer.SourceHandler
 // Unlike other resources, it accepts the cache, private, and nocache
 // attributes. With cache, Doors keeps the content in RAM and serves it from a
 // shared, publicly reachable URL derived from its hash. It can also be mounted
-// at a fixed path with [UseResource].
+// at a fixed path with [UseResource], or given that URL in code with
+// [NewResource].
 type ResourceStatic = printer.SourceStatic
 
 // ResourceExternal is a URL the browser loads directly from another host.
@@ -127,4 +128,24 @@ func NewHook(ctx context.Context, r Resource) (string, bool) {
 		return "", false
 	}
 	return core.App().PathMaker().Hook(core.Instance().ID(), hook.HookID, ""), true
+}
+
+// NewResource keeps r in RAM and returns the cached URL path that serves it,
+// the same one the cache attribute produces. The path does not depend on the
+// current content and is served with the ServerCacheControl of [Conf].
+//
+// contentType is sent as the Content-Type; empty lets the server detect it,
+// which gives text/plain for JavaScript and CSS. A file name can be appended
+// after a dot: path + ".app.js".
+//
+// It returns an error if r cannot be read.
+//
+// ctx must belong to a Doors render or handler; otherwise NewResource panics.
+func NewResource(ctx context.Context, r ResourceStatic, contentType string) (string, error) {
+	core := ctx.Value(common.KeyCore).(core.Core)
+	res, err := core.App().ResourceRegistry().Static(r.StaticEntry(), contentType)
+	if err != nil {
+		return "", err
+	}
+	return core.App().PathMaker().Resource(res, ""), nil
 }

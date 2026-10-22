@@ -117,6 +117,10 @@ app := doors.NewApp(page, doors.WithValue(dbKey{}, db))
 
 See [Configuration](./docs/21-configuration.md#context-values).
 
+### Cached resource URLs in code
+
+`doors.NewResource(ctx, resource, contentType)` returns the cached URL of a static resource, the one the `cache` attribute produces, so scripts and islands can load stylesheets, images, or fonts by URL. See [Resources](./docs/14-resources.md#url-in-code).
+
 ## Behavior Changes
 
 - **One container per call.** `Source.Route`, `Beam.RouteBeam`, and `doors.Route` render a single Door however deep the routes nest, and `RouteBind` leaves no longer add a Door of their own. CSS that relied on the extra wrappers needs updating.

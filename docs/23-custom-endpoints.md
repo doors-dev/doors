@@ -211,6 +211,8 @@ Use a custom endpoint when the client brings its own code and speaks plain HTTP:
 - file uploads and downloads driven by `fetch`, with progress or streaming
 - web workers
 
+For static files the client loads, such as a stylesheet, image, or font, use a cached URL from `doors.NewResource` instead, see [URL in code](./14-resources.md#url-in-code).
+
 ## Rules
 
 - route sub-paths with `http.ServeMux` on one `ResourceHandler`

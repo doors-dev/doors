@@ -236,6 +236,26 @@ Without `cache`, managed resources stay private to the current Door instance and
 
 Even when `name` is set, a cached resource URL still contains a unique identifier. That makes `cache` a better fit for views and reusable assets than for user-facing download links where you want the cleanest possible filename.
 
+### URL in code
+
+`doors.NewResource(ctx, resource, contentType)` returns the same cached URL without an attribute, for code that loads the file itself:
+
+```gox
+<script data:styles=({
+	url, _ := doors.NewResource(ctx, doors.ResourceBytes(widgetCSS), "text/css")
+	return url
+})>
+	const link = document.createElement("link")
+	link.rel = "stylesheet"
+	link.href = $data("styles")
+	document.head.append(link)
+</script>
+```
+
+- set `contentType` for JavaScript and CSS; empty lets the server detect it, which gives `text/plain` for them
+- append a file name after a dot when needed: `url + ".widget.css"`
+- the error comes only from reading the resource, such as a missing file
+
 ## Content Type
 
 Use `type` when a managed generic resource should set the response content type:
