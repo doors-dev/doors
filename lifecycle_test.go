@@ -762,7 +762,7 @@ func TestOnReadyFromHandlerContextFiresInline(t *testing.T) {
 			h.events <- "ready-async"
 		}
 		return true
-	}, RaceSerial, false)
+	}, RaceSerial, false, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -823,7 +823,7 @@ func TestOnSettleHandlerCtxWaitsForBatch(t *testing.T) {
 		close(entered)
 		<-proceed
 		return true
-	}, RaceSerial, false)
+	}, RaceSerial, false, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -1214,7 +1214,7 @@ func TestHookRaceStrictCancelsOutOfOrder(t *testing.T) {
 		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			ran = append(ran, track)
 			return false
-		}, race, false)
+		}, race, false, false)
 		if !ok {
 			t.Fatal("expected hook registration to succeed")
 		}
@@ -1312,7 +1312,7 @@ func TestOnBatchJoinsHookBatch(t *testing.T) {
 		OnBatch(ctx, func(context.Context) { h.events <- "batch" })
 		d.Inner(ctx, gox.Elem(func(cur gox.Cursor) error { return cur.Text("x") }))
 		return true
-	}, RaceSerial, true)
+	}, RaceSerial, true, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -1340,7 +1340,7 @@ func TestOnBatchInPlainHook(t *testing.T) {
 			d.Inner(ctx, gox.Elem(func(cur gox.Cursor) error { return cur.Text("x") }))
 		})
 		return true
-	}, RaceSerial, false)
+	}, RaceSerial, false, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}

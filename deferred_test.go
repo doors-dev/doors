@@ -1477,7 +1477,7 @@ func TestDeferredSkeletonAliveDuringHeavy(t *testing.T) {
 				hook, ok := ctx.Value(common.KeyCore).(core.Core).Door().RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool {
 					h.events <- "hook"
 					return false
-				}, RaceSerial, false)
+				}, RaceSerial, false, false)
 				if !ok {
 					return errors.New("hook registration failed")
 				}

@@ -840,8 +840,8 @@ func TestModulePreloadInlineBad(t *testing.T) {
 	testRenderError(t, modulePreloadInlineBad)
 }
 
-func TestStyleHandlerPrivateBad(t *testing.T) {
-	testRenderError(t, styleHandlerPrivateBad)
+func TestStyleHandlerCacheBad(t *testing.T) {
+	testRenderError(t, styleHandlerCacheBad)
 }
 
 func TestStyleDirectPrivateBad(t *testing.T) {

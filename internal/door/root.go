@@ -24,6 +24,7 @@ import (
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front/actions"
+	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/shredder"
 	"github.com/doors-dev/gox"
 )
@@ -81,7 +82,26 @@ func (r *root) cancelHook(id uint64) {
 	hook.cancel()
 }
 
-func (r *root) addHook(h *hook) {
+func (r *root) addHook(h *hook, portable bool) {
+	if portable {
+		h.portable = common.RandId()
+		session := r.inst.Session()
+		pm := session.App().PathMaker()
+		instanceID := r.inst.ID()
+		prefix := pm.Portable(h.portable, "")
+		id := h.id
+		session.App().RegisterRewrite(h.portable, func(tail string) path.Rewrite {
+			p, raw := pm.HookTail(instanceID, id, tail)
+			return path.Rewrite{
+				Path:    p,
+				RawPath: raw,
+				Context: func(ctx context.Context) context.Context {
+					ctx = context.WithValue(ctx, common.KeySession, session)
+					return context.WithValue(ctx, common.KeyHookPrefix, prefix)
+				},
+			}
+		})
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.hooks[h.id] = h
@@ -89,8 +109,12 @@ func (r *root) addHook(h *hook) {
 
 func (r *root) removeHook(id uint64) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
+	h, ok := r.hooks[id]
 	delete(r.hooks, id)
+	r.mu.Unlock()
+	if ok && h.portable != "" {
+		r.inst.Session().App().UnregisterRewrite(h.portable)
+	}
 }
 
 func (r *root) TriggerHook(id uint64, w http.ResponseWriter, rq *http.Request, track uint64) bool {

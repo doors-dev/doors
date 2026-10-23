@@ -100,7 +100,7 @@ func linksHook(h *lifecycleHarness, d core.Door, batch bool, track uint64, handl
 	hook, ok := d.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 		handler(ctx)
 		return true
-	}, RaceSerial, batch)
+	}, RaceSerial, batch, false)
 	if !ok {
 		h.t.Fatal("expected hook registration to succeed")
 	}

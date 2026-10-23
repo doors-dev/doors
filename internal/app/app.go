@@ -84,6 +84,7 @@ type app struct {
 	ctx               context.Context
 	instanceCount     atomic.Int64
 	drain             atomic.Pointer[drain]
+	rewrites          sync.Map
 }
 
 type drain struct {
@@ -197,12 +198,7 @@ func (a *app) Context() context.Context {
 }
 
 func (a *app) IsWithValueKey(key any) bool {
-	for _, k := range a.keys {
-		if k == key {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(a.keys, key)
 }
 
 func (a *app) withValues(ctx context.Context) context.Context {
@@ -212,7 +208,30 @@ func (a *app) withValues(ctx context.Context) context.Context {
 	return ctx
 }
 
-func (a *app) injectSession(w http.ResponseWriter, r *http.Request) *http.Request {
+func (a *app) RegisterRewrite(token string, rewrite func(tail string) path.Rewrite) {
+	a.rewrites.Store(token, rewrite)
+}
+
+func (a *app) UnregisterRewrite(token string) {
+	a.rewrites.Delete(token)
+}
+
+func (a *app) rewrite(token string, tail string) (path.Rewrite, bool) {
+	v, ok := a.rewrites.Load(token)
+	if !ok {
+		return path.Rewrite{}, false
+	}
+	return v.(func(string) path.Rewrite)(tail), true
+}
+
+func (a *app) injectSession(w http.ResponseWriter, r *http.Request, rw *path.Rewrite) *http.Request {
+	if rw != nil {
+		u := *r.URL
+		u.Path, u.RawPath = rw.Path, rw.RawPath
+		r = r.WithContext(rw.Context(a.withValues(r.Context())))
+		r.URL = &u
+		return r
+	}
 	s := a.getSession(w, r)
 	if s != nil {
 		return r.WithContext(context.WithValue(a.withValues(r.Context()), common.KeySession, s))

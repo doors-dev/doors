@@ -85,7 +85,7 @@ type eventAttr[E any] struct {
 
 func (p eventAttr[E]) apply(ctx context.Context, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(p.handle(core), p.race, p.batch)
+	hook, ok := core.Door().RegisterHook(p.handle(core), p.race, p.batch, false)
 	if !ok {
 		return context.Canceled
 	}

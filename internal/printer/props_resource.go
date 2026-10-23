@@ -55,6 +55,7 @@ type resourceProps struct {
 	sourceKind   sourceKind
 	name         string
 	contentType  string
+	portable     bool
 }
 
 func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
@@ -90,7 +91,7 @@ func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
 			r.contentType, _ = attr.Value().(string)
 		}
 	}
-	if r.mode == resources.ModeNoHost {
+	if r.mode == resources.ModeNoHost && r.sourceKind == sourceStatic {
 		r.mode = resources.ModeNoCache
 	}
 	return true, nil
@@ -98,10 +99,12 @@ func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
 
 func (r *resourceProps) Validate() error {
 	switch true {
-	case r.sourceKind == sourceLink && isModeSet(r.mode):
-		return errors.New("direct URL sources do not support cache, private, or nocache")
-	case r.sourceKind == sourceHandler && isModeSet(r.mode):
-		return errors.New("handler-backed sources do not support cache, private, or nocache")
+	case r.sourceKind == sourceLink && (isModeSet(r.mode) || r.portable):
+		return errors.New("direct URL sources do not support cache, private, nocache, or portable")
+	case r.sourceKind == sourceHandler && (r.mode == resources.ModeHost || r.mode == resources.ModeNoCache):
+		return errors.New("handler-backed sources do not support cache or nocache")
+	case r.portable && r.mode == resources.ModeHost:
+		return errors.New("portable cannot be combined with cache")
 	case r.sourceKind == sourceHandler && r.contentType != "":
 		return errors.New("handler-backed sources do not support the type attribute")
 	}
@@ -122,12 +125,11 @@ func (r *resourceProps) Submit(openJob *gox.JobOpen, p *resourcePrinter) error {
 				w.Header().Set("Content-Type", contentType)
 			}
 			return handler(ctx, w, r)
-		}, core.RaceParallel, false)
+		}, core.RaceParallel, false, r.portable)
 		if !ok {
 			return context.Canceled
 		}
-		path := c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, r.name)
-		r.sourceAttr.Set(path)
+		r.sourceAttr.Set(r.hookURL(c, hook))
 		return p.printer.Send(openJob)
 	}
 	res, err := c.App().ResourceRegistry().Static(sourceStatic.StaticEntry(), r.contentType)
@@ -201,14 +203,21 @@ func (r *resourceProps) resourceURL(c core.Core, res *resources.Resource) (strin
 		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			res.Serve(w, r)
 			return false
-		}, core.RaceParallel, false)
+		}, core.RaceParallel, false, r.portable)
 		if !ok {
 			return "", context.Canceled
 		}
-		return c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, r.name), nil
+		return r.hookURL(c, hook), nil
 	default:
 		panic("internal error: unexpected resource mode")
 	}
+}
+
+func (r *resourceProps) hookURL(c core.Core, hook core.Hook) string {
+	if hook.Portable != "" {
+		return c.App().PathMaker().Portable(hook.Portable, r.name)
+	}
+	return c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, r.name)
 }
 
 func (r *resourceProps) readString(attr gox.Attr, name string, target *string) bool {
@@ -244,6 +253,11 @@ func (r *resourceProps) readName(attr gox.Attr) bool {
 }
 
 func (r *resourceProps) readMode(attr gox.Attr) (bool, error) {
+	if attr.Name() == "portable" && isTrue(attr) {
+		r.portable = true
+		r.reg(attr)
+		return true, nil
+	}
 	mode := resources.ResourceMode(-1)
 	switch true {
 	case attr.Name() == "private" && isTrue(attr):

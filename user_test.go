@@ -66,7 +66,7 @@ func (helperDoor) Cinema() beam.Cinema {
 	return nil
 }
 
-func (helperDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool) (core.Hook, bool) {
+func (helperDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool, bool) (core.Hook, bool) {
 	return core.Hook{}, false
 }
 
@@ -128,7 +128,7 @@ func (helperDoorWithRoot) Cinema() beam.Cinema {
 	return nil
 }
 
-func (helperDoorWithRoot) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool) (core.Hook, bool) {
+func (helperDoorWithRoot) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool, bool) (core.Hook, bool) {
 	return core.Hook{}, false
 }
 
@@ -286,6 +286,10 @@ func (h *helperApp) Migrating() bool {
 func (h *helperApp) IsWithValueKey(key any) bool {
 	return false
 }
+
+func (h *helperApp) RegisterRewrite(string, func(string) path.Rewrite) {}
+
+func (h *helperApp) UnregisterRewrite(string) {}
 
 func (h *helperApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }

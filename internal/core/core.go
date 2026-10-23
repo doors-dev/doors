@@ -32,8 +32,9 @@ import (
 )
 
 type Hook struct {
-	HookID uint64
-	Cancel context.CancelFunc
+	HookID   uint64
+	Cancel   context.CancelFunc
+	Portable string
 }
 
 type Race int
@@ -56,6 +57,8 @@ type App interface {
 	Migrating() bool
 	PrinterMiddleware() func(next gox.Printer) gox.Printer
 	IsWithValueKey(key any) bool
+	RegisterRewrite(token string, rewrite func(tail string) path.Rewrite)
+	UnregisterRewrite(token string)
 }
 
 type Session interface {
@@ -103,7 +106,7 @@ type Door interface {
 	Instance() Instance
 	Cinema() beam.Cinema
 	ID() uint64
-	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race Race, batch bool) (Hook, bool)
+	RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race Race, batch bool, portable bool) (Hook, bool)
 	Reload(ctx context.Context) <-chan error
 	DeferredInner(ctx context.Context, content any) <-chan error
 	DeferredOuter(ctx context.Context, content any) <-chan error

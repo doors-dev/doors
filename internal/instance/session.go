@@ -34,6 +34,8 @@ import (
 type App interface {
 	Context() context.Context
 	IsWithValueKey(key any) bool
+	RegisterRewrite(token string, rewrite func(tail string) path.Rewrite)
+	UnregisterRewrite(token string)
 	CSP() *common.CSP
 	Conf() *common.Conf
 	SetCookies(w http.ResponseWriter, id string, maxAge time.Duration)

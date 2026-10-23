@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.3-0.20261011164703-508309b766d1
+// Managed by GoX v0.3.3
 
 //line components.gox:1
 // Copyright 2026 doors dev LLC
@@ -1348,7 +1348,7 @@ func modulePreloadInlineBad(_b doors.Source[test.Path]) gox.Elem {
 }
 
 //line components.gox:512
-func styleHandlerPrivateBad(_b doors.Source[test.Path]) gox.Elem {
+func styleHandlerCacheBad(_b doors.Source[test.Path]) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.InitVoid("link"); if __e != nil { return }
@@ -1359,7 +1359,7 @@ func styleHandlerPrivateBad(_b doors.Source[test.Path]) gox.Elem {
 			__e = __c.Set("href", doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
 		})); if __e != nil { return }
-			__e = __c.Set("private", true); if __e != nil { return }
+			__e = __c.Set("cache", true); if __e != nil { return }
 		}
 		__e = __c.Submit(); if __e != nil { return }
 	return })

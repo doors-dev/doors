@@ -51,6 +51,10 @@ func (a *testApp) IsWithValueKey(key any) bool {
 	return false
 }
 
+func (a *testApp) RegisterRewrite(string, func(string) path.Rewrite) {}
+
+func (a *testApp) UnregisterRewrite(string) {}
+
 func (a *testApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 	return func(next gox.Printer) gox.Printer { return next }
 }

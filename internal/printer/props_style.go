@@ -43,6 +43,9 @@ type styleProps struct {
 
 func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 	s.cleanAttrs()
+	if s.portable {
+		s.setDefaultMode(resources.ModeNoHost)
+	}
 	s.setDefaultMode(resources.ModeHost)
 	if !s.rel && s.output == styleRaw {
 		return p.printer.Send(job)
@@ -80,11 +83,11 @@ func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		hander := src.Handler()
 		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			return hander(ctx, w, r)
-		}, core.RaceParallel, false)
+		}, core.RaceParallel, false, s.portable)
 		if !ok {
 			return context.Canceled
 		}
-		path := c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, s.name)
+		path := s.hookURL(c, hook)
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	default:

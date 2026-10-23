@@ -27,6 +27,7 @@ const (
 	KeyFrame
 	KeyHistoryReplace
 	KeyDocument
+	KeyHookPrefix
 )
 
 func IsKey(key any) bool {

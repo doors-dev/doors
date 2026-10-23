@@ -44,7 +44,7 @@ func runBatchHook(t *testing.T, track uint64) (member testLink, detached testLin
 		p.Inner(ctx, text("member"))
 		q.Inner(ctex.NewDetachedContext(ctx, ctx, false), text("detached"))
 		return true
-	}, core.RaceSerial, true)
+	}, core.RaceSerial, true, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -125,7 +125,7 @@ func runPlainHook(t *testing.T, track uint64) ([]testLink, []any) {
 	hook, ok := h.node.Load().tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 		done <- p.Inner(ctx, text("plain"))
 		return true
-	}, core.RaceSerial, false)
+	}, core.RaceSerial, false, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -213,7 +213,7 @@ func TestHookBatchChannels(t *testing.T) {
 			close(reported)
 		})
 		return true
-	}, core.RaceSerial, true)
+	}, core.RaceSerial, true, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}
@@ -265,7 +265,7 @@ func TestForeignDoorWithBatchCtx(t *testing.T) {
 	hook, ok := h.node.Load().tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 		foreign <- q.Inner(ctx, text("foreign"))
 		return true
-	}, core.RaceSerial, true)
+	}, core.RaceSerial, true, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}

@@ -82,7 +82,7 @@ func (t *tracker) ReadyFrame() shredder.ReleaseFrame {
 	return shredder.JoinRelease(t.ctx, t.outer.callGuard, t.rw.Read(), t.cleanThread.Read())
 }
 
-func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race, batch bool) (core.Hook, bool) {
+func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race, batch bool, portable bool) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.ctx.Err() != nil {
@@ -93,10 +93,11 @@ func (t *tracker) RegisterHook(onTrigger func(ctx context.Context, w http.Respon
 	}
 	h := newHook(t.inst().NewID(), t, onTrigger, race, batch)
 	t.hooks.Add(h.id)
-	t.outer.root.addHook(h)
+	t.outer.root.addHook(h, portable)
 	return core.Hook{
-		HookID: h.id,
-		Cancel: h.cancel,
+		HookID:   h.id,
+		Cancel:   h.cancel,
+		Portable: h.portable,
 	}, true
 }
 
@@ -382,7 +383,7 @@ func (t *outerTracker) ReadyFrame() shredder.ReleaseFrame {
 	return shredder.JoinRelease(t.ctx, t.callGuard, t.outerGuard, t.cleanThread.Read())
 }
 
-func (t *outerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race, batch bool) (core.Hook, bool) {
+func (t *outerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool, race core.Race, batch bool, portable bool) (core.Hook, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.ctx.Err() != nil {
@@ -393,10 +394,11 @@ func (t *outerTracker) RegisterHook(onTrigger func(ctx context.Context, w http.R
 	}
 	h := newHook(t.inst().NewID(), t, onTrigger, race, batch)
 	t.hooks.Add(h.id)
-	t.root.addHook(h)
+	t.root.addHook(h, portable)
 	return core.Hook{
-		HookID: h.id,
-		Cancel: h.cancel,
+		HookID:   h.id,
+		Cancel:   h.cancel,
+		Portable: h.portable,
 	}, true
 }
 

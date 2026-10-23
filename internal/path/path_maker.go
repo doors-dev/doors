@@ -15,6 +15,7 @@
 package path
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -22,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/resources"
 )
 
@@ -46,6 +48,12 @@ type HookMatch struct {
 	Prefix   string
 	Path     string
 	RawPath  string
+}
+
+type Rewrite struct {
+	Path    string
+	RawPath string
+	Context func(context.Context) context.Context
 }
 
 type UndoPath struct {
@@ -93,6 +101,7 @@ var resourceRegexp = regexp.MustCompile(`^/r/([0-9a-zA-Z]+)(\.[^/]+)?$`)
 var syncPath = regexp.MustCompile(`^/s/([0-9a-zA-Z]+)(\?.*)?$`)
 var undoPath = regexp.MustCompile(`^/u/([0-9a-zA-Z]+)(/.*)$`)
 var tabStatePath = regexp.MustCompile(`^/t/([0-9a-zA-Z]+)(\?.*)?$`)
+var portablePath = regexp.MustCompile(`^/w/([0-9a-zA-Z]+)(/[^?]*)?(\?.*)?$`)
 
 func (pm PathMaker) SetServerIDCookie() bool {
 	return pm.serverIDCookieName != ""
@@ -118,6 +127,27 @@ func (pm PathMaker) Prefix() string {
 
 func (pm PathMaker) IsSystem(r *http.Request) bool {
 	return strings.HasPrefix(r.URL.Path, systemPrefix)
+}
+
+func (pm PathMaker) Rewrite(r *http.Request) (token string, tail string, ok bool) {
+	tilde, ok := strings.CutPrefix(r.URL.RequestURI(), systemPrefix)
+	if !ok {
+		return "", "", false
+	}
+	index := strings.IndexByte(tilde, '/')
+	if index < 0 {
+		return "", "", false
+	}
+	matches := portablePath.FindStringSubmatch(tilde[index:])
+	if len(matches) == 0 {
+		return "", "", false
+	}
+	if matches[2] != "" {
+		if _, err := url.ParseRequestURI(matches[2]); err != nil {
+			return "", "", false
+		}
+	}
+	return matches[1], matches[2], true
 }
 
 func (pm PathMaker) Match(r *http.Request) (Match, bool) {
@@ -154,12 +184,16 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 		if err != nil {
 			return Match{}, false
 		}
+		prefix, ok := r.Context().Value(common.KeyHookPrefix).(string)
+		if !ok {
+			prefix = uri[:len(uri)-len(matches[3])]
+		}
 		return Match{
 			entity: HookMatch{
 				Instance: instanceID,
 				Hook:     hookID,
 				Track:    track,
-				Prefix:   uri[:len(uri)-len(matches[3])],
+				Prefix:   prefix,
 				Path:     u.Path,
 				RawPath:  u.RawPath,
 			},
@@ -204,6 +238,24 @@ func (pm PathMaker) Match(r *http.Request) (Match, bool) {
 func (pm PathMaker) Hook(instanceId string, hookId uint64, name string) string {
 	builder := &strings.Builder{}
 	fmt.Fprintf(builder, "%s/h/%s/%d", pm.Prefix(), instanceId, hookId)
+	if name != "" {
+		builder.WriteByte('/')
+		builder.WriteString(url.PathEscape(name))
+	}
+	return builder.String()
+}
+
+func (pm PathMaker) HookTail(instanceId string, hookId uint64, tail string) (path string, rawPath string) {
+	u, err := url.ParseRequestURI(pm.Hook(instanceId, hookId, "") + tail)
+	if err != nil {
+		return pm.Hook(instanceId, hookId, ""), ""
+	}
+	return u.Path, u.RawPath
+}
+
+func (pm PathMaker) Portable(token string, name string) string {
+	builder := &strings.Builder{}
+	fmt.Fprintf(builder, "%s/w/%s", pm.Prefix(), token)
 	if name != "" {
 		builder.WriteByte('/')
 		builder.WriteString(url.PathEscape(name))

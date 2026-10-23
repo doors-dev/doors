@@ -26,7 +26,16 @@ import (
 )
 
 func (a App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r = a.injectSession(w, r)
+	var rw *path.Rewrite
+	if token, tail, ok := a.pathMaker.Rewrite(r); ok {
+		rewrite, ok := a.rewrite(token, tail)
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		rw = &rewrite
+	}
+	r = a.injectSession(w, r, rw)
 	a.handler.ServeHTTP(w, r)
 }
 

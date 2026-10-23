@@ -68,7 +68,7 @@ func (s ARawSubmit) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ARawSubmit) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(s.handle(core), s.Race, s.Batch)
+	hook, ok := core.Door().RegisterHook(s.handle(core), s.Race, s.Batch, false)
 	if !ok {
 		return context.Canceled
 	}
@@ -150,7 +150,7 @@ func (s ASubmit[V]) Proxy(cur gox.Cursor, elem gox.Elem) error {
 
 func (s ASubmit[V]) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(s.handle(core), s.Race, s.Batch)
+	hook, ok := core.Door().RegisterHook(s.handle(core), s.Race, s.Batch, false)
 	if !ok {
 		return context.Canceled
 	}

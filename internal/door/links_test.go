@@ -61,7 +61,7 @@ func TestLinksUserCallTargetsIssuingDoor(t *testing.T) {
 		tracker.UserCall(ctx, actions.Scroll{Selector: "#member"}, nil, nil, nil, actions.CallParams{})
 		tracker.UserCall(ctex.NewDetachedContext(ctx, ctx, false), actions.Scroll{Selector: "#detached"}, nil, nil, nil, actions.CallParams{})
 		return true
-	}, core.RaceSerial, true)
+	}, core.RaceSerial, true, false)
 	if !ok {
 		t.Fatal("expected hook registration to succeed")
 	}

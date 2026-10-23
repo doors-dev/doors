@@ -123,7 +123,7 @@ func ResourceProxy(url string) Resource {
 // [Conf].
 func NewHook(ctx context.Context, r Resource) (string, bool) {
 	core := ctx.Value(common.KeyCore).(core.Core)
-	hook, ok := core.Door().RegisterHook(r.Handler(), RaceParallel, false)
+	hook, ok := core.Door().RegisterHook(r.Handler(), RaceParallel, false, false)
 	if !ok {
 		return "", false
 	}

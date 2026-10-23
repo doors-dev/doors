@@ -509,13 +509,13 @@ elem modulePreloadInlineBad(_b doors.Source[test.Path]) {
 	<link rel="modulepreload" href=(doors.ResourceBytes(moduleRawBytes)) inline/>
 }
 
-elem styleHandlerPrivateBad(_b doors.Source[test.Path]) {
+elem styleHandlerCacheBad(_b doors.Source[test.Path]) {
 	<link
 		rel="stylesheet"
 		href=(doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write(styleRawBytes)
 		}))
-		private/>
+		cache/>
 }
 
 elem styleDirectPrivateBad(_b doors.Source[test.Path]) {

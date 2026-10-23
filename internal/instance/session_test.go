@@ -81,6 +81,10 @@ func (a *sessionTestApp) IsWithValueKey(key any) bool {
 	return false
 }
 
+func (a *sessionTestApp) RegisterRewrite(string, func(string) path.Rewrite) {}
+
+func (a *sessionTestApp) UnregisterRewrite(string) {}
+
 func (a *sessionTestApp) Context() context.Context {
 	return context.Background()
 }

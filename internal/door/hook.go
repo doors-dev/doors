@@ -44,6 +44,7 @@ type hook struct {
 	last        uint64
 	inflight    atomic.Int64
 	once        atomic.Bool
+	portable    string
 }
 
 type hookTracker interface {
