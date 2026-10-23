@@ -121,6 +121,18 @@ See [Configuration](./docs/21-configuration.md#context-values).
 
 `doors.NewResource(ctx, resource, contentType)` returns the cached URL of a static resource, the one the `cache` attribute produces, so scripts and islands can load stylesheets, images, or fonts by URL. See [Resources](./docs/14-resources.md#url-in-code).
 
+### Portable resource URLs
+
+Private resource URLs need the browser session cookie, so they fail when something other than the page fetches them: an Android WebView hands downloads to the system download manager, which sends no cookies, and apps or in-app browsers open links outside the page's cookie jar. The `portable` attribute gives a resource served through a hook (handler, hook, and proxy sources, `private` or `nocache` static resources, scripts and stylesheets) a URL that carries its own access:
+
+```gox
+<a href=(doors.ResourceHook(serveReport)) portable name="report.pdf" download>
+	Download report
+</a>
+```
+
+The URL is a bearer link: anyone holding it can load the resource while the content that rendered it lives; it stops working when that content is cleared, the page instance or session ends, or a one-shot hook returns `true`. Requests through it create no session, and the handler sees the page's session like any hook. `portable` works with `private` and `nocache`; with `cache` it is an error. Handler-backed sources also accept `private`, which changes nothing for them. See [Resources](./docs/14-resources.md#portable).
+
 ## Behavior Changes
 
 - **One container per call.** `Source.Route`, `Beam.RouteBeam`, and `doors.Route` render a single Door however deep the routes nest, and `RouteBind` leaves no longer add a Door of their own. CSS that relied on the extra wrappers needs updating.

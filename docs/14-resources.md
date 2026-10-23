@@ -256,6 +256,36 @@ Even when `name` is set, a cached resource URL still contains a unique identifie
 - append a file name after a dot when needed: `url + ".widget.css"`
 - the error comes only from reading the resource, such as a missing file
 
+## Portable
+
+Add `portable` when the URL must work without the browser session cookie:
+
+```gox
+<a
+	href=(doors.ResourceHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Write(reportPDF)
+		return false
+	}))
+	portable
+	name="report.pdf"
+	download>
+	Download report
+</a>
+```
+
+A private resource URL is tied to the browser session, so it fails when something other than the page fetches it: an Android WebView hands downloads to the system download manager, which sends no cookies; apps and in-app browsers open links outside the page's cookie jar. A portable URL carries its own access instead.
+
+What `portable` changes:
+
+- the URL is a bearer link: anyone holding it can load the resource
+- the link works while the content that rendered it lives, and stops when that content is cleared, the page instance or session ends, or a one-shot hook returns `true`
+- a request through it needs no cookie and creates no session; the handler still sees the page's session, the stripped `r.URL.Path`, and `Doors-Hook-Prefix` as with any hook
+
+`portable` works with `private` and `nocache`; on handler, hook, and proxy sources it needs no other attribute. `portable` with `cache` is an error.
+
+Handler, hook, and proxy sources are always served through a hook, so `private` is accepted on them and changes nothing. They do not take `cache` or `nocache`.
+
 ## Content Type
 
 Use `type` when a managed generic resource should set the response content type:
@@ -299,6 +329,7 @@ For generic non-script, non-stylesheet usage:
 - use a resource when your Go code owns the content
 - prefer modifier syntax when the resource is the main point of the element
 - use `cache` only for stable public content
+- use `portable` for download links fetched outside the page, such as Android WebView downloads
 - use `name` when the generated URL should look like a real file
 
 `<script>`, `<style>`, and `<link rel="stylesheet">` have richer resource behavior than the generic flow described here.

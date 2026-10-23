@@ -105,7 +105,7 @@ Use `raw` when you want a literal browser `<style>` tag:
 </style>
 ```
 
-`name`, `private`, and `nocache` also work here:
+`name`, `private`, `nocache`, and `portable` also work here:
 
 ```gox
 <style name="page.css" private>
@@ -167,6 +167,7 @@ These attrs control managed stylesheet behavior:
 - `name`: readable output file name
 - `private`: serve the stylesheet through an instance-scoped hook URL while still using the stylesheet pipeline
 - `nocache`: serve through an instance-scoped hook URL without shared resource caching
+- `portable`: give the hook URL access of its own so it loads without the session cookie, as `private` unless `nocache` is set; not combinable with `cache`, see [Resources](./14-resources.md#portable)
 
 Example:
 

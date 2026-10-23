@@ -228,6 +228,7 @@ These attrs control script resource behavior:
 - `profile`: named esbuild profile
 - `private`: host through an instance-scoped hook URL while still using the resource pipeline
 - `nocache`: host through an instance-scoped hook URL without shared resource caching
+- `portable`: give the hook URL access of its own so it loads without the session cookie, as `private` unless `nocache` is set; not combinable with `cache`, see [Resources](./14-resources.md#portable)
 
 Example:
 
