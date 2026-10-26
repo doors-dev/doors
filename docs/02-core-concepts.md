@@ -6,19 +6,26 @@ Event handlers and dynamic fragments registered while rendering belong to that i
 
 ## Mental Model
 
-Most apps in **Doors** are built from a few ideas working together:
+A **Doors** page lives on the server. After the first render, you update it in two ways.
 
-- the current URL is a reactive source
-- routing can turn that source into typed path models
-- route values and your page state drive rendering
-- rendering creates a dynamic tree of updatable parts
-- registered browser events call handlers on the same live page
-- handlers update state or dynamic DOM containers
-- the runtime synchronizes those changes with the client
+**Data-driven.** A part of the page shows a piece of data. When the data changes, its content is swapped for the new one.
 
-## Session
+- the URL: pages, items, filters
+- UI state: tabs, dialogs, toggles, form inputs
+- user status and settings
+- live state: metrics, progress, presence
 
-The most useful distinction to learn early is this:
+**Explicit.** The change is an operation, not a new value: append, prepend, insert, remove.
+
+- virtual and managed lists
+- growing content: chats, logs, streamed text
+- real-time loops: games, animations, frames paced to the connection
+
+Data-driven covers most parts of an app. The logic lives in the state: handlers change it, and each part shows what follows from it. However complex the logic gets, the page always matches the state.
+
+Explicit gives precise control for the cases that need it, at the cost of more code: you keep track of what is on the page and keep it in step yourself.
+
+## Session and Instance
 
 - a **session** represents one browser session
 - an **instance** represents one live page
@@ -39,20 +46,21 @@ A path model describes:
 
 The same model is also used for navigation. Links, redirects, and programmatic updates encode the struct back into a `Location`, so reading and changing the URL share one typed shape.
 
-## Doors And Hooks
+## Door
 
 A **door** is a dynamic placeholder in the rendered tree. It is the mechanism **Doors** uses to update, replace, or remove part of the page without re-rendering everything.
 
 You do not always manipulate doors directly, but many higher-level features are built on them. Reactive rendering, partial updates, and lifecycle-bound UI all depend on the dynamic door tree created during render.
 
-A **hook** is a server handler bound to rendered UI. When the user clicks, types, submits, or when JavaScript calls `$hook(...)`, **Doors** routes that event back to the live page instance that created the hook.
+## Hook
 
-The practical rule is:
+A **hook** is an HTTP handler on the server, created during render. It lives as long as the door that encloses it and answers only the session that rendered it.
 
-- if a subtree disappears, the hooks and dynamic bindings created inside it disappear too
-- if the subtree is rendered again, new bindings are created for the new tree
+Hooks are behind:
 
-That keeps behavior aligned with what is actually on screen.
+- [event handlers](./08-events.md): a button click, a form submit
+- [private resources](./14-resources.md): a user's avatar, a report download
+- [custom endpoints](./23-custom-endpoints.md) for scripts and embedded apps: a chart's data API, a live feed over a WebSocket
 
 ## State
 
@@ -61,7 +69,7 @@ That keeps behavior aligned with what is actually on screen.
 - a `Source` is a writable reactive value, either original state or a derived view
 - a `Beam` is a read-only value derived from state or observed from it
 
-A `Source` is also a `Beam`, so you can read, subscribe, and route from both writable and read-only values. The current URL is a `Source[Location]` — that is why, under `doors.Route(...)`, a `RouteSource` inside `doors.RouteModel[M](...)` receives a typed `Source[M]` you can write back to.
+A `Source` is also a `Beam`, so you can read either one, subscribe to it, bind a part of the page to it, or match its value against patterns to pick which branch renders (routing). The current URL is a `Source` too.
 
 The important user-facing behavior is consistency. During a render/update pass, a whole rendered branch will observe the same state.
 
@@ -114,8 +122,7 @@ The rules:
 
 - Load data where you render it: query the database or call an API right in the render.
 - If that is too slow, render a skeleton and replace it with a [deferred operation](./06-door.md#deferred-operations).
-- Ignore the completion channels of Door operations in most cases. `Inner`, `Outer`, and the other Door methods return one, and so does `doors.Call`, but there is nothing to check: whether an update lands depends on the lifetime of what it targets, and that is managed for you.
-- Never wait on them during render or in beam subscriptions.
+- Most of the time, ignore the channels that Door methods and `doors.Call` return, and never wait on them in render or beam subscriptions: whether an update lands depends on the lifetime of its target, which is managed for you.
 - Keep render work tied to producing the current page. Background loops, timers, pubsub listeners, and other work that should continue after rendering belong in their own goroutine.
 - Independent slow fragments on the same page can render concurrently with [`doors.Parallel()`](./03-template-syntax.md#parallel).
 
@@ -142,4 +149,10 @@ See [Storage & Auth](./18-storage-auth.md).
 
 ## DOM
 
-When **Doors** renders a dynamic subtree, treat that subtree as runtime-managed. Direct DOM work is still possible, but it should complement the runtime instead of racing against it.
+**Doors** renders dynamic parts of the page into containers it manages. Your scripts can work alongside them:
+
+- set attributes, classes, and styles
+- show and hide elements
+- mount islands controlled by JavaScript, like a React app
+
+Do not move or remove the dynamic containers themselves: **Doors** updates them in place and expects to find them where it rendered them.

@@ -73,10 +73,10 @@ Register the module in the page head. The import map is sent with the page, so t
 
 ```gox
 <head>
-	<script
-		src=(dashboardJS)
-		type="module"
-		specifier="dashboard"></script>
+	<link
+		rel="modulepreload"
+		href=(dashboardJS)
+		specifier="dashboard">
 </head>
 ```
 
@@ -201,7 +201,7 @@ Close the connection when `ctx` ends; **Doors** does not close it for you. WebSo
 
 ## `$hook` or a custom endpoint
 
-Use `AHook` or `ARawHook` with `$hook` to enhance the page with JavaScript where `doors.A*` event attrs are not enough: drag-and-drop processing, scroll position sync, and similar page logic. Calls keep **Doors** scopes, indication, and error handling. See [Hooks](./15-javascript.md#hooks).
+Use `AHook` or `ARawHook` with `$hook` to enhance the page with JavaScript where `doors.A*` event attrs are not enough, such as drag-and-drop processing or scroll position sync. Calls keep **Doors** scopes, indication, and error handling. See [Hooks](./15-javascript.md#hooks).
 
 Use a custom endpoint when the client brings its own code and speaks plain HTTP:
 

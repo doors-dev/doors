@@ -2,14 +2,14 @@
 
 `doors.WithPrinter` lets you observe or adjust the HTML **Doors** emits, at the point where render jobs are serialized.
 
-Use it for cross-cutting output concerns: stamping elements with extra attributes, collecting render metrics, or auditing produced markup.
+Use it for cross-cutting output concerns: stripping unwanted attributes, collecting render metrics, or auditing produced markup.
 
 ## Option
 
 ```go
 app := doors.NewApp(page,
 	doors.WithPrinter(func(next gox.Printer) gox.Printer {
-		return &stamp{next: next}
+		return stripHandlers{next: next}
 	}),
 )
 ```
@@ -36,25 +36,29 @@ Rules:
 
 ## Example
 
-Count elements and stamp each with its render index:
+Remove inline event handler attributes (`onclick`, `onload`, ...), so markup never carries inline scripts, and log each removal:
 
 ```go
-type stamp struct {
-	next  gox.Printer
-	count int
+type stripHandlers struct {
+	next gox.Printer
 }
 
-func (s *stamp) Send(j gox.Job) error {
-	if open, ok := j.(*gox.JobOpen); ok && open.Tag != "d0-r" && open.Attrs != nil {
-		s.count++
-		open.Attrs.Get("data-render-index").Set(strconv.Itoa(s.count))
+func (s stripHandlers) Send(j gox.Job) error {
+	if open, ok := j.(*gox.JobOpen); ok && open.Attrs != nil {
+		for _, attr := range open.Attrs.List() {
+			name := attr.Name()
+			if attr.IsSet() && len(name) > 2 && strings.EqualFold(name[:2], "on") {
+				slog.Warn("inline event handler removed", "tag", open.Tag, "attr", name, "value", attr.Value())
+				attr.Unset()
+			}
+		}
 	}
 	return s.next.Send(j)
 }
 
 app := doors.NewApp(page, doors.WithPrinter(
 	func(next gox.Printer) gox.Printer {
-		return &stamp{next: next}
+		return stripHandlers{next: next}
 	},
 ))
 ```
