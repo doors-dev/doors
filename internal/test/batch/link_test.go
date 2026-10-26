@@ -36,6 +36,9 @@ func linkOpen(t *testing.T) (*rod.Page, *gate) {
 
 // A plain link shows the parts of the new view as they get ready: the fast one changes while the slow one still renders.
 func TestLinkPlainStreams(t *testing.T) {
+	if test.LimitMode() {
+		t.Skip("a held render blocks the only instance goroutine")
+	}
 	page, g := linkOpen(t)
 	waitContent(t, page, "#slow", "slow-")
 	test.ClickNow(t, page, "#link-plain")

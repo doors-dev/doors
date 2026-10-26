@@ -113,7 +113,6 @@ func TestGroupIndicatorWaitsForOnBatchInSettle(t *testing.T) {
 	hooksProbe(t, page, "#ind")
 	test.ClickNow(t, page, "#group-settle-plain")
 	waitEntered(t, f.g)
-	waitEntered(t, f.g)
 	time.Sleep(quiet)
 	if got := hooksProbed(t, page, "#ind"); got != "" {
 		t.Fatalf("expected the indicator to stay while the updates render, released at %q", got)

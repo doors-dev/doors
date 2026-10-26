@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.3-0.20261011164703-508309b766d1
+// Managed by GoX v0.3.3
 
 //line group_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -193,7 +193,7 @@ func (f *groupFragment) Main() gox.Elem {
 			doors.OnSettle(ctx, func(ctx context.Context) {
 				doors.OnBatch(ctx, f.groupOn, func(ctx context.Context) {
 					f.x.Inner(ctx, f.groupSlow("x-late"))
-					f.y.Inner(ctx, f.groupSlow("y-late"))
+					f.y.Inner(ctx, "y-late")
 				})
 			})
 			return false

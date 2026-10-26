@@ -112,7 +112,7 @@ elem (f *groupFragment) Main() {
 			doors.OnSettle(ctx, func(ctx context.Context) {
 				doors.OnBatch(ctx, f.groupOn, func(ctx context.Context) {
 					f.x.Inner(ctx, f.groupSlow("x-late"))
-					f.y.Inner(ctx, f.groupSlow("y-late"))
+					f.y.Inner(ctx, "y-late")
 				})
 			})
 			return false
