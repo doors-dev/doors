@@ -185,12 +185,19 @@ func SessionLastSeen(ctx context.Context) time.Time {
 	return sess.LastSeen()
 }
 
-// Store is goroutine-safe key-value storage, returned by [SessionStore] and
-// [InstanceStore].
+// Store is goroutine-safe key-value storage, returned by [SessionStore],
+// [InstanceStore] and [NewStore].
 //
 // Keys must be comparable; values may be of any type. A stored nil is
 // indistinguishable from an absent key.
 type Store = ctex.Store
+
+// NewStore returns an empty [Store] for state you scope yourself, such as a
+// store shared by one part of the page. Put it in a context value and render
+// that part with [Ctx].
+func NewStore() Store {
+	return ctex.NewStore()
+}
 
 // SessionStore returns the [Store] shared by every instance in the current
 // session.
