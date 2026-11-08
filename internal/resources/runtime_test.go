@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/evanw/esbuild/pkg/api"
@@ -261,5 +262,246 @@ func TestRegistryErrorBranches(t *testing.T) {
 	}
 	if _, err := rg.Style(errStyleEntry{}, false, ModeHost); !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected style read error, got %v", err)
+	}
+}
+
+func TestRegistryStyleMinifyKey(t *testing.T) {
+	entry := StyleString{Content: "a {\n  color: red;\n}\n"}
+	for _, minFirst := range []bool{false, true} {
+		conf := common.Conf{}
+		common.InitDefaults(&conf)
+		rg := NewRegistry(resourceTestSettings{conf: &conf})
+		order := []bool{false, true}
+		if minFirst {
+			order = []bool{true, false}
+		}
+		got := map[bool]*Resource{}
+		for _, minify := range order {
+			res, err := rg.Style(entry, minify, ModeHost)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got[minify] = res
+		}
+		raw, min := got[false], got[true]
+		if raw == min || raw.id == min.id {
+			t.Fatalf("minFirst=%v: minified and raw style share a cache entry", minFirst)
+		}
+		if string(raw.content) != entry.Content {
+			t.Fatalf("minFirst=%v: raw content changed: %q", minFirst, raw.content)
+		}
+		if string(min.content) == entry.Content {
+			t.Fatalf("minFirst=%v: minified content not minified: %q", minFirst, min.content)
+		}
+		again, err := rg.Style(entry, true, ModeHost)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if again != min {
+			t.Fatalf("minFirst=%v: minified style not cached", minFirst)
+		}
+	}
+}
+
+func TestRegistryStaticContentType(t *testing.T) {
+	conf := common.Conf{}
+	common.InitDefaults(&conf)
+	rg := NewRegistry(resourceTestSettings{conf: &conf})
+	a, err := rg.Static(StaticString{Content: "{}"}, "application/json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := rg.Static(StaticString{Content: "{}"}, "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a == b || a.ID() == b.ID() {
+		t.Fatal("content types share a resource")
+	}
+	svg, err := rg.Static(StaticBytes{Content: []byte("x")}, "image/svg+xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css, err := rg.Style(StyleString{Content: "x"}, false, ModeHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if svg.ID() == css.ID() {
+		t.Fatal("static and style ids collide")
+	}
+	for res, want := range map[*Resource]string{a: "application/json", b: "text/plain", svg: "image/svg+xml", css: "text/css"} {
+		rec := httptest.NewRecorder()
+		rg.Serve(res.ID(), rec, httptest.NewRequest(http.MethodGet, "/", nil))
+		if got := rec.Header().Get("Content-Type"); got != want {
+			t.Fatalf("got %q want %q", got, want)
+		}
+	}
+}
+
+func TestRegistryStyleFSContent(t *testing.T) {
+	conf := common.Conf{}
+	common.InitDefaults(&conf)
+	rg := NewRegistry(resourceTestSettings{conf: &conf})
+	a, err := rg.Style(StyleFS{FS: fstest.MapFS{"s.css": {Data: []byte("a{color:red}")}}, Path: "s.css"}, false, ModeHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := rg.Style(StyleFS{FS: fstest.MapFS{"s.css": {Data: []byte("a{color:blue}")}}, Path: "s.css"}, false, ModeHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a == b || string(b.content) != "a{color:blue}" {
+		t.Fatalf("style fs entries collide: %q", b.content)
+	}
+}
+
+func TestRegistryEntryIDFields(t *testing.T) {
+	conf := common.Conf{}
+	common.InitDefaults(&conf)
+	rg := NewRegistry(resourceTestSettings{conf: &conf})
+	a, err := rg.Static(StaticFS{FS: fstest.MapFS{"a": {Data: []byte("b/c")}}, Path: "a"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := rg.Static(StaticFS{FS: fstest.MapFS{"a/b": {Data: []byte("c")}}, Path: "a/b"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a == b || string(b.content) != "c" {
+		t.Fatalf("path and content fields run together: %q", b.content)
+	}
+	named, err := rg.Static(StaticFS{FS: fstest.MapFS{"x": {Data: []byte("named")}}, Path: "x", Name: "n"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain, err := rg.Static(StaticFS{FS: fstest.MapFS{"x": {Data: []byte("n")}}, Path: "x"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if named == plain || string(plain.content) != "n" {
+		t.Fatalf("name and content fields collide: %q", plain.content)
+	}
+}
+
+func TestRegistryPrivateThenHost(t *testing.T) {
+	conf := common.Conf{}
+	common.InitDefaults(&conf)
+	rg := NewRegistry(resourceTestSettings{conf: &conf})
+	serve := func(res *Resource) int {
+		rec := httptest.NewRecorder()
+		rg.Serve(res.ID(), rec, httptest.NewRequest(http.MethodGet, "/", nil))
+		return rec.Code
+	}
+	script := ScriptString{Content: "window.x = 1", Kind: KindJS}
+	if _, err := rg.Script(script, FormatRaw{}, "", ModeNoHost); err != nil {
+		t.Fatal(err)
+	}
+	res, err := rg.Script(script, FormatRaw{}, "", ModeHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := serve(res); code != http.StatusOK {
+		t.Fatalf("script: got %d", code)
+	}
+	style := StyleString{Content: "a{color:red}"}
+	if _, err := rg.Style(style, false, ModeNoHost); err != nil {
+		t.Fatal(err)
+	}
+	res, err = rg.Style(style, false, ModeHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := serve(res); code != http.StatusOK {
+		t.Fatalf("style: got %d", code)
+	}
+}
+
+func TestRegistryFieldBoundary(t *testing.T) {
+	conf := common.Conf{}
+	common.InitDefaults(&conf)
+	rg := NewRegistry(resourceTestSettings{conf: &conf})
+	a, err := rg.Static(StaticString{Content: "contentx"}, "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := rg.Static(StaticString{Content: "x"}, "text/plaincontent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a == b || a.ID() == b.ID() {
+		t.Fatal("field boundary collision")
+	}
+}
+
+func TestKeysDistinct(t *testing.T) {
+	js := ScriptString{Content: "x", Kind: KindJS}
+	fsx := func(data string) fstest.MapFS {
+		return fstest.MapFS{"x": {Data: []byte(data)}, "y": {Data: []byte(data)}}
+	}
+	keys := map[string][16]byte{
+		"static":                       staticKey(StaticString{Content: "x"}, ""),
+		"static typed":                 staticKey(StaticString{Content: "x"}, "text/plain"),
+		"static boundary a":            staticKey(StaticString{Content: "contentx"}, "text/plain"),
+		"static boundary b":            staticKey(StaticString{Content: "x"}, "text/plaincontent"),
+		"static path":                  staticKey(StaticPath{Path: "x"}, ""),
+		"static fs path a":             staticKey(StaticFS{FS: fstest.MapFS{"a": {Data: []byte("b/c")}}, Path: "a"}, ""),
+		"static fs path a/b":           staticKey(StaticFS{FS: fstest.MapFS{"a/b": {Data: []byte("c")}}, Path: "a/b"}, ""),
+		"static fs content":            staticKey(StaticFS{FS: fsx("n"), Path: "x"}, ""),
+		"static fs zero content":       staticKey(StaticFS{FS: fsx("\x00n"), Path: "x"}, ""),
+		"static fs named":              staticKey(StaticFS{FS: fsx("n"), Path: "x", Name: "n"}, ""),
+		"static fs named other":        staticKey(StaticFS{FS: fsx("n"), Path: "x", Name: "m"}, ""),
+		"static fs named other path":   staticKey(StaticFS{FS: fsx("n"), Path: "y", Name: "n"}, ""),
+		"script default":               scriptKey(js, FormatDefault{}, ""),
+		"script profile":               scriptKey(js, FormatDefault{}, "p"),
+		"script raw":                   scriptKey(js, FormatRaw{}, ""),
+		"script module":                scriptKey(js, FormatModule{}, ""),
+		"script module bundle":         scriptKey(js, FormatModule{Bundle: true}, ""),
+		"script common":                scriptKey(js, FormatCommon{}, ""),
+		"script common bundle":         scriptKey(js, FormatCommon{Bundle: true}, ""),
+		"script iife":                  scriptKey(js, FormatIIFE{}, ""),
+		"script iife bundle":           scriptKey(js, FormatIIFE{Bundle: true}, ""),
+		"script iife named":            scriptKey(js, FormatIIFE{GlobalName: "true"}, ""),
+		"script iife bundle name":      scriptKey(js, FormatIIFE{GlobalName: "bundle"}, ""),
+		"script ts":                    scriptKey(ScriptString{Content: "x", Kind: KindTS}, FormatDefault{}, ""),
+		"script inline":                scriptKey(ScriptInlineString{Content: "x", Kind: KindJS}, FormatDefault{}, ""),
+		"script inline ts":             scriptKey(ScriptInlineString{Content: "x", Kind: KindTS}, FormatDefault{}, ""),
+		"script path":                  scriptKey(ScriptPath{Path: "x"}, FormatDefault{}, ""),
+		"script inline path":           scriptKey(ScriptInlinePath{Path: "x"}, FormatDefault{}, ""),
+		"script fs":                    scriptKey(ScriptFS{FS: fsx("x"), Path: "x"}, FormatDefault{}, ""),
+		"script fs other content":      scriptKey(ScriptFS{FS: fsx("y"), Path: "x"}, FormatDefault{}, ""),
+		"script fs other path":         scriptKey(ScriptFS{FS: fsx("x"), Path: "y"}, FormatDefault{}, ""),
+		"script fs named":              scriptKey(ScriptFS{FS: fsx("x"), Path: "x", Name: "n"}, FormatDefault{}, ""),
+		"script fs named other":        scriptKey(ScriptFS{FS: fsx("x"), Path: "x", Name: "m"}, FormatDefault{}, ""),
+		"script inline fs":             scriptKey(ScriptInlineFS{FS: fsx("x"), Path: "x"}, FormatDefault{}, ""),
+		"script inline fs other":       scriptKey(ScriptInlineFS{FS: fsx("y"), Path: "x"}, FormatDefault{}, ""),
+		"script inline fs other path":  scriptKey(ScriptInlineFS{FS: fsx("x"), Path: "y"}, FormatDefault{}, ""),
+		"script inline fs named":       scriptKey(ScriptInlineFS{FS: fsx("x"), Path: "x", Name: "n"}, FormatDefault{}, ""),
+		"script inline fs named other": scriptKey(ScriptInlineFS{FS: fsx("x"), Path: "x", Name: "m"}, FormatDefault{}, ""),
+		"style":                        styleKey(StyleString{Content: "x"}, false),
+		"style minify":                 styleKey(StyleString{Content: "x"}, true),
+		"style path":                   styleKey(StylePath{Path: "x"}, false),
+		"style fs content":             styleKey(StyleFS{FS: fsx("n"), Path: "x"}, false),
+		"style fs other content":       styleKey(StyleFS{FS: fsx("m"), Path: "x"}, false),
+		"style fs other path":          styleKey(StyleFS{FS: fsx("n"), Path: "y"}, false),
+		"style fs named":               styleKey(StyleFS{FS: fsx("n"), Path: "x", Name: "n"}, false),
+		"style fs named other":         styleKey(StyleFS{FS: fsx("n"), Path: "x", Name: "m"}, false),
+	}
+	seen := map[[16]byte]string{}
+	for name, key := range keys {
+		if other, ok := seen[key]; ok {
+			t.Errorf("%q and %q share a key", name, other)
+		}
+		seen[key] = name
+	}
+	same := [][2][16]byte{
+		{staticKey(StaticBytes{Content: []byte("x")}, "t"), staticKey(StaticString{Content: "x"}, "t")},
+		{scriptKey(ScriptBytes{Content: []byte("x"), Kind: KindJS}, FormatRaw{}, ""), scriptKey(js, FormatRaw{}, "")},
+		{scriptKey(ScriptInlineBytes{Content: []byte("x"), Kind: KindJS}, FormatRaw{}, ""), scriptKey(ScriptInlineString{Content: "x", Kind: KindJS}, FormatRaw{}, "")},
+		{styleKey(StyleBytes{Content: []byte("x")}, true), styleKey(StyleString{Content: "x"}, true)},
+	}
+	for i, pair := range same {
+		if pair[0] != pair[1] {
+			t.Errorf("equivalent inputs %d get different keys", i)
+		}
 	}
 }

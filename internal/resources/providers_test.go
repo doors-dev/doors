@@ -15,7 +15,6 @@
 package resources
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,20 +33,6 @@ func writeTempFile(t *testing.T, name string, content string) string {
 	return path
 }
 
-func entryIDString(t *testing.T, entry interface{ entryID(idWriter) }) string {
-	t.Helper()
-	var buf bytes.Buffer
-	entry.entryID(&buf)
-	return buf.String()
-}
-
-func formatIDString(t *testing.T, entry interface{ formatID(idWriter) }) string {
-	t.Helper()
-	var buf bytes.Buffer
-	entry.formatID(&buf)
-	return buf.String()
-}
-
 func TestStaticEntries(t *testing.T) {
 	fsys := fstest.MapFS{
 		"asset.txt": {Data: []byte("fs-content")},
@@ -62,14 +47,6 @@ func TestStaticEntries(t *testing.T) {
 	if string(data) != "fs-content" {
 		t.Fatalf("StaticFS.Read got %q", string(data))
 	}
-	if got := entryIDString(t, fsEntry); got != "fsasset.txt/fs-content" {
-		t.Fatalf("StaticFS.entryID got %q", got)
-	}
-
-	fsNamed := StaticFS{FS: fsys, Path: "asset.txt", Name: "named"}
-	if got := entryIDString(t, fsNamed); got != "fsasset.txt/named" {
-		t.Fatalf("StaticFS named entryID got %q", got)
-	}
 
 	pathEntry := StaticPath{Path: path}
 	data, err = pathEntry.Read()
@@ -78,9 +55,6 @@ func TestStaticEntries(t *testing.T) {
 	}
 	if string(data) != "path-content" {
 		t.Fatalf("StaticPath.Read got %q", string(data))
-	}
-	if got := entryIDString(t, pathEntry); got != "path"+path {
-		t.Fatalf("StaticPath.entryID got %q", got)
 	}
 
 	bytesEntry := StaticBytes{Content: []byte("bytes-content")}
@@ -91,9 +65,6 @@ func TestStaticEntries(t *testing.T) {
 	if string(data) != "bytes-content" {
 		t.Fatalf("StaticBytes.Read got %q", string(data))
 	}
-	if got := entryIDString(t, bytesEntry); got != "contentbytes-content" {
-		t.Fatalf("StaticBytes.entryID got %q", got)
-	}
 
 	stringEntry := StaticString{Content: "string-content"}
 	data, err = stringEntry.Read()
@@ -102,9 +73,6 @@ func TestStaticEntries(t *testing.T) {
 	}
 	if string(data) != "string-content" {
 		t.Fatalf("StaticString.Read got %q", string(data))
-	}
-	if got := entryIDString(t, stringEntry); got != "contentstring-content" {
-		t.Fatalf("StaticString.entryID got %q", got)
 	}
 }
 
@@ -135,13 +103,6 @@ func TestScriptEntries(t *testing.T) {
 		if len(opt.Plugins) != 1 {
 			t.Fatalf("ScriptFS plugins = %#v", opt.Plugins)
 		}
-		if got := entryIDString(t, entry); got != "fsindex.js/window.value = \"js\"" {
-			t.Fatalf("ScriptFS.entryID got %q", got)
-		}
-		named := ScriptFS{FS: fsys, Path: "index.js", Name: "module"}
-		if got := entryIDString(t, named); got != "fsindex.js/module" {
-			t.Fatalf("ScriptFS named entryID got %q", got)
-		}
 	})
 
 	t.Run("ScriptInlineFS", func(t *testing.T) {
@@ -163,9 +124,6 @@ func TestScriptEntries(t *testing.T) {
 		if !strings.Contains(jsOpt.Stdin.Contents, "_d0r(document.currentScript, async ($on, $data, $hook, $fetch, $G, $sys, HookErr)") {
 			t.Fatalf("ScriptInlineFS JS contents = %q", jsOpt.Stdin.Contents)
 		}
-		if got := entryIDString(t, js); got != "inline_fsindex.js/window.value = \"js\"" {
-			t.Fatalf("ScriptInlineFS JS entryID got %q", got)
-		}
 
 		ts := ScriptInlineFS{FS: fsys, Path: "index.ts", Name: "inline"}
 		var tsOpt api.BuildOptions
@@ -180,9 +138,6 @@ func TestScriptEntries(t *testing.T) {
 		}
 		if !strings.Contains(tsOpt.Stdin.Contents, "emit: (target: EventTarget, event: Event) => Promise<number>") {
 			t.Fatalf("ScriptInlineFS TS contents = %q", tsOpt.Stdin.Contents)
-		}
-		if got := entryIDString(t, ts); got != "inline_fsindex.ts/inline" {
-			t.Fatalf("ScriptInlineFS TS entryID got %q", got)
 		}
 
 		bad := ScriptInlineFS{FS: fsys, Path: "missing.ts"}
@@ -207,9 +162,6 @@ func TestScriptEntries(t *testing.T) {
 		if len(opt.EntryPoints) != 1 || opt.EntryPoints[0] != jsPath {
 			t.Fatalf("ScriptPath entry points = %#v", opt.EntryPoints)
 		}
-		if got := entryIDString(t, entry); got != "path"+jsPath {
-			t.Fatalf("ScriptPath.entryID got %q", got)
-		}
 	})
 
 	t.Run("ScriptBytes", func(t *testing.T) {
@@ -228,9 +180,6 @@ func TestScriptEntries(t *testing.T) {
 		if opt.Stdin == nil || opt.Stdin.Sourcefile != "index.js" || opt.Stdin.Loader != api.LoaderJS {
 			t.Fatalf("ScriptBytes stdin = %#v", opt.Stdin)
 		}
-		if got := entryIDString(t, entry); got != `contentjsconsole.log("bytes")` {
-			t.Fatalf("ScriptBytes.entryID got %q", got)
-		}
 	})
 
 	t.Run("ScriptInlinePath", func(t *testing.T) {
@@ -248,9 +197,6 @@ func TestScriptEntries(t *testing.T) {
 		}
 		if jsOpt.Stdin == nil || jsOpt.Stdin.Sourcefile != "index.js" || jsOpt.Stdin.Loader != api.LoaderJS {
 			t.Fatalf("ScriptInlinePath JS stdin = %#v", jsOpt.Stdin)
-		}
-		if got := entryIDString(t, js); got != "inline_path"+jsPath {
-			t.Fatalf("ScriptInlinePath JS entryID got %q", got)
 		}
 
 		ts := ScriptInlinePath{Path: tsPath}
@@ -287,9 +233,6 @@ func TestScriptEntries(t *testing.T) {
 		if jsOpt.Stdin == nil || jsOpt.Stdin.Sourcefile != "index.js" || jsOpt.Stdin.Loader != api.LoaderJS {
 			t.Fatalf("ScriptInlineString JS stdin = %#v", jsOpt.Stdin)
 		}
-		if got := entryIDString(t, js); got != `inline_stringjsconsole.log("inline-string")` {
-			t.Fatalf("ScriptInlineString JS entryID got %q", got)
-		}
 
 		ts := ScriptInlineString{Content: `const value: string = "ts"`, Kind: KindTS}
 		var tsOpt api.BuildOptions
@@ -319,9 +262,6 @@ func TestScriptEntries(t *testing.T) {
 		}
 		if jsOpt.Stdin == nil || jsOpt.Stdin.Sourcefile != "index.js" || jsOpt.Stdin.Loader != api.LoaderJS {
 			t.Fatalf("ScriptInlineBytes JS stdin = %#v", jsOpt.Stdin)
-		}
-		if got := entryIDString(t, js); got != `inline_bytesjsconsole.log("inline-bytes")` {
-			t.Fatalf("ScriptInlineBytes JS entryID got %q", got)
 		}
 
 		ts := ScriptInlineBytes{Content: []byte(`const value: string = "ts"`), Kind: KindTS}
@@ -353,9 +293,6 @@ func TestScriptEntries(t *testing.T) {
 		if opt.Stdin == nil || opt.Stdin.Sourcefile != "index.ts" || opt.Stdin.Loader != api.LoaderTS {
 			t.Fatalf("ScriptString stdin = %#v", opt.Stdin)
 		}
-		if got := entryIDString(t, entry); got != `contenttsconsole.log("string")` {
-			t.Fatalf("ScriptString.entryID got %q", got)
-		}
 	})
 }
 
@@ -378,17 +315,11 @@ func TestKindAndFormats(t *testing.T) {
 	if opt.Format != api.FormatDefault || opt.Bundle {
 		t.Fatalf("FormatDefault modified options: %#v", opt)
 	}
-	if got := formatIDString(t, FormatDefault{}); got != "auto" {
-		t.Fatalf("FormatDefault.formatID got %q", got)
-	}
 
 	opt = api.BuildOptions{}
 	FormatModule{Bundle: true}.Apply(&opt)
 	if opt.Format != api.FormatESModule || !opt.Bundle {
 		t.Fatalf("FormatModule options: %#v", opt)
-	}
-	if got := formatIDString(t, FormatModule{Bundle: true}); got != "modulebundle" {
-		t.Fatalf("FormatModule.formatID got %q", got)
 	}
 
 	opt = api.BuildOptions{}
@@ -396,17 +327,11 @@ func TestKindAndFormats(t *testing.T) {
 	if opt.Format != api.FormatCommonJS || !opt.Bundle {
 		t.Fatalf("FormatCommon options: %#v", opt)
 	}
-	if got := formatIDString(t, FormatCommon{Bundle: true}); got != "commonbundle" {
-		t.Fatalf("FormatCommon.formatID got %q", got)
-	}
 
 	opt = api.BuildOptions{}
 	FormatIIFE{Bundle: true, GlobalName: "App"}.Apply(&opt)
 	if opt.Format != api.FormatIIFE || !opt.Bundle || opt.GlobalName != "App" {
 		t.Fatalf("FormatIIFE options: %#v", opt)
-	}
-	if got := formatIDString(t, FormatIIFE{Bundle: true, GlobalName: "App"}); got != "iifebundleApp" {
-		t.Fatalf("FormatIIFE.formatID got %q", got)
 	}
 
 	defer func() {
@@ -415,10 +340,4 @@ func TestKindAndFormats(t *testing.T) {
 		}
 	}()
 	FormatRaw{}.Apply(&opt)
-}
-
-func TestFormatRawID(t *testing.T) {
-	if got := formatIDString(t, FormatRaw{}); got != "raw" {
-		t.Fatalf("FormatRaw.formatID got %q", got)
-	}
 }

@@ -18,15 +18,41 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/evanw/esbuild/pkg/api"
+	"github.com/zeebo/xxh3"
 )
 
 type idWriter interface {
 	io.Writer
 	io.StringWriter
+}
+
+type idHash struct {
+	h *xxh3.Hasher
+}
+
+func newIDHash() idHash {
+	return idHash{h: xxh3.New()}
+}
+
+func (i idHash) Write(b []byte) (int, error) {
+	i.h.Write(b)
+	i.h.Write([]byte{0})
+	return len(b), nil
+}
+
+func (i idHash) WriteString(s string) (int, error) {
+	i.h.WriteString(s)
+	i.h.Write([]byte{0})
+	return len(s), nil
+}
+
+func (i idHash) Sum() [16]byte {
+	return i.h.Sum128().Bytes()
 }
 
 type StaticEntry interface {
@@ -47,13 +73,12 @@ func (e StaticFS) Read() ([]byte, error) {
 func (e StaticFS) entryID(w idWriter) {
 	w.WriteString("fs")
 	w.WriteString(e.Path)
-	w.WriteString("/")
-	if e.Name == "" {
-		b, _ := e.Read()
-		w.Write(b)
-		return
-	}
 	w.WriteString(e.Name)
+	var b []byte
+	if e.Name == "" {
+		b, _ = e.Read()
+	}
+	w.Write(b)
 }
 
 type StaticPath struct {
@@ -120,13 +145,12 @@ func (e ScriptFS) Apply(opt *api.BuildOptions) error {
 func (e ScriptFS) entryID(w idWriter) {
 	w.WriteString("fs")
 	w.WriteString(e.Path)
-	w.WriteString("/")
-	if e.Name == "" {
-		b, _ := e.Read()
-		w.Write(b)
-		return
-	}
 	w.WriteString(e.Name)
+	var b []byte
+	if e.Name == "" {
+		b, _ = e.Read()
+	}
+	w.Write(b)
 }
 
 type ScriptInlineFS struct {
@@ -172,13 +196,12 @@ func (e ScriptInlineFS) Apply(opt *api.BuildOptions) error {
 func (e ScriptInlineFS) entryID(w idWriter) {
 	w.WriteString("inline_fs")
 	w.WriteString(e.Path)
-	w.WriteString("/")
-	if e.Name == "" {
-		b, _ := e.Read()
-		w.Write(b)
-		return
-	}
 	w.WriteString(e.Name)
+	var b []byte
+	if e.Name == "" {
+		b, _ = e.Read()
+	}
+	w.Write(b)
 }
 
 type ScriptPath struct {
@@ -301,7 +324,7 @@ func (e ScriptInlineString) Apply(opt *api.BuildOptions) error {
 }
 
 func (e ScriptInlineString) entryID(w idWriter) {
-	w.WriteString("inline_string")
+	w.WriteString("inline_content")
 	w.WriteString(e.Kind.String())
 	w.WriteString(e.Content)
 }
@@ -325,7 +348,7 @@ func (e ScriptInlineBytes) Apply(opt *api.BuildOptions) error {
 }
 
 func (e ScriptInlineBytes) entryID(w idWriter) {
-	w.WriteString("inline_bytes")
+	w.WriteString("inline_content")
 	w.WriteString(e.Kind.String())
 	w.Write(e.Content)
 }
@@ -380,9 +403,7 @@ func (f FormatModule) Apply(opt *api.BuildOptions) {
 
 func (f FormatModule) formatID(w idWriter) {
 	w.WriteString("module")
-	if f.Bundle {
-		w.WriteString("bundle")
-	}
+	w.WriteString(strconv.FormatBool(f.Bundle))
 }
 
 type FormatCommon struct {
@@ -396,9 +417,7 @@ func (f FormatCommon) Apply(opt *api.BuildOptions) {
 
 func (f FormatCommon) formatID(w idWriter) {
 	w.WriteString("common")
-	if f.Bundle {
-		w.WriteString("bundle")
-	}
+	w.WriteString(strconv.FormatBool(f.Bundle))
 }
 
 type FormatIIFE struct {
@@ -414,12 +433,8 @@ func (f FormatIIFE) Apply(opt *api.BuildOptions) {
 
 func (f FormatIIFE) formatID(w idWriter) {
 	w.WriteString("iife")
-	if f.Bundle {
-		w.WriteString("bundle")
-	}
-	if f.GlobalName != "" {
-		w.WriteString(f.GlobalName)
-	}
+	w.WriteString(strconv.FormatBool(f.Bundle))
+	w.WriteString(f.GlobalName)
 }
 
 type FormatRaw struct{}

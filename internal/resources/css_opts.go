@@ -40,6 +40,11 @@ func (e StyleFS) entryID(w idWriter) {
 	w.WriteString("fs")
 	w.WriteString(e.Path)
 	w.WriteString(e.Name)
+	var b []byte
+	if e.Name == "" {
+		b, _ = e.Read()
+	}
+	w.Write(b)
 }
 
 type StylePath struct {

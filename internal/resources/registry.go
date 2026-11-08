@@ -18,12 +18,12 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"sync"
 
 	"github.com/doors-dev/doors/internal"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/evanw/esbuild/pkg/api"
-	"github.com/zeebo/xxh3"
 )
 
 type App interface {
@@ -99,9 +99,13 @@ func (rs *registry) create(key [16]byte, content []byte, lookup bool, contentTyp
 		s = existing.(*Resource)
 	}
 	if lookup {
-		rs.lookup.Store(s.id, s)
+		rs.host(s)
 	}
 	return s
+}
+
+func (rs *registry) host(res *Resource) {
+	rs.lookup.LoadOrStore(res.id, res)
 }
 
 func (rs *registry) get(key [16]byte) *Resource {
@@ -112,11 +116,33 @@ func (rs *registry) get(key [16]byte) *Resource {
 	return entry.(*Resource)
 }
 
-func (rs Registry) Static(entry StaticEntry, contentType string) (*Resource, error) {
-	h := xxh3.New()
-	h.WriteString("resource")
+func staticKey(entry StaticEntry, contentType string) [16]byte {
+	h := newIDHash()
+	h.WriteString("static")
+	h.WriteString(contentType)
 	entry.entryID(h)
-	key := h.Sum128().Bytes()
+	return h.Sum()
+}
+
+func scriptKey(entry ScriptEntry, format ScriptFormat, profile string) [16]byte {
+	h := newIDHash()
+	h.WriteString("script")
+	h.WriteString(profile)
+	format.formatID(h)
+	entry.entryID(h)
+	return h.Sum()
+}
+
+func styleKey(entry StyleEntry, minify bool) [16]byte {
+	h := newIDHash()
+	h.WriteString("style")
+	h.WriteString(strconv.FormatBool(minify))
+	entry.entryID(h)
+	return h.Sum()
+}
+
+func (rs Registry) Static(entry StaticEntry, contentType string) (*Resource, error) {
+	key := staticKey(entry, contentType)
 	res := rs.get(key)
 	if res != nil {
 		return res, nil
@@ -133,15 +159,13 @@ func (rs Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 	var res *Resource
 	var key [16]byte
 	if mode != ModeNoCache {
-		h := xxh3.New()
-		h.WriteString("script")
-		h.WriteString(profile)
-		entry.entryID(h)
-		format.formatID(h)
-		key = h.Sum128().Bytes()
+		key = scriptKey(entry, format, profile)
 		res = rs.get(key)
 	}
 	if res != nil {
+		if mode == ModeHost {
+			rs.host(res)
+		}
 		return res, nil
 	}
 	var content []byte
@@ -175,13 +199,13 @@ func (rs Registry) Style(entry StyleEntry, minify bool, mode ResourceMode) (*Res
 	var res *Resource
 	var key [16]byte
 	if mode != ModeNoCache {
-		h := xxh3.New()
-		h.WriteString("style")
-		entry.entryID(h)
-		key = h.Sum128().Bytes()
+		key = styleKey(entry, minify)
 		res = rs.get(key)
 	}
 	if res != nil {
+		if mode == ModeHost {
+			rs.host(res)
+		}
 		return res, nil
 	}
 	var content, err = entry.Read()
