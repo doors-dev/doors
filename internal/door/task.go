@@ -30,6 +30,7 @@ type renderNode struct {
 	buffer *deque.Deque[any]
 	ctx    context.Context
 	caller common.Caller
+	mods   []gox.Modify
 }
 
 func (n renderNode) apply(_ shredder.Frame, next *node, prev *node) {
@@ -37,6 +38,7 @@ func (n renderNode) apply(_ shredder.Frame, next *node, prev *node) {
 	next.caller = n.caller
 	next.outer = prev.outer
 	next.inner = prev.inner
+	next.mods = n.mods
 	if next.mode == modeStatic {
 		next.static.user = ctex.UserContext(n.ctx, n.pipe.innerContext())
 		next.placeRenderStatic(n.pipe, n.buffer)
@@ -56,6 +58,7 @@ type nodeProxy struct {
 	buffer *deque.Deque[any]
 	ctx    context.Context
 	caller common.Caller
+	mods   []gox.Modify
 }
 
 func (n nodeProxy) apply(_ shredder.Frame, next *node, prev *node) {
@@ -63,6 +66,7 @@ func (n nodeProxy) apply(_ shredder.Frame, next *node, prev *node) {
 	next.caller = n.caller
 	next.outer = n.el
 	next.inner = prev.inner
+	next.mods = n.mods
 	if prev.isMounted() {
 		prev.scheduleRemoval(n.pipe.callGuard)
 	}
@@ -84,6 +88,7 @@ func (n innerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 		next.outer = prev.outer
 	}
 	next.inner = n.inner
+	next.mods = prev.mods
 	if !prev.isMounted() {
 		n.userTask.Accept()
 		return
@@ -192,6 +197,7 @@ func (n outerNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.caller = n.caller
 	next.outer = n.outer
 	next.inner = nil
+	next.mods = prev.mods
 	if !prev.isMounted() {
 		n.userTask.Accept()
 		return
@@ -278,6 +284,7 @@ func (n staticNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.mode = modeStatic
 	next.caller = n.caller
 	next.outer = n.outer
+	next.mods = prev.mods
 	if !prev.isMounted() {
 		n.userTask.Accept()
 		return
@@ -348,6 +355,7 @@ func (n nodeReload) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.caller = n.caller
 	next.outer = prev.outer
 	next.inner = prev.inner
+	next.mods = prev.mods
 	if !prev.isMounted() {
 		n.userTask.Accept()
 		return
@@ -432,6 +440,7 @@ func (n unmountNode) apply(initFrame shredder.Frame, next *node, prev *node) {
 	next.mode = prev.mode
 	next.outer = prev.outer
 	next.inner = prev.inner
+	next.mods = prev.mods
 	if !prev.isMounted() {
 		n.userTask.Accept()
 		return

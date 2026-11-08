@@ -186,3 +186,128 @@ func TestClassAttributeAndModifier(t *testing.T) {
 	test.TestClass(t, page, "#class-mod", "class-mod")
 	test.TestClassNot(t, page, "#class-mod", "class-skip")
 }
+
+func proxyDoorPage(t *testing.T) *rod.Page {
+	t.Helper()
+	bro := test.NewPathBro(browser, func(r test.PathLens) gox.Comp {
+		return &test.Page{
+			Source: r,
+			F: &ProxyDoorFragment{
+				r: test.NewReporter(5),
+			},
+		}
+	})
+	t.Cleanup(func() {
+		bro.Close()
+	})
+	page := bro.Page(t, "/")
+	t.Cleanup(func() {
+		page.Close()
+	})
+	return page
+}
+
+func TestProxyModDoorFrame(t *testing.T) {
+	page := proxyDoorPage(t)
+	test.TestAttr(t, page, "d0-r.pd-class", "data-pd", "d0-r:wrap")
+	test.TestContent(t, page, "d0-r.pd-class #pd-wrap-inner", "wrap-0")
+	test.TestAttr(t, page, "#pd-elem", "data-pd", "div:elem")
+	test.TestAttr(t, page, "#pd-proxy", "data-pd", "div:proxy")
+	if n := test.Count(page, "#pd-elem[data-d0r], #pd-proxy[data-d0r]"); n != 2 {
+		t.Fatalf("expected user containers to be door frames, got %d", n)
+	}
+	test.Click(t, page, "#pd-wrap-inner")
+	test.TestReportId(t, page, 0, "wrap-click")
+	test.Click(t, page, "#pd-elem-inner")
+	test.TestReportId(t, page, 1, "elem-click")
+	test.Click(t, page, "#pd-proxy-inner")
+	test.TestReportId(t, page, 2, "proxy-click")
+}
+
+func TestProxyModDoorInner(t *testing.T) {
+	page := proxyDoorPage(t)
+	test.Click(t, page, "#pd-inner")
+	test.TestContent(t, page, "d0-r.pd-class #pd-wrap-inner", "wrap-1")
+	test.TestAttr(t, page, "d0-r.pd-class", "data-pd", "d0-r:wrap")
+	test.TestContent(t, page, "#pd-elem #pd-elem-inner", "elem-1")
+	test.TestAttr(t, page, "#pd-elem", "data-pd", "div:elem")
+	test.TestContent(t, page, "#pd-proxy #pd-proxy-inner", "proxy-1")
+	test.TestAttr(t, page, "#pd-proxy", "data-pd", "div:proxy")
+	test.Click(t, page, "#pd-wrap-inner")
+	test.TestReportId(t, page, 0, "wrap-click")
+	test.Click(t, page, "#pd-elem-inner")
+	test.TestReportId(t, page, 1, "elem-click")
+	test.Click(t, page, "#pd-proxy-inner")
+	test.TestReportId(t, page, 2, "proxy-click")
+}
+
+func TestProxyModDoorOuter(t *testing.T) {
+	page := proxyDoorPage(t)
+	test.Click(t, page, "#pd-outer")
+	test.TestContent(t, page, "d0-r.pd-class #pd-wrap-inner", "wrap-2")
+	test.TestAttr(t, page, "d0-r.pd-class", "data-pd", "d0-r:wrap")
+	test.TestContent(t, page, "#pd-elem #pd-elem-inner", "elem-2")
+	test.TestAttr(t, page, "#pd-elem", "data-pd", "div:elem")
+	test.TestContent(t, page, "#pd-proxy #pd-proxy-inner", "proxy-2")
+	test.TestAttr(t, page, "#pd-proxy", "data-pd", "div:proxy")
+	test.Click(t, page, "#pd-wrap-inner")
+	test.TestReportId(t, page, 0, "wrap-click")
+	test.Click(t, page, "#pd-elem-inner")
+	test.TestReportId(t, page, 1, "elem-click")
+	test.Click(t, page, "#pd-proxy-inner")
+	test.TestReportId(t, page, 2, "proxy-click")
+}
+
+func TestProxyModDoorStatic(t *testing.T) {
+	page := proxyDoorPage(t)
+	test.TestAttr(t, page, "#pd-static", "data-pd", "p:static")
+	test.TestAttrNo(t, page, "#pd-static-sibling", "data-pd")
+	if n := test.Count(page, "#pd-root > d0-r #pd-static"); n != 0 {
+		t.Fatalf("static door content should not be framed, got %d", n)
+	}
+	test.TestAttr(t, page, "d0-r[data-pd='d0-r:mounted']", "data-pd", "d0-r:mounted")
+	test.Click(t, page, "#pd-mounted-static")
+	test.TestAttr(t, page, "#pd-mounted-static", "data-pd", "p:mounted")
+	if n := test.Count(page, "[data-pd='d0-r:mounted']"); n != 0 {
+		t.Fatalf("mounted door frame should be replaced by static content, got %d", n)
+	}
+}
+
+func TestProxyModDoorID(t *testing.T) {
+	page := proxyDoorPage(t)
+	test.TestContent(t, page, "d0-r#pd-id #pd-id-inner", "id-0")
+	test.Click(t, page, "#pd-id-inner-update")
+	test.TestContent(t, page, "d0-r#pd-id #pd-id-inner", "id-1")
+	test.Click(t, page, "#pd-id-outer-update")
+	test.TestContent(t, page, "d0-r#pd-id #pd-id-inner", "id-2")
+	test.Click(t, page, "#pd-id-inner-update")
+	test.TestContent(t, page, "d0-r#pd-id #pd-id-inner", "id-1")
+}
+
+func TestProxyModDoorOwnership(t *testing.T) {
+	page := proxyDoorPage(t)
+	test.TestAttr(t, page, "#pd-host-a > d0-r > d0-r", "data-pd", "d0-r:a")
+	test.Click(t, page, "#pd-move-inner")
+	test.TestReportId(t, page, 3, "move-a")
+	test.Click(t, page, "#pd-remod")
+	test.TestAttr(t, page, "#pd-host-a > d0-r > d0-r", "data-pd", "d0-r:b")
+	test.Click(t, page, "#pd-move-inner")
+	test.TestReportId(t, page, 3, "move-b")
+	test.Click(t, page, "#pd-move")
+	test.TestReportId(t, page, 3, "moved")
+	test.TestContent(t, page, "#pd-host-b > d0-r > d0-r #pd-move-inner", "move")
+	test.TestMustNot(t, page, "#pd-host-a #pd-move-inner")
+	test.TestAttrNo(t, page, "#pd-host-b > d0-r > d0-r", "data-pd")
+	test.Click(t, page, "#pd-move-inner")
+	test.Click(t, page, "#pd-ping")
+	test.TestReportId(t, page, 4, "ping")
+	test.TestReportId(t, page, 3, "moved")
+}
+
+func TestProxyModDoorStaticText(t *testing.T) {
+	page := proxyDoorPage(t)
+	test.TestAttr(t, page, "#pd-text-host > d0-r", "data-pd", "d0-r:text")
+	test.Click(t, page, "#pd-text-static")
+	test.TestContent(t, page, "#pd-text-host", "done")
+	test.TestMustNot(t, page, "#pd-text-host > d0-r")
+}

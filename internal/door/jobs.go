@@ -38,20 +38,30 @@ func (d fakeJob) Output(w io.Writer) error {
 type renderJob struct {
 	door   *Door
 	caller common.Caller
+	mods   []gox.Modify
 	fakeJob
 }
 
 func (d renderJob) Render(p *pipe) {
-	d.door.render(d.Context(), p, d.caller)
+	d.door.render(d.Context(), p, d.caller, d.mods)
+}
+
+func (d *renderJob) AddMod(m gox.Modify) {
+	d.mods = append(d.mods, m)
 }
 
 type proxyJob struct {
 	door   *Door
 	el     gox.Elem
 	caller common.Caller
+	mods   []gox.Modify
 	fakeJob
 }
 
 func (d proxyJob) Render(p *pipe) {
-	d.door.proxy(p, d.el, d.Context(), d.caller)
+	d.door.proxy(p, d.el, d.Context(), d.caller, d.mods)
+}
+
+func (d *proxyJob) AddMod(m gox.Modify) {
+	d.mods = append(d.mods, m)
 }

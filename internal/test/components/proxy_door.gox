@@ -1,0 +1,147 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package components
+
+import (
+	"context"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+func proxyDoorMod(name string) gox.Modify {
+	return gox.ModifyFunc(func(_ context.Context, tag string, attrs gox.Attrs) error {
+		attrs.Get("data-pd").Set(tag + ":" + name)
+		return nil
+	})
+}
+
+func proxyDoorID(id string) gox.Modify {
+	return gox.ModifyFunc(func(_ context.Context, _ string, attrs gox.Attrs) error {
+		attrs.Get("id").Set(id)
+		return nil
+	})
+}
+
+type ProxyDoorFragment struct {
+	test.NoBeam
+	r       *test.Reporter
+	wrap    doors.Door
+	cont    doors.Door
+	proxy   doors.Door
+	static  doors.Door
+	mounted doors.Door
+	id      doors.Door
+	hostA   doors.Door
+	hostB   doors.Door
+	move    doors.Door
+	text    doors.Door
+}
+
+elem (f *ProxyDoorFragment) moveMod(name string) {
+	~>(doors.ProxyMod(proxyDoorMod(name))) ~>doors.AClick{
+		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, 3, "move-"+name)
+			return false
+		},
+	} ~(&f.move)
+}
+
+elem (f *ProxyDoorFragment) movePlain() {
+	~(&f.move)
+}
+
+elem (f *ProxyDoorFragment) Main() {
+	~~
+	f.wrap.Inner(ctx, <span id="pd-wrap-inner">wrap-0</span>)
+	f.cont.Outer(ctx, <div id="pd-elem"><span id="pd-elem-inner">elem-0</span></div>)
+	f.static.Static(ctx, <><p id="pd-static">static</p><p id="pd-static-sibling">sibling</p></>)
+	f.mounted.Inner(ctx, <span id="pd-mounted-inner">mounted</span>)
+	f.id.Inner(ctx, <span id="pd-id-inner">id-0</span>)
+	f.move.Inner(ctx, <span id="pd-move-inner">move</span>)
+	f.hostA.Inner(ctx, f.moveMod("a"))
+	f.text.Inner(ctx, <span id="pd-text-inner">text</span>)
+	~~
+	<div id="pd-root">
+		~>(doors.Class("pd-class")) ~>(doors.ProxyMod(proxyDoorMod("wrap"))) ~>doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 0, "wrap-click")
+				return false
+			},
+		} ~(&f.wrap)
+		~>(doors.ProxyMod(proxyDoorMod("elem"))) ~>doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 1, "elem-click")
+				return false
+			},
+		} ~(&f.cont)
+		~>(doors.ProxyMod(proxyDoorMod("proxy"))) ~>doors.AClick{
+			On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
+				f.r.Update(ctx, 2, "proxy-click")
+				return false
+			},
+		} ~>(&f.proxy) <div id="pd-proxy"><span id="pd-proxy-inner">proxy-0</span></div>
+		~>(doors.ProxyMod(proxyDoorMod("static"))) ~(&f.static)
+		~>(doors.ProxyMod(proxyDoorMod("mounted"))) ~(&f.mounted)
+		~>(doors.ProxyMod(proxyDoorID("pd-id"))) ~(&f.id)
+	</div>
+	<div id="pd-host-a">~(&f.hostA)</div>
+	<div id="pd-host-b">~(&f.hostB)</div>
+	<div id="pd-text-host">~>(doors.ProxyMod(proxyDoorMod("text"))) ~(&f.text)</div>
+	~(test.Button("pd-inner", func(ctx context.Context) bool {
+		f.wrap.Inner(ctx, <span id="pd-wrap-inner">wrap-1</span>)
+		f.cont.Inner(ctx, <span id="pd-elem-inner">elem-1</span>)
+		f.proxy.Inner(ctx, <span id="pd-proxy-inner">proxy-1</span>)
+		return false
+	}))
+	~(test.Button("pd-outer", func(ctx context.Context) bool {
+		f.wrap.Outer(ctx, <><span id="pd-wrap-inner">wrap-2</span></>)
+		f.cont.Outer(ctx, <div id="pd-elem"><span id="pd-elem-inner">elem-2</span></div>)
+		f.proxy.Outer(ctx, <div id="pd-proxy"><span id="pd-proxy-inner">proxy-2</span></div>)
+		return false
+	}))
+	~(test.Button("pd-mounted-static", func(ctx context.Context) bool {
+		f.mounted.Static(ctx, <p id="pd-mounted-static">mounted-static</p>)
+		return false
+	}))
+	~(test.Button("pd-id-inner-update", func(ctx context.Context) bool {
+		f.id.Inner(ctx, <span id="pd-id-inner">id-1</span>)
+		return false
+	}))
+	~(test.Button("pd-id-outer-update", func(ctx context.Context) bool {
+		f.id.Outer(ctx, <><span id="pd-id-inner">id-2</span></>)
+		return false
+	}))
+	~(test.Button("pd-remod", func(ctx context.Context) bool {
+		f.hostA.Inner(ctx, f.moveMod("b"))
+		return false
+	}))
+	~(test.Button("pd-move", func(ctx context.Context) bool {
+		f.r.Update(ctx, 3, "moved")
+		f.hostA.Inner(ctx, nil)
+		f.hostB.Inner(ctx, f.movePlain())
+		return false
+	}))
+	~(test.Button("pd-text-static", func(ctx context.Context) bool {
+		f.text.Static(ctx, "done")
+		return false
+	}))
+	~(test.Button("pd-ping", func(ctx context.Context) bool {
+		f.r.Update(ctx, 4, "ping")
+		return false
+	}))
+	~(f.r)
+}

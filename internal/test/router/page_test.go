@@ -1031,7 +1031,7 @@ func nestBro() *test.Bro {
 
 func routeDoor(t *testing.T, page *rod.Page) string {
 	t.Helper()
-	ids := page.MustEval(`() => [...document.querySelectorAll("#routes d0-r, #routes [data-d0r]")].map(el => el.getAttribute("data-d0r") ?? el.id.slice(3))`).Arr()
+	ids := page.MustEval(`() => [...document.querySelectorAll("#routes d0-r, #routes [data-d0r]")].map(el => el.getAttribute("data-d0r"))`).Arr()
 	if len(ids) != 1 {
 		t.Fatalf("expected one route door, got %v", ids)
 	}

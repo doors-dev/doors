@@ -61,13 +61,8 @@ func AttrsSetParent(attrs gox.Attrs, parent uint64) {
 	attrs.Get("data-d0p").Set(parentAttr(parent))
 }
 
-func AttrsSetDoor(attrs gox.Attrs, id uint64, container bool) {
-	if container {
-		attrs.Get("id").Set(fmt.Sprintf("d0r%d", id))
-		return
-	}
+func AttrsSetDoor(attrs gox.Attrs, id uint64) {
 	attrs.Get("data-d0r").Set(fmt.Sprintf("%d", id))
-
 }
 
 func AttrsSetActive(attrs gox.Attrs, active []any) {

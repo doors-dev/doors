@@ -27,7 +27,7 @@ import (
 //	~(&doors.Door{})
 func (d *Door) Main() gox.Elem {
 	return gox.Elem(func(cur gox.Cursor) error {
-		return cur.Printer().Send(renderJob{door: d, caller: common.CaptureCaller(), fakeJob: fakeJob{cur.Context()}})
+		return cur.Printer().Send(&renderJob{door: d, caller: common.CaptureCaller(), fakeJob: fakeJob{cur.Context()}})
 	})
 }
 
@@ -35,7 +35,7 @@ func (d *Door) Main() gox.Elem {
 //
 //	~>(new(doors.Door)) <div>content</div>
 func (d *Door) Proxy(cur gox.Cursor, el gox.Elem) error {
-	return cur.Printer().Send(proxyJob{door: d, el: el, caller: common.CaptureCaller(), fakeJob: fakeJob{cur.Context()}})
+	return cur.Printer().Send(&proxyJob{door: d, el: el, caller: common.CaptureCaller(), fakeJob: fakeJob{cur.Context()}})
 }
 
 // Inner replaces the Door's children while keeping the same container mounted.

@@ -176,14 +176,11 @@ func rtDOM(initial string, acts []lifecycleAction) string {
 		if !rtIsDoorAction(a) {
 			continue
 		}
-		for _, m := range []string{fmt.Sprintf(` id="d0r%d"`, a.id), fmt.Sprintf(` data-d0r="%d"`, a.id)} {
-			if s, oe, cs, e, ok := rtElement(dom, m); ok {
-				if a.name == "door_replace" {
-					dom = dom[:s] + a.body + dom[e:]
-				} else {
-					dom = dom[:oe] + a.body + dom[cs:]
-				}
-				break
+		if s, oe, cs, e, ok := rtElement(dom, fmt.Sprintf(` data-d0r="%d"`, a.id)); ok {
+			if a.name == "door_replace" {
+				dom = dom[:s] + a.body + dom[e:]
+			} else {
+				dom = dom[:oe] + a.body + dom[cs:]
 			}
 		}
 	}
@@ -191,18 +188,14 @@ func rtDOM(initial string, acts []lifecycleAction) string {
 }
 
 var (
-	rtDoorRe = regexp.MustCompile(` id="d0r(\d+)"| data-d0r="(\d+)"`)
+	rtDoorRe = regexp.MustCompile(` data-d0r="(\d+)"`)
 	rtTagRe  = regexp.MustCompile(`<[^>]*>`)
 )
 
 func rtDoorIDs(s string) []uint64 {
 	var ids []uint64
 	for _, m := range rtDoorRe.FindAllStringSubmatch(s, -1) {
-		v := m[1]
-		if v == "" {
-			v = m[2]
-		}
-		n, _ := strconv.ParseUint(v, 10, 64)
+		n, _ := strconv.ParseUint(m[1], 10, 64)
 		ids = append(ids, n)
 	}
 	return ids
@@ -1066,8 +1059,8 @@ func TestRouteInitialRender(t *testing.T) {
 		rtI{set: 4, want: "E=4"},
 	)
 	acts := h.doorActions(id)
-	if b := acts[0].body; !strings.HasPrefix(b, "<d0-r ") || !strings.Contains(b, fmt.Sprintf(` id="d0r%d"`, id)) {
-		t.Fatalf("leaving the section should restore <d0-r id=d0r%d>, got %q", id, b)
+	if b := acts[0].body; !strings.HasPrefix(b, "<d0-r ") || !strings.Contains(b, fmt.Sprintf(` data-d0r="%d"`, id)) {
+		t.Fatalf("leaving the section should restore <d0-r data-d0r=%d>, got %q", id, b)
 	}
 	if b := acts[2].body; !strings.HasPrefix(b, "<section ") || !strings.Contains(b, fmt.Sprintf(` data-d0r="%d"`, id)) {
 		t.Fatalf("coming back should make the section door %d again, got %q", id, b)

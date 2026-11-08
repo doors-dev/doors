@@ -24,6 +24,7 @@ import (
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
 	"github.com/doors-dev/doors/internal/door"
+	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/gox"
 )
 
@@ -43,7 +44,7 @@ type Door = door.Door
 // Use it for fragments that wait on a database query or an external API call.
 func Parallel() gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, elem gox.Elem) error {
-		j := parallelJob{
+		j := &parallelJob{
 			ctx:    cur.Context(),
 			el:     elem,
 			caller: common.CaptureCaller(),
@@ -69,13 +70,18 @@ type parallelJob struct {
 	ctx    context.Context
 	el     gox.Elem
 	caller common.Caller
+	mods   []gox.Modify
 }
 
-func (pj parallelJob) Render(pip door.Pipe) {
+func (pj *parallelJob) Render(pip door.Pipe) {
 	pip.Submit(pj.caller, func(cur gox.Cursor) error {
-		cur = gox.NewCursor(pj.ctx, cur.Printer())
+		cur = gox.NewCursor(pj.ctx, printer.NewModPrinter(cur.Printer(), pj.mods))
 		return cur.Comp(pj.el)
 	})
+}
+
+func (pj *parallelJob) AddMod(m gox.Modify) {
+	pj.mods = append(pj.mods, m)
 }
 
 func (p parallelJob) Context() context.Context {

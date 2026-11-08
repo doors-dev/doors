@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import { rootId } from './params'
-import { doorId } from './lib'
 
 import { attach as attachCaptures } from "./capture"
 import { attach as attachEmitter } from "./emitter"
@@ -55,14 +54,11 @@ function execute(c: Closure) {
 	}
 }
 function getSelfId(el: Element): (number | undefined) {
-	if (el.matches(`${tag}`)) {
-		return doorId(el.id)
+	const id = el.getAttribute(attr)
+	if (id === null) {
+		return undefined
 	}
-	if (el.matches(`[${attr}]`)) {
-		const id = el.getAttribute(attr)
-		return Number(id)
-	}
-	return undefined
+	return Number(id)
 }
 
 function getParentId(el: Element): number {

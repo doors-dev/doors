@@ -29,22 +29,24 @@ type Door struct {
 	node atomic.Pointer[node]
 }
 
-func (d *Door) render(ctx context.Context, p *pipe, caller common.Caller) {
+func (d *Door) render(ctx context.Context, p *pipe, caller common.Caller, mods []gox.Modify) {
 	d.schedule(ctx, renderNode{
 		pipe:   p,
 		buffer: p.branch(),
 		ctx:    ctx,
 		caller: caller,
+		mods:   mods,
 	}, shredder.Join(ctx, p.renderFrame))
 }
 
-func (d *Door) proxy(p *pipe, el gox.Elem, ctx context.Context, caller common.Caller) {
+func (d *Door) proxy(p *pipe, el gox.Elem, ctx context.Context, caller common.Caller, mods []gox.Modify) {
 	d.schedule(ctx, nodeProxy{
 		pipe:   p,
 		buffer: p.branch(),
 		el:     el,
 		ctx:    ctx,
 		caller: caller,
+		mods:   mods,
 	}, shredder.Join(ctx, p.renderFrame))
 }
 

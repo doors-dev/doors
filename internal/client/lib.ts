@@ -75,14 +75,6 @@ export const date = (date: Date) => {
 	return timeString + offsetString
 }
 
-export const elementId = (doorId: number) => {
-	return `d0r${doorId}`
-}
-
-export const doorId = (doorId: string) => {
-	return Number(doorId.slice(3))
-}
-
 export type FetchOpt = {
 	body: any;
 	headers: { [key: string]: string };

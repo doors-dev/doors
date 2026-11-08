@@ -15,8 +15,7 @@
 package doors
 
 import (
-	"errors"
-
+	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/gox"
 )
 
@@ -24,63 +23,20 @@ import (
 // wrapped subtree.
 //
 // It looks through components, containers, and [Parallel] markers to reach
-// that element and leaves later siblings unchanged. It does not work in front
-// of a [Door]: a Door, text, or other non-element output where that element is
-// expected is an error. A nil mod renders the subtree unchanged.
+// that element and leaves later siblings unchanged. In front of a [Door] it
+// applies to the Door's frame, or to the first element of static Door content.
+// If text or other non-element output comes first, the mod is skipped and an
+// error is logged. A nil mod renders the subtree unchanged.
 func ProxyMod(mod gox.Modify) gox.Proxy {
 	return gox.ProxyFunc(func(cur gox.Cursor, el gox.Elem) error {
-		printer := &modPrinter{
-			mod:     mod,
-			printer: cur.Printer(),
+		if mod == nil {
+			return el(cur)
 		}
-		cursor := gox.NewCursor(cur.Context(), printer)
-		return el(cursor)
+		return el(gox.NewCursor(cur.Context(), printer.NewModPrinter(cur.Printer(), []gox.Modify{mod})))
 	})
 }
 
 func proxyMod(mod gox.Modify, cur gox.Cursor, elem gox.Elem) error {
 	proxy := ProxyMod(mod)
 	return proxy.Proxy(cur, elem)
-}
-
-type modPrinter struct {
-	mod     gox.Modify
-	printer gox.Printer
-}
-
-func (m *modPrinter) Send(j gox.Job) error {
-	if m.mod == nil {
-		return m.printer.Send(j)
-	}
-	if par, ok := j.(parallelJob); ok {
-		mod := m.mod
-		m.mod = nil
-		return m.printParallel(mod, par)
-	}
-	open, ok := j.(*gox.JobOpen)
-	if ok {
-		if open.Kind == gox.KindContainer {
-			return m.printer.Send(open)
-		}
-		mod := m.mod
-		m.mod = nil
-		return m.printHead(mod, open)
-	}
-	m.mod = nil
-	return errors.New("cannot attach an attribute modifier: unexpected job type")
-}
-
-func (m *modPrinter) printParallel(mod gox.Modify, job parallelJob) error {
-	el := job.el
-	job.el = gox.Elem(func(cur gox.Cursor) error {
-		p := &modPrinter{mod: mod, printer: cur.Printer()}
-		cur = gox.NewCursor(cur.Context(), p)
-		return el(cur)
-	})
-	return m.printer.Send(job)
-}
-
-func (m *modPrinter) printHead(mod gox.Modify, job *gox.JobOpen) error {
-	job.Attrs.AddMod(mod)
-	return m.printer.Send(job)
 }

@@ -24,6 +24,7 @@ import (
 
 type nodePrinter struct {
 	pipe        *pipe
+	mods        []gox.Modify
 	skipContent bool
 	ready       bool
 	open        *gox.JobOpen
@@ -44,19 +45,22 @@ func (r *nodePrinter) submitContainer() error {
 	}
 	if r.open == nil {
 		attrs := gox.NewAttrs()
-		front.AttrsSetDoor(attrs, r.pipe.id(), true)
+		front.AttrsSetDoor(attrs, r.pipe.id())
 		front.AttrsSetParent(attrs, r.pipe.parentID())
 		openJob = gox.NewJobOpen(r.pipe.outerContext(), 0, gox.KindRegular, "d0-r", attrs)
 		closeJob = gox.NewJobClose(r.pipe.outerContext(), 0, gox.KindRegular, "d0-r")
 	} else {
 		r.open.Ctx = r.pipe.outerContext()
 		r.close.Ctx = r.pipe.outerContext()
-		front.AttrsSetDoor(r.open.Attrs, r.pipe.id(), false)
+		front.AttrsSetDoor(r.open.Attrs, r.pipe.id())
 		front.AttrsSetParent(r.open.Attrs, r.pipe.parentID())
 		openJob = r.open
 		closeJob = r.close
 		r.open = nil
 		r.close = nil
+	}
+	for _, mod := range r.mods {
+		openJob.Attrs.AddMod(mod)
 	}
 	if err := r.pipe.presend(openJob); err != nil {
 		return err
