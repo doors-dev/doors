@@ -262,12 +262,24 @@ func NewBroWrapOptions(browser *rod.Browser, page func(context.Context, doors.Re
 		closeCh: ch,
 	}
 }
-func TestType(t *testing.T, page *rod.Page, selector string, keys []input.Key) {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+
+func actionElement(t *testing.T, page *rod.Page, selector string, what string) (*rod.Element, func()) {
+	t.Helper()
+	p := page.Timeout(200 * time.Millisecond)
+	el, err := p.Element(selector)
+	p.CancelTimeout()
 	if err != nil {
-		t.Fatal("must: element ", selector, " not found")
+		t.Fatal(what, ": element ", selector, " not found")
 	}
-	err = el.Type(keys...)
+	el = el.Context(page.GetContext()).Timeout(waitLimit)
+	return el, func() { el.CancelTimeout() }
+}
+
+func TestType(t *testing.T, page *rod.Page, selector string, keys []input.Key) {
+	t.Helper()
+	el, cancel := actionElement(t, page, selector, "must")
+	defer cancel()
+	err := el.Type(keys...)
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
@@ -275,33 +287,30 @@ func TestType(t *testing.T, page *rod.Page, selector string, keys []input.Key) {
 }
 
 func TestInput(t *testing.T, page *rod.Page, selector string, value string) {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("must: element ", selector, " not found")
-	}
-	err = el.Input(value)
+	t.Helper()
+	el, cancel := actionElement(t, page, selector, "must")
+	defer cancel()
+	err := el.Input(value)
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
 	<-time.After(200 * time.Millisecond)
 }
 func TestInputTime(t *testing.T, page *rod.Page, selector string, now time.Time) {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("must: element ", selector, " not found")
-	}
-	err = el.InputTime(now)
+	t.Helper()
+	el, cancel := actionElement(t, page, selector, "must")
+	defer cancel()
+	err := el.InputTime(now)
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
 	<-time.After(200 * time.Millisecond)
 }
 func TestInputColor(t *testing.T, page *rod.Page, selector string, color string) {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("must: element ", selector, " not found")
-	}
-	err = el.InputColor(color)
+	t.Helper()
+	el, cancel := actionElement(t, page, selector, "must")
+	defer cancel()
+	err := el.InputColor(color)
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
@@ -309,55 +318,94 @@ func TestInputColor(t *testing.T, page *rod.Page, selector string, color string)
 }
 
 func TestSelect(t *testing.T, page *rod.Page, selector string, options []string) {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("must: element ", selector, " not found")
-	}
-	err = el.Select(options, true, rod.SelectorTypeText)
+	t.Helper()
+	el, cancel := actionElement(t, page, selector, "must")
+	defer cancel()
+	err := el.Select(options, true, rod.SelectorTypeText)
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
 	<-time.After(200 * time.Millisecond)
 }
 func TestDeselect(t *testing.T, page *rod.Page, selector string, options []string) {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("must: element ", selector, " not found")
-	}
-	err = el.Select(options, false, rod.SelectorTypeText)
+	t.Helper()
+	el, cancel := actionElement(t, page, selector, "must")
+	defer cancel()
+	err := el.Select(options, false, rod.SelectorTypeText)
 	if err != nil {
 		t.Fatal("must: element ", selector, " input failed")
 	}
 	<-time.After(200 * time.Millisecond)
 }
 
+const waitLimit = 5 * time.Second
+
+const pollInterval = 20 * time.Millisecond
+
+func poll(page *rod.Page, check func(p *rod.Page) (bool, string)) (bool, string) {
+	deadline := time.Now().Add(waitLimit)
+	last := ""
+	for {
+		p := page.Sleeper(rod.NotFoundSleeper).Timeout(time.Until(deadline))
+		ok, state := check(p)
+		expired := p.GetContext().Err() != nil
+		p.CancelTimeout()
+		if ok {
+			return true, state
+		}
+		if !expired || last == "" {
+			last = state
+		}
+		if !time.Now().Before(deadline) {
+			return false, last
+		}
+		<-time.After(pollInterval)
+	}
+}
+
 func TestMust(t *testing.T, page *rod.Page, selector string) {
-	_, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	t.Helper()
+	ok, _ := poll(page, func(p *rod.Page) (bool, string) {
+		_, err := p.Element(selector)
+		return err == nil, ""
+	})
+	if !ok {
+		t.Fatal("must: element ", selector, " not found")
+	}
+}
+
+func TestMustNow(t *testing.T, page *rod.Page, selector string) {
+	t.Helper()
+	p := page.Timeout(200 * time.Millisecond)
+	defer p.CancelTimeout()
+	_, err := p.Element(selector)
 	if err != nil {
 		t.Fatal("must: element ", selector, " not found")
 	}
 }
+
 func TestMustNot(t *testing.T, page *rod.Page, selector string) {
-	_, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	t.Helper()
+	p := page.Timeout(200 * time.Millisecond)
+	defer p.CancelTimeout()
+	_, err := p.Element(selector)
 	if err == nil {
 		t.Fatal("must not: element ", selector, " found")
 	}
 }
 
 func Click(t *testing.T, page *rod.Page, selector string) {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("click: element ", selector, " not found")
-	}
+	t.Helper()
+	el, cancel := actionElement(t, page, selector, "click")
+	defer cancel()
 	el.MustClick()
 	<-time.After(200 * time.Millisecond)
 }
 
 func ClickNow(t *testing.T, page *rod.Page, selector string) {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("click: element ", selector, " not found")
-	}
+	t.Helper()
+	el, cancel := actionElement(t, page, selector, "click")
+	defer cancel()
 	el.MustClick()
 }
 
@@ -405,42 +453,81 @@ func HijackFailOnce(t *testing.T, page *rod.Page, pattern string) func() {
 }
 
 func TestContent(t *testing.T, page *rod.Page, selector string, content string) {
-	el, err := page.Timeout(300 * time.Millisecond).Element(selector)
+	t.Helper()
+	ok, state := poll(page, func(p *rod.Page) (bool, string) {
+		return checkContent(p, selector, content)
+	})
+	if !ok {
+		t.Fatal("content: element ", selector, " ", state)
+	}
+}
+
+func TestContentNow(t *testing.T, page *rod.Page, selector string, content string) {
+	t.Helper()
+	p := page.Timeout(300 * time.Millisecond)
+	defer p.CancelTimeout()
+	if ok, state := checkContent(p, selector, content); !ok {
+		t.Fatal("content: element ", selector, " ", state)
+	}
+}
+
+func checkContent(page *rod.Page, selector string, content string) (bool, string) {
+	el, err := page.Element(selector)
 	if err != nil {
-		t.Fatal("content: element ", selector, " not found")
+		return false, "not found"
 	}
 	s, err := el.Text()
 	if err != nil {
-		t.Fatal("content: element ", selector, " no text")
+		return false, "no text"
 	}
 	if s != content {
-		t.Fatal("content: element ", selector, " no exects: ", content, " fact: ", s)
+		return false, fmt.Sprint("no exects: ", content, " fact: ", s)
 	}
+	return true, ""
 }
 
 func TestClass(t *testing.T, page *rod.Page, selector string, className string) {
-	page = page.Timeout(200 * time.Millisecond)
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("class: element ", selector, " not found")
-	}
-	classAttr, err := el.Attribute("class")
-	if err != nil {
-		t.Fatal("class: element ", selector, " attribute 'class' not found")
-	}
-	if classAttr == nil {
-		t.Fatal("class: element ", selector, " has no 'class' attribute")
-	}
-	classes := strings.Fields(*classAttr)
-	found := slices.Contains(classes, className)
-	if !found {
-		t.Fatal("class: element ", selector, " expects to have class: ", className, " fact: ", *classAttr)
+	t.Helper()
+	ok, state := poll(page, func(p *rod.Page) (bool, string) {
+		return checkClass(p, selector, className)
+	})
+	if !ok {
+		t.Fatal("class: element ", selector, " ", state)
 	}
 }
 
+func TestClassNow(t *testing.T, page *rod.Page, selector string, className string) {
+	t.Helper()
+	p := page.Timeout(200 * time.Millisecond)
+	defer p.CancelTimeout()
+	if ok, state := checkClass(p, selector, className); !ok {
+		t.Fatal("class: element ", selector, " ", state)
+	}
+}
+
+func checkClass(page *rod.Page, selector string, className string) (bool, string) {
+	el, err := page.Element(selector)
+	if err != nil {
+		return false, "not found"
+	}
+	classAttr, err := el.Attribute("class")
+	if err != nil {
+		return false, "attribute 'class' not found"
+	}
+	if classAttr == nil {
+		return false, "has no 'class' attribute"
+	}
+	if !slices.Contains(strings.Fields(*classAttr), className) {
+		return false, fmt.Sprint("expects to have class: ", className, " fact: ", *classAttr)
+	}
+	return true, ""
+}
+
 func TestClassNot(t *testing.T, page *rod.Page, selector string, className string) {
+	t.Helper()
 	page = page.Timeout(200 * time.Millisecond)
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	defer page.CancelTimeout()
+	el, err := page.Element(selector)
 	if err != nil {
 		t.Fatal("class: element ", selector, " not found")
 	}
@@ -459,26 +546,47 @@ func TestClassNot(t *testing.T, page *rod.Page, selector string, className strin
 }
 
 func TestAttr(t *testing.T, page *rod.Page, selector string, name string, value string) {
-	page = page.Timeout(200 * time.Millisecond)
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
-	if err != nil {
-		t.Fatal("attr: element ", selector, " not found")
-	}
-	attr, err := el.Attribute(name)
-	if err != nil {
-		t.Fatal("attr: element ", selector, " attribute ", name, " not found")
-	}
-	if attr == nil {
-		t.Fatal("attr: element ", selector, " attribute ", name, " is nil")
-	}
-	if *attr != value {
-		t.Fatal("attr: element ", selector, " attribute ", name, " expects: ", value, " fact: ", *attr)
+	t.Helper()
+	ok, state := poll(page, func(p *rod.Page) (bool, string) {
+		return checkAttr(p, selector, name, value)
+	})
+	if !ok {
+		t.Fatal("attr: element ", selector, " ", state)
 	}
 }
 
+func TestAttrNow(t *testing.T, page *rod.Page, selector string, name string, value string) {
+	t.Helper()
+	p := page.Timeout(200 * time.Millisecond)
+	defer p.CancelTimeout()
+	if ok, state := checkAttr(p, selector, name, value); !ok {
+		t.Fatal("attr: element ", selector, " ", state)
+	}
+}
+
+func checkAttr(page *rod.Page, selector string, name string, value string) (bool, string) {
+	el, err := page.Element(selector)
+	if err != nil {
+		return false, "not found"
+	}
+	attr, err := el.Attribute(name)
+	if err != nil {
+		return false, fmt.Sprint("attribute ", name, " not found")
+	}
+	if attr == nil {
+		return false, fmt.Sprint("attribute ", name, " is nil")
+	}
+	if *attr != value {
+		return false, fmt.Sprint("attribute ", name, " expects: ", value, " fact: ", *attr)
+	}
+	return true, ""
+}
+
 func TestAttrNo(t *testing.T, page *rod.Page, selector string, name string) {
+	t.Helper()
 	page = page.Timeout(200 * time.Millisecond)
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	defer page.CancelTimeout()
+	el, err := page.Element(selector)
 	if err != nil {
 		t.Fatal("attr: element ", selector, " not found")
 	}
@@ -492,9 +600,32 @@ func TestAttrNo(t *testing.T, page *rod.Page, selector string, name string) {
 	}
 }
 
+func TestAttrGone(t *testing.T, page *rod.Page, selector string, name string) {
+	t.Helper()
+	ok, state := poll(page, func(p *rod.Page) (bool, string) {
+		el, err := p.Element(selector)
+		if err != nil {
+			return false, fmt.Sprint("element ", selector, " not found")
+		}
+		attr, err := el.Attribute(name)
+		if err != nil {
+			return false, fmt.Sprint("attribute ", name, " read error: ", err)
+		}
+		if attr != nil {
+			return false, fmt.Sprint("attribute ", name, " still present: ", *attr)
+		}
+		return true, ""
+	})
+	if !ok {
+		t.Fatal("attr: element ", selector, " ", state)
+	}
+}
+
 func TestAttrNot(t *testing.T, page *rod.Page, selector string, name string, value string) {
+	t.Helper()
 	page = page.Timeout(200 * time.Millisecond)
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	defer page.CancelTimeout()
+	el, err := page.Element(selector)
 	if err != nil {
 		t.Fatal("attr: element ", selector, " not found")
 	}
@@ -511,11 +642,15 @@ func TestAttrNot(t *testing.T, page *rod.Page, selector string, name string, val
 }
 
 func TestReport(t *testing.T, page *rod.Page, content string) {
+	t.Helper()
 	TestReportId(t, page, 0, content)
 }
 
 func GetContent(t *testing.T, page *rod.Page, selector string) string {
-	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
+	t.Helper()
+	p := page.Timeout(200 * time.Millisecond)
+	defer p.CancelTimeout()
+	el, err := p.Element(selector)
 	if err != nil {
 		t.Fatal("content: element ", selector, " not found")
 	}
@@ -527,11 +662,11 @@ func GetContent(t *testing.T, page *rod.Page, selector string) string {
 }
 
 func GetReportContent(t *testing.T, page *rod.Page, id int) string {
-	page = page.Timeout(200 * time.Millisecond)
-	selector := fmt.Sprintf("#report-%d", id)
-	return GetContent(t, page, selector)
+	t.Helper()
+	return GetContent(t, page, fmt.Sprintf("#report-%d", id))
 }
 func TestReportId(t *testing.T, page *rod.Page, id int, content string) {
+	t.Helper()
 	TestContent(t, page, fmt.Sprintf("#report-%d", id), content)
 }
 

@@ -203,7 +203,7 @@ func TestTabStatePreInitUpdate(t *testing.T) {
 	defer page.Close()
 	waitContent(t, page, "#value", "5")
 	time.Sleep(100 * time.Millisecond)
-	test.TestContent(t, page, "#value", "5")
+	test.TestContentNow(t, page, "#value", "5")
 	reload(t, page)
 	waitContent(t, page, "#value", "5")
 	reload(t, page)

@@ -169,7 +169,7 @@ func TestPlacementMoveLandsWithBatch(t *testing.T) {
 	test.ClickNow(t, page, "#pc-move")
 	waitEntered(t, g)
 	placementDone(t, l, "right", "nil")
-	test.ClickNow(t, page, "#pc-poke")
+	test.ClickBurst(t, page, "#pc-poke")
 	placementPending(t, l, "poke", "nil")
 	placementHeld(t, page, "#right", "right0")
 	placementPending(t, l, "poke", "nil")

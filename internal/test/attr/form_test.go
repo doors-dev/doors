@@ -61,8 +61,5 @@ func TestFormFile(t *testing.T) {
 	fileInput := page.MustElement("#file")
 	fileInput.MustSetFiles(file.Path)
 	test.Click(t, page, "#submit")
-	hash := test.GetReportContent(t, page, 0)
-	if hash != file.Hash {
-		t.Fatal("hash missmatch")
-	}
+	test.TestReportId(t, page, 0, file.Hash)
 }

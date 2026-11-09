@@ -32,7 +32,7 @@ func waitContent(t *testing.T, page *rod.Page, selector string, content string, 
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	test.TestContent(t, page, selector, content)
+	test.TestContentNow(t, page, selector, content)
 }
 
 func waitReportId(t *testing.T, page *rod.Page, id int, content string, timeout time.Duration) {
@@ -50,7 +50,7 @@ func waitAttr(t *testing.T, page *rod.Page, selector string, name string, value 
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	test.TestAttr(t, page, selector, name, value)
+	test.TestAttrNow(t, page, selector, name, value)
 }
 
 func waitAttrNo(t *testing.T, page *rod.Page, selector string, name string, timeout time.Duration) {

@@ -79,14 +79,14 @@ func TestDoorProxyWrapsLoopRoots(t *testing.T) {
 	test.TestMust(t, page, "d0-r > #proxy-loop-1")
 }
 
-func DoorUpdatedBefore(t *testing.T) {
+func TestDoorUpdatedBefore(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &BeforeFragment{}
 	})
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
-	test.TestMust(t, page, "#updated")
+	test.TestMustNow(t, page, "#updated")
 }
 
 func TestDoorRemovedBefore(t *testing.T) {
@@ -106,7 +106,7 @@ func TestDoorReplacedBefore(t *testing.T) {
 	page := bro.Page(t, "/")
 	defer bro.Close()
 	defer page.Close()
-	test.TestMust(t, page, "#initReplaced")
+	test.TestMustNow(t, page, "#initReplaced")
 
 	// test.TestMust(t, page, "body > #replaced")
 
@@ -168,7 +168,7 @@ func TestDoorUpdateX(t *testing.T) {
 	test.Click(t, page, "#updatex")
 	test.TestReport(t, page, "ok upd")
 	test.TestMustNot(t, page, "#init")
-	test.TestMust(t, page, "#updated")
+	test.TestMustNow(t, page, "#updated")
 	test.Click(t, page, "#removex")
 	test.TestReport(t, page, "ok del")
 	test.TestMustNot(t, page, "#updated")
@@ -188,12 +188,12 @@ func TestDoorXLifecycle(t *testing.T) {
 
 	test.Click(t, page, "#xreload")
 	test.TestReport(t, page, "ok reload")
-	test.TestMust(t, page, "#x-init")
+	test.TestMustNow(t, page, "#x-init")
 
 	test.Click(t, page, "#xrebase")
 	test.TestReport(t, page, "ok rebase")
-	test.TestMust(t, page, "#x-rebased-root")
-	test.TestMust(t, page, "#x-rebased")
+	test.TestMustNow(t, page, "#x-rebased-root")
+	test.TestMustNow(t, page, "#x-rebased")
 
 	test.Click(t, page, "#xclear")
 	test.TestReport(t, page, "ok clear")
@@ -201,7 +201,7 @@ func TestDoorXLifecycle(t *testing.T) {
 
 	test.Click(t, page, "#xupdate")
 	test.TestReport(t, page, "ok update")
-	test.TestMust(t, page, "#x-updated")
+	test.TestMustNow(t, page, "#x-updated")
 
 	test.Click(t, page, "#xunmount")
 	test.TestReport(t, page, "ok unmount")
@@ -212,7 +212,7 @@ func TestDoorXLifecycle(t *testing.T) {
 
 	test.Click(t, page, "#xreplace")
 	test.TestReport(t, page, "ok replace")
-	test.TestMust(t, page, "#x-replaced")
+	test.TestMustNow(t, page, "#x-replaced")
 }
 
 func TestDoorMultiple(t *testing.T) {
@@ -247,20 +247,20 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.TestMust(t, page, "#presist")
 	test.TestMustNot(t, page, "#new")
 	test.Click(t, page, "#reload")
-	test.TestMust(t, page, "#presist")
+	test.TestMustNow(t, page, "#presist")
 	test.Click(t, page, "#updateEmpty")
 	test.TestMustNot(t, page, "#presist")
 	test.TestMust(t, page, "#new")
 	test.Click(t, page, "#updateInner")
-	test.TestMust(t, page, "#new")
+	test.TestMustNow(t, page, "#new")
 	test.TestMust(t, page, "#inner-maintained")
 	test.Click(t, page, "#updateEditor")
-	test.TestMust(t, page, "#new")
-	test.TestMust(t, page, "#inner-maintained")
+	test.TestMustNow(t, page, "#new")
+	test.TestMustNow(t, page, "#inner-maintained")
 	test.Click(t, page, "#updateEmptyAlt")
 	test.TestMustNot(t, page, "#new")
 	test.TestMust(t, page, "#new-alt")
-	test.TestMust(t, page, "#inner-maintained")
+	test.TestMustNow(t, page, "#inner-maintained")
 	test.Click(t, page, "#updateContent")
 	test.TestMustNot(t, page, "#inner-maintained")
 	test.TestMustNot(t, page, "#new-alt")
@@ -271,21 +271,21 @@ func TestDoorLifeCycle(t *testing.T) {
 
 	test.Click(t, page, "#updateEditor")
 	test.TestMustNot(t, page, "#inner-maintained")
-	test.TestMust(t, page, "#presist2")
-	test.TestMust(t, page, "#new2")
+	test.TestMustNow(t, page, "#presist2")
+	test.TestMustNow(t, page, "#new2")
 
 	test.Click(t, page, "#clear")
 	test.TestMustNot(t, page, "#presist2")
-	test.TestMust(t, page, "#new2")
+	test.TestMustNow(t, page, "#new2")
 	test.Click(t, page, "#updateEditor")
 	test.TestMustNot(t, page, "#presist2")
-	test.TestMust(t, page, "#new2")
+	test.TestMustNow(t, page, "#new2")
 	test.Click(t, page, "#updateEditor")
 	test.TestMustNot(t, page, "#presist2")
-	test.TestMust(t, page, "#new2")
+	test.TestMustNow(t, page, "#new2")
 
 	test.Click(t, page, "#updateContent")
-	test.TestMust(t, page, "#new2")
+	test.TestMustNow(t, page, "#new2")
 	test.TestMust(t, page, "#presist2")
 
 	test.Click(t, page, "#remove")
@@ -315,15 +315,15 @@ func TestDoorLifeCycle(t *testing.T) {
 	test.TestMust(t, page, "#outer-presist")
 
 	test.Click(t, page, "#updateEditor")
-	test.TestMust(t, page, "#outer-root")
-	test.TestMust(t, page, "#outer-presist")
+	test.TestMustNow(t, page, "#outer-root")
+	test.TestMustNow(t, page, "#outer-presist")
 
 	test.Click(t, page, "#replaceStatic")
 	test.TestMustNot(t, page, "#outer-root")
 	test.TestMust(t, page, "#static-presist")
 
 	test.Click(t, page, "#updateEditor")
-	test.TestMust(t, page, "#static-presist")
+	test.TestMustNow(t, page, "#static-presist")
 
 	test.Click(t, page, "#updateContent")
 	test.TestMustNot(t, page, "#static-presist")
@@ -343,16 +343,16 @@ func TestDoorProxyReloadPreservesUpdatedContent(t *testing.T) {
 	test.TestMustNot(t, page, "#proxy-redraw-content")
 
 	test.Click(t, page, "#proxy-redraw-update")
-	test.TestMust(t, page, "#proxy-redraw-root")
+	test.TestMustNow(t, page, "#proxy-redraw-root")
 	test.TestMust(t, page, "#proxy-redraw-content")
 
 	test.Click(t, page, "#proxy-redraw-remount")
-	test.TestMust(t, page, "#proxy-redraw-root")
-	test.TestMust(t, page, "#proxy-redraw-content")
+	test.TestMustNow(t, page, "#proxy-redraw-root")
+	test.TestMustNow(t, page, "#proxy-redraw-content")
 
 	test.Click(t, page, "#proxy-redraw-reload")
-	test.TestMust(t, page, "#proxy-redraw-root")
-	test.TestMust(t, page, "#proxy-redraw-content")
+	test.TestMustNow(t, page, "#proxy-redraw-root")
+	test.TestMustNow(t, page, "#proxy-redraw-content")
 }
 
 func TestDoorReloadUsesClosestDynamicParent(t *testing.T) {
@@ -643,13 +643,12 @@ func TestDoorTrackedReloadUsesClosestDynamicParent(t *testing.T) {
 
 	test.Click(t, page, "#xreload-nearest")
 	test.TestReport(t, page, "ok xreload")
-	test.TestContent(t, page, "#x-outer-count", "outer-1")
 	test.TestContent(t, page, "#x-inner-count", "inner-2")
+	test.TestContent(t, page, "#x-outer-count", "outer-1")
 
 	test.Click(t, page, "#xreload-nearest")
-	test.TestReport(t, page, "ok xreload")
-	test.TestContent(t, page, "#x-outer-count", "outer-1")
 	test.TestContent(t, page, "#x-inner-count", "inner-3")
+	test.TestContent(t, page, "#x-outer-count", "outer-1")
 }
 
 func TestDoorTrackedReloadFromRootReturnsError(t *testing.T) {
@@ -676,7 +675,7 @@ func TestDoorDetachedReplaceTransitions(t *testing.T) {
 
 	test.Click(t, page, "#replace-detached")
 	test.TestReport(t, page, "ok replace")
-	test.TestMust(t, page, "#replace-detached")
+	test.TestMustNow(t, page, "div#replace-detached")
 
 	test.Click(t, page, "#reload-after-replace")
 	test.TestReport(t, page, "channel closed")
@@ -728,7 +727,7 @@ func TestDoorProxyMoveBetweenParents(t *testing.T) {
 
 	test.Click(t, page, "#rebase-proxy-move")
 	test.TestReport(t, page, "ok rebase")
-	test.TestMust(t, page, "#frame1 #proxy-moved-root")
+	test.TestMustNow(t, page, "#frame1 #proxy-moved-root")
 	test.TestMustNot(t, page, "#frame2 #proxy-moved-root")
 
 	test.Click(t, page, "#move-proxy")
@@ -756,7 +755,7 @@ func TestDoorHierarchyCascade(t *testing.T) {
 
 	test.Click(t, page, "#grand-update")
 	test.TestReport(t, page, "ok grand")
-	test.TestMust(t, page, "#host2 #grand-updated")
+	test.TestMustNow(t, page, "#host2 #grand-updated")
 
 	test.Click(t, page, "#remove-host2")
 	test.TestMustNot(t, page, "#host2")

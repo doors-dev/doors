@@ -87,14 +87,12 @@ func TestScopeBlocking(t *testing.T) {
 	test.ClickNow(t, page, "#b2")
 	test.ClickNow(t, page, "#b3")
 	<-time.After(400 * time.Millisecond)
-	test.TestReportId(t, page, 0, "1")
-	if got := test.GetReportContent(t, page, 1); got == "0" {
-		t.Fatal("blocking scope should allow exactly one of the overlapping actions to finish")
-	}
+	waitSnapshot(t, page, 5*time.Second, func(s reportSnapshot) bool {
+		return s.count == 1 && s.marker != "0"
+	}, "blocking scope should allow exactly one of the overlapping actions to finish")
 	test.ClickNow(t, page, "#b3")
 	<-time.After(400 * time.Millisecond)
-	test.TestReportId(t, page, 0, "2")
-	test.TestReportId(t, page, 1, "3")
+	waitSnapshotExact(t, page, 5*time.Second, 2, "3", "blocking scope should run the later action after the first finished")
 }
 
 func TestScopeSerial(t *testing.T) {
@@ -239,7 +237,7 @@ func TestScopeConcurrent(t *testing.T) {
 	test.ClickNow(t, page, "#c3")
 	<-time.After(400 * time.Millisecond)
 
-	test.TestReportId(t, page, 0, "2")
+	test.TestContentNow(t, page, "#report-0", "2")
 	if got := test.GetReportContent(t, page, 1); got == "3" {
 		t.Fatal("concurrent scope should block the different group while group 1 is active")
 	}

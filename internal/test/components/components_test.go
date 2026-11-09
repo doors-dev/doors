@@ -88,7 +88,7 @@ func TestActionHelpers(t *testing.T) {
 	test.TestAttrNo(t, page, "#action-target", "data-indicated")
 	test.ClickNow(t, page, "#action-indicate")
 	<-time.After(50 * time.Millisecond)
-	test.TestAttr(t, page, "#action-target", "data-indicated", "true")
+	test.TestAttrNow(t, page, "#action-target", "data-indicated", "true")
 	<-time.After(250 * time.Millisecond)
 	test.TestAttrNo(t, page, "#action-target", "data-indicated")
 

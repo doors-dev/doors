@@ -138,7 +138,7 @@ func TestEqualSubAndGo(t *testing.T) {
 
 	test.Click(t, page, "#same")
 	test.TestReportId(t, page, 0, "0")
-	test.TestContent(t, page, "#parity", "even")
+	test.TestContentNow(t, page, "#parity", "even")
 
 	test.Click(t, page, "#one")
 	test.TestReportId(t, page, 0, "1")
@@ -146,7 +146,7 @@ func TestEqualSubAndGo(t *testing.T) {
 
 	test.Click(t, page, "#three")
 	test.TestReportId(t, page, 0, "3")
-	test.TestContent(t, page, "#parity", "odd")
+	test.TestContentNow(t, page, "#parity", "odd")
 
 	test.Click(t, page, "#get")
 	test.TestReportId(t, page, 1, "3")
@@ -405,12 +405,12 @@ func TestLensRoundTripPropagation(t *testing.T) {
 
 	test.Click(t, page, "#lens-xupdate")
 	test.TestReportId(t, page, 1, "x-ok")
-	test.TestContent(t, page, "#lens-source", "9:lens:8")
-	test.TestContent(t, page, "#lens-int", "9:7")
+	test.TestContentNow(t, page, "#lens-source", "9:lens:8")
+	test.TestContentNow(t, page, "#lens-int", "9:7")
 	test.TestContent(t, page, "#lens-str", "lens:3")
-	test.TestContent(t, page, "#lens-even", "false:7")
-	test.TestContent(t, page, "#lens-label", "label:9:7")
-	test.TestContent(t, page, "#lens-parity", "odd:7")
+	test.TestContentNow(t, page, "#lens-even", "false:7")
+	test.TestContentNow(t, page, "#lens-label", "label:9:7")
+	test.TestContentNow(t, page, "#lens-parity", "odd:7")
 }
 
 func TestRouteSourceAndBeamState(t *testing.T) {

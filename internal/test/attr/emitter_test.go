@@ -139,7 +139,7 @@ func TestEmitterShared(t *testing.T) {
 
 	test.Click(t, page, "#set")
 	waitReport(t, page, 6, "1")
-	test.TestAttr(t, page, "#s1", "data-test", "x")
+	test.TestAttrNow(t, page, "#s1", "data-test", "x")
 	test.TestAttrNo(t, page, "#s2", "data-test")
 }
 

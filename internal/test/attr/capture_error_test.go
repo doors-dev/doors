@@ -53,7 +53,7 @@ func TestCaptureError(t *testing.T) {
 	test.TestContent(t, page, "#indicator", "indicator")
 	test.TestAttr(t, page, "#indicator", "data-indicator", "true")
 	<-time.After(500 * time.Millisecond)
-	test.TestContent(t, page, "#indicator", "init")
+	test.TestContentNow(t, page, "#indicator", "init")
 	test.TestAttrNo(t, page, "#indicator", "data-indicator")
 
 	// n2 scope: error routed to n1 expectation

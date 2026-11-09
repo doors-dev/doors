@@ -159,6 +159,24 @@ func waitContent(t *testing.T, page *rod.Page, selector string, content string) 
 	test.TestContent(t, page, selector, content)
 }
 
+func waitChanged(t *testing.T, page *rod.Page, selector string, prev string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		p := page.Timeout(200 * time.Millisecond)
+		el, err := p.Element(selector)
+		if err == nil {
+			if text, err := el.Text(); err == nil && text != prev {
+				p.CancelTimeout()
+				return
+			}
+		}
+		p.CancelTimeout()
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("%s did not change from %q", selector, prev)
+}
+
 func hasClass(page *rod.Page, selector string, className string) bool {
 	el, err := page.Timeout(200 * time.Millisecond).Element(selector)
 	if err != nil {
@@ -233,10 +251,7 @@ func TestRouterBeamModelTransitionsAndDefault404(t *testing.T) {
 	testPath(t, page, "cross-b")
 	test.TestContent(t, page, "#route-model", "true")
 
-	nextInstance := test.GetContent(t, page, "#instance-id")
-	if nextInstance != initialInstance {
-		t.Fatalf("expected RouterBeam ALink route switch to keep instance, got %q then %q", initialInstance, nextInstance)
-	}
+	test.TestContent(t, page, "#instance-id", initialInstance)
 
 	test.Click(t, page, "#beam-cross-prev")
 	waitContent(t, page, "#route-name", "cross-a")
@@ -263,10 +278,7 @@ func TestRouterSourceCrossRouteKeepsInstance(t *testing.T) {
 	waitContent(t, page, "#page-name", "cross-b")
 	testPath(t, page, "cross-b")
 
-	nextInstance := test.GetContent(t, page, "#instance-id")
-	if nextInstance != initialInstance {
-		t.Fatalf("expected RouterSource ALink route switch to keep instance, got %q then %q", initialInstance, nextInstance)
-	}
+	test.TestContent(t, page, "#instance-id", initialInstance)
 
 	page.NavigateBack()
 	<-time.After(100 * time.Millisecond)
@@ -414,10 +426,7 @@ func TestLocations(t *testing.T) {
 	test.Click(t, page, "#assign")
 	marker := test.GetContent(t, page, "#marker")
 	test.Click(t, page, "#reload")
-	marker2 := test.GetContent(t, page, "#marker")
-	if marker == marker2 {
-		t.Fatalf("reload did not work")
-	}
+	waitChanged(t, page, "#marker", marker)
 	page.NavigateBack()
 	<-time.After(100 * time.Millisecond)
 	testPath(t, page, "a")
@@ -442,10 +451,7 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 	waitContent(t, page, "#tag", "next")
 	waitContent(t, page, "#page-value", "2")
 
-	nextInstance := test.GetContent(t, page, "#instance-id")
-	if nextInstance != initialInstance {
-		t.Fatalf("expected same instance after location navigation, got %q then %q", initialInstance, nextInstance)
-	}
+	test.TestContent(t, page, "#instance-id", initialInstance)
 
 	page.NavigateBack()
 	waitNoQueryValue(t, page, "tag")
@@ -453,10 +459,7 @@ func TestBrowserBackRestoresQueryWithoutReload(t *testing.T) {
 	waitContent(t, page, "#tag", "")
 	waitContent(t, page, "#page-value", "")
 
-	restoredInstance := test.GetContent(t, page, "#instance-id")
-	if restoredInstance != initialInstance {
-		t.Fatalf("expected browser back restore to keep same instance, got %q then %q", initialInstance, restoredInstance)
-	}
+	test.TestContent(t, page, "#instance-id", initialInstance)
 }
 
 func TestBrowserBackRestoresQueryWithDrainReload(t *testing.T) {
@@ -506,10 +509,7 @@ func TestBrowserBackRestoresQueryWithDrainNatural(t *testing.T) {
 	waitContent(t, page, "#tag", "next")
 	waitContent(t, page, "#page-value", "2")
 
-	nextInstance := test.GetContent(t, page, "#instance-id")
-	if nextInstance != initialInstance {
-		t.Fatalf("expected natural drain navigation to keep same instance, got %q then %q", initialInstance, nextInstance)
-	}
+	test.TestContent(t, page, "#instance-id", initialInstance)
 
 	page.NavigateBack()
 	waitNoQueryValue(t, page, "tag")
@@ -517,10 +517,7 @@ func TestBrowserBackRestoresQueryWithDrainNatural(t *testing.T) {
 	waitContent(t, page, "#tag", "")
 	waitContent(t, page, "#page-value", "")
 
-	restoredInstance := test.GetContent(t, page, "#instance-id")
-	if restoredInstance != initialInstance {
-		t.Fatalf("expected natural drain browser back to keep same instance, got %q then %q", initialInstance, restoredInstance)
-	}
+	test.TestContent(t, page, "#instance-id", initialInstance)
 }
 
 func TestPageLoadTimeout(t *testing.T) {
@@ -677,10 +674,7 @@ func TestActiveLinkMatchersByClick(t *testing.T) {
 	waitClassNot(t, page, "#active-only-ignore-some", "active")
 	waitClassNot(t, page, "#active-only-if-present", "active")
 
-	finalInstance := test.GetContent(t, page, "#instance-id")
-	if finalInstance != initialInstance {
-		t.Fatalf("expected same instance for location navigation, got %q then %q", initialInstance, finalInstance)
-	}
+	test.TestContent(t, page, "#instance-id", initialInstance)
 }
 
 func TestPathModelEscapedSegmentDecodeAndEncode(t *testing.T) {
@@ -753,10 +747,7 @@ func TestAfterReload(t *testing.T) {
 	test.Click(t, page, "#assign")
 	marker := test.GetContent(t, page, "#marker")
 	test.Click(t, page, "#reload_after")
-	marker2 := test.GetContent(t, page, "#marker")
-	if marker == marker2 {
-		t.Fatalf("reload did not work")
-	}
+	waitChanged(t, page, "#marker", marker)
 	page.NavigateBack()
 	<-time.After(100 * time.Millisecond)
 	testPath(t, page, "a")

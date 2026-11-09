@@ -76,18 +76,12 @@ func TestInstanceLifecycle(t *testing.T) {
 	test.ClickNow(t, page, "#end-instance")
 	newInstanceMarker := waitForContentChange(t, page, "#instance-marker", instanceMarker)
 
-	newSessionID := test.GetContent(t, page, "#session-id")
+	test.TestContent(t, page, "#session-id", sessionID)
 	newInstanceID := test.GetContent(t, page, "#instance-id")
-	newSessionMarker := test.GetContent(t, page, "#session-marker")
+	test.TestContent(t, page, "#session-marker", sessionMarker)
 
-	if newSessionID != sessionID {
-		t.Fatal("expected session id to stay stable after instance end")
-	}
 	if newInstanceID == instanceID {
 		t.Fatal("expected instance id to change after instance end")
-	}
-	if newSessionMarker != sessionMarker {
-		t.Fatal("expected session marker to stay stable after instance end")
 	}
 	if newInstanceMarker == instanceMarker {
 		t.Fatal("expected instance marker to change after instance end")
