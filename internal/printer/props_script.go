@@ -15,54 +15,40 @@
 package printer
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/front"
-	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
 )
 
 func newScriptProps(rel bool) props {
-	return &scriptProps{
-		resourceProps: resourceProps{
-			mode: resources.ResourceMode(-1),
-		},
-		module: rel,
-		rel:    rel,
-		output: scriptDefault,
-	}
+	s := &scriptProps{rel: rel}
+	s.target = &s.res
+	s.SetModule(rel)
+	return s
 }
 
 type scriptProps struct {
-	output    scriptOutput
-	module    bool
+	Script
+	tagAttrs
 	rel       bool
-	profile   string
 	specifier string
-	ts        bool
-	resourceProps
+	data      []gox.Attr
 }
 
 func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 	s.cleanAttrs()
-	if s.portable {
-		s.setDefaultMode(resources.ModeNoHost)
-	}
-	s.setDefaultMode(resources.ModeHost)
-	if s.sourceKind == sourceUnset && s.output == scriptRaw {
+	if s.srcKind == sourceUnset && s.output == scriptRaw {
 		return p.printer.Send(job)
 	}
-	if s.sourceKind == sourceUnset && s.output == scriptInline {
+	if s.srcKind == sourceUnset && s.output == scriptInline {
 		p.resource = &embeddedResource{
 			openJob: job,
-			kind:    embeddedScript,
-			props:   &s.resourceProps,
+			body:    &s.Script,
 		}
 		return nil
 	}
@@ -82,34 +68,11 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 			c.Instance().CSPCollector().ScriptSource(string(src))
 		}
 		return p.printer.Send(job)
-	case SourceStatic:
-		entry := src.scriptEntry(s.output == scriptInline, s.ts)
-		format, err := s.output.format(s.module)
-		if err != nil {
-			return err
-		}
-		res, err := c.App().ResourceRegistry().Script(entry, format, s.profile, s.mode)
-		if err != nil {
-			return err
-		}
-		path, err := s.resourceURL(c, res)
-		if err != nil {
-			return err
-		}
-		if document && s.specifier != "" {
-			c.Instance().ModuleRegistry().Add(s.specifier, path)
-		}
-		s.sourceAttr.Set(path)
-		return p.printer.Send(job)
 	case SourceHandler:
-		handler := src.Handler()
-		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-			return handler(ctx, w, r)
-		}, core.RaceParallel, false, s.portable)
-		if !ok {
-			return context.Canceled
+		path, err := s.Resolve(c)
+		if err != nil {
+			return err
 		}
-		path := s.hookURL(c, hook)
 		if document && s.specifier != "" {
 			c.Instance().ModuleRegistry().Add(s.specifier, path)
 		}
@@ -119,7 +82,7 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		common.Logger(job.Ctx).Error(
 			"internal error: unknown script source kind should have been filtered earlier",
 			"source_kind",
-			s.sourceKind,
+			s.srcKind,
 			"source_type",
 			fmt.Sprintf("%T", s.source),
 		)
@@ -132,28 +95,14 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 }
 
 func (s *scriptProps) Validate() error {
-	if err := s.resourceProps.Validate(); err != nil {
+	if err := s.Script.Validate(); err != nil {
 		return err
 	}
 	switch true {
-	case s.sourceKind == sourceUnset && s.output == scriptBundle:
-		return errors.New("inline scripts cannot be bundled; provide src")
 	case s.specifier != "" && !s.module:
 		return errors.New("specifier is only supported on modules")
-	case s.sourceKind == sourceUnset && s.ts:
-		return errors.New("embedded scripts do not support TypeScript")
-	case s.output == scriptInline && s.module:
-		return errors.New("inline scripts do not support modules")
-	case s.sourceKind == sourceUnset && s.output == scriptInline && s.ts:
-		return errors.New("embedded scripts cannot be compiled from TypeScript")
 	case s.rel && s.output == scriptInline:
 		return errors.New("modulepreload links do not support inline output")
-	case s.output == scriptRaw && s.ts:
-		return errors.New("raw output does not support TypeScript sources")
-	case s.sourceKind == sourceLink && s.output != scriptRaw:
-		return errors.New("direct URL scripts only support raw output")
-	case s.sourceKind == sourceHandler && s.output != scriptRaw:
-		return errors.New("handler-backed scripts only support raw output")
 	}
 	return nil
 }
@@ -180,10 +129,10 @@ func (s *scriptProps) Read(attrs gox.Attrs) (bool, error) {
 		if !s.rel && s.readSrc(attr) {
 			continue
 		}
-		if s.readString(attr, "profile", &s.profile) {
+		if s.readString(attr, "profile", s.SetProfile) {
 			continue
 		}
-		if s.readString(attr, "specifier", &s.specifier) {
+		if s.readString(attr, "specifier", func(v string) { s.specifier = v }) {
 			continue
 		}
 		if s.readName(attr) {
@@ -196,34 +145,25 @@ func (s *scriptProps) Read(attrs gox.Attrs) (bool, error) {
 		if match {
 			continue
 		}
-		if !s.rel {
-			if err := s.readData(attrs, attr); err != nil {
-				return false, err
-			}
+		if !s.rel && strings.HasPrefix(attr.Name(), "data:") {
+			s.data = append(s.data, attr)
 		}
 	}
-	if s.sourceKind == sourceUnknown {
+	if s.srcKind == sourceUnknown {
 		return false, nil
 	}
-	if s.sourceKind == sourceUnset && s.rel {
+	if s.srcKind == sourceUnset && s.rel {
 		return false, nil
 	}
-	if s.sourceKind == sourceUnset && s.output == scriptDefault {
-		s.output = scriptInline
-	}
-	if s.sourceKind == sourceHandler && s.output == scriptDefault {
-		s.output = scriptRaw
-	}
-	if s.sourceKind == sourceLink && s.output == scriptDefault {
-		s.output = scriptRaw
-	}
-	if s.name == "" {
-		s.name = "script.js"
+	for _, attr := range s.data {
+		if err := s.readData(attrs, attr); err != nil {
+			return true, err
+		}
 	}
 	return true, nil
 }
 
-func (r *scriptProps) readOutput(attr gox.Attr) (bool, error) {
+func (s *scriptProps) readOutput(attr gox.Attr) (bool, error) {
 	output := scriptDefault
 	switch true {
 	case attr.Name() == scriptBundle.String() && isTrue(attr):
@@ -236,11 +176,10 @@ func (r *scriptProps) readOutput(attr gox.Attr) (bool, error) {
 	if output == scriptDefault {
 		return false, nil
 	}
-	if r.output != scriptDefault {
-		return true, errors.New("only one of raw, inline, or bundle may be set")
+	if err := s.SetOutput(output); err != nil {
+		return true, err
 	}
-	r.output = output
-	r.reg(attr)
+	s.reg(attr)
 	return true, nil
 }
 
@@ -258,32 +197,32 @@ func (s *scriptProps) readType(attr gox.Attr) (bool, bool) {
 	switch true {
 	case typ == "", strings.EqualFold(typ, "text/javascript"), strings.EqualFold(typ, "application/javascript"), strings.EqualFold(typ, "javascript"):
 		s.reg(attr)
-		s.module = false
+		s.SetModule(false)
 	case strings.EqualFold(typ, "module"):
 		if s.rel {
 			s.reg(attr)
 		}
-		s.module = true
+		s.SetModule(true)
 	case strings.EqualFold(typ, "module/javascript"):
 		if s.rel {
 			s.reg(attr)
 		} else {
 			attr.Set("module")
 		}
-		s.module = true
+		s.SetModule(true)
 	case strings.EqualFold(typ, "text/typescript"), strings.EqualFold(typ, "application/typescript"),
 		strings.EqualFold(typ, "typescript"):
 		s.reg(attr)
-		s.module = false
-		s.ts = true
+		s.SetModule(false)
+		s.SetTS(true)
 	case strings.EqualFold(typ, "module/typescript"):
 		if s.rel {
 			s.reg(attr)
 		} else {
 			attr.Set("module")
 		}
-		s.module = true
-		s.ts = true
+		s.SetModule(true)
+		s.SetTS(true)
 	default:
 		return true, false
 	}
@@ -291,10 +230,7 @@ func (s *scriptProps) readType(attr gox.Attr) (bool, bool) {
 }
 
 func (s *scriptProps) readData(attrs gox.Attrs, attr gox.Attr) error {
-	name, ok := strings.CutPrefix(attr.Name(), "data:")
-	if !ok {
-		return nil
-	}
+	name := strings.TrimPrefix(attr.Name(), "data:")
 	value := attr.Value()
 	s.reg(attr)
 	return front.AttrsSetData(attrs, name, value)
@@ -309,41 +245,4 @@ func isTrue(a gox.Attr) bool {
 		return false
 	}
 	return b
-}
-
-type scriptOutput string
-
-const (
-	scriptRaw     scriptOutput = "raw"
-	scriptInline  scriptOutput = "inline"
-	scriptDefault scriptOutput = "default"
-	scriptBundle  scriptOutput = "bundle"
-)
-
-func (o scriptOutput) String() string {
-	return string(o)
-}
-
-func (o scriptOutput) format(module bool) (resources.ScriptFormat, error) {
-	switch o {
-	case scriptRaw:
-		return resources.FormatRaw{}, nil
-	case scriptDefault:
-		if module {
-			return resources.FormatModule{}, nil
-		}
-		return resources.FormatCommon{}, nil
-	case scriptBundle:
-		if module {
-			return resources.FormatModule{Bundle: true}, nil
-		}
-		return resources.FormatCommon{Bundle: true}, nil
-	case scriptInline:
-		if module {
-			return nil, errors.New("inline output does not support modules")
-		}
-		return resources.FormatCommon{}, nil
-	default:
-		panic("internal error: unknown script output")
-	}
 }

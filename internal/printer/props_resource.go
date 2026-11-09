@@ -15,10 +15,6 @@
 package printer
 
 import (
-	"context"
-	"errors"
-	"net/http"
-
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/resources"
@@ -32,30 +28,20 @@ type props interface {
 }
 
 func newResourceProps() props {
-	return &resourceProps{
-		mode: resources.ResourceMode(-1),
-	}
+	r := &resourceProps{}
+	r.target = &r.res
+	return r
 }
 
-type sourceKind int
-
-const (
-	sourceUnset sourceKind = iota
-	sourceLink
-	sourceHandler
-	sourceStatic
-	sourceUnknown
-)
+type tagAttrs struct {
+	target       *res
+	attrsToClean []gox.Attr
+	sourceAttr   gox.Attr
+}
 
 type resourceProps struct {
-	mode         resources.ResourceMode
-	attrsToClean []gox.Attr
-	source       any
-	sourceAttr   gox.Attr
-	sourceKind   sourceKind
-	name         string
-	contentType  string
-	portable     bool
+	Asset
+	tagAttrs
 }
 
 func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
@@ -67,13 +53,13 @@ func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
 		}
 	}
 	r.readSource(attr)
-	if r.sourceKind == sourceUnset {
+	if r.srcKind == sourceUnset {
 		panic("internal error: source kind is unset after reading a resource source")
 	}
-	if r.sourceKind == sourceUnknown {
+	if r.srcKind == sourceUnknown {
 		return false, nil
 	}
-	if r.sourceKind == sourceLink {
+	if r.srcKind == sourceLink {
 		return false, nil
 	}
 	for _, attr := range attrs.List() {
@@ -88,139 +74,44 @@ func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
 			continue
 		}
 		if attr.Name() == "type" && attr.IsSet() {
-			r.contentType, _ = attr.Value().(string)
+			contentType, _ := attr.Value().(string)
+			r.SetContentType(contentType)
 		}
-	}
-	if r.mode == resources.ModeNoHost && r.sourceKind == sourceStatic {
-		r.mode = resources.ModeNoCache
 	}
 	return true, nil
 }
 
-func (r *resourceProps) Validate() error {
-	switch true {
-	case r.sourceKind == sourceLink && (isModeSet(r.mode) || r.portable):
-		return errors.New("direct URL sources do not support cache, private, nocache, or portable")
-	case r.sourceKind == sourceHandler && (r.mode == resources.ModeHost || r.mode == resources.ModeNoCache):
-		return errors.New("handler-backed sources do not support cache or nocache")
-	case r.portable && r.mode == resources.ModeHost:
-		return errors.New("portable cannot be combined with cache")
-	case r.sourceKind == sourceHandler && r.contentType != "":
-		return errors.New("handler-backed sources do not support the type attribute")
-	}
-	return nil
-}
-
 func (r *resourceProps) Submit(openJob *gox.JobOpen, p *resourcePrinter) error {
 	r.cleanAttrs()
-	r.setDefaultMode(resources.ModeNoCache)
-	sourceHandler := r.source.(SourceHandler)
-	sourceStatic, isStatic := r.source.(SourceStatic)
 	c := openJob.Context().Value(common.KeyCore).(core.Core)
-	if r.mode == resources.ModeNoCache || !isStatic {
-		handler := sourceHandler.Handler()
-		contentType := r.contentType
-		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-			if contentType != "" {
-				w.Header().Set("Content-Type", contentType)
-			}
-			return handler(ctx, w, r)
-		}, core.RaceParallel, false, r.portable)
-		if !ok {
-			return context.Canceled
-		}
-		r.sourceAttr.Set(r.hookURL(c, hook))
-		return p.printer.Send(openJob)
-	}
-	res, err := c.App().ResourceRegistry().Static(sourceStatic.StaticEntry(), r.contentType)
+	url, err := r.Resolve(c)
 	if err != nil {
 		return err
 	}
-	path := c.App().PathMaker().Resource(res, r.name)
-	r.sourceAttr.Set(path)
+	r.sourceAttr.Set(url)
 	return p.printer.Send(openJob)
 }
 
-func (r *resourceProps) setDefaultMode(defaultMode resources.ResourceMode) {
-	if isModeSet(r.mode) {
-		return
-	}
-	r.mode = defaultMode
+func (t *tagAttrs) reg(a gox.Attr) {
+	t.attrsToClean = append(t.attrsToClean, a)
 }
 
-func (r *resourceProps) reg(a gox.Attr) {
-	r.attrsToClean = append(r.attrsToClean, a)
-}
-
-func (r *resourceProps) cleanAttrs() {
-	for _, attr := range r.attrsToClean {
+func (t *tagAttrs) cleanAttrs() {
+	for _, attr := range t.attrsToClean {
 		attr.Unset()
 	}
-	r.attrsToClean = nil
+	t.attrsToClean = nil
 }
 
-func (r *resourceProps) readSource(attr gox.Attr) {
+func (t *tagAttrs) readSource(attr gox.Attr) {
 	if !attr.IsSet() {
 		return
 	}
-	r.sourceAttr = attr
-	switch value := attr.Value().(type) {
-	case HandlerFunc:
-		r.source = SourceHook(value)
-		r.sourceKind = sourceHandler
-	case HandlerSimpleFunc:
-		r.source = SourceHook(func(_ context.Context, w http.ResponseWriter, r *http.Request) bool {
-			value(w, r)
-			return false
-		})
-		r.sourceKind = sourceHandler
-	case string:
-		r.source = value
-		r.sourceKind = sourceLink
-	case SourceExternal:
-		r.source = value
-		r.sourceKind = sourceLink
-	case []byte:
-		r.source = SourceBytes(value)
-		r.sourceKind = sourceStatic
-	case SourceStatic:
-		r.source = value
-		r.sourceKind = sourceStatic
-	case SourceHandler:
-		r.source = value
-		r.sourceKind = sourceHandler
-	default:
-		r.sourceKind = sourceUnknown
-	}
+	t.sourceAttr = attr
+	t.target.SetSource(attr.Value())
 }
 
-func (r *resourceProps) resourceURL(c core.Core, res *resources.Resource) (string, error) {
-	mode := r.mode
-	switch mode {
-	case resources.ModeHost:
-		return c.App().PathMaker().Resource(res, r.name), nil
-	case resources.ModeNoHost, resources.ModeNoCache:
-		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-			res.Serve(w, r)
-			return false
-		}, core.RaceParallel, false, r.portable)
-		if !ok {
-			return "", context.Canceled
-		}
-		return r.hookURL(c, hook), nil
-	default:
-		panic("internal error: unexpected resource mode")
-	}
-}
-
-func (r *resourceProps) hookURL(c core.Core, hook core.Hook) string {
-	if hook.Portable != "" {
-		return c.App().PathMaker().Portable(hook.Portable, r.name)
-	}
-	return c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, r.name)
-}
-
-func (r *resourceProps) readString(attr gox.Attr, name string, target *string) bool {
+func (t *tagAttrs) readString(attr gox.Attr, name string, set func(string)) bool {
 	if attr.Name() != name {
 		return false
 	}
@@ -228,37 +119,38 @@ func (r *resourceProps) readString(attr gox.Attr, name string, target *string) b
 	if !ok {
 		return true
 	}
-	*target = value
-	r.reg(attr)
+	set(value)
+	t.reg(attr)
 	return true
 }
 
-func (r *resourceProps) readSrc(attr gox.Attr) bool {
+func (t *tagAttrs) readSrc(attr gox.Attr) bool {
 	if attr.Name() != "src" {
 		return false
 	}
-	r.readSource(attr)
+	t.readSource(attr)
 	return true
 }
-func (r *resourceProps) readHref(attr gox.Attr) bool {
+
+func (t *tagAttrs) readHref(attr gox.Attr) bool {
 	if attr.Name() != "href" {
 		return false
 	}
-	r.readSource(attr)
+	t.readSource(attr)
 	return true
 }
 
-func (r *resourceProps) readName(attr gox.Attr) bool {
-	return r.readString(attr, "name", &r.name)
+func (t *tagAttrs) readName(attr gox.Attr) bool {
+	return t.readString(attr, "name", t.target.SetName)
 }
 
-func (r *resourceProps) readMode(attr gox.Attr) (bool, error) {
+func (t *tagAttrs) readMode(attr gox.Attr) (bool, error) {
 	if attr.Name() == "portable" && isTrue(attr) {
-		r.portable = true
-		r.reg(attr)
+		t.target.SetPortable(true)
+		t.reg(attr)
 		return true, nil
 	}
-	mode := resources.ResourceMode(-1)
+	var mode resources.ResourceMode
 	switch true {
 	case attr.Name() == "private" && isTrue(attr):
 		mode = resources.ModeNoHost
@@ -266,18 +158,12 @@ func (r *resourceProps) readMode(attr gox.Attr) (bool, error) {
 		mode = resources.ModeNoCache
 	case attr.Name() == "cache" && isTrue(attr):
 		mode = resources.ModeHost
-	}
-	if !isModeSet(mode) {
+	default:
 		return false, nil
 	}
-	if isModeSet(r.mode) {
-		return true, errors.New("only one of cache, private, or nocache may be set")
+	if err := t.target.SetMode(mode); err != nil {
+		return true, err
 	}
-	r.mode = mode
-	r.reg(attr)
+	t.reg(attr)
 	return true, nil
-}
-
-func isModeSet(mode resources.ResourceMode) bool {
-	return int(mode) != -1
 }

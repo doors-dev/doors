@@ -23,7 +23,6 @@ import (
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
 )
 
@@ -173,17 +172,17 @@ func (p *resourcePrinter) processRes(job gox.Job, res *embeddedResource) error {
 	}
 	r, ok := job.(*gox.JobRaw)
 	if ok {
-		res.appendString(r.Text)
+		res.body.appendString(r.Text)
 		gox.Release(r)
 		return nil
 	}
 	b, ok := job.(*gox.JobBytes)
 	if ok {
-		res.appendBytes(b.Bytes)
+		res.body.appendBytes(b.Bytes)
 		gox.Release(b)
 		return nil
 	}
-	return errors.New("embedded <script> and <style> may contain only text or byte jobs")
+	return errors.New("embedded <script> and <style> may contain only raw text or byte jobs")
 }
 
 type title struct {
@@ -191,152 +190,41 @@ type title struct {
 	buf     bytes.Buffer
 }
 
-type embeddedKind int
-
-const (
-	embeddedScript embeddedKind = iota
-	embeddedStyle
-)
+type embeddedBody interface {
+	appendString(string)
+	appendBytes([]byte)
+	empty() bool
+	Resolve(core.Core) (string, error)
+}
 
 type embeddedResource struct {
 	openJob  *gox.JobOpen
 	closeJob *gox.JobClose
-	kind     embeddedKind
-	content  []any
-	props    *resourceProps
-}
-
-func (r *embeddedResource) appendString(s string) {
-	r.content = append(r.content, s)
-}
-
-func (r *embeddedResource) appendBytes(b []byte) {
-	r.content = append(r.content, b)
+	body     embeddedBody
 }
 
 func (r *embeddedResource) render(p gox.Printer) error {
+	if r.body.empty() {
+		return r.dump(p)
+	}
 	core := r.openJob.Context().Value(common.KeyCore).(core.Core)
-	if r.props.name == "" {
-		r.props.name = "inline"
+	src, err := r.body.Resolve(core)
+	if err != nil {
+		return err
 	}
-	switch r.kind {
-	case embeddedScript:
-		r.props.name = resourceFileName(r.props.name, "js")
-		return r.renderScript(core, p)
-	case embeddedStyle:
-		r.props.name = resourceFileName(r.props.name, "css")
-		return r.renderStyle(core, p)
+	switch r.body.(type) {
+	case *Script:
+		r.openJob.Attrs.Get("src").Set(src)
+		return r.dump(p)
+	case *Style:
+		r.openJob.Kind = gox.KindVoid
+		r.openJob.Tag = "link"
+		r.openJob.Attrs.Get("rel").Set("stylesheet")
+		r.openJob.Attrs.Get("href").Set(src)
+		gox.Release(r.closeJob)
+		return p.Send(r.openJob)
 	default:
-		panic("internal error: unknown embedded resource kind")
-	}
-}
-
-func (r *embeddedResource) renderScript(core core.Core, p gox.Printer) error {
-	entry := r.scriptEntry()
-	if entry == nil {
-		return r.dump(p)
-	}
-	res, err := core.App().ResourceRegistry().Script(entry, resources.FormatDefault{}, "", r.props.mode)
-	if err != nil {
-		return err
-	}
-	src, err := r.props.resourceURL(core, res)
-	if err != nil {
-		return err
-	}
-	r.openJob.Attrs.Get("src").Set(src)
-	return r.dump(p)
-}
-
-func (r *embeddedResource) renderStyle(core core.Core, p gox.Printer) error {
-	entry := r.styleEntry()
-	if entry == nil {
-		return r.dump(p)
-	}
-	res, err := core.App().ResourceRegistry().Style(entry, true, r.props.mode)
-	if err != nil {
-		return err
-	}
-	src, err := r.props.resourceURL(core, res)
-	if err != nil {
-		return err
-	}
-	r.openJob.Kind = gox.KindVoid
-	r.openJob.Tag = "link"
-	r.openJob.Attrs.Get("rel").Set("stylesheet")
-	r.openJob.Attrs.Get("href").Set(src)
-	gox.Release(r.closeJob)
-	return p.Send(r.openJob)
-}
-
-func (r *embeddedResource) scriptEntry() resources.ScriptEntry {
-	if len(r.content) == 0 {
-		return nil
-	}
-	if len(r.content) == 1 {
-		switch c := r.content[0].(type) {
-		case string:
-			return resources.ScriptInlineString{
-				Content: c,
-				Kind:    resources.KindJS,
-			}
-		case []byte:
-			return resources.ScriptInlineBytes{
-				Content: c,
-				Kind:    resources.KindJS,
-			}
-		default:
-			panic("internal error: unexpected embedded content type")
-		}
-	}
-	buf := strings.Builder{}
-	for _, c := range r.content {
-		switch c := c.(type) {
-		case string:
-			buf.WriteString(c)
-		case []byte:
-			buf.Write(c)
-		default:
-			panic("internal error: unexpected embedded content type")
-		}
-	}
-	return resources.ScriptInlineString{
-		Content: buf.String(),
-		Kind:    resources.KindJS,
-	}
-}
-
-func (r *embeddedResource) styleEntry() resources.StyleEntry {
-	if len(r.content) == 0 {
-		return nil
-	}
-	if len(r.content) == 1 {
-		switch c := r.content[0].(type) {
-		case string:
-			return resources.StyleString{
-				Content: c,
-			}
-		case []byte:
-			return resources.StyleBytes{
-				Content: c,
-			}
-		default:
-			panic("internal error: unexpected embedded content type")
-		}
-	}
-	buf := bytes.Buffer{}
-	for _, c := range r.content {
-		switch c := c.(type) {
-		case string:
-			buf.WriteString(c)
-		case []byte:
-			buf.Write(c)
-		default:
-			panic("internal error: unexpected embedded content type")
-		}
-	}
-	return resources.StyleBytes{
-		Content: buf.Bytes(),
+		panic("internal error: unknown embedded resource body")
 	}
 }
 

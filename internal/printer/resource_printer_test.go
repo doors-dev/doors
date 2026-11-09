@@ -351,33 +351,33 @@ func (p *recordingPrinter) Send(job gox.Job) error {
 
 func TestResourceEntryHelpers(t *testing.T) {
 	t.Run("script empty", func(t *testing.T) {
-		r := &embeddedResource{}
-		if r.scriptEntry() != nil {
+		r := &Script{}
+		if r.entry() != nil {
 			t.Fatal("empty script entry should be nil")
 		}
 	})
 
 	t.Run("script string and bytes", func(t *testing.T) {
-		r := &embeddedResource{}
+		r := &Script{}
 		r.appendString("const a = 1;")
-		entry := r.scriptEntry()
+		entry := r.entry()
 		script, ok := entry.(resources.ScriptInlineString)
 		if !ok || script.Content != "const a = 1;" {
 			t.Fatalf("single string script entry = %#v", entry)
 		}
 
-		r = &embeddedResource{}
+		r = &Script{}
 		r.appendBytes([]byte("const b = 2;"))
-		entry = r.scriptEntry()
+		entry = r.entry()
 		scriptBytes, ok := entry.(resources.ScriptInlineBytes)
 		if !ok || string(scriptBytes.Content) != "const b = 2;" {
 			t.Fatalf("single bytes script entry = %#v", entry)
 		}
 
-		r = &embeddedResource{}
+		r = &Script{}
 		r.appendString("const ")
 		r.appendBytes([]byte("c = 3;"))
-		entry = r.scriptEntry()
+		entry = r.entry()
 		merged, ok := entry.(resources.ScriptInlineString)
 		if !ok || merged.Content != "const c = 3;" {
 			t.Fatalf("merged script entry = %#v", entry)
@@ -385,33 +385,33 @@ func TestResourceEntryHelpers(t *testing.T) {
 	})
 
 	t.Run("style empty", func(t *testing.T) {
-		r := &embeddedResource{}
-		if r.styleEntry() != nil {
+		r := &Style{}
+		if r.entry() != nil {
 			t.Fatal("empty style entry should be nil")
 		}
 	})
 
 	t.Run("style string and bytes", func(t *testing.T) {
-		r := &embeddedResource{}
+		r := &Style{}
 		r.appendString("h1 { color: red; }")
-		entry := r.styleEntry()
+		entry := r.entry()
 		style, ok := entry.(resources.StyleString)
 		if !ok || style.Content != "h1 { color: red; }" {
 			t.Fatalf("single string style entry = %#v", entry)
 		}
 
-		r = &embeddedResource{}
+		r = &Style{}
 		r.appendBytes([]byte("h2 { color: blue; }"))
-		entry = r.styleEntry()
+		entry = r.entry()
 		styleBytes, ok := entry.(resources.StyleBytes)
 		if !ok || string(styleBytes.Content) != "h2 { color: blue; }" {
 			t.Fatalf("single bytes style entry = %#v", entry)
 		}
 
-		r = &embeddedResource{}
+		r = &Style{}
 		r.appendString("h3")
 		r.appendBytes([]byte(" { color: green; }"))
-		entry = r.styleEntry()
+		entry = r.entry()
 		merged, ok := entry.(resources.StyleBytes)
 		if !ok || string(merged.Content) != "h3 { color: green; }" {
 			t.Fatalf("merged style entry = %#v", entry)
@@ -881,13 +881,14 @@ func TestResourcePropsUnexpectedSourceFallback(t *testing.T) {
 		sourceAttr.Set("bad")
 		recorder := &recordingPrinter{}
 		props := &scriptProps{
-			resourceProps: resourceProps{
-				mode:       resources.ResourceMode(-1),
-				source:     struct{}{},
-				sourceAttr: sourceAttr,
-				sourceKind: sourceStatic,
+			Script: Script{
+				res: res{
+					source:  struct{}{},
+					srcKind: sourceStatic,
+				},
+				output: scriptDefault,
 			},
-			output: scriptDefault,
+			tagAttrs: tagAttrs{sourceAttr: sourceAttr},
 		}
 
 		err := props.Submit(gox.NewJobOpen(ctx, 13, gox.KindRegular, "script", attrs), &resourcePrinter{printer: recorder})
@@ -908,14 +909,15 @@ func TestResourcePropsUnexpectedSourceFallback(t *testing.T) {
 		sourceAttr.Set("bad")
 		recorder := &recordingPrinter{}
 		props := &styleProps{
-			resourceProps: resourceProps{
-				mode:       resources.ResourceMode(-1),
-				source:     struct{}{},
-				sourceAttr: sourceAttr,
-				sourceKind: sourceStatic,
+			Style: Style{
+				res: res{
+					source:  struct{}{},
+					srcKind: sourceStatic,
+				},
+				output: styleDefault,
 			},
-			output: styleDefault,
-			rel:    true,
+			tagAttrs: tagAttrs{sourceAttr: sourceAttr},
+			rel:      true,
 		}
 
 		err := props.Submit(gox.NewJobOpen(ctx, 14, gox.KindVoid, "link", attrs), &resourcePrinter{printer: recorder})
@@ -936,12 +938,12 @@ func TestProcessResErrors(t *testing.T) {
 	rp := &resourcePrinter{printer: defaultPrinter{&bytes.Buffer{}}}
 	res := &embeddedResource{
 		openJob: gox.NewJobOpen(ctx, 1, gox.KindRegular, "style", gox.NewAttrs()),
-		kind:    embeddedStyle,
+		body:    &Style{},
 	}
 	if err := rp.processRes(gox.NewJobClose(ctx, 2, gox.KindRegular, "style"), res); err == nil || !strings.Contains(err.Error(), "does not match the open tag") {
 		t.Fatalf("unexpected mismatch error: %v", err)
 	}
-	if err := rp.processRes(gox.NewJobText(ctx, "bad"), res); err == nil || !strings.Contains(err.Error(), "only text or byte jobs") {
+	if err := rp.processRes(gox.NewJobText(ctx, "bad"), res); err == nil || !strings.Contains(err.Error(), "only raw text or byte jobs") {
 		t.Fatalf("unexpected invalid content error: %v", err)
 	}
 }
@@ -954,8 +956,7 @@ func TestResourceRenderFallbackAndDumpError(t *testing.T) {
 		script := &embeddedResource{
 			openJob:  gox.NewJobOpen(ctx, 1, gox.KindRegular, "script", gox.NewAttrs()),
 			closeJob: gox.NewJobClose(ctx, 1, gox.KindRegular, "script"),
-			kind:     embeddedScript,
-			props:    &resourceProps{mode: resources.ModeHost},
+			body:     &Script{res: res{mode: resources.ModeHost, modeSet: true}},
 		}
 		if err := script.render(defaultPrinter{&scriptOut}); err != nil {
 			t.Fatal(err)
@@ -968,8 +969,7 @@ func TestResourceRenderFallbackAndDumpError(t *testing.T) {
 		style := &embeddedResource{
 			openJob:  gox.NewJobOpen(ctx, 2, gox.KindRegular, "style", gox.NewAttrs()),
 			closeJob: gox.NewJobClose(ctx, 2, gox.KindRegular, "style"),
-			kind:     embeddedStyle,
-			props:    &resourceProps{mode: resources.ModeHost},
+			body:     &Style{res: res{mode: resources.ModeHost, modeSet: true}},
 		}
 		if err := style.render(defaultPrinter{&styleOut}); err != nil {
 			t.Fatal(err)
@@ -1068,15 +1068,87 @@ func (rp *resourcePrinter) prepareLinkModule(open *gox.JobOpen) error {
 }
 
 func getSource(attr gox.Attr) any {
-	props := &resourceProps{}
+	props := newResourceProps().(*resourceProps)
 	props.readSource(attr)
 	return props.source
 }
 
-func resourceURL(core core.Core, res *resources.Resource, mode resources.ResourceMode, name string) (string, error) {
-	props := &resourceProps{
-		mode: mode,
-		name: name,
+func resourceURL(core core.Core, resource *resources.Resource, mode resources.ResourceMode, name string) (string, error) {
+	r := &res{
+		mode:    mode,
+		modeSet: true,
+		name:    name,
 	}
-	return props.resourceURL(core, res)
+	return r.resourceURL(core, resource)
+}
+
+type loggerSession struct {
+	logger *slog.Logger
+}
+
+func (s loggerSession) Logger() *slog.Logger { return s.logger }
+
+func TestLinkStylesheetWithoutHrefPassesThrough(t *testing.T) {
+	ctx, _, _, _ := newPrinterCore(t, true)
+	var logs bytes.Buffer
+	ctx = context.WithValue(ctx, common.KeySession, loggerSession{logger: slog.New(slog.NewTextHandler(&logs, nil))})
+	var out bytes.Buffer
+	rp := NewResourcePrinter(defaultPrinter{&out})
+	attrs := gox.NewAttrs()
+	attrs.Get("rel").Set("stylesheet")
+	attrs.Get("media").Set("print")
+	if err := rp.Send(gox.NewJobOpen(ctx, 1, gox.KindVoid, "link", attrs)); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), `<link media="print" rel="stylesheet">`; got != want {
+		t.Fatalf("expected untouched link %q, got %q", want, got)
+	}
+	if logs.Len() != 0 {
+		t.Fatalf("expected no logs, got %q", logs.String())
+	}
+}
+
+func TestScriptNoMatchKeepsDataAttrs(t *testing.T) {
+	ctx, _, _, _ := newPrinterCore(t, true)
+	cases := map[string]func(gox.Attrs){
+		"unknown type": func(attrs gox.Attrs) {
+			attrs.Get("data:mode").Set("fast")
+			attrs.Get("type").Set("text/x-template")
+		},
+		"unknown source": func(attrs gox.Attrs) {
+			attrs.Get("data:mode").Set("fast")
+			attrs.Get("src").Set(42)
+		},
+	}
+	for name, fill := range cases {
+		t.Run(name, func(t *testing.T) {
+			var out bytes.Buffer
+			rp := NewResourcePrinter(defaultPrinter{&out})
+			attrs := gox.NewAttrs()
+			fill(attrs)
+			if err := rp.Send(gox.NewJobOpen(ctx, 1, gox.KindRegular, "script", attrs)); err != nil {
+				t.Fatal(err)
+			}
+			if err := rp.Send(gox.NewJobClose(ctx, 1, gox.KindRegular, "script")); err != nil {
+				t.Fatal(err)
+			}
+			got := out.String()
+			if strings.Contains(got, "data-d0d-") || !strings.Contains(got, `data:mode="fast"`) {
+				t.Fatalf("expected untouched tag, got %q", got)
+			}
+		})
+	}
+}
+
+func TestResSetModeRepeat(t *testing.T) {
+	var s Script
+	if err := s.SetMode(resources.ModeNoCache); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetMode(resources.ModeNoCache); err != nil {
+		t.Fatal("same mode twice:", err)
+	}
+	if err := s.SetMode(resources.ModeHost); err == nil {
+		t.Fatal("expected error for a different mode")
+	}
 }

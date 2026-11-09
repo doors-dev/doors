@@ -505,3 +505,32 @@ func TestKeysDistinct(t *testing.T) {
 		}
 	}
 }
+
+func TestRegistryRawScriptIgnoresProfile(t *testing.T) {
+	conf := common.Conf{}
+	common.InitDefaults(&conf)
+	rg := NewRegistry(resourceTestSettings{conf: &conf})
+	path := writeTempFile(t, "raw.js", `console.log("raw")`)
+	a, err := rg.Script(ScriptPath{Path: path}, FormatRaw{}, "", ModeHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := rg.Script(ScriptPath{Path: path}, FormatRaw{}, "p", ModeHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a != b {
+		t.Fatal("raw script cached once per profile")
+	}
+	c, err := rg.Script(ScriptPath{Path: path}, FormatDefault{}, "", ModeHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := rg.Script(ScriptPath{Path: path}, FormatDefault{}, "p", ModeHost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c == d {
+		t.Fatal("built scripts with different profiles share a cache entry")
+	}
+}

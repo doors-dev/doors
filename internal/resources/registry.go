@@ -156,6 +156,10 @@ func (rs Registry) Static(entry StaticEntry, contentType string) (*Resource, err
 }
 
 func (rs Registry) Script(entry ScriptEntry, format ScriptFormat, profile string, mode ResourceMode) (*Resource, error) {
+	_, raw := format.(FormatRaw)
+	if raw {
+		profile = ""
+	}
 	var res *Resource
 	var key [16]byte
 	if mode != ModeNoCache {
@@ -170,7 +174,7 @@ func (rs Registry) Script(entry ScriptEntry, format ScriptFormat, profile string
 	}
 	var content []byte
 	var err error
-	if _, ok := format.(FormatRaw); ok {
+	if raw {
 		content, err = entry.Read()
 	} else {
 		opt := rs.app.ESProfile(profile)

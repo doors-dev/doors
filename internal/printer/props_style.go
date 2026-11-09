@@ -15,46 +15,34 @@
 package printer
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
-	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
 )
 
 func newStyleProps(rel bool) props {
-	return &styleProps{
-		output: styleDefault,
-		resourceProps: resourceProps{
-			mode: resources.ResourceMode(-1),
-		},
-		rel: rel,
-	}
+	s := &styleProps{rel: rel}
+	s.target = &s.res
+	return s
 }
 
 type styleProps struct {
-	output styleOutput
-	resourceProps
+	Style
+	tagAttrs
 	rel bool
 }
 
 func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 	s.cleanAttrs()
-	if s.portable {
-		s.setDefaultMode(resources.ModeNoHost)
-	}
-	s.setDefaultMode(resources.ModeHost)
 	if !s.rel && s.output == styleRaw {
 		return p.printer.Send(job)
 	}
 	if !s.rel {
 		p.resource = &embeddedResource{
 			openJob: job,
-			kind:    embeddedStyle,
-			props:   &s.resourceProps,
+			body:    &s.Style,
 		}
 		return nil
 	}
@@ -67,34 +55,18 @@ func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 			c.Instance().CSPCollector().StyleSource(string(src))
 		}
 		return p.printer.Send(job)
-	case SourceStatic:
-		entry := src.styleEntry()
-		res, err := c.App().ResourceRegistry().Style(entry, s.output == styleDefault, s.mode)
-		if err != nil {
-			return err
-		}
-		path, err := s.resourceURL(c, res)
-		if err != nil {
-			return err
-		}
-		s.sourceAttr.Set(path)
-		return p.printer.Send(job)
 	case SourceHandler:
-		hander := src.Handler()
-		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-			return hander(ctx, w, r)
-		}, core.RaceParallel, false, s.portable)
-		if !ok {
-			return context.Canceled
+		path, err := s.Resolve(c)
+		if err != nil {
+			return err
 		}
-		path := s.hookURL(c, hook)
 		s.sourceAttr.Set(path)
 		return p.printer.Send(job)
 	default:
 		common.Logger(job.Ctx).Error(
 			"non-compatible src/href value",
 			"source_kind",
-			s.sourceKind,
+			s.srcKind,
 			"source_type",
 			fmt.Sprintf("%T", s.source),
 		)
@@ -105,13 +77,6 @@ func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 
 	}
 
-}
-
-func (s *styleProps) Validate() error {
-	if err := s.resourceProps.Validate(); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (s *styleProps) Read(attrs gox.Attrs) (bool, error) {
@@ -128,35 +93,15 @@ func (s *styleProps) Read(attrs gox.Attrs) (bool, error) {
 		}
 		if attr.Name() == styleRaw.String() && isTrue(attr) {
 			s.reg(attr)
-			s.output = styleRaw
+			s.SetRaw()
 			continue
 		}
 		if s.readName(attr) {
 			continue
 		}
 	}
-	if s.sourceKind == sourceUnknown {
+	if s.srcKind == sourceUnknown || s.rel && s.srcKind == sourceUnset {
 		return false, nil
 	}
-	if s.sourceKind == sourceLink && s.output == styleDefault {
-		s.output = styleRaw
-	}
-	if s.sourceKind == sourceHandler && s.output == styleDefault {
-		s.output = styleRaw
-	}
-	if s.name == "" {
-		s.name = "style.css"
-	}
 	return true, nil
-}
-
-type styleOutput string
-
-const (
-	styleRaw     styleOutput = "raw"
-	styleDefault styleOutput = "default"
-)
-
-func (m styleOutput) String() string {
-	return string(m)
 }
