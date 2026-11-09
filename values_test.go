@@ -55,11 +55,11 @@ func valuePage(seen *valueSeen) func(ctx context.Context, r Request) gox.Comp {
 			seen.set("session", SessionContext(ctx))
 			seen.set("instance", InstanceContext(ctx))
 			seen.set("detached", DetachedContext(ctx))
-			hook, ok := NewHook(ctx, ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+			hook, err := ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 				seen.set("hook", r.Context())
 				w.Write([]byte("hook"))
-			}))
-			if !ok {
+			}).URL(ctx)
+			if err != nil {
 				return nil
 			}
 			plain := Ctx(context.WithValue(context.Background(), valueOther{}, "other"))

@@ -155,23 +155,23 @@ func TestSourceProxyInvalidURLAndStringStatic(t *testing.T) {
 
 func TestModifySourceHelpers(t *testing.T) {
 	attrs := gox.NewAttrs()
-	if err := modifySource("script", attrs, "value"); err != nil {
+	if err := ModifySource("script", attrs, "value"); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := attrs.Find("src"); got.Value() != "value" {
-		t.Fatalf("modifySource src = %#v", got.Value())
+		t.Fatalf("ModifySource src = %#v", got.Value())
 	}
 
 	attrs = gox.NewAttrs()
-	if err := modifySource("link", attrs, "value"); err != nil {
+	if err := ModifySource("link", attrs, "value"); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := attrs.Find("href"); got.Value() != "value" {
-		t.Fatalf("modifySource href = %#v", got.Value())
+		t.Fatalf("ModifySource href = %#v", got.Value())
 	}
 
-	if err := modifySource("div", gox.NewAttrs(), "value"); err == nil {
-		t.Fatal("modifySource should reject unsupported tags")
+	if err := ModifySource("div", gox.NewAttrs(), "value"); err == nil {
+		t.Fatal("ModifySource should reject unsupported tags")
 	}
 }
 

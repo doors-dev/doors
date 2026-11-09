@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.3
+// Managed by GoX v0.3.4
 
 //line hook.gox:1
 // Copyright 2026 doors dev LLC
@@ -133,9 +133,9 @@ func (f *trackHookFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 //line hook.gox:91
-		path, _ := doors.NewHook(ctx, doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+		path, _ := doors.ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s|%s|%s", r.URL.Path, r.URL.RawPath, r.URL.RawQuery)
-	}))
+	}).URL(ctx)
 
 //line hook.gox:95
 		__e = __c.Any(f.r); if __e != nil { return }

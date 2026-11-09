@@ -25,22 +25,25 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-func newScriptProps(rel bool) props {
-	s := &scriptProps{rel: rel}
-	s.target = &s.res
+func newScriptTag(rel bool) resourceTag {
+	s := &scriptTag{rel: rel}
+	s.tagBase = tagBase{target: &s.Script, tag: "script"}
+	if rel {
+		s.tag = "link rel=modulepreload"
+	}
 	s.SetModule(rel)
 	return s
 }
 
-type scriptProps struct {
+type scriptTag struct {
 	Script
-	tagAttrs
+	tagBase
 	rel       bool
 	specifier string
 	data      []gox.Attr
 }
 
-func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
+func (s *scriptTag) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 	s.cleanAttrs()
 	if s.srcKind == sourceUnset && s.output == scriptRaw {
 		return p.printer.Send(job)
@@ -94,7 +97,7 @@ func (s *scriptProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 
 }
 
-func (s *scriptProps) Validate() error {
+func (s *scriptTag) Validate() error {
 	if err := s.Script.Validate(); err != nil {
 		return err
 	}
@@ -107,8 +110,25 @@ func (s *scriptProps) Validate() error {
 	return nil
 }
 
-func (s *scriptProps) Read(attrs gox.Attrs) (bool, error) {
-	for _, attr := range attrs.List() {
+func (s *scriptTag) Read(attrs gox.Attrs) (bool, error) {
+	source := "src"
+	if s.rel {
+		source = "href"
+	}
+	stage := false
+	if attr, ok := attrs.Find(source); ok {
+		_, stage = attr.Value().(*Script)
+		if err := s.setSource(attr); err != nil {
+			return true, err
+		}
+		if stage && !s.rel && s.module && !attrs.Has("type") {
+			attrs.Get("type").Set("module")
+		}
+	}
+	for attr := range attrs.All() {
+		if attr.Name() == source {
+			continue
+		}
 		match, err := s.readMode(attr)
 		if err != nil {
 			return true, err
@@ -121,12 +141,6 @@ func (s *scriptProps) Read(attrs gox.Attrs) (bool, error) {
 			return true, err
 		}
 		if match {
-			continue
-		}
-		if s.rel && s.readHref(attr) {
-			continue
-		}
-		if !s.rel && s.readSrc(attr) {
 			continue
 		}
 		if s.readString(attr, "profile", s.SetProfile) {
@@ -149,6 +163,9 @@ func (s *scriptProps) Read(attrs gox.Attrs) (bool, error) {
 			s.data = append(s.data, attr)
 		}
 	}
+	if stage && s.rel && !s.module {
+		return true, errors.New("modulepreload links require a module script resource")
+	}
 	if s.srcKind == sourceUnknown {
 		return false, nil
 	}
@@ -163,7 +180,7 @@ func (s *scriptProps) Read(attrs gox.Attrs) (bool, error) {
 	return true, nil
 }
 
-func (s *scriptProps) readOutput(attr gox.Attr) (bool, error) {
+func (s *scriptTag) readOutput(attr gox.Attr) (bool, error) {
 	output := scriptDefault
 	switch true {
 	case attr.Name() == scriptBundle.String() && isTrue(attr):
@@ -183,7 +200,7 @@ func (s *scriptProps) readOutput(attr gox.Attr) (bool, error) {
 	return true, nil
 }
 
-func (s *scriptProps) readType(attr gox.Attr) (bool, bool) {
+func (s *scriptTag) readType(attr gox.Attr) (bool, bool) {
 	if attr.Name() != "type" {
 		return false, true
 	}
@@ -229,7 +246,7 @@ func (s *scriptProps) readType(attr gox.Attr) (bool, bool) {
 	return true, true
 }
 
-func (s *scriptProps) readData(attrs gox.Attrs, attr gox.Attr) error {
+func (s *scriptTag) readData(attrs gox.Attrs, attr gox.Attr) error {
 	name := strings.TrimPrefix(attr.Name(), "data:")
 	value := attr.Value()
 	s.reg(attr)

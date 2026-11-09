@@ -33,15 +33,15 @@ func newResourceURLApp() App {
 	return NewApp(func(context.Context, Request) gox.Comp {
 		return gox.Elem(func(cur gox.Cursor) error {
 			ctx := cur.Context()
-			url, err := NewResource(ctx, ResourceBytes([]byte("export const a = 1")), "text/javascript")
+			url, err := ResourceBytes([]byte("export const a = 1")).ContentType("text/javascript").Cache().URL(ctx)
 			if err != nil {
 				return err
 			}
-			again, err := NewResource(ctx, ResourceBytes([]byte("export const a = 1")), "text/javascript")
+			again, err := ResourceBytes([]byte("export const a = 1")).ContentType("text/javascript").Cache().URL(ctx)
 			if err != nil {
 				return err
 			}
-			_, missing := NewResource(ctx, ResourceLocalFS("no/such/file.js"), "text/javascript")
+			_, missing := ResourceLocalFS("no/such/file.js").ContentType("text/javascript").Cache().URL(ctx)
 			return headTag(cur, "html", func() error {
 				return headTag(cur, "body", func() error {
 					return cur.Text(fmt.Sprintf("res:%s;same:%t;err:%t", url, url == again, missing != nil))
@@ -54,8 +54,8 @@ func newResourceURLApp() App {
 	)
 }
 
-// TestNewResource serves a static resource from a cached URL that any client can load.
-func TestNewResource(t *testing.T) {
+// TestResourceCacheURL serves a static resource from a cached URL that any client can load.
+func TestResourceCacheURL(t *testing.T) {
 	srv := headServer(t, newResourceURLApp(), false)
 	_, body := headDo(t, headClient(t, srv, true), http.MethodGet, srv.URL+"/", false)
 	m := resourceURLRegexp.FindSubmatch(body)

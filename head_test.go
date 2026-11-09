@@ -72,10 +72,10 @@ func headPage(kind string) gox.Comp {
 		if kind == "err" {
 			return errors.New("boom")
 		}
-		hook, ok := NewHook(cur.Context(), ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
+		hook, err := ResourceHandler(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("hook"))
-		}))
-		if !ok {
+		}).URL(cur.Context())
+		if err != nil {
 			return errors.New("hook not registered")
 		}
 		return headTag(cur, "html", func() error {
@@ -353,7 +353,7 @@ func TestHeadStaticContentLength(t *testing.T) {
 			UseFS("fs", fstest.MapFS{"fs.txt": &fstest.MapFile{Data: []byte(strings.Repeat("s", 7000))}}, CacheControlStatic),
 			UseDir("dir", dir, CacheControlStatic),
 			UseFile("file.txt", file, CacheControlStatic),
-			UseResource("res.js", ResourceString(strings.Repeat("console.log(1);", 400)), "application/javascript"),
+			UseResource("res.js", ResourceString(strings.Repeat("console.log(1);", 400)).ContentType("application/javascript").Cache()),
 		)
 		srv := headServer(t, app, h2)
 		c := headClient(t, srv, false)

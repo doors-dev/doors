@@ -35,6 +35,22 @@ const (
 	sourceUnknown
 )
 
+type Resource interface {
+	SetSource(any) error
+	SetMode(resources.ResourceMode) error
+	SetPortable(bool)
+	SetName(string)
+	Validate() error
+	Prepare(core.App) (*resources.Resource, error)
+	Resolve(core.Core) (string, error)
+}
+
+var (
+	_ Resource = (*Asset)(nil)
+	_ Resource = (*Script)(nil)
+	_ Resource = (*Style)(nil)
+)
+
 type res struct {
 	source   any
 	srcKind  sourceKind
@@ -44,7 +60,7 @@ type res struct {
 	name     string
 }
 
-func (r *res) SetSource(v any) {
+func (r *res) setSource(v any) {
 	switch value := v.(type) {
 	case HandlerFunc:
 		r.source = SourceHook(value)
@@ -73,6 +89,10 @@ func (r *res) SetSource(v any) {
 	default:
 		r.srcKind = sourceUnknown
 	}
+}
+
+func errKind(kind string) error {
+	return errors.New(kind + " resource used")
 }
 
 func (r *res) SetMode(mode resources.ResourceMode) error {
@@ -233,6 +253,20 @@ type Asset struct {
 	contentType string
 }
 
+func (a *Asset) SetSource(v any) error {
+	switch v := v.(type) {
+	case *Asset:
+		*a = *v
+	case *Script:
+		return errKind("script")
+	case *Style:
+		return errKind("style")
+	default:
+		a.setSource(v)
+	}
+	return nil
+}
+
 func (a *Asset) SetContentType(contentType string) {
 	a.contentType = contentType
 }
@@ -255,8 +289,8 @@ func (a *Asset) Resolve(c core.Core) (string, error) {
 	if url, ok := a.link(); ok {
 		return url, nil
 	}
-	if static, ok := a.source.(SourceStatic); ok && a.mode != resources.ModeNoCache {
-		res, err := c.App().ResourceRegistry().Static(static.StaticEntry(), a.contentType)
+	if a.srcKind == sourceStatic && a.mode != resources.ModeNoCache {
+		res, err := a.Prepare(c.App())
 		if err != nil {
 			return "", err
 		}
@@ -273,6 +307,14 @@ func (a *Asset) Resolve(c core.Core) (string, error) {
 		}
 		return handler(ctx, w, r)
 	})
+}
+
+func (a *Asset) Prepare(app core.App) (*resources.Resource, error) {
+	static, ok := a.source.(SourceStatic)
+	if !ok {
+		return nil, a.unsupported()
+	}
+	return app.ResourceRegistry().Static(static.StaticEntry(), a.contentType)
 }
 
 type scriptOutput string
@@ -321,8 +363,25 @@ type Script struct {
 	profile string
 }
 
+func (s *Script) SetSource(v any) error {
+	switch v := v.(type) {
+	case *Script:
+		*s = *v
+	case *Asset:
+		if v.contentType != "" {
+			return errors.New("content type is not supported")
+		}
+		s.res = v.res
+	case *Style:
+		return errKind("style")
+	default:
+		s.setSource(v)
+	}
+	return nil
+}
+
 func (s *Script) SetOutput(output scriptOutput) error {
-	if s.output != scriptDefault {
+	if s.output != scriptDefault && s.output != output {
 		return errors.New("only one of raw, inline, or bundle may be set")
 	}
 	s.output = output
@@ -383,26 +442,31 @@ func (s *Script) Resolve(c core.Core) (string, error) {
 	if s.srcKind == sourceHandler {
 		return s.handlerURL(c)
 	}
-	entry := s.entry()
-	if entry == nil {
-		return "", s.unsupported()
-	}
-	format := resources.ScriptFormat(resources.FormatDefault{})
-	profile := ""
 	if s.srcKind == sourceUnset {
 		s.name = resourceFileName(s.name, "js")
-	} else {
-		var err error
-		if format, err = s.output.format(s.module); err != nil {
-			return "", err
-		}
-		profile = s.profile
 	}
-	res, err := c.App().ResourceRegistry().Script(entry, format, profile, s.mode)
+	res, err := s.Prepare(c.App())
 	if err != nil {
 		return "", err
 	}
 	return s.resourceURL(c, res)
+}
+
+func (s *Script) Prepare(app core.App) (*resources.Resource, error) {
+	entry := s.entry()
+	if entry == nil {
+		return nil, s.unsupported()
+	}
+	format := resources.ScriptFormat(resources.FormatDefault{})
+	profile := ""
+	if s.srcKind != sourceUnset {
+		var err error
+		if format, err = s.output.format(s.module); err != nil {
+			return nil, err
+		}
+		profile = s.profile
+	}
+	return app.ResourceRegistry().Script(entry, format, profile, s.mode)
 }
 
 func (s *Script) entry() resources.ScriptEntry {
@@ -444,6 +508,23 @@ type Style struct {
 	output styleOutput
 }
 
+func (s *Style) SetSource(v any) error {
+	switch v := v.(type) {
+	case *Style:
+		*s = *v
+	case *Asset:
+		if v.contentType != "" {
+			return errors.New("content type is not supported")
+		}
+		s.res = v.res
+	case *Script:
+		return errKind("script")
+	default:
+		s.setSource(v)
+	}
+	return nil
+}
+
 func (s *Style) SetRaw() {
 	s.output = styleRaw
 }
@@ -466,20 +547,23 @@ func (s *Style) Resolve(c core.Core) (string, error) {
 	if s.srcKind == sourceHandler {
 		return s.handlerURL(c)
 	}
-	entry := s.entry()
-	if entry == nil {
-		return "", s.unsupported()
-	}
-	minify := s.output == styleDefault
 	if s.srcKind == sourceUnset {
 		s.name = resourceFileName(s.name, "css")
-		minify = true
 	}
-	res, err := c.App().ResourceRegistry().Style(entry, minify, s.mode)
+	res, err := s.Prepare(c.App())
 	if err != nil {
 		return "", err
 	}
 	return s.resourceURL(c, res)
+}
+
+func (s *Style) Prepare(app core.App) (*resources.Resource, error) {
+	entry := s.entry()
+	if entry == nil {
+		return nil, s.unsupported()
+	}
+	minify := s.output == styleDefault || s.srcKind == sourceUnset
+	return app.ResourceRegistry().Style(entry, minify, s.mode)
 }
 
 func (s *Style) entry() resources.StyleEntry {

@@ -313,7 +313,7 @@ func TestAppStaticMiddlewares(t *testing.T) {
 			Header: "Static Middleware",
 		}
 	},
-		doors.UseResource("asset.txt", doors.ResourceString("resource body"), "text/plain"),
+		doors.UseResource("asset.txt", doors.ResourceString("resource body").ContentType("text/plain").Cache()),
 		doors.UseFS("fs", fstest.MapFS{
 			"hello.txt": {
 				Data: []byte("fs body"),

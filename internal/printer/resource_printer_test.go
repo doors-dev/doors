@@ -880,7 +880,7 @@ func TestResourcePropsUnexpectedSourceFallback(t *testing.T) {
 		sourceAttr := attrs.Get("src")
 		sourceAttr.Set("bad")
 		recorder := &recordingPrinter{}
-		props := &scriptProps{
+		tg := &scriptTag{
 			Script: Script{
 				res: res{
 					source:  struct{}{},
@@ -888,10 +888,10 @@ func TestResourcePropsUnexpectedSourceFallback(t *testing.T) {
 				},
 				output: scriptDefault,
 			},
-			tagAttrs: tagAttrs{sourceAttr: sourceAttr},
+			tagBase: tagBase{sourceAttr: sourceAttr},
 		}
 
-		err := props.Submit(gox.NewJobOpen(ctx, 13, gox.KindRegular, "script", attrs), &resourcePrinter{printer: recorder})
+		err := tg.Submit(gox.NewJobOpen(ctx, 13, gox.KindRegular, "script", attrs), &resourcePrinter{printer: recorder})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -908,7 +908,7 @@ func TestResourcePropsUnexpectedSourceFallback(t *testing.T) {
 		sourceAttr := attrs.Get("href")
 		sourceAttr.Set("bad")
 		recorder := &recordingPrinter{}
-		props := &styleProps{
+		tg := &styleTag{
 			Style: Style{
 				res: res{
 					source:  struct{}{},
@@ -916,11 +916,11 @@ func TestResourcePropsUnexpectedSourceFallback(t *testing.T) {
 				},
 				output: styleDefault,
 			},
-			tagAttrs: tagAttrs{sourceAttr: sourceAttr},
-			rel:      true,
+			tagBase: tagBase{sourceAttr: sourceAttr},
+			rel:     true,
 		}
 
-		err := props.Submit(gox.NewJobOpen(ctx, 14, gox.KindVoid, "link", attrs), &resourcePrinter{printer: recorder})
+		err := tg.Submit(gox.NewJobOpen(ctx, 14, gox.KindVoid, "link", attrs), &resourcePrinter{printer: recorder})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1052,25 +1052,25 @@ func plainAttrWithValue(value any) gox.Attr {
 }
 
 func (rp *resourcePrinter) prepareLinkStyle(open *gox.JobOpen) error {
-	return rp.processProps(open, newStyleProps(true))
+	return rp.processTag(open, newStyleTag(true))
 }
 
 func (rp *resourcePrinter) prepareStyle(open *gox.JobOpen) error {
-	return rp.processProps(open, newStyleProps(false))
+	return rp.processTag(open, newStyleTag(false))
 }
 
 func (rp *resourcePrinter) prepareScript(open *gox.JobOpen) error {
-	return rp.processProps(open, newScriptProps(false))
+	return rp.processTag(open, newScriptTag(false))
 }
 
 func (rp *resourcePrinter) prepareLinkModule(open *gox.JobOpen) error {
-	return rp.processProps(open, newScriptProps(true))
+	return rp.processTag(open, newScriptTag(true))
 }
 
 func getSource(attr gox.Attr) any {
-	props := newResourceProps().(*resourceProps)
-	props.readSource(attr)
-	return props.source
+	tg := newAssetTag("img").(*assetTag)
+	_ = tg.setSource(attr)
+	return tg.source
 }
 
 func resourceURL(core core.Core, resource *resources.Resource, mode resources.ResourceMode, name string) (string, error) {
@@ -1150,5 +1150,40 @@ func TestResSetModeRepeat(t *testing.T) {
 	}
 	if err := s.SetMode(resources.ModeHost); err == nil {
 		t.Fatal("expected error for a different mode")
+	}
+}
+
+func TestScriptSetOutputRepeat(t *testing.T) {
+	var s Script
+	if err := s.SetOutput(scriptBundle); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetOutput(scriptBundle); err != nil {
+		t.Fatal("same output twice:", err)
+	}
+	if err := s.SetOutput(scriptRaw); err == nil {
+		t.Fatal("expected error for a different output")
+	}
+}
+
+func TestScriptDataFalseAndNil(t *testing.T) {
+	ctx, _, _, _ := newPrinterCore(t, true)
+	var out bytes.Buffer
+	rp := NewResourcePrinter(defaultPrinter{&out})
+	attrs := gox.NewAttrs()
+	attrs.Get("src").Set(SourceString("window.a = 1"))
+	attrs.Get("data:flag").Set(false)
+	attrs.Get("data:none").Set(nil)
+	if err := rp.Send(gox.NewJobOpen(ctx, 1, gox.KindRegular, "script", attrs)); err != nil {
+		t.Fatal(err)
+	}
+	if err := rp.Send(gox.NewJobClose(ctx, 1, gox.KindRegular, "script")); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	for _, want := range []string{`data-d0d-flag="[2,false]"`, `data-d0d-none="[2,null]"`} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing %s in %q", want, got)
+		}
 	}
 }

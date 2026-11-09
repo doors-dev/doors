@@ -15,36 +15,39 @@
 package printer
 
 import (
+	"fmt"
+
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
 )
 
-type props interface {
+type resourceTag interface {
 	Read(gox.Attrs) (bool, error)
 	Validate() error
 	Submit(*gox.JobOpen, *resourcePrinter) error
 }
 
-func newResourceProps() props {
-	r := &resourceProps{}
-	r.target = &r.res
+func newAssetTag(tag string) resourceTag {
+	r := &assetTag{}
+	r.tagBase = tagBase{target: &r.Asset, tag: tag}
 	return r
 }
 
-type tagAttrs struct {
-	target       *res
+type tagBase struct {
+	target       Resource
+	tag          string
 	attrsToClean []gox.Attr
 	sourceAttr   gox.Attr
 }
 
-type resourceProps struct {
+type assetTag struct {
 	Asset
-	tagAttrs
+	tagBase
 }
 
-func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
+func (r *assetTag) Read(attrs gox.Attrs) (bool, error) {
 	attr, ok := attrs.Find("src")
 	if !ok {
 		attr, ok = attrs.Find("href")
@@ -52,7 +55,9 @@ func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
 			return false, nil
 		}
 	}
-	r.readSource(attr)
+	if err := r.setSource(attr); err != nil {
+		return true, err
+	}
 	if r.srcKind == sourceUnset {
 		panic("internal error: source kind is unset after reading a resource source")
 	}
@@ -62,7 +67,7 @@ func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
 	if r.srcKind == sourceLink {
 		return false, nil
 	}
-	for _, attr := range attrs.List() {
+	for attr := range attrs.All() {
 		match, err := r.readMode(attr)
 		if err != nil {
 			return true, err
@@ -81,7 +86,7 @@ func (r *resourceProps) Read(attrs gox.Attrs) (bool, error) {
 	return true, nil
 }
 
-func (r *resourceProps) Submit(openJob *gox.JobOpen, p *resourcePrinter) error {
+func (r *assetTag) Submit(openJob *gox.JobOpen, p *resourcePrinter) error {
 	r.cleanAttrs()
 	c := openJob.Context().Value(common.KeyCore).(core.Core)
 	url, err := r.Resolve(c)
@@ -92,26 +97,26 @@ func (r *resourceProps) Submit(openJob *gox.JobOpen, p *resourcePrinter) error {
 	return p.printer.Send(openJob)
 }
 
-func (t *tagAttrs) reg(a gox.Attr) {
+func (t *tagBase) reg(a gox.Attr) {
 	t.attrsToClean = append(t.attrsToClean, a)
 }
 
-func (t *tagAttrs) cleanAttrs() {
+func (t *tagBase) cleanAttrs() {
 	for _, attr := range t.attrsToClean {
 		attr.Unset()
 	}
 	t.attrsToClean = nil
 }
 
-func (t *tagAttrs) readSource(attr gox.Attr) {
-	if !attr.IsSet() {
-		return
-	}
+func (t *tagBase) setSource(attr gox.Attr) error {
 	t.sourceAttr = attr
-	t.target.SetSource(attr.Value())
+	if err := t.target.SetSource(attr.Value()); err != nil {
+		return fmt.Errorf("%w on <%s>", err, t.tag)
+	}
+	return nil
 }
 
-func (t *tagAttrs) readString(attr gox.Attr, name string, set func(string)) bool {
+func (t *tagBase) readString(attr gox.Attr, name string, set func(string)) bool {
 	if attr.Name() != name {
 		return false
 	}
@@ -124,27 +129,11 @@ func (t *tagAttrs) readString(attr gox.Attr, name string, set func(string)) bool
 	return true
 }
 
-func (t *tagAttrs) readSrc(attr gox.Attr) bool {
-	if attr.Name() != "src" {
-		return false
-	}
-	t.readSource(attr)
-	return true
-}
-
-func (t *tagAttrs) readHref(attr gox.Attr) bool {
-	if attr.Name() != "href" {
-		return false
-	}
-	t.readSource(attr)
-	return true
-}
-
-func (t *tagAttrs) readName(attr gox.Attr) bool {
+func (t *tagBase) readName(attr gox.Attr) bool {
 	return t.readString(attr, "name", t.target.SetName)
 }
 
-func (t *tagAttrs) readMode(attr gox.Attr) (bool, error) {
+func (t *tagBase) readMode(attr gox.Attr) (bool, error) {
 	if attr.Name() == "portable" && isTrue(attr) {
 		t.target.SetPortable(true)
 		t.reg(attr)

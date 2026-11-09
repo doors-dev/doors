@@ -59,8 +59,8 @@ func (p *resourcePrinter) scan(job gox.Job) error {
 	case strings.EqualFold(openJob.Tag, "meta"):
 		return p.processMeta(openJob)
 	case strings.EqualFold(openJob.Tag, "script"):
-		props := newScriptProps(false)
-		return p.processProps(openJob, props)
+		tag := newScriptTag(false)
+		return p.processTag(openJob, tag)
 	case strings.EqualFold(openJob.Tag, "link"):
 		attr, ok := openJob.Attrs.Find("rel")
 		if !ok {
@@ -71,17 +71,17 @@ func (p *resourcePrinter) scan(job gox.Job) error {
 			return p.scanGenericSrc(openJob)
 		}
 		if strings.EqualFold(str, "stylesheet") {
-			props := newStyleProps(true)
-			return p.processProps(openJob, props)
+			tag := newStyleTag(true)
+			return p.processTag(openJob, tag)
 		}
 		if strings.EqualFold(str, "modulepreload") {
-			props := newScriptProps(true)
-			return p.processProps(openJob, props)
+			tag := newScriptTag(true)
+			return p.processTag(openJob, tag)
 		}
 		return p.scanGenericSrc(openJob)
 	case strings.EqualFold(openJob.Tag, "style"):
-		props := newStyleProps(false)
-		return p.processProps(openJob, props)
+		tag := newStyleTag(false)
+		return p.processTag(openJob, tag)
 	default:
 		if openJob.Kind == gox.KindContainer {
 			return p.printer.Send(openJob)
@@ -90,23 +90,23 @@ func (p *resourcePrinter) scan(job gox.Job) error {
 	}
 }
 
-func (p *resourcePrinter) processProps(open *gox.JobOpen, props props) error {
-	match, err := props.Read(open.Attrs)
+func (p *resourcePrinter) processTag(open *gox.JobOpen, tag resourceTag) error {
+	match, err := tag.Read(open.Attrs)
 	if err != nil {
 		return err
 	}
 	if !match {
 		return p.printer.Send(open)
 	}
-	if err := props.Validate(); err != nil {
+	if err := tag.Validate(); err != nil {
 		return err
 	}
-	return props.Submit(open, p)
+	return tag.Submit(open, p)
 }
 
 func (p *resourcePrinter) scanGenericSrc(openJob *gox.JobOpen) error {
-	props := newResourceProps()
-	return p.processProps(openJob, props)
+	tag := newAssetTag(openJob.Tag)
+	return p.processTag(openJob, tag)
 }
 
 func (p *resourcePrinter) processMeta(openJob *gox.JobOpen) error {

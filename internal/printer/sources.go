@@ -84,7 +84,7 @@ func (s SourceFS) styleEntry() resources.StyleEntry {
 }
 
 func (s SourceFS) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
-	return modifySource(tag, attrs, s)
+	return ModifySource(tag, attrs, s)
 }
 
 var _ SourceStatic = SourceFS{}
@@ -123,7 +123,7 @@ func (s SourceLocalFS) styleEntry() resources.StyleEntry {
 }
 
 func (s SourceLocalFS) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
-	return modifySource(tag, attrs, s)
+	return ModifySource(tag, attrs, s)
 }
 
 var _ SourceStatic = SourceLocalFS("")
@@ -168,7 +168,7 @@ func (s SourceBytes) styleEntry() resources.StyleEntry {
 }
 
 func (s SourceBytes) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
-	return modifySource(tag, attrs, s)
+	return ModifySource(tag, attrs, s)
 }
 
 var _ SourceStatic = SourceBytes(nil)
@@ -185,7 +185,7 @@ func (s SourceHook) Handler() HandlerFunc {
 }
 
 func (s SourceHook) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
-	return modifySource(tag, attrs, s)
+	return ModifySource(tag, attrs, s)
 }
 
 var _ SourceHandler = SourceHook(nil)
@@ -217,7 +217,7 @@ func (s SourceProxy) Handler() HandlerFunc {
 }
 
 func (s SourceProxy) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
-	return modifySource(tag, attrs, s)
+	return ModifySource(tag, attrs, s)
 }
 
 var _ SourceHandler = SourceProxy("")
@@ -262,7 +262,7 @@ func (s SourceString) styleEntry() resources.StyleEntry {
 }
 
 func (s SourceString) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
-	return modifySource(tag, attrs, s)
+	return ModifySource(tag, attrs, s)
 }
 
 var _ SourceStatic = SourceString("")
@@ -282,7 +282,7 @@ func (s SourceExternal) Output(w io.Writer) error {
 var _ gox.Output = SourceExternal("")
 
 func (s SourceExternal) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
-	return modifySource(tag, attrs, s)
+	return ModifySource(tag, attrs, s)
 }
 
 // HandlerFunc serves a resource request. Returning true stops serving the
@@ -293,7 +293,8 @@ type HandlerFunc = func(ctx context.Context, w http.ResponseWriter, r *http.Requ
 // for later requests.
 type HandlerSimpleFunc = func(w http.ResponseWriter, r *http.Request)
 
-func modifySource(tag string, attrs gox.Attrs, src any) error {
+// ModifySource sets src or href on tag to src.
+func ModifySource(tag string, attrs gox.Attrs, src any) error {
 	switch true {
 	case strings.EqualFold(tag, "a"),
 		strings.EqualFold(tag, "area"),

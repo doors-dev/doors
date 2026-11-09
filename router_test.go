@@ -91,7 +91,7 @@ func TestAppStaticMiddlewareServing(t *testing.T) {
 		return testPage("fallback")
 	})
 	app.Use(
-		UseResource("asset.txt", ResourceBytes([]byte("asset")), "text/plain"),
+		UseResource("asset.txt", ResourceBytes([]byte("asset")).ContentType("text/plain").Cache()),
 		UseFS("fs", fstest.MapFS{"hello.txt": &fstest.MapFile{Data: []byte("fs")}}, "public, max-age=60"),
 		UseDir("public", dir, "no-cache"),
 		UseFile("robots.txt", singleFile, "max-age=120"),

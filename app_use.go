@@ -80,43 +80,47 @@ func serveFS(prefix string, fsys http.FileSystem, cacheControl string, w http.Re
 	http.StripPrefix(prefix, http.FileServer(fsys)).ServeHTTP(rw, r)
 }
 
-// UseResource serves resource as a managed resource at path.
+// UseResource serves r from RAM at path.
+//
+// It is built and cached once, the way the matching tag attributes build it,
+// and served with the ServerCacheControl of [Conf], gzipped unless
+// ServerDisableGzip is set.
 //
 // path is matched exactly, with a leading slash added if it lacks one, and must
-// be neither empty nor "/". contentType is sent as the Content-Type. Requests
-// that do not match, and requests other than GET and HEAD, go to the next
-// handler. UseResource panics on an unusable path or resource.
-//
-// Responses carry the ServerCacheControl value from [Conf] and are gzipped
-// unless ServerDisableGzip is set.
-func UseResource(path string, resource ResourceStatic, contentType string) Use {
+// be neither empty nor "/". Requests that do not match, and requests other than
+// GET and HEAD, go to the next handler. UseResource panics on an unusable path
+// or resource.
+func UseResource(path string, r CacheableResource) Use {
 	if path == "/" || path == "" {
 		panic(errors.New("UseResource cannot serve the root path"))
 	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	if resource == nil {
+	if r == nil {
+		panic(errors.New("UseResource requires a resource"))
+	}
+	spec := r.spec()
+	if !spec.static() {
 		panic(errors.New("UseResource requires a static resource"))
 	}
-	entry := resource.StaticEntry()
-	if entry == nil {
-		panic(errors.New("UseResource received a nil static entry"))
+	if err := spec.cached().Validate(); err != nil {
+		panic(errors.New("UseResource: invalid resource settings: " + err.Error()))
 	}
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !readMethod(r) || r.URL.Path != path {
-				next.ServeHTTP(w, r)
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if !readMethod(req) || req.URL.Path != path {
+				next.ServeHTTP(w, req)
 				return
 			}
-			app := r.Context().Value(common.KeySession).(interface{ App() core.App }).App()
-			res, err := app.ResourceRegistry().Static(entry, contentType)
+			app := req.Context().Value(common.KeySession).(interface{ App() core.App }).App()
+			res, err := spec.cached().Prepare(app)
 			if err != nil {
 				app.Logger().Error("UseResource failed to prepare the resource", "error", err)
 				w.WriteHeader(500)
 				return
 			}
-			res.Serve(w, r)
+			res.Serve(w, req)
 		})
 	}
 }

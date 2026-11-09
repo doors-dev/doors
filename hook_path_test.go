@@ -55,8 +55,8 @@ func newHookPathApp(with ...With) App {
 	}, with...)
 	return NewApp(func(context.Context, Request) gox.Comp {
 		return gox.Elem(func(cur gox.Cursor) error {
-			hook, ok := NewHook(cur.Context(), ResourceHandler(hookPathMux().ServeHTTP))
-			if !ok {
+			hook, err := ResourceHandler(hookPathMux().ServeHTTP).URL(cur.Context())
+			if err != nil {
 				return errors.New("hook not registered")
 			}
 			return headTag(cur, "html", func() error {

@@ -22,19 +22,19 @@ import (
 	"github.com/doors-dev/gox"
 )
 
-func newStyleProps(rel bool) props {
-	s := &styleProps{rel: rel}
-	s.target = &s.res
+func newStyleTag(rel bool) resourceTag {
+	s := &styleTag{rel: rel}
+	s.tagBase = tagBase{target: &s.Style, tag: "link rel=stylesheet"}
 	return s
 }
 
-type styleProps struct {
+type styleTag struct {
 	Style
-	tagAttrs
+	tagBase
 	rel bool
 }
 
-func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
+func (s *styleTag) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 	s.cleanAttrs()
 	if !s.rel && s.output == styleRaw {
 		return p.printer.Send(job)
@@ -79,8 +79,15 @@ func (s *styleProps) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 
 }
 
-func (s *styleProps) Read(attrs gox.Attrs) (bool, error) {
-	for _, attr := range attrs.List() {
+func (s *styleTag) Read(attrs gox.Attrs) (bool, error) {
+	if s.rel {
+		if attr, ok := attrs.Find("href"); ok {
+			if err := s.setSource(attr); err != nil {
+				return true, err
+			}
+		}
+	}
+	for attr := range attrs.All() {
 		match, err := s.readMode(attr)
 		if err != nil {
 			return true, err
@@ -88,7 +95,7 @@ func (s *styleProps) Read(attrs gox.Attrs) (bool, error) {
 		if match {
 			continue
 		}
-		if s.rel && s.readHref(attr) {
+		if s.rel && attr.Name() == "href" {
 			continue
 		}
 		if attr.Name() == styleRaw.String() && isTrue(attr) {

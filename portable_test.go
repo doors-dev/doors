@@ -63,8 +63,8 @@ func newPortableApp() App {
 			mux.HandleFunc("GET /value", func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, r.Context().Value(portableKey{}))
 			})
-			hook, ok := NewHook(cur.Context(), ResourceHandler(mux.ServeHTTP))
-			if !ok {
+			hook, err := ResourceHandler(mux.ServeHTTP).URL(cur.Context())
+			if err != nil {
 				return errors.New("hook not registered")
 			}
 			return headTag(cur, "html", func() error {
