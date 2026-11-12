@@ -41,7 +41,7 @@ type hook struct {
 	tracker     hookTracker
 	race        core.Race
 	batch       bool
-	last        uint64
+	last        atomic.Uint64
 	inflight    atomic.Int64
 	once        atomic.Bool
 	portable    string
@@ -75,20 +75,61 @@ func (h *hook) cancel() {
 	}
 }
 
-func (h *hook) wait() chan struct{} {
-	ch := make(chan struct{})
-	prevCh := h.ch.Swap(&ch)
-	if prevCh != nil {
-		<-*prevCh
+func (h *hook) claim(track uint64) bool {
+	for {
+		last := h.last.Load()
+		if track < last {
+			return false
+		}
+		if h.last.CompareAndSwap(last, track) {
+			return true
+		}
 	}
-	return ch
+}
+
+func (h *hook) enter(track uint64) (chan struct{}, bool) {
+	if h.race == core.RaceParallel {
+		return nil, true
+	}
+	ch := make(chan struct{})
+	prev := h.ch.Swap(&ch)
+	if h.race == core.RaceLatest && !h.claim(track) {
+		if prev != nil {
+			<-*prev
+		}
+		close(ch)
+		return nil, false
+	}
+	if prev != nil {
+		<-*prev
+	}
+	if h.race == core.RaceSerial {
+		return ch, true
+	}
+	if h.race == core.RaceStrict && !h.claim(track) {
+		close(ch)
+		return nil, false
+	}
+	if h.race == core.RaceLatest && h.last.Load() != track {
+		close(ch)
+		return nil, false
+	}
+	return ch, true
+}
+
+func leave(ch chan struct{}) {
+	if ch != nil {
+		close(ch)
+	}
 }
 
 func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) bool {
-	if h.race != core.RaceParallel {
-		ch := h.wait()
-		defer close(ch)
+	ch, ok := h.enter(track)
+	if !ok {
+		w.WriteHeader(http.StatusPreconditionFailed)
+		return true
 	}
+	defer leave(ch)
 	if h.tracker.Context().Err() != nil {
 		return false
 	}
@@ -96,14 +137,6 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) boo
 	if h.state.Load() != hookActive {
 		h.release()
 		return false
-	}
-	if h.race == core.RaceStrict {
-		if track < h.last {
-			h.release()
-			w.WriteHeader(http.StatusPreconditionFailed)
-			return true
-		}
-		h.last = track
 	}
 	var group, batch uint64
 	if track != 0 {

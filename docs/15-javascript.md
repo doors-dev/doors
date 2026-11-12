@@ -376,7 +376,7 @@ That is the right fit for streaming responses held open for a long time, and for
 </script>
 ```
 
-With `Race: doors.RaceStrict`, a call that arrives out of order is not run, and its `$hook(...)` or `$fetch(...)` rejects with a canceled `HookErr`.
+With `Race: doors.RaceStrict` or `doors.RaceLatest`, a canceled call is not run, and its `$hook(...)` or `$fetch(...)` rejects with a canceled `HookErr`.
 
 When `$hook(...)` or `$fetch(...)` sends data, the client chooses the request body shape automatically:
 
@@ -454,4 +454,4 @@ Use `$sys.clean(...)` for timers, global listeners, and embedded widgets that ne
 </script>
 ```
 
-You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. Any failed hook request rejects the promise with `HookErr`; a hook canceled by a scope or by `RaceStrict`, or filtered out by `Key`, counts as a failure as well. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.
+You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. Any failed hook request rejects the promise with `HookErr`; a hook canceled by a scope, by `RaceStrict`, or by `RaceLatest`, or filtered out by `Key`, counts as a failure as well. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.

@@ -70,6 +70,9 @@ const (
 	RaceParallel = core.RaceParallel
 	// RaceStrict runs calls one at a time and cancels out-of-order calls.
 	RaceStrict = core.RaceStrict
+	// RaceLatest runs calls one at a time and cancels out-of-order calls and
+	// calls that a newer call overtook while they waited.
+	RaceLatest = core.RaceLatest
 )
 
 type eventAttr[E any] struct {

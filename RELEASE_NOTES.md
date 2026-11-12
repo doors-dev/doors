@@ -44,6 +44,19 @@ doors.UseResource("/embed/v2.js", doors.ResourceFS(web, "embed.ts").Script().Bun
 
 Fixed paths are served with `ServerCacheControl`, by default `public, max-age=31536000, immutable`, so put a version in the path and change it when the content changes. See [App](./docs/04-app.md#useresource).
 
+### RaceLatest
+
+`doors.RaceLatest` is a new `Race` mode for handlers where only the newest input matters. It works like `RaceStrict`, and a call waiting for its turn is canceled once a newer call arrives, so calls that pile up while one runs are skipped and only the newest runs next. See [Race](./docs/08-events.md#race).
+
+```gox
+<input (doors.AInput{
+	Race: doors.RaceLatest,
+	On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
+		return false
+	},
+})/>
+```
+
 ### Reading the configuration
 
 `doors.AppConf(ctx)` returns the app's `Conf` with defaults filled in, for example to reuse `ServerCacheControl` in your own handlers. See [Configuration](./docs/21-configuration.md#options).

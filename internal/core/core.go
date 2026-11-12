@@ -43,6 +43,7 @@ const (
 	RaceSerial Race = iota
 	RaceParallel
 	RaceStrict
+	RaceLatest
 )
 
 type ModuleRegistry interface {

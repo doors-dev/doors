@@ -324,15 +324,18 @@ Requests to one handler can overlap, and they can overtake each other on the way
 - `doors.RaceSerial` (default): calls run one at a time, in order of arrival
 - `doors.RaceParallel`: calls run concurrently
 - `doors.RaceStrict`: calls run one at a time, and out-of-order calls are canceled
+- `doors.RaceLatest`: like `RaceStrict`, and a waiting call is canceled once a newer one arrives
 
 With `RaceParallel` the handler must synchronize any shared state itself. Returning `true` stops new calls, and the handler is removed once the calls already running finish.
 
-With `RaceStrict` a call that arrives after a newer one is canceled instead of run, so an older call never overwrites the result of a newer one. Nothing is reordered, and calls that arrive in order all run. Use it when only the newest input matters: live search, autosave, selection.
+With `RaceStrict` a call that arrives after a newer one is canceled instead of run, so an older call never overwrites the result of a newer one. Nothing is reordered, and calls that arrive in order all run. Use it when every call should run but a stale one must not overwrite a newer one: autosave, selection.
+
+With `RaceLatest`, calls that queue up while one runs are skipped, and only the newest of them runs next. Use it when only the newest input matters: live search, filters, sliders.
 
 ```gox
 <input
 	(doors.AInput{
-		Race: doors.RaceStrict,
+		Race: doors.RaceLatest,
 		On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
 			return false
 		},
@@ -341,7 +344,7 @@ With `RaceStrict` a call that arrives after a newer one is canceled instead of r
 
 A canceled call is silent on event attrs: `OnError` does not run.
 
-`Race` acts on the backend, after a request arrives. [Scopes](./10-scopes.md) act on the client, before it is sent. They combine: `ScopeLatest` keeps the newest interaction in control of the UI, `RaceStrict` keeps an older call from running after a newer one.
+`Race` acts on the backend, after a request arrives. [Scopes](./10-scopes.md) act on the client, before it is sent. They combine: `ScopeLatest` keeps the newest interaction in control of the UI, `RaceStrict` and `RaceLatest` keep an older call from running after a newer one.
 
 ## Batch
 

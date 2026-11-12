@@ -290,7 +290,7 @@ Compared to debounce:
 
 Canceling an in-flight hook is a client-side effect. The request may already have reached the server, so do not rely on `ScopeLatest` to prevent handler execution or protect writes. It is most useful for ending previous indication, ignoring stale results, and keeping the newest interaction in control of the UI.
 
-To keep an older call from running after a newer one on the backend, set `Race: doors.RaceStrict` on the attr, see [Race](./08-events.md#race).
+To keep an older call from running after a newer one on the backend, set `Race: doors.RaceStrict` or `doors.RaceLatest` on the attr, see [Race](./08-events.md#race).
 
 ## Pipelines
 
