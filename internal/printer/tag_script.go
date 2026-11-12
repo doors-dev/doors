@@ -44,6 +44,12 @@ type scriptTag struct {
 }
 
 func (s *scriptTag) Submit(job *gox.JobOpen, p *resourcePrinter) error {
+	c := job.Ctx.Value(common.KeyCore).(core.Core)
+	for _, attr := range s.data {
+		if err := s.readData(job.Attrs, attr, c); err != nil {
+			return err
+		}
+	}
 	s.cleanAttrs()
 	if s.srcKind == sourceUnset && s.output == scriptRaw {
 		return p.printer.Send(job)
@@ -55,7 +61,6 @@ func (s *scriptTag) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		}
 		return nil
 	}
-	c := job.Ctx.Value(common.KeyCore).(core.Core)
 	document, _ := job.Ctx.Value(common.KeyDocument).(bool)
 	switch src := s.source.(type) {
 	case string:
@@ -172,11 +177,6 @@ func (s *scriptTag) Read(attrs gox.Attrs) (bool, error) {
 	if s.srcKind == sourceUnset && s.rel {
 		return false, nil
 	}
-	for _, attr := range s.data {
-		if err := s.readData(attrs, attr); err != nil {
-			return true, err
-		}
-	}
 	return true, nil
 }
 
@@ -246,9 +246,28 @@ func (s *scriptTag) readType(attr gox.Attr) (bool, bool) {
 	return true, true
 }
 
-func (s *scriptTag) readData(attrs gox.Attrs, attr gox.Attr) error {
+func (s *scriptTag) readData(attrs gox.Attrs, attr gox.Attr, c core.Core) error {
 	name := strings.TrimPrefix(attr.Name(), "data:")
 	value := attr.Value()
+	var r Resource
+	switch v := value.(type) {
+	case Resource:
+		r = v
+	case SourceStatic, SourceHandler:
+		a := &Asset{}
+		a.setSource(v)
+		r = a
+	}
+	if r != nil {
+		if err := r.Validate(); err != nil {
+			return err
+		}
+		url, err := r.Resolve(c)
+		if err != nil {
+			return err
+		}
+		value = url
+	}
 	s.reg(attr)
 	return front.AttrsSetData(attrs, name, value)
 }

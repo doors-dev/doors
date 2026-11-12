@@ -20,9 +20,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -395,5 +398,141 @@ func TestResourceChainForms(t *testing.T) {
 				t.Fatalf("%s%s: status %d, body %q, want %q", tc.id, form, resp.StatusCode, body, tc.body)
 			}
 		}
+	}
+}
+
+// TestResourceStoreHelper covers the recommended pattern for app-wide resource
+// URLs: a helper builds the URL once into a Store and panics on error, which
+// fails the render and stores nothing, so a later call retries.
+func TestResourceStoreHelper(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "mod.js")
+	store := NewStore()
+	type moduleKey struct{}
+	var builds atomic.Int32
+	module := func(ctx context.Context) string {
+		return store.Init(moduleKey{}, func() any {
+			url, err := ResourceLocalFS(file).Script().Module().Bundle().URL(ctx)
+			if err != nil {
+				panic(err)
+			}
+			builds.Add(1)
+			return url
+		}).(string)
+	}
+	logs := &syncBuffer{}
+	app := stageApp(logs, func(cur gox.Cursor) error {
+		return stageTag(cur, "script", false, nil, tagAttr{"id", "mod"}, tagAttr{"data:module", module(cur.Context())})
+	})
+	srv := headServer(t, app, false)
+	load := func() (int, string) {
+		resp, page := headDo(t, headClient(t, srv, true), http.MethodGet, srv.URL+"/", false)
+		return resp.StatusCode, string(page)
+	}
+	if status, _ := load(); status == http.StatusOK {
+		t.Fatal("expected the render to fail while the file is missing")
+	}
+	if builds.Load() != 0 {
+		t.Fatal("a failed build was stored")
+	}
+	if err := os.WriteFile(file, []byte("export const a = 1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var url string
+	for i := 0; i < 2; i++ {
+		status, page := load()
+		if status != http.StatusOK {
+			t.Fatalf("render %d: status %d; logs %s", i, status, logs.String())
+		}
+		data := stageAttr(t, page, "mod", "data-d0d-module")
+		if url == "" {
+			url = data
+		} else if data != url {
+			t.Fatalf("render %d: data %q, first %q", i, data, url)
+		}
+	}
+	if n := builds.Load(); n != 1 {
+		t.Fatalf("built %d times, want 1", n)
+	}
+	got := module(context.Background())
+	resp, body := headDo(t, headClient(t, srv, false), http.MethodGet, srv.URL+got, false)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), "export") {
+		t.Fatalf("stored URL %q: status %d, body %q", got, resp.StatusCode, body)
+	}
+}
+
+func TestResourceScriptData(t *testing.T) {
+	js := ResourceString("window.a = 1 + 1")
+	css := ResourceString("body {  color: red;  }")
+	handler := ResourceHandler(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("hook-data")) })
+	cases := []struct {
+		id   string
+		r    any
+		body string
+		url  string
+	}{
+		{"plain", js, "window.a = 1 + 1", "/h/"},
+		{"cache", js.ContentType("text/javascript").Cache(), "window.a = 1 + 1", "/r/"},
+		{"script", js.Script(), "window.a=2;", "/r/"},
+		{"module", js.Script().Module().Bundle(), "window.a=2;", "/r/"},
+		{"private", js.Script().Private(), "window.a=2;", "/h/"},
+		{"portable", js.Script().Portable(), "window.a=2;", "/w/"},
+		{"style", css.Style(), "body{color:red}", "/r/"},
+		{"handler", handler, "hook-data", "/h/"},
+		{"handler-portable", handler.Portable(), "hook-data", "/w/"},
+	}
+	c, base, page, logs := stagePage(t, func(cur gox.Cursor) error {
+		for _, tc := range cases {
+			if err := stageTag(cur, "script", false, nil, tagAttr{"id", tc.id + "-inline"}, tagAttr{"data:x", tc.r}); err != nil {
+				return err
+			}
+			if err := stageTag(cur, "script", false, nil, tagAttr{"id", tc.id + "-src"}, tagAttr{"src", "/app.js"}, tagAttr{"data:x", tc.r}); err != nil {
+				return err
+			}
+		}
+		return stageTag(cur, "script", false, nil, tagAttr{"id", "bytes"}, tagAttr{"data:x", []byte("x")})
+	})
+	payload := regexp.MustCompile(`^\[3,&#34;([^&]*)&#34;\]$`)
+	for _, tc := range cases {
+		for _, form := range []string{"-inline", "-src"} {
+			m := payload.FindStringSubmatch(stageAttr(t, page, tc.id+form, "data-d0d-x"))
+			if m == nil || !strings.Contains(m[1], tc.url) {
+				t.Fatalf("%s%s: payload %v, want %s URL; logs %s", tc.id, form, m, tc.url, logs)
+			}
+			client := c
+			if tc.url == "/w/" {
+				client = &http.Client{}
+			}
+			resp, body := headDo(t, client, http.MethodGet, base+m[1], false)
+			if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), tc.body) {
+				t.Fatalf("%s%s: status %d, body %q, want %q", tc.id, form, resp.StatusCode, body, tc.body)
+			}
+		}
+	}
+	if got := stageAttr(t, page, "bytes", "data-d0d-x"); got != "[1,&#34;eA==&#34;]" {
+		t.Fatalf("bytes payload %q", got)
+	}
+}
+
+func TestResourceUnsupportedAttr(t *testing.T) {
+	cases := []struct {
+		name string
+		tag  string
+		attr tagAttr
+		want string
+	}{
+		{"poster source", "video", tagAttr{"poster", ResourceString("x")}, "only src, href, and script data: attributes take a resource"},
+		{"poster chain", "video", tagAttr{"poster", ResourceString("x").ContentType("image/png").Cache()}, "only src, href, and script data: attributes take a resource"},
+		{"poster handler", "video", tagAttr{"poster", ResourceHandler(func(w http.ResponseWriter, r *http.Request) {})}, "only src, href, and script data: attributes take a resource"},
+		{"data read error", "script", tagAttr{"data:x", ResourceLocalFS("./missing-data.js").Script()}, "missing-data.js"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, page, logs := stagePage(t, func(cur gox.Cursor) error {
+				return stageTag(cur, tc.tag, false, nil, tagAttr{"id", "t"}, tc.attr)
+			})
+			if !strings.Contains(logs, tc.want) || strings.Contains(page, `id="t"`) {
+				t.Fatalf("no render error %q; page %q, logs %q", tc.want, page, logs)
+			}
+		})
 	}
 }

@@ -17,8 +17,10 @@ package doors
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
+	"strings"
 
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
@@ -276,6 +278,11 @@ func (s staticResource) spec() resource {
 	return s.asset().resource
 }
 
+func (s staticResource) Mutate(name string, _ any) any {
+	mustAttr(name)
+	return s
+}
+
 func (s staticResource) Script() ScriptResource {
 	return resourceStage[ScriptResource]{resource{src: s.SourceStatic, kind: kindScript}}
 }
@@ -306,6 +313,11 @@ func (h handlerResource) URL(ctx context.Context) (string, error) {
 
 func (h handlerResource) spec() resource {
 	return h.hook().resource
+}
+
+func (h handlerResource) Mutate(name string, _ any) any {
+	mustAttr(name)
+	return h
 }
 
 type resourceKind int
@@ -339,15 +351,23 @@ func (r resource) cacheable() {}
 
 func (r resource) URL(ctx context.Context) (string, error) {
 	c := ctx.Value(common.KeyCore).(core.Core)
-	p := r.printer()
+	p := r.resource()
 	if err := p.Validate(); err != nil {
 		panic(errors.New("doors: invalid resource settings: " + err.Error()))
 	}
 	return p.Resolve(c)
 }
 
-func (r resource) Mutate(string, any) any {
-	return r.printer()
+func (r resource) Mutate(name string, _ any) any {
+	mustAttr(name)
+	return r.resource()
+}
+
+func mustAttr(name string) {
+	if name == "src" || name == "href" || strings.HasPrefix(name, "data:") {
+		return
+	}
+	panic(fmt.Sprintf("resource in %q: only src, href, and script data: attributes take a resource", name))
 }
 
 func (r resource) Modify(_ context.Context, tag string, attrs gox.Attrs) error {
@@ -419,7 +439,7 @@ func (r resource) withMode(mode resources.ResourceMode) resource {
 	return r
 }
 
-func (r resource) printer() printer.Resource {
+func (r resource) resource() printer.Resource {
 	var p printer.Resource
 	switch r.kind {
 	case kindScript:
@@ -460,7 +480,7 @@ func (r resource) static() bool {
 }
 
 func (r resource) cached() printer.Resource {
-	p := r.printer()
+	p := r.resource()
 	if r.kind != kindAsset {
 		mustSet(p.SetMode(resources.ModeNoHost))
 	}
