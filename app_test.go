@@ -15,10 +15,14 @@
 package doors
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/doors-dev/doors/internal/app"
+	"github.com/doors-dev/gox"
 )
 
 type namedTracker struct {
@@ -65,4 +69,20 @@ func TestWithSessionTrackerSkipsNil(t *testing.T) {
 	if len(o.SessionTrackers) != 1 {
 		t.Fatalf("expected nil trackers to be skipped, got %d", len(o.SessionTrackers))
 	}
+}
+
+func TestAppConf(t *testing.T) {
+	_, _, page, logs := stagePage(t, func(cur gox.Cursor) error {
+		conf := AppConf(cur.Context())
+		return cur.Text(fmt.Sprintf("conf:%s,%d,%t;", conf.InstanceConnectTimeout, conf.SessionInstanceLimit, conf.ServerSessionCookieNoSecure))
+	})
+	if !strings.Contains(page, "conf:1m0s,12,true;") {
+		t.Fatalf("page %q, logs %s", page, logs)
+	}
+	defer func() {
+		if recover() == nil {
+			t.Fatal("AppConf without a session did not panic")
+		}
+	}()
+	AppConf(context.Background())
 }

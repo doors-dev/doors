@@ -185,6 +185,15 @@ func SessionLastSeen(ctx context.Context) time.Time {
 	return sess.LastSeen()
 }
 
+// AppConf returns the configuration of the app serving ctx, with defaults
+// filled in.
+//
+// ctx must carry a Doors session; otherwise AppConf panics.
+func AppConf(ctx context.Context) Conf {
+	sess := ctx.Value(common.KeySession).(core.Session)
+	return *sess.App().Conf()
+}
+
 // Store is goroutine-safe key-value storage, returned by [SessionStore],
 // [InstanceStore] and [NewStore].
 //
