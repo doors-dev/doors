@@ -1,12 +1,14 @@
 # Custom Endpoints
 
-`doors.NewHook(ctx, resource)` returns a URL path served by your handler for as long as the content around it lives. Use it when browser code needs its own HTTP endpoint: a React island with an API, an `EventSource`, a `WebSocket`, a third-party widget.
+A handler resource in a script `data:` attribute gives the script a URL path served by your handler for as long as the content around it lives. Use it when browser code needs its own HTTP endpoint: a React island with an API, an `EventSource`, a `WebSocket`, a third-party widget.
 
-```go
-url, _ := doors.NewHook(ctx, doors.ResourceHandler(handler))
+```gox
+<script data:api=(doors.ResourceHandler(handler))>
+	const api = $data("api")
+</script>
 ```
 
-The second result is `false` only when the content is already cleared. That render never reaches the browser, so it is safe to ignore.
+In Go code, `doors.ResourceHandler(handler).URL(ctx)` returns the same path; its only error is `context.Canceled`, when the content is already cleared, and that render never reaches the browser. See [URL in Code](./14-resources.md#url-in-code).
 
 ## Start
 
@@ -85,10 +87,7 @@ Pass the URL to the island with `data:`:
 ```gox
 elem (d *Dashboard) Main() {
 	<div id="app"></div>
-	<script data:api=({
-		url, _ := doors.NewHook(ctx, doors.ResourceHandler(d.api().ServeHTTP))
-		return url
-	})>
+	<script data:api=(doors.ResourceHandler(d.api().ServeHTTP))>
 		const { mount } = await import("dashboard")
 		mount(document.getElementById("app"), $data("api"))
 	</script>
@@ -100,7 +99,7 @@ The endpoint is same-origin, so `fetch` sends the session cookie and the default
 Without React, any script calls it the same way:
 
 ```gox
-<script data:api=(api)>
+<script data:api=(doors.ResourceHandler(d.api().ServeHTTP))>
 	const r = await fetch(`${$data("api")}/users/42?fields=name`)
 	console.log(await r.json())
 </script>
@@ -134,30 +133,29 @@ The endpoint lives as long as the content it was created in. Create it in a comp
 
 Once the content is cleared, or the page or session ends, new requests get `404` or `410`. Treat both as "the page is gone". Requests already running are not interrupted; the `ctx` of a `ResourceHook` handler is canceled at that moment, so long-lived handlers watch `ctx.Done()`.
 
+Requests need the session cookie. For a client that has none, such as a WebView or an embed, chain `.Portable()` on the handler, see [Portable](./14-resources.md#portable).
+
 ## Streaming
 
 The response writer supports `http.Flusher`, so server-sent events work:
 
 ```gox
-<script data:events=({
-	url, _ := doors.NewHook(ctx, doors.ResourceHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		fl := w.(http.Flusher)
-		for {
-			select {
-			case <-ctx.Done():
-				return false
-			case <-r.Context().Done():
-				return false
-			case p := <-d.prices:
-				fmt.Fprintf(w, "data: %s\n\n", p)
-				fl.Flush()
-			}
+<script data:events=(doors.ResourceHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	fl := w.(http.Flusher)
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-r.Context().Done():
+			return false
+		case p := <-d.prices:
+			fmt.Fprintf(w, "data: %s\n\n", p)
+			fl.Flush()
 		}
-	}))
-	return url
-})>
+	}
+}))>
 	const es = new EventSource($data("events"))
 	es.onmessage = e => console.log(e.data)
 	$sys.clean(() => es.close())
@@ -171,25 +169,22 @@ For updates rendered by **Doors**, use Door updates or `doors.ActionEmit` with `
 The response writer supports `http.Hijacker`, so a WebSocket library can upgrade on an endpoint. With `github.com/gorilla/websocket`:
 
 ```gox
-<script data:chat=({
-	url, _ := doors.NewHook(ctx, doors.ResourceHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-		c, err := upgrader.Upgrade(w, r, nil)
+<script data:chat=(doors.ResourceHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return false
+	}
+	defer c.Close()
+	stop := context.AfterFunc(ctx, func() { c.Close() })
+	defer stop()
+	for {
+		mt, msg, err := c.ReadMessage()
 		if err != nil {
 			return false
 		}
-		defer c.Close()
-		stop := context.AfterFunc(ctx, func() { c.Close() })
-		defer stop()
-		for {
-			mt, msg, err := c.ReadMessage()
-			if err != nil {
-				return false
-			}
-			c.WriteMessage(mt, msg)
-		}
-	}))
-	return url
-})>
+		c.WriteMessage(mt, msg)
+	}
+}))>
 	const proto = location.protocol === "https:" ? "wss" : "ws"
 	const ws = new WebSocket(`${proto}://${location.host}${$data("chat")}/room/1`)
 	ws.onmessage = e => console.log(e.data)
@@ -211,7 +206,7 @@ Use a custom endpoint when the client brings its own code and speaks plain HTTP:
 - file uploads and downloads driven by `fetch`, with progress or streaming
 - web workers
 
-For static files the client loads, such as a stylesheet, image, or font, use a cached URL from `doors.NewResource` instead, see [URL in code](./14-resources.md#url-in-code).
+For static files the client loads, such as a stylesheet, image, or font, pass a hosted chain instead: `data:css=(doors.ResourceBytes(css).Style())` or `data:logo=(doors.ResourceFS(fsys, "logo.png").ContentType("image/png").Cache())`, see [Two Syntaxes](./14-resources.md#two-syntaxes).
 
 ## Rules
 

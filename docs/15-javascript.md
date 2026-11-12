@@ -11,9 +11,11 @@ It also covers the Go to JavaScript bridge: `doors.AData`, `doors.AHook[...]`, `
 Most pages start with one of these:
 
 - page-local code written directly in the template: plain inline `<script>...</script>`
-- page-local code kept in a file or bytes: `<script src=(doors.ResourceLocalFS("web/app.ts")) inline></script>`
+- page-local code kept in a file or bytes: `<script (doors.ResourceLocalFS("web/app.ts")) inline></script>`
 - shorthand bytes: `<script src=(appJS)></script>`
 - already-hosted URL: `<script src="/assets/app.js"></script>`
+
+> A plain inline `<script>` is managed: **Doors** wraps it to provide `$data`, `$hook`, and the other helpers. `raw` is the escape hatch: the tag and its body are printed exactly as written, with no wrapping or processing, see [Attrs](#attrs).
 
 Example:
 
@@ -123,7 +125,7 @@ Use `inline` when the code lives in a file or bytes but should behave the same w
 
 ```gox
 <script
-	src=(doors.ResourceLocalFS("web/picker.ts"))
+	(doors.ResourceLocalFS("web/picker.ts"))
 	type="text/typescript"
 	inline></script>
 ```
@@ -142,19 +144,11 @@ Use a regular linked script when the code should not be loaded as a module:
 
 ```gox
 <script
-	src=(doors.ResourceLocalFS("web/app.ts"))
+	(doors.ResourceLocalFS("web/app.ts"))
 	type="text/typescript"></script>
 ```
 
-Common `src` shapes are:
-
-- buildable app content: `ResourceLocalFS`, `ResourceFS`, `ResourceBytes`, `ResourceString`
-- already-hosted local URL: plain string such as `"/assets/app.js"`
-- external URL: `doors.ResourceExternal("https://cdn.example.com/app.js")` for a direct browser URL that also participates in CSP source collection
-- handler-backed resource: `doors.ResourceHook(...)`, `doors.ResourceHandler(...)`
-- proxy-backed resource: `doors.ResourceProxy(...)`
-
-Buildable `src` scripts go through the JS pipeline unless `raw` is used. Plain strings are just direct URLs.
+The modifier sets `src` on `<script>`. It takes any [resource](./14-resources.md#two-syntaxes) or `doors.ResourceExternal(...)` ([Not Served by Doors](./14-resources.md#not-served-by-doors)); `src` itself also takes a plain URL string or `[]byte` shorthand. Files, bytes, and strings go through the JS pipeline unless `raw` is used, and the build is cached and hosted by default ([Hook and Hosted](./14-resources.md#hook-and-hosted)). Plain strings are just direct URLs.
 
 Raw TypeScript is not supported. If the source is TypeScript, let **Doors** build it.
 
@@ -166,7 +160,7 @@ Use modules when you want `import`, `export`, or import-map based loading.
 
 ```gox
 <script
-	src=(doors.ResourceLocalFS("web/app.ts"))
+	(doors.ResourceLocalFS("web/app.ts"))
 	type="module"
 	bundle></script>
 ```
@@ -179,7 +173,7 @@ Use `specifier` when the module should be registered in the page import map:
 <div id="app"></div>
 
 <script
-	src=(doors.ResourceLocalFS("web/react/index.tsx"))
+	(doors.ResourceLocalFS("web/react/index.tsx"))
 	type="module"
 	bundle
 	specifier="app"></script>
@@ -203,11 +197,11 @@ If a module should be available in the import map but should not be executed by 
 ```gox
 <link
 	rel="modulepreload"
-	href=(doors.ResourceLocalFS("web/app.ts"))
+	(doors.ResourceLocalFS("web/app.ts"))
 	specifier="app">
 ```
 
-That registers `"app"` in the import map and preloads the module, but it does not execute it as a page script.
+That registers `"app"` in the import map and preloads the module, but it does not execute it as a page script. A `.Script()` chain on `modulepreload` needs `.Module()`, or `type="module"` on the link.
 
 Later, load it explicitly:
 
@@ -218,23 +212,35 @@ Later, load it explicitly:
 </script>
 ```
 
+### Module URL in Code
+
+A module can also be loaded by URL, without the import map: a `data:` attribute takes the chain directly, `data:chart=(doors.ResourceFS(web, "chart.ts").Script().Module().Bundle())`, and the script calls `import($data("chart"))`. Which one to use:
+
+- `specifier`: a module shared by name, rendered with the page
+- `modulepreload` + `specifier`: the same, fetched early and not run
+- `data:` + `import($data(...))`: a module one script loads; no import map is involved, so it also works in content first rendered by a later update
+
+The code is in [Module URL in Code](./14-resources.md#module-url-in-code); for a module URL used across the app, see [App-Wide Module URL](./14-resources.md#app-wide-module-url).
+
 ## Attrs
 
-These attrs control script resource behavior:
+These attrs control script resource behavior. The stage after `.Script()` does the same in a [resource chain](./14-resources.md#two-syntaxes):
 
-- output attrs: `inline`, `bundle`, `raw`
-- `specifier`: register a module in the import map
-- `name`: readable output file name
-- `profile`: named esbuild profile
-- `private`: host through an instance-scoped hook URL while still using the resource pipeline
-- `nocache`: host through an instance-scoped hook URL without shared resource caching
-- `portable`: give the hook URL access of its own so it loads without the session cookie, as `private` unless `nocache` is set; not combinable with `cache`, see [Resources](./14-resources.md#portable)
+- `inline`: run a `src` script as a managed script; tag only
+- `bundle`, `.Bundle()`: bundle dependencies into one output
+- `raw`, `.Raw()`: serve the source as-is
+- `type="module"`, `.Module()`; `type="typescript"`, `.TypeScript()`
+- `specifier`: register a module in the import map; tag only
+- `name`, `.Name(...)`: readable output file name
+- `profile`, `.Profile(...)`: named esbuild profile
+
+`private`, `nocache`, and `portable` (`.Private()`, `.NoCache()`, `.Portable()`) work as on every resource, see [Combinations](./14-resources.md#combinations). A chain with `ContentType` is an error on `<script>`.
 
 Example:
 
 ```gox
 <script
-	src=(doors.ResourceLocalFS("web/react/index.tsx"))
+	(doors.ResourceLocalFS("web/react/index.tsx"))
 	type="module"
 	bundle
 	name="react_app.js"
@@ -242,12 +248,6 @@ Example:
 	private
 	specifier="react_app"></script>
 ```
-
-Plain string URLs are passed through as-is. `doors.ResourceExternal(...)` keeps the browser URL direct and adds that URL to the page CSP when the script is rendered with the page; see [CSP](./21-configuration.md#csp). Handler and proxy sources already produce hook-backed URLs.
-
-Use `private` when the script should not be publicly reachable.
-
-Use `nocache` for dynamically generated script output that should not use shared resource caching.
 
 Build configuration itself is covered in [Configuration](./21-configuration.md).
 
@@ -267,7 +267,7 @@ Use `doors.AData` or `data:name=(...)` when the script needs values from Go at r
 </script>
 ```
 
-`$data(...)` returns the decoded value directly for `string` and JSON-backed values. For `[]byte`, it returns a promise that resolves to an `ArrayBuffer`, so binary data still needs `await`.
+`$data(...)` returns the decoded value directly for `string` and JSON-backed values. For `[]byte`, it returns a promise that resolves to an `ArrayBuffer`, so binary data still needs `await`. A [resource](./14-resources.md#two-syntaxes) value, such as `data:api=(doors.ResourceHandler(h))`, arrives as its URL string.
 
 GoX shorthand such as `data:userId=(userID)` is equivalent to attaching `doors.AData{Name: "userId", Value: userID}`.
 

@@ -11,6 +11,8 @@ You usually access storage in one of two places:
 - `doors.SessionStore(ctx)` for session-scoped storage
 - `doors.InstanceStore(ctx)` for instance-scoped storage
 
+`doors.NewStore()` returns a store you scope yourself. A package-level one lives for the whole process, for example to build an [app-wide module URL](./14-resources.md#app-wide-module-url) once.
+
 The store API is:
 
 - `Init(key, func() any)` creates the value once and returns it, or returns the existing value if it is already there

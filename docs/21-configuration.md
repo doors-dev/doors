@@ -46,6 +46,8 @@ Common app options are:
 
 **Doors** fills in defaults automatically, so you usually set only the values you want to change.
 
+To read the configuration in effect, with defaults filled in, call `doors.AppConf(ctx)`. `ctx` must carry a **Doors** session; check with `doors.HasSession(ctx)` where it may not.
+
 ## Server ID
 
 Use `doors.WithID(...)` when this app should have its own **Doors** runtime URL prefix and session cookie namespace.
@@ -97,7 +99,7 @@ The fields that matter most in practice are:
 - `InstanceGoroutineLimit`: max goroutines per page instance for runtime work. Default `8`.
 - `DisconnectHiddenTimer`: how long hidden pages stay connected before disconnecting. Default `InstanceTTL / 2`.
 - `RequestTimeout`: max duration of a client request or hook call. Default `30s`. `AHook`, `ARawHook`, `ASubmit`, and `ARawSubmit` can override it per hook or form with their own `RequestTimeout` field.
-- `ServerCacheControl`: cache header for resources **Doors** serves, such as managed scripts and stylesheets and `doors.UseResource` files. Default `public, max-age=31536000, immutable`.
+- `ServerCacheControl`: cache header for resources **Doors** serves, such as managed scripts and stylesheets and `doors.UseResource` files. Default `public, max-age=31536000, immutable`. `UseResource` paths are fixed, so put a version in them.
 - `ServerDisableGzip`: disables gzip for HTML and resources **Doors** serves.
 - `ServerDisableHead`: answers HEAD requests for pages with 405. By default a page HEAD renders the page to get its status and headers and sends no body. Static files and resources always answer HEAD.
 - `ServerSessionCookiePrefix`: optional prefix for the internal **Doors** session cookie name. Empty by default, so with `doors.WithID("blue")` the cookie is named `blue`. Set it explicitly when you want browser-enforced cookie prefix rules such as `__Host-` or `__Secure-`.

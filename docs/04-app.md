@@ -120,19 +120,26 @@ app.Use(
 
 ### UseResource
 
-`doors.UseResource` exposes a **Doors** static resource at a fixed public path. It is cached and gzipped like other managed resources (see [Configuration](./21-configuration.md)):
+`doors.UseResource` serves a hosted resource at a fixed path. It is built once, the way the matching tag builds it, and served from RAM, gzipped (see [Resources](./14-resources.md#hook-and-hosted)):
 
 ```go
 app.Use(
 	doors.UseResource(
-		"/assets/sans.ttf",
-		doors.ResourceFS(assetsFS, "sans.ttf"),
-		"font/ttf",
+		"/assets/sans.v2.ttf",
+		doors.ResourceFS(assetsFS, "sans.ttf").ContentType("font/ttf").Cache(),
+	),
+	doors.UseResource(
+		"/embed/widget.v3.js",
+		doors.ResourceFS(web, "widget.ts").Script().Bundle(),
 	),
 )
 ```
 
-The `contentType` argument is sent as the `Content-Type` header of the response.
+- a plain asset needs `.Cache()`; set `.ContentType(...)` too, or the type is sniffed
+- scripts and styles (`.Script()`, `.Style()`) are built and cached already
+- only GET and HEAD at that exact path are handled; other requests go to the next handler
+
+> Responses use `ServerCacheControl`, which defaults to `public, max-age=31536000, immutable`. Browsers keep the old file after a deploy, so put a version in the path, or set a different `ServerCacheControl` (see [Configuration](./21-configuration.md)).
 
 ### Cache-Control Presets
 

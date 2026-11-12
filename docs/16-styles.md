@@ -58,7 +58,7 @@ every caller to duplicate it manually.
 Most pages start with one of these:
 
 - CSS written directly in the template: plain `<style>...</style>`
-- CSS kept in a file, bytes, or string: `<link rel="stylesheet" href=(...)>`
+- CSS kept in a file, bytes, or string: `<link rel="stylesheet" (doors.Resource...)>`
 - CSS already hosted somewhere: plain `href="..."`
 
 Examples:
@@ -74,7 +74,7 @@ Examples:
 ```gox
 <link
 	rel="stylesheet"
-	href=(doors.ResourceLocalFS("web/app.css"))>
+	(doors.ResourceLocalFS("web/app.css"))>
 ```
 
 ```gox
@@ -122,65 +122,34 @@ Use `<link rel="stylesheet">` when the CSS comes from a file, bytes, a string, a
 ```gox
 <link
 	rel="stylesheet"
-	href=(doors.ResourceLocalFS("web/app.css"))>
+	(doors.ResourceLocalFS("web/app.css"))>
 ```
 
-Buildable stylesheet inputs are:
-
-- `doors.ResourceLocalFS("web/app.css")`
-- `doors.ResourceFS(webFS, "app.css")`
-- `doors.ResourceBytes(appCSS)`
-- `doors.ResourceString(appCSS)`
-
-These go through the stylesheet pipeline and produce a stylesheet resource URL.
-
-Shorthands work on `href=` too:
-
-- `href=(appCSS)` is treated like `href=(doors.ResourceBytes(appCSS))`
-- `href=(func(w http.ResponseWriter, r *http.Request) { ... })` is treated like `href=(doors.ResourceHandler(...))`
-
-Modifier syntax is often convenient when the whole tag exists just to serve that stylesheet:
+The modifier sets `href` on `<link>`. It takes any [resource](./14-resources.md#two-syntaxes) or `doors.ResourceExternal(...)` ([Not Served by Doors](./14-resources.md#not-served-by-doors)); `href` itself also takes a plain URL string or `[]byte` shorthand. Files, bytes, and strings are minified, cached, and hosted by default ([Hook and Hosted](./14-resources.md#hook-and-hosted)).
 
 ```gox
-<link rel="stylesheet" (doors.ResourceBytes(appCSS))/>
+<link rel="stylesheet" href=(appCSS)>
 ```
 
-Other `href` forms are:
+`raw` serves the stylesheet unminified. Only on `<style>` does it keep the literal tag and body.
 
-- plain string such as `"/assets/app.css"` for an already-hosted URL
-- `doors.ResourceExternal("https://cdn.example.com/app.css")` for a direct browser URL that should also participate in CSP source collection
-- `doors.ResourceHandler(...)`, `doors.ResourceHook(...)`, or `doors.ResourceProxy(...)` for handler-backed and proxied stylesheet URLs
-
-On stylesheet links, output behavior is:
-
-- omitted: buildable sources go through the stylesheet pipeline
-- `raw`: **Doors** leaves the original tag alone
-
-Managed stylesheet output is minified by default. `raw` is mainly useful when `href` is already something the browser can use directly, or when an embedded `<style>` must stay literal.
-
+A script that adds the `<link>` itself gets the stylesheet URL from a `data:` attribute, `<script data:css=(doors.ResourceBytes(widgetCSS).Style())>`, read with `$data("css")`; Go code that needs the string uses `doors.ResourceBytes(widgetCSS).Style().URL(ctx)`, see [URL in Code](./14-resources.md#url-in-code).
 
 ## Attrs
 
-These attrs control managed stylesheet behavior:
+These attrs control stylesheet behavior. The stage after `.Style()` does the same in a [resource chain](./14-resources.md#two-syntaxes):
 
-- `raw`: keep the stylesheet tag or link raw
-- `name`: readable output file name
-- `private`: serve the stylesheet through an instance-scoped hook URL while still using the stylesheet pipeline
-- `nocache`: serve through an instance-scoped hook URL without shared resource caching
-- `portable`: give the hook URL access of its own so it loads without the session cookie, as `private` unless `nocache` is set; not combinable with `cache`, see [Resources](./14-resources.md#portable)
+- `raw`, `.Raw()`: serve unminified; on `<style>`, keep the literal tag
+- `name`, `.Name(...)`: readable output file name
+
+`private`, `nocache`, and `portable` (`.Private()`, `.NoCache()`, `.Portable()`) work as on every resource, see [Combinations](./14-resources.md#combinations). A chain with `ContentType` is an error on a stylesheet link.
 
 Example:
 
 ```gox
 <link
 	rel="stylesheet"
-	href=(doors.ResourceBytes(appCSS))
+	(doors.ResourceBytes(appCSS))
 	name="app.css"
 	private>
 ```
-
-Plain string URLs are passed through as-is. `doors.ResourceExternal(...)` keeps the browser URL direct and adds that URL to the page CSP when the stylesheet is rendered with the page; see [CSP](./21-configuration.md#csp). Handler and proxy sources already produce hook-backed URLs.
-
-Use `private` when the stylesheet should not be publicly reachable.
-
-Use `nocache` for dynamically generated styles that should not use shared resource caching.

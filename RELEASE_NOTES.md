@@ -1,3 +1,96 @@
+# Doors `0.19` Release Notes — "TODO: codename"
+
+Doors `0.19` lets you set up a resource in Go with the same settings its tag attributes take, use it in markup, and get its URL in code.
+
+## Highlights
+
+### Resource chains
+
+Every resource attribute now has a method. A chain carries its settings with it, so you can define a resource once, pass it around, and use it in markup or turn it into a URL:
+
+```gox
+<script src=(doors.ResourceFS(web, "app.ts").Script().Module().Bundle())></script>
+
+<script data:charts=({
+	url, err := doors.ResourceFS(web, "charts.ts").Script().Module().Bundle().URL(ctx)
+	if err != nil {
+		return nil
+	}
+	return url
+})>
+	const url = $data("charts")
+	if (url) {
+		const { draw } = await import(url)
+		draw()
+	}
+</script>
+```
+
+- `ResourceFS`, `ResourceLocalFS`, `ResourceBytes`, and `ResourceString` return a `ResourceStatic`: an asset by default (`Name`, `ContentType`, `Cache`, `Portable`), or a script or stylesheet through `Script()` and `Style()`.
+- Script stages: `Raw`, `Bundle`, `Module`, `TypeScript`, `Profile`, `Name`, `NoCache`, `Private`, `Portable`. Style stages: `Raw`, `Name`, `NoCache`, `Private`, `Portable`.
+- `ResourceHook`, `ResourceHandler`, and `ResourceProxy` return a `ResourceDynamic` with `Name` and `Portable`.
+
+Defaults match the tags: scripts and stylesheets are cached at a public URL, assets are served through a hook unless you call `Cache()`, and handlers are always hooks. Any chain works as a `src`/`href` value or as a modifier. In markup the tag still decides the kind of a plain resource; a `Module()` chain on a `<script>` adds `type="module"`. In code a plain resource is an asset, so use `Script()` or `Style()` for a script or stylesheet URL. See [Builder API](./docs/14-resources.md#builder-api).
+
+`URL(ctx)` returns the URL the matching tag would get, hosted or hook. It returns an error when the source cannot be read or built, and `context.Canceled` for a hook whose content has been cleared. See [Resources](./docs/14-resources.md#url-in-code). To build an app-wide URL once, keep it in a package-level store from `doors.NewStore()`, as in [App-Wide URL](./docs/14-resources.md#app-wide-url).
+
+### Built scripts and styles at fixed paths
+
+`UseResource` takes any cached chain, including bundled scripts and minified stylesheets:
+
+```go
+doors.UseResource("/embed/v2.js", doors.ResourceFS(web, "embed.ts").Script().Bundle())
+```
+
+Fixed paths are served with `ServerCacheControl`, by default `public, max-age=31536000, immutable`, so put a version in the path and change it when the content changes. See [App](./docs/04-app.md#useresource).
+
+### Reading the configuration
+
+`doors.AppConf(ctx)` returns the app's `Conf` with defaults filled in, for example to reuse `ServerCacheControl` in your own handlers. See [Configuration](./docs/21-configuration.md#options).
+
+### ProxyMod in front of a Door
+
+`doors.ProxyMod` and the proxies built on it, such as `doors.Class` and event attrs like `AClick`, now work in front of a Door. They modify the Door's container (your element or the generated `d0-r`), or the first element of static Door content:
+
+```gox
+~>(doors.Class("panel")) ~(&p.orders)
+```
+
+The modification belongs to the surrounding render: it stays across the Door's own `Inner` and `Outer` updates and is replaced when the Door is rendered somewhere else. The generated `d0-r` is identified by `data-d0r`, so a mod can set its `id`. See [Template Syntax](./docs/03-template-syntax.md#attribute-proxy-helpers).
+
+## Behavior Changes
+
+- **`ProxyMod` no longer fails the render** when text or other non-element output comes first. The mod is skipped and an error is logged.
+
+## Fixes
+
+- The same bytes served with different content types shared one cached `/r/` URL.
+- Minified and unminified builds of the same stylesheet shared one cached URL.
+- A resource first rendered `private` was not reachable at its cached `/r/` URL when later rendered with `cache`.
+- A `<link rel="stylesheet">` without `href` logged an error; it now passes through.
+- `raw` scripts were cached once per `profile`, although `profile` does not apply to them.
+- A `<script>` that **Doors** does not process, such as one with a `type` it does not handle, could have some of its `data:` attributes rewritten. It now passes through as written.
+
+## Breaking Changes
+
+| Old | New |
+|---|---|
+| `doors.NewHook(ctx, r)` returning `(string, bool)` | `r.URL(ctx)` returning `(string, error)` |
+| `doors.NewResource(ctx, r, contentType)` | `r.ContentType(contentType).Cache().URL(ctx)`; for scripts and stylesheets `r.Script().URL(ctx)` or `r.Style().URL(ctx)` |
+| `doors.UseResource(path, r, contentType)` | `doors.UseResource(path, r.ContentType(contentType).Cache())` |
+| `ResourceHook`, `ResourceHandler`, `ResourceProxy` return `Resource` | They return `ResourceDynamic`, which is still a `Resource` |
+
+## Migration
+
+```sh
+go get github.com/doors-dev/doors@v0.19.0
+```
+
+- `url, ok := doors.NewHook(ctx, r)` becomes `url, err := r.URL(ctx)`. Where `ok` was `false`, `err` is `context.Canceled`.
+- For JavaScript or CSS passed to `NewResource`, prefer `.Script()` or `.Style()`: the URL is built and minified like the tag's, with the right content type. A cached asset without `ContentType` gets a sniffed type, which is wrong for JavaScript and CSS.
+
+---
+
 # Doors `0.18` Release Notes — "Grace"
 
 Doors `0.18` brings two main things:
