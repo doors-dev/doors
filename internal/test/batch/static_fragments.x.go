@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line static_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -28,22 +28,22 @@ import (
 type staticFragment struct {
 	test.NoBeam
 	rendered chan string
-	step     chan struct{}
-	applied  chan struct{}
-	results  chan error
-	x        doors.Door
-	y        doors.Door
-	mu       sync.Mutex
-	tail     *doors.Door
+	step chan struct{}
+	applied chan struct{}
+	results chan error
+	x doors.Door
+	y doors.Door
+	mu sync.Mutex
+	tail *doors.Door
 }
 
 func newStaticFragment() *staticFragment {
 	return &staticFragment{
 		rendered: make(chan string, 16),
-		step:     make(chan struct{}),
-		applied:  make(chan struct{}, 16),
-		results:  make(chan error, 16),
-		tail:     new(doors.Door),
+		step: make(chan struct{}),
+		applied: make(chan struct{}, 16),
+		results: make(chan error, 16),
+		tail: new(doors.Door),
 	}
 }
 

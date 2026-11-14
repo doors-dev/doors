@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line page.gox:1
 // Copyright 2026 doors dev LLC

@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line placement_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -27,10 +27,10 @@ import (
 )
 
 type placementLog struct {
-	mu      sync.Mutex
-	events  map[string][]string
-	closed  map[string]bool
-	pong    string
+	mu sync.Mutex
+	events map[string][]string
+	closed map[string]bool
+	pong string
 	reached int
 }
 
@@ -76,18 +76,18 @@ func (l *placementLog) values() (string, int) {
 
 type placementFragment struct {
 	test.NoBeam
-	g     *gate
-	l     *placementLog
-	box   doors.Door
-	kid   doors.Door
-	p     doors.Door
-	q     doors.Door
-	x     doors.Door
-	y     doors.Door
-	left  doors.Door
+	g *gate
+	l *placementLog
+	box doors.Door
+	kid doors.Door
+	p doors.Door
+	q doors.Door
+	x doors.Door
+	y doors.Door
+	left doors.Door
 	right doors.Door
-	mv    doors.Door
-	set   doors.Setter
+	mv doors.Door
+	set doors.Setter
 }
 
 func (f *placementFragment) hold(ctx context.Context) bool {

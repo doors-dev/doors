@@ -64,7 +64,7 @@ func (f *pathFragment) pathHolder(ctx context.Context) bool {
 
 func (f *pathFragment) pathFollow(ctx context.Context, p string) bool {
 	f.B.Update(ctx, test.Path{Vp: true, P: p})
-	f.a.Inner(ctx, "a-"+p)
+	f.a.Inner(ctx, "a-" + p)
 	f.done <- struct{}{}
 	return false
 }

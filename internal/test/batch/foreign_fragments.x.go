@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line foreign_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -71,7 +71,7 @@ func (f *foreignFragment) foreignHold(ctx context.Context, g *gate) {
 
 func (f *foreignFragment) foreignRun(ctx context.Context, first string, second string) {
 	f.s.src.Update(ctx, first)
-	f.own.Inner(ctx, "own-"+first)
+	f.own.Inner(ctx, "own-" + first)
 	f.foreignHold(ctx, f.s.ga.gate)
 	if second != "" {
 		f.s.src.Update(ctx, second)
@@ -82,7 +82,7 @@ func (f *foreignFragment) foreignPeer(ctx context.Context, v string) {
 	doors.OnBatch(ctx, func(ctx context.Context) {
 		f.s.fired <- v
 	}, func(ctx context.Context) {
-		f.x.Inner(ctx, "x-"+v)
+		f.x.Inner(ctx, "x-" + v)
 	}, func(ctx context.Context) {
 		switch v {
 		case "slow":
@@ -94,7 +94,7 @@ func (f *foreignFragment) foreignPeer(ctx context.Context, v string) {
 		case "block":
 			f.foreignHold(ctx, f.s.gb.gate)
 		}
-		f.y.Inner(ctx, "y-"+v)
+		f.y.Inner(ctx, "y-" + v)
 	})
 }
 

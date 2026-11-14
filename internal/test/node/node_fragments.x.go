@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line node_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
-	
+
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
@@ -150,7 +150,7 @@ func (f *FragmentProxyWrappedSiblings) Main() gox.Elem {
 			if err := cur.Close(); err != nil {
 				return err
 			}
-			
+
 			if err := cur.Init("div"); err != nil {
 				return err
 			}

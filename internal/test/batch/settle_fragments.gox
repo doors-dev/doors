@@ -121,8 +121,11 @@ elem (f *settleFragment) Main() {
 			document.getElementById("settle-seen").textContent = value
 			return value
 		})
-		$on("settle_attr", (selector) =>
-			document.querySelector(selector)?.getAttribute("data-settle") ?? "missing")
+		$on(
+			"settle_attr",
+			(selector) =>
+				document.querySelector(selector)?.getAttribute("data-settle") ?? "missing",
+		)
 		document.documentElement.setAttribute("data-settle-ready", "")
 	</script>
 	~(f.settleBatched("settle-op", func(ctx context.Context) {

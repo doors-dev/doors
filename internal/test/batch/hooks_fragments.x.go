@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line hooks_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -45,15 +45,15 @@ func (f *hooksFragment) hold(ctx context.Context, g *gate) {
 }
 
 func (f *hooksFragment) xy(ctx context.Context, g *gate, tag string) {
-	<-f.x.Inner(ctx, "x-"+tag)
+	<-f.x.Inner(ctx, "x-" + tag)
 	f.hold(ctx, g)
-	f.y.Inner(ctx, "y-"+tag)
+	f.y.Inner(ctx, "y-" + tag)
 }
 
 func (f *hooksFragment) yx(ctx context.Context, g *gate, tag string) {
-	<-f.y.Inner(ctx, "y-"+tag)
+	<-f.y.Inner(ctx, "y-" + tag)
 	f.hold(ctx, g)
-	f.x.Inner(ctx, "x-"+tag)
+	f.x.Inner(ctx, "x-" + tag)
 }
 
 func (f *hooksFragment) busy(selector string) doors.Indicators {

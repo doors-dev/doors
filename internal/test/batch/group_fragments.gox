@@ -51,9 +51,9 @@ func (f *groupFragment) groupOn(ctx context.Context) {
 }
 
 elem (f *groupFragment) groupSlow(text string) {
-	~{
-		f.groupHold(ctx)
-	}
+	~~
+	f.groupHold(ctx)
+	~~
 	~(text)
 }
 
@@ -66,9 +66,9 @@ func (f *groupFragment) groupHold2(ctx context.Context) {
 }
 
 elem (f *groupFragment) groupSlow2(text string) {
-	~{
-		f.groupHold2(ctx)
-	}
+	~~
+	f.groupHold2(ctx)
+	~~
 	~(text)
 }
 

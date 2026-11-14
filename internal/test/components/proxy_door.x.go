@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line proxy_door.gox:1
 // Copyright 2026 doors dev LLC
@@ -41,17 +41,17 @@ func proxyDoorID(id string) gox.Modify {
 
 type ProxyDoorFragment struct {
 	test.NoBeam
-	r       *test.Reporter
-	wrap    doors.Door
-	cont    doors.Door
-	proxy   doors.Door
-	static  doors.Door
+	r *test.Reporter
+	wrap doors.Door
+	cont doors.Door
+	proxy doors.Door
+	static doors.Door
 	mounted doors.Door
-	id      doors.Door
-	hostA   doors.Door
-	hostB   doors.Door
-	move    doors.Door
-	text    doors.Door
+	id doors.Door
+	hostA doors.Door
+	hostB doors.Door
+	move doors.Door
+	text doors.Door
 }
 
 //line proxy_door.gox:54
@@ -64,7 +64,7 @@ func (f *ProxyDoorFragment) moveMod(name string) gox.Elem {
 //line proxy_door.gox:55
 			__e = (doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			f.r.Update(ctx, 3, "move-"+name)
+			f.r.Update(ctx, 3, "move-" + name)
 			return false
 		},
 	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {

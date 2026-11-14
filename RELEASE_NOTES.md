@@ -87,6 +87,8 @@ The modification belongs to the surrounding render: it stays across the Door's o
 
 ## Breaking Changes
 
+**Doors** now requires GoX `v0.4.0`. Install the matching `gox` CLI and run `gox gen`. GoX `v0.4.0` removes the legacy `~{ ... }` and `func { ... }` forms (run `gox fmt` from `v0.3.5` first to convert them) and closes elements implicitly the way HTML does, so a `</p>` after a list or table no longer matches. See the [GoX release notes](https://github.com/doors-dev/gox/blob/main/RELEASE_NOTES.md).
+
 | Old | New |
 |---|---|
 | `doors.NewHook(ctx, r)` returning `(string, bool)` | `r.URL(ctx)` returning `(string, error)` |

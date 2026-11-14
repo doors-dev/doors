@@ -38,23 +38,23 @@ func proxyDoorID(id string) gox.Modify {
 
 type ProxyDoorFragment struct {
 	test.NoBeam
-	r       *test.Reporter
-	wrap    doors.Door
-	cont    doors.Door
-	proxy   doors.Door
-	static  doors.Door
+	r *test.Reporter
+	wrap doors.Door
+	cont doors.Door
+	proxy doors.Door
+	static doors.Door
 	mounted doors.Door
-	id      doors.Door
-	hostA   doors.Door
-	hostB   doors.Door
-	move    doors.Door
-	text    doors.Door
+	id doors.Door
+	hostA doors.Door
+	hostB doors.Door
+	move doors.Door
+	text doors.Door
 }
 
 elem (f *ProxyDoorFragment) moveMod(name string) {
 	~>(doors.ProxyMod(proxyDoorMod(name))) ~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
-			f.r.Update(ctx, 3, "move-"+name)
+			f.r.Update(ctx, 3, "move-" + name)
 			return false
 		},
 	} ~(&f.move)

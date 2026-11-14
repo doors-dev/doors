@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line path_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -85,7 +85,7 @@ func (f *pathFragment) pathHolder(ctx context.Context) bool {
 
 func (f *pathFragment) pathFollow(ctx context.Context, p string) bool {
 	f.B.Update(ctx, test.Path{Vp: true, P: p})
-	f.a.Inner(ctx, "a-"+p)
+	f.a.Inner(ctx, "a-" + p)
 	f.done <- struct{}{}
 	return false
 }

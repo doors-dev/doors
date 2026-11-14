@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line components.gox:1
 // Copyright 2026 doors dev LLC
@@ -20,7 +20,7 @@ package test
 import (
 	"context"
 	"fmt"
-	
+
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/gox"
 )

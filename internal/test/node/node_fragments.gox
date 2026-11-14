@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
-	
+
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
@@ -88,7 +88,7 @@ elem (f *FragmentProxyWrappedSiblings) Main() {
 			if err := cur.Close(); err != nil {
 				return err
 			}
-			
+
 			if err := cur.Init("div"); err != nil {
 				return err
 			}
@@ -150,7 +150,7 @@ elem (f *FragmentX) Main() {
 			return false
 		},
 	} <button id="updatex">C</button>
-	
+
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			ch := f.n.Static(ctx, nil)
@@ -308,9 +308,9 @@ elem (f *DynamicFragment) Main() {
 	~~
 	f.n1.Inner(ctx, test.Marker("init"))
 	~~
-	
+
 	~>(f.n1) <div/>
-	
+
 	<button
 		id="update"
 		(doors.AClick{
@@ -356,13 +356,13 @@ elem (f *BeforeFragment) Main() {
 	~>(f.doorInit) <div>
 		~(test.Marker("init"))
 	</div>
-	
+
 	~~
 	f.doorUpdate.Inner(ctx, test.Marker("updated"))
 	~~
 	~>(f.doorUpdate) <div>
 	</div>
-	
+
 	~~
 	f.doorRemoved.Inner(ctx, test.Marker("removed"))
 	~~
@@ -370,11 +370,11 @@ elem (f *BeforeFragment) Main() {
 	f.doorRemoved.Static(ctx, nil)
 	~~
 	~(&f.doorRemoved)
-	
+
 	~~
 	f.doorReplaced.Static(ctx, test.Marker("replaced"))
 	~~
-	
+
 	~>(f.doorReplaced) <div>
 		~(test.Marker("initReplaced"))
 	</div>

@@ -1,4 +1,4 @@
-// Managed by GoX v0.3.4
+// Managed by GoX v0.4.0
 
 //line settle_fragments.gox:1
 // Copyright 2026 doors dev LLC
@@ -223,10 +223,10 @@ func (f *settleFragment) Main() gox.Elem {
 		__e = __c.Init("script"); if __e != nil { return }
 		{
 			__e = __c.Submit(); if __e != nil { return }
-			__e = __c.Raw("const text = (selector) =>\n\t\t\tdocument.querySelector(selector)?.textContent ?? \"missing\"\n\t\t$on(\"settle_text\", (selector) => text(selector))\n\t\t$on(\"settle_read\", () => {\n\t\t\tconst value = text(\"#x\") + \"|\" + text(\"#y\")\n\t\t\tdocument.getElementById(\"settle-seen\").textContent = value\n\t\t\treturn value\n\t\t})\n\t\t$on(\"settle_attr\", (selector) =>\n\t\t\tdocument.querySelector(selector)?.getAttribute(\"data-settle\") ?? \"missing\")\n\t\tdocument.documentElement.setAttribute(\"data-settle-ready\", \"\")"); if __e != nil { return }
+			__e = __c.Raw("const text = (selector) =>\n\t\t\tdocument.querySelector(selector)?.textContent ?? \"missing\"\n\t\t$on(\"settle_text\", (selector) => text(selector))\n\t\t$on(\"settle_read\", () => {\n\t\t\tconst value = text(\"#x\") + \"|\" + text(\"#y\")\n\t\t\tdocument.getElementById(\"settle-seen\").textContent = value\n\t\t\treturn value\n\t\t})\n\t\t$on(\n\t\t\t\"settle_attr\",\n\t\t\t(selector) =>\n\t\t\t\tdocument.querySelector(selector)?.getAttribute(\"data-settle\") ?? \"missing\",\n\t\t)\n\t\tdocument.documentElement.setAttribute(\"data-settle-ready\", \"\")"); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
-//line settle_fragments.gox:128
+//line settle_fragments.gox:131
 		__e = __c.Any(f.settleBatched("settle-op", func(ctx context.Context) {
 		<-f.x.Inner(ctx, "x1")
 		doors.OnSettle(ctx, func(sctx context.Context) {
@@ -239,14 +239,14 @@ func (f *settleFragment) Main() gox.Elem {
 					ctx := __c.Context(); _ = ctx
 					__e = __c.Init("div"); if __e != nil { return }
 					{
-//line settle_fragments.gox:136
+//line settle_fragments.gox:139
 						__e = __c.Set("id", "settle-res"); if __e != nil { return }
 						__e = __c.Submit(); if __e != nil { return }
-//line settle_fragments.gox:136
+//line settle_fragments.gox:139
 						__e = __c.Any(f.settleSummary(op)); if __e != nil { return }
 					}
 					__e = __c.Close(); if __e != nil { return }
-//line settle_fragments.gox:136
+//line settle_fragments.gox:139
 				return }))
 				f.ops <- op
 			}()
@@ -254,7 +254,7 @@ func (f *settleFragment) Main() gox.Elem {
 		f.settleHold(ctx)
 		f.y.Inner(ctx, "y1")
 	})); if __e != nil { return }
-//line settle_fragments.gox:143
+//line settle_fragments.gox:146
 		__e = __c.Any(f.settleBatched("settle-call", func(ctx context.Context) {
 		<-f.x.Inner(ctx, "x1")
 		doors.OnSettle(ctx, func(sctx context.Context) {
@@ -266,7 +266,7 @@ func (f *settleFragment) Main() gox.Elem {
 		f.settleHold(ctx)
 		f.y.Inner(ctx, "y1")
 	})); if __e != nil { return }
-//line settle_fragments.gox:154
+//line settle_fragments.gox:157
 		__e = __c.Any(f.settleBatched("settle-sync", func(ctx context.Context) {
 		<-f.d.Inner(ctx, f.settleDelivered())
 		doors.OnSettle(ctx, func(sctx context.Context) {
@@ -280,7 +280,7 @@ func (f *settleFragment) Main() gox.Elem {
 		})
 		f.settleHold(ctx)
 	})); if __e != nil { return }
-//line settle_fragments.gox:167
+//line settle_fragments.gox:170
 		__e = __c.Any(f.settleBatched("settle-hold", func(ctx context.Context) {
 		doors.OnSettle(ctx, f.settleMark)
 		release := doors.HoldSettle(ctx)
@@ -291,7 +291,7 @@ func (f *settleFragment) Main() gox.Elem {
 			f.y.Inner(ctx, "y-hold")
 		}()
 	})); if __e != nil { return }
-//line settle_fragments.gox:177
+//line settle_fragments.gox:180
 		__e = __c.Any(f.settleBatched("settle-idle", func(ctx context.Context) {
 		doors.OnSettle(ctx, f.settleMark)
 		<-f.x.Inner(ctx, "x-idle")
@@ -301,14 +301,14 @@ func (f *settleFragment) Main() gox.Elem {
 			f.settleHold(ctx)
 		}()
 	})); if __e != nil { return }
-//line settle_fragments.gox:186
+//line settle_fragments.gox:189
 		__e = __c.Any(test.Button("settle-after", func(ctx context.Context) bool {
 		f.x.Inner(ctx, "x-after")
 		f.y.Inner(ctx, "y-after")
 		return false
 	})); if __e != nil { return }
 	return })
-//line settle_fragments.gox:191
+//line settle_fragments.gox:194
 }
 
 var _ gox.Comp = (*settleFragment)(nil)

@@ -17,7 +17,7 @@ package components
 import (
 	"context"
 	"time"
-	
+
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
 	"github.com/doors-dev/gox"
@@ -131,20 +131,20 @@ elem (f *LinksFragment) Main() {
 			},
 		} <a id="active-query-only-if-present">active-query-only-if-present</a>
 	</div>
-	
+
 	~>doors.ALink{
 		Model: test.Path{
 			Vh: true,
 		},
 	} <a id="home">home</a>
-	
+
 	~>doors.ALink{
 		Model: test.Path{
 			Vp: true,
 			P: f.Param,
 		},
 	} <a id="param">param</a>
-	
+
 	~>doors.ALink{
 		Model: test.Path{
 			Vs: true,
@@ -237,7 +237,7 @@ elem (f *ProxyFragment) Main() {
 			return false
 		},
 	} ~(<button id="proxy-literal">proxy-literal</button>)
-	
+
 	~>doors.AClick{
 		On: func(ctx context.Context, _ doors.RequestEvent[doors.PointerEvent]) bool {
 			f.r.Update(ctx, 0, "container")
@@ -246,26 +246,26 @@ elem (f *ProxyFragment) Main() {
 	} ~(<>
 		<button id="proxy-container">proxy-container</button>
 	</>)
-	
+
 	~>(doors.Class("proxy-literal")) ~(<button id="proxy-class-literal">proxy-class-literal</button>)
-	
+
 	~>(doors.ProxyMod(proxyDirectMod())) ~(<button id="proxy-direct-mod">proxy-direct-mod</button>)
-	
+
 	~>(proxyContainerClass()) ~(<>
 		<button id="proxy-class-container">proxy-class-container</button>
 		<button id="proxy-class-sibling">proxy-class-sibling</button>
 	</>)
-	
+
 	~>(doors.Class("proxy-component")) ~ProxyClassComponent{}
-	
+
 	~>(doors.Class("proxy-parallel")) ~(<>
 		~>(doors.Parallel()) <>
 			<button id="proxy-class-parallel">proxy-class-parallel</button>
 		</>
 	</>)
-	
+
 	<div id="class-attr" class=(classAttrValue())>class-attr</div>
 	<div id="class-mod" class="base-mod class-skip" (classModifier())>class-mod</div>
-	
+
 	~(f.r)
 }
