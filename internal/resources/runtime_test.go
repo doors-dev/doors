@@ -21,8 +21,10 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -82,10 +84,11 @@ func (errStyleEntry) Read() ([]byte, error) { return nil, context.Canceled }
 func (errStyleEntry) entryID(w idWriter)    { _, _ = w.WriteString("err-style") }
 
 func TestResourceContentAndServeCache(t *testing.T) {
-	res := NewResource([]byte("hello"), "text/plain", resourceSettings{
+	text := strings.Repeat("hello ", 100)
+	res := NewResource([]byte(text), "text/plain", resourceSettings{
 		cacheControl: "public, max-age=60",
 	})
-	if got := string(res.Content()); got != "hello" {
+	if got := string(res.Content()); got != text {
 		t.Fatalf("Content() = %q", got)
 	}
 
@@ -112,7 +115,7 @@ func TestResourceContentAndServeCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(unzipped) != "hello" {
+	if string(unzipped) != text {
 		t.Fatalf("gzipped response = %q", string(unzipped))
 	}
 
@@ -130,6 +133,40 @@ func TestResourceContentAndServeCache(t *testing.T) {
 	}
 	if plainRec.Body.String() != "world" {
 		t.Fatalf("plain response = %q", plainRec.Body.String())
+	}
+}
+
+func TestResourceGzipOnlyWhenSmaller(t *testing.T) {
+	rng := rand.New(rand.NewChaCha8([32]byte{}))
+	noise := make([]byte, 4000)
+	for i := range noise {
+		noise[i] = byte(rng.Uint32())
+	}
+	marginal := append(append([]byte{}, noise...), noise[:280]...)
+	gz, raw := len(common.Zip(marginal)), len(marginal)
+	if gz >= raw || gz < raw-raw/20 {
+		t.Fatalf("marginal content zips %d -> %d, want under 5%% saving", raw, gz)
+	}
+	for name, content := range map[string][]byte{"incompressible": noise, "marginal": marginal} {
+		res := NewResource(content, "application/octet-stream", resourceSettings{cacheControl: "public"})
+		for range 2 {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set("Accept-Encoding", "gzip")
+			rec := httptest.NewRecorder()
+			res.Serve(rec, req)
+			if got := rec.Header().Get("Content-Encoding"); got != "" {
+				t.Fatalf("%s: Content-Encoding = %q", name, got)
+			}
+			if got := rec.Header().Get("Vary"); got != "" {
+				t.Fatalf("%s: Vary = %q", name, got)
+			}
+			if got := rec.Header().Get("Content-Length"); got != strconv.Itoa(len(content)) {
+				t.Fatalf("%s: Content-Length = %q", name, got)
+			}
+			if !bytes.Equal(rec.Body.Bytes(), content) {
+				t.Fatalf("%s: body differs", name)
+			}
+		}
 	}
 }
 

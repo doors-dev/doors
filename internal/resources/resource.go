@@ -70,11 +70,15 @@ func (s *Resource) ServeCache(w http.ResponseWriter, r *http.Request, cache bool
 	body := s.content
 	if !s.settings.disableGzip && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		s.once.Do(func() {
-			s.gzipped = common.Zip(s.content)
+			if gz := common.Zip(s.content); len(gz) < len(s.content)-len(s.content)/20 {
+				s.gzipped = gz
+			}
 		})
-		w.Header().Set("Content-Encoding", "gzip")
-		w.Header().Set("Vary", "Accept-Encoding")
-		body = s.gzipped
+		if s.gzipped != nil {
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Set("Vary", "Accept-Encoding")
+			body = s.gzipped
+		}
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	if r.Method == http.MethodHead {

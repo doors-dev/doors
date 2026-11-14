@@ -77,6 +77,7 @@ The modification belongs to the surrounding render: it stays across the Door's o
 
 ## Fixes
 
+- Cached resources were gzipped even when gzip did not make them smaller, such as images and fonts. They are now served as is unless gzip saves at least 5%.
 - The same bytes served with different content types shared one cached `/r/` URL.
 - Minified and unminified builds of the same stylesheet shared one cached URL.
 - A resource first rendered `private` was not reachable at its cached `/r/` URL when later rendered with `cache`.
