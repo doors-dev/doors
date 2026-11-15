@@ -5,9 +5,12 @@
 
 [https://doors.dev](https://doors.dev)
 
-Doors is a server-driven UI framework + runtime for building stateful, reactive web applications in Go.
+Doors is a server-driven UI framework for building stateful, reactive web applications in Go.
 
-**Your Go server is a UI runtime**: the web application runs on a stateful server, while the browser acts as a remote renderer and input layer. No endpoints to design, no JSON contracts, no client bundle — `go build` produces the web application as one binary.
+- **Server-driven reactivity.** Front-end framework capabilities in server-side Go. Build rich UIs without writing JS.
+- **No public API layer.** Private transport is handled under the hood. No endpoint design required.
+- **Unified control flow.** State, routing, and interaction flow stay in Go, with automatic real-time client sync.
+- **Integrated web stack.** Bundle assets, build scripts, serve private files, and ship in one binary.
 
 ## Example
 
@@ -17,7 +20,6 @@ Live search:
 
 ```gox
 type Search struct {
-    db    *DB                  // your data layer
     query doors.Source[string] // reactive state
 }
 
@@ -38,7 +40,7 @@ elem (s *Search) Main() {
 
 elem (s *Search) results(query string) {
     ~~
-    users := s.db.SearchUsers(ctx, query) // hit the DB mid-render
+    users := DB.SearchUsers(ctx, query) // hit the DB mid-render
     ~~
     <ul>
         ~(for _, u := range users {
@@ -50,17 +52,38 @@ elem (s *Search) results(query string) {
 
 This is the whole feature — no endpoint, no JSON contract, no fetch call, no client-side state, no JS build step. Debounce is one attribute, and the permission check happens where you render.
 
-## How it works
+## Your Go server is a UI runtime
 
-- **A page is a live instance.** Each open tab holds its render tree, reactive state, and handlers as Go values on the server. A production page with 500+ interactive elements costs ~300 KB of server memory per open tab.
-- **No virtual DOM.** Re-rendering is explicit and targeted: state derivation replaces diffing, and only fragments bound to changed values re-render.
-- **Rendering is authorization.** Every user can interact only with what you rendered to them. You check permissions when you render the button, and that is enough to guarantee the related action won't be triggered by anyone else.
-- **Go concurrency is the web architecture.** Handlers can block on channels, start goroutines scoped to rendered content, and receive cancellation through `ctx.Done()` when their subtree leaves the page. External systems integrate directly into the stateful session process — no wrapping stateful work into stateless logic.
-- **The UI is awaitable.** Every mutating operation — source updates, door updates, calls into the browser, server-emitted DOM events — returns a plain `<-chan error`.
-- **Typed routing.** URLs are Go structs, decoded from and encoded back to the address bar. Renaming a route field is a build error, not a 404.
-- **Plain-HTTP sync.** A rolling-request and streaming protocol over regular HTTP — no WebSockets, no SSE, HTTP/3-ready.
-- **Integrated web stack.** Bundle assets, build scripts, serve private files, automate CSP — the whole stack ships in the binary.
-- **Stateful deployments, answered.** The [doors-caddy](https://github.com/doors-dev/doors-caddy) plugin provides seamless rollouts and sticky balancing for production clusters.
+The web application runs on a stateful server, while the browser acts as a remote renderer and input layer.
+
+- Build complete user flows within a single execution context
+- Query databases and call external systems directly
+- Ship real-time features without extra infrastructure
+- Secure by default — every user can interact only with what you render to them
+
+## Engineered from syntax to socket
+
+From the template engine to the way bytes reach the browser — each layer was designed to push server-driven UI further than it's ever gone.
+
+- Concurrency engine powering non-blocking event processing, parallel rendering, and tree-aware state propagation
+- Real-time HTTP/3-ready synchronization protocol. No WebSockets/SSE
+- Go language extension with its own LSP, parser, and editor plugins. HTML as Go expressions
+
+## Built on better definitions
+
+Composable primitives to use independently or combine into custom abstractions. Modern frontend framework capabilities without sacrificing clarity.
+
+- Dynamic container in the DOM tree that can be updated, replaced, or removed at runtime
+- Reactive state as a communication primitive, that can be passed around, subscribed to, derived and mutated
+- URL as a Go struct and routing as state. Type-safe, deterministic, with unmatched freedom in route modeling
+
+## The right environment for AI-assisted coding
+
+A single Go execution flow removes frontend/backend drift, while server-side execution limits exposure of data, logic, and privileged operations.
+
+- No frontend/backend split, so AI works in one Go codebase without duplicated logic or context handoff
+- No API layer — no contracts to drift, no public endpoints to secure
+- Only session-scoped render output is sent to the browser, so AI can work with data and server capabilities without exposing them to the client
 
 ## Comparisons
 
@@ -70,7 +93,13 @@ HTMX and Datastar enhance HTML by coordinating behavior through attributes and e
 
 ### Doors vs Phoenix LiveView, Blazor Server
 
-The same family: the server owns UI state. Doors does it in pure Go — no BEAM or .NET runtime, typed URL structs instead of string routes, plain-HTTP sync instead of WebSockets, one static binary. And the main thing: Doors UI is non-blocking. LiveView and Blazor serialize interactions through one process per client; Doors handles events concurrently, so interactivity behaves like a JavaScript SPA.
+The same model — think LiveView for Go: UI state lives on the server, and the browser shows what the server renders. The difference is in how it behaves under real conditions.
+
+- **Concurrency.** LiveView and Blazor Server handle a page's events one at a time by default, so a slow action holds up the rest of that page until its work is moved into background tasks. In Doors, events are handled concurrently from the start, and the page keeps responding while a slow action runs.
+- **Communication.** LiveView and Blazor Server run everything through one persistent WebSocket: every user action and every screen update travels over it. Doors works like a regular web app talking to an API: every user action is its own HTTP request, and screen updates arrive over a separate stream. If that stream is interrupted, the next action still goes through and brings it back right away, so the connection behind the page goes unnoticed. Over HTTP/2 and HTTP/3, actions and updates share one connection, and every action also confirms that it is healthy. No WebSockets or SSE, HTTP/3-ready.
+- **Recovery.** When the connection drops, LiveView starts the page over, and anything not saved elsewhere is gone. Doors, like Blazor Server, keeps the page on the server for a configurable time and delivers the missed updates once the connection is back, without re-rendering the page.
+- **Memory.** A connected Doors page with 500 interactive elements measures about 300 KB. User reports put an active LiveView page at 1–3 MB, shrinking to about 15–150 KB once idle. For Blazor Server, Microsoft's figure is about 250 KB for a minimal Hello World page, while a component vendor advises planning for 10–20 MB per user session.
+- **HTTP features.** Each page comes with its own dynamic HTTP routing. Any handler, file, or generated content becomes a private URL right where it is rendered: a download, a preview image, an API for a React island, a live stream of server events. The URL works only for the user who received the page, and only while the content that created it is on the page — no routes to register, no access checks to write.
 
 ### Doors vs Livewire, Hotwire
 
@@ -95,7 +124,9 @@ For AI-assisted development, install the [Doors Skill](https://github.com/doors-
 - Customer portals
 - Admin panels
 - Internal tools
-- Real-time apps with meaningful server-side workflows
+- Real-time apps
+
+Especially those with heavy user flows and complex business logic.
 
 ## Where it is not the right fit
 
@@ -103,7 +134,9 @@ For AI-assisted development, install the [Doors Skill](https://github.com/doors-
 - Client-first apps with minimal server behavior and simple routing
 - Offline-first PWAs where the browser must be the primary runtime
 
-The trade: server memory per open page (~300 KB for a heavy production page) and interaction latency bounded by the network round trip.
+## Deployment
+
+Doors is stateful, so load balancing requires sticky sessions. Doors includes the mechanics for uninterrupted rollouts: server IDs, a sticky cookie, and drain mode. The [doors-caddy](https://github.com/doors-dev/doors-caddy) plugin puts them to work with Caddy — use it, or build your own setup on the same basis.
 
 ## Status
 
