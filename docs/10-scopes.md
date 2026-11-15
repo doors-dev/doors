@@ -36,6 +36,7 @@ The reusable scope types are:
 - `doors.ScopeRate`
 - `doors.ScopeLatest`
 - `doors.ScopeFrame`      (use `.Scope(frame bool)` to get a `Scopes`)
+- `doors.ScopeCheckpoint` (use `.Scope(checkpoint bool)` to get a `Scopes`)
 - `doors.ScopeConcurrent` (use `.Scope(groupID int)` to get a `Scopes`)
 
 Each one is a `Scopes` value on its own — you can pass `&doors.ScopeBlocking{}` directly to `Scope`. Combine several with `.And(...)` or `doors.JoinScopes(...)`:
@@ -218,6 +219,47 @@ Example:
 
 Here the input events are normal frame members, and `Apply` is the barrier event.
 
+## Checkpoint
+
+`ScopeCheckpoint` lets one action wait for related work already in flight without stopping new work.
+
+- `cp.Scope(false)` is an ordinary event: it runs at once, always
+- `cp.Scope(true)` is a checkpoint: it waits for every event already in the scope when it arrives, then runs
+
+Events that arrive after a checkpoint do not delay it. Checkpoints queue behind each other in arrival order. Nothing in this scope is rejected.
+
+Example:
+
+```gox
+<>
+	~~
+	cp := &doors.ScopeCheckpoint{}
+	~~
+
+	<input
+		(doors.AInput{
+			Scope: cp.Scope(false),
+			On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
+				return false
+			},
+		})/>
+
+	<button
+		(doors.AClick{
+			Scope: cp.Scope(true),
+			On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+				return false
+			},
+		})>
+		Submit
+	</button>
+</>
+```
+
+The input autosaves as you type. `Submit` waits for the autosaves already in flight, and typing keeps saving meanwhile.
+
+Unlike frame, nothing is blocked. To drop double clicks on `Submit`, put a blocking scope in front: `Scope: block.And(cp.Scope(true))`.
+
 ## Concurrent
 
 `ScopeConcurrent` allows overlap only inside the same group id.
@@ -334,6 +376,7 @@ Each scope sees the event only after the previous scope accepted it. That lets y
 - Use blocking to drop overlap, serial to queue overlap, and debounce to delay bursts.
 - Use rate to throttle events to a fixed minimum interval.
 - Use frame when one action should wait for earlier related actions and then run exclusively.
+- Use checkpoint when one action should wait for earlier related actions while new ones keep running.
 - Use concurrent when overlap is allowed only inside one group.
 - Use latest when stale work should be canceled in favor of the newest event.
 - Scopes pair naturally with indication: scopes decide whether the request proceeds, indication shows the interaction state.

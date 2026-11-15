@@ -283,6 +283,7 @@ const newScope = {
 	"concurrent": (runtime: Runtime, id: string) => new ConcurrentScope(runtime, id),
 	"serial": (runtime: Runtime, id: string) => new SerialScope(runtime, id),
 	"frame": (runtime: Runtime, id: string) => new FrameScope(runtime, id),
+	"checkpoint": (runtime: Runtime, id: string) => new CheckpointScope(runtime, id),
 	"free": (runtime: Runtime, id: string) => new FreeScope(runtime, id),
 	"latest": (runtime: Runtime, id: string) => new LatestScope(runtime, id),
 } as const;
@@ -461,6 +462,34 @@ class FrameScope extends Scope {
 		}
 		this.framePromoted = true
 		this.promote(hook)
+	}
+}
+
+class CheckpointScope extends Scope {
+	private members = new Set<Hook>()
+	private pending = new Map<Hook, Set<Hook>>()
+	protected complete(hook: Hook): void {
+		this.members.delete(hook)
+		this.pending.delete(hook)
+		const ready: Array<Hook> = []
+		for (const [checkpoint, wait] of this.pending) {
+			if (wait.delete(hook) && wait.size == 0) {
+				ready.push(checkpoint)
+			}
+		}
+		for (const checkpoint of ready) {
+			this.pending.delete(checkpoint)
+			this.promote(checkpoint)
+		}
+	}
+	protected process(hook: Hook, opt: any): void {
+		const wait = opt === true ? new Set(this.members) : null
+		this.members.add(hook)
+		if (!wait || wait.size == 0) {
+			this.promote(hook)
+			return
+		}
+		this.pending.set(hook, wait)
 	}
 }
 

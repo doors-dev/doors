@@ -57,6 +57,10 @@ Fixed paths are served with `ServerCacheControl`, by default `public, max-age=31
 })/>
 ```
 
+### ScopeCheckpoint
+
+`doors.ScopeCheckpoint` lets one action wait for related work already in flight without stopping new work. `cp.Scope(false)` runs at once; `cp.Scope(true)` waits for every request already in the scope, then runs. Later requests never delay it, checkpoints queue in arrival order, and nothing is rejected. For example, inputs autosave as you type while `Submit` waits for the autosaves in flight. See [Checkpoint](./docs/10-scopes.md#checkpoint).
+
 ### Reading the configuration
 
 `doors.AppConf(ctx)` returns the app's `Conf` with defaults filled in, for example to reuse `ServerCacheControl` in your own handlers. See [Configuration](./docs/21-configuration.md#options).

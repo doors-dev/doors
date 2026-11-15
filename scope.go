@@ -173,6 +173,26 @@ func (d *ScopeFrame) Scope(frame bool) Scopes {
 	})
 }
 
+// ScopeCheckpoint lets a checkpoint request wait for the requests already in
+// the scope, without holding back ones that arrive later.
+//
+// It does not satisfy [Scopes]; call Scope to obtain a value.
+//
+// One value is one scope; see [ScopeBlocking] for sharing.
+type ScopeCheckpoint struct {
+	id front.AutoID
+}
+
+// Scope selects how a request takes part in this scope. With checkpoint true
+// the request waits for every request already in the scope, then runs, so
+// checkpoints run in arrival order. With checkpoint false it runs at once.
+// Nothing is rejected.
+func (d *ScopeCheckpoint) Scope(checkpoint bool) Scopes {
+	return scopeFunc(func(core core.Core) []Scope {
+		return []Scope{front.CheckpointScope(d.id.String(core), checkpoint)}
+	})
+}
+
 // ScopeConcurrent lets hook requests in the same scope overlap only when they
 // share a group.
 //

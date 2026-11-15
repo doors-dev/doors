@@ -33,6 +33,7 @@ const (
 	concurrentScope scopeKind = "concurrent"
 	latestScope     scopeKind = "latest"
 	frameScope      scopeKind = "frame"
+	checkpointScope scopeKind = "checkpoint"
 	freeScope       scopeKind = "free"
 )
 
@@ -104,6 +105,14 @@ func FrameScope(id string, frame bool) Scope {
 		Id:   id,
 		Kind: frameScope,
 		Opt:  frame,
+	}
+}
+
+func CheckpointScope(id string, checkpoint bool) Scope {
+	return Scope{
+		Id:   id,
+		Kind: checkpointScope,
+		Opt:  checkpoint,
 	}
 }
 

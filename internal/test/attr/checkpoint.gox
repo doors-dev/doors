@@ -1,0 +1,79 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+package attr
+
+import (
+	"context"
+	"slices"
+	"sync"
+	"time"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type checkpointLog struct {
+	mu      sync.Mutex
+	entries []string
+}
+
+func (l *checkpointLog) add(entry string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.entries = append(l.entries, entry)
+}
+
+func (l *checkpointLog) snapshot() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.entries)
+}
+
+type checkpointFragment struct {
+	log *checkpointLog
+	test.NoBeam
+}
+
+elem (f *checkpointFragment) Main() {
+	~~
+	cp := &doors.ScopeCheckpoint{}
+	blocking := &doors.ScopeBlocking{}
+	~~
+	~(f.button("o1", cp.Scope(false), 600*time.Millisecond))
+	~(f.button("o2", cp.Scope(false), 900*time.Millisecond))
+	~(f.button("of", cp.Scope(false), 0))
+	~(f.button("c1", cp.Scope(true), 400*time.Millisecond))
+	~(f.button("c2", cp.Scope(true), 0))
+	~(f.button("c3", cp.Scope(true), 0))
+	~(f.button("cb", blocking.And(cp.Scope(true)), 400*time.Millisecond))
+}
+
+elem (f *checkpointFragment) button(id string, scope doors.Scopes, delay time.Duration) {
+	<button id=(id) (doors.A(ctx, f.handler(id, scope, delay)))>~(id)</button>
+}
+
+func (f *checkpointFragment) handler(id string, scope doors.Scopes, delay time.Duration) doors.Attr {
+	return doors.AClick{
+		Scope: scope,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.log.add("start:" + id)
+			<-time.After(delay)
+			f.log.add("end:" + id)
+			return false
+		},
+	}
+}
