@@ -466,30 +466,32 @@ class FrameScope extends Scope {
 }
 
 class CheckpointScope extends Scope {
-	private members = new Set<Hook>()
-	private pending = new Map<Hook, Set<Hook>>()
+	private ordinary = new Set<Hook>()
+	private queue: Array<Hook> = []
+	private running = false
+	private next() {
+		if (this.running || this.ordinary.size != 0 || this.queue.length == 0) {
+			return
+		}
+		this.running = true
+		this.promote(this.queue[0])
+	}
 	protected complete(hook: Hook): void {
-		this.members.delete(hook)
-		this.pending.delete(hook)
-		const ready: Array<Hook> = []
-		for (const [checkpoint, wait] of this.pending) {
-			if (wait.delete(hook) && wait.size == 0) {
-				ready.push(checkpoint)
-			}
+		this.ordinary.delete(hook)
+		if (this.queue[0] === hook) {
+			this.running = false
 		}
-		for (const checkpoint of ready) {
-			this.pending.delete(checkpoint)
-			this.promote(checkpoint)
-		}
+		this.queue = this.queue.filter(h => h !== hook)
+		this.next()
 	}
 	protected process(hook: Hook, opt: any): void {
-		const wait = opt === true ? new Set(this.members) : null
-		this.members.add(hook)
-		if (!wait || wait.size == 0) {
+		if (opt !== true) {
+			this.ordinary.add(hook)
 			this.promote(hook)
 			return
 		}
-		this.pending.set(hook, wait)
+		this.queue.push(hook)
+		this.next()
 	}
 }
 

@@ -20,8 +20,10 @@ package attr
 
 import (
 	"context"
+	"net/http"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/doors-dev/doors"
@@ -47,53 +49,163 @@ func (l *checkpointLog) snapshot() []string {
 }
 
 type checkpointFragment struct {
-	log *checkpointLog
+	log   *checkpointLog
+	value atomic.Value
 	test.NoBeam
 }
 
-//line checkpoint.gox:51
+//line checkpoint.gox:54
 func (f *checkpointFragment) Main() gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
-//line checkpoint.gox:53
+//line checkpoint.gox:56
 		cp := &doors.ScopeCheckpoint{}
 	blocking := &doors.ScopeBlocking{}
+	debounce := &doors.ScopeDebounce{Duration: 300 * time.Millisecond}
+	latest := &doors.ScopeLatest{}
+	fieldDebounce := &doors.ScopeDebounce{Duration: 300 * time.Millisecond}
 
-//line checkpoint.gox:56
-		__e = __c.Any(f.button("o1", cp.Scope(false), 600*time.Millisecond)); if __e != nil { return }
-//line checkpoint.gox:57
-		__e = __c.Any(f.button("o2", cp.Scope(false), 900*time.Millisecond)); if __e != nil { return }
-//line checkpoint.gox:58
-		__e = __c.Any(f.button("of", cp.Scope(false), 0)); if __e != nil { return }
-//line checkpoint.gox:59
-		__e = __c.Any(f.button("c1", cp.Scope(true), 400*time.Millisecond)); if __e != nil { return }
-//line checkpoint.gox:60
-		__e = __c.Any(f.button("c2", cp.Scope(true), 0)); if __e != nil { return }
-//line checkpoint.gox:61
-		__e = __c.Any(f.button("c3", cp.Scope(true), 0)); if __e != nil { return }
 //line checkpoint.gox:62
-		__e = __c.Any(f.button("cb", blocking.And(cp.Scope(true)), 400*time.Millisecond)); if __e != nil { return }
-	return })
+		__e = __c.Any(f.button("o1", cp.Scope(false), 600*time.Millisecond)); if __e != nil { return }
 //line checkpoint.gox:63
+		__e = __c.Any(f.button("o2", cp.Scope(false), 900*time.Millisecond)); if __e != nil { return }
+//line checkpoint.gox:64
+		__e = __c.Any(f.button("of", cp.Scope(false), 0)); if __e != nil { return }
+//line checkpoint.gox:65
+		__e = __c.Any(f.button("c1", cp.Scope(true), 400*time.Millisecond)); if __e != nil { return }
+//line checkpoint.gox:66
+		__e = __c.Any(f.button("c2", cp.Scope(true), 0)); if __e != nil { return }
+//line checkpoint.gox:67
+		__e = __c.Any(f.button("c3", cp.Scope(true), 0)); if __e != nil { return }
+//line checkpoint.gox:68
+		__e = __c.Any(f.button("cb", blocking.And(cp.Scope(true)), 400*time.Millisecond)); if __e != nil { return }
+//line checkpoint.gox:69
+		__e = __c.Any(f.button("od", cp.Scope(false).And(debounce), 300*time.Millisecond)); if __e != nil { return }
+//line checkpoint.gox:70
+		__e = __c.Any(f.button("cl", latest.And(cp.Scope(true)), 0)); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+//line checkpoint.gox:71
+			__e = __c.Set("id", "os"); if __e != nil { return }
+//line checkpoint.gox:71
+			__e = __c.Modify(doors.A(ctx, doors.AClick{
+		Scope: cp.Scope(false),
+		Race:  doors.RaceParallel,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.log.add("start:os")
+			<-time.After(300 * time.Millisecond)
+			f.log.add("end:os")
+			return false
+		},
+	})); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("os"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.InitVoid("input"); if __e != nil { return }
+		{
+//line checkpoint.gox:81
+			__e = __c.Set("id", "field"); if __e != nil { return }
+//line checkpoint.gox:81
+			__e = __c.Modify(doors.A(ctx, doors.AInput{
+		Scope: cp.Scope(false).And(fieldDebounce),
+		On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
+			<-time.After(100 * time.Millisecond)
+			f.value.Store(r.Event().Value)
+			f.log.add("field:" + r.Event().Value)
+			return false
+		},
+	})); if __e != nil { return }
+		}
+		__e = __c.Submit(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+//line checkpoint.gox:90
+			__e = __c.Set("id", "sub"); if __e != nil { return }
+//line checkpoint.gox:90
+			__e = __c.Modify(doors.A(ctx, doors.AClick{
+		Scope: cp.Scope(true),
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			value, _ := f.value.Load().(string)
+			f.log.add("submit:" + value)
+			return false
+		},
+	})); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("sub"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+//line checkpoint.gox:98
+			__e = __c.Set("id", "he"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("he"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+//line checkpoint.gox:99
+			__e = __c.Set("id", "ht"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("ht"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line checkpoint.gox:100
+		__e = (doors.ARawHook{
+		Name:  "he",
+		Scope: cp.Scope(false),
+		On: func(ctx context.Context, r doors.RequestRawHook) bool {
+			f.log.add("start:he")
+			<-time.After(400 * time.Millisecond)
+			f.log.add("fail:he")
+			r.ResponseWriter().WriteHeader(http.StatusConflict)
+			return false
+		},
+	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+//line checkpoint.gox:110
+			__e = (doors.ARawHook{
+		Name:           "ht",
+		Scope:          cp.Scope(false),
+		RequestTimeout: 300 * time.Millisecond,
+		On: func(ctx context.Context, r doors.RequestRawHook) bool {
+			f.log.add("start:ht")
+			<-time.After(800 * time.Millisecond)
+			f.log.add("end:ht")
+			return false
+		},
+	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+				ctx := __c.Context(); _ = ctx
+				__e = __c.Init("script"); if __e != nil { return }
+				{
+					__e = __c.Submit(); if __e != nil { return }
+					__e = __c.Raw("for (const name of [\"he\", \"ht\"]) {\n\t\t\tdocument.getElementById(name).addEventListener(\"click\", () => {\n\t\t\t\t$hook(name).catch(() => {})\n\t\t\t})\n\t\t}"); if __e != nil { return }
+				}
+				__e = __c.Close(); if __e != nil { return }
+			return })); if __e != nil { return }
+		return })); if __e != nil { return }
+	return })
+//line checkpoint.gox:127
 }
 
-//line checkpoint.gox:65
+//line checkpoint.gox:129
 func (f *checkpointFragment) button(id string, scope doors.Scopes, delay time.Duration) gox.Elem {
 	return gox.Elem(func(__c gox.Cursor) (__e error) {
 		ctx := __c.Context(); _ = ctx
 		__e = __c.Init("button"); if __e != nil { return }
 		{
-//line checkpoint.gox:66
+//line checkpoint.gox:130
 			__e = __c.Set("id", id); if __e != nil { return }
-//line checkpoint.gox:66
+//line checkpoint.gox:130
 			__e = __c.Modify(doors.A(ctx, f.handler(id, scope, delay))); if __e != nil { return }
 			__e = __c.Submit(); if __e != nil { return }
-//line checkpoint.gox:66
+//line checkpoint.gox:130
 			__e = __c.Any(id); if __e != nil { return }
 		}
 		__e = __c.Close(); if __e != nil { return }
 	return })
-//line checkpoint.gox:67
+//line checkpoint.gox:131
 }
 
 func (f *checkpointFragment) handler(id string, scope doors.Scopes, delay time.Duration) doors.Attr {

@@ -17,6 +17,7 @@ package attr
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -63,7 +64,7 @@ func TestScopeCheckpointImmediate(t *testing.T) {
 	defer bro.Close()
 	defer page.Close()
 	test.ClickNow(t, page, "#c2")
-	entries := waitCheckpointLog(t, log, 300*time.Millisecond, "end:c2")
+	entries := waitCheckpointLog(t, log, time.Second, "end:c2")
 	if !slices.Equal(entries, []string{"start:c2", "end:c2"}) {
 		t.Fatalf("checkpoint with nothing running should run at once, got %v", entries)
 	}
@@ -83,20 +84,21 @@ func TestScopeCheckpointWaitsForRunning(t *testing.T) {
 	checkpointBefore(t, entries, "end:o1", "start:c2")
 }
 
-func TestScopeCheckpointNoStarvation(t *testing.T) {
+func TestScopeCheckpointWaitsForStream(t *testing.T) {
 	bro, page, log := newCheckpointPage(t)
 	defer bro.Close()
 	defer page.Close()
 	test.ClickNow(t, page, "#o1")
 	waitCheckpointLog(t, log, time.Second, "start:o1")
 	test.ClickNow(t, page, "#c2")
-	for range 10 {
+	for range 8 {
 		<-time.After(150 * time.Millisecond)
-		test.ClickNow(t, page, "#o2")
+		test.ClickNow(t, page, "#os")
 	}
 	entries := waitCheckpointLog(t, log, 3*time.Second, "end:c2")
-	checkpointBefore(t, entries, "end:o1", "start:c2")
-	checkpointBefore(t, entries, "start:c2", "end:o2")
+	if n := checkpointCount(entries[:slices.Index(entries, "start:c2")], "end:os"); n != 8 {
+		t.Fatalf("checkpoint should wait for the whole stream, ran after %d of 8: %v", n, entries)
+	}
 }
 
 func TestScopeCheckpointOrdinaryDuringRunning(t *testing.T) {
@@ -148,8 +150,8 @@ func TestScopeCheckpointOrdinaryBetween(t *testing.T) {
 	test.ClickNow(t, page, "#c3")
 	entries := waitCheckpointLog(t, log, 3*time.Second, "end:c3")
 	checkpointBefore(t, entries, "end:o1", "start:c2")
-	checkpointBefore(t, entries, "start:c2", "end:o2")
-	checkpointBefore(t, entries, "end:o2", "start:c3")
+	checkpointBefore(t, entries, "end:o2", "start:c2")
+	checkpointBefore(t, entries, "end:c2", "start:c3")
 }
 
 func TestScopeCheckpointBlocking(t *testing.T) {
@@ -159,7 +161,8 @@ func TestScopeCheckpointBlocking(t *testing.T) {
 	test.ClickNow(t, page, "#o1")
 	waitCheckpointLog(t, log, time.Second, "start:o1")
 	test.ClickBurst(t, page, "#cb", "#cb")
-	waitCheckpointLog(t, log, 2*time.Second, "end:cb")
+	entries := waitCheckpointLog(t, log, 2*time.Second, "end:cb")
+	checkpointBefore(t, entries, "end:o1", "start:cb")
 	<-time.After(200 * time.Millisecond)
 	if n := checkpointCount(log.snapshot(), "start:cb"); n != 1 {
 		t.Fatalf("blocking checkpoint should drop the double click, ran %d times", n)
@@ -168,6 +171,113 @@ func TestScopeCheckpointBlocking(t *testing.T) {
 	waitSnapshotLog(t, log, time.Second, func(entries []string) bool {
 		return checkpointCount(entries, "end:cb") == 2
 	})
+}
+
+func TestScopeCheckpointRejectedMember(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#od")
+	<-time.After(50 * time.Millisecond)
+	test.ClickNow(t, page, "#c2")
+	<-time.After(50 * time.Millisecond)
+	test.ClickNow(t, page, "#od")
+	entries := waitCheckpointLog(t, log, 2*time.Second, "end:c2")
+	checkpointBefore(t, entries, "end:od", "start:c2")
+	if n := checkpointCount(entries, "start:od"); n != 1 {
+		t.Fatalf("debounce should reject the first member, ran %d times", n)
+	}
+}
+
+func TestScopeCheckpointFailedMember(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#he")
+	waitCheckpointLog(t, log, time.Second, "start:he")
+	test.ClickNow(t, page, "#c2")
+	entries := waitCheckpointLog(t, log, 2*time.Second, "end:c2")
+	checkpointBefore(t, entries, "fail:he", "start:c2")
+}
+
+func TestScopeCheckpointTimedOutMember(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#ht")
+	waitCheckpointLog(t, log, time.Second, "start:ht")
+	test.ClickNow(t, page, "#c2")
+	waitCheckpointLog(t, log, 2*time.Second, "end:c2")
+	entries := waitCheckpointLog(t, log, 2*time.Second, "end:ht")
+	checkpointBefore(t, entries, "start:ht", "start:c2")
+	checkpointBefore(t, entries, "end:c2", "end:ht")
+}
+
+func TestScopeCheckpointCanceledCheckpoint(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#o1")
+	waitCheckpointLog(t, log, time.Second, "start:o1")
+	test.ClickNow(t, page, "#cl")
+	<-time.After(50 * time.Millisecond)
+	test.ClickNow(t, page, "#c2")
+	<-time.After(50 * time.Millisecond)
+	test.ClickNow(t, page, "#cl")
+	entries := waitCheckpointLog(t, log, 2*time.Second, "end:cl")
+	checkpointBefore(t, entries, "end:o1", "start:c2")
+	checkpointBefore(t, entries, "end:c2", "start:cl")
+	if n := checkpointCount(entries, "start:cl"); n != 1 {
+		t.Fatalf("latest should cancel the waiting checkpoint, ran %d times", n)
+	}
+}
+
+func TestScopeCheckpointHeldMember(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#od")
+	<-time.After(100 * time.Millisecond)
+	test.ClickNow(t, page, "#c2")
+	entries := waitCheckpointLog(t, log, 2*time.Second, "end:c2")
+	checkpointBefore(t, entries, "end:od", "start:c2")
+}
+
+func TestScopeCheckpointOrdinaryHoldsNext(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#c1")
+	waitCheckpointLog(t, log, time.Second, "start:c1")
+	test.ClickNow(t, page, "#c2")
+	test.ClickNow(t, page, "#o1")
+	entries := waitCheckpointLog(t, log, 2*time.Second, "end:c2")
+	checkpointBefore(t, entries, "start:o1", "end:c1")
+	checkpointBefore(t, entries, "end:c1", "end:o1")
+	checkpointBefore(t, entries, "end:o1", "start:c2")
+}
+
+func TestScopeCheckpointDebouncedField(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	typeField := func(value string) {
+		page.MustEval(`(value) => {
+			const el = document.getElementById("field")
+			el.value = value
+			el.dispatchEvent(new Event("input", { bubbles: true }))
+		}`, value)
+	}
+	typeField("a")
+	<-time.After(50 * time.Millisecond)
+	test.ClickNow(t, page, "#sub")
+	<-time.After(100 * time.Millisecond)
+	typeField("ab")
+	waitSnapshotLog(t, log, 2*time.Second, func(entries []string) bool {
+		return slices.ContainsFunc(entries, func(e string) bool { return strings.HasPrefix(e, "submit:") })
+	})
+	entries := log.snapshot()
+	checkpointBefore(t, entries, "field:ab", "submit:ab")
 }
 
 func checkpointCount(entries []string, entry string) int {

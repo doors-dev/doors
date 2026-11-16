@@ -221,12 +221,12 @@ Here the input events are normal frame members, and `Apply` is the barrier event
 
 ## Checkpoint
 
-`ScopeCheckpoint` lets one action wait for related work already in flight without stopping new work.
+`ScopeCheckpoint` lets one action wait until related work settles, without stopping that work.
 
 - `cp.Scope(false)` is an ordinary event: it runs at once, always
-- `cp.Scope(true)` is a checkpoint: it waits for every event already in the scope when it arrives, then runs
+- `cp.Scope(true)` is a checkpoint: it runs once earlier checkpoints are done and no ordinary event is in flight
 
-Events that arrive after a checkpoint do not delay it. Checkpoints queue behind each other in arrival order. Nothing in this scope is rejected.
+An ordinary event that arrives while a checkpoint waits holds it further; one that arrives while a checkpoint runs does not affect it. Checkpoints queue behind each other in arrival order. Nothing in this scope is rejected, so nonstop ordinary traffic, such as continuous typing, keeps a checkpoint waiting until it pauses.
 
 Example:
 
@@ -234,11 +234,14 @@ Example:
 <>
 	~~
 	cp := &doors.ScopeCheckpoint{}
+	debounce := &doors.ScopeDebounce{
+		Duration: 300 * time.Millisecond,
+	}
 	~~
 
 	<input
 		(doors.AInput{
-			Scope: cp.Scope(false),
+			Scope: cp.Scope(false).And(debounce),
 			On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
 				return false
 			},
@@ -256,7 +259,9 @@ Example:
 </>
 ```
 
-The input autosaves as you type. `Submit` waits for the autosaves already in flight, and typing keeps saving meanwhile.
+The input autosaves as you type. `Submit` waits until the autosaves settle, including a keystroke typed right after the click, so it always runs on the latest text.
+
+Put the checkpoint scope first in the chain: `cp.Scope(false).And(debounce)`. A request joins the checkpoint scope only when it reaches it, so with `debounce.And(cp.Scope(false))` a keystroke still held by the debounce is not in the scope yet, and `Submit` does not wait for it.
 
 Unlike frame, nothing is blocked. To drop double clicks on `Submit`, put a blocking scope in front: `Scope: block.And(cp.Scope(true))`.
 
@@ -376,7 +381,7 @@ Each scope sees the event only after the previous scope accepted it. That lets y
 - Use blocking to drop overlap, serial to queue overlap, and debounce to delay bursts.
 - Use rate to throttle events to a fixed minimum interval.
 - Use frame when one action should wait for earlier related actions and then run exclusively.
-- Use checkpoint when one action should wait for earlier related actions while new ones keep running.
+- Use checkpoint when one action should wait until related actions settle while they keep running.
 - Use concurrent when overlap is allowed only inside one group.
 - Use latest when stale work should be canceled in favor of the newest event.
 - Scopes pair naturally with indication: scopes decide whether the request proceeds, indication shows the interaction state.

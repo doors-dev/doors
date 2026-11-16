@@ -173,8 +173,8 @@ func (d *ScopeFrame) Scope(frame bool) Scopes {
 	})
 }
 
-// ScopeCheckpoint lets a checkpoint request wait for the requests already in
-// the scope, without holding back ones that arrive later.
+// ScopeCheckpoint lets a checkpoint request wait until the scope's ordinary
+// requests settle, without holding them back.
 //
 // It does not satisfy [Scopes]; call Scope to obtain a value.
 //
@@ -183,10 +183,10 @@ type ScopeCheckpoint struct {
 	id front.AutoID
 }
 
-// Scope selects how a request takes part in this scope. With checkpoint true
-// the request waits for every request already in the scope, then runs, so
-// checkpoints run in arrival order. With checkpoint false it runs at once.
-// Nothing is rejected.
+// Scope selects how a request takes part in this scope. With checkpoint false
+// the request runs at once. With checkpoint true it runs once earlier
+// checkpoints are done and no ordinary request is in flight, so ordinary
+// requests that arrive while it waits hold it further. Nothing is rejected.
 func (d *ScopeCheckpoint) Scope(checkpoint bool) Scopes {
 	return scopeFunc(func(core core.Core) []Scope {
 		return []Scope{front.CheckpointScope(d.id.String(core), checkpoint)}
