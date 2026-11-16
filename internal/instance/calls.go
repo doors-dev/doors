@@ -108,9 +108,9 @@ func (c *call) Result(r json.RawMessage, err error) {
 	action := c.finish()
 	if err != nil {
 		if action != nil {
-			c.logger.Error("Call failed", "action", (*action).Log(), "error", err)
+			c.logger.Debug("Call failed", "action", (*action).Log(), "error", err)
 		} else {
-			c.logger.Error("Call failed", "error", err)
+			c.logger.Debug("Call failed", "error", err)
 		}
 	}
 	if c.onResult == nil {

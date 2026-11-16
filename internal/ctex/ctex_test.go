@@ -361,7 +361,7 @@ func TestFrameInfect(t *testing.T) {
 func TestLogCanceled(t *testing.T) {
 	var buf bytes.Buffer
 	prev := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	defer slog.SetDefault(prev)
 
 	LogCanceled(context.Background(), "update")
