@@ -13,6 +13,7 @@
 // limitations under the License.
 
 const trigger = Symbol()
+let active: TriggerMeta | undefined
 
 export type TriggerMeta = {
 	promises: Promise<Response>[]
@@ -25,11 +26,17 @@ export function putTrigger(event: Event): TriggerMeta {
 }
 
 export function getTrigger(event: Event): TriggerMeta | undefined {
-	return (event as any)[trigger]
+	return (event as any)[trigger] ?? active
 }
 
 export function dispatch(target: EventTarget, event: Event): Promise<Response>[] {
 	const meta = putTrigger(event)
-	target.dispatchEvent(event)
+	const prev = active
+	active = meta
+	try {
+		target.dispatchEvent(event)
+	} finally {
+		active = prev
+	}
 	return meta.promises
 }

@@ -442,7 +442,7 @@ Use `$sys.clean(...)` for timers, global listeners, and embedded widgets that ne
 
 ### Dispatch events and wait for hooks
 
-`$sys.emit(target, event)` is the client-side counterpart of `doors.Emitter`: it dispatches a DOM event and resolves only after every hook request the event triggered has finished — including `HoldSettle` and the hook's `After` actions. The resolved value is the number of hook requests triggered: an element with no matching event attr adds nothing, a bubbling event adds one per event attr it reaches.
+`$sys.emit(target, event)` is the client-side counterpart of `doors.Emitter`: it dispatches a DOM event and resolves only after every hook request the event triggered has finished — including `HoldSettle` and the hook's `After` actions. The resolved value is the number of hook requests triggered: an element with no matching event attr adds nothing, a bubbling event adds one per event attr it reaches. Hooks of events the emitted event triggers, such as the form submit that follows a click on a submit button, are awaited and counted too.
 
 ```gox
 <button id="save" (doors.AClick{On: onSave})>Save</button>

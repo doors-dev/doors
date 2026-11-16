@@ -17,6 +17,8 @@ package attr
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
+	"time"
 
 	"github.com/doors-dev/doors"
 	"github.com/doors-dev/doors/internal/test"
@@ -391,6 +393,49 @@ elem (f *emitterContainerFragment) Main() {
 	~(test.Button("emit2", emitterCount(f.r, 0, f.e.Click(doors.PointerEmit{Button: 2}))))
 	~(test.Button("inner", func(ctx context.Context) bool {
 		f.d.Inner(ctx, f.body("second"))
+		return false
+	}))
+}
+
+// click on a submit button triggers form submit
+
+type emitterDerivedFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	e doors.Emitter
+	done atomic.Int32
+}
+
+elem (f *emitterDerivedFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	~~
+	~(f.r)
+	~>doors.ASubmit[struct{}]{
+		On: func(ctx context.Context, r doors.RequestForm[struct{}]) bool {
+			time.Sleep(200 * time.Millisecond)
+			f.done.Add(1)
+			return false
+		},
+	} <form>
+		<input type="text" name="field"/>
+		<button id="target" (&f.e)>go</button>
+	</form>
+	~(test.Button("emit", func(ctx context.Context) bool {
+		var count int
+		ch := doors.Call(doors.DetachedContext(ctx), f.e.Click(doors.PointerEmit{}).Into(&count))
+		<-ch
+		select {
+		case err := <-ch:
+			if err != nil {
+				f.r.Update(ctx, 0, "err")
+			} else {
+				f.r.Update(ctx, 0, fmt.Sprint(count))
+			}
+			f.r.Update(ctx, 1, fmt.Sprint(f.done.Load()))
+		case <-ctx.Done():
+		}
 		return false
 	}))
 }

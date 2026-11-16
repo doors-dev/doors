@@ -180,3 +180,18 @@ func TestEmitterMulti(t *testing.T) {
 	waitReport(t, page, 1, "hit")
 	waitReport(t, page, 2, "hit")
 }
+
+func TestEmitterDerivedSubmit(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &emitterDerivedFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.Click(t, page, "#emit")
+	waitReport(t, page, 0, "1")
+	waitReport(t, page, 1, "1")
+}

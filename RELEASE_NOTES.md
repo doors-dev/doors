@@ -88,6 +88,7 @@ The modification belongs to the surrounding render: it stays across the Door's o
 - A `<link rel="stylesheet">` without `href` logged an error; it now passes through.
 - `raw` scripts were cached once per `profile`, although `profile` does not apply to them.
 - A `<script>` that **Doors** does not process, such as one with a `type` it does not handle, could have some of its `data:` attributes rewritten. It now passes through as written.
+- `$sys.emit` and `Emitter` did not wait for hooks of events the emitted event triggers, such as the form submit that follows a click on a submit button. Those hooks are now awaited and counted, and their failures are reported.
 
 ## Breaking Changes
 

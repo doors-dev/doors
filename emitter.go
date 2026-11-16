@@ -36,8 +36,9 @@ var _ Attr = (*Emitter)(nil)
 //
 // Into captures the number of hook requests the emitted events triggered, not
 // the number of elements reached; a failure in any of them fails the call (see
-// [ActionInto]). The action completes only after every triggered hook request
-// has finished.
+// [ActionInto]). Hooks of events an emitted event triggers, such as a form
+// submit after a click on a submit button, count too. The action completes
+// only after every triggered hook request has finished.
 type Emitter struct {
 	id front.AutoID
 }

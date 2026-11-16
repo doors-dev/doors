@@ -35,3 +35,62 @@ func TestSysEmit(t *testing.T) {
 	waitReport(t, page, 2, "2")
 	waitReport(t, page, 3, "2")
 }
+
+func TestSysEmitDerivedSubmit(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &sysEmitSubmitFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	waitReport(t, page, 0, "1")
+	waitReport(t, page, 1, "1")
+}
+
+func TestSysEmitDerivedSubmitWithClick(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &sysEmitSubmitFragment{
+			r:     test.NewReporter(10),
+			click: true,
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	waitReport(t, page, 0, "2")
+	waitReport(t, page, 1, "2")
+}
+
+func TestSysEmitDerivedSubmitError(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &sysEmitSubmitFragment{
+			r:    test.NewReporter(10),
+			fail: true,
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	waitReport(t, page, 0, "-1")
+	waitReport(t, page, 1, "0")
+}
+
+func TestSysEmitUnrelated(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &sysEmitUnrelatedFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	waitReport(t, page, 0, "hit")
+	waitReport(t, page, 1, "hit")
+	waitReport(t, page, 2, "1")
+}

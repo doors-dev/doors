@@ -67,3 +67,115 @@ elem (f *sysEmitFragment) Main() {
 		await $hook("count", n)
 	</script>
 }
+
+type sysEmitForm struct {
+	N int `form:"n"`
+}
+
+type sysEmitSubmitFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	click bool
+	fail bool
+	done atomic.Int32
+}
+
+func (f *sysEmitSubmitFragment) attrs() []doors.Attr {
+	if !f.click {
+		return nil
+	}
+	return []doors.Attr{doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.done.Add(1)
+			return false
+		},
+	}}
+}
+
+func (f *sysEmitSubmitFragment) value() string {
+	if f.fail {
+		return "x"
+	}
+	return "1"
+}
+
+elem (f *sysEmitSubmitFragment) Main() {
+	~~
+	for i := 0; i < 2; i++ {
+		f.r.Update(ctx, i, "")
+	}
+	~~
+	~(f.r)
+	~>doors.ASubmit[sysEmitForm]{
+		On: func(ctx context.Context, r doors.RequestForm[sysEmitForm]) bool {
+			time.Sleep(200 * time.Millisecond)
+			f.done.Add(1)
+			return false
+		},
+	} <form>
+		<input type="text" name="n" value=(f.value())/>
+		<button id="target" (doors.A(ctx, f.attrs()...))>go</button>
+	</form>
+	~>doors.AHook[int]{
+		Name: "count",
+		On: func(ctx context.Context, r doors.RequestHook[int]) (any, bool) {
+			f.r.Update(ctx, 0, fmt.Sprint(r.Data()))
+			f.r.Update(ctx, 1, fmt.Sprint(f.done.Load()))
+			return nil, true
+		},
+	} <script>
+		let n = -1
+		try {
+			n = await $sys.emit(
+				document.getElementById("target"),
+				new MouseEvent("click", { bubbles: true, cancelable: true }),
+			)
+		} catch {
+		}
+		await $hook("count", n)
+	</script>
+}
+
+type sysEmitUnrelatedFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	done atomic.Int32
+}
+
+func (f *sysEmitUnrelatedFragment) hit(slot int, delay time.Duration) doors.Attr {
+	return doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			time.Sleep(delay)
+			f.done.Add(1)
+			f.r.Update(ctx, slot, "hit")
+			return false
+		},
+	}
+}
+
+elem (f *sysEmitUnrelatedFragment) Main() {
+	~~
+	for i := 0; i < 4; i++ {
+		f.r.Update(ctx, i, "")
+	}
+	~~
+	~(f.r)
+	<div id="target" (doors.A(ctx, f.hit(0, 300*time.Millisecond)))>target</div>
+	<div id="other" (doors.A(ctx, f.hit(1, 0)))>other</div>
+	~>doors.AHook[int]{
+		Name: "count",
+		On: func(ctx context.Context, r doors.RequestHook[int]) (any, bool) {
+			f.r.Update(ctx, 2, fmt.Sprint(r.Data()))
+			return nil, true
+		},
+	} <script>
+		const other = document.getElementById("other")
+		const p = $sys.emit(
+			document.getElementById("target"),
+			new PointerEvent("click", { bubbles: true }),
+		)
+		other.dispatchEvent(new PointerEvent("click", { bubbles: true }))
+		setTimeout(() => other.dispatchEvent(new PointerEvent("click", { bubbles: true })), 50)
+		await $hook("count", await p)
+	</script>
+}
