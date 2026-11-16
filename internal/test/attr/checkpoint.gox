@@ -57,7 +57,9 @@ elem (f *checkpointFragment) Main() {
 	blocking := &doors.ScopeBlocking{}
 	debounce := &doors.ScopeDebounce{Duration: 300 * time.Millisecond}
 	latest := &doors.ScopeLatest{}
-	fieldDebounce := &doors.ScopeDebounce{Duration: 300 * time.Millisecond}
+	fieldDebounce := &doors.ScopeDebounce{Duration: 500 * time.Millisecond}
+	slowLatest := &doors.ScopeLatest{}
+	runLatest := &doors.ScopeLatest{}
 	~~
 	~(f.button("o1", cp.Scope(false), 600*time.Millisecond))
 	~(f.button("o2", cp.Scope(false), 900*time.Millisecond))
@@ -73,7 +75,7 @@ elem (f *checkpointFragment) Main() {
 		Race:  doors.RaceParallel,
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
 			f.log.add("start:os")
-			<-time.After(300 * time.Millisecond)
+			<-time.After(500 * time.Millisecond)
 			f.log.add("end:os")
 			return false
 		},
@@ -81,7 +83,7 @@ elem (f *checkpointFragment) Main() {
 	<input id="field" (doors.A(ctx, doors.AInput{
 		Scope: cp.Scope(false).And(fieldDebounce),
 		On: func(ctx context.Context, r doors.RequestEvent[doors.InputEvent]) bool {
-			<-time.After(100 * time.Millisecond)
+			<-time.After(200 * time.Millisecond)
 			f.value.Store(r.Event().Value)
 			f.log.add("field:" + r.Event().Value)
 			return false
@@ -95,6 +97,18 @@ elem (f *checkpointFragment) Main() {
 			return false
 		},
 	}))>sub</button>
+	<button id="ls" (doors.A(ctx, doors.AClick{
+		Scope: cp.Scope(false).And(slowLatest),
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.log.add("start:ls")
+			r.After(doors.ActionEmit[any]{Name: "slow"})
+			return false
+		},
+	}))>ls</button>
+	~(f.button("lc", runLatest.And(cp.Scope(true)), 500*time.Millisecond))
+	<script>
+		$on("slow", () => new Promise((resolve) => setTimeout(resolve, 600)))
+	</script>
 	<button id="he">he</button>
 	<button id="ht">ht</button>
 	~>doors.ARawHook{

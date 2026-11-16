@@ -78,10 +78,10 @@ func TestScopeCheckpointWaitsForRunning(t *testing.T) {
 	waitCheckpointLog(t, log, time.Second, "start:o1")
 	test.ClickNow(t, page, "#c2")
 	<-time.After(100 * time.Millisecond)
-	test.ClickNow(t, page, "#of")
-	entries := waitCheckpointLog(t, log, 2*time.Second, "end:c2")
-	checkpointBefore(t, entries, "end:of", "start:c2")
+	test.ClickNow(t, page, "#o2")
+	entries := waitCheckpointLog(t, log, 3*time.Second, "end:c2")
 	checkpointBefore(t, entries, "end:o1", "start:c2")
+	checkpointBefore(t, entries, "end:o2", "start:c2")
 }
 
 func TestScopeCheckpointWaitsForStream(t *testing.T) {
@@ -278,6 +278,37 @@ func TestScopeCheckpointDebouncedField(t *testing.T) {
 	})
 	entries := log.snapshot()
 	checkpointBefore(t, entries, "field:ab", "submit:ab")
+}
+
+func TestScopeCheckpointCanceledRunning(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#lc")
+	waitCheckpointLog(t, log, time.Second, "start:lc")
+	test.ClickNow(t, page, "#c2")
+	<-time.After(50 * time.Millisecond)
+	test.ClickNow(t, page, "#lc")
+	waitCheckpointLog(t, log, 2*time.Second, "end:c2")
+	waitSnapshotLog(t, log, 3*time.Second, func(entries []string) bool {
+		return checkpointCount(entries, "end:lc") == 2
+	})
+	checkpointBefore(t, log.snapshot(), "start:c2", "end:lc")
+}
+
+func TestScopeCheckpointCancelDuringAfter(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#ls")
+	waitCheckpointLog(t, log, time.Second, "start:ls")
+	<-time.After(200 * time.Millisecond)
+	test.ClickNow(t, page, "#ls")
+	waitSnapshotLog(t, log, 2*time.Second, func(entries []string) bool {
+		return checkpointCount(entries, "start:ls") == 2
+	})
+	test.ClickNow(t, page, "#c2")
+	waitCheckpointLog(t, log, 3*time.Second, "end:c2")
 }
 
 func checkpointCount(entries []string, entry string) int {

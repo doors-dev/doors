@@ -59,7 +59,7 @@ Fixed paths are served with `ServerCacheControl`, by default `public, max-age=31
 
 ### ScopeCheckpoint
 
-`doors.ScopeCheckpoint` lets one action wait until related work settles without stopping that work. `cp.Scope(false)` runs at once; `cp.Scope(true)` runs once earlier checkpoints are done and no ordinary request is in flight. Checkpoints queue in arrival order and nothing is rejected. For example, inputs autosave as you type while `Submit` waits until the autosaves settle, so it sees the latest text. See [Checkpoint](./docs/10-scopes.md#checkpoint).
+`doors.ScopeCheckpoint` lets one action wait until related work settles without stopping that work. `cp.Scope(false)` runs at once; `cp.Scope(true)` runs once earlier checkpoints are done and no ordinary request is in flight. Checkpoints queue in arrival order and nothing is rejected. For example, inputs autosave as you type while `Submit` waits until the autosaves settle, including keystrokes typed while it waits. See [Checkpoint](./docs/10-scopes.md#checkpoint).
 
 ### Reading the configuration
 

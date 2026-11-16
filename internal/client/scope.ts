@@ -161,7 +161,9 @@ class Hook {
 	report(): boolean {
 		this.reported = true
 		if (this.response) {
-			return this.ok(this.response)
+			const r = this.response
+			this.response = undefined
+			return this.ok(r)
 		}
 		return false
 	}

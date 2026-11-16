@@ -226,7 +226,7 @@ Here the input events are normal frame members, and `Apply` is the barrier event
 - `cp.Scope(false)` is an ordinary event: it runs at once, always
 - `cp.Scope(true)` is a checkpoint: it runs once earlier checkpoints are done and no ordinary event is in flight
 
-An ordinary event that arrives while a checkpoint waits holds it further; one that arrives while a checkpoint runs does not affect it. Checkpoints queue behind each other in arrival order. Nothing in this scope is rejected, so nonstop ordinary traffic, such as continuous typing, keeps a checkpoint waiting until it pauses.
+An ordinary event that arrives while a checkpoint waits holds it further; one that arrives while a checkpoint runs does not affect it. Checkpoints queue behind each other in arrival order. Requests outside the scope are not waited for. Nothing in this scope is rejected, so nonstop ordinary traffic, such as continuous typing, keeps a checkpoint waiting until it pauses.
 
 Example:
 
@@ -259,11 +259,13 @@ Example:
 </>
 ```
 
-The input autosaves as you type. `Submit` waits until the autosaves settle, including a keystroke typed right after the click, so it always runs on the latest text.
+The input autosaves as you type. `Submit` waits until the autosaves settle, including keystrokes typed while it waits.
+
+"In flight" is client-side. A request that times out, is canceled (for example by `ScopeLatest`) or fails stops holding the checkpoint, even if its handler is still running on the server or the save failed.
 
 Put the checkpoint scope first in the chain: `cp.Scope(false).And(debounce)`. A request joins the checkpoint scope only when it reaches it, so with `debounce.And(cp.Scope(false))` a keystroke still held by the debounce is not in the scope yet, and `Submit` does not wait for it.
 
-Unlike frame, nothing is blocked. To drop double clicks on `Submit`, put a blocking scope in front: `Scope: block.And(cp.Scope(true))`.
+Order matters on the checkpoint side too: scopes after `cp.Scope(true)` are part of its run. Unlike frame, nothing is blocked, so to drop double clicks on `Submit`, put a blocking scope in front: `block.And(cp.Scope(true))`. With `cp.Scope(true).And(block)` the second click is queued instead.
 
 ## Concurrent
 
