@@ -179,3 +179,45 @@ elem (f *sysEmitUnrelatedFragment) Main() {
 		await $hook("count", await p)
 	</script>
 }
+
+type sysEmitDisabledFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	mode string
+}
+
+elem (f *sysEmitDisabledFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	~~
+	~(f.r)
+	<div inert=(f.mode == "inert")>
+		<fieldset disabled=(f.mode == "fieldset")>
+			~>doors.AClick{
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+					f.r.Update(ctx, 0, "hit")
+					return false
+				},
+			} <button id="target" disabled=(f.mode == "disabled")>go</button>
+		</fieldset>
+	</div>
+	~>doors.AHook[string]{
+		Name: "result",
+		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
+			f.r.Update(ctx, 1, r.Data())
+			return nil, true
+		},
+	} <script>
+		let res = "ok"
+		try {
+			await $sys.emit(
+				document.getElementById("target"),
+				new PointerEvent("click", { bubbles: true }),
+			)
+		} catch (e) {
+			res = `${e.kind}: ${e.message}`
+		}
+		await $hook("result", res)
+	</script>
+}

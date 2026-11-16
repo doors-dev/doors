@@ -20,8 +20,8 @@ import { setAttr } from "./setter"
 import { date, doAfter, scrollInto, Result } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
-import { HookErr } from "./hook_err.ts"
-import { dispatch } from "./trigger"
+import { HookErr, hookErrKinds } from "./hook_err.ts"
+import { dispatch, refused } from "./trigger"
 
 
 type Extras = {
@@ -106,6 +106,9 @@ const actions = {
 	"emit_event": (ext: Extras, emitterId: number, type: string, capture: string) => {
 		const promises: Promise<Response>[] = []
 		const elements = getEmitter(emitterId)
+		if (elements && [...elements].some(refused)) {
+			throw plainErr(new HookErr(hookErrKinds.canceled, "target is disabled"))
+		}
 		if (elements) {
 			const make = captureEvents[capture]
 			for (const element of elements) {
@@ -121,10 +124,7 @@ const actions = {
 		return Promise.all(promises).then(
 			() => promises.length,
 			(err) => {
-				if (err instanceof HookErr) {
-					throw new Error(err.message ? `${err.kind}: ${err.message}` : err.kind)
-				}
-				throw err
+				throw plainErr(err)
 			},
 		)
 	},
@@ -181,6 +181,13 @@ const actions = {
 	"time": (_: Extras) => {
 		return date(new Date())
 	},
+}
+
+function plainErr(err: any): any {
+	if (err instanceof HookErr) {
+		return new Error(err.message ? `${err.kind}: ${err.message}` : err.kind)
+	}
+	return err
 }
 
 type Err = {

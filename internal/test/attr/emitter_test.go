@@ -195,3 +195,36 @@ func TestEmitterDerivedSubmit(t *testing.T) {
 	waitReport(t, page, 0, "1")
 	waitReport(t, page, 1, "1")
 }
+
+func TestEmitterDisabled(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &emitterDisabledFragment{
+			r:        test.NewReporter(10),
+			disabled: true,
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.Click(t, page, "#emit")
+	waitReport(t, page, 0, "client execution failed: canceled: target is disabled")
+	test.TestReportId(t, page, 1, "")
+	test.TestReportId(t, page, 2, "")
+}
+
+func TestEmitterEnabled(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &emitterDisabledFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.Click(t, page, "#emit")
+	waitReport(t, page, 0, "2")
+	waitReport(t, page, 1, "hit")
+	waitReport(t, page, 2, "hit")
+}

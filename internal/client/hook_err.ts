@@ -35,7 +35,7 @@ export class HookErr extends Error {
 				message = `hook not found on server, may be done`
 				break
 			case hookErrKinds.canceled:
-				message = `hook is canceled`
+				message = typeof opt === "string" ? opt : `hook is canceled`
 				break
 			case hookErrKinds.gone:
 				message = `instance is stopped`

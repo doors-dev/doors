@@ -78,6 +78,7 @@ The modification belongs to the surrounding render: it stays across the Door's o
 ## Behavior Changes
 
 - **`ProxyMod` no longer fails the render** when text or other non-element output comes first. The mod is skipped and an error is logged.
+- **`$sys.emit` and `Emitter` refuse disabled targets.** When a target is a disabled form control (including one inside a disabled `<fieldset>`) or sits inside an `inert` subtree, nothing is dispatched and the emit fails as canceled with `target is disabled`. An `Emitter` checks all its elements first, so one disabled element fails the call for all of them.
 
 ## Fixes
 

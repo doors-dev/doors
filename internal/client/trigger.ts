@@ -40,3 +40,7 @@ export function dispatch(target: EventTarget, event: Event): Promise<Response>[]
 	}
 	return meta.promises
 }
+
+export function refused(target: EventTarget): boolean {
+	return target instanceof Element && (target.matches(":disabled") || target.closest("[inert]") !== null)
+}

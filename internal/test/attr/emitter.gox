@@ -439,3 +439,47 @@ elem (f *emitterDerivedFragment) Main() {
 		return false
 	}))
 }
+
+// emit to a disabled element fails without dispatching
+
+type emitterDisabledFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	e doors.Emitter
+	disabled bool
+}
+
+func (f *emitterDisabledFragment) hit(slot int) doors.Attr {
+	return doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, slot, "hit")
+			return false
+		},
+	}
+}
+
+elem (f *emitterDisabledFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	f.r.Update(ctx, 2, "")
+	~~
+	~(f.r)
+	<button id="d1" (&f.e) (doors.A(ctx, f.hit(1)))>d1</button>
+	<button id="d2" disabled=(f.disabled) (&f.e) (doors.A(ctx, f.hit(2)))>d2</button>
+	~(test.Button("emit", func(ctx context.Context) bool {
+		var count int
+		ch := doors.Call(doors.DetachedContext(ctx), f.e.Click(doors.PointerEmit{}).Into(&count))
+		<-ch
+		select {
+		case err := <-ch:
+			if err != nil {
+				f.r.Update(ctx, 0, err.Error())
+			} else {
+				f.r.Update(ctx, 0, fmt.Sprint(count))
+			}
+		case <-ctx.Done():
+		}
+		return false
+	}))
+}

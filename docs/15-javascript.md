@@ -455,3 +455,5 @@ Use `$sys.clean(...)` for timers, global listeners, and embedded widgets that ne
 ```
 
 You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. Any failed hook request rejects the promise with `HookErr`; a hook canceled by a scope, by `RaceStrict`, or by `RaceLatest`, or filtered out by `Key`, counts as a failure as well. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.
+
+A disabled form control (including one inside a disabled `<fieldset>`) or an element inside an `inert` subtree is refused: nothing is dispatched, and the promise rejects with a canceled `HookErr` whose message is `target is disabled`. `aria-disabled` is not checked, and `window` or `document` targets are never refused.

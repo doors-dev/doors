@@ -696,3 +696,78 @@ func (f *emitterDerivedFragment) Main() gox.Elem {
 	return })
 //line emitter.gox:441
 }
+
+// emit to a disabled element fails without dispatching
+
+type emitterDisabledFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	e doors.Emitter
+	disabled bool
+}
+
+func (f *emitterDisabledFragment) hit(slot int) doors.Attr {
+	return doors.AClick{
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.r.Update(ctx, slot, "hit")
+			return false
+		},
+	}
+}
+
+//line emitter.gox:461
+func (f *emitterDisabledFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line emitter.gox:463
+		f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	f.r.Update(ctx, 2, "")
+
+//line emitter.gox:467
+		__e = __c.Any(f.r); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+//line emitter.gox:468
+			__e = __c.Set("id", "d1"); if __e != nil { return }
+//line emitter.gox:468
+			__e = __c.Modify(&f.e); if __e != nil { return }
+//line emitter.gox:468
+			__e = __c.Modify(doors.A(ctx, f.hit(1))); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("d1"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("button"); if __e != nil { return }
+		{
+//line emitter.gox:469
+			__e = __c.Set("id", "d2"); if __e != nil { return }
+//line emitter.gox:469
+			__e = __c.Set("disabled", f.disabled); if __e != nil { return }
+//line emitter.gox:469
+			__e = __c.Modify(&f.e); if __e != nil { return }
+//line emitter.gox:469
+			__e = __c.Modify(doors.A(ctx, f.hit(2))); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Text("d2"); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line emitter.gox:470
+		__e = __c.Any(test.Button("emit", func(ctx context.Context) bool {
+		var count int
+		ch := doors.Call(doors.DetachedContext(ctx), f.e.Click(doors.PointerEmit{}).Into(&count))
+		<-ch
+		select {
+		case err := <-ch:
+			if err != nil {
+				f.r.Update(ctx, 0, err.Error())
+			} else {
+				f.r.Update(ctx, 0, fmt.Sprint(count))
+			}
+		case <-ctx.Done():
+		}
+		return false
+	})); if __e != nil { return }
+	return })
+//line emitter.gox:485
+}

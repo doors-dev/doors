@@ -261,3 +261,72 @@ func (f *sysEmitUnrelatedFragment) Main() gox.Elem {
 	return })
 //line sys_emit.gox:181
 }
+
+type sysEmitDisabledFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	mode string
+}
+
+//line sys_emit.gox:189
+func (f *sysEmitDisabledFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line sys_emit.gox:191
+		f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+
+//line sys_emit.gox:194
+		__e = __c.Any(f.r); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line sys_emit.gox:195
+			__e = __c.Set("inert", f.mode == "inert"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+			__e = __c.Init("fieldset"); if __e != nil { return }
+			{
+//line sys_emit.gox:196
+				__e = __c.Set("disabled", f.mode == "fieldset"); if __e != nil { return }
+				__e = __c.Submit(); if __e != nil { return }
+//line sys_emit.gox:197
+				__e = (doors.AClick{
+				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+					f.r.Update(ctx, 0, "hit")
+					return false
+				},
+			}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+					ctx := __c.Context(); _ = ctx
+					__e = __c.Init("button"); if __e != nil { return }
+					{
+//line sys_emit.gox:202
+						__e = __c.Set("id", "target"); if __e != nil { return }
+//line sys_emit.gox:202
+						__e = __c.Set("disabled", f.mode == "disabled"); if __e != nil { return }
+						__e = __c.Submit(); if __e != nil { return }
+						__e = __c.Text("go"); if __e != nil { return }
+					}
+					__e = __c.Close(); if __e != nil { return }
+				return })); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line sys_emit.gox:205
+		__e = (doors.AHook[string]{
+		Name: "result",
+		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
+			f.r.Update(ctx, 1, r.Data())
+			return nil, true
+		},
+	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("script"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Raw("let res = \"ok\"\n\t\ttry {\n\t\t\tawait $sys.emit(\n\t\t\t\tdocument.getElementById(\"target\"),\n\t\t\t\tnew PointerEvent(\"click\", { bubbles: true }),\n\t\t\t)\n\t\t} catch (e) {\n\t\t\tres = `${e.kind}: ${e.message}`\n\t\t}\n\t\tawait $hook(\"result\", res)"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+	return })
+//line sys_emit.gox:223
+}

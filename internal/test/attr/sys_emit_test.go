@@ -94,3 +94,36 @@ func TestSysEmitUnrelated(t *testing.T) {
 	waitReport(t, page, 1, "hit")
 	waitReport(t, page, 2, "1")
 }
+
+func TestSysEmitDisabled(t *testing.T) {
+	for _, mode := range []string{"disabled", "fieldset", "inert"} {
+		t.Run(mode, func(t *testing.T) {
+			bro := test.NewFragmentBro(browser, func() test.Fragment {
+				return &sysEmitDisabledFragment{
+					r:    test.NewReporter(10),
+					mode: mode,
+				}
+			})
+			defer bro.Close()
+			page := bro.Page(t, "/")
+			defer page.Close()
+
+			waitReport(t, page, 1, "canceled: target is disabled")
+			test.TestReportId(t, page, 0, "")
+		})
+	}
+}
+
+func TestSysEmitEnabled(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &sysEmitDisabledFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	waitReport(t, page, 1, "ok")
+	waitReport(t, page, 0, "hit")
+}

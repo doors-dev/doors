@@ -39,6 +39,9 @@ var _ Attr = (*Emitter)(nil)
 // [ActionInto]). Hooks of events an emitted event triggers, such as a form
 // submit after a click on a submit button, count too. The action completes
 // only after every triggered hook request has finished.
+//
+// If any attached element is a disabled form control or inside an inert
+// subtree, nothing is dispatched and the call fails as canceled.
 type Emitter struct {
 	id front.AutoID
 }

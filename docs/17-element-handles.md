@@ -121,6 +121,8 @@ Unset init fields use the browser defaults. `FocusEmit` runs the handlers withou
 
 `Into(&count)` captures the number of hook requests the emitted events triggered, not the number of elements reached: an attached element with no matching event attr adds nothing, and a bubbling event adds one per event attr it reaches. Hooks of events the emitted event triggers, such as the form submit that follows a click on a submit button, count too. Any failure among them fails the call. The action completes only after every triggered hook request has finished, so by the time its channel delivers the result (the second value, on a detached context), the handlers have run. To wait for it, see [Actions](./12-actions.md#direct).
 
+If any attached element is a disabled form control (including one inside a disabled `<fieldset>`) or sits inside an `inert` subtree, the emitter dispatches to none of them, and the call fails with an `ErrExecution` error reading `canceled: target is disabled`.
+
 ## Sharing
 
 One handle can be attached to many elements, and many handles can be attached to one element — including a setter and an emitter together.
