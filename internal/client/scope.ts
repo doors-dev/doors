@@ -86,7 +86,7 @@ class Hook {
 				console.error("hook action payload decode error", decodeErr)
 				continue
 			}
-			const res = action(name, arg, { element: this.params.event?.target as any, payload: decoded })
+			const res = action(name, arg, { element: this.target ?? undefined, payload: decoded })
 			const [_, err] = res instanceof Promise ? await res : res
 			if (err) {
 				console.error("hook action error", err)
@@ -138,7 +138,9 @@ class Hook {
 		})
 	}
 	private done() {
-		this.scopeStack.forEach(s => s.done(this))
+		const stack = this.scopeStack
+		this.scopeStack = []
+		stack.forEach(s => s.done(this))
 	}
 	cancel() {
 		if (this.applying) {
@@ -228,8 +230,10 @@ class Runtime {
 			this.hooks.delete(track)
 		}
 	}
-	public scopeDone(id: string) {
-		this.scopes.delete(id)
+	public scopeDone(id: string, scope: Scope) {
+		if (this.scopes.get(id) === scope) {
+			this.scopes.delete(id)
+		}
 	}
 	public submitHook(hook: Hook) {
 		const set = hook.nextScope()!
@@ -264,7 +268,7 @@ abstract class Scope {
 		this.empty()
 	}
 	protected empty() {
-		this.runtime.scopeDone(this.id)
+		this.runtime.scopeDone(this.id, this)
 	}
 	public submit(hook: Hook, opt: any) {
 		hook.stackScope(this)
@@ -314,12 +318,10 @@ class RateScope extends Scope {
 	}
 	protected process(hook: Hook, opt: any): void {
 		const tick = opt as number;
-		if (this.candidate) {
-			this.candidate[0].cancel()
-			this.candidate = null
-		}
 		if (this.rateTimer != null) {
+			const prev = this.candidate
 			this.candidate = [hook, tick]
+			prev?.[0].cancel()
 			return
 		}
 		this.rateTimer = setTimeout(() => this.next(), tick)
@@ -385,6 +387,9 @@ class DebounceScope extends Scope {
 		this.hook = hook
 		if (oldHook) {
 			oldHook.cancel()
+		}
+		if (this.hook !== hook) {
+			return
 		}
 		this.resetDuration(duration)
 		this.resetLimit(limit)
@@ -522,10 +527,12 @@ class LatestScope extends Scope {
 		this.last = null
 	}
 	protected process(hook: Hook, _opt: any): void {
-		if (this.last) {
-			this.last.cancel()
-		}
+		const prev = this.last
 		this.last = hook
+		prev?.cancel()
+		if (this.last !== hook) {
+			return
+		}
 		this.promote(hook)
 	}
 }

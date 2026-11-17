@@ -33,6 +33,25 @@ elem (f *indicatorFragment) Main() {
 	~(f.queue())
 	~(f.values())
 	~(f.held())
+	~(f.actionTarget())
+}
+
+elem (f *indicatorFragment) actionTarget() {
+	~>doors.AClick{
+		Indicator: doors.IndicateAttr("data-ind", "1"),
+		Before: doors.ActionIndicate{
+			Indicator: doors.IndicateAttr("data-before", "1"),
+			Duration:  1500 * time.Millisecond,
+		},
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			r.After(doors.ActionIndicate{
+				Indicator: doors.IndicateAttr("data-after", "1"),
+				Duration:  1500 * time.Millisecond,
+			})
+			<-time.After(400 * time.Millisecond)
+			return false
+		},
+	} <button id="action-target"><span id="action-target-span">inner</span></button>
 }
 
 elem (f *indicatorFragment) held() {

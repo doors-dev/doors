@@ -1,0 +1,208 @@
+// Copyright 2026 doors dev LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package attr
+
+import (
+	"context"
+	"time"
+
+	"github.com/doors-dev/doors"
+	"github.com/doors-dev/doors/internal/test"
+	"github.com/doors-dev/gox"
+)
+
+type reentryFragment struct {
+	log *checkpointLog
+	test.NoBeam
+}
+
+elem (f *reentryFragment) Main() {
+	~~
+	rate := &doors.ScopeRate{Tick: time.Second}
+	serial := &doors.ScopeSerial{}
+	cpRate := &doors.ScopeRate{Tick: time.Second}
+	cp := &doors.ScopeCheckpoint{}
+	frRate := &doors.ScopeRate{Tick: time.Second}
+	fr := &doors.ScopeFrame{}
+	latest := &doors.ScopeLatest{}
+	debounce := &doors.ScopeDebounce{Duration: 200 * time.Millisecond}
+	~~
+	~(f.button("rb", rate, 0))
+	~(f.button("ra", serial.And(rate), 0))
+	~(f.button("cb", cpRate, 0))
+	~(f.button("ca", cp.Scope(true).And(cpRate), 0))
+	~(f.button("fb", frRate, 0))
+	~(f.button("fo", fr.Scope(false).And(frRate), 0))
+	~(f.button("ff", fr.Scope(true).And(frRate), 0))
+	~(f.button("la", serial.And(latest).And(debounce), 1500*time.Millisecond))
+	~(f.button("lb", latest, 1500*time.Millisecond))
+}
+
+elem (f *reentryFragment) button(id string, scope doors.Scopes, d time.Duration) {
+	<button id=(id) (doors.A(ctx, doors.AClick{
+		Scope:     scope,
+		Indicator: doors.IndicateClass("busy"),
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.log.add("start:" + id)
+			select {
+			case <-time.After(d):
+				f.log.add("end:" + id)
+			case <-ctx.Done():
+				f.log.add("abort:" + id)
+			}
+			return false
+		},
+	}))>~(id)</button>
+}
+
+type doubleEmptyFragment struct {
+	log *checkpointLog
+	test.NoBeam
+}
+
+elem (f *doubleEmptyFragment) Main() {
+	~~
+	x := &doors.ScopeBlocking{}
+	k := &doors.ScopeCheckpoint{}
+	u := &doors.ScopeSerial{}
+	~~
+	~(f.button("z", x, 3000*time.Millisecond))
+	~(f.button("a", k.Scope(false), 600*time.Millisecond))
+	~(f.button("c", u.And(k.Scope(true)).And(x), 0))
+	~(f.button("j", u.And(k.Scope(false)), 1500*time.Millisecond))
+	~(f.button("c2", k.Scope(true), 0))
+}
+
+elem (f *doubleEmptyFragment) button(id string, scope doors.Scopes, d time.Duration) {
+	<button id=(id) (doors.A(ctx, doors.AClick{
+		Scope: scope,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.log.add("start:" + id)
+			<-time.After(d)
+			f.log.add("end:" + id)
+			return false
+		},
+	}))>~(id)</button>
+}
+
+type badIndicatorFragment struct {
+	log *checkpointLog
+	test.NoBeam
+}
+
+elem (f *badIndicatorFragment) Main() {
+	~~
+	serial := &doors.ScopeSerial{}
+	blocking := &doors.ScopeBlocking{}
+	~~
+	~(f.button("sx", serial, doors.IndicateClass("busy"), 400*time.Millisecond))
+	~(f.button("sy", serial, doors.IndicateClassQuery("#box[", "busy"), 0))
+	~(f.button("sz", serial, nil, 0))
+	~(f.button("by", blocking, doors.IndicateClassQuery("#box[", "busy"), 0))
+	~(f.button("bz", blocking, nil, 0))
+	<div id="e">e</div>
+	<div id="f" data-keep="orig">f</div>
+	<div id="g">g</div>
+	~~
+	queue := &doors.ScopeSerial{}
+	~~
+	~(f.button("ea", queue, doors.IndicateClassQuery("#e", "busy"), 400*time.Millisecond))
+	~(f.button("eb", nil, doors.IndicateAttrQuery("#e", "aria-busy ", "true"), 800*time.Millisecond))
+	~(f.button("ec", queue, nil, 0))
+	~(f.button("fd", nil, doors.IndicateAttrQuery("#f", "data-x", "1").
+		And(doors.IndicateClassQuery("#f", "busy\tdone")).
+		And(doors.IndicateAttrQuery("#f", "bad name", "1")).
+		And(doors.IndicateAttrQuery("#f", "data-keep", "new")), 400*time.Millisecond))
+	~(f.button("gd", nil, doors.IndicateClassQuery("#g", "busy\tdone\nnow"), 400*time.Millisecond))
+}
+
+elem (f *badIndicatorFragment) button(id string, scope doors.Scopes, ind doors.Indicators, d time.Duration) {
+	<button id=(id) (doors.A(ctx, doors.AClick{
+		Scope:     scope,
+		Indicator: ind,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.log.add("start:" + id)
+			<-time.After(d)
+			f.log.add("end:" + id)
+			return false
+		},
+	}))>~(id)</button>
+}
+
+type debounceReentryFragment struct {
+	log *checkpointLog
+	test.NoBeam
+}
+
+elem (f *debounceReentryFragment) Main() {
+	~~
+	de := &doors.ScopeDebounce{Duration: 200 * time.Millisecond}
+	se := &doors.ScopeSerial{}
+	la := &doors.ScopeLatest{}
+	del := &doors.ScopeDebounce{Duration: 300 * time.Millisecond, Limit: 600 * time.Millisecond}
+	sel := &doors.ScopeSerial{}
+	lal := &doors.ScopeLatest{}
+	~~
+	~(f.button("x", se.And(de), 0))
+	~(f.button("y", se.And(la), 0))
+	~(f.button("z", la.And(de), 0))
+	~(f.button("p", del, 4000*time.Millisecond))
+	~(f.button("lx", sel.And(del), 0))
+	~(f.button("ly", sel.And(lal), 0))
+	~(f.button("lz", lal.And(del), 0))
+	~(f.button("w", del, 0))
+}
+
+elem (f *debounceReentryFragment) button(id string, scope doors.Scopes, d time.Duration) {
+	<button id=(id) (doors.A(ctx, doors.AClick{
+		Scope: scope,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.log.add("start:" + id)
+			<-time.After(d)
+			f.log.add("end:" + id)
+			return false
+		},
+	}))>~(id)</button>
+}
+
+type doubleSettleFragment struct {
+	log *checkpointLog
+	test.NoBeam
+}
+
+elem (f *doubleSettleFragment) Main() {
+	~~
+	bl := &doors.ScopeBlocking{}
+	se := &doors.ScopeSerial{}
+	la := &doors.ScopeLatest{}
+	~~
+	~(f.button("p", se, 400*time.Millisecond))
+	~(f.button("q", la.And(se).And(bl), 0))
+	~(f.button("r", bl.And(se).And(la), 2000*time.Millisecond))
+	~(f.button("s", se, 0))
+	~(f.button("t", bl, 0))
+}
+
+elem (f *doubleSettleFragment) button(id string, scope doors.Scopes, d time.Duration) {
+	<button id=(id) (doors.A(ctx, doors.AClick{
+		Scope: scope,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.log.add("start:" + id)
+			<-time.After(d)
+			f.log.add("end:" + id)
+			return false
+		},
+	}))>~(id)</button>
+}

@@ -380,6 +380,7 @@ Each scope sees the event only after the previous scope accepted it. That lets y
 - Scopes are client-side. They shape whether and when a request is sent.
 - Use a helper for one simple scope.
 - Reuse a scope instance when several handlers should coordinate with each other.
+- When several chains share scopes, keep the shared scopes in the same order in every chain. Opposite orders can deadlock, the same way locks taken in different orders can.
 - Use blocking to drop overlap, serial to queue overlap, and debounce to delay bursts.
 - Use rate to throttle events to a fixed minimum interval.
 - Use frame when one action should wait for earlier related actions and then run exclusively.

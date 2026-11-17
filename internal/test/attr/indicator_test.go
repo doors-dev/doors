@@ -206,3 +206,19 @@ func TestIndicatorHeld(t *testing.T) {
 	<-time.After(800 * time.Millisecond)
 	test.TestClassNot(t, page, "#indicate-held", "held-active")
 }
+
+func TestIndicatorActionTarget(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &indicatorFragment{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.ClickNow(t, page, "#action-target-span")
+	test.TestAttr(t, page, "#action-target", "data-ind", "1")
+	test.TestAttr(t, page, "#action-target", "data-before", "1")
+	test.TestAttr(t, page, "#action-target", "data-after", "1")
+	test.TestAttrNo(t, page, "#action-target-span", "data-before")
+	test.TestAttrNo(t, page, "#action-target-span", "data-after")
+}

@@ -169,7 +169,7 @@ export const splitClass = (str: string | undefined): Array<string> => {
 	if (!str) {
 		return []
 	}
-	return str.split(" ").map(str => str.trim()).filter(str => !!str)
+	return str.split(/\s+/).filter(str => !!str)
 }
 
 const delayReset = 1000

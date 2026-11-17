@@ -108,6 +108,7 @@ class ElementIndicator {
         attrsToReset: string[],
         attrsToSet: string[]
     ) {
+        this.active = [id, indication]
         for (const remove of classToRemove) {
             this.el.classList.remove(remove)
         }
@@ -128,10 +129,12 @@ class ElementIndicator {
                 this.el.setAttribute(set, value!)
             }
         }
-        this.active = [id, indication]
     }
 
     private restoreAttr(name: string) {
+        if (!this.saved.attrs.has(name)) {
+            return
+        }
         const saved = this.saved.attrs.get(name)
         this.saved.attrs.delete(name)
         if (saved === undefined || saved === null) {
@@ -227,21 +230,29 @@ class IndicationController {
         if (!indicators || indicators.length === 0) {
             return undefined
         }
-        const indicator = newIndicator(target, submitter, indicators)
-        if (!indicator) {
+        let id: number | undefined
+        try {
+            const indicator = newIndicator(target, submitter, indicators)
+            if (!indicator) {
+                return undefined
+            }
+            this.counter += 1
+            id = this.counter
+            this.indicators.set(id, indicator)
+            for (const [el, indication] of indicator.entries()) {
+                let element = this.elements.get(el)
+                if (!element) {
+                    element = new ElementIndicator(el)
+                    this.elements.set(el, element)
+                }
+                element.start(id, indication)
+            }
+            return id
+        } catch (e) {
+            console.error("indicator error", e)
+            this.end(id)
             return undefined
         }
-        this.counter += 1
-        this.indicators.set(this.counter, indicator)
-        for (const [el, indication] of indicator.entries()) {
-            let element = this.elements.get(el)
-            if (!element) {
-                element = new ElementIndicator(el)
-                this.elements.set(el, element)
-            }
-            element.start(this.counter, indication)
-        }
-        return this.counter
     }
 
     end(id: number | undefined): void {
@@ -256,7 +267,12 @@ class IndicationController {
             }
             const element = this.elements.get(el)
             if (!element) continue
-            const done = element.end(id)
+            let done = false
+            try {
+                done = element.end(id)
+            } catch (e) {
+                console.error("indicator error", e)
+            }
             if (done) {
                 this.elements.delete(el)
             }

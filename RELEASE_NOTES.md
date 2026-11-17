@@ -1,4 +1,4 @@
-# Doors `0.19` Release Notes — "TODO: codename"
+# Doors `0.19` Release Notes — "Reach"
 
 Doors `0.19` lets you set up a resource in Go with the same settings its tag attributes take, use it in markup, and get its URL in code.
 
@@ -98,6 +98,10 @@ The modification belongs to the surrounding render: it stays across the Door's o
 - A `ScopeLatest` request that replaced one still running its `After` actions could hang. It now runs, and the replaced request completes normally.
 - `ScopeRate` forgot its interval when a request finished before the interval ended, so the next event ran at once.
 - An indicator on the event element did nothing when a scope, such as `ScopeDebounce`, delayed the request.
+- Scopes shared by chains that feed each other could lose or double-run requests. A request released into `ScopeRate` or `ScopeLatest` while that scope was replacing its pending request was dropped, leaving the scope before it stuck for good, or ran untracked next to the newer one. `ScopeDebounce` could fire after its pending request was canceled the same way, throwing an error or starting the next request early.
+- A scope that emptied while one of its own requests was being released could unregister a newer scope with the same id, so a checkpoint, serial, or blocking scope stopped tracking requests already inside it. A request canceled while its scopes were still being released was released twice.
+- An invalid indicator, such as a bad selector, attribute name, or class token, could leave its request unsettled and its scopes stuck. The indicator is now logged and skipped, and anything it already applied is undone. Class names in an indicator are split on any whitespace.
+- `Before` and `After` actions such as `ActionIndicate` targeted the clicked inner element, such as a `<span>` inside a button, instead of the element with the event attr.
 - `ASubmit` and `ARawSubmit` did not send the `name` and `value` of the button that submitted the form. They are now sent, as in a native submit.
 
 ## Breaking Changes
