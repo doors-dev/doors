@@ -21,7 +21,7 @@ import { date, doAfter, scrollInto, Result } from "./lib"
 import { report } from "./scope.ts"
 import { EncodedPayload, Payload } from "./package.ts"
 import { HookErr, hookErrKinds } from "./hook_err.ts"
-import { dispatch, refused } from "./trigger"
+import { dispatch, refused, settle } from "./trigger"
 
 
 type Extras = {
@@ -104,29 +104,28 @@ const actions = {
 		navigator.setState(state)
 	},
 	"emit_event": (ext: Extras, emitterId: number, type: string, capture: string) => {
-		const promises: Promise<Response>[] = []
 		const elements = getEmitter(emitterId)
-		if (elements && [...elements].some(refused)) {
+		if (!elements) {
+			throw new Error("emitter has no attached elements")
+		}
+		if ([...elements].some(refused)) {
 			throw plainErr(new HookErr(hookErrKinds.canceled, "target is disabled"))
 		}
-		if (elements) {
-			const make = captureEvents[capture]
-			for (const element of elements) {
-				let event: Event
-				if (make) {
-					event = make(type, { bubbles: true, cancelable: true, ...ext.payload?.any })
-				} else {
-					event = new CustomEvent(type, { bubbles: true, cancelable: true, detail: ext.payload?.any })
-				}
-				promises.push(...dispatch(element, event))
+		const promises: Promise<Response>[] = []
+		const make = captureEvents[capture]
+		for (const element of elements) {
+			let event: Event
+			if (make) {
+				event = make(type, { bubbles: true, cancelable: true, ...ext.payload?.any })
+			} else {
+				event = new CustomEvent(type, { bubbles: true, cancelable: true, detail: ext.payload?.any })
 			}
+			promises.push(...dispatch(element, event))
 		}
-		return Promise.all(promises).then(
-			() => promises.length,
-			(err) => {
-				throw plainErr(err)
-			},
-		)
+		return settle(promises).then((r) => ({
+			...r,
+			failed: r.failed.map((err) => plainErr(err).message),
+		}))
 	},
 	"location_replace": (_: Extras, href: string, origin: boolean) => {
 		let url: URL

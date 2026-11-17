@@ -97,3 +97,15 @@ func TestAttrHookTrack(t *testing.T) {
 	}
 	test.TestReportId(t, page, 0, tracks[1])
 }
+
+// TestAttrHookLatestDuringAfter checks that a ScopeLatest call replacing one still running its After actions lets both resolve.
+func TestAttrHookLatestDuringAfter(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &latestAfterHookFragment{}
+	})
+	page := bro.Page(t, "/")
+	defer bro.Close()
+	defer page.Close()
+	test.TestContent(t, page, "#first", "1")
+	test.TestContent(t, page, "#second", "2")
+}

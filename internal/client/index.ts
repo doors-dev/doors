@@ -18,7 +18,7 @@ import controller from './controller'
 import navigator from './navigator'
 import { decodePayload } from './package'
 import { HookErr, hookErrKinds } from './hook_err'
-import { dispatch, refused } from './trigger'
+import { dispatch, refused, settle, EmitReport } from './trigger'
 
 function getHookParams(element: HTMLElement, name: string): any | undefined {
 	const attrName = `data-d0h-${name}`
@@ -62,14 +62,12 @@ class $D {
 		return await res.json()
 	}
 
-	emit = async (target: EventTarget, event: Event): Promise<number> => {
+	emit = async (target: EventTarget, event: Event): Promise<EmitReport> => {
 		await controller.ready
 		if (refused(target)) {
 			throw new HookErr(hookErrKinds.canceled, "target is disabled")
 		}
-		const promises = dispatch(target, event)
-		await Promise.all(promises)
-		return promises.length
+		return await settle(dispatch(target, event))
 	}
 
 	data = (name: string): Promise<any> | any => {

@@ -118,3 +118,37 @@ elem (f *trackHookFragment) Main() {
 		await get("query", `${base}?q=2`)
 	</script>
 }
+
+type latestAfterHookFragment struct {
+	test.NoBeam
+}
+
+elem (f *latestAfterHookFragment) Main() {
+	~~
+	latest := &doors.ScopeLatest{}
+	~~
+	<div id="first"></div>
+	<div id="second"></div>
+	~>doors.AHook[int]{
+		Name:  "slow",
+		Scope: latest,
+		On: func(ctx context.Context, r doors.RequestHook[int]) (any, bool) {
+			r.After(doors.ActionEmit[any]{Name: "wait"})
+			return r.Data(), false
+		},
+	} <script>
+		$on("wait", () => new Promise((resolve) => setTimeout(resolve, 600)))
+		const run = async (id, n) => {
+			let res
+			try {
+				res = `${await $hook("slow", n)}`
+			} catch (e) {
+				res = `err: ${e.name} ${e.message}`
+			}
+			document.getElementById(id).textContent = res
+		}
+		const first = run("first", 1)
+		await new Promise((resolve) => setTimeout(resolve, 200))
+		await Promise.all([first, run("second", 2)])
+	</script>
+}

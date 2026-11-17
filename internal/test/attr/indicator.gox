@@ -32,6 +32,18 @@ elem (f *indicatorFragment) Main() {
 	~(f.restore())
 	~(f.queue())
 	~(f.values())
+	~(f.held())
+}
+
+elem (f *indicatorFragment) held() {
+	~>doors.AClick{
+		Scope:     &doors.ScopeDebounce{Duration: 200 * time.Millisecond},
+		Indicator: doors.IndicateClass("held-active"),
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			<-time.After(500 * time.Millisecond)
+			return false
+		},
+	} <button id="indicate-held">indicate-held</button>
 }
 
 elem (f *indicatorFragment) values() {

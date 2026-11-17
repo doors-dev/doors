@@ -61,6 +61,10 @@ Fixed paths are served with `ServerCacheControl`, by default `public, max-age=31
 
 `doors.ScopeCheckpoint` lets one action wait until related work settles without stopping that work. `cp.Scope(false)` runs at once; `cp.Scope(true)` runs once earlier checkpoints are done and no ordinary request is in flight. Checkpoints queue in arrival order and nothing is rejected. For example, inputs autosave as you type while `Submit` waits until the autosaves settle, including keystrokes typed while it waits. See [Checkpoint](./docs/10-scopes.md#checkpoint).
 
+### Indicating the submit button
+
+`doors.SelectorSubmitter()` and the `Submitter` helpers, such as `doors.IndicateContentSubmitter("Saving…")`, target the button that submitted the form, whether it was clicked, triggered by Enter in a field, or clicked by an emit. On other events they select nothing. See [Targets](./docs/11-indication.md#targets).
+
 ### Reading the configuration
 
 `doors.AppConf(ctx)` returns the app's `Conf` with defaults filled in, for example to reuse `ServerCacheControl` in your own handlers. See [Configuration](./docs/21-configuration.md#options).
@@ -78,8 +82,8 @@ The modification belongs to the surrounding render: it stays across the Door's o
 ## Behavior Changes
 
 - **`ProxyMod` no longer fails the render** when text or other non-element output comes first. The mod is skipped and an error is logged.
-- **`$sys.emit` and `Emitter` refuse disabled targets.** When a target is a disabled form control (including one inside a disabled `<fieldset>`) or sits inside an `inert` subtree, nothing is dispatched and the emit fails as canceled with `target is disabled`. An `Emitter` checks all its elements first, so one disabled element fails the call for all of them.
-- **Quieter logs.** A failed browser call (`Call failed`) and an action requested from a canceled context are now logged at debug level, not error and warning. The caller still receives the error.
+- **`$sys.emit` and `Emitter` refuse disabled targets.** When a target is a disabled form control (including one inside a disabled `<fieldset>`) or sits inside an `inert` subtree, nothing is dispatched and the emit fails: `$sys.emit` rejects with a canceled `HookErr`, and an `Emitter` call fails with `ErrExecution`. An `Emitter` checks all its elements first, so one disabled element fails the call for all of them.
+- **Quieter logs.** A failed browser call (`Call failed`) and an action requested from a canceled context are now logged at debug level, not error and warning. A call on a detached context still receives the error.
 
 ## Fixes
 
@@ -91,6 +95,10 @@ The modification belongs to the surrounding render: it stays across the Door's o
 - `raw` scripts were cached once per `profile`, although `profile` does not apply to them.
 - A `<script>` that **Doors** does not process, such as one with a `type` it does not handle, could have some of its `data:` attributes rewritten. It now passes through as written.
 - `$sys.emit` and `Emitter` did not wait for hooks of events the emitted event triggers, such as the form submit that follows a click on a submit button. Those hooks are now awaited and counted, and their failures are reported.
+- A `ScopeLatest` request that replaced one still running its `After` actions could hang. It now runs, and the replaced request completes normally.
+- `ScopeRate` forgot its interval when a request finished before the interval ended, so the next event ran at once.
+- An indicator on the event element did nothing when a scope, such as `ScopeDebounce`, delayed the request.
+- `ASubmit` and `ARawSubmit` did not send the `name` and `value` of the button that submitted the form. They are now sent, as in a native submit.
 
 ## Breaking Changes
 
@@ -102,6 +110,7 @@ The modification belongs to the surrounding render: it stays across the Door's o
 | `doors.NewResource(ctx, r, contentType)` | `r.ContentType(contentType).Cache().URL(ctx)`; for scripts and stylesheets `r.Script().URL(ctx)` or `r.Style().URL(ctx)` |
 | `doors.UseResource(path, r, contentType)` | `doors.UseResource(path, r.ContentType(contentType).Cache())` |
 | `ResourceHook`, `ResourceHandler`, `ResourceProxy` return `Resource` | They return `ResourceDynamic`, which is still a `Resource` |
+| `$sys.emit` resolves to the number of triggered hooks and rejects when one fails; `Emitter` event methods return `ActionInto[int]` | `$sys.emit` resolves to `{ ok, canceled, failed }` once every triggered hook has settled; `Emitter` event methods return `ActionInto[EmitReport]` |
 
 ## Migration
 
@@ -110,6 +119,7 @@ go get github.com/doors-dev/doors@v0.19.0
 ```
 
 - `url, ok := doors.NewHook(ctx, r)` becomes `url, err := r.URL(ctx)`. Where `ok` was `false`, `err` is `context.Canceled`.
+- `$sys.emit` and `Emitter` calls no longer fail when a triggered hook fails or is canceled. Read the former count from `ok` (`OK`), and where you caught a failure, check `failed` (`Failed`) instead. Capture an `Emitter` result with `Into(&report)` into a `doors.EmitReport`. An `Emitter` call with no attached elements now fails instead of returning zero.
 - For JavaScript or CSS passed to `NewResource`, prefer `.Script()` or `.Style()`: the URL is built and minified like the tag's, with the right content type. A cached asset without `ContentType` gets a sniffed type, which is wrong for JavaScript and CSS.
 
 ---

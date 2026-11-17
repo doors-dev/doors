@@ -44,13 +44,31 @@ By default the helper acts on the event source. A suffix redirects it:
 | `Query` | First match of a CSS query |
 | `QueryAll` | All matches |
 | `QueryParent` | Closest matching ancestor |
+| `Submitter` | The button that submitted the form, on a submit event |
 
 ```go
 doors.IndicateAttrQuery("#loader", "aria-busy", "true")
 doors.IndicateClassQueryAll(".row", "pending")
 ```
 
-The four selectors are also available directly: `doors.SelectorTarget()`, `doors.SelectorQuery(q)`, `doors.SelectorQueryAll(q)`, `doors.SelectorQueryParent(q)` — used with the struct form below.
+`Submitter` targets the button that submitted the form, wherever the submit came from: a click, Enter in a field (the form's default button), or an emitted click. On other events, or a submit without a submitter such as `form.requestSubmit()`, it selects nothing:
+
+```gox
+<form
+	(doors.ASubmit[Post]{
+		Indicator: doors.IndicateContentSubmitter("Saving…").
+			And(doors.IndicateAttrSubmitter("disabled", true)),
+		On: save,
+	})>
+	<input name="title"/>
+	<button name="intent" value="draft">Save draft</button>
+	<button name="intent" value="publish">Publish</button>
+</form>
+```
+
+The pressed button's `name` and `value` are sent with the form, as in a native submit, so `intent` tells the handler which one it was.
+
+The five selectors are also available directly: `doors.SelectorTarget()`, `doors.SelectorSubmitter()`, `doors.SelectorQuery(q)`, `doors.SelectorQueryAll(q)`, `doors.SelectorQueryParent(q)` — used with the struct form below.
 
 ## Combining
 

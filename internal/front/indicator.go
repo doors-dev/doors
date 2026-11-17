@@ -29,6 +29,7 @@ type SelectorMode string
 
 const (
 	SelectModeTarget      SelectorMode = "target"
+	SelectModeSubmitter   SelectorMode = "submitter"
 	SelectModeQuery       SelectorMode = "query"
 	SelectModeQueryAll    SelectorMode = "query_all"
 	SelectModeParentQuery SelectorMode = "parent_query"
@@ -43,6 +44,11 @@ type Selector struct {
 func SelectTarget() Selector {
 	return Selector{
 		mode: SelectModeTarget,
+	}
+}
+func SelectSubmitter() Selector {
+	return Selector{
+		mode: SelectModeSubmitter,
 	}
 }
 func SelectQuery(query string) Selector {

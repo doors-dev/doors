@@ -25,6 +25,29 @@ import (
 	"github.com/doors-dev/gox"
 )
 
+type sysEmitResult struct {
+	OK       int      `json:"ok"`
+	Canceled int      `json:"canceled"`
+	Failed   []string `json:"failed"`
+	Error    string   `json:"error"`
+}
+
+func sysEmitHook(r *test.Reporter, slot int, done *atomic.Int32) doors.AHook[sysEmitResult] {
+	return doors.AHook[sysEmitResult]{
+		Name: "report",
+		On: func(ctx context.Context, h doors.RequestHook[sysEmitResult]) (any, bool) {
+			res := h.Data()
+			if res.Error != "" {
+				r.Update(ctx, slot, res.Error)
+			} else {
+				r.Update(ctx, slot, fmt.Sprintf("ok:%d canceled:%d failed:%v", res.OK, res.Canceled, res.Failed))
+			}
+			r.Update(ctx, slot+1, fmt.Sprint(done.Load()))
+			return nil, true
+		},
+	}
+}
+
 type sysEmitFragment struct {
 	test.NoBeam
 	r *test.Reporter
@@ -52,19 +75,12 @@ elem (f *sysEmitFragment) Main() {
 	<div id="outer" (doors.A(ctx, f.hit(0)))>
 		<div id="inner" (doors.A(ctx, f.hit(1)))>target</div>
 	</div>
-	~>doors.AHook[int]{
-		Name: "count",
-		On: func(ctx context.Context, r doors.RequestHook[int]) (any, bool) {
-			f.r.Update(ctx, 2, fmt.Sprint(r.Data()))
-			f.r.Update(ctx, 3, fmt.Sprint(f.done.Load()))
-			return nil, true
-		},
-	} <script>
-		const n = await $sys.emit(
+	~>(sysEmitHook(f.r, 2, &f.done)) <script>
+		const r = await $sys.emit(
 			document.getElementById("inner"),
 			new PointerEvent("click", { bubbles: true, button: 2 }),
 		)
-		await $hook("count", n)
+		await $hook("report", { ...r, failed: r.failed.map((e) => e.kind + ": " + e.message) })
 	</script>
 }
 
@@ -77,15 +93,25 @@ type sysEmitSubmitFragment struct {
 	r *test.Reporter
 	click bool
 	fail bool
+	block bool
 	done atomic.Int32
 }
 
-func (f *sysEmitSubmitFragment) attrs() []doors.Attr {
+func (f *sysEmitSubmitFragment) scope() doors.Scopes {
+	if !f.block {
+		return nil
+	}
+	return &doors.ScopeBlocking{}
+}
+
+func (f *sysEmitSubmitFragment) attrs(scope doors.Scopes) []doors.Attr {
 	if !f.click {
 		return nil
 	}
 	return []doors.Attr{doors.AClick{
+		Scope: scope,
 		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			time.Sleep(300 * time.Millisecond)
 			f.done.Add(1)
 			return false
 		},
@@ -104,9 +130,11 @@ elem (f *sysEmitSubmitFragment) Main() {
 	for i := 0; i < 2; i++ {
 		f.r.Update(ctx, i, "")
 	}
+	scope := f.scope()
 	~~
 	~(f.r)
 	~>doors.ASubmit[sysEmitForm]{
+		Scope: scope,
 		On: func(ctx context.Context, r doors.RequestForm[sysEmitForm]) bool {
 			time.Sleep(200 * time.Millisecond)
 			f.done.Add(1)
@@ -114,25 +142,57 @@ elem (f *sysEmitSubmitFragment) Main() {
 		},
 	} <form>
 		<input type="text" name="n" value=(f.value())/>
-		<button id="target" (doors.A(ctx, f.attrs()...))>go</button>
+		<button id="target" (doors.A(ctx, f.attrs(scope)...))>go</button>
 	</form>
-	~>doors.AHook[int]{
-		Name: "count",
-		On: func(ctx context.Context, r doors.RequestHook[int]) (any, bool) {
-			f.r.Update(ctx, 0, fmt.Sprint(r.Data()))
-			f.r.Update(ctx, 1, fmt.Sprint(f.done.Load()))
-			return nil, true
-		},
-	} <script>
-		let n = -1
+	~>(sysEmitHook(f.r, 0, &f.done)) <script>
+		let res
 		try {
-			n = await $sys.emit(
+			const r = await $sys.emit(
 				document.getElementById("target"),
 				new MouseEvent("click", { bubbles: true, cancelable: true }),
 			)
-		} catch {
+			res = { ...r, failed: r.failed.map((e) => e.kind + ": " + e.message) }
+		} catch (e) {
+			res = { error: e.kind + ": " + e.message }
 		}
-		await $hook("count", n)
+		await $hook("report", res)
+	</script>
+}
+
+type sysEmitLabelFragment struct {
+	test.NoBeam
+	r *test.Reporter
+	done atomic.Int32
+}
+
+elem (f *sysEmitLabelFragment) Main() {
+	~~
+	f.r.Update(ctx, 0, "")
+	f.r.Update(ctx, 1, "")
+	~~
+	~(f.r)
+	~>doors.AClick{
+		ExactTarget: true,
+		On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+			f.done.Add(1)
+			return false
+		},
+	} <label id="label">
+		<input type="checkbox" id="box"/>
+		box
+	</label>
+	~>(sysEmitHook(f.r, 0, &f.done)) <script>
+		let res
+		try {
+			const r = await $sys.emit(
+				document.getElementById("label"),
+				new PointerEvent("click", { bubbles: true, cancelable: true }),
+			)
+			res = { ...r, failed: r.failed.map((e) => e.kind + ": " + e.message) }
+		} catch (e) {
+			res = { error: e.kind + ": " + e.message }
+		}
+		await $hook("report", res)
 	</script>
 }
 
@@ -162,13 +222,7 @@ elem (f *sysEmitUnrelatedFragment) Main() {
 	~(f.r)
 	<div id="target" (doors.A(ctx, f.hit(0, 300*time.Millisecond)))>target</div>
 	<div id="other" (doors.A(ctx, f.hit(1, 0)))>other</div>
-	~>doors.AHook[int]{
-		Name: "count",
-		On: func(ctx context.Context, r doors.RequestHook[int]) (any, bool) {
-			f.r.Update(ctx, 2, fmt.Sprint(r.Data()))
-			return nil, true
-		},
-	} <script>
+	~>(sysEmitHook(f.r, 2, &f.done)) <script>
 		const other = document.getElementById("other")
 		const p = $sys.emit(
 			document.getElementById("target"),
@@ -176,48 +230,60 @@ elem (f *sysEmitUnrelatedFragment) Main() {
 		)
 		other.dispatchEvent(new PointerEvent("click", { bubbles: true }))
 		setTimeout(() => other.dispatchEvent(new PointerEvent("click", { bubbles: true })), 50)
-		await $hook("count", await p)
+		const r = await p
+		await $hook("report", { ...r, failed: r.failed.map((e) => e.kind + ": " + e.message) })
 	</script>
 }
 
-type sysEmitDisabledFragment struct {
+type sysEmitTargetFragment struct {
 	test.NoBeam
 	r *test.Reporter
 	mode string
+	done atomic.Int32
 }
 
-elem (f *sysEmitDisabledFragment) Main() {
+func (f *sysEmitTargetFragment) inert() bool {
+	return f.mode == "inert" || f.mode == "shadow" || f.mode == "text"
+}
+
+elem (f *sysEmitTargetFragment) Main() {
 	~~
-	f.r.Update(ctx, 0, "")
-	f.r.Update(ctx, 1, "")
+	for i := 0; i < 3; i++ {
+		f.r.Update(ctx, i, "")
+	}
 	~~
 	~(f.r)
-	<div inert=(f.mode == "inert")>
+	<div inert=(f.inert())>
 		<fieldset disabled=(f.mode == "fieldset")>
 			~>doors.AClick{
 				On: func(ctx context.Context, r doors.RequestEvent[doors.PointerEvent]) bool {
+					f.done.Add(1)
 					f.r.Update(ctx, 0, "hit")
 					return false
 				},
 			} <button id="target" disabled=(f.mode == "disabled")>go</button>
 		</fieldset>
+		<div id="host"></div>
+		<div id="plain">plain</div>
 	</div>
-	~>doors.AHook[string]{
-		Name: "result",
-		On: func(ctx context.Context, r doors.RequestHook[string]) (any, bool) {
-			f.r.Update(ctx, 1, r.Data())
-			return nil, true
-		},
-	} <script>
-		let res = "ok"
-		try {
-			await $sys.emit(
-				document.getElementById("target"),
-				new PointerEvent("click", { bubbles: true }),
-			)
-		} catch (e) {
-			res = `${e.kind}: ${e.message}`
+	~>(sysEmitHook(f.r, 1, &f.done)) <script data:mode=(f.mode)>
+		const mode = await $data("mode")
+		let target = document.getElementById("target")
+		if (mode == "shadow") {
+			target = document.createElement("button")
+			document.getElementById("host").attachShadow({ mode: "open" }).appendChild(target)
+		} else if (mode == "text") {
+			target = target.firstChild
+		} else if (mode == "none") {
+			target = document.getElementById("plain")
 		}
-		await $hook("result", res)
+		let res
+		try {
+			const r = await $sys.emit(target, new PointerEvent("click", { bubbles: true }))
+			res = { ...r, failed: r.failed.map((e) => e.kind + ": " + e.message) }
+		} catch (e) {
+			res = { error: e.kind + ": " + e.message }
+		}
+		await $hook("report", res)
 	</script>
 }

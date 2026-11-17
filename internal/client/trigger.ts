@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { HookErr, hookErrKinds } from "./hook_err"
+
 const trigger = Symbol()
 let active: TriggerMeta | undefined
 
@@ -41,6 +43,43 @@ export function dispatch(target: EventTarget, event: Event): Promise<Response>[]
 	return meta.promises
 }
 
+export type EmitReport = {
+	ok: number
+	canceled: number
+	failed: HookErr[]
+}
+
+export async function settle(promises: Promise<Response>[]): Promise<EmitReport> {
+	const report: EmitReport = { ok: 0, canceled: 0, failed: [] }
+	for (const r of await Promise.allSettled(promises)) {
+		if (r.status == "fulfilled") {
+			report.ok += 1
+			continue
+		}
+		const err = r.reason instanceof HookErr ? r.reason : new HookErr(hookErrKinds.other, r.reason)
+		if (err.canceled()) {
+			report.canceled += 1
+			continue
+		}
+		report.failed.push(err)
+	}
+	return report
+}
+
 export function refused(target: EventTarget): boolean {
-	return target instanceof Element && (target.matches(":disabled") || target.closest("[inert]") !== null)
+	const el = target instanceof Element ? target : target instanceof Node ? target.parentElement : null
+	if (!el) {
+		return false
+	}
+	if (el.matches(":disabled")) {
+		return true
+	}
+	let n: Element | null = el
+	while (n) {
+		if (n.hasAttribute("inert")) {
+			return true
+		}
+		n = n.parentElement ?? (n.getRootNode() as ShadowRoot).host ?? null
+	}
+	return false
 }

@@ -79,6 +79,13 @@ func IndicateContent(content string) IndicatorContent {
 	return IndicatorContent{Selector: SelectorTarget(), Content: content}
 }
 
+// IndicateContentSubmitter builds an [IndicatorContent] that targets the
+// button that submitted the form (see [SelectorSubmitter]). WARNING: escaping
+// is not applied.
+func IndicateContentSubmitter(content string) IndicatorContent {
+	return IndicatorContent{Selector: SelectorSubmitter(), Content: content}
+}
+
 // IndicateContentQuery builds an [IndicatorContent] that targets the first
 // element matching query. WARNING: escaping is not applied.
 func IndicateContentQuery(query, content string) IndicatorContent {
@@ -128,6 +135,12 @@ func IndicateAttr(name string, value any) IndicatorAttr {
 	return IndicatorAttr{Selector: SelectorTarget(), Name: name, Value: value}
 }
 
+// IndicateAttrSubmitter builds an [IndicatorAttr] that targets the button
+// that submitted the form (see [SelectorSubmitter]).
+func IndicateAttrSubmitter(name string, value any) IndicatorAttr {
+	return IndicatorAttr{Selector: SelectorSubmitter(), Name: name, Value: value}
+}
+
 // IndicateAttrQuery builds an [IndicatorAttr] that targets the first
 // element matching query.
 func IndicateAttrQuery(query, name string, value any) IndicatorAttr {
@@ -175,6 +188,12 @@ func IndicateClass(class string) IndicatorClass {
 	return IndicatorClass{Selector: SelectorTarget(), Class: class}
 }
 
+// IndicateClassSubmitter builds an [IndicatorClass] that targets the button
+// that submitted the form (see [SelectorSubmitter]).
+func IndicateClassSubmitter(class string) IndicatorClass {
+	return IndicatorClass{Selector: SelectorSubmitter(), Class: class}
+}
+
 // IndicateClassQuery builds an [IndicatorClass] that targets the first
 // element matching query.
 func IndicateClassQuery(query, class string) IndicatorClass {
@@ -217,6 +236,12 @@ type IndicatorClassRemove struct {
 // element.
 func IndicateClassRemove(class string) IndicatorClassRemove {
 	return IndicatorClassRemove{Selector: SelectorTarget(), Class: class}
+}
+
+// IndicateClassRemoveSubmitter builds an [IndicatorClassRemove] that targets
+// the button that submitted the form (see [SelectorSubmitter]).
+func IndicateClassRemoveSubmitter(class string) IndicatorClassRemove {
+	return IndicatorClassRemove{Selector: SelectorSubmitter(), Class: class}
 }
 
 // IndicateClassRemoveQuery builds an [IndicatorClassRemove] that targets the

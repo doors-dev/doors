@@ -279,7 +279,7 @@ const captures: { [key: string]: Capture } = {
 	"submit": (fetch: Fetch, event: SubmitEvent) => {
 		applyEventOpt(event, { pd: true });
 		const form = event.target as HTMLFormElement;
-		const formData = new FormData(form);
+		const formData = new FormData(form, event.submitter);
 		return fetch(fetchOptForm(formData))
 	},
 }

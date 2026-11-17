@@ -15,7 +15,7 @@
 import { setDiff, arrayDiff, splitClass } from "./lib"
 
 
-type SelectorType = "target" | "query" | "query_all" | "parent_query"
+type SelectorType = "target" | "submitter" | "query" | "query_all" | "parent_query"
 type Kind = "attr" | "class" | "remove_class" | "content"
 
 
@@ -30,6 +30,7 @@ interface Indication {
 
 function newIndicator(
     target: Element | null,
+    submitter: Element | null,
     indicators: IndicatorEntry[]
 ): Map<Element, Indication> | undefined {
     const indications = new Map<Element, Indication>()
@@ -49,6 +50,10 @@ function newIndicator(
                 if (anchestor) {
                     elements.push(anchestor)
                 }
+            }
+        } else if (selectorType === "submitter") {
+            if (submitter) {
+                elements.push(submitter)
             }
         } else if (target) {
             elements.push(target)
@@ -218,11 +223,11 @@ class IndicationController {
     private elements = new WeakMap<Element, ElementIndicator>()
     private counter = 0
 
-    start(target: Element | null, indicators: IndicatorEntry[] | null): number | undefined {
+    start(target: Element | null, indicators: IndicatorEntry[] | null, submitter: Element | null = null): number | undefined {
         if (!indicators || indicators.length === 0) {
             return undefined
         }
-        const indicator = newIndicator(target, indicators)
+        const indicator = newIndicator(target, submitter, indicators)
         if (!indicator) {
             return undefined
         }

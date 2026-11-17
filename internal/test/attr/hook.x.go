@@ -195,3 +195,49 @@ func (f *trackHookFragment) Main() gox.Elem {
 	return })
 //line hook.gox:120
 }
+
+type latestAfterHookFragment struct {
+	test.NoBeam
+}
+
+//line hook.gox:126
+func (f *latestAfterHookFragment) Main() gox.Elem {
+	return gox.Elem(func(__c gox.Cursor) (__e error) {
+		ctx := __c.Context(); _ = ctx
+//line hook.gox:128
+		latest := &doors.ScopeLatest{}
+
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line hook.gox:130
+			__e = __c.Set("id", "first"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+		__e = __c.Init("div"); if __e != nil { return }
+		{
+//line hook.gox:131
+			__e = __c.Set("id", "second"); if __e != nil { return }
+			__e = __c.Submit(); if __e != nil { return }
+		}
+		__e = __c.Close(); if __e != nil { return }
+//line hook.gox:132
+		__e = (doors.AHook[int]{
+		Name:  "slow",
+		Scope: latest,
+		On: func(ctx context.Context, r doors.RequestHook[int]) (any, bool) {
+			r.After(doors.ActionEmit[any]{Name: "wait"})
+			return r.Data(), false
+		},
+	}).Proxy(__c, gox.Elem(func(__c gox.Cursor) (__e error) {
+			ctx := __c.Context(); _ = ctx
+			__e = __c.Init("script"); if __e != nil { return }
+			{
+				__e = __c.Submit(); if __e != nil { return }
+				__e = __c.Raw("$on(\"wait\", () => new Promise((resolve) => setTimeout(resolve, 600)))\n\t\tconst run = async (id, n) => {\n\t\t\tlet res\n\t\t\ttry {\n\t\t\t\tres = `${await $hook(\"slow\", n)}`\n\t\t\t} catch (e) {\n\t\t\t\tres = `err: ${e.name} ${e.message}`\n\t\t\t}\n\t\t\tdocument.getElementById(id).textContent = res\n\t\t}\n\t\tconst first = run(\"first\", 1)\n\t\tawait new Promise((resolve) => setTimeout(resolve, 200))\n\t\tawait Promise.all([first, run(\"second\", 2)])"); if __e != nil { return }
+			}
+			__e = __c.Close(); if __e != nil { return }
+		return })); if __e != nil { return }
+	return })
+//line hook.gox:154
+}

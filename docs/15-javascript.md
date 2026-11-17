@@ -399,7 +399,7 @@ The main client-side helpers are:
 - `$sys.ready(): Promise<void>`
 - `$sys.clean(fn: () => void | Promise<void>): void`
 - `$sys.activateLinks(): void`
-- `$sys.emit(target: EventTarget, event: Event): Promise<number>`
+- `$sys.emit(target: EventTarget, event: Event): Promise<{ ok: number, canceled: number, failed: HookErr[] }>`
 - `HookErr`
 
 Manual `$hook(...)` and `$fetch(...)` calls throw `HookErr`. Catch it when failure is part of the normal flow.
@@ -442,18 +442,26 @@ Use `$sys.clean(...)` for timers, global listeners, and embedded widgets that ne
 
 ### Dispatch events and wait for hooks
 
-`$sys.emit(target, event)` is the client-side counterpart of `doors.Emitter`: it dispatches a DOM event and resolves only after every hook request the event triggered has finished — including `HoldSettle` and the hook's `After` actions. The resolved value is the number of hook requests triggered: an element with no matching event attr adds nothing, a bubbling event adds one per event attr it reaches. Hooks of events the emitted event triggers, such as the form submit that follows a click on a submit button, are awaited and counted too.
+`$sys.emit(target, event)` is the client-side counterpart of `doors.Emitter`: it dispatches a DOM event and resolves only after every hook request the event triggered has settled — including `HoldSettle` and the hook's `After` actions. Hooks of events the emitted event triggers, such as the form submit that follows a click on a submit button, are included. It resolves to a report of those hook requests:
+
+- `ok` — the number that completed
+- `canceled` — the number canceled, for example by a scope, by `RaceStrict` or `RaceLatest`, or filtered out by `ExactTarget` or `Key`
+- `failed` — a `HookErr` for each one that failed
+
+An element with no matching event attr adds nothing; a bubbling event adds one per event attr it reaches.
 
 ```gox
 <button id="save" (doors.AClick{On: onSave})>Save</button>
 
 <script>
 	const save = document.getElementById("save")
-	const n = await $sys.emit(save, new PointerEvent("click", { bubbles: true }))
-	console.log("handlers ran:", n)
+	const { failed } = await $sys.emit(save, new PointerEvent("click", { bubbles: true }))
+	if (failed.length > 0) {
+		console.error("save failed:", failed[0].kind)
+	}
 </script>
 ```
 
-You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. Any failed hook request rejects the promise with `HookErr`; a hook canceled by a scope, by `RaceStrict`, or by `RaceLatest`, or filtered out by `Key`, counts as a failure as well. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.
+You build the event, so any constructor and init works — `PointerEvent`, `KeyboardEvent`, `InputEvent`, `CustomEvent`. Set `bubbles: true` when ancestor event attrs should run. It is safe to call at the top level of a script — the runtime waits for readiness before dispatching.
 
-A disabled form control (including one inside a disabled `<fieldset>`) or an element inside an `inert` subtree is refused: nothing is dispatched, and the promise rejects with a canceled `HookErr` whose message is `target is disabled`. `aria-disabled` is not checked, and `window` or `document` targets are never refused.
+The promise rejects only when nothing is dispatched. A disabled form control (including one inside a disabled `<fieldset>`) or an element inside an `inert` subtree is refused, and the promise rejects with a canceled `HookErr` whose message is `target is disabled`. `aria-disabled` is not checked, and `window` or `document` targets are never refused.

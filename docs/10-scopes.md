@@ -261,7 +261,7 @@ Example:
 
 The input autosaves as you type. `Submit` waits until the autosaves settle, including keystrokes typed while it waits.
 
-"In flight" is client-side. A request that times out, is canceled (for example by `ScopeLatest`) or fails stops holding the checkpoint, even if its handler is still running on the server or the save failed.
+"In flight" is client-side. A request stays in flight until its `After` actions finish, and a cancel releases it only before its result starts being applied. A request that times out, is canceled before then (for example by `ScopeLatest`), or fails stops holding the checkpoint, even if its handler is still running on the server or the save failed.
 
 Put the checkpoint scope first in the chain: `cp.Scope(false).And(debounce)`. A request joins the checkpoint scope only when it reaches it, so with `debounce.And(cp.Scope(false))` a keystroke still held by the debounce is not in the scope yet, and `Submit` does not wait for it.
 

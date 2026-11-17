@@ -45,6 +45,9 @@ class Hook {
 	private scopeQueue: Array<ScopeSet>
 	private indicatorId: number | undefined = undefined
 	private track: number | undefined = undefined
+	private target: Element | null
+	private submitter: Element | null
+	private applying = false
 	constructor(private params: {
 		hookId: number,
 		event?: Event,
@@ -57,6 +60,8 @@ class Hook {
 			this.res = res
 			this.rej = rej
 		})
+		this.target = (params.event?.currentTarget as Element | null) ?? null
+		this.submitter = (params.event as SubmitEvent | undefined)?.submitter ?? null
 		if (!this.params.scopeQueue || this.params.scopeQueue.length == 0) {
 			this.scopeQueue = [["free", "", undefined]]
 		} else {
@@ -90,11 +95,7 @@ class Hook {
 	}
 	private abortTimer: AbortTimer | undefined
 	execute() {
-		let target: Element | null = null
-		if (this.params.event?.currentTarget) {
-			target = this.params.event.currentTarget as Element
-		}
-		this.indicatorId = indicator.start(target, this.params.indicator)
+		this.indicatorId = indicator.start(this.target, this.params.indicator, this.submitter)
 		this.abortTimer = new AbortTimer(this.params.timeout ?? requestTimeout)
 		this.track = runtime.hookRegister(this)
 		const track = this.track
@@ -140,6 +141,9 @@ class Hook {
 		this.scopeStack.forEach(s => s.done(this))
 	}
 	cancel() {
+		if (this.applying) {
+			return
+		}
 		if (this.response) {
 			this.response = undefined
 			runtime.hookErr(this.track!, new HookErr(hookErrKinds.canceled))
@@ -161,9 +165,7 @@ class Hook {
 	report(): boolean {
 		this.reported = true
 		if (this.response) {
-			const r = this.response
-			this.response = undefined
-			return this.ok(r)
+			return this.ok(this.response)
 		}
 		return false
 	}
@@ -172,6 +174,7 @@ class Hook {
 			this.response = r
 			return false
 		}
+		this.applying = true
 		const afterActions: Array<Action> = []
 		const after = r.headers.get("D0-After")
 		if (after) {
@@ -258,6 +261,9 @@ abstract class Scope {
 		if (this.counter > 0) {
 			return
 		}
+		this.empty()
+	}
+	protected empty() {
 		this.runtime.scopeDone(this.id)
 	}
 	public submit(hook: Hook, opt: any) {
@@ -296,6 +302,9 @@ class RateScope extends Scope {
 	private next() {
 		this.rateTimer = null
 		if (!this.candidate) {
+			if (this.size == 0) {
+				super.empty()
+			}
 			return
 		}
 		const [hook, tick] = this.candidate
@@ -316,9 +325,16 @@ class RateScope extends Scope {
 		this.rateTimer = setTimeout(() => this.next(), tick)
 		this.promote(hook)
 	}
-	protected complete(_: Hook): void {
+	protected complete(hook: Hook): void {
+		if (this.candidate?.[0] === hook) {
+			this.candidate = null
+		}
 	}
-
+	protected empty() {
+		if (this.rateTimer == null) {
+			super.empty()
+		}
+	}
 }
 
 class DebounceScope extends Scope {

@@ -53,7 +53,7 @@ func (s *Setter) Modify(ctx context.Context, _ string, attrs gox.Attrs) error {
 
 // Set returns an action setting attribute name to value on attached elements;
 // Into captures the number of live elements it reached, 0 when none is live
-// (see [ActionInto]). An [Emitter] event counts hook requests instead.
+// (see [ActionInto]). An [Emitter] event captures an [EmitReport] instead.
 //
 // value follows template attribute semantics: nil and false remove the
 // attribute, true sets it bare, [gox.Output] values serialize themselves,

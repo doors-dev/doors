@@ -19,12 +19,19 @@ import "github.com/doors-dev/doors/internal/front"
 // Selector picks the elements an [Indicator] applies to.
 //
 // Query selectors search the whole document. Target and parent selectors need
-// an event element and select nothing without one.
+// an event element and select nothing without one. The submitter selector
+// needs a submit event with a submitter.
 type Selector = front.Selector
 
 // SelectorTarget selects the event element.
 func SelectorTarget() Selector {
 	return front.SelectTarget()
+}
+
+// SelectorSubmitter selects the button that submitted the form on a submit
+// event, and nothing for other events or a submit without a submitter.
+func SelectorSubmitter() Selector {
+	return front.SelectSubmitter()
 }
 
 // SelectorQuery selects the first element in the document matching query.

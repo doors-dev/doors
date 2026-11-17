@@ -119,9 +119,23 @@ The event families and their init structs:
 
 Unset init fields use the browser defaults. `FocusEmit` runs the handlers without moving focus, and `SubmitEmit` reads the form data from the event target, so attach the emitter to the form itself.
 
-`Into(&count)` captures the number of hook requests the emitted events triggered, not the number of elements reached: an attached element with no matching event attr adds nothing, and a bubbling event adds one per event attr it reaches. Hooks of events the emitted event triggers, such as the form submit that follows a click on a submit button, count too. Any failure among them fails the call. The action completes only after every triggered hook request has finished, so by the time its channel delivers the result (the second value, on a detached context), the handlers have run. To wait for it, see [Actions](./12-actions.md#direct).
+`Into(&report)` captures a `doors.EmitReport` of the hook requests the emitted events triggered: `OK` counts the ones that completed, `Canceled` the ones canceled (by a scope, a race mode, or a filter such as `ExactTarget` or `Key`), and `Failed` holds an error for each one that failed. Elements are not counted: an attached element with no matching event attr adds nothing, and a bubbling event adds one per event attr it reaches. Hooks of events the emitted event triggers, such as the form submit that follows a click on a submit button, are included. A failed or canceled hook request does not fail the call. The action completes only after every triggered hook request has finished, so by the time its channel delivers the result (the second value, on a detached context), the handlers have run. To wait for it, see [Actions](./12-actions.md#direct).
 
-If any attached element is a disabled form control (including one inside a disabled `<fieldset>`) or sits inside an `inert` subtree, the emitter dispatches to none of them, and the call fails with an `ErrExecution` error reading `canceled: target is disabled`.
+```go
+go func(ctx context.Context) {
+	var report doors.EmitReport
+	ch := doors.Call(ctx, field.Input(doors.InputEmit{Data: "hey"}).Into(&report))
+	<-ch // scheduled
+	if err, ok := <-ch; !ok || err != nil {
+		return
+	}
+	for _, err := range report.Failed {
+		doors.Logger(ctx).Warn("input hook failed", "error", err)
+	}
+}(doors.DetachedContext(ctx))
+```
+
+The call fails when the emitter has no attached elements. If any attached element is a disabled form control (including one inside a disabled `<fieldset>`) or sits inside an `inert` subtree, the emitter dispatches to none of them, and the call fails with an `ErrExecution` error reading `canceled: target is disabled`.
 
 ## Sharing
 
@@ -140,7 +154,7 @@ Attaching the same handle to one element twice is harmless; it counts once.
 - Prefer `ActionEmit` with `$on(...)` for richer client-side DOM work.
 - Use normal rendering and state when the UI itself should change.
 - Keep the source of truth in state and templates — handles do not survive a rerender.
-- Remember which unit `Into` reports: live elements for `Setter`, hook requests for `Emitter`.
+- Remember what `Into` reports: the number of live elements for `Setter`, an `EmitReport` of hook requests for `Emitter`.
 - From JavaScript, `$sys.emit(target, event)` dispatches an event and waits for the triggered hooks the same way.
 
 ## Related

@@ -262,3 +262,23 @@ func TestScopeRate(t *testing.T) {
 	waitSnapshotExact(t, page, 400*time.Millisecond, 1, "1", "rate scope first click")
 	waitSnapshotExact(t, page, 400*time.Millisecond, 2, "3", "rate scope throttled to latest candidate")
 }
+
+func TestScopeRateAfterFast(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &scopeFragment{
+			r: test.NewReporter(2),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.ClickNow(t, page, "#rs1")
+	waitSnapshotExact(t, page, 400*time.Millisecond, 1, "1", "rate scope first click")
+	test.ClickNow(t, page, "#rs2")
+	<-time.After(200 * time.Millisecond)
+	if s := reportSnapshotNow(t, page); s.count != 1 {
+		t.Fatalf("rate scope should hold a click within the tick, got count=%d marker=%q", s.count, s.marker)
+	}
+	waitSnapshotExact(t, page, time.Second, 2, "2", "rate scope held click at tick end")
+}

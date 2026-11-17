@@ -64,8 +64,8 @@ A Door update and a `doors.Call` made in the same handler are not ordered agains
 `ActionEmit[T]` declares its result type; `T` is what `Into` decodes into. For
 fire-and-forget emits, use `ActionEmit[any]` and skip `Into`. `Setter.Set`
 supports `Into(&count)` to capture the number of affected elements. `Emitter`
-events support `Into(&count)` to capture the number of hook requests the
-emitted events triggered.
+events support `Into(&report)` to capture a `doors.EmitReport` of the hook
+requests the emitted events triggered.
 
 ## Emit
 

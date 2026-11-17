@@ -122,19 +122,19 @@ func TestEmitterShared(t *testing.T) {
 	defer page.Close()
 
 	test.Click(t, page, "#emit-a")
-	waitReport(t, page, 0, "1")
+	waitReport(t, page, 0, "ok:1 canceled:0 failed:[]")
 	waitReport(t, page, 3, "1")
 	test.TestReportId(t, page, 4, "")
 	test.TestReportId(t, page, 5, "")
 
 	test.Click(t, page, "#emit-b")
-	waitReport(t, page, 1, "2")
+	waitReport(t, page, 1, "ok:2 canceled:0 failed:[]")
 	waitReport(t, page, 3, "2")
 	waitReport(t, page, 4, "2")
 	test.TestReportId(t, page, 5, "")
 
 	test.Click(t, page, "#emit-c")
-	waitReport(t, page, 2, "1")
+	waitReport(t, page, 2, "ok:1 canceled:0 failed:[]")
 	waitReport(t, page, 5, "3")
 
 	test.Click(t, page, "#set")
@@ -156,7 +156,7 @@ func TestEmitterContainer(t *testing.T) {
 	test.TestContent(t, page, "#c2", "first")
 
 	test.Click(t, page, "#emit")
-	waitReport(t, page, 0, "1")
+	waitReport(t, page, 0, "ok:1 canceled:0 failed:[]")
 	waitReport(t, page, 1, "1")
 
 	test.Click(t, page, "#inner")
@@ -176,7 +176,7 @@ func TestEmitterMulti(t *testing.T) {
 	defer page.Close()
 
 	test.Click(t, page, "#emit-count")
-	waitReport(t, page, 0, "2")
+	waitReport(t, page, 0, "ok:2 canceled:0 failed:[]")
 	waitReport(t, page, 1, "hit")
 	waitReport(t, page, 2, "hit")
 }
@@ -192,8 +192,40 @@ func TestEmitterDerivedSubmit(t *testing.T) {
 	defer page.Close()
 
 	test.Click(t, page, "#emit")
-	waitReport(t, page, 0, "1")
+	waitReport(t, page, 0, "ok:1 canceled:0 failed:[]")
 	waitReport(t, page, 1, "1")
+}
+
+func TestEmitterOutcome(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &emitterOutcomeFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.Click(t, page, "#emit")
+	waitReport(t, page, 0, "ok:1 canceled:1 failed:[bad_request: body parsing error, bad request]")
+	waitReport(t, page, 1, "1")
+}
+
+func TestEmitterDetached(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &emitterDetachedFragment{
+			r: test.NewReporter(10),
+		}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.Click(t, page, "#emit")
+	waitReport(t, page, 0, "client execution failed: emitter has no attached elements")
+
+	test.Click(t, page, "#emit-plain")
+	waitReport(t, page, 1, "ok:0 canceled:0 failed:[]")
 }
 
 func TestEmitterDisabled(t *testing.T) {
@@ -209,6 +241,7 @@ func TestEmitterDisabled(t *testing.T) {
 
 	test.Click(t, page, "#emit")
 	waitReport(t, page, 0, "client execution failed: canceled: target is disabled")
+	waitReport(t, page, 3, "true")
 	test.TestReportId(t, page, 1, "")
 	test.TestReportId(t, page, 2, "")
 }
@@ -224,7 +257,7 @@ func TestEmitterEnabled(t *testing.T) {
 	defer page.Close()
 
 	test.Click(t, page, "#emit")
-	waitReport(t, page, 0, "2")
+	waitReport(t, page, 0, "ok:2 canceled:0 failed:[]")
 	waitReport(t, page, 1, "hit")
 	waitReport(t, page, 2, "hit")
 }

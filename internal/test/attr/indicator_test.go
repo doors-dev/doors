@@ -192,3 +192,17 @@ func TestIndicatorQueue(t *testing.T) {
 	test.TestAttr(t, page, "#q-target", "data-a", "A0")
 	waitAttrNo(t, page, "#q-target", "data-b", time.Second)
 }
+
+func TestIndicatorHeld(t *testing.T) {
+	bro := test.NewFragmentBro(browser, func() test.Fragment {
+		return &indicatorFragment{}
+	})
+	defer bro.Close()
+	page := bro.Page(t, "/")
+	defer page.Close()
+
+	test.ClickNow(t, page, "#indicate-held")
+	test.TestClass(t, page, "#indicate-held", "held-active")
+	<-time.After(800 * time.Millisecond)
+	test.TestClassNot(t, page, "#indicate-held", "held-active")
+}

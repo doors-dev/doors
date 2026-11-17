@@ -108,6 +108,11 @@ elem (f *scopeFragment) Main() {
 	~(f.button("r1", rate, "1", false))
 	~(f.button("r2", rate, "2", false))
 	~(f.button("r3", rate, "3", false))
+	~~
+	slowRate := &doors.ScopeRate{Tick: 800 * time.Millisecond}
+	~~
+	~(f.button("rs1", slowRate, "1", false))
+	~(f.button("rs2", slowRate, "2", false))
 	~(f.scopePipeline())
 }
 

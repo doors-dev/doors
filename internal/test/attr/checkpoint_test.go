@@ -204,6 +204,7 @@ func TestScopeCheckpointTimedOutMember(t *testing.T) {
 	bro, page, log := newCheckpointPage(t)
 	defer bro.Close()
 	defer page.Close()
+	clicked := time.Now()
 	test.ClickNow(t, page, "#ht")
 	waitCheckpointLog(t, log, time.Second, "start:ht")
 	test.ClickNow(t, page, "#c2")
@@ -211,6 +212,9 @@ func TestScopeCheckpointTimedOutMember(t *testing.T) {
 	entries := waitCheckpointLog(t, log, 2*time.Second, "end:ht")
 	checkpointBefore(t, entries, "start:ht", "start:c2")
 	checkpointBefore(t, entries, "end:c2", "end:ht")
+	if d := log.at("start:c2").Sub(clicked); d < 250*time.Millisecond {
+		t.Fatalf("timed-out request should hold the checkpoint until its timeout, checkpoint started %v after its click", d)
+	}
 }
 
 func TestScopeCheckpointCanceledCheckpoint(t *testing.T) {
@@ -309,6 +313,53 @@ func TestScopeCheckpointCancelDuringAfter(t *testing.T) {
 	})
 	test.ClickNow(t, page, "#c2")
 	waitCheckpointLog(t, log, 3*time.Second, "end:c2")
+}
+
+func TestScopeCheckpointBlockingAfter(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#ck")
+	waitCheckpointLog(t, log, time.Second, "start:ck")
+	test.ClickNow(t, page, "#ck")
+	waitSnapshotLog(t, log, 2*time.Second, func(entries []string) bool {
+		return checkpointCount(entries, "end:ck") == 2
+	})
+	if entries := log.snapshot(); !slices.Equal(entries, []string{"start:ck", "end:ck", "start:ck", "end:ck"}) {
+		t.Fatalf("second checkpoint should be queued behind the first, got %v", entries)
+	}
+}
+
+func TestScopeCheckpointRejectedDownstream(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickNow(t, page, "#o1")
+	waitCheckpointLog(t, log, time.Second, "start:o1")
+	test.ClickNow(t, page, "#bo")
+	waitCheckpointLog(t, log, time.Second, "start:bo")
+	test.ClickNow(t, page, "#ck")
+	test.ClickNow(t, page, "#c2")
+	waitCheckpointLog(t, log, 2*time.Second, "end:c2")
+	entries := waitCheckpointLog(t, log, 2*time.Second, "end:bo")
+	checkpointBefore(t, entries, "end:o1", "start:c2")
+	checkpointBefore(t, entries, "end:c2", "end:bo")
+	if n := checkpointCount(entries, "start:ck"); n != 0 {
+		t.Fatalf("blocking should reject the promoted checkpoint, ran %d times: %v", n, entries)
+	}
+}
+
+func TestScopeCheckpointLatestRate(t *testing.T) {
+	bro, page, log := newCheckpointPage(t)
+	defer bro.Close()
+	defer page.Close()
+	test.ClickBurst(t, page, "#lr", "#lr", "#lr")
+	test.ClickNow(t, page, "#c2")
+	entries := waitCheckpointLog(t, log, 3*time.Second, "end:c2")
+	checkpointBefore(t, entries, "end:lr", "start:c2")
+	if n := checkpointCount(entries, "start:lr"); n != 1 {
+		t.Fatalf("latest should leave one request, ran %d times: %v", n, entries)
+	}
 }
 
 func checkpointCount(entries []string, entry string) int {

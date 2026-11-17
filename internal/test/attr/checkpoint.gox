@@ -31,12 +31,24 @@ import (
 type checkpointLog struct {
 	mu      sync.Mutex
 	entries []string
+	times   []time.Time
 }
 
 func (l *checkpointLog) add(entry string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.entries = append(l.entries, entry)
+	l.times = append(l.times, time.Now())
+}
+
+func (l *checkpointLog) at(entry string) time.Time {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	i := slices.Index(l.entries, entry)
+	if i < 0 {
+		return time.Time{}
+	}
+	return l.times[i]
 }
 
 func (l *checkpointLog) snapshot() []string {
@@ -60,6 +72,9 @@ elem (f *checkpointFragment) Main() {
 	fieldDebounce := &doors.ScopeDebounce{Duration: 500 * time.Millisecond}
 	slowLatest := &doors.ScopeLatest{}
 	runLatest := &doors.ScopeLatest{}
+	cpBlock := &doors.ScopeBlocking{}
+	lrLatest := &doors.ScopeLatest{}
+	lrRate := &doors.ScopeRate{Tick: 300 * time.Millisecond}
 	~~
 	~(f.button("o1", cp.Scope(false), 600*time.Millisecond))
 	~(f.button("o2", cp.Scope(false), 900*time.Millisecond))
@@ -70,6 +85,9 @@ elem (f *checkpointFragment) Main() {
 	~(f.button("cb", blocking.And(cp.Scope(true)), 400*time.Millisecond))
 	~(f.button("od", cp.Scope(false).And(debounce), 300*time.Millisecond))
 	~(f.button("cl", latest.And(cp.Scope(true)), 0))
+	~(f.button("ck", cp.Scope(true).And(cpBlock), 400*time.Millisecond))
+	~(f.button("bo", cpBlock, 1000*time.Millisecond))
+	~(f.button("lr", cp.Scope(false).And(lrLatest).And(lrRate), 400*time.Millisecond))
 	<button id="os" (doors.A(ctx, doors.AClick{
 		Scope: cp.Scope(false),
 		Race:  doors.RaceParallel,

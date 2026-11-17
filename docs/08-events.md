@@ -286,6 +286,8 @@ type LoginForm struct {
 </form>
 ```
 
+As in a native submit, the `name` and `value` of the button that submitted the form are sent with it, so a form with several submit buttons can tell which one was pressed.
+
 Use `ARawSubmit` when you want direct multipart access for streaming, custom parsing, or uploads.
 
 For form decoding, **Doors** uses [go-playground/form v4](https://github.com/go-playground/form/tree/v4.3.0).
