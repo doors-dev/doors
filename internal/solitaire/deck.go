@@ -106,6 +106,7 @@ func (d *deck) Restore(beg uint64, end uint64) error {
 
 var errorKilled = fmt.Errorf("%w: killed", common.ErrTerminated)
 var errorLimit = errors.New("limit")
+var errorQueueLimit = fmt.Errorf("%w: call queue limit reached: if the page was still open in the browser, the app sends updates faster than the browser applies them; wait for Door operation results or OnBatch callbacks before sending more", common.ErrTerminated)
 
 func (d *deck) Dump(s Stasher) (err error) {
 	for err == nil {
@@ -287,7 +288,7 @@ func (d *deck) checkQueueLength() error {
 	if d.inner.Len()+len(d.issued) <= d.conf.Queue {
 		return nil
 	}
-	return fmt.Errorf("%w: call queue limit reached", common.ErrTerminated)
+	return errorQueueLimit
 }
 
 func (d *deck) restore(seq uint64, c *inner.Call) error {

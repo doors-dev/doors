@@ -158,8 +158,14 @@ func (inst *instance) SetStatus(s int) {
 }
 
 func (inst *instance) SyncError(err error) {
+	prev := inst.state.Swap(killed)
+	if prev == killed {
+		return
+	}
 	inst.Logger().Debug("Instance synchronization error", "error", err, "type", "error", "instance_id", inst.id)
-	inst.end(common.EndCauseSyncError)
+	if prev == active {
+		inst.clean(common.EndCauseSyncError)
+	}
 }
 
 func (inst *instance) Touch() {

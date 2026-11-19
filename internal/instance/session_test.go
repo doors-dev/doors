@@ -26,6 +26,7 @@ import (
 	"github.com/doors-dev/doors/internal/path"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
+	"github.com/evanw/esbuild/pkg/api"
 )
 
 type sessionTestApp struct {
@@ -34,15 +35,20 @@ type sessionTestApp struct {
 	removed      chan string
 	cookieID     string
 	cookieMaxAge time.Duration
+	logger       *slog.Logger
+	registry     resources.Registry
 }
 
 func newSessionTestApp() *sessionTestApp {
 	conf := common.Conf{}
 	common.InitDefaults(&conf)
-	return &sessionTestApp{
+	a := &sessionTestApp{
 		conf:    conf,
 		removed: make(chan string, 1),
+		logger:  slog.Default(),
 	}
+	a.registry = resources.NewRegistry(a)
+	return a
 }
 
 func (a *sessionTestApp) CSP() *common.CSP {
@@ -62,11 +68,15 @@ func (a *sessionTestApp) RemoveSession(id string) {
 }
 
 func (a *sessionTestApp) ResourceRegistry() resources.Registry {
-	return nil
+	return a.registry
+}
+
+func (a *sessionTestApp) ESProfile(string) api.BuildOptions {
+	return api.BuildOptions{}
 }
 
 func (a *sessionTestApp) Logger() *slog.Logger {
-	return slog.Default()
+	return a.logger
 }
 
 func (a *sessionTestApp) InstanceCreated() {}
