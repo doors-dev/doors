@@ -523,3 +523,32 @@ func TestDeckEndDuringDump(t *testing.T) {
 		t.Fatalf("expected an empty queue after End, got %d", n)
 	}
 }
+
+func TestRTTBeforeFirstReportGrowsWithWaitingTime(t *testing.T) {
+	conf := testSolitaireConf()
+	syncer := &frameSyncer{Conf: conf}
+	minRTT := conf.FlushTime * 2
+	if got := syncer.RTT(); got != minRTT {
+		t.Fatalf("first wait: %v, want %v", got, minRTT)
+	}
+	time.Sleep(2 * minRTT)
+	if got := syncer.RTT(); got < 2*minRTT || got > conf.MaxRTT {
+		t.Fatalf("wait before the first report: %v, want the time since the first wait", got)
+	}
+	time.Sleep(conf.MaxRTT)
+	if got := syncer.RTT(); got != conf.MaxRTT {
+		t.Fatalf("wait before the first report: %v, want the cap %v", got, conf.MaxRTT)
+	}
+	var tuple []json.RawMessage
+	if err := json.Unmarshal(syncer.Collect(), &tuple); err != nil {
+		t.Fatal(err)
+	}
+	var ts int64
+	if err := json.Unmarshal(tuple[0], &ts); err != nil {
+		t.Fatal(err)
+	}
+	syncer.Report(1, ts)
+	if got := syncer.RTT(); got >= conf.MaxRTT {
+		t.Fatalf("wait after the first report: %v, want the measured rtt", got)
+	}
+}

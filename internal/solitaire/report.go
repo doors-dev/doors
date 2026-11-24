@@ -30,15 +30,21 @@ type frameSyncer struct {
 	mu      sync.Mutex
 	reports []uint64
 	last    time.Time
+	first   time.Time
 }
 
 func (g *frameSyncer) RTT() time.Duration {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if g.last.IsZero() {
-		if g.rtt == 0 {
+	if g.rtt == 0 {
+		if g.first.IsZero() {
+			g.first = time.Now()
 			return g.minRTT()
 		}
+		throttle := max(time.Since(g.first), g.minRTT())
+		return min(throttle, g.Conf.MaxRTT)
+	}
+	if g.last.IsZero() {
 		return g.rtt
 	}
 	if time.Since(g.last) > g.rtt {
