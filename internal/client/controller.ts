@@ -73,7 +73,11 @@ class Controller {
 	}
 	private async pushState() {
 		const delay = new ProgressiveDelay()
-		const body = JSON.stringify(navigator.getState())
+		const body = JSON.stringify({
+			s: navigator.getState(),
+			l: window.navigator.language,
+			z: Intl.DateTimeFormat().resolvedOptions().timeZone,
+		})
 		while (this.state != state.dead) {
 			const abortTimer = new AbortTimer(requestTimeout)
 			const [response, err] = await result(() => fetch(`${prefix}/t/${id}`, {

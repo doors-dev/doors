@@ -21,6 +21,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
@@ -199,7 +200,7 @@ func TestPagePrinterIncludesFrontAssetsWhenNotStatic(t *testing.T) {
 		conf:     conf,
 		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
 	}
-	inst.session = &titleSession{app: titleApp{conf: &inst.conf, registry: registry}}
+	inst.session = &titleSession{app: titleApp{conf: &inst.conf, registry: registry}, locale: beam.NewSource(common.Locale{TimeZone: time.Local}, beam.DefaultEqual, false)}
 	ctx := context.WithValue(context.Background(), common.KeyCore, core.NewCore(titleDoor{inst: inst}))
 
 	var out bytes.Buffer

@@ -410,6 +410,7 @@ func newLifecycleHarness(t *testing.T, workers int) *lifecycleHarness {
 		inst:   inst.helperInstance,
 		app:    &helperApp{conf: &inst.helperInstance.conf},
 		cancel: cancel,
+		locale: beam.NewSource(common.Locale{TimeZone: time.Local}, beam.DefaultEqual, false),
 	}
 	inst.sess = &lifecycleSession{
 		helperSession: inst.session,

@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
@@ -55,6 +56,7 @@ func NewSession(a App, id string) Session {
 	ctx, cancel := context.WithCancel(a.Context())
 	sess := &session{
 		store:   ctex.NewStore(),
+		locale:  beam.NewSource(common.Locale{TimeZone: time.Local}, beam.DefaultEqual, false),
 		id:      id,
 		app:     a,
 		limiter: utils.NewLimiter(a.Conf().SessionInstanceLimit),
@@ -73,6 +75,7 @@ type session struct {
 	instances  sync.Map
 	mu         sync.Mutex
 	store      ctex.Store
+	locale     beam.Source[common.Locale]
 	id         string
 	app        App
 	limiter    utils.Limiter
@@ -97,6 +100,10 @@ func (sess *session) Context() context.Context {
 
 func (sess *session) Store() ctex.Store {
 	return sess.store
+}
+
+func (sess *session) Locale() beam.Source[common.Locale] {
+	return sess.locale
 }
 
 func (sess *session) App() core.App {

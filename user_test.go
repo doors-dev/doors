@@ -300,6 +300,7 @@ type helperSession struct {
 	app    *helperApp
 	ctx    context.Context
 	cancel context.CancelFunc
+	locale beam.Source[common.Locale]
 }
 
 func (h *helperSession) Logger() *slog.Logger {
@@ -316,6 +317,10 @@ func (h *helperSession) Context() context.Context {
 
 func (h *helperSession) Store() ctex.Store {
 	return ctex.NewStore()
+}
+
+func (h *helperSession) Locale() beam.Source[common.Locale] {
+	return h.locale
 }
 
 func (h *helperSession) LastSeen() time.Time {
@@ -348,7 +353,7 @@ func helperContext(t *testing.T) (context.Context, *helperInstance) {
 		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	inst.session = &helperSession{inst: inst, app: &helperApp{conf: &inst.conf}, ctx: ctx, cancel: cancel}
+	inst.session = &helperSession{inst: inst, app: &helperApp{conf: &inst.conf}, ctx: ctx, cancel: cancel, locale: beam.NewSource(common.Locale{TimeZone: time.Local}, beam.DefaultEqual, false)}
 	ctx = context.WithValue(ctx, common.KeySession, inst.session)
 	inst.session.ctx = ctx
 	return context.WithValue(ctx, common.KeyCore, core.NewCore(helperDoor{inst: inst})), inst

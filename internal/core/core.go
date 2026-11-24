@@ -70,6 +70,7 @@ type Session interface {
 	LastSeen() time.Time
 	Context() context.Context
 	Store() ctex.Store
+	Locale() beam.Source[common.Locale]
 	Kill()
 }
 

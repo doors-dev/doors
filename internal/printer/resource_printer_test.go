@@ -130,7 +130,8 @@ func (a titleApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 }
 
 type titleSession struct {
-	app titleApp
+	app    titleApp
+	locale beam.Source[common.Locale]
 }
 
 func (s titleSession) Logger() *slog.Logger { return s.app.Logger() }
@@ -143,6 +144,9 @@ func (s titleSession) ID() string           { return "session" }
 func (s titleSession) LastSeen() time.Time  { return time.Time{} }
 func (s titleSession) Expire(time.Duration) {}
 func (s titleSession) Kill()                {}
+func (s titleSession) Locale() beam.Source[common.Locale] {
+	return s.locale
+}
 
 type titleDoor struct {
 	inst *titleInstance
@@ -271,7 +275,7 @@ func newPrinterCore(t *testing.T, allowHook bool) (context.Context, *titleInstan
 		modules:  modules,
 		location: beam.NewSource(path.Location{}, path.EqualLocation, false),
 	}
-	inst.session = &titleSession{app: titleApp{conf: &inst.conf, registry: registry}}
+	inst.session = &titleSession{app: titleApp{conf: &inst.conf, registry: registry}, locale: beam.NewSource(common.Locale{TimeZone: time.Local}, beam.DefaultEqual, false)}
 	door := &hookDoor{id: 7, allowHook: allowHook, inst: inst}
 	ctx := ctex.NewDocumentContext(context.WithValue(context.Background(), common.KeyCore, core.NewCore(door)))
 	return ctx, inst, door, modules
@@ -457,7 +461,7 @@ func TestProcessTitleWrongClose(t *testing.T) {
 
 func TestProcessTitleSuccess(t *testing.T) {
 	inst := &titleInstance{}
-	inst.session = &titleSession{app: titleApp{conf: &inst.conf}}
+	inst.session = &titleSession{app: titleApp{conf: &inst.conf}, locale: beam.NewSource(common.Locale{TimeZone: time.Local}, beam.DefaultEqual, false)}
 	ctx := context.WithValue(context.Background(), common.KeyCore, core.NewCore(titleDoor{inst: inst}))
 	open := gox.NewJobOpen(ctx, 10, gox.KindRegular, "title", gox.NewAttrs())
 	open.Attrs.Get("data-id").Set("hero")

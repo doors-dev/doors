@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/doors-dev/doors/internal/beam"
 	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/ctex"
@@ -70,6 +71,10 @@ func (l *lazySession) LastSeen() time.Time {
 
 func (l *lazySession) Store() ctex.Store {
 	return l.get().Store()
+}
+
+func (l *lazySession) Locale() beam.Source[common.Locale] {
+	return l.get().Locale()
 }
 
 func (l *lazySession) App() core.App {

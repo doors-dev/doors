@@ -213,6 +213,7 @@ func (i instanceComp) Main() gox.Elem {
 		ctx := cur.Context()
 		i.inst.navigator = utils.NewNavigator(i.inst, ctx)
 		i.inst.tabState = utils.NewTabStateManager(i.inst, ctx)
+		i.inst.session.initLocale(i.r)
 		comp := i.page(ctx, i.w, i.r)
 		i.inst.navigator.Sync()
 		el := comp.Main()

@@ -60,8 +60,9 @@ func (a *testApp) PrinterMiddleware() func(next gox.Printer) gox.Printer {
 }
 
 type testSession struct {
-	app *testApp
-	ctx context.Context
+	app    *testApp
+	ctx    context.Context
+	locale beam.Source[common.Locale]
 }
 
 func (s *testSession) Logger() *slog.Logger     { return testLogger }
@@ -72,6 +73,9 @@ func (s *testSession) LastSeen() time.Time      { return time.Time{} }
 func (s *testSession) Context() context.Context { return s.ctx }
 func (s *testSession) Store() ctex.Store        { return ctex.NewStore() }
 func (s *testSession) Kill()                    {}
+func (s *testSession) Locale() beam.Source[common.Locale] {
+	return s.locale
+}
 
 // testInstance mirrors the production instance around a real Root: calls are
 // applied asynchronously in the order they are issued, and ending the
@@ -94,7 +98,7 @@ type testInstance struct {
 func newTestInstance(t *testing.T) *testInstance {
 	t.Helper()
 	inst := &testInstance{calls: make(chan actions.Call, 1024)}
-	inst.session = &testSession{app: &testApp{}}
+	inst.session = &testSession{app: &testApp{}, locale: beam.NewSource(common.Locale{TimeZone: time.Local}, beam.DefaultEqual, false)}
 	common.InitDefaults(&inst.session.app.conf)
 	inst.session.ctx = context.WithValue(context.Background(), common.KeySession, inst.session)
 	inst.runtime = shredder.NewRuntime(inst.session.ctx, 8, inst)

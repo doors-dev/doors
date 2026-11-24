@@ -129,7 +129,11 @@ func (a *app) serveTabState(w http.ResponseWriter, r *http.Request, instanceID s
 		return
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, int64(a.conf.ServerRequestBodyLimit)))
-	var data map[string]json.RawMessage
+	var data struct {
+		State    map[string]json.RawMessage `json:"s"`
+		Language string                     `json:"l"`
+		TimeZone string                     `json:"z"`
+	}
 	err := dec.Decode(&data)
 	r.Body.Close()
 	if err != nil {
@@ -137,10 +141,11 @@ func (a *app) serveTabState(w http.ResponseWriter, r *http.Request, instanceID s
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if !inst.InitializeTabState(data) {
+	if !inst.InitializeTabState(data.State) {
 		w.WriteHeader(http.StatusGone)
 		return
 	}
+	ses.ReportLocale(data.Language, data.TimeZone)
 	w.WriteHeader(http.StatusNoContent)
 }
 
