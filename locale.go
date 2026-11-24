@@ -43,9 +43,6 @@ type Locale = common.Locale
 // Example:
 //
 //	locale, _ := doors.BrowserLocale(ctx).Effect(ctx)
-//	if !locale.Synced {
-//		return placeholder
-//	}
 //	return t.In(locale.TimeZone).Format(time.Kitchen)
 func BrowserLocale(ctx context.Context) Beam[Locale] {
 	sess := ctx.Value(common.KeySession).(core.Session)

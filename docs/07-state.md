@@ -127,6 +127,29 @@ Values are stored as JSON. Keep them small: browsers cap history state size, and
 
 Use `doors.TabStateEqual(...)` when you need custom equality. `ctx` must belong to a **Doors** render or handler.
 
+## Browser Locale
+
+Use `doors.BrowserLocale` to format dates, times and numbers in the viewer's language and time zone. It returns a `Beam[doors.Locale]` with the browser's `Language`, a `language.Tag` from `golang.org/x/text/language`, and its `TimeZone`.
+
+A common pattern is to read it with `Effect` where it is needed: it rarely changes, and when it does, the closest dynamic parent rerenders.
+
+```gox
+elem (m Message) Time() {
+	~>(new(doors.Door)) <time>
+		~~
+		locale, _ := doors.BrowserLocale(ctx).Effect(ctx)
+		~~
+		~(m.Sent.In(locale.TimeZone).Format(time.Kitchen))
+	</time>
+}
+```
+
+The first page of a session initially renders with the language from the request's `Accept-Language` header and `time.Local`. The browser reports its own language and time zone when the page loads, and content that reads it updates. Later pages of the session initially render with the reported values.
+
+`Synced` is false until the browser's first report. If your content requires the browser's exact time zone, you can render a placeholder while `Synced` is false, but consider that clients that do not run scripts, such as search crawlers, never report and see only the placeholder.
+
+The value is per session and shared by all its pages. Language tags are canonical: `en-us` reads as `en-US`. A reported time zone the server does not know keeps the current `TimeZone`, which is `time.Local` at first. `Language` is `language.Und` when neither the request nor the browser provides a usable language, and before the session's first page is served, for example in middleware. `ctx` must carry a **Doors** session.
+
 ## Beams
 
 Use a `Beam` when a part of the page only needs a smaller read-only view of state.
@@ -811,6 +834,7 @@ Use NoSkip when an already-committed update should keep propagating even if a ne
 - Return a fresh value from `Mutate` or pass a fresh value to `Update` instead of mutating reference-type state in place.
 - Use NoSkip constructors only when already-committed in-progress updates must finish.
 - Use `TabState` for per-tab state that must survive a reload without going into the URL.
+- Use `BrowserLocale` to format dates, times and numbers in the viewer's language and time zone.
 
 ## Example
 
