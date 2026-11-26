@@ -57,7 +57,7 @@ func TestLinksUserCallTargetsIssuingDoor(t *testing.T) {
 		t.Fatalf("expected the child door placed by call 1, got door %d placed by %d", cid, place)
 	}
 	tracker := c.node.Load().tracker
-	hook, ok := tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
+	hook, ok := tracker.RegisterHook(tracker.Context(), func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 		tracker.UserCall(ctx, actions.Scroll{Selector: "#member"}, nil, nil, nil, actions.CallParams{})
 		tracker.UserCall(ctex.NewDetachedContext(ctx, ctx, false), actions.Scroll{Selector: "#detached"}, nil, nil, nil, actions.CallParams{})
 		return true

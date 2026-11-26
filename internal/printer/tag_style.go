@@ -56,7 +56,7 @@ func (s *styleTag) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		}
 		return p.printer.Send(job)
 	case SourceHandler:
-		path, err := s.Resolve(c)
+		path, err := s.Resolve(job.Ctx)
 		if err != nil {
 			return err
 		}

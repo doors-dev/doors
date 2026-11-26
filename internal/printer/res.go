@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/doors-dev/doors/internal/common"
 	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/resources"
 )
@@ -42,7 +43,7 @@ type Resource interface {
 	SetName(string)
 	Validate() error
 	Prepare(core.App) (*resources.Resource, error)
-	Resolve(core.Core) (string, error)
+	Resolve(context.Context) (string, error)
 }
 
 var (
@@ -167,8 +168,8 @@ func (r *res) unsupported() error {
 	return fmt.Errorf("unsupported resource source %T", r.source)
 }
 
-func (r *res) hook(c core.Core, handler HandlerFunc) (string, error) {
-	hook, ok := c.Door().RegisterHook(handler, core.RaceParallel, false, r.portable)
+func (r *res) hook(ctx context.Context, c core.Core, handler HandlerFunc) (string, error) {
+	hook, ok := c.Door().RegisterHook(ctx, handler, core.RaceParallel, false, r.portable)
 	if !ok {
 		return "", context.Canceled
 	}
@@ -178,20 +179,20 @@ func (r *res) hook(c core.Core, handler HandlerFunc) (string, error) {
 	return c.App().PathMaker().Hook(c.Instance().ID(), hook.HookID, r.name), nil
 }
 
-func (r *res) handlerURL(c core.Core) (string, error) {
+func (r *res) handlerURL(ctx context.Context, c core.Core) (string, error) {
 	handler, err := r.handler()
 	if err != nil {
 		return "", err
 	}
-	return r.hook(c, handler)
+	return r.hook(ctx, c, handler)
 }
 
-func (r *res) resourceURL(c core.Core, res *resources.Resource) (string, error) {
+func (r *res) resourceURL(ctx context.Context, c core.Core, res *resources.Resource) (string, error) {
 	switch r.mode {
 	case resources.ModeHost:
 		return c.App().PathMaker().Resource(res, r.name), nil
 	case resources.ModeNoHost, resources.ModeNoCache:
-		return r.hook(c, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		return r.hook(ctx, c, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			res.Serve(w, r)
 			return false
 		})
@@ -284,7 +285,8 @@ func (a *Asset) Validate() error {
 	return nil
 }
 
-func (a *Asset) Resolve(c core.Core) (string, error) {
+func (a *Asset) Resolve(ctx context.Context) (string, error) {
+	c := ctx.Value(common.KeyCore).(core.Core)
 	a.defaultMode(resources.ModeNoCache)
 	if url, ok := a.link(); ok {
 		return url, nil
@@ -301,7 +303,7 @@ func (a *Asset) Resolve(c core.Core) (string, error) {
 		return "", err
 	}
 	contentType := a.contentType
-	return a.hook(c, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	return a.hook(ctx, c, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 		if contentType != "" {
 			w.Header().Set("Content-Type", contentType)
 		}
@@ -434,13 +436,14 @@ func (s *Script) Validate() error {
 	return nil
 }
 
-func (s *Script) Resolve(c core.Core) (string, error) {
+func (s *Script) Resolve(ctx context.Context) (string, error) {
+	c := ctx.Value(common.KeyCore).(core.Core)
 	s.defaultHosting()
 	if url, ok := s.link(); ok {
 		return url, nil
 	}
 	if s.srcKind == sourceHandler {
-		return s.handlerURL(c)
+		return s.handlerURL(ctx, c)
 	}
 	if s.srcKind == sourceUnset {
 		s.name = resourceFileName(s.name, "js")
@@ -449,7 +452,7 @@ func (s *Script) Resolve(c core.Core) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.resourceURL(c, res)
+	return s.resourceURL(ctx, c, res)
 }
 
 func (s *Script) Prepare(app core.App) (*resources.Resource, error) {
@@ -539,13 +542,14 @@ func (s *Style) Validate() error {
 	return s.validate()
 }
 
-func (s *Style) Resolve(c core.Core) (string, error) {
+func (s *Style) Resolve(ctx context.Context) (string, error) {
+	c := ctx.Value(common.KeyCore).(core.Core)
 	s.defaultHosting()
 	if url, ok := s.link(); ok {
 		return url, nil
 	}
 	if s.srcKind == sourceHandler {
-		return s.handlerURL(c)
+		return s.handlerURL(ctx, c)
 	}
 	if s.srcKind == sourceUnset {
 		s.name = resourceFileName(s.name, "css")
@@ -554,7 +558,7 @@ func (s *Style) Resolve(c core.Core) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.resourceURL(c, res)
+	return s.resourceURL(ctx, c, res)
 }
 
 func (s *Style) Prepare(app core.App) (*resources.Resource, error) {

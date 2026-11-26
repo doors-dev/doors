@@ -22,8 +22,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/doors-dev/doors/internal/common"
-	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/doors/internal/printer"
 	"github.com/doors-dev/doors/internal/resources"
 	"github.com/doors-dev/gox"
@@ -350,12 +348,11 @@ func (r resource) spec() resource {
 func (r resource) cacheable() {}
 
 func (r resource) URL(ctx context.Context) (string, error) {
-	c := ctx.Value(common.KeyCore).(core.Core)
 	p := r.resource()
 	if err := p.Validate(); err != nil {
 		panic(errors.New("doors: invalid resource settings: " + err.Error()))
 	}
-	return p.Resolve(c)
+	return p.Resolve(ctx)
 }
 
 func (r resource) Mutate(name string, _ any) any {

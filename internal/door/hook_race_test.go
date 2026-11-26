@@ -52,7 +52,7 @@ func newRaceHook(t *testing.T, race core.Race) *raceHook {
 		return cur.Comp(d)
 	}))
 	rh := &raceHook{t: t, inst: inst, gate: make(chan struct{})}
-	reg, ok := d.node.Load().tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, r *http.Request) bool {
+	reg, ok := d.node.Load().tracker.RegisterHook(d.node.Load().tracker.Context(), func(ctx context.Context, _ http.ResponseWriter, r *http.Request) bool {
 		track, _ := strconv.ParseUint(r.Header.Get("T"), 10, 64)
 		if rh.busy.Add(1) > 1 {
 			rh.clash.Store(true)

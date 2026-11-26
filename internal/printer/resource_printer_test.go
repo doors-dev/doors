@@ -154,7 +154,7 @@ type titleDoor struct {
 
 func (d titleDoor) Instance() core.Instance { return d.inst }
 func (titleDoor) Cinema() beam.Cinema       { return nil }
-func (titleDoor) RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool, bool) (core.Hook, bool) {
+func (titleDoor) RegisterHook(context.Context, func(context.Context, http.ResponseWriter, *http.Request) bool, core.Race, bool, bool) (core.Hook, bool) {
 	return core.Hook{}, false
 }
 func (titleDoor) ID() uint64 { return 7 }
@@ -217,7 +217,7 @@ type hookDoor struct {
 func (d *hookDoor) Instance() core.Instance { return d.inst }
 func (d *hookDoor) Cinema() beam.Cinema     { return nil }
 
-func (d *hookDoor) RegisterHook(_ func(context.Context, http.ResponseWriter, *http.Request) bool, _ core.Race, _ bool, portable bool) (core.Hook, bool) {
+func (d *hookDoor) RegisterHook(_ context.Context, _ func(context.Context, http.ResponseWriter, *http.Request) bool, _ core.Race, _ bool, portable bool) (core.Hook, bool) {
 	if !d.allowHook {
 		return core.Hook{}, false
 	}
@@ -834,7 +834,7 @@ func TestPrepareScriptErrorsAndHelpers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = resourceURL(failCtx.Value(common.KeyCore).(core.Core), res, resources.ModeNoHost, "x.txt")
+		_, err = resourceURL(failCtx, res, resources.ModeNoHost, "x.txt")
 		if err != context.Canceled {
 			t.Fatalf("expected canceled resource url, got %v", err)
 		}
@@ -1077,13 +1077,13 @@ func getSource(attr gox.Attr) any {
 	return tg.source
 }
 
-func resourceURL(core core.Core, resource *resources.Resource, mode resources.ResourceMode, name string) (string, error) {
+func resourceURL(ctx context.Context, resource *resources.Resource, mode resources.ResourceMode, name string) (string, error) {
 	r := &res{
 		mode:    mode,
 		modeSet: true,
 		name:    name,
 	}
-	return r.resourceURL(core, resource)
+	return r.resourceURL(ctx, ctx.Value(common.KeyCore).(core.Core), resource)
 }
 
 type loggerSession struct {

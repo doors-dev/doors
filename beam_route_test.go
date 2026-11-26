@@ -3087,7 +3087,7 @@ func TestRouteHookWrite(t *testing.T) {
 		return func(cur gox.Cursor) error {
 			h.rec.hit("render:H")
 			c := cur.Context().Value(common.KeyCore).(core.Core)
-			hook, ok := c.Door().RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
+			hook, ok := c.Door().RegisterHook(cur.Context(), func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 				h.rec.hit("handler")
 				s.Update(ctx, s.Get()+20)
 				return true

@@ -31,7 +31,7 @@ type Watcher[T any] interface {
 func none() {}
 
 func (b *beam[T1, T2]) Watch(ctx context.Context, w Watcher[T2]) (context.CancelFunc, bool) {
-	watcher := newWatcher(newSingleWatcher(b, w))
+	watcher := newWatcher(ctx, newSingleWatcher(b, w))
 	ok := b.addWatcher(ctx, watcher)
 	if !ok {
 		return none, false
@@ -39,7 +39,7 @@ func (b *beam[T1, T2]) Watch(ctx context.Context, w Watcher[T2]) (context.Cancel
 	return watcher.Cancel, true
 }
 func (s *source[T]) Watch(ctx context.Context, w Watcher[T]) (context.CancelFunc, bool) {
-	watcher := newWatcher(newSingleWatcher(s, w))
+	watcher := newWatcher(ctx, newSingleWatcher(s, w))
 	ok := s.addWatcher(ctx, watcher)
 	if !ok {
 		return none, false

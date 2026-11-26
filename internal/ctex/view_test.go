@@ -82,7 +82,7 @@ func TestViewRouting(t *testing.T) {
 	})
 	checkRouting(t, "infected", NewInfectedContext(values, life), map[string]any{
 		"core": tagLife, "session": tagLife, "frame": nil, "replace": tagValues, "document": tagLife,
-		"user": tagValues, "internal": tagValues,
+		"user": tagLife, "internal": tagLife,
 	})
 }
 
@@ -191,12 +191,12 @@ func TestUserContext(t *testing.T) {
 
 // Nested views route through each other: a detached infected context, a render context in a detached one.
 func TestViewNested(t *testing.T) {
-	page := context.WithValue(context.WithValue(context.Background(), common.KeyCore, testOwner("a")), common.KeyDocument, true)
+	page := context.WithValue(context.WithValue(context.WithValue(context.Background(), common.KeyCore, testOwner("a")), common.KeyDocument, true), userKey{}, "target")
 	scope, _ := NewAfterFrame(context.WithValue(context.Background(), userKey{}, "source"), "a", 3)
 	infected := NewInfectedContext(scope, page)
 	detached := NewDetachedContext(infected, context.Background(), false)
-	if detached.Value(common.KeyCore) != testOwner("a") || detached.Value(common.KeyDocument) != nil || detached.Value(userKey{}) != "source" {
-		t.Fatal("expected a detached infected context to read the target core and source values without the document mark")
+	if detached.Value(common.KeyCore) != testOwner("a") || detached.Value(common.KeyDocument) != nil || detached.Value(userKey{}) != "target" {
+		t.Fatal("expected a detached infected context to read the target core and values without the document mark")
 	}
 	if GetFrames(detached) != (Frames{detached: true}) {
 		t.Fatal("expected only the detached mark")
@@ -210,19 +210,21 @@ func TestViewNested(t *testing.T) {
 		t.Fatal("expected a render context to read doors keys through the detached context")
 	}
 	reinfected := NewInfectedContext(render, page)
-	if reinfected.Value(common.KeyDocument) != true || reinfected.Value(userKey{}) != "render" || !GetFrames(reinfected).Detached() {
-		t.Fatal("expected an infected render context to take the target document and the source detached frames")
+	if reinfected.Value(common.KeyDocument) != true || reinfected.Value(userKey{}) != "target" || !GetFrames(reinfected).Detached() {
+		t.Fatal("expected an infected render context to take the target document and values and the source detached frames")
 	}
 }
 
-// Cause of a view reads the cancel state through Value, so it follows the values side for every kind.
+// Cause of a view reads the cancel state through Value, so it follows the side user keys come from: values, or life for an infected view.
 func TestViewCause(t *testing.T) {
 	cause := errors.New("cause")
 	for name, build := range viewBuilders() {
 		life, cancel := context.WithCancelCause(context.Background())
 		cancel(cause)
 		ctx := build(context.Background(), life)
-		if got := context.Cause(ctx); !errors.Is(got, context.Canceled) {
+		if got := context.Cause(ctx); name == "infected" && got != cause {
+			t.Errorf("%s: expected the cause of life, got %v", name, got)
+		} else if name != "infected" && !errors.Is(got, context.Canceled) {
 			t.Errorf("%s: expected the error of ctx, got %v", name, got)
 		}
 		same := build(life, life)
@@ -263,7 +265,7 @@ func TestViewMarksNoGoroutines(t *testing.T) {
 	for name, build := range viewBuilders() {
 		for mark, insert := range marks {
 			t.Run(name+"/"+mark, func(t *testing.T) {
-				life, cancel := context.WithCancel(context.Background())
+				life, cancel := context.WithCancel(context.WithValue(context.Background(), userKey{}, "user"))
 				values := context.WithValue(context.Background(), userKey{}, "user")
 				ctx := insert(build(values, life))
 				if ctx.Value(userKey{}) != "user" {
@@ -377,9 +379,9 @@ func TestViewInfectOwners(t *testing.T) {
 	}
 }
 
-type testKeys map[any]bool
+type testApp map[any]bool
 
-func (k testKeys) IsWithValueKey(key any) bool {
+func (k testApp) IsWithValueKey(key any) bool {
 	for registered := range k {
 		if registered == key {
 			return true
@@ -391,25 +393,25 @@ func (k testKeys) IsWithValueKey(key any) bool {
 type appKey struct{}
 
 // A registered key missing from the user values reads life; user values win, and other keys never read life.
-func TestViewWithValueKeys(t *testing.T) {
+func TestViewAppValues(t *testing.T) {
 	life := context.WithValue(context.WithValue(context.Background(), appKey{}, "app"), userKey{}, "life")
-	keys := testKeys{appKey{}: true}
-	render := NewRenderContext(life, context.Background(), keys)
+	app := testApp{appKey{}: true}
+	render := NewRenderContext(life, context.Background(), app)
 	if render.Value(appKey{}) != "app" || render.Value(userKey{}) != nil {
 		t.Fatal("expected the registered key from life and no other life values")
 	}
-	own := NewRenderContext(life, context.WithValue(context.Background(), appKey{}, "own"), keys)
+	own := NewRenderContext(life, context.WithValue(context.Background(), appKey{}, "own"), app)
 	if own.Value(appKey{}) != "own" {
 		t.Fatal("expected the user value to win")
 	}
 	if NewRenderContext(life, context.Background(), nil).Value(appKey{}) != nil {
-		t.Fatal("expected no life values without keys")
+		t.Fatal("expected no life values without the app")
 	}
 	if render.Value([]int{1}) != nil {
 		t.Fatal("expected nil for an uncomparable key")
 	}
 	marked, _ := NewAfterFrame(render, "a", 1)
 	if marked.Value(appKey{}) != "app" {
-		t.Fatal("expected marks to keep the keys")
+		t.Fatal("expected marks to keep the app")
 	}
 }

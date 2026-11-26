@@ -189,6 +189,6 @@ func TestIsDocument(t *testing.T) {
 	p.wait(t, "reload", true, false)
 	p.wait(t, "child", true, false)
 	p.wait(t, "bind", true, false)
-	p.wait(t, "sub", false, false)
-	p.wait(t, "sub update from render", false)
+	p.wait(t, "sub", true, true)
+	p.wait(t, "sub update from render", true)
 }

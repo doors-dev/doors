@@ -754,7 +754,7 @@ func TestOnReadyFromHandlerContextFiresInline(t *testing.T) {
 	<-started
 
 	c := pageCtx.Value(common.KeyCore).(core.Core)
-	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	hook, ok := c.Door().RegisterHook(pageCtx, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 		ran := false
 		OnReady(ctx, func(context.Context) { ran = true })
 		if ran {
@@ -819,7 +819,7 @@ func TestOnSettleHandlerCtxWaitsForBatch(t *testing.T) {
 	c := pageCtx.Value(common.KeyCore).(core.Core)
 	entered := make(chan struct{})
 	proceed := make(chan struct{})
-	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	hook, ok := c.Door().RegisterHook(pageCtx, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 		OnSettle(ctx, func(context.Context) { h.events <- "settle-handler" })
 		close(entered)
 		<-proceed
@@ -1212,7 +1212,7 @@ func TestHookRaceStrictCancelsOutOfOrder(t *testing.T) {
 		t.Helper()
 		var track uint64
 		var ran []uint64
-		hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+		hook, ok := c.Door().RegisterHook(pageCtx, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 			ran = append(ran, track)
 			return false
 		}, race, false, false)
@@ -1309,7 +1309,7 @@ func TestOnBatchJoinsHookBatch(t *testing.T) {
 	h.waitIdle()
 	from := len(h.client.actions())
 	c := pageCtx.Value(common.KeyCore).(core.Core)
-	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	hook, ok := c.Door().RegisterHook(pageCtx, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 		OnBatch(ctx, func(context.Context) { h.events <- "batch" })
 		d.Inner(ctx, gox.Elem(func(cur gox.Cursor) error { return cur.Text("x") }))
 		return true
@@ -1336,7 +1336,7 @@ func TestOnBatchInPlainHook(t *testing.T) {
 	h.waitIdle()
 	from := len(h.client.actions())
 	c := pageCtx.Value(common.KeyCore).(core.Core)
-	hook, ok := c.Door().RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	hook, ok := c.Door().RegisterHook(pageCtx, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 		OnBatch(ctx, func(context.Context) { h.events <- "batch" }, func(ctx context.Context) {
 			d.Inner(ctx, gox.Elem(func(cur gox.Cursor) error { return cur.Text("x") }))
 		})
@@ -1359,10 +1359,10 @@ func TestOnBatchInSettleOfHook(t *testing.T) {
 		t.Run(fmt.Sprint("batch=", batched), func(t *testing.T) {
 			h := newLifecycleHarness(t, 8)
 			a, b := &Door{}, &Door{}
-			_, page, from := linksPage(h, a, b)
+			pageCtx, _, from := linksPage(h, a, b)
 			applied := make(chan []string, 1)
 			h.client.hold()
-			linksHook(h, page, batched, 7, func(ctx context.Context) {
+			linksHook(h, pageCtx, batched, 7, func(ctx context.Context) {
 				OnSettle(ctx, func(ctx context.Context) {
 					OnBatch(ctx, func(context.Context) {
 						applied <- appliedNames(h, 0)
@@ -1413,10 +1413,10 @@ func TestOnBatchInSettleOfHook(t *testing.T) {
 func TestOnBatchInNestedSettleOfBatchHook(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	a, b := &Door{}, &Door{}
-	_, page, from := linksPage(h, a, b)
+	pageCtx, _, from := linksPage(h, a, b)
 	applied := make(chan []string, 1)
 	h.client.hold()
-	linksHook(h, page, true, 7, func(ctx context.Context) {
+	linksHook(h, pageCtx, true, 7, func(ctx context.Context) {
 		OnSettle(ctx, func(ctx context.Context) {
 			OnSettle(ctx, func(context.Context) {}, func(ctx context.Context) {
 				OnBatch(ctx, func(context.Context) {
@@ -1455,8 +1455,8 @@ func TestOnBatchInNestedSettleOfBatchHook(t *testing.T) {
 func TestOnSettleOpsInSettleCallbackUntagged(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	a := &Door{}
-	_, page, from := linksPage(h, a)
-	linksHook(h, page, true, 7, func(ctx context.Context) {
+	pageCtx, _, from := linksPage(h, a)
+	linksHook(h, pageCtx, true, 7, func(ctx context.Context) {
 		OnSettle(ctx, func(ctx context.Context) {
 			OnSettle(ctx, func(ctx context.Context) {
 				Call(ctx, ActionScroll{Selector: "#b"})
@@ -1503,14 +1503,13 @@ func TestDetachedPerContextKind(t *testing.T) {
 		return Go(func(ctx context.Context) { record("go", ctx) })(cur)
 	})
 	h.waitIdle()
-	page := pageCtx.Value(common.KeyCore).(core.Core).Door()
 	detached := DetachedContext(pageCtx)
 	record("detached", detached)
 	record("instance", InstanceContext(pageCtx))
 	timed, cancel := context.WithTimeout(detached, time.Minute)
 	defer cancel()
 	record("timeout", timed)
-	linksHook(h, page, false, 8, func(ctx context.Context) {
+	linksHook(h, pageCtx, false, 8, func(ctx context.Context) {
 		record("handler", ctx)
 		OnSettle(ctx, func(ctx context.Context) { record("settle", ctx) })
 		src.Update(ctx, 1)
@@ -1552,13 +1551,13 @@ func TestOnBatchFiresOnInstanceEnd(t *testing.T) {
 // Call sends only the scheduled value and leaves dst alone in a batch or plain handler; on a detached ctx it also sends the result after writing dst.
 func TestCallChannelPerContext(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
-	pageCtx, page, _ := linksPage(h)
+	pageCtx, _, _ := linksPage(h)
 	var batchAt, plainAt, detachedAt time.Time
 	var batchChs, plainChs []<-chan error
-	linksHook(h, page, true, 7, func(ctx context.Context) {
+	linksHook(h, pageCtx, true, 7, func(ctx context.Context) {
 		batchChs = append(batchChs, Call(ctx, ActionScroll{Selector: "#x"}), Call(ctx, ActionTime{}.Into(&batchAt)))
 	})
-	linksHook(h, page, false, 8, func(ctx context.Context) {
+	linksHook(h, pageCtx, false, 8, func(ctx context.Context) {
 		plainChs = append(plainChs, Call(ctx, ActionScroll{Selector: "#x"}), Call(ctx, ActionTime{}.Into(&plainAt)))
 	})
 	for _, ch := range append(batchChs, plainChs...) {
@@ -1671,7 +1670,7 @@ func TestOnSettleRenderOpsWaitForRender(t *testing.T) {
 func TestOnSettleHandlerSkipsForeignWork(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	a := &Door{}
-	pageCtx, page, _ := linksPage(h, a)
+	pageCtx, _, _ := linksPage(h, a)
 	gate := make(chan struct{})
 	open := sync.OnceFunc(func() { close(gate) })
 	defer open()
@@ -1682,7 +1681,7 @@ func TestOnSettleHandlerSkipsForeignWork(t *testing.T) {
 		return cur.Text("static")
 	}))
 	<-entered
-	linksHook(h, page, false, 7, func(ctx context.Context) {
+	linksHook(h, pageCtx, false, 7, func(ctx context.Context) {
 		OnSettle(ctx, func(context.Context) { h.events <- "settle" })
 	})
 	h.waitEvent("settle")

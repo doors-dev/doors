@@ -16,11 +16,16 @@ package doors
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"regexp"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/doors-dev/doors/internal/common"
+	"github.com/doors-dev/doors/internal/core"
 	"github.com/doors-dev/gox"
 )
 
@@ -62,23 +67,34 @@ func valuePage(seen *valueSeen) func(ctx context.Context, r Request) gox.Comp {
 			if err != nil {
 				return nil
 			}
+			var ctxHook, ownHook string
 			plain := Ctx(context.WithValue(context.Background(), valueOther{}, "other"))
 			if err := plain.Proxy(cur, gox.Elem(func(cur gox.Cursor) error {
 				seen.set("ctx", cur.Context())
-				return nil
+				var err error
+				ctxHook, err = ResourceHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+					seen.set("ctx-hook", ctx)
+					return false
+				}).URL(cur.Context())
+				return err
 			})); err != nil {
 				return err
 			}
 			own := Ctx(context.WithValue(context.Background(), valueKey{}, "own"))
 			if err := own.Proxy(cur, gox.Elem(func(cur gox.Cursor) error {
 				seen.set("own", cur.Context())
-				return nil
+				var err error
+				ownHook, err = ResourceHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+					seen.set("own-hook", ctx)
+					return false
+				}).URL(cur.Context())
+				return err
 			})); err != nil {
 				return err
 			}
 			return headTag(cur, "html", func() error {
 				return headTag(cur, "body", func() error {
-					return cur.Text("hook:" + hook)
+					return cur.Text("hook:" + hook + " ctx=" + ctxHook + " own=" + ownHook)
 				})
 			})
 		})
@@ -99,13 +115,113 @@ func TestWithValue(t *testing.T) {
 	_, body := headDo(t, c, http.MethodGet, srv.URL+"/", false)
 	hookURL, _ := headHook(t, body)
 	headDo(t, c, http.MethodGet, srv.URL+hookURL, false)
-	for _, name := range []string{"page", "request", "render", "session", "instance", "detached", "hook", "ctx"} {
+	for _, m := range valueHookRegexp.FindAllSubmatch(body, -1) {
+		headDo(t, c, http.MethodGet, srv.URL+string(m[1]), false)
+	}
+	for _, name := range []string{"page", "request", "render", "session", "instance", "detached", "hook", "ctx", "ctx-hook"} {
 		if got := seen.get(name); got != "app" {
 			t.Errorf("%s: expected the app value, got %v", name, got)
 		}
 	}
-	if got := seen.get("own"); got != "own" {
-		t.Errorf("expected the Ctx value to win, got %v", got)
+	for _, name := range []string{"own", "own-hook"} {
+		if got := seen.get(name); got != "own" {
+			t.Errorf("%s: expected the Ctx value to win, got %v", name, got)
+		}
+	}
+}
+
+// A watcher reads the values of its Sub ctx on init and on updates, not the values of the updater, while the Doors marks of the updater still reach it.
+func TestCtxWatcherValues(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	src := NewSource(0)
+	h.renderPage(func(cur gox.Cursor) error {
+		return Ctx(context.WithValue(context.Background(), valueKey{}, "sub")).Proxy(cur, gox.Elem(func(cur gox.Cursor) error {
+			src.Sub(cur.Context(), func(ctx context.Context, v int) bool {
+				replace, _ := ctx.Value(common.KeyHistoryReplace).(bool)
+				h.events <- fmt.Sprintf("%d %v %v", v, ctx.Value(valueKey{}), replace)
+				return false
+			})
+			return nil
+		}))
+	})
+	h.waitEvent("0 sub false")
+	src.Update(HistoryReplaceContext(context.WithValue(freeCtx(), valueKey{}, "updater")), 1)
+	h.waitEvent("1 sub true")
+}
+
+var valueHookRegexp = regexp.MustCompile(`(?:ctx|own)=(/~/doors/h/[0-9a-zA-Z]+/\d+)`)
+
+// A handler reads the values of the render it was registered in: Ctx above the Door, Ctx inside it, nested and replacing Ctx, and Static content of a Door placed under Ctx.
+func TestCtxHandlerValues(t *testing.T) {
+	h := newLifecycleHarness(t, 8)
+	var mu sync.Mutex
+	hooks := map[string]uint64{}
+	register := func(name string) gox.Elem {
+		return func(cur gox.Cursor) error {
+			c := cur.Context().Value(common.KeyCore).(core.Core)
+			hook, ok := c.Door().RegisterHook(cur.Context(), func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+				h.events <- fmt.Sprintf("%s %v %v", name, ctx.Value(valueKey{}), ctx.Value(valueOther{}))
+				return false
+			}, RaceSerial, false, false)
+			if !ok {
+				return context.Canceled
+			}
+			mu.Lock()
+			hooks[name] = hook.HookID
+			mu.Unlock()
+			return nil
+		}
+	}
+	under := func(ctx context.Context, el gox.Elem) gox.Elem {
+		return func(cur gox.Cursor) error {
+			return Ctx(ctx).Proxy(cur, el)
+		}
+	}
+	d, s := &Door{}, &Door{}
+	content := gox.Elem(func(cur gox.Cursor) error {
+		if err := register("door")(cur); err != nil {
+			return err
+		}
+		if err := under(context.WithValue(cur.Context(), valueOther{}, "nested"), register("nested"))(cur); err != nil {
+			return err
+		}
+		if err := under(context.WithValue(context.Background(), valueOther{}, "replaced"), register("replaced"))(cur); err != nil {
+			return err
+		}
+		return under(context.WithValue(cur.Context(), valueKey{}, "inner"), register("inner"))(cur)
+	})
+	h.renderPage(func(cur gox.Cursor) error {
+		if err := register("page")(cur); err != nil {
+			return err
+		}
+		if err := under(context.WithValue(context.Background(), valueKey{}, "static"), mountDoor(s))(cur); err != nil {
+			return err
+		}
+		d.Inner(freeCtx(), content)
+		return under(context.WithValue(context.Background(), valueKey{}, "top"), mountDoor(d))(cur)
+	})
+	if err := <-s.Static(freeCtx(), register("static")); err != nil {
+		t.Fatal(err)
+	}
+	h.waitIdle()
+	for name, want := range map[string]string{
+		"page":     "page <nil> <nil>",
+		"door":     "door top <nil>",
+		"nested":   "nested top nested",
+		"replaced": "replaced <nil> replaced",
+		"inner":    "inner inner <nil>",
+		"static":   "static static <nil>",
+	} {
+		mu.Lock()
+		id, ok := hooks[name]
+		mu.Unlock()
+		if !ok {
+			t.Fatalf("%s: hook not registered", name)
+		}
+		if !h.root.TriggerHook(id, httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil), 0) {
+			t.Fatalf("%s: expected the hook to trigger", name)
+		}
+		h.waitEvent(want)
 	}
 }
 

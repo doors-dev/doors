@@ -36,8 +36,9 @@ type innerWatcher interface {
 	cancel()
 }
 
-func newWatcher(inner innerWatcher) *watcher {
+func newWatcher(ctx context.Context, inner innerWatcher) *watcher {
 	return &watcher{
+		ctx:   ctx,
 		inner: inner,
 	}
 }
@@ -55,6 +56,7 @@ type anyScreen interface {
 }
 
 type watcher struct {
+	ctx       context.Context
 	state     atomic.Int32
 	inner     innerWatcher
 	initGuard shredder.ValveFrame

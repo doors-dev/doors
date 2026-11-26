@@ -194,7 +194,7 @@ type embeddedBody interface {
 	appendString(string)
 	appendBytes([]byte)
 	empty() bool
-	Resolve(core.Core) (string, error)
+	Resolve(context.Context) (string, error)
 }
 
 type embeddedResource struct {
@@ -207,8 +207,7 @@ func (r *embeddedResource) render(p gox.Printer) error {
 	if r.body.empty() {
 		return r.dump(p)
 	}
-	core := r.openJob.Context().Value(common.KeyCore).(core.Core)
-	src, err := r.body.Resolve(core)
+	src, err := r.body.Resolve(r.openJob.Context())
 	if err != nil {
 		return err
 	}

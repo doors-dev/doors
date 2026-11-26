@@ -95,9 +95,10 @@ func linksScroll(t *testing.T, links []linksCall, selector string) linksCall {
 	return linksCall{}
 }
 
-func linksHook(h *lifecycleHarness, d core.Door, batch bool, track uint64, handler func(ctx context.Context)) {
+func linksHook(h *lifecycleHarness, ctx context.Context, batch bool, track uint64, handler func(ctx context.Context)) {
 	h.t.Helper()
-	hook, ok := d.RegisterHook(func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	d := ctx.Value(common.KeyCore).(core.Core).Door()
+	hook, ok := d.RegisterHook(ctx, func(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 		handler(ctx)
 		return true
 	}, RaceSerial, batch, false)
@@ -197,8 +198,8 @@ func TestLinksOnBatchDetached(t *testing.T) {
 func TestLinksOnBatchInPlainHook(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	own, op := &Door{}, &Door{}
-	_, page, from := linksPage(h, own, op)
-	linksHook(h, page, false, 7, func(ctx context.Context) {
+	pageCtx, _, from := linksPage(h, own, op)
+	linksHook(h, pageCtx, false, 7, func(ctx context.Context) {
 		OnBatch(ctx, func(context.Context) { h.events <- "batch" }, func(ctx context.Context) {
 			op.Inner(ctx, textElem("op"))
 		})
@@ -249,8 +250,8 @@ func TestLinksOnBatchInPlainHook(t *testing.T) {
 func TestLinksTwoOnBatchInPlainHook(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	a, b := &Door{}, &Door{}
-	_, page, from := linksPage(h, a, b)
-	linksHook(h, page, false, 7, func(ctx context.Context) {
+	pageCtx, _, from := linksPage(h, a, b)
+	linksHook(h, pageCtx, false, 7, func(ctx context.Context) {
 		OnBatch(ctx, func(context.Context) { h.events <- "first" }, func(ctx context.Context) {
 			a.Inner(ctx, textElem("a"))
 		})
@@ -287,8 +288,8 @@ func TestLinksTwoOnBatchInPlainHook(t *testing.T) {
 func TestLinksOnBatchInBatchHook(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	own, op := &Door{}, &Door{}
-	_, page, from := linksPage(h, own, op)
-	linksHook(h, page, true, 7, func(ctx context.Context) {
+	pageCtx, _, from := linksPage(h, own, op)
+	linksHook(h, pageCtx, true, 7, func(ctx context.Context) {
 		OnBatch(ctx, func(context.Context) { h.events <- "batch" }, func(ctx context.Context) {
 			op.Inner(ctx, textElem("op"))
 		})
@@ -322,8 +323,9 @@ func TestLinksUserCallInBatchHook(t *testing.T) {
 	parent.Inner(DetachedContext(pageCtx), mountDoor(child))
 	placed := linksExpect(h, from, "door_update")[0]
 	from++
-	issuer := (<-childCtx).Value(common.KeyCore).(core.Core).Door()
-	linksHook(h, issuer, true, 7, func(ctx context.Context) {
+	issuerCtx := <-childCtx
+	issuer := issuerCtx.Value(common.KeyCore).(core.Core).Door()
+	linksHook(h, issuerCtx, true, 7, func(ctx context.Context) {
 		Call(ctx, ActionScroll{Selector: "#member"})
 		Call(DetachedContext(ctx), ActionScroll{Selector: "#detached"})
 	})
@@ -367,7 +369,7 @@ func TestLinksStreamTargets(t *testing.T) {
 		}
 		return n
 	}
-	linksHook(h, page, true, 7, func(ctx context.Context) {
+	linksHook(h, pageCtx, true, 7, func(ctx context.Context) {
 		round(ctx, 1, "first")
 	})
 	first := linksUntil(h, from, func(links []linksCall) bool {
@@ -452,7 +454,7 @@ func TestLinksForeignInstanceUntagged(t *testing.T) {
 	hb := newLifecycleHarness(t, 8)
 	hb.inst.linksID = "instance-2"
 	da, db := &Door{}, &Door{}
-	pageA, page, fromA := linksPage(ha, da)
+	pageA, _, fromA := linksPage(ha, da)
 	pageB, _, fromB := linksPage(hb, db)
 	if a, b := pageA.Value(common.KeyCore).(core.Core).InstanceID(), pageB.Value(common.KeyCore).(core.Core).InstanceID(); a == b {
 		t.Fatalf("expected two instance ids, got %s twice", a)
@@ -461,7 +463,7 @@ func TestLinksForeignInstanceUntagged(t *testing.T) {
 	gate := make(chan struct{})
 	open := sync.OnceFunc(func() { close(gate) })
 	defer open()
-	linksHook(ha, page, true, 7, func(ctx context.Context) {
+	linksHook(ha, pageA, true, 7, func(ctx context.Context) {
 		foreign := ctex.NewInfectedContext(ctx, pageB)
 		foreignOp = db.Inner(foreign, gox.Elem(func(cur gox.Cursor) error {
 			<-gate
@@ -503,8 +505,8 @@ func TestLinksForeignInstanceUntagged(t *testing.T) {
 func TestLinksOnSettleBatchBeforeReportWithBusyDoor(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	a, b := &Door{}, &Door{}
-	_, page, from := linksPage(h, a, b)
-	linksHook(h, page, false, 7, func(ctx context.Context) {
+	pageCtx, _, from := linksPage(h, a, b)
+	linksHook(h, pageCtx, false, 7, func(ctx context.Context) {
 		a.Static(ctx, textElem("static"))
 		OnSettle(ctx, func(ctx context.Context) {
 			OnBatch(ctx, func(context.Context) { h.events <- "batch" }, func(ctx context.Context) {
@@ -525,8 +527,8 @@ func TestLinksOnSettleBatchBeforeReportWithBusyDoor(t *testing.T) {
 func TestLinksOnSettleInBatchOpsWithBusyDoor(t *testing.T) {
 	h := newLifecycleHarness(t, 8)
 	a, b := &Door{}, &Door{}
-	_, page, from := linksPage(h, a, b)
-	linksHook(h, page, false, 7, func(ctx context.Context) {
+	pageCtx, _, from := linksPage(h, a, b)
+	linksHook(h, pageCtx, false, 7, func(ctx context.Context) {
 		OnBatch(ctx, func(context.Context) { h.events <- "outer" }, func(ctx context.Context) {
 			a.Static(ctx, textElem("static"))
 			OnSettle(ctx, func(ctx context.Context) {

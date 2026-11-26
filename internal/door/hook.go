@@ -35,6 +35,7 @@ const (
 
 type hook struct {
 	id          uint64
+	ctx         context.Context
 	triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done
 	state       atomic.Int32
 	ch          atomic.Pointer[chan struct{}]
@@ -55,9 +56,10 @@ type hookTracker interface {
 	Context() context.Context
 }
 
-func newHook(id uint64, tracker hookTracker, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, race core.Race, batch bool) *hook {
+func newHook(id uint64, tracker hookTracker, ctx context.Context, triggerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) Done, race core.Race, batch bool) *hook {
 	return &hook{
 		id:          id,
+		ctx:         ctx,
 		triggerFunc: triggerFunc,
 		tracker:     tracker,
 		race:        race,
@@ -142,7 +144,7 @@ func (h *hook) trigger(w http.ResponseWriter, r *http.Request, track uint64) boo
 	if track != 0 {
 		group = h.tracker.inst().NewID()
 	}
-	ctx, frame := ctex.NewAfterFrame(h.tracker.Context(), h.tracker.inst().ID(), group)
+	ctx, frame := ctex.NewAfterFrame(h.ctx, h.tracker.inst().ID(), group)
 	defer frame.Activate()
 	var valve *shredder.ValveFrame
 	if h.batch {

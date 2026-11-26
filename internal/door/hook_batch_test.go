@@ -40,7 +40,7 @@ func runBatchHook(t *testing.T, track uint64) (member testLink, detached testLin
 		return cur.Comp(q)
 	}))
 	pid, qid := doorIDOf(p), doorIDOf(q)
-	hook, ok := h.node.Load().tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
+	hook, ok := h.node.Load().tracker.RegisterHook(h.node.Load().tracker.Context(), func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 		p.Inner(ctx, text("member"))
 		q.Inner(ctex.NewDetachedContext(ctx, ctx, false), text("detached"))
 		return true
@@ -122,7 +122,7 @@ func runPlainHook(t *testing.T, track uint64) ([]testLink, []any) {
 		return cur.Comp(p)
 	}))
 	done := make(chan (<-chan error), 1)
-	hook, ok := h.node.Load().tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
+	hook, ok := h.node.Load().tracker.RegisterHook(h.node.Load().tracker.Context(), func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 		done <- p.Inner(ctx, text("plain"))
 		return true
 	}, core.RaceSerial, false, false)
@@ -205,7 +205,7 @@ func TestHookBatchChannels(t *testing.T) {
 	member := make(chan (<-chan error), 1)
 	detached := make(chan (<-chan error), 1)
 	reported := make(chan struct{})
-	hook, ok := h.node.Load().tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
+	hook, ok := h.node.Load().tracker.RegisterHook(h.node.Load().tracker.Context(), func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 		member <- p.Inner(ctx, text("member"))
 		detached <- q.Inner(ctex.NewDetachedContext(ctx, ctx, false), text("detached"))
 		frame, _ := ctex.GetFrames(ctx).BatchFrame()
@@ -262,7 +262,7 @@ func TestForeignDoorWithBatchCtx(t *testing.T) {
 	}))
 	_, before := other.issuedCalls()
 	foreign := make(chan (<-chan error), 1)
-	hook, ok := h.node.Load().tracker.RegisterHook(func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
+	hook, ok := h.node.Load().tracker.RegisterHook(h.node.Load().tracker.Context(), func(ctx context.Context, _ http.ResponseWriter, _ *http.Request) bool {
 		foreign <- q.Inner(ctx, text("foreign"))
 		return true
 	}, core.RaceSerial, true, false)

@@ -15,6 +15,7 @@
 package printer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -46,7 +47,7 @@ type scriptTag struct {
 func (s *scriptTag) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 	c := job.Ctx.Value(common.KeyCore).(core.Core)
 	for _, attr := range s.data {
-		if err := s.readData(job.Attrs, attr, c); err != nil {
+		if err := s.readData(job.Ctx, job.Attrs, attr); err != nil {
 			return err
 		}
 	}
@@ -77,7 +78,7 @@ func (s *scriptTag) Submit(job *gox.JobOpen, p *resourcePrinter) error {
 		}
 		return p.printer.Send(job)
 	case SourceHandler:
-		path, err := s.Resolve(c)
+		path, err := s.Resolve(job.Ctx)
 		if err != nil {
 			return err
 		}
@@ -246,7 +247,7 @@ func (s *scriptTag) readType(attr gox.Attr) (bool, bool) {
 	return true, true
 }
 
-func (s *scriptTag) readData(attrs gox.Attrs, attr gox.Attr, c core.Core) error {
+func (s *scriptTag) readData(ctx context.Context, attrs gox.Attrs, attr gox.Attr) error {
 	name := strings.TrimPrefix(attr.Name(), "data:")
 	value := attr.Value()
 	var r Resource
@@ -262,7 +263,7 @@ func (s *scriptTag) readData(attrs gox.Attrs, attr gox.Attr, c core.Core) error 
 		if err := r.Validate(); err != nil {
 			return err
 		}
-		url, err := r.Resolve(c)
+		url, err := r.Resolve(ctx)
 		if err != nil {
 			return err
 		}

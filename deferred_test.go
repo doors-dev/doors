@@ -1474,7 +1474,7 @@ func TestDeferredSkeletonAliveDuringHeavy(t *testing.T) {
 					}
 					return false
 				})
-				hook, ok := ctx.Value(common.KeyCore).(core.Core).Door().RegisterHook(func(context.Context, http.ResponseWriter, *http.Request) bool {
+				hook, ok := ctx.Value(common.KeyCore).(core.Core).Door().RegisterHook(ctx, func(context.Context, http.ResponseWriter, *http.Request) bool {
 					h.events <- "hook"
 					return false
 				}, RaceSerial, false, false)

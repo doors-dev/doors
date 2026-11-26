@@ -147,7 +147,7 @@ func TestCtxContainerPreservedAcrossInner(t *testing.T) {
 	test.TestAttr(t, page, "#container-report", "data-value", "a")
 }
 
-func TestCtxSameScopeHandlerGetsTrackerValues(t *testing.T) {
+func TestCtxSameScopeHandlerSeesValue(t *testing.T) {
 	bro := test.NewFragmentBro(browser, func() test.Fragment {
 		return &CtxRerenderFragment{}
 	})
@@ -155,5 +155,5 @@ func TestCtxSameScopeHandlerGetsTrackerValues(t *testing.T) {
 	defer bro.Close()
 	defer page.Close()
 	test.Click(t, page, "#same-scope-handler")
-	test.TestAttr(t, page, "#same-scope-report", "data-value", "none")
+	test.TestAttr(t, page, "#same-scope-report", "data-value", "a")
 }
